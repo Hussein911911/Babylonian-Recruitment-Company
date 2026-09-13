@@ -144,6 +144,22 @@ code, .mono { font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
 .main-nav a.active { color: var(--gold-2); background: rgba(200, 162, 74, .16); }
 .nav-toggle { display: none; background: transparent; border: 1px solid var(--line); color: #fff; border-radius: 10px; padding: 8px 10px; cursor: pointer; }
 
+/* ===================== الأيقونات (القاعدة الأساسية) =====================
+   كل أيقونة تُرسم بـ <svg class="ic"><use href="#i-…"/></svg>
+   هذه القاعدة تضمن حجماً معقولاً في كل السياقات، والقواعد الأخصّ تتجاوزها. */
+.ic {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: inherit;
+  vertical-align: -3px;
+  pointer-events: none;
+  overflow: visible;
+}
+.field label .ic { vertical-align: -4px; margin-inline-end: 5px; opacity: .85; }
+.ic-sm { width: 15px; height: 15px; }
+.ic-lg { width: 24px; height: 24px; }
+
 /* ============================ 5) الأزرار ============================ */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -662,6 +678,25 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .modal-foot .btn { flex: 1; }
   .topbar .tb-items { gap: 10px; }
 }
+/* خط زخرفي ذهبي بجانب العنوان الفرعي (يمتدّ في اتجاه القراءة) */
+.eyebrow-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.eyebrow-line::after {
+  content: '';
+  inline-size: 48px;
+  block-size: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+.section-dark .eyebrow-line::after { background: linear-gradient(90deg, var(--gold-2), transparent); }
+
+/* مسارات الملف المستقل الواحد (تُتحكَّم بالخاصية hidden) */
+.route { display: block; }
+.route[hidden] { display: none !important; }
+
 @media (max-width: 420px) {
   .hero-cta .btn { width: 100%; }
   .card-pad { padding: 14px; }

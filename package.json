@@ -5,9 +5,12 @@
   "description": "منصة شركة بابل للتوظيف (BRC) — استمارات ترشيح، كيو آر كود تحقق، خمس محاولات، وحجز مؤقت للوظيفة 24 ساعة. HTML/CSS/JS يعمل بلا خادم.",
   "scripts": {
     "build": "node tools/build.mjs",
-    "test": "node tests/smoke.mjs",
     "start": "node tools/serve.mjs",
-    "verify:qr": "node tests/qr-report.mjs"
+    "test": "node tests/smoke.mjs",
+    "e2e": "node tests/e2e.mjs",
+    "audit": "node tests/audit.mjs",
+    "verify:qr": "node tests/qr-report.mjs",
+    "verify:qr:full": "node tests/qr-crosscheck.mjs"
   },
   "devDependencies": {
     "jsdom": "^26.1.0",

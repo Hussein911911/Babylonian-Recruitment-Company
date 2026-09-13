@@ -285,7 +285,7 @@
 
     // آخر العمليات
     document.getElementById('ov-recent').innerHTML = Store.listAudit({}).slice(0, 8).map(function (l) {
-      return '<tr><td class="mono tiny" dir="ltr">' + UI.esc(l.ts.replace('T', ' ').slice(0, 19)) + '</td>' +
+      return '<tr><td class="mono tiny" dir="ltr">' + UI.esc(Store.fmtDateTime(l.ts)) + '</td>' +
         '<td>' + UI.esc(l.name || l.user) + '</td><td>' + UI.esc(l.action) + '</td>' +
         '<td class="tiny muted">' + UI.esc(l.details) + '</td></tr>';
     }).join('') || '<tr><td colspan="4" class="table-empty">لا سجلات بعد</td></tr>';
@@ -815,7 +815,7 @@
       var roleBadge = l.role === 'admin' ? '<span class="badge danger">مدير عام</span>'
         : (l.role === 'staff' ? '<span class="badge info">موظف</span>' : '<span class="badge muted">النظام</span>');
       return '<tr>' +
-        '<td class="mono tiny" dir="ltr">' + UI.esc(l.ts.replace('T', ' ').slice(0, 19)) + '</td>' +
+        '<td class="mono tiny" dir="ltr">' + UI.esc(Store.fmtDateTime(l.ts)) + '</td>' +
         '<td>' + UI.esc(l.name || l.user) + '<div class="tiny muted mono">' + UI.esc(l.user) + '</div></td>' +
         '<td>' + roleBadge + '</td>' +
         '<td class="tiny mono" dir="ltr">' + UI.esc(l.ip) + '</td>' +
@@ -1034,7 +1034,7 @@
     if (ea) ea.addEventListener('click', function () {
       var rows = Store.listAudit(state.log);
       var csv = 'ts,user,name,role,ip,action,entity,entityId,details\n' + rows.map(function (l) {
-        return [l.ts, l.user, l.name, l.role, l.ip, l.action, l.entity, l.entityId, (l.details || '').replace(/"/g, '""')]
+        return [Store.fmtDateTime(l.ts), l.user, l.name, l.role, l.ip, l.action, l.entity, l.entityId, (l.details || '').replace(/"/g, '""')]
           .map(function (x) { return '"' + String(x == null ? '' : x) + '"'; }).join(',');
       }).join('\n');
       UI.download('brc-audit-' + Store.fmtDate(new Date()) + '.csv', '\ufeff' + csv, 'text/csv;charset=utf-8');

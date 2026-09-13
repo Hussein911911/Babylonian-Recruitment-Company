@@ -512,8 +512,8 @@
                 <option value="system">النظام</option>
               </select>
             </div>
-            <div class="field"><label for="log-from">من تاريخ</label><input type="date" id="log-from"></div>
-            <div class="field"><label for="log-to">إلى تاريخ</label><input type="date" id="log-to"></div>
+            <div class="field"><label for="log-from"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>من تاريخ</label><input type="date" id="log-from"></div>
+            <div class="field"><label for="log-to"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>إلى تاريخ</label><input type="date" id="log-to"></div>
           </div>
         </div>
         <div class="table-wrap" style="border:none;box-shadow:none">
@@ -611,7 +611,7 @@
               <button class="btn btn-warn" id="btn-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تشغيل قواعد الحجز التلقائي</button>
               <button class="btn btn-danger" id="btn-reset"><svg class="ic"><use href="#i-trash" xlink:href="#i-trash"/></svg> إعادة ضبط البيانات التجريبية</button>
             </div>
-            <input type="file" id="import-file" accept="application/json" class="hidden">
+            <input type="file" id="import-file" accept="application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية للاستيراد">
             <div class="data-grid mt-3">
               <div class="data-item"><div class="k">الوظائف المخزّنة</div><div class="v" id="db-jobs">0</div></div>
               <div class="data-item"><div class="k">الاستمارات</div><div class="v" id="db-apps">0</div></div>
