@@ -19,7 +19,10 @@ import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const PAGES = ['index.html', 'verify.html', 'dashboard.html', 'brc-standalone.html'];
+import { existsSync as fileExists } from 'node:fs';
+const LIGHT = fileExists(join(dirname(fileURLToPath(import.meta.url)), '..', 'brc-light.html'));
+const PAGES = ['index.html', 'verify.html', 'dashboard.html', 'brc-standalone.html']
+  .concat(LIGHT ? ['brc-light.html'] : []);
 
 let pass = 0, fail = 0, warn = 0;
 const problems = [];
@@ -343,8 +346,8 @@ for (const file of PAGES) {
 /* ═══ 8) الاستقلال التام للملف الواحد ════════════════════════════════════ */
 section('8) الملف المستقل — يعمل بلا إنترنت وبلا أي مجلد مساعد');
 
-{
-  const s = loaded['brc-standalone.html'];
+for (const file of PAGES.filter((f) => f.startsWith('brc-'))) {
+  const s = loaded[file];
   const ext = [];
   s.doc.querySelectorAll('[src], [href], link[href], source[srcset]').forEach((el) => {
     for (const a of ['src', 'href', 'srcset']) {
@@ -352,15 +355,16 @@ section('8) الملف المستقل — يعمل بلا إنترنت وبلا 
       if (v && /^(https?:)?\/\//.test(v) && !v.includes('brc-babil.com')) ext.push(v);
     }
   });
-  if (ext.length) bad('لا مراجع خارجية إطلاقاً', ext.slice(0, 5).join(', '));
-  else ok('لا يوجد أي مرجع خارجي (كل الصور والخطوط والكود داخل الملف)');
+  if (ext.length) bad(file + ' — لا مراجع خارجية إطلاقاً', ext.slice(0, 5).join(', '));
+  else ok(file + ' — لا يوجد أي مرجع خارجي (كل الصور والخطوط والكود داخل الملف)');
 
-  const raw = readFileSync(join(ROOT, 'brc-standalone.html'), 'utf8');
+  const raw = readFileSync(join(ROOT, file), 'utf8');
   const dataUris = (raw.match(/data:[a-z]+\/[a-z0-9.+-]+;base64,/g) || []).length;
   const sizeMB = (Buffer.byteLength(raw) / 1048576).toFixed(2);
-  ok('حجم الملف ' + sizeMB + ' ميجابايت — يحتوي ' + dataUris + ' أصلاً مدمجاً (base64)');
-
-  // المسار الهاشي لكل قسم
+  const sameAsFull = file === 'brc-standalone.html' ? '' : ' (نسخة مصغّرة للعرض السريع)';
+  ok(file + ' — حجمه ' + sizeMB + ' ميجابايت ويحتوي ' + dataUris + ' أصلاً مدمجاً' + sameAsFull);
+}
+{
   const routes = ['', '#jobs', '#!verify?form=BRC-NO-000120', '#!dashboard'];
   ok('مسارات التنقل داخل الملف الواحد: ' + routes.join('  ·  '));
 }

@@ -7,10 +7,13 @@
  *   2) verify.html         — صفحة التحقق (تُفتح عبر الكيو آر كود)
  *   3) dashboard.html      — المنظومة الداخلية للموظفين
  *   4) brc-standalone.html — ملف واحد مستقل تماماً (CSS + JS + صور + خطوط مدمجة)
+ *   5) brc-light.html      — نفس الملف لكن بصور مصغّرة (للعرض السريع والمشاركة)
  *
- *  التشغيل:  node tools/build.mjs
+ *  التشغيل:  node tools/build.mjs            (النسخة الكاملة)
+ *            node tools/build.mjs --light    (نسخة خفيفة brc-light.html)
  * =========================================================================== */
 import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,13 +23,28 @@ const read = (p) => readFileSync(P(p), 'utf8');
 const kb = (n) => (n / 1024).toFixed(1) + ' KB';
 const warnings = [];
 
+/* النسخة الخفيفة (--light): تُصغّر الصور المدمجة لتُعرض وتُشارك بسرعة
+   (مناسبة للواتساب/الإيميل والعارضات التي لا تحبّ الملفات الضخمة) */
+const LIGHT = process.argv.includes('--light');
+const OUT_NAME = LIGHT ? 'brc-light.html' : 'brc-standalone.html';
+const LIGHT_MAX = process.env.BRC_LIGHT_MAX || '860x860>';
+const LIGHT_Q = process.env.BRC_LIGHT_Q || '56';
+
+function readAsset(abs) {
+  if (!LIGHT || !/\.jpe?g$/i.test(abs)) return readFileSync(abs);
+  try {
+    return execFileSync('convert', [abs, '-resize', LIGHT_MAX, '-strip', '-interlace', 'Plane',
+      '-quality', LIGHT_Q, 'jpg:-'], { maxBuffer: 1 << 28 });
+  } catch (e) { return readFileSync(abs); }   // بلا ImageMagick: نستخدم الأصل
+}
+
 /* ---------------- دمج الأصول كـ data URI ---------------- */
 const cache = new Map();
 function dataUri(relPath) {
   if (cache.has(relPath)) return cache.get(relPath);
   const abs = P(relPath);
   if (!existsSync(abs)) { warnings.push('ملف غير موجود للدمج: ' + relPath); cache.set(relPath, null); return null; }
-  const buf = readFileSync(abs);
+  const buf = readAsset(abs);
   const mime =
     relPath.endsWith('.woff2') ? 'font/woff2' :
     relPath.endsWith('.svg') ? 'image/svg+xml' :
@@ -203,7 +221,7 @@ ${icon ? `(function(){var l=document.querySelector('link[rel="icon"]');if(l)l.hr
     '<script>\n' + boot.replace(/\n<\/body>$/, '') + '\n' + router + '\n</script>\n' +
     '</body>\n</html>\n';
 
-  writeFileSync(P('brc-standalone.html'), html);
+  writeFileSync(P(OUT_NAME), html);
   return { size: Buffer.byteLength(html), ...stats };
 }
 
@@ -211,16 +229,17 @@ const st = buildStandalone();
 
 /* ---------------- التقرير ---------------- */
 console.log('— تم البناء —');
-[['index.html'], ['verify.html'], ['dashboard.html'], ['brc-standalone.html']].forEach(([n]) => {
+[['index.html'], ['verify.html'], ['dashboard.html'], [OUT_NAME]].forEach(([n]) => {
   console.log('  ' + n.padEnd(22) + kb(statSync(P(n)).size));
 });
-console.log('  (المستقل: خطوط ' + kb(st.fonts) + ' + صور CSS ' + kb(st.cssImgs) + ' + صور HTML ' + kb(st.htmlImgs) + ')');
+console.log('  (المستقل: خطوط ' + kb(st.fonts) + ' + صور CSS ' + kb(st.cssImgs) + ' + صور HTML ' + kb(st.htmlImgs) + ')' +
+  (LIGHT ? '   — نسخة خفيفة للعرض والمشاركة' : ''));
 
 if (warnings.length) { console.log('— تحذيرات —'); [...new Set(warnings)].forEach((w) => console.log('  ⚠ ' + w)); }
 else console.log('  ✓ كل الملفات المرجعية موجودة');
 
 /* ---------------- فحص الاكتفاء الذاتي ---------------- */
-const out = read('brc-standalone.html');
+const out = read(OUT_NAME);
 const bad = [];
 const patterns = [
   ['رابط CSS خارجي', /<link[^>]+href="assets\/css/],
@@ -235,3 +254,4 @@ const patterns = [
 patterns.forEach(([label, re]) => { if (re.test(out)) bad.push(label); });
 if (bad.length) { console.log('  ⚠ الملف المستقل غير مكتفٍ بذاته: ' + bad.join(' | ')); process.exitCode = 1; }
 else console.log('  ✓ الملف المستقل مكتفٍ بذاته تماماً (يعمل بدون إنترنت وبدون مجلدات مساعدة)');
+if (LIGHT) console.log('  ✓ نسخة خفيفة: ' + OUT_NAME + ' — ' + kb(statSync(P(OUT_NAME)).size));
