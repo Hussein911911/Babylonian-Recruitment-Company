@@ -543,7 +543,18 @@
 
   /* ======================= التحقق (QR) ======================= */
 
-  function verifyUrl(serial) { return CFG.verifyBase + '?form=' + encodeURIComponent(serial) + '&t=' + token(serial); }
+  /* رابط التحقق المطبوع في الكيو آر كود.
+     يتبع نطاق الموقع المنشور تلقائياً (مثل *.onrender.com أو النطاق الرسمي)،
+     ويرجع إلى الرابط الرسمي عند العمل محلياً (ملف على الجهاز أو نسخة مستقلة). */
+  function verifyBaseUrl() {
+    if (CFG.autoVerifyBase !== false && typeof location !== 'undefined' && location &&
+        /^https?:$/.test(location.protocol) && location.origin) {
+      return location.origin + location.pathname.replace(/[^/]*$/, '') + 'verify';
+    }
+    return CFG.verifyBase;
+  }
+
+  function verifyUrl(serial) { return verifyBaseUrl() + '?form=' + encodeURIComponent(serial) + '&t=' + token(serial); }
   function verifyLocalUrl(serial) { return CFG.verifyLocal + '?form=' + encodeURIComponent(serial) + '&t=' + token(serial); }
 
   function verify(serial, t) {
@@ -703,7 +714,7 @@
     // صيانة
     runMaintenance: runMaintenance, pendingActions: pendingActions,
     // تحقق
-    verify: verify, verifyUrl: verifyUrl, verifyLocalUrl: verifyLocalUrl, token: token,
+    verify: verify, verifyUrl: verifyUrl, verifyBaseUrl: verifyBaseUrl, verifyLocalUrl: verifyLocalUrl, token: token,
     // مالية
     stats: stats, financials: financials, financialTotals: financialTotals,
     markPrinted: markPrinted, setFeePaid: setFeePaid,

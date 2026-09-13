@@ -179,7 +179,9 @@ check('الاستمارة تعرض 5 صفوف محاولات بالضبط', () =
 });
 check('رابط التحقق في الكيو آر كود بالصيغة المطلوبة', () => {
   const url = site.window.BRCStore.verifyUrl('BRC-NO-000120');
-  return /^https:\/\/brc-babil\.com\/verify\?form=BRC-NO-000120&t=[0-9a-f]{8}$/.test(url) || url;
+  // الرابط يتبع نطاق النشر، أو الرابط الرسمي عند العمل من ملف محلي
+  return /^https?:\/\/[^/]+\/verify\?form=BRC-NO-000120&t=[0-9a-f]{8}$/.test(url) ||
+    /^https:\/\/brc-babil\.com\/verify\?form=BRC-NO-000120&t=[0-9a-f]{8}$/.test(url) || url;
 });
 {
   const app = site.window.BRCStore.getApplicant('BRC-NO-000119');
