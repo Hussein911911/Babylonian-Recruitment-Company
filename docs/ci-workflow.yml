@@ -1,0 +1,61 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  هذا ملف جاهز لـ GitHub Actions — لتفعيله بضغطة واحدة:
+#
+#   1) من صفحة المستودع على GitHub: Add file → Create new file
+#   2) اكتب المسار بالضبط:  .github/workflows/ci.yml
+#   3) الصق محتوى هذا الملف (كله) → Commit changes
+#
+#  بعد ذلك سيُفحص المشروع آلياً على كل تعديل وطلب دمج.
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: فحص المشروع
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: بناء وفحص كامل
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: تنزيل المستودع
+        uses: actions/checkout@v4
+
+      - name: تجهيز Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: تثبيت الاعتماديات (مطابق للقفل)
+        run: npm ci
+
+      - name: بناء الصفحات + الملف المستقل
+        run: npm run build
+
+      - name: بناء النسخة الخفيفة
+        run: npm run build:light
+
+      - name: تأكيد عدم تغيّر الملفات المبنية (البناء حتمي)
+        run: git diff --exit-code -- index.html verify.html dashboard.html brc-standalone.html brc-light.html
+
+      - name: اختبارات السلوك الشاملة
+        run: npm test
+
+      - name: اختبار المسار الكامل
+        run: npm run e2e
+
+      - name: التدقيق الشامل للجودة
+        run: npm run audit
+
+      - name: تقرير الكيو آر كود
+        run: npm run verify:qr
+
+      - name: مطابقة الكيو آر كود مع مرجع مستقل + فك ترميز فعلي
+        run: npm run verify:qr:full
