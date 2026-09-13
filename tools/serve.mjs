@@ -38,6 +38,16 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
     let pathname = decodeURIComponent(url.pathname);
     if (pathname === '/' || pathname === '') pathname = '/index.html';
+
+    // مسارات نظيفة مطابقة لإعداد Render (render.yaml) — لتعمل المعاينة المحلية مثل الإنتاج
+    const CLEAN_ROUTES = {
+      '/verify': '/verify.html',
+      '/dashboard': '/dashboard.html',
+      '/standalone': '/brc-standalone.html',
+      '/light': '/brc-light.html'
+    };
+    const clean = CLEAN_ROUTES[pathname.replace(/\/+$/, '') || pathname];
+    if (clean) pathname = clean;
     const safe = normalize(pathname).replace(/^(\.\.[/\\])+/, '');
     let filePath = join(ROOT, safe);
 
@@ -69,4 +79,5 @@ server.listen(PORT, HOST, () => {
   console.log('  صفحة التحقق    : http://localhost:' + PORT + '/verify.html?form=BRC-NO-000120');
   console.log('  لوحة الموظفين  : http://localhost:' + PORT + '/dashboard.html   (admin/admin123 أو staff/staff123)');
   console.log('  الملف المستقل  : http://localhost:' + PORT + '/brc-standalone.html');
+  console.log('  مسارات نظيفة   : /verify  ·  /dashboard  ·  /standalone  ·  /light   (مثل Render)');
 });
