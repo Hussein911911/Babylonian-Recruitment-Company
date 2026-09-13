@@ -1,0 +1,213 @@
+/* ===========================================================================
+ *  BRC — صفحة التحقق من الاستمارة (تُفتح عبر كيو آر كود الاستمارة)
+ *  تُظهر: الرقم التسلسلي، اسم الباحث، المحاولات المرتبطة وأكواد الوظائف،
+ *  وحالة الاستمارة (سارية / منتهية / استُهلكت المحاولات / مكتملة).
+ *  تعمل في وضعين: صفحة مستقلة (verify.html?form=...) أو ضمن الملف المستقل
+ *  (brc-standalone.html#!verify?form=...).
+ * =========================================================================== */
+(function (root) {
+  'use strict';
+  var CFG = root.BRC_CONFIG, Store = root.BRCStore, UI = root.BRCUI;
+  if (!document.getElementById('verify-root')) return;
+
+  var booted = false;
+  var current = { serial: '', token: '' };
+  var refreshTimer = null;
+
+  /* قراءة المتغيرات من رابط الاستعلام أو من هاش الملف المستقل */
+  function params(queryString) {
+    var out = {};
+    var sources = [];
+    if (queryString) sources.push(queryString);
+    if (window.location.search) sources.push(window.location.search);
+    var hash = window.location.hash || '';
+    if (hash.indexOf('?') >= 0) sources.push(hash.slice(hash.indexOf('?')));
+    sources.forEach(function (src) {
+      src.replace(/^\?/, '').split('&').forEach(function (kv) {
+        if (!kv) return;
+        var i = kv.indexOf('=');
+        var k = decodeURIComponent(i < 0 ? kv : kv.slice(0, i));
+        var v = decodeURIComponent(i < 0 ? '' : kv.slice(i + 1).replace(/\+/g, ' '));
+        out[k] = v;
+      });
+    });
+    return out;
+  }
+
+  function normalizeSerial(s) {
+    s = String(s || '').trim().toUpperCase();
+    if (!s) return '';
+    if (s.indexOf('BRC-NO') !== 0) s = 'BRC-NO-' + s.replace(/[^0-9]/g, '').padStart(6, '0');
+    return s;
+  }
+
+  /* العرض حسب المتغيرات الحالية */
+  function mount(queryString) {
+    var p = params(queryString);
+    var serial = normalizeSerial(p.form || p.serial || '');
+    var token = p.t || '';
+    current = { serial: serial, token: token };
+
+    var input = document.getElementById('v-serial');
+    if (input && serial) input.value = serial;
+
+    if (!serial) return renderEmpty();
+    var result = Store.verify(serial, token);
+    if (!result.ok) return renderNotFound(serial);
+    renderResult(result, token);
+  }
+
+  function init() {
+    if (booted) return;
+    booted = true;
+    Store.init();
+    UI.startCountdowns();
+
+    var form = document.getElementById('verify-form');
+    if (form) form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var s = normalizeSerial((document.getElementById('v-serial') || {}).value || '');
+      if (!s) return;
+      var local = (CFG.verifyLocal || 'verify.html');
+      window.location.href = local + '?form=' + encodeURIComponent(s) + '&t=' + Store.token(s);
+    });
+
+    mount();
+
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(function () {
+      if (!current.serial) return;
+      Store.runMaintenance();
+      var fresh = Store.verify(current.serial, '');
+      if (fresh.ok) renderResult(fresh, current.token);
+    }, 30000);
+  }
+
+  function renderEmpty() {
+    var host = document.getElementById('verify-root');
+    host.innerHTML = '' +
+      '<div class="verify-status info" style="padding:26px 24px">' +
+        '<div class="seal" style="background:#e5eefb;color:#2563a8">' + UI.ic('qr') + '</div>' +
+        '<div><h1>امسح الكيو آر كود أو أدخل الرقم التسلسلي</h1>' +
+        '<p class="muted mb-0 small">في أسفل كل استمارة كيو آر كود يفتح هذه الصفحة تلقائياً مع رقم الاستمارة.</p></div>' +
+      '</div>';
+  }
+
+  function renderNotFound(serial) {
+    var host = document.getElementById('verify-root');
+    host.innerHTML = '' +
+      '<div class="verify-status danger">' +
+        '<div class="seal">' + UI.ic('alert') + '</div>' +
+        '<div><h1>لا توجد استمارة بهذا الرقم</h1>' +
+        '<p class="muted mb-0 small">الرقم المُدخل: <b class="mono" dir="ltr">' + UI.esc(serial) + '</b> — تأكد من الرقم أو راجع المكتب على الأرقام الرسمية.</p></div>' +
+      '</div>' +
+      '<div class="panel-body" style="padding-top:0">' +
+        '<div class="panel" style="background:#fbe6e5;border-color:#f0c3c1"><div class="panel-body" style="padding:14px 16px">' +
+        '<p class="mb-0 small">' + UI.ic('shield') + ' <b>تنبيه:</b> الاستمارات غير المسجّلة في نظام الشركة لا يُعتد بها. ' +
+        'تحقق دائماً عبر هذه الصفحة أو بالاتصال بالشركة.</p></div></div>' +
+        '<div class="mt-2">' + UI.ic('phone') + ' <span class="mono" dir="ltr">' + UI.esc(CFG.company.phones.join(' / ')) + '</span></div>' +
+      '</div>';
+  }
+
+  function statusClass(k) { return k === 'active' ? 'ok' : (k === 'completed' ? 'info' : (k === 'exhausted' ? 'warn' : 'danger')); }
+  function statusIcon(k) { return k === 'active' ? 'check' : (k === 'completed' ? 'check' : (k === 'exhausted' ? 'alert' : 'x-circle')); }
+  function statusTitle(k) {
+    return ({
+      active: 'استمارة سارية وصحيحة',
+      expired: 'استمارة منتهية الصلاحية',
+      exhausted: 'استُهلكت المحاولات الخمس',
+      completed: 'تم التوظيف — استمارة مكتملة'
+    })[k] || k;
+  }
+
+  function renderResult(r, tokenParam) {
+    var host = document.getElementById('verify-root');
+    var cls = statusClass(r.status);
+    var stBadge = UI.formBadge(r.status);
+
+    var rows = r.attempts.map(function (t) {
+      var filled = t.slotStatus !== 'empty';
+      return '<tr>' +
+        '<td><b>' + t.no + '</b></td>' +
+        '<td dir="ltr" class="mono">' + UI.esc(t.jobCode) + '</td>' +
+        '<td>' + UI.esc(t.location) + '</td>' +
+        '<td>' + UI.esc(t.jobTitle) + '</td>' +
+        '<td dir="ltr">' + UI.esc(filled ? t.employerPhone : '—') + '</td>' +
+        '<td>' + UI.slotBadge(t.slotStatus) + '</td>' +
+        '<td class="tiny" dir="ltr">' + UI.esc(t.selectedAt ? Store.fmtDateTime(t.selectedAt) : '—') + '</td>' +
+        (t.slotStatus === 'reserved' && t.holdExpiresAt ? '<td>' + UI.holdHtml(t.holdExpiresAt) + '</td>' : '<td>—</td>') +
+        '<td class="tiny">' + UI.esc(t.note || '—') + '</td>' +
+        '</tr>';
+    }).join('');
+
+    var tokenWarn = (tokenParam && r.tokenOk === false)
+      ? '<div class="panel" style="background:#fbe6e5;border-color:#f0c3c1;margin:0 24px 18px"><div class="panel-body" style="padding:12px 15px">' +
+        '<p class="mb-0 small">' + UI.ic('alert') + ' <b>تحذير أمني:</b> بصمة التحقق في الرابط غير مطابقة. ' +
+        'قد يكون الرابط مُعدّلاً — تحقق من الاستمارة الأصلية أو اتصل بالشركة.</p></div></div>' : '';
+
+    host.innerHTML = '' +
+      '<div class="verify-status ' + cls + '">' +
+        '<div class="seal">' + UI.ic(statusIcon(r.status)) + '</div>' +
+        '<div style="flex:1">' +
+          '<h1>' + statusTitle(r.status) + '</h1>' +
+          '<p class="muted mb-0 small">رقم الاستمارة <b class="mono" dir="ltr">' + UI.esc(r.serial) + '</b> — ' +
+            'الباحث: <b>' + UI.esc(r.fullName) + '</b> — تم التحقق في ' + UI.esc(Store.fmtDateTime(r.verifiedAt)) + '</p>' +
+        '</div>' +
+        '<div style="text-align:center">' + stBadge +
+          '<div class="tiny muted mt-1">' + (r.daysLeft >= 0 ? 'المتبقي من الصلاحية: ' + r.daysLeft + ' يوم' : 'انتهت قبل ' + Math.abs(r.daysLeft) + ' يوم') + '</div>' +
+        '</div>' +
+      '</div>' +
+      tokenWarn +
+      '<div class="panel-body" style="padding-top:0">' +
+        '<div class="grid" style="grid-template-columns:minmax(0,1fr) 190px;gap:20px;align-items:start">' +
+          '<div><div class="data-grid">' +
+            '<div class="data-item"><div class="k">الرقم التسلسلي</div><div class="v mono" dir="ltr">' + UI.esc(r.serial) + '</div></div>' +
+            '<div class="data-item"><div class="k">اسم الباحث</div><div class="v">' + UI.esc(r.fullName) + '</div></div>' +
+            '<div class="data-item"><div class="k">الهاتف</div><div class="v mono" dir="ltr">' + UI.esc(r.phone) + '</div></div>' +
+            '<div class="data-item"><div class="k">تاريخ الإصدار</div><div class="v" dir="ltr">' + Store.fmtDate(r.issueDate) + '</div></div>' +
+            '<div class="data-item"><div class="k">تاريخ الانتهاء</div><div class="v" dir="ltr">' + Store.fmtDate(r.expiryDate) + '</div></div>' +
+            '<div class="data-item"><div class="k">المحاولات المستخدمة</div><div class="v">' + r.attemptsUsed + ' من ' + r.attemptLimit + '</div></div>' +
+            '<div class="data-item"><div class="k">المحاولات المتاحة</div><div class="v">' + r.attemptsLeft + '</div></div>' +
+            '<div class="data-item"><div class="k">المُصدر</div><div class="v">' + UI.esc(r.createdBy) + '</div></div>' +
+          '</div></div>' +
+          '<div class="verify-qr">' + root.BRCVoucher.qrSvg(Store.verifyUrl(r.serial), 170) +
+            '<span class="tiny muted center">كيو آر كود التحقق الرسمي</span></div>' +
+        '</div>' +
+
+        '<h3 class="mt-4">المحاولات المرتبطة بالاستمارة</h3>' +
+        '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:940px">' +
+          '<thead><tr><th>المحاولة</th><th>كود الوظيفة</th><th>المنطقة</th><th>الوظيفة</th>' +
+          '<th>هاتف جهة الاتصال</th><th>حالة المهلة</th><th>وقت الاختيار</th><th>مهلة الحجز</th><th>ملاحظة</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table></div></div>' +
+
+        '<div class="panel mt-3" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:14px 16px">' +
+          '<p class="mb-0 small">' + UI.ic('shield') + ' <b>ملاحظة قانونية:</b> ' + UI.esc(root.BRCVoucher.DISCLAIMER) + '</p>' +
+        '</div></div>' +
+        '<div class="flex flex-wrap mt-3">' +
+          '<button class="btn btn-lapis" id="verify-print">' + UI.ic('print') + ' طباعة نسخة الاستمارة</button>' +
+          '<button class="btn btn-outline" id="verify-copy">' + UI.ic('share') + ' نسخ رابط التحقق</button>' +
+        '</div>' +
+      '</div>';
+
+    var printBtn = document.getElementById('verify-print');
+    if (printBtn) printBtn.addEventListener('click', function () {
+      var app = Store.getApplicant(r.serial);
+      if (app) root.BRCVoucher.print(app);
+    });
+    var copyBtn = document.getElementById('verify-copy');
+    if (copyBtn) copyBtn.addEventListener('click', function () {
+      var url = window.location.href;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () {
+          UI.toast('ok', 'تم النسخ', 'رابط التحقق جاهز للمشاركة.');
+        }, function () { UI.toast('info', 'رابط التحقق', url, 7000); });
+      } else UI.toast('info', 'رابط التحقق', url, 7000);
+    });
+  }
+
+  root.BRCVerify = { init: init, mount: mount, render: renderResult };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})(typeof window !== 'undefined' ? window : globalThis);
