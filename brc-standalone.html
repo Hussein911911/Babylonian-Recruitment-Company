@@ -78,6 +78,7 @@
   --sand: #efe7d6;
   --white: #ffffff;
   --text: #14203a;
+  --ink: #14203a;
   --muted: #6b7793;
   --line: rgba(200, 162, 74, .30);
   --line-soft: rgba(20, 32, 58, .10);
@@ -695,11 +696,35 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .tfoot-note { padding: 12px 16px; background: #fcfbf8; font-size: .82rem; color: var(--muted); border-top: 1px solid var(--line-soft); }
 
 /* ============================ 16) لوحة الموظفين ============================ */
-.app-shell { display: grid; grid-template-columns: 268px minmax(0, 1fr); min-height: 100vh; background: #f4f6fb; }
+.app-shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; background: #f4f6fb; position: relative; }
 .app-side {
   background: linear-gradient(180deg, var(--night), var(--lapis) 60%, #0a1730);
-  color: #cdd7ea; padding: 20px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  color: #cdd7ea; padding: 20px 16px; position: fixed; top: 0; inset-inline-start: 0; height: 100vh; overflow-y: auto;
   border-inline-end: 1px solid rgba(200, 162, 74, .22);
+  width: 268px; z-index: 1000; transform: translateX(100%); transition: transform .3s ease;
+}
+.app-side.open { transform: translateX(0); }
+.side-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; opacity: 0; pointer-events: none; transition: opacity .3s;
+}
+.side-overlay.active { opacity: 1; pointer-events: auto; }
+/* Hamburger menu button */
+.hamburger-btn {
+  position: relative; background: transparent; border: none; cursor: pointer; padding: 8px; display: flex; flex-direction: column;
+  justify-content: space-around; width: 40px; height: 40px; border-radius: 8px; transition: background .2s;
+}
+.hamburger-btn:hover { background: rgba(0,0,0,.05); }
+.hamburger-btn span {
+  display: block; width: 24px; height: 3px; background: var(--ink); border-radius: 2px; transition: .3s;
+}
+.hamburger-btn .notif-dot {
+  position: absolute; top: 6px; inset-inline-end: 6px; width: 10px; height: 10px; background: var(--danger);
+  border-radius: 50%; border: 2px solid #fff; display: none;
+}
+.hamburger-btn .notif-dot.show { display: block; animation: pulse 2s infinite; }
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: .8; }
 }
 .app-side .brand { margin-bottom: 22px; }
 .app-side .brand .emblem { width: 44px; height: 44px; }
@@ -1626,11 +1651,21 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     </div>
   </aside>
 
+  <div class="side-overlay" id="side-overlay"></div>
+
   <main class="app-main">
     <div class="app-top">
-      <div>
-        <h1 id="view-title">نظرة عامة</h1>
-        <div class="sub" id="view-sub">ملخص لحظي لحالة الوظائف والاستمارات والحجوزات</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="hamburger-btn no-print" id="hamburger-btn" aria-label="فتح القائمة">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span class="notif-dot" id="hamburger-notif"></span>
+        </button>
+        <div>
+          <h1 id="view-title">نظرة عامة</h1>
+          <div class="sub" id="view-sub">ملخص لحظي لحالة الوظائف والاستمارات والحجوزات</div>
+        </div>
       </div>
       <div class="flex flex-wrap" style="gap:8px">
         <form class="search-wrap" id="quick-code-form" style="min-width:230px">
@@ -4993,6 +5028,7 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     bindNav();
     bindToolbars();
     bindActions();
+    bindSidebar();
     if (Store.currentUser()) enterApp();
     snapshotStatuses();
     lastSessionKey = sessionKey();
@@ -5003,8 +5039,54 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
         if (Store.currentUser()) enterApp(); else showLogin();
       }
       renderCurrent();
+      updateHamburgerNotif();
     });
     setInterval(tick, 30000);
+  }
+
+  /* ======================= القائمة الجانبية ======================= */
+  function bindSidebar() {
+    var hamburger = document.getElementById('hamburger-btn');
+    var overlay = document.getElementById('side-overlay');
+    var sidebar = document.getElementById('app-shell').querySelector('.app-side');
+    if (!hamburger || !overlay || !sidebar) return;
+
+    function toggleSidebar() {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+    }
+
+    hamburger.addEventListener('click', toggleSidebar);
+    overlay.addEventListener('click', toggleSidebar);
+
+    // Close sidebar when clicking a nav item on mobile
+    var navButtons = sidebar.querySelectorAll('.side-nav button');
+    navButtons.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('open');
+          overlay.classList.remove('active');
+        }
+      });
+    });
+  }
+
+  function updateHamburgerNotif() {
+    var hamburger = document.getElementById('hamburger-btn');
+    var notifDot = document.getElementById('hamburger-notif');
+    if (!hamburger || !notifDot) return;
+
+    var actions = Store.pendingActions();
+    var hasNotifications = (actions.expired && actions.expired.length > 0) ||
+                          (actions.exhausted && actions.exhausted.length > 0) ||
+                          (actions.holds && actions.holds.length > 0) ||
+                          (actions.requests && actions.requests.length > 0);
+
+    if (hasNotifications) {
+      notifDot.classList.add('show');
+    } else {
+      notifDot.classList.remove('show');
+    }
   }
 
   function fillStatic() {

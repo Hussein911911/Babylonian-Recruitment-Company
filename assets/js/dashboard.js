@@ -44,6 +44,7 @@
     bindNav();
     bindToolbars();
     bindActions();
+    bindSidebar();
     if (Store.currentUser()) enterApp();
     snapshotStatuses();
     lastSessionKey = sessionKey();
@@ -54,8 +55,54 @@
         if (Store.currentUser()) enterApp(); else showLogin();
       }
       renderCurrent();
+      updateHamburgerNotif();
     });
     setInterval(tick, 30000);
+  }
+
+  /* ======================= القائمة الجانبية ======================= */
+  function bindSidebar() {
+    var hamburger = document.getElementById('hamburger-btn');
+    var overlay = document.getElementById('side-overlay');
+    var sidebar = document.getElementById('app-shell').querySelector('.app-side');
+    if (!hamburger || !overlay || !sidebar) return;
+
+    function toggleSidebar() {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+    }
+
+    hamburger.addEventListener('click', toggleSidebar);
+    overlay.addEventListener('click', toggleSidebar);
+
+    // Close sidebar when clicking a nav item on mobile
+    var navButtons = sidebar.querySelectorAll('.side-nav button');
+    navButtons.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('open');
+          overlay.classList.remove('active');
+        }
+      });
+    });
+  }
+
+  function updateHamburgerNotif() {
+    var hamburger = document.getElementById('hamburger-btn');
+    var notifDot = document.getElementById('hamburger-notif');
+    if (!hamburger || !notifDot) return;
+
+    var actions = Store.pendingActions();
+    var hasNotifications = (actions.expired && actions.expired.length > 0) ||
+                          (actions.exhausted && actions.exhausted.length > 0) ||
+                          (actions.holds && actions.holds.length > 0) ||
+                          (actions.requests && actions.requests.length > 0);
+
+    if (hasNotifications) {
+      notifDot.classList.add('show');
+    } else {
+      notifDot.classList.remove('show');
+    }
   }
 
   function fillStatic() {

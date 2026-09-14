@@ -318,11 +318,21 @@
     </div>
   </aside>
 
+  <div class="side-overlay" id="side-overlay"></div>
+
   <main class="app-main">
     <div class="app-top">
-      <div>
-        <h1 id="view-title">نظرة عامة</h1>
-        <div class="sub" id="view-sub">ملخص لحظي لحالة الوظائف والاستمارات والحجوزات</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="hamburger-btn no-print" id="hamburger-btn" aria-label="فتح القائمة">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span class="notif-dot" id="hamburger-notif"></span>
+        </button>
+        <div>
+          <h1 id="view-title">نظرة عامة</h1>
+          <div class="sub" id="view-sub">ملخص لحظي لحالة الوظائف والاستمارات والحجوزات</div>
+        </div>
       </div>
       <div class="flex flex-wrap" style="gap:8px">
         <form class="search-wrap" id="quick-code-form" style="min-width:230px">
