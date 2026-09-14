@@ -6642,10 +6642,50 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     document.getElementById('fin-table-body').innerHTML = rows.map(function (r) {
       return '<tr><td><b>' + UI.esc(r.name) + '</b><div class="tiny muted mono">' + UI.esc(r.user) + '</div></td>' +
         '<td>' + r.forms + '</td><td>' + r.printed + '</td><td>' + Store.money(Store.settings().formFee) + '</td>' +
-        '<td><b>' + Store.money(r.expected) + '</b></td><td>' + Store.money(r.collected) + '</td>' +
+        '<td><b>' + Store.money(r.expected) + '</b></td>' +
+        '<td><input type="number" class="fin-collected" data-user="' + UI.esc(r.user) + '" value="' + r.collected + '" min="0" step="1000" style="width:120px;padding:4px 8px;border:1px solid #ddd;border-radius:6px"></td>' +
         '<td><span class="badge ok">' + r.paid + ' مدفوع</span> <span class="badge warn">' + r.partial + ' جزئي</span> <span class="badge danger">' + r.unpaid + ' غير مدفوع</span></td>' +
         '<td>' + r.hires + '</td><td>' + r.holds + '</td></tr>';
     }).join('') || '<tr><td colspan="9" class="table-empty">لا بيانات</td></tr>';
+
+    // Add total row
+    var totalRow = '<tr style="background:#f9f6ef;font-weight:900">' +
+      '<td colspan="4" style="text-align:left;padding-left:20px">المجموع الكلي</td>' +
+      '<td><b>' + Store.money(totals.expected) + '</b></td>' +
+      '<td><b style="color:var(--ok)">' + Store.money(totals.collected) + '</b></td>' +
+      '<td colspan="3"></td></tr>';
+    document.getElementById('fin-table-body').insertAdjacentHTML('afterend', totalRow);
+
+    // Bind input change events
+    document.querySelectorAll('.fin-collected').forEach(function (input) {
+      input.addEventListener('change', function () {
+        var user = input.getAttribute('data-user');
+        var newCollected = Number(input.value) || 0;
+        updateEmployeeCollected(user, newCollected);
+      });
+    });
+  }
+
+  function updateEmployeeCollected(user, newCollected) {
+    // Update all applicants for this user
+    var apps = Store.listApplicants({ user: user });
+    var fee = Store.settings().formFee;
+    var remaining = newCollected;
+    
+    apps.forEach(function (app) {
+      if (remaining <= 0) {
+        Store.setFeePaid(app.serial, false, 0);
+      } else if (remaining >= fee) {
+        Store.setFeePaid(app.serial, true, fee);
+        remaining -= fee;
+      } else {
+        Store.setFeePaid(app.serial, true, remaining);
+        remaining = 0;
+      }
+    });
+    
+    UI.toast('ok', 'تم التحديث', 'حُفظ المبلغ المستلَم لـ ' + user);
+    renderFinance();
   }
 
   /* ======================= الإعدادات ======================= */
