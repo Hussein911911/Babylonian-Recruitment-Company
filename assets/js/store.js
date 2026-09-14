@@ -165,7 +165,22 @@
     return _ip;
   }
 
+  /* تنظيف مخلفات المؤقّت القديم للنسخ التلقائي (مفاتيح يومية كانت تتراكم
+     بلا نهاية: brc-last-auto-backup-YYYY-MM-DD) — المحرّك الجديد يستخدم
+     مفتاحاً واحداً AUTO_RUN_KEY. */
+  function cleanupLegacyKeys() {
+    try {
+      var drop = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('brc-last-auto-backup-') === 0) drop.push(k);
+      }
+      drop.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) { /* لا تخزين متاح */ }
+  }
+
   function load() {
+    cleanupLegacyKeys();
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) { db = seedDb(); save(); return db; }
@@ -821,12 +836,215 @@
     save(); emit();
   }
 
+  /* ======================= النسخ الاحتياطي المجدول =======================
+   *  ⚠ هذه الدوال يجب أن تبقى *داخل* نطاق الوحدة (IIFE) لأنها تستخدم
+   *    db / save / emit / audit / nowISO. وضعها بعد قوس الإغلاق يجعل كل
+   *    أزرار النسخ الاحتياطي والجدولة تفشل بصمت في المتصفح
+   *    (ReferenceError: nowISO is not defined) — وهذا ما حدث سابقاً.
+   * ===================================================================== */
+
+  var BACKUP_KEY = 'brc-scheduled-backups';
+  var SCHEDULE_KEY = 'brc-auto-backup-schedule';
+  var AUTO_RUN_KEY = 'brc-auto-backup-last-run';
+  var MAX_BACKUPS = 20;              // نحتفظ بآخر 20 نسخة حمايةً لمساحة المتصفح
+  var lastBackupError = null;
+
+  function readJson(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) { return fallback; }
+  }
+
+  function writeJson(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+    catch (e) { return false; }
+  }
+
+  function getScheduledBackups() {
+    var list = readJson(BACKUP_KEY, []);
+    return Array.isArray(list) ? list : [];
+  }
+
+  /* قراءة/حذف "بصمة" النسخة بدون بياناتها الضخمة (للعرض في الواجهة) */
+  function listBackupMeta() {
+    return getScheduledBackups().map(function (b) {
+      return { id: b.id, name: b.name, createdAt: b.createdAt, dateRange: b.dateRange || null, auto: !!b.auto, partial: !!b.partial, size: b.size || 0, records: b.records || null };
+    });
+  }
+
+  /* كتابة آمنة: عند امتلاء مساحة localStorage نُسقِط الأقدم ونعيد المحاولة
+     بدل أن يفشل الحفظ بصمت (وهو سبب آخر محتمل لتعطّل الأزرار). */
+  function writeBackups(list) {
+    var out = list.slice();
+    for (var guard = 0; guard <= list.length; guard++) {
+      try { localStorage.setItem(BACKUP_KEY, JSON.stringify(out)); lastBackupError = null; return true; }
+      catch (e) {
+        if (out.length > 1) { out.shift(); continue; }   // احذف الأقدم واعد المحاولة
+        lastBackupError = 'مساحة التخزين في المتصفح ممتلئة — لم يمكن حفظ النسخة.';
+        return false;
+      }
+    }
+    lastBackupError = 'مساحة التخزين في المتصفح ممتلئة — لم يمكن حفظ النسخة.';
+    return false;
+  }
+
+  /* نطاق مخصص: نُبقى الوظائف والإعدادات والعدّادات كاملة (حتى تبقى النسخة
+     صالحة للاستعادة) ونُصفّي الاستمارات والمحاولات وسجل التدقيق بالتاريخ. */
+  function sliceByRange(snapshot, range) {
+    if (!range || (!range.from && !range.to)) return null;
+    var from = range.from ? range.from + 'T00:00:00.000Z' : null;
+    var to = range.to ? range.to + 'T23:59:59.999Z' : null;
+    var inRange = function (ts) {
+      if (!ts) return false;
+      if (from && ts < from) return false;
+      if (to && ts > to) return false;
+      return true;
+    };
+    var out = JSON.parse(JSON.stringify(snapshot));
+    var apps = (out.applicants || []).filter(function (a) { return inRange(a.createdAt); });
+    var serials = {};
+    apps.forEach(function (a) { serials[a.serial] = true; });
+    out.applicants = apps;
+    out.attempts = (out.attempts || []).filter(function (t) { return serials[t.serial]; });
+    out.audit = (out.audit || []).filter(function (l) { return inRange(l.ts); });
+    return {
+      data: out,
+      records: { applicants: apps.length, attempts: out.attempts.length, audit: out.audit.length, jobs: (out.jobs || []).length }
+    };
+  }
+
+  function saveScheduledBackup(name, dateRange, opts) {
+    opts = opts || {};
+    if (!db) load();
+    var snapshot = JSON.parse(JSON.stringify(db));
+    var partial = false, records = null;
+    var sliced = sliceByRange(snapshot, dateRange);
+    if (sliced) { snapshot = sliced.data; records = sliced.records; partial = true; }
+
+    var backup = {
+      id: 'backup-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      name: (name && String(name).trim()) || ('نسخة ' + fmtDateTime(new Date())),
+      createdAt: nowISO(),
+      dateRange: dateRange || null,
+      auto: !!opts.auto,
+      partial: partial,
+      records: records,
+      size: JSON.stringify(snapshot).length,
+      data: snapshot
+    };
+
+    var backups = getScheduledBackups();
+    backups.push(backup);
+    if (backups.length > MAX_BACKUPS) backups = backups.slice(-MAX_BACKUPS);
+    if (!writeBackups(backups)) return null;
+
+    audit(opts.auto ? 'نسخة احتياطية تلقائية' : 'نسخة احتياطية', 'backup', backup.id,
+      backup.name + ' — ' + (partial ? 'نطاق ' + dateRange.from + ' إلى ' + dateRange.to : 'كل البيانات') +
+      ' (' + (backup.size / 1024).toFixed(1) + ' ك.ب)');
+    save();
+    return backup;
+  }
+
+  function deleteScheduledBackup(id) {
+    var backups = getScheduledBackups();
+    var next = backups.filter(function (b) { return b.id !== id; });
+    if (next.length === backups.length) return false;
+    if (!writeBackups(next)) return false;
+    audit('حذف نسخة احتياطية', 'backup', id, 'تم حذف النسخة الاحتياطية');
+    save();
+    return true;
+  }
+
+  /* استعادة: النسخة الكاملة تُستبدل بالكامل، والنسخة الجزئية (نطاق مخصص)
+     تُدمَج حتى لا نفقد الوظائف أو الاستمارات الأخرى الموجودة حالياً. */
+  function restoreScheduledBackup(id) {
+    var backup = getScheduledBackups().filter(function (b) { return b.id === id; })[0];
+    if (!backup || !backup.data) return false;
+    try {
+      saveScheduledBackup('قبل الاستعادة - ' + fmtDateTime(new Date()), null);
+      if (backup.partial) {
+        var cur = JSON.parse(JSON.stringify(db));
+        var have = {};
+        cur.applicants.forEach(function (a) { have[a.serial] = true; });
+        (backup.data.applicants || []).forEach(function (a) { if (!have[a.serial]) cur.applicants.push(a); });
+        var haveT = {};
+        cur.attempts.forEach(function (t) { haveT[t.serial + ':' + t.no] = true; });
+        (backup.data.attempts || []).forEach(function (t) { if (!haveT[t.serial + ':' + t.no]) cur.attempts.push(t); });
+        var haveL = {};
+        cur.audit.forEach(function (l) { haveL[l.id] = true; });
+        (backup.data.audit || []).forEach(function (l) { if (!haveL[l.id]) cur.audit.push(l); });
+        db = cur;
+      } else {
+        db = JSON.parse(JSON.stringify(backup.data));
+      }
+      save();
+      audit('استعادة نسخة احتياطية', 'backup', id,
+        'تم استعادة النسخة: ' + backup.name + (backup.partial ? ' (دمج نطاق مخصص)' : ' (استبدال كامل)'));
+      save(); emit();
+      return true;
+    } catch (e) { lastBackupError = 'فشل الاستعادة: ' + e.message; return false; }
+  }
+
+  function exportScheduledBackup(id) {
+    var backup = getScheduledBackups().filter(function (b) { return b.id === id; })[0];
+    if (!backup || !backup.data) return null;
+    return JSON.stringify(backup.data, null, 2);
+  }
+
+  function lastBackupErrorMessage() { return lastBackupError; }
+
+  /* ------------------------- الجدولة التلقائية ------------------------- */
+  function getAutoSchedule() {
+    var s = readJson(SCHEDULE_KEY, null);
+    if (!s || !Array.isArray(s.days) || !s.days.length) return null;
+    return { days: s.days, time: s.time || '23:00', createdAt: s.createdAt || null, lastRun: readJson(AUTO_RUN_KEY, null) };
+  }
+
+  function saveAutoSchedule(days, time) {
+    var s = { days: (days || []).map(Number).filter(function (n) { return n >= 0 && n <= 6; }), time: time || '23:00', createdAt: nowISO() };
+    if (!s.days.length) return null;
+    if (!writeJson(SCHEDULE_KEY, s)) { lastBackupError = 'تعذّر حفظ الجدولة — مساحة التخزين ممتلئة.'; return null; }
+    audit('تفعيل النسخ الاحتياطي المجدول', 'backup', '—', 'الأيام: ' + s.days.join(',') + ' الساعة ' + s.time);
+    save();
+    return getAutoSchedule();
+  }
+
+  function clearAutoSchedule() {
+    try { localStorage.removeItem(SCHEDULE_KEY); localStorage.removeItem(AUTO_RUN_KEY); } catch (e) { }
+    audit('إيقاف النسخ الاحتياطي المجدول', 'backup', '—', 'أُوقفت الجدولة التلقائية');
+    save();
+    return true;
+  }
+
+  function lastAutoRun() { return readJson(AUTO_RUN_KEY, null); }
+
+  /* محرّك الجدولة: يُستدعى عند تحميل الصفحة وكل 30 ثانية.
+     يُنشئ نسخة واحدة فقط لكل "خانة زمنية" (يوم + وقت) حتى لو فُتحت الصفحة
+     عدة مرات، ويلتقط النسخة الفائتة في نفس اليوم إذا كان المتصفح مغلقاً. */
+  function checkAutoBackup(now) {
+    var s = getAutoSchedule();
+    if (!s) return null;
+    var d = now ? new Date(now) : new Date();
+    if (s.days.indexOf(d.getDay()) < 0) return null;
+    var parts = String(s.time).split(':');
+    var slot = new Date(d.getFullYear(), d.getMonth(), d.getDate(), Number(parts[0]) || 0, Number(parts[1]) || 0, 0, 0);
+    if (d.getTime() < slot.getTime()) return null;             // لم يحن الوقت بعد
+    var slotKey = fmtDate(d) + 'T' + s.time;
+    if (readJson(AUTO_RUN_KEY, null) === slotKey) return null;  // نُفّذت مسبقاً
+    var backup = saveScheduledBackup('نسخة تلقائية — ' + fmtDateTime(d), null, { auto: true });
+    if (!backup) return null;
+    writeJson(AUTO_RUN_KEY, slotKey);
+    emit();
+    return backup;
+  }
+
   /* ======================= تصدير ======================= */
 
   var API = {
     // بنية
     init: function () { load(); runMaintenance(); startTicker(); return db; },
-    subscribe: subscribe,
+    subscribe: subscribe, emit: emit,   // emit مكشوفة للاختبارات وأدوات المزامنة الخارجية
     db: function () { return db; },
     settings: function () { return db.settings; },
     updateSettings: function (patch) {
@@ -854,9 +1072,13 @@
     markPrinted: markPrinted, setFeePaid: setFeePaid,
     // تدقيق
     audit: audit, listAudit: listAudit, syncOfflineChanges: syncOfflineChanges,
-    getScheduledBackups: getScheduledBackups, saveScheduledBackup: saveScheduledBackup,
-    deleteScheduledBackup: deleteScheduledBackup, restoreScheduledBackup: restoreScheduledBackup,
-    exportScheduledBackup: exportScheduledBackup,
+    getScheduledBackups: getScheduledBackups, listBackupMeta: listBackupMeta,
+    saveScheduledBackup: saveScheduledBackup, deleteScheduledBackup: deleteScheduledBackup,
+    restoreScheduledBackup: restoreScheduledBackup, exportScheduledBackup: exportScheduledBackup,
+    lastBackupErrorMessage: lastBackupErrorMessage,
+    // الجدولة التلقائية
+    getAutoSchedule: getAutoSchedule, saveAutoSchedule: saveAutoSchedule,
+    clearAutoSchedule: clearAutoSchedule, lastAutoRun: lastAutoRun, checkAutoBackup: checkAutoBackup,
     // أدوات
     fmtDate: fmtDate, fmtDateTime: fmtDateTime, money: money, diffDays: diffDays, diffHours: diffHours,
     addDays: addDays, addHours: addHours, resetDemo: resetDemo, exportJson: exportJson, importJson: importJson,
@@ -873,63 +1095,3 @@
   root.BRCStore = API;
   if (typeof module === 'object' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);
-
-  /* ======================= النسخ الاحتياطي المجدول ======================= */
-  var BACKUP_KEY = 'brc-scheduled-backups';
-
-  function getScheduledBackups() {
-    try {
-      return JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
-    } catch (e) { return []; }
-  }
-
-  function saveScheduledBackup(name, dateRange) {
-    var backups = getScheduledBackups();
-    var backup = {
-      id: 'backup-' + Date.now(),
-      name: name,
-      createdAt: nowISO(),
-      dateRange: dateRange,
-      data: JSON.parse(JSON.stringify(db))
-    };
-    backups.push(backup);
-    // احتفظ بآخر 100 نسخة
-    if (backups.length > 100) backups = backups.slice(-100);
-    try {
-      localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
-      audit('نسخة احتياطية', 'backup', backup.id, name + ' — ' + (dateRange ? dateRange.from + ' إلى ' + dateRange.to : 'كل البيانات'));
-      return backup;
-    } catch (e) { return null; }
-  }
-
-  function deleteScheduledBackup(id) {
-    var backups = getScheduledBackups();
-    backups = backups.filter(function(b) { return b.id !== id; });
-    try {
-      localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
-      audit('حذف نسخة احتياطية', 'backup', id, 'تم حذف النسخة الاحتياطية');
-      return true;
-    } catch (e) { return false; }
-  }
-
-  function restoreScheduledBackup(id) {
-    var backups = getScheduledBackups();
-    var backup = backups.find(function(b) { return b.id === id; });
-    if (!backup) return false;
-    try {
-      // حفظ نسخة احتياطية قبل الاستعادة
-      saveScheduledBackup('قبل الاستعادة - ' + Store.fmtDateTime(new Date()), null);
-      db = backup.data;
-      save();
-      emit();
-      audit('استعادة نسخة احتياطية', 'backup', id, 'تم استعادة النسخة: ' + backup.name);
-      return true;
-    } catch (e) { return false; }
-  }
-
-  function exportScheduledBackup(id) {
-    var backups = getScheduledBackups();
-    var backup = backups.find(function(b) { return b.id === id; });
-    if (!backup) return null;
-    return JSON.stringify(backup.data, null, 2);
-  }

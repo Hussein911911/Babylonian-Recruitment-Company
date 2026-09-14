@@ -13,6 +13,7 @@
  *            node tools/build.mjs --light    (نسخة خفيفة brc-light.html)
  * =========================================================================== */
 import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,6 +73,13 @@ const SCRIPTS = {
   dashboard: ['config', 'qr', 'store', 'ui', 'voucher', 'dashboard']
 };
 
+/* بصمة الأصول: تُضاف كـ ?v= لروابط CSS/JS حتى لا يعلَق المتصفح بنسخة قديمة
+   بعد النشر (تتغير تلقائياً فقط عند تعديل الأصول — بلا عشوائية بين البناءات). */
+const ASSET_VER = process.env.BRC_ASSET_VER || createHash('sha1')
+  .update([CSS, ...JS_ORDER.map((n) => read(`assets/js/${n}.js`))].join('\u0000'))
+  .digest('hex').slice(0, 10);
+const verQ = (p) => `${p}?v=${ASSET_VER}`;
+
 const META = {
   title: 'شركة بابل للتوظيف | Babylonian Recruitment Company',
   desc: 'شركة بابل للتوظيف (BRC) في الحلة — بابل: استمارات ترشيح موثّقة بكيو آر كود، خمس محاولات، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة.',
@@ -94,7 +102,7 @@ function docHead({ title, desc, css = null, icon = 'assets/img/favicon.svg', ext
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="${icon}">
-${css ? `<link rel="stylesheet" href="${css}">` : ''}
+${css ? `<link rel="stylesheet" href="${verQ(css)}">` : ''}
 ${extra}</head>
 <body>
 `;
@@ -107,7 +115,7 @@ function buildPage({ title, desc, body, scripts }) {
     partials.header + '\n' +
     body + '\n' +
     partials.footer + '\n' +
-    scripts.map((n) => `<script src="assets/js/${n}.js"></script>`).join('\n') +
+    scripts.map((n) => `<script src="${verQ(`assets/js/${n}.js`)}"></script>`).join('\n') +
     '\n</body>\n</html>\n';
 }
 
@@ -228,7 +236,7 @@ ${icon ? `(function(){var l=document.querySelector('link[rel="icon"]');if(l)l.hr
 const st = buildStandalone();
 
 /* ---------------- التقرير ---------------- */
-console.log('— تم البناء —');
+console.log('— تم البناء —  (بصمة الأصول: ' + ASSET_VER + ')');
 [['index.html'], ['verify.html'], ['dashboard.html'], [OUT_NAME]].forEach(([n]) => {
   console.log('  ' + n.padEnd(22) + kb(statSync(P(n)).size));
 });
