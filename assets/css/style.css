@@ -501,7 +501,70 @@ textarea { min-height: 96px; resize: vertical; line-height: 1.7; }
 }
 
 /* ============================ 11) قسم أسد بابل ============================ */
+.section-about {
+  background: linear-gradient(160deg, #050b1a 0%, #0a2148 45%, #0e2f63 100%);
+  color: #e9eefb; position: relative; overflow: hidden;
+}
+.section-about::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(120, 205, 255, .16) 1px, transparent 1.6px);
+  background-size: 26px 26px;
+  -webkit-mask-image: radial-gradient(80% 80% at 50% 40%, #000 25%, transparent 100%);
+  mask-image: radial-gradient(80% 80% at 50% 40%, #000 25%, transparent 100%);
+}
+.section-about::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(55% 75% at 8% 12%, rgba(73, 184, 255, .22), transparent 62%),
+    radial-gradient(50% 70% at 92% 85%, rgba(120, 205, 255, .16), transparent 60%);
+}
+.section-about > * { position: relative; z-index: 1; }
+
+.section-about .eyebrow { color: var(--gold-2); }
+.section-about .eyebrow-line::after { background: linear-gradient(90deg, var(--gold-2), transparent); }
+.section-about h2 { color: #fff; text-shadow: 0 0 26px rgba(120, 205, 255, .35); }
+.section-about .about-lede { color: #c6d6f4; font-size: 1.02rem; }
+
+.section-about .feature-list li { color: #d6e2fb; transition: transform .3s ease; }
+.section-about .feature-list li:hover { transform: translateX(-4px); }
+.section-about .feature-list li b { color: #fff; }
+.section-about .feature-list svg {
+  color: #7fd0ff;
+  filter: drop-shadow(0 0 6px rgba(120, 205, 255, .85)) drop-shadow(0 0 14px rgba(120, 205, 255, .4));
+  transition: transform .3s ease;
+}
+.section-about .feature-list li:hover svg { transform: scale(1.2); }
+
+.section-about .lion-frame {
+  border: 1px solid rgba(120, 205, 255, .35);
+  box-shadow:
+    0 0 0 1px rgba(120, 205, 255, .14),
+    0 0 34px rgba(73, 184, 255, .30),
+    0 24px 50px rgba(0, 0, 0, .45);
+  transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease;
+}
+.section-about .lion-frame:hover {
+  border-color: rgba(120, 205, 255, .65);
+  box-shadow:
+    0 0 0 1px rgba(120, 205, 255, .30),
+    0 0 22px rgba(120, 205, 255, .45),
+    0 0 52px rgba(73, 184, 255, .30),
+    0 26px 56px rgba(0, 0, 0, .5);
+}
+.section-about .lion-frame img { transition: transform .8s ease, filter .8s ease; }
+.section-about .lion-frame:hover img { transform: scale(1.05); filter: saturate(1.08) brightness(1.05); }
+.section-about .lion-frame .cap b { color: #7fd0ff; text-shadow: 0 0 12px rgba(120, 205, 255, .55); }
+
+.section-about .btn-lapis {
+  background: linear-gradient(135deg, #0e4a8f, #1b6fd0);
+  box-shadow: 0 0 18px rgba(73, 184, 255, .35), 0 8px 22px rgba(16, 42, 86, .35);
+}
+.section-about .btn-lapis:hover { box-shadow: 0 0 30px rgba(73, 184, 255, .55), 0 12px 28px rgba(16, 42, 86, .4); }
+.section-about .btn-outline { border-color: rgba(255, 255, 255, .28); color: #dce8ff; }
+.section-about .btn-outline:hover { background: rgba(120, 205, 255, .12); color: #fff; }
+
 .lion-grid { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: clamp(24px, 4vw, 54px); align-items: center; }
+.about-copy { min-width: 0; }
 .lion-frame {
   position: relative; border-radius: 20px; overflow: hidden; border: 1px solid var(--line);
   box-shadow: var(--shadow-lg); background: #05080f;
