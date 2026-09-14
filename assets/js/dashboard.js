@@ -1137,13 +1137,13 @@
         '<td>' + r.hires + '</td><td>' + r.holds + '</td></tr>';
     }).join('') || '<tr><td colspan="9" class="table-empty">لا بيانات</td></tr>';
 
-    // Add total row
-    var totalRow = '<tr style="background:#f9f6ef;font-weight:900">' +
+    // Add total row inside tbody
+    var totalRow = '<tr style="background:#f9f6ef;font-weight:900;border-top:2px solid var(--gold)">' +
       '<td colspan="4" style="text-align:left;padding-left:20px">المجموع الكلي</td>' +
       '<td><b>' + Store.money(totals.expected) + '</b></td>' +
       '<td><b style="color:var(--ok)">' + Store.money(totals.collected) + '</b></td>' +
       '<td colspan="3"></td></tr>';
-    document.getElementById('fin-table-body').insertAdjacentHTML('afterend', totalRow);
+    document.getElementById('fin-table-body').insertAdjacentHTML('beforeend', totalRow);
 
     // Bind input change events
     document.querySelectorAll('.fin-collected').forEach(function (input) {
