@@ -94,7 +94,7 @@
         holdExpiresAt: null,
         createdAt: created.toISOString(), createdBy: idx % 2 ? 'staff2' : 'staff',
         closedAt: extra.status === 'closed' ? addDays(new Date(), -1).toISOString() : null,
-        notes: '', vacancies: 1
+        notes: '', vacancies: 1, imageUrl: j.imageUrl || ''
       });
     });
     // الباحثون عن عمل + الاستمارات
