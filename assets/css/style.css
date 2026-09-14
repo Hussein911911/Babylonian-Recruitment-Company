@@ -459,8 +459,8 @@ textarea { min-height: 96px; resize: vertical; line-height: 1.7; }
     0 0 32px rgba(73, 184, 255, .35),
     0 12px 24px rgba(16, 42, 86, .32);
 }
-.step h3 { font-size: 1.02rem; }
-.step p { font-size: .89rem; color: var(--muted); margin: 0; }
+.step h3 { font-size: 1.1rem; color: #0a0a0c; font-weight: 900; }
+.step p { font-size: .93rem; color: #26282f; line-height: 1.85; margin: 0; }
 .service {
   background: linear-gradient(180deg, #fff, #fdfbf6); border: 1px solid var(--line-soft);
   border-radius: var(--radius); padding: 24px 20px; height: 100%;
@@ -474,8 +474,12 @@ textarea { min-height: 96px; resize: vertical; line-height: 1.7; }
   transform: translateY(-3px) scale(1.1); color: #ffd66b;
   filter: drop-shadow(0 0 6px rgba(255, 208, 96, .9)) drop-shadow(0 0 16px rgba(255, 208, 96, .45));
 }
-.service h3 { font-size: 1.02rem; }
-.service p { font-size: .89rem; color: var(--muted); margin: 0; }
+.service h3 { font-size: 1.1rem; color: #0a0a0c; font-weight: 900; }
+.service p { font-size: .93rem; color: #26282f; line-height: 1.85; margin: 0; }
+
+/* خط أسود فخم لعناوين قسمي آلية العمل والخدمات */
+#how .section-head h2, #services .section-head h2 { color: #0a0a0c; }
+#how .section-head p, #services .section-head p { color: #2a2d36; }
 
 /* ---------------- حركات الظهور عند التمرير (Scroll Reveal) ---------------- */
 .reveal {
