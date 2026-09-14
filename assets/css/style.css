@@ -680,7 +680,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .tfoot-note { padding: 10px 14px; background: #fcfbf8; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--line-soft); }
 
 /* ============================ 16) لوحة الموظفين ============================ */
-.app-shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; background: #f4f6fb; position: relative; }
+.app-shell { display: grid; grid-template-columns: minmax(0, 1fr); background: #f4f6fb; position: relative; }
 .app-side {
   background: linear-gradient(180deg, var(--night), var(--lapis) 60%, #0a1730);
   color: #cdd7ea; padding: 16px 14px; position: fixed; top: 0; inset-inline-start: 0; height: 100vh; overflow-y: auto;
@@ -735,9 +735,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 }
 .side-foot { margin-top: 16px; border-top: 1px solid rgba(255, 255, 255, .10); padding-top: 12px; }
 .side-foot p { display: none; }
-.app-main { padding: 8px clamp(12px, 2vw, 24px) 40px; min-width: 0; }
+.app-main { padding: 0 clamp(12px, 2vw, 24px) 40px; min-width: 0; }
 .app-top {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; margin-top: 8px; flex-wrap: wrap;
 }
 .app-top h1 { font-size: clamp(1.15rem, 2.2vw, 1.5rem); margin: 0; line-height: 1.2; }
 .app-top .sub { color: var(--muted); font-size: .82rem; margin-top: 2px; }
@@ -945,6 +945,12 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   position: relative;
   overflow: hidden;
   padding: 20px;
+}
+.login-screen.hidden {
+  display: none !important;
+  min-height: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 .login-bg-pattern {

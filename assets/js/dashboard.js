@@ -152,6 +152,8 @@
     applyRole();
     setView(state.view);
     renderSettings();
+    // Scroll to top when entering dashboard
+    window.scrollTo(0, 0);
   }
 
   function applyRole() {
