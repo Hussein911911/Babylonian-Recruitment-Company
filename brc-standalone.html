@@ -720,8 +720,12 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   overflow-y: auto;
   box-shadow: -4px 0 20px rgba(0,0,0,0.3);
 }
-[dir="rtl"] .app-side { right: 0; left: auto; }
-.app-side.open { transform: translateX(0); }
+[dir="rtl"] .app-side { 
+  right: 0; 
+  left: auto;
+  transform: translateX(100%);
+}
+[dir="rtl"] .app-side.open { transform: translateX(0); }
 .side-overlay {
   position: fixed;
   inset: 0;
@@ -1038,8 +1042,6 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .contact-grid { grid-template-columns: 1fr; }
   .lion-grid { grid-template-columns: 1fr; }
-  .app-shell { grid-template-columns: 1fr; }
-  .app-side { position: static; height: auto; }
   .site-footer .foot-main { grid-template-columns: 1fr 1fr; }
   .hc-email, .hc-hours { display: none; }
 }
