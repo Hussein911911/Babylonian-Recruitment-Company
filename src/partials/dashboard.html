@@ -406,15 +406,31 @@
         <div class="panel">
           <div class="panel-head"><h3><svg class="ic"><use href="#i-server" xlink:href="#i-server"/></svg> النسخ الاحتياطي والصيانة</h3></div>
           <div class="panel-body">
-            <div class="flex flex-wrap">
-              <button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير نسخة JSON</button>
+            <div class="flex flex-wrap" style="gap:8px">
+              <button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> نسخة احتياطية سريعة</button>
+              <button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير JSON</button>
               <button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"/></svg> استيراد نسخة</button>
-              <button class="btn btn-gold" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> جدولة النسخ الاحتياطي</button>
+              <button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> جدولة النسخ التلقائي</button>
               <button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> عرض النسخ الاحتياطية</button>
               <button class="btn btn-warn" id="btn-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تشغيل قواعد الحجز التلقائي</button>
               <button class="btn btn-danger" id="btn-reset"><svg class="ic"><use href="#i-trash" xlink:href="#i-trash"/></svg> إعادة ضبط البيانات التجريبية</button>
             </div>
             <input type="file" id="import-file" accept="application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية للاستيراد">
+            
+            <div class="panel mt-3" style="background:#f9f6ef;border:1px solid var(--line)">
+              <div class="panel-body">
+                <h4 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+                  <svg class="ic" style="color:var(--gold-3)"><use href="#i-clock" xlink:href="#i-clock"/></svg>
+                  النسخ الاحتياطي التلقائي المجدول
+                </h4>
+                <div id="schedule-status" class="tiny muted">لم يتم تفعيل الجدولة بعد</div>
+                <div class="flex flex-wrap mt-2" style="gap:8px">
+                  <button class="btn btn-outline btn-sm" id="btn-edit-schedule"><svg class="ic"><use href="#i-edit" xlink:href="#i-edit"/></svg> تعديل الجدولة</button>
+                  <button class="btn btn-outline btn-sm" id="btn-disable-schedule"><svg class="ic"><use href="#i-close" xlink:href="#i-close"/></svg> إيقاف الجدولة</button>
+                </div>
+              </div>
+            </div>
+            
             <div class="data-grid mt-3">
               <div class="data-item"><div class="k">الوظائف المخزّنة</div><div class="v" id="db-jobs">0</div></div>
               <div class="data-item"><div class="k">الاستمارات</div><div class="v" id="db-apps">0</div></div>

@@ -1192,6 +1192,21 @@
     set('db-backups', backups.length);
     var vb = document.getElementById('set-verify-base');
     if (vb) vb.textContent = CFG.verifyBase;
+
+    // عرض حالة الجدولة
+    var scheduleStatus = document.getElementById('schedule-status');
+    if (scheduleStatus) {
+      var schedule = null;
+      try { schedule = JSON.parse(localStorage.getItem('brc-auto-backup-schedule')); } catch(e) {}
+      
+      if (schedule) {
+        var days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        var selectedDays = schedule.days.map(function(d) { return days[d]; }).join('، ');
+        scheduleStatus.innerHTML = '<b style="color:var(--ok)">✓ مفعّل</b> — ' + selectedDays + ' الساعة ' + schedule.time;
+      } else {
+        scheduleStatus.innerHTML = '<span style="color:var(--muted)">لم يتم تفعيل الجدولة بعد</span>';
+      }
+    }
   }
 
   /* ======================= الأحداث العامة ======================= */
@@ -1369,10 +1384,52 @@
 
     var vb = document.getElementById('btn-view-backups');
     if (vb) vb.addEventListener('click', viewBackupsModal);
+
+    var qb = document.getElementById('btn-quick-backup');
+    if (qb) qb.addEventListener('click', function() {
+      var name = 'نسخة سريعة - ' + Store.fmtDateTime(new Date());
+      var backup = Store.saveScheduledBackup(name, null);
+      if (backup) {
+        UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة الاحتياطية: ' + name);
+        renderSettings();
+      }
+    });
+
+    var es = document.getElementById('btn-edit-schedule');
+    if (es) es.addEventListener('click', scheduleBackupModal);
+
+    var ds = document.getElementById('btn-disable-schedule');
+    if (ds) ds.addEventListener('click', function() {
+      UI.confirm({
+        title: 'إيقاف الجدولة',
+        danger: true,
+        confirmText: 'إيقاف',
+        message: 'سيتم إيقاف النسخ الاحتياطي التلقائي المجدول. هل أنت متأكد؟'
+      }).then(function(ok) {
+        if (ok) {
+          localStorage.removeItem('brc-auto-backup-schedule');
+          UI.toast('ok', 'تم الإيقاف', 'أُوقفت الجدولة التلقائية');
+          renderSettings();
+        }
+      });
+    });
   }
 
   /* نافذة جدولة النسخ الاحتياطي */
   function scheduleBackupModal() {
+    var schedule = null;
+    try { schedule = JSON.parse(localStorage.getItem('brc-auto-backup-schedule')); } catch(e) {}
+    
+    var days = [
+      { id: 0, name: 'الأحد' },
+      { id: 1, name: 'الإثنين' },
+      { id: 2, name: 'الثلاثاء' },
+      { id: 3, name: 'الأربعاء' },
+      { id: 4, name: 'الخميس' },
+      { id: 5, name: 'الجمعة' },
+      { id: 6, name: 'السبت' }
+    ];
+
     var body = '<form id="backup-form">' +
       '<div class="field mb-2">' +
       '<label for="backup-name">اسم النسخة الاحتياطية *</label>' +
@@ -1392,28 +1449,52 @@
       '</div>' +
       '</div>' +
       '<div class="field mb-2">' +
-      '<label>جدولة تلقائية</label>' +
+      '<label>الجدولة التلقائية</label>' +
       '<div class="flex" style="gap:8px;flex-wrap:wrap">' +
-      '<label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="backup-daily" style="width:auto"> يومياً</label>' +
-      '<label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="backup-weekly" style="width:auto"> أسبوعياً</label>' +
+      '<label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="backup-auto" style="width:auto" ' + (schedule ? 'checked' : '') + '> تفعيل الجدولة التلقائية</label>' +
+      '</div>' +
+      '</div>' +
+      '<div id="schedule-options" style="display:' + (schedule ? 'block' : 'none') + '">' +
+      '<div class="field mb-2">' +
+      '<label>أيام الأسبوع</label>' +
+      '<div class="flex" style="gap:6px;flex-wrap:wrap">' +
+      days.map(function(day) {
+        var checked = schedule && schedule.days && schedule.days.includes(day.id) ? 'checked' : '';
+        return '<label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:#f4f6fb;border-radius:6px">' +
+          '<input type="checkbox" name="backup-days" value="' + day.id + '" style="width:auto" ' + checked + '> ' + day.name + '</label>';
+      }).join('') +
+      '</div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label for="backup-time">وقت النسخ</label>' +
+      '<input type="time" id="backup-time" value="' + (schedule && schedule.time ? schedule.time : '23:00') + '" style="width:150px">' +
+      '</div>' +
+      '<div class="tiny muted mt-2">' +
+      '<b>اقتراح:</b> يمكنك رفع النسخ الاحتياطية إلى Google Drive أو Dropbox يدوياً للحفاظ عليها.' +
       '</div>' +
       '</div>' +
       '</form>';
 
     UI.modal({
       title: 'جدولة النسخ الاحتياطي',
-      subtitle: 'احفظ نسخة احتياطية من البيانات',
+      subtitle: 'احفظ نسخة احتياطية من البيانات مع جدولة تلقائية',
       body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
-        '<button class="btn btn-gold" id="backup-save">' + UI.ic('check') + ' حفظ النسخة</button>',
+        '<button class="btn btn-gold" id="backup-save">' + UI.ic('check') + ' حفظ</button>',
       onMount: function (box, close) {
         var radios = box.querySelectorAll('input[name="backup-range"]');
         var customRange = box.querySelector('#custom-range');
+        var autoCheck = box.querySelector('#backup-auto');
+        var scheduleOptions = box.querySelector('#schedule-options');
         
         radios.forEach(function(radio) {
           radio.addEventListener('change', function() {
             customRange.style.display = this.value === 'custom' ? 'block' : 'none';
           });
+        });
+
+        autoCheck.addEventListener('change', function() {
+          scheduleOptions.style.display = this.checked ? 'block' : 'none';
         });
 
         box.querySelector('#backup-save').addEventListener('click', function () {
@@ -1437,13 +1518,39 @@
           }
 
           var backup = Store.saveScheduledBackup(name, dateRange);
-          if (backup) {
-            UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة الاحتياطية بنجاح');
-            renderSettings();
-            close();
-          } else {
+          if (!backup) {
             UI.toast('err', 'فشل الحفظ', 'لم يتم حفظ النسخة الاحتياطية');
+            return;
           }
+
+          // حفظ الجدولة التلقائية
+          if (autoCheck.checked) {
+            var selectedDays = [];
+            box.querySelectorAll('input[name="backup-days"]:checked').forEach(function(cb) {
+              selectedDays.push(Number(cb.value));
+            });
+            var time = box.querySelector('#backup-time').value;
+            
+            if (selectedDays.length === 0) {
+              UI.toast('warn', 'تحذير', 'لم يتم اختيار أيام - لن تعمل الجدولة التلقائية');
+            } else {
+              var scheduleData = {
+                name: name,
+                days: selectedDays,
+                time: time,
+                rangeType: rangeType,
+                dateRange: dateRange,
+                createdAt: new Date().toISOString()
+              };
+              localStorage.setItem('brc-auto-backup-schedule', JSON.stringify(scheduleData));
+              UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة والجدولة التلقائية');
+            }
+          } else {
+            UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة الاحتياطية');
+          }
+
+          renderSettings();
+          close();
         });
       }
     });
@@ -1576,6 +1683,48 @@
       }
     });
   }
+
+  // التحقق من الجدولة التلقائية للنسخ الاحتياطي
+  function checkAutoBackupSchedule() {
+    var schedule = null;
+    try { schedule = JSON.parse(localStorage.getItem('brc-auto-backup-schedule')); } catch(e) { return; }
+    if (!schedule || !schedule.days || !schedule.time) return;
+
+    var now = new Date();
+    var currentDay = now.getDay();
+    var currentTime = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+    
+    // تحقق إذا كان اليوم من الأيام المحددة
+    if (!schedule.days.includes(currentDay)) return;
+    
+    // تحقق إذا كان الوقت مناسباً (خلال 5 دقائق من الوقت المحدد)
+    var [scheduleHour, scheduleMinute] = schedule.time.split(':').map(Number);
+    var scheduleTime = scheduleHour * 60 + scheduleMinute;
+    var currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    if (Math.abs(currentTimeMinutes - scheduleTime) > 5) return;
+    
+    // تحقق إذا تم عمل نسخة اليوم بالفعل
+    var lastBackupKey = 'brc-last-auto-backup-' + now.toISOString().split('T')[0];
+    if (localStorage.getItem(lastBackupKey)) return;
+    
+    // عمل نسخة احتياطية تلقائية
+    var name = 'نسخة تلقائية - ' + Store.fmtDateTime(now);
+    var backup = Store.saveScheduledBackup(name, schedule.dateRange);
+    
+    if (backup) {
+      localStorage.setItem(lastBackupKey, '1');
+      console.log('[BRC] ✓ تم عمل نسخة احتياطية تلقائية:', name);
+      if (window.BRCUI) {
+        window.BRCUI.toast('ok', 'نسخة احتياطية تلقائية', 'تم حفظ النسخة: ' + name);
+      }
+    }
+  }
+
+  // تشغيل التحقق كل دقيقة
+  setInterval(checkAutoBackupSchedule, 60000);
+  // تشغيل التحقق فوراً عند التحميل
+  setTimeout(checkAutoBackupSchedule, 3000);
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
