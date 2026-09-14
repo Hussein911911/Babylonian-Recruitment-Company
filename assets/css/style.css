@@ -120,6 +120,8 @@ code, .mono { font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
 .hc-item .ic { color: var(--gold-2); flex: none; }
 .hc-item a { color: inherit; }
 .hc-item a:hover { color: var(--gold-2); }
+a.hc-item { color: #dbe3f5; text-decoration: none; }
+a.hc-item:hover { color: var(--gold-2); }
 .hc-phones { display: inline-flex; align-items: center; gap: 8px; }
 .hc-phones a { color: var(--gold-2); font-weight: 700; }
 .header-actions { display: flex; align-items: center; gap: 10px; flex: none; }

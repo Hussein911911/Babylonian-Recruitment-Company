@@ -137,6 +137,8 @@ code, .mono { font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
 .hc-item .ic { color: var(--gold-2); flex: none; }
 .hc-item a { color: inherit; }
 .hc-item a:hover { color: var(--gold-2); }
+a.hc-item { color: #dbe3f5; text-decoration: none; }
+a.hc-item:hover { color: var(--gold-2); }
 .hc-phones { display: inline-flex; align-items: center; gap: 8px; }
 .hc-phones a { color: var(--gold-2); font-weight: 700; }
 .header-actions { display: flex; align-items: center; gap: 10px; flex: none; }
@@ -924,21 +926,21 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
       </a>
 
       <div class="header-contact">
-        <span class="hc-item">
+        <a class="hc-item" href="https://www.google.com/maps?q=32.4823913,44.4105048" target="_blank" rel="noopener" title="فتح الموقع في خرائط جوجل">
           <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
           <span>حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي</span>
-        </span>
+        </a>
         <span class="hc-item">
           <svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg>
           <span class="hc-phones">
-            <a href="tel:07760058007" dir="ltr" class="mono">07760058007</a>
-            <a href="tel:07715993271" dir="ltr" class="mono">07715993271</a>
+            <a href="https://wa.me/9647760058007" target="_blank" rel="noopener" dir="ltr" class="mono">07760058007</a>
+            <a href="https://wa.me/9647715993271" target="_blank" rel="noopener" dir="ltr" class="mono">07715993271</a>
           </span>
         </span>
-        <span class="hc-item hc-email">
+        <a class="hc-item hc-email" href="https://mail.google.com/mail/?view=cm&fs=1&to=contact@brc-babil.com" target="_blank" rel="noopener" title="إرسال بريد عبر جيميل">
           <svg class="ic"><use href="#i-mail" xlink:href="#i-mail"/></svg>
-          <a href="mailto:contact@brc-babil.com" dir="ltr" class="mono">contact@brc-babil.com</a>
-        </span>
+          <span dir="ltr" class="mono">contact@brc-babil.com</span>
+        </a>
         <span class="hc-item hc-hours">
           <svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg>
           <span>السبت – الخميس: 9:00ص – 5:00م · الجمعة: عطلة رسمية</span>
@@ -1275,15 +1277,15 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     </div>
     <div class="contact-grid">
       <div class="contact-card">
-        <div class="ic"><svg class="ic"><use href="#i-phone" xlink:href="#i-phone"/></svg></div>
-        <h3>أرقام الهاتف</h3>
-        <p><a href="tel:07760058007" dir="ltr" class="mono">07760058007</a></p>
-        <p><a href="tel:07715993271" dir="ltr" class="mono">07715993271</a></p>
+        <div class="ic"><svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg></div>
+        <h3>أرقام الواتساب</h3>
+        <p><a href="https://wa.me/9647760058007" target="_blank" rel="noopener" dir="ltr" class="mono">07760058007</a></p>
+        <p><a href="https://wa.me/9647715993271" target="_blank" rel="noopener" dir="ltr" class="mono">07715993271</a></p>
       </div>
       <div class="contact-card">
         <div class="ic"><svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg></div>
         <h3>العنوان</h3>
-        <p>حلة - شارع 60 - قرب مدينة حمورابي<br>قرب مجمع الكرعاوي</p>
+        <p><a href="https://www.google.com/maps?q=32.4823913,44.4105048" target="_blank" rel="noopener">حلة - شارع 60 - قرب مدينة حمورابي<br>قرب مجمع الكرعاوي</a></p>
       </div>
       <div class="contact-card">
         <div class="ic"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg></div>
@@ -1812,16 +1814,16 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
       <div>
         <h4>تواصل معنا</h4>
         <div class="footer-phones">
-          <a href="tel:07760058007"><svg class="ic"><use href="#i-phone" xlink:href="#i-phone"/></svg> <span dir="ltr" class="mono">07760058007</span></a>
-          <a href="tel:07715993271"><svg class="ic"><use href="#i-phone" xlink:href="#i-phone"/></svg> <span dir="ltr" class="mono">07715993271</span></a>
+          <a href="https://wa.me/9647760058007" target="_blank" rel="noopener"><svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg> <span dir="ltr" class="mono">07760058007</span></a>
+          <a href="https://wa.me/9647715993271" target="_blank" rel="noopener"><svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg> <span dir="ltr" class="mono">07715993271</span></a>
         </div>
         <p style="font-size:.88rem;color:#a9b6d2;margin-top:12px">
           <svg class="ic" style="width:15px;height:15px;vertical-align:-3px"><use href="#i-pin" xlink:href="#i-pin"/></svg>
-          حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي
+          <a href="https://www.google.com/maps?q=32.4823913,44.4105048" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي</a>
         </p>
         <p style="font-size:.88rem;color:#a9b6d2">
           <svg class="ic" style="width:15px;height:15px;vertical-align:-3px"><use href="#i-mail" xlink:href="#i-mail"/></svg>
-          <span dir="ltr" class="mono">contact@brc-babil.com</span>
+          <a href="https://mail.google.com/mail/?view=cm&fs=1&to=contact@brc-babil.com" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span dir="ltr" class="mono">contact@brc-babil.com</span></a>
         </p>
       </div>
     </div>
