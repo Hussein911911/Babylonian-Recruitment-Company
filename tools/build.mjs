@@ -65,9 +65,9 @@ const partials = {
   dashboard: read('src/partials/dashboard.html')
 };
 const CSS = read('assets/css/style.css');
-const JS_ORDER = ['config', 'qr', 'store', 'ui', 'voucher', 'public', 'verify', 'dashboard'];
+const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'voucher', 'public', 'verify', 'dashboard'];
 const SCRIPTS = {
-  public: ['config', 'qr', 'store', 'ui', 'voucher', 'public'],
+  public: ['config', 'qr', 'qr-scan', 'store', 'ui', 'voucher', 'public'],
   verify: ['config', 'qr', 'store', 'ui', 'voucher', 'verify'],
   dashboard: ['config', 'qr', 'store', 'ui', 'voucher', 'dashboard']
 };

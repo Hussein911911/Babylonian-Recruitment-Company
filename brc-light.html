@@ -284,15 +284,88 @@ a.hc-item:hover { color: var(--gold-2); }
 
 /* بطاقة البحث السريع */
 .quick-search {
-  background: rgba(9, 18, 40, .78); border: 1px solid var(--line); border-radius: 20px;
-  padding: 22px; backdrop-filter: blur(12px); box-shadow: var(--shadow-lg);
+  background: linear-gradient(140deg, rgba(9, 18, 40, .97), rgba(16, 42, 86, .94));
+  border: 1px solid var(--line); border-radius: 24px;
+  padding: clamp(22px, 4vw, 38px); position: relative; overflow: hidden;
+  box-shadow: var(--shadow-lg);
 }
-.quick-search h3 { color: #fff; display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
-.quick-search h3 svg { width: 20px; height: 20px; color: var(--gold-2); }
-.qs-row { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.quick-search::before {
+  content: ''; position: absolute; inset-inline: 0; top: 0; height: 4px;
+  background: linear-gradient(90deg, transparent, var(--gold), var(--turq), transparent);
+}
+.quick-search > * { position: relative; z-index: 1; }
+
+.qs-head { text-align: center; max-width: 760px; margin: 0 auto 22px; }
+.qs-head .eyebrow {
+  display: inline-flex; align-items: center; gap: 9px; color: var(--gold-2); font-weight: 800;
+  font-size: .8rem; letter-spacing: 2.4px; text-transform: uppercase;
+}
+.qs-head h3 { margin: 10px 0; font-size: clamp(1.25rem, 2.2vw, 1.6rem); }
+.qs-head p { font-size: .95rem; }
+
+.qs-form { max-width: 920px; margin: 0 auto; }
+.qs-row { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
 .qs-field { position: relative; }
-.qs-field svg { position: absolute; inset-inline-start: 13px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--gold); opacity: .8; }
-.qs-note { font-size: .78rem; color: #b9c6e2; margin: 12px 0 0; display: flex; gap: 7px; align-items: flex-start; }
+.qs-field.qs-main { flex: 1 1 280px; }
+.qs-field.qs-region { flex: 1 1 180px; }
+.qs-field > svg {
+  position: absolute; inset-inline-start: 15px; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; color: var(--gold); opacity: .85; pointer-events: none; z-index: 1;
+}
+.qs-field input, .qs-field select {
+  height: 100%; min-height: 50px; padding: 11px 13px; padding-inline-start: 46px;
+  border-radius: 12px; border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .06); color: #fff; font-size: .95rem; width: 100%;
+}
+.qs-field input::placeholder { color: #93a3c4; }
+.qs-field input:focus, .qs-field select:focus {
+  border-color: var(--gold); background: rgba(255, 255, 255, .10);
+  box-shadow: 0 0 0 3px rgba(200, 162, 74, .20);
+}
+.qs-field select option { color: #12203c; background: #fff; }
+
+.qs-scan, .qs-submit { min-height: 50px; padding: 11px 20px; border-radius: 12px; white-space: nowrap; }
+.qs-submit { box-shadow: 0 8px 22px rgba(200, 162, 74, .30); }
+
+.qs-note {
+  margin: 16px auto 0; max-width: 920px; display: flex; gap: 10px 24px; flex-wrap: wrap;
+  justify-content: center; font-size: .8rem; color: #b9c6e2;
+}
+.qs-note > span { display: inline-flex; gap: 7px; align-items: flex-start; }
+.qs-note .ic { color: var(--gold-2); flex: none; }
+.qs-scan-hint { color: #9fb2d8; }
+
+/* ===================== نافذة مسح الكيو آر كود ===================== */
+.scan-stage {
+  position: relative; border-radius: 16px; overflow: hidden; background: #05080f;
+  aspect-ratio: 16 / 10; max-height: 46vh; width: 100%;
+}
+.scan-stage video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scan-frame {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at center, transparent 0 31%, rgba(6, 13, 31, .55) 70%);
+}
+.scan-frame::before {
+  content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(66%, 280px); aspect-ratio: 1;
+  border: 2px solid var(--gold-2); border-radius: 18px;
+  box-shadow: 0 0 0 4px rgba(232, 208, 137, .14), 0 0 28px rgba(232, 208, 137, .22);
+}
+.scan-line {
+  position: absolute; left: 50%; top: 50%; width: min(66%, 280px); height: 2px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(90deg, transparent, var(--gold-2), transparent);
+  box-shadow: 0 0 14px 2px rgba(232, 208, 137, .6);
+  animation: qr-scanline 1.8s ease-in-out infinite;
+}
+@keyframes qr-scanline {
+  0%, 100% { transform: translate(-50%, -78px); }
+  50% { transform: translate(-50%, 78px); }
+}
+.scan-status { text-align: center; font-size: .85rem; color: var(--muted); margin: 12px 0 0; min-height: 1.4em; }
+.scan-status.error { color: #d98a84; }
+.scan-status.ok { color: #58d68d; }
+.scan-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 .hero-figure { position: relative; }
 .hero-figure img {
   border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow-lg);
@@ -1011,38 +1084,48 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
   <div class="crenel"></div>
 </section>
 
-<!-- ============================== شريط البحث السريع ============================== -->
+<!-- ============================== البحث السريع ============================== -->
 <section class="section" style="padding-top:34px">
   <div class="container">
-    <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:26px">
-      <div>
-        <span class="eyebrow eyebrow-line">بحث فوري بالكود المصغّر</span>
-        <h2 style="margin-bottom:8px">ابحث عن وظيفتك بالكود: <span class="chip chip-code mono">BRC-1042</span></h2>
-        <p class="muted mb-0">
-          كل وظيفة في الشركة تحمل كوداً مصغّراً فريداً يسهّل المتابعة والتحقق. اكتب الكود في البحث
-          لترى تفاصيل الوظيفة وحالتها الحالية (متاحة / محجوزة مؤقتاً / مغلقة).
+    <div class="quick-search">
+      <div class="qs-head">
+        <span class="eyebrow">بحث فوري بالكود المصغّر</span>
+        <h3 style="color:#fff">ابحث عن وظيفتك بالكود أو امسح الكيو آر كود</h3>
+        <p class="muted mb-0" style="color:#b9c6e2">
+          اكتب كود الوظيفة مثل <span class="chip chip-code mono">BRC-1042</span> أو اسمها، أو اضغط
+          «امسح QR» لقراءة الرمز مباشرة — وتظهر لك التفاصيل وحالة الوظيفة (متاحة / محجوزة مؤقتاً / مغلقة) فوراً.
         </p>
       </div>
-      <form class="quick-search" id="qs-form" autocomplete="off">
-        <h3><svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> البحث السريع عن وظيفة</h3>
+
+      <form class="qs-form" id="qs-form" autocomplete="off">
         <div class="qs-row">
-          <div class="qs-field">
-            <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
-            <input type="text" id="qs-code" placeholder="مثال: BRC-1042 أو اسم الوظيفة" aria-label="كود الوظيفة أو اسمها">
+          <div class="qs-field qs-main">
+            <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
+            <input type="text" id="qs-code" placeholder="اكتب كود الوظيفة أو اسمها هنا..." aria-label="كود الوظيفة أو اسمها">
           </div>
-          <div class="qs-field">
+          <button type="button" class="btn btn-ghost qs-scan" id="qs-scan">
+            <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg> امسح QR
+          </button>
+          <div class="qs-field qs-region">
             <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
             <select id="qs-region" aria-label="المنطقة"><option value="all">كل مناطق بابل</option></select>
           </div>
-          <button class="btn btn-gold btn-block" type="submit">
+          <button class="btn btn-gold qs-submit" type="submit">
             <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث الآن
           </button>
         </div>
-        <p class="qs-note">
-          <svg class="ic" style="width:15px;height:15px;margin-top:4px"><use href="#i-shield" xlink:href="#i-shield"/></svg>
-          <span>خصوصية تامة: بيانات صاحب العمل (الاسم، الهاتف، العنوان التفصيلي) لا تُعرض للعامة — تُسلّم للباحث عبر الشركة فقط.</span>
-        </p>
       </form>
+
+      <div class="qs-note">
+        <span>
+          <svg class="ic" style="width:15px;height:15px;margin-top:3px"><use href="#i-shield" xlink:href="#i-shield"/></svg>
+          خصوصية تامة: بيانات صاحب العمل لا تُعرض للعامة — تُسلَّم للباحث عبر الشركة فقط.
+        </span>
+        <span class="qs-scan-hint">
+          <svg class="ic" style="width:15px;height:15px;margin-top:3px"><use href="#i-qr" xlink:href="#i-qr"/></svg>
+          يمكنك مسح الكيو آر كود المطبوع على بطاقة الوظيفة أو الاستمارة للبحث المباشر.
+        </span>
+      </div>
     </div>
   </div>
 </section>
@@ -2851,6 +2934,51 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 });
 
 ;
+/* ===================== qr-scan.js ===================== */
+/* ===========================================================================
+ *  BRC QR Scanner — مسح رموز QR داخل المتصفح (بدون أي مكتبات خارجية)
+ *  ---------------------------------------------------------------------------
+ *  يعتمد على واجهة BarcodeDetector الأصلية المتوفرة في كروم / إيدج / أندرويد،
+ *  ويعمل دون اتصال بالإنترنت. يدعم القراءة من بث الكاميرا الحي أو من صورة ثابتة
+ *  (ملف مرفوع أو صورة مضمّنة). عند غياب الواجهة يُرجع supported() = false.
+ * =========================================================================== */
+(function (root) {
+  'use strict';
+
+  var detector = null;
+  try {
+    if (typeof BarcodeDetector !== 'undefined') {
+      detector = new BarcodeDetector({ formats: ['qr_code'] });
+    }
+  } catch (e) { detector = null; }
+
+  function read(codes) {
+    var out = [];
+    (codes || []).forEach(function (c) {
+      if (c && c.rawValue != null) out.push(String(c.rawValue));
+    });
+    return out;
+  }
+
+  root.BRCQRScan = {
+    /* هل يدعم المتصفح الحالي مسح QR؟ */
+    supported: function () { return !!detector; },
+
+    /* قراءة صورة ثابتة: ImageBitmap أو <img> أو <canvas> */
+    detectImage: function (source) {
+      if (!detector) return Promise.reject(new Error('unsupported'));
+      return detector.detect(source).then(read);
+    },
+
+    /* قراءة إطار فيديو حي */
+    detectVideoFrame: function (video) {
+      if (!detector || !video || !video.videoWidth) return Promise.resolve([]);
+      return detector.detect(video).then(read).catch(function () { return []; });
+    }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+;
 /* ===================== store.js ===================== */
 /* ===========================================================================
  *  BRC — محرّك البيانات ومنطق العمل
@@ -4004,21 +4132,15 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     var qsForm = document.getElementById('qs-form');
     if (qsForm) qsForm.addEventListener('submit', function (e) {
       e.preventDefault();
-      var code = (document.getElementById('qs-code') || {}).value || '';
-      var reg = (document.getElementById('qs-region') || {}).value || 'all';
-      filters.q = code.trim();
-      filters.region = reg;
-      var fq = document.getElementById('filter-q');
-      var fr = document.getElementById('filter-region');
-      if (fq) fq.value = filters.q;
-      if (fr) fr.value = reg;
-      renderJobs();
-      var jobs = document.getElementById('jobs');
-      if (jobs) jobs.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      var found = Store.listJobs(filters);
-      if (found.length === 1) openJob(found[0].code);
-      else if (found.length === 0) UI.toast('warn', 'لا نتائج', 'لم نجد وظيفة بهذا الكود أو العنوان — تواصل معنا للاستفسار.');
+      runQuickSearch(
+        (document.getElementById('qs-code') || {}).value || '',
+        (document.getElementById('qs-region') || {}).value || 'all'
+      );
     });
+
+    // البحث عبر مسح الكيو آر كود
+    var qsScan = document.getElementById('qs-scan');
+    if (qsScan) qsScan.addEventListener('click', function () { openQRScanner(); });
 
     // طلب استمارة
     ['btn-request-form', 'btn-request-form-2'].forEach(function (id) {
@@ -4073,6 +4195,129 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     var app = Store.getApplicant(serial);
     if (!app) { UI.toast('err', 'استمارة غير موجودة', 'تأكد من الرقم التسلسلي أو راجع المكتب.'); return; }
     window.location.href = Store.verifyLocalUrl(serial);
+  }
+
+  /* ---------------- البحث السريع (إدخال يدوي أو مسح QR) ---------------- */
+  function runQuickSearch(code, region) {
+    code = String(code || '').trim();
+    region = region || 'all';
+    filters.q = code;
+    filters.region = region;
+    var fq = document.getElementById('filter-q');
+    var fr = document.getElementById('filter-region');
+    if (fq) fq.value = code;
+    if (fr) fr.value = region;
+    renderJobs();
+    var jobs = document.getElementById('jobs');
+    if (jobs) jobs.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    var found = Store.listJobs(filters);
+    if (found.length === 1) openJob(found[0].code);
+    else if (found.length === 0) UI.toast('warn', 'لا نتائج', 'لم نجد وظيفة بهذا الكود أو العنوان — تواصل معنا للاستفسار.');
+  }
+
+  function openQRScanner() {
+    if (!root.BRCQRScan || !root.BRCQRScan.supported()) {
+      UI.toast('warn', 'متصفح غير مدعوم', 'متصفحك لا يدعم مسح الكيو آر كود. اكتب الكود يدوياً أو استخدم متصفح كروم على الجوال/الكمبيوتر.');
+      return;
+    }
+
+    var stream = null, raf = null, stopped = false;
+
+    function stop() {
+      stopped = true;
+      if (raf) cancelAnimationFrame(raf);
+      if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    }
+
+    var body =
+      '<div class="scan-stage">' +
+        '<video id="scan-video" playsinline muted autoplay></video>' +
+        '<div class="scan-frame"></div>' +
+        '<div class="scan-line"></div>' +
+      '</div>' +
+      '<p class="scan-status" id="scan-status">وجّه الكاميرا نحو الكيو آر كود...</p>' +
+      '<div class="scan-actions">' +
+        '<label class="btn btn-outline btn-sm" for="scan-file">' + UI.ic('upload') + ' ارفع صورة للكود بدلاً من الكاميرا</label>' +
+        '<input type="file" id="scan-file" accept="image/*" hidden>' +
+      '</div>';
+
+    UI.modal({
+      title: 'البحث بمسح الكيو آر كود',
+      subtitle: 'امسح رمز QR مطبوعاً على بطاقة الوظيفة أو الاستمارة',
+      body: body,
+      onMount: function (box, close) {
+        var video = box.querySelector('#scan-video');
+        var fileInput = box.querySelector('#scan-file');
+        var status = box.querySelector('#scan-status');
+
+        function setStatus(t, cls) {
+          if (status) { status.textContent = t; status.className = 'scan-status' + (cls ? ' ' + cls : ''); }
+        }
+
+        // رفع صورة بديلة عن الكاميرا
+        fileInput.addEventListener('change', function () {
+          var f = fileInput.files && fileInput.files[0];
+          if (!f) return;
+          setStatus('جارٍ قراءة الصورة...');
+          Promise.resolve(typeof createImageBitmap === 'function' ? createImageBitmap(f) : f)
+            .then(function (bmp) { return root.BRCQRScan.detectImage(bmp); })
+            .then(function (vals) {
+              if (vals && vals.length) { stop(); close(); applyScannedText(vals[0]); }
+              else setStatus('لم يُعثر على رمز QR في الصورة — جرّب صورة أوضح.', 'error');
+            })
+            .catch(function () { setStatus('تعذّرت قراءة الصورة.', 'error'); });
+        });
+
+        // بث الكاميرا
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(function (s) {
+              if (stopped) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
+              stream = s;
+              video.srcObject = s;
+              video.play().catch(function () {});
+              tick(video, close);
+            })
+            .catch(function () {
+              setStatus('تعذّر الوصول إلى الكاميرا — استخدم «رفع صورة للكود».', 'error');
+            });
+        } else {
+          setStatus('الكاميرا غير متاحة في هذا المتصفح — ارفع صورة للكود.', 'error');
+        }
+      },
+      onClose: stop
+    });
+
+    function tick(video, close) {
+      if (stopped) return;
+      root.BRCQRScan.detectVideoFrame(video).then(function (vals) {
+        if (stopped) return;
+        if (vals && vals.length) { stop(); close(); applyScannedText(vals[0]); return; }
+        raf = requestAnimationFrame(function () { tick(video, close); });
+      });
+    }
+  }
+
+  /* تحليل نص الرمز الممسوح: كود وظيفة / رابط استمارة / نص حر */
+  function applyScannedText(text) {
+    text = String(text || '').trim();
+    if (!text) { UI.toast('warn', 'كود فارغ', 'لم يُقرأ أي نص من الرمز.'); return; }
+
+    var serial = text.match(/BRC-NO-\d+/i);
+    if (serial) { verifySerial(serial[0]); return; }
+
+    var job = text.match(/BRC-\d{3,}/i);
+    if (job) {
+      var code = job[0].toUpperCase();
+      var input = document.getElementById('qs-code');
+      if (input) input.value = code;
+      runQuickSearch(code, (document.getElementById('qs-region') || {}).value || 'all');
+      return;
+    }
+
+    var input = document.getElementById('qs-code');
+    if (input) input.value = text;
+    runQuickSearch(text, (document.getElementById('qs-region') || {}).value || 'all');
   }
 
   /* ---------------- العرض ---------------- */

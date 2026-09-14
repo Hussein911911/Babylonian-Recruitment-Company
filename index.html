@@ -293,38 +293,48 @@
   <div class="crenel"></div>
 </section>
 
-<!-- ============================== شريط البحث السريع ============================== -->
+<!-- ============================== البحث السريع ============================== -->
 <section class="section" style="padding-top:34px">
   <div class="container">
-    <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:26px">
-      <div>
-        <span class="eyebrow eyebrow-line">بحث فوري بالكود المصغّر</span>
-        <h2 style="margin-bottom:8px">ابحث عن وظيفتك بالكود: <span class="chip chip-code mono">BRC-1042</span></h2>
-        <p class="muted mb-0">
-          كل وظيفة في الشركة تحمل كوداً مصغّراً فريداً يسهّل المتابعة والتحقق. اكتب الكود في البحث
-          لترى تفاصيل الوظيفة وحالتها الحالية (متاحة / محجوزة مؤقتاً / مغلقة).
+    <div class="quick-search">
+      <div class="qs-head">
+        <span class="eyebrow">بحث فوري بالكود المصغّر</span>
+        <h3 style="color:#fff">ابحث عن وظيفتك بالكود أو امسح الكيو آر كود</h3>
+        <p class="muted mb-0" style="color:#b9c6e2">
+          اكتب كود الوظيفة مثل <span class="chip chip-code mono">BRC-1042</span> أو اسمها، أو اضغط
+          «امسح QR» لقراءة الرمز مباشرة — وتظهر لك التفاصيل وحالة الوظيفة (متاحة / محجوزة مؤقتاً / مغلقة) فوراً.
         </p>
       </div>
-      <form class="quick-search" id="qs-form" autocomplete="off">
-        <h3><svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> البحث السريع عن وظيفة</h3>
+
+      <form class="qs-form" id="qs-form" autocomplete="off">
         <div class="qs-row">
-          <div class="qs-field">
-            <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
-            <input type="text" id="qs-code" placeholder="مثال: BRC-1042 أو اسم الوظيفة" aria-label="كود الوظيفة أو اسمها">
+          <div class="qs-field qs-main">
+            <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
+            <input type="text" id="qs-code" placeholder="اكتب كود الوظيفة أو اسمها هنا..." aria-label="كود الوظيفة أو اسمها">
           </div>
-          <div class="qs-field">
+          <button type="button" class="btn btn-ghost qs-scan" id="qs-scan">
+            <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg> امسح QR
+          </button>
+          <div class="qs-field qs-region">
             <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
             <select id="qs-region" aria-label="المنطقة"><option value="all">كل مناطق بابل</option></select>
           </div>
-          <button class="btn btn-gold btn-block" type="submit">
+          <button class="btn btn-gold qs-submit" type="submit">
             <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث الآن
           </button>
         </div>
-        <p class="qs-note">
-          <svg class="ic" style="width:15px;height:15px;margin-top:4px"><use href="#i-shield" xlink:href="#i-shield"/></svg>
-          <span>خصوصية تامة: بيانات صاحب العمل (الاسم، الهاتف، العنوان التفصيلي) لا تُعرض للعامة — تُسلّم للباحث عبر الشركة فقط.</span>
-        </p>
       </form>
+
+      <div class="qs-note">
+        <span>
+          <svg class="ic" style="width:15px;height:15px;margin-top:3px"><use href="#i-shield" xlink:href="#i-shield"/></svg>
+          خصوصية تامة: بيانات صاحب العمل لا تُعرض للعامة — تُسلَّم للباحث عبر الشركة فقط.
+        </span>
+        <span class="qs-scan-hint">
+          <svg class="ic" style="width:15px;height:15px;margin-top:3px"><use href="#i-qr" xlink:href="#i-qr"/></svg>
+          يمكنك مسح الكيو آر كود المطبوع على بطاقة الوظيفة أو الاستمارة للبحث المباشر.
+        </span>
+      </div>
     </div>
   </div>
 </section>
@@ -677,6 +687,7 @@
 
 <script src="assets/js/config.js"></script>
 <script src="assets/js/qr.js"></script>
+<script src="assets/js/qr-scan.js"></script>
 <script src="assets/js/store.js"></script>
 <script src="assets/js/ui.js"></script>
 <script src="assets/js/voucher.js"></script>
