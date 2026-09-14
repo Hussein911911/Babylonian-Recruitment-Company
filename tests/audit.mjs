@@ -349,14 +349,17 @@ section('8) الملف المستقل — يعمل بلا إنترنت وبلا 
 for (const file of PAGES.filter((f) => f.startsWith('brc-'))) {
   const s = loaded[file];
   const ext = [];
-  s.doc.querySelectorAll('[src], [href], link[href], source[srcset]').forEach((el) => {
+  /* نفحص الموارد المطلوبة للتشغيل فقط (صور/خطوط/سكربتات/ستايلات) —
+     أما روابط التنقل الخارجية (واتساب، خرائط جوجل، بريد) فهي مقصودة
+     ولا تمنع الملف من العمل بلا إنترنت. */
+  s.doc.querySelectorAll('[src], link[rel="stylesheet"], link[rel="icon"], source[srcset], script[src], img[src]').forEach((el) => {
     for (const a of ['src', 'href', 'srcset']) {
       const v = el.getAttribute(a);
       if (v && /^(https?:)?\/\//.test(v) && !v.includes('brc-babil.com')) ext.push(v);
     }
   });
-  if (ext.length) bad(file + ' — لا مراجع خارجية إطلاقاً', ext.slice(0, 5).join(', '));
-  else ok(file + ' — لا يوجد أي مرجع خارجي (كل الصور والخطوط والكود داخل الملف)');
+  if (ext.length) bad(file + ' — لا مراجع خارجية للموارد (صور/خطوط/كود)', ext.slice(0, 5).join(', '));
+  else ok(file + ' — لا مراجع خارجية للموارد (كل الصور والخطوط والكود داخل الملف)');
 
   const raw = readFileSync(join(ROOT, file), 'utf8');
   const dataUris = (raw.match(/data:[a-z]+\/[a-z0-9.+-]+;base64,/g) || []).length;
@@ -441,10 +444,10 @@ section('10) الاستمارة المطبوعة A4 — البنية الكام�
     'شعار الشركة': /i-emblem|brand-mark|v-logo/,
     'الاسم العربي': /شركة بابل للتوظيف/,
     'الاسم الإنجليزي': /Babylonian Recruitment Company/,
-    'شركة الهدف': /شركة الهدف/,
+    'تخصص الشركة': /الأيادي العاملة من الناحية الفنية والتخصصية/,
     'الهاتف الأول': /07760058007/,
-    'الهاتف الثاني': /07863148999/,
-    'العنوان الكامل': /حلة - شارع 60 - قرب مستشفى الكفل - مجاور الجيلاوي/,
+    'الهاتف الثاني': /07715993271/,
+    'العنوان الكامل': /حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي/,
     'الرقم التسلسلي': /BRC-NO:\s*000120/,
     'اسم الباحث': /سجاد|BRC-NO-000120/,
     'تاريخ الإصدار': /تاريخ الإصدار/,

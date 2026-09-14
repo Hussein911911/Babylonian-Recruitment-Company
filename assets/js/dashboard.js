@@ -44,6 +44,7 @@
     bindNav();
     bindToolbars();
     bindActions();
+    bindSidebar();
     if (Store.currentUser()) enterApp();
     snapshotStatuses();
     lastSessionKey = sessionKey();
@@ -54,8 +55,54 @@
         if (Store.currentUser()) enterApp(); else showLogin();
       }
       renderCurrent();
+      updateHamburgerNotif();
     });
     setInterval(tick, 30000);
+  }
+
+  /* ======================= القائمة الجانبية ======================= */
+  function bindSidebar() {
+    var hamburger = document.getElementById('hamburger-btn');
+    var overlay = document.getElementById('side-overlay');
+    var sidebar = document.getElementById('app-shell').querySelector('.app-side');
+    if (!hamburger || !overlay || !sidebar) return;
+
+    function toggleSidebar() {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+    }
+
+    hamburger.addEventListener('click', toggleSidebar);
+    overlay.addEventListener('click', toggleSidebar);
+
+    // Close sidebar when clicking a nav item on mobile
+    var navButtons = sidebar.querySelectorAll('.side-nav button');
+    navButtons.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('open');
+          overlay.classList.remove('active');
+        }
+      });
+    });
+  }
+
+  function updateHamburgerNotif() {
+    var hamburger = document.getElementById('hamburger-btn');
+    var notifDot = document.getElementById('hamburger-notif');
+    if (!hamburger || !notifDot) return;
+
+    var actions = Store.pendingActions();
+    var hasNotifications = (actions.expired && actions.expired.length > 0) ||
+                          (actions.exhausted && actions.exhausted.length > 0) ||
+                          (actions.holds && actions.holds.length > 0) ||
+                          (actions.requests && actions.requests.length > 0);
+
+    if (hasNotifications) {
+      notifDot.classList.add('show');
+    } else {
+      notifDot.classList.remove('show');
+    }
   }
 
   function fillStatic() {
@@ -105,6 +152,8 @@
     applyRole();
     setView(state.view);
     renderSettings();
+    // Scroll to top when entering dashboard
+    window.scrollTo(0, 0);
   }
 
   function applyRole() {
@@ -175,6 +224,7 @@
     var pa = Store.pendingActions();
     var jobsNav = document.getElementById('nav-jobs-count');
     var holdsNav = document.getElementById('nav-holds-count');
+    var appsNav = document.getElementById('nav-apps-count');
     if (jobsNav) {
       jobsNav.textContent = String(Store.stats().available);
       jobsNav.classList.remove('hidden');
@@ -183,6 +233,11 @@
       var c = pa.holds.length;
       holdsNav.textContent = String(c);
       holdsNav.classList.toggle('hidden', c === 0);
+    }
+    if (appsNav) {
+      var r = pa.requests.length;
+      appsNav.textContent = String(r);
+      appsNav.classList.toggle('hidden', r === 0);
     }
   }
 
@@ -225,6 +280,14 @@
 
     // إجراءات مطلوبة
     var actions = [];
+    pa.requests.forEach(function (r) {
+      actions.push({
+        title: 'طلب استمارة قيد المراجعة: ' + r.serial,
+        sub: r.fullName + ' — ' + (r.requestedCode ? 'يطلب الوظيفة ' + r.requestedCode : 'طلب عام') + ' · ' + r.phone,
+        badge: '<span class="badge warn">قيد المراجعة</span>',
+        act: { label: 'مراجعة', handler: function () { setView('applicants'); reviewRequestModal(r.serial); } }
+      });
+    });
     pa.holds.forEach(function (h) {
       actions.push({
         title: 'حجز جارٍ على الوظيفة ' + h.job.code,
@@ -303,7 +366,11 @@
       if (j.status === 'reserved' && j.holdExpiresAt) {
         holdCell = '<div class="tiny">الاستمارة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div>' + UI.holdHtml(j.holdExpiresAt, { withDate: false });
       }
+      var imageCell = j.imageUrl 
+        ? '<img src="' + UI.esc(j.imageUrl) + '" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #ddd" alt="' + UI.esc(j.title) + '">'
+        : '<span class="tiny muted">لا صورة</span>';
       return '<tr>' +
+        '<td>' + imageCell + '</td>' +
         '<td><span class="chip chip-code mono">' + UI.esc(j.code) + '</span></td>' +
         '<td><b>' + UI.esc(j.title) + '</b><div class="tiny muted">' + UI.esc(j.category) + '</div></td>' +
         '<td>' + UI.esc(j.region) + '</td>' +
@@ -322,7 +389,7 @@
           '<button class="btn btn-outline btn-sm" data-job-assign="' + UI.esc(j.code) + '">' + UI.ic('user-plus') + ' ترشيح</button>' +
           '<button class="btn btn-danger btn-sm" data-job-del="' + UI.esc(j.code) + '">' + UI.ic('trash') + '</button>' +
         '</div></td></tr>';
-    }).join('') || '<tr><td colspan="9" class="table-empty">لا توجد وظائف مطابقة</td></tr>';
+    }).join('') || '<tr><td colspan="10" class="table-empty">لا توجد وظائف مطابقة</td></tr>';
 
     tbody.querySelectorAll('[data-job-edit]').forEach(function (b) {
       b.addEventListener('click', function () { jobModal(b.getAttribute('data-job-edit')); });
@@ -364,6 +431,10 @@
     var e = (j && j.employer) || { name: '', phone: '', address: '' };
 
     var body = '<form id="job-form" class="grid grid-2" style="gap:14px">' +
+      '<div class="field" style="grid-column:1/-1"><label for="f-image">صورة الوظيفة (اختياري)</label>' +
+        '<input type="file" id="f-image" accept="image/*" style="margin-bottom:8px">' +
+        '<div id="image-preview" style="margin-top:8px">' + (j && j.imageUrl ? '<img src="' + UI.esc(j.imageUrl) + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #ddd">' : '') + '</div>' +
+        '<p class="tiny muted" style="margin:4px 0 0 0">ارفع صورة جذابة للوظيفة ( JPG, PNG )</p></div>' +
       '<div class="field"><label for="f-title">عنوان الوظيفة *</label><input type="text" id="f-title" required value="' + UI.esc(j ? j.title : '') + '"></div>' +
       '<div class="field"><label for="f-cat">التصنيف</label><select id="f-cat">' + cats + '</select></div>' +
       '<div class="field"><label for="f-region">المنطقة *</label><select id="f-region">' + regionsList + '</select></div>' +
@@ -388,6 +459,28 @@
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="job-save">' + UI.ic('check') + (j ? ' حفظ التعديلات' : ' إضافة الوظيفة') + '</button>',
       onMount: function (box, close) {
+        var imageFile = box.querySelector('#f-image');
+        var imagePreview = box.querySelector('#image-preview');
+        var imageData = j ? j.imageUrl : '';
+        
+        // Handle image upload
+        imageFile.addEventListener('change', function(e) {
+          var file = e.target.files[0];
+          if (!file) return;
+          
+          if (file.size > 2 * 1024 * 1024) {
+            UI.toast('err', 'حجم كبير', 'الحد الأقصى 2 ميجابايت');
+            return;
+          }
+          
+          var reader = new FileReader();
+          reader.onload = function(e) {
+            imageData = e.target.result;
+            imagePreview.innerHTML = '<img src="' + imageData + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #ddd">';
+          };
+          reader.readAsDataURL(file);
+        });
+        
         box.querySelector('#job-save').addEventListener('click', function () {
           var f = box.querySelector('#job-form');
           if (!f.reportValidity()) return;
@@ -404,7 +497,8 @@
             employerName: box.querySelector('#f-ename').value.trim(),
             employerPhone: box.querySelector('#f-ephone').value.trim(),
             employerAddress: box.querySelector('#f-eaddr').value.trim(),
-            interviewLocation: box.querySelector('#f-interview').value.trim()
+            interviewLocation: box.querySelector('#f-interview').value.trim(),
+            imageUrl: imageData
           };
           if (j) {
             Store.updateJob(j.code, {
@@ -412,7 +506,8 @@
               salaryMin: data.salaryMin, salaryMax: data.salaryMax, gender: data.gender,
               vacancies: data.vacancies, requirements: data.requirements,
               employer: { name: data.employerName, phone: data.employerPhone, address: data.employerAddress },
-              interviewLocation: data.interviewLocation
+              interviewLocation: data.interviewLocation,
+              imageUrl: data.imageUrl
             });
             UI.toast('ok', 'تم التحديث', 'حُفظت بيانات الوظيفة ' + j.code);
           } else {
@@ -475,22 +570,78 @@
       var st = Store.formStatus(a);
       var left = Store.attemptsLeft(a.serial);
       var hold = a.holds ? '<span class="badge warn">حجز جارٍ</span>' : '';
-      return '<tr>' +
-        '<td><span class="mono">' + UI.esc(a.serial) + '</span>' + (a.requestedCode ? '<div class="tiny"><span class="chip chip-gold">طلب: ' + UI.esc(a.requestedCode) + '</span></div>' : '') + '</td>' +
-        '<td><b>' + UI.esc(a.fullName) + '</b><div class="tiny muted">' + UI.esc(a.address || '') + '</div></td>' +
-        '<td class="mono tiny" dir="ltr">' + UI.esc(a.phone) + '</td>' +
-        '<td class="tiny" dir="ltr">' + Store.fmtDate(a.issueDate) + '</td>' +
-        '<td class="tiny" dir="ltr">' + Store.fmtDate(a.expiryDate) + '</td>' +
-        '<td class="tiny">' + (a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>' +
-        '<td>' + a.attemptsUsed + ' / ' + Store.settings().attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>' +
-        '<td>' + UI.formBadge(st) + (a.feePaid ? '<div class="tiny"><span class="badge ok">الرسم مستلم</span></div>' : '<div class="tiny"><span class="badge muted">الرسم غير مستلم</span></div>') + '</td>' +
-        '<td><div class="cell-actions">' +
+      var isPending = st === 'pending';
+      var isRejected = st === 'rejected';
+
+      var requestChip = a.requestedCode ? '<div class="tiny"><span class="chip chip-gold">طلب: ' + UI.esc(a.requestedCode) + '</span></div>' : '';
+      var nameCell = '<b>' + UI.esc(a.fullName) + '</b><div class="tiny muted">' + UI.esc(a.address || '') + '</div>' +
+        (isRejected && a.rejectReason ? '<div class="tiny"><span class="badge danger">السبب: ' + UI.esc(a.rejectReason) + '</span></div>' : '');
+
+      var dateCells = isPending || isRejected
+        ? '<td class="tiny muted">—</td><td class="tiny muted">—</td><td class="tiny muted">—</td>'
+        : '<td class="tiny" dir="ltr">' + Store.fmtDate(a.issueDate) + '</td>' +
+          '<td class="tiny" dir="ltr">' + Store.fmtDate(a.expiryDate) + '</td>' +
+          '<td class="tiny">' + (a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>';
+
+      var attemptsCell = isPending || isRejected
+        ? '<td class="tiny muted">—</td>'
+        : '<td>' + a.attemptsUsed + ' / ' + Store.settings().attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>';
+
+      var statusCell = '<td>' + UI.formBadge(st);
+      if (!isPending && !isRejected) {
+        var fee = Number(a.fee != null ? a.fee : Store.settings().formFee);
+        var paidAmount = Number(a.paidAmount || 0);
+        if (paidAmount >= fee) {
+          statusCell += '<div class="tiny"><span class="badge ok">الرسم مستلم</span></div>';
+        } else if (paidAmount > 0) {
+          statusCell += '<div class="tiny"><span class="badge warn">جزئي: ' + Store.money(paidAmount) + '</span></div>';
+        } else {
+          statusCell += '<div class="tiny"><span class="badge muted">الرسم غير مستلم</span></div>';
+        }
+      }
+      statusCell += '</td>';
+
+      var actionsCell;
+      if (isPending) {
+        actionsCell = '<td><div class="cell-actions">' +
+          '<button class="btn btn-ok btn-sm" data-app-approve="' + UI.esc(a.serial) + '">' + UI.ic('check') + ' قبول</button>' +
+          '<button class="btn btn-danger btn-sm" data-app-reject="' + UI.esc(a.serial) + '">' + UI.ic('x') + ' رفض</button>' +
+          '</div></td>';
+      } else if (isRejected) {
+        actionsCell = '<td class="tiny muted">طلب مرفوض — لا إجراء</td>';
+      } else {
+        actionsCell = '<td><div class="cell-actions">' +
           '<button class="btn btn-lapis btn-sm" data-app-attempts="' + UI.esc(a.serial) + '">' + UI.ic('list') + ' المحاولات</button>' +
           '<button class="btn btn-gold btn-sm" data-app-print="' + UI.esc(a.serial) + '">' + UI.ic('print') + ' طباعة</button>' +
           '<button class="btn btn-outline btn-sm" data-app-verify="' + UI.esc(a.serial) + '">' + UI.ic('qr') + '</button>' +
           '<button class="btn btn-outline btn-sm" data-app-fee="' + UI.esc(a.serial) + '">' + UI.ic('money') + '</button>' +
-        '</div></td></tr>';
+          '</div></td>';
+      }
+
+      return '<tr>' +
+        '<td><span class="mono">' + UI.esc(a.serial) + '</span>' + requestChip + '</td>' +
+        '<td>' + nameCell + '</td>' +
+        '<td class="mono tiny" dir="ltr">' + UI.esc(a.phone) + '</td>' +
+        dateCells +
+        attemptsCell +
+        statusCell +
+        actionsCell +
+        '</tr>';
     }).join('') || '<tr><td colspan="9" class="table-empty">لا توجد استمارات مطابقة</td></tr>';
+
+    tbody.querySelectorAll('[data-app-approve]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var serial = b.getAttribute('data-app-approve');
+        var res = Store.approveApplicant(serial);
+        if (res.ok) {
+          UI.toast('ok', 'قُبل الطلب', 'صدرت الاستمارة ' + serial + ' رسمياً — صلاحية 30 يوماً.');
+          renderApplicants(); renderNavCounts();
+        } else UI.toast('err', 'تعذّر القبول', res.error);
+      });
+    });
+    tbody.querySelectorAll('[data-app-reject]').forEach(function (b) {
+      b.addEventListener('click', function () { reviewRequestModal(b.getAttribute('data-app-reject'), true); });
+    });
 
     tbody.querySelectorAll('[data-app-attempts]').forEach(function (b) {
       b.addEventListener('click', function () { attemptsModal(b.getAttribute('data-app-attempts')); });
@@ -531,10 +682,139 @@
     tbody.querySelectorAll('[data-app-fee]').forEach(function (b) {
       b.addEventListener('click', function () {
         var serial = b.getAttribute('data-app-fee');
-        var app = Store.getApplicant(serial);
-        Store.setFeePaid(serial, !app.feePaid);
-        UI.toast('ok', app.feePaid ? 'أُلغي تسجيل الرسم' : 'سُجّل استلام الرسم', serial + ' — ' + Store.money(app.fee));
+        paymentModal(serial);
       });
+    });
+  }
+
+  /* نافذة تسجيل الدفعة (كاملة أو جزئية) */
+  function paymentModal(serial) {
+    var app = Store.getApplicant(serial);
+    if (!app) return;
+    var fee = Number(app.fee != null ? app.fee : Store.settings().formFee);
+    var paid = Number(app.paidAmount || 0);
+    var remaining = Math.max(0, fee - paid);
+    
+    var body = '<div class="field mb-2">' +
+      '<label>الاستمارة</label>' +
+      '<div class="mono">' + UI.esc(serial) + ' — ' + UI.esc(app.fullName) + '</div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label>رسم الاستمارة</label>' +
+      '<div><b>' + Store.money(fee) + '</b></div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label>المبالغ المدفوع سابقاً</label>' +
+      '<div>' + Store.money(paid) + (paid > 0 ? ' <span class="badge ok">مدفوع</span>' : ' <span class="badge muted">غير مدفوع</span>') + '</div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label>المتبقي</label>' +
+      '<div><b style="color:' + (remaining > 0 ? 'var(--danger)' : 'var(--ok)') + '">' + Store.money(remaining) + '</b></div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label for="pay-amount">المبلغ المراد تسجيله (د.ع)</label>' +
+      '<input type="number" id="pay-amount" min="0" max="' + remaining + '" step="1000" value="' + remaining + '" placeholder="0">' +
+      '</div>' +
+      '<div class="flex" style="gap:8px;margin-top:8px">' +
+      '<button class="btn btn-outline btn-sm" id="pay-full">كامل (' + Store.money(remaining) + ')</button>' +
+      '<button class="btn btn-outline btn-sm" id="pay-half">نصف (' + Store.money(Math.round(remaining / 2)) + ')</button>' +
+      '<button class="btn btn-outline btn-sm" id="pay-clear">تصفير</button>' +
+      '</div>';
+    
+    UI.modal({
+      title: 'تسجيل دفعة',
+      subtitle: 'يمكنك تسجيل دفعة كاملة أو جزئية',
+      body: body,
+      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
+        '<button class="btn btn-ok" id="pay-save">' + UI.ic('check') + ' تسجيل الدفعة</button>',
+      onMount: function (box, close) {
+        var input = box.querySelector('#pay-amount');
+        
+        box.querySelector('#pay-full').addEventListener('click', function () {
+          input.value = remaining;
+        });
+        box.querySelector('#pay-half').addEventListener('click', function () {
+          input.value = Math.round(remaining / 2);
+        });
+        box.querySelector('#pay-clear').addEventListener('click', function () {
+          input.value = 0;
+        });
+        
+        box.querySelector('#pay-save').addEventListener('click', function () {
+          var amount = Number(input.value) || 0;
+          if (amount < 0 || amount > remaining) {
+            UI.toast('err', 'مبلغ غير صحيح', 'يجب أن يكون بين 0 و ' + Store.money(remaining));
+            return;
+          }
+          
+          var newTotal = paid + amount;
+          Store.setFeePaid(serial, true, newTotal);
+          
+          if (newTotal >= fee) {
+            UI.toast('ok', 'تم التسجيل', 'سُجّل استلام الرسم كاملاً — ' + Store.money(newTotal));
+          } else if (newTotal > 0) {
+            UI.toast('warn', 'دفعة جزئية', 'سُجّل ' + Store.money(amount) + ' — المتبقي: ' + Store.money(fee - newTotal));
+          } else {
+            UI.toast('info', 'تم التصفير', 'أُلغي تسجيل الرسم');
+          }
+          close();
+        });
+      }
+    });
+  }
+
+  /* مراجعة طلب استمارة قيد المراجعة: قبول أو رفض */
+  function reviewRequestModal(serial, rejectMode) {
+    var app = Store.getApplicant(serial);
+    if (!app || Store.formStatus(app) !== 'pending') return;
+    var job = app.requestedCode ? Store.getJob(app.requestedCode) : null;
+    var body =
+      '<div class="data-grid mb-3">' +
+        '<div class="data-item"><div class="k">رقم الطلب</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
+        '<div class="data-item"><div class="k">الاسم الكامل</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
+        '<div class="data-item"><div class="k">الهاتف</div><div class="v mono" dir="ltr">' + UI.esc(app.phone) + '</div></div>' +
+        '<div class="data-item"><div class="k">تاريخ الميلاد</div><div class="v" dir="ltr">' + Store.fmtDate(app.dob || '') + '</div></div>' +
+        '<div class="data-item"><div class="k">الجنس</div><div class="v">' + UI.esc(app.gender || '—') + '</div></div>' +
+        '<div class="data-item"><div class="k">العنوان</div><div class="v">' + UI.esc(app.address || '—') + '</div></div>' +
+        '<div class="data-item" style="grid-column:1/-1"><div class="k">الوظيفة المطلوبة</div><div class="v">' +
+          (job ? '<span class="chip chip-code mono">' + UI.esc(job.code) + '</span> ' + UI.esc(job.title) + ' — ' + UI.esc(job.region) : (UI.esc(app.requestedCode || '—') + ' <span class="tiny muted">(كود غير معروف)</span>')) +
+        '</div></div>' +
+      '</div>' +
+      (rejectMode
+        ? '<div class="field"><label for="rr-reason">سبب الرفض</label><input type="text" id="rr-reason" placeholder="مثال: بيانات ناقصة / لا يطابق الشروط"></div>'
+        : '<div class="panel" style="background:#fdf6e3;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' عند القبول تصدر الاستمارة رسمياً برقم ' + UI.esc(app.serial) + ' وتصبح صالحة 30 يوماً بخمس محاولات.</p></div></div>');
+
+    UI.modal({
+      title: (rejectMode ? 'رفض طلب الاستمارة' : 'مراجعة طلب الاستمارة'),
+      subtitle: 'طلب قيد المراجعة — ' + app.serial,
+      wide: true, body: body,
+      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
+        (rejectMode
+          ? '<button class="btn btn-danger" id="rr-confirm">' + UI.ic('x') + ' تأكيد الرفض</button>'
+          : '<button class="btn btn-ok" id="rr-approve">' + UI.ic('check') + ' قبول وإصدار الاستمارة</button>'),
+      onMount: function (box, close) {
+        var approveBtn = box.querySelector('#rr-approve');
+        if (approveBtn) approveBtn.addEventListener('click', function () {
+          var res = Store.approveApplicant(serial);
+          close();
+          if (res.ok) {
+            UI.toast('ok', 'قُبل الطلب', 'صدرت الاستمارة ' + serial + ' — ' + app.fullName);
+            renderApplicants(); renderNavCounts(); renderOverview();
+            attemptsModal(serial);
+          } else UI.toast('err', 'تعذّر القبول', res.error);
+        });
+        var rejectBtn = box.querySelector('#rr-confirm');
+        if (rejectBtn) rejectBtn.addEventListener('click', function () {
+          var reason = (box.querySelector('#rr-reason') || {}).value || '';
+          var res = Store.rejectApplicant(serial, reason.trim());
+          close();
+          if (res.ok) {
+            UI.toast('ok', 'رُفض الطلب', serial + ' — ' + app.fullName);
+            renderApplicants(); renderNavCounts(); renderOverview();
+          } else UI.toast('err', 'تعذّر الرفض', res.error);
+        });
+      }
     });
   }
 
@@ -851,9 +1131,50 @@
     document.getElementById('fin-table-body').innerHTML = rows.map(function (r) {
       return '<tr><td><b>' + UI.esc(r.name) + '</b><div class="tiny muted mono">' + UI.esc(r.user) + '</div></td>' +
         '<td>' + r.forms + '</td><td>' + r.printed + '</td><td>' + Store.money(Store.settings().formFee) + '</td>' +
-        '<td><b>' + Store.money(r.expected) + '</b></td><td>' + Store.money(r.collected) + '</td>' +
+        '<td><b>' + Store.money(r.expected) + '</b></td>' +
+        '<td><input type="number" class="fin-collected" data-user="' + UI.esc(r.user) + '" value="' + r.collected + '" min="0" step="1000" style="width:120px;padding:4px 8px;border:1px solid #ddd;border-radius:6px"></td>' +
+        '<td><span class="badge ok">' + r.paid + ' مدفوع</span> <span class="badge warn">' + r.partial + ' جزئي</span> <span class="badge danger">' + r.unpaid + ' غير مدفوع</span></td>' +
         '<td>' + r.hires + '</td><td>' + r.holds + '</td></tr>';
-    }).join('') || '<tr><td colspan="8" class="table-empty">لا بيانات</td></tr>';
+    }).join('') || '<tr><td colspan="9" class="table-empty">لا بيانات</td></tr>';
+
+    // Add total row inside tbody
+    var totalRow = '<tr style="background:#f9f6ef;font-weight:900;border-top:2px solid var(--gold)">' +
+      '<td colspan="4" style="text-align:left;padding-left:20px">المجموع الكلي</td>' +
+      '<td><b>' + Store.money(totals.expected) + '</b></td>' +
+      '<td><b style="color:var(--ok)">' + Store.money(totals.collected) + '</b></td>' +
+      '<td colspan="3"></td></tr>';
+    document.getElementById('fin-table-body').insertAdjacentHTML('beforeend', totalRow);
+
+    // Bind input change events
+    document.querySelectorAll('.fin-collected').forEach(function (input) {
+      input.addEventListener('change', function () {
+        var user = input.getAttribute('data-user');
+        var newCollected = Number(input.value) || 0;
+        updateEmployeeCollected(user, newCollected);
+      });
+    });
+  }
+
+  function updateEmployeeCollected(user, newCollected) {
+    // Update all applicants for this user
+    var apps = Store.listApplicants({ user: user });
+    var fee = Store.settings().formFee;
+    var remaining = newCollected;
+    
+    apps.forEach(function (app) {
+      if (remaining <= 0) {
+        Store.setFeePaid(app.serial, false, 0);
+      } else if (remaining >= fee) {
+        Store.setFeePaid(app.serial, true, fee);
+        remaining -= fee;
+      } else {
+        Store.setFeePaid(app.serial, true, remaining);
+        remaining = 0;
+      }
+    });
+    
+    UI.toast('ok', 'تم التحديث', 'حُفظ المبلغ المستلَم لـ ' + user);
+    renderFinance();
   }
 
   /* ======================= الإعدادات ======================= */
@@ -867,8 +1188,25 @@
     var db = Store.db();
     set('db-jobs', db.jobs.length); set('db-apps', db.applicants.length);
     set('db-attempts', db.attempts.length); set('db-audit', db.audit.length);
+    var backups = Store.getScheduledBackups();
+    set('db-backups', backups.length);
     var vb = document.getElementById('set-verify-base');
     if (vb) vb.textContent = CFG.verifyBase;
+
+    // عرض حالة الجدولة
+    var scheduleStatus = document.getElementById('schedule-status');
+    if (scheduleStatus) {
+      var schedule = null;
+      try { schedule = JSON.parse(localStorage.getItem('brc-auto-backup-schedule')); } catch(e) {}
+      
+      if (schedule) {
+        var days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        var selectedDays = schedule.days.map(function(d) { return days[d]; }).join('، ');
+        scheduleStatus.innerHTML = '<b style="color:var(--ok)">✓ مفعّل</b> — ' + selectedDays + ' الساعة ' + schedule.time;
+      } else {
+        scheduleStatus.innerHTML = '<span style="color:var(--muted)">لم يتم تفعيل الجدولة بعد</span>';
+      }
+    }
   }
 
   /* ======================= الأحداث العامة ======================= */
@@ -1040,6 +1378,266 @@
       UI.download('brc-audit-' + Store.fmtDate(new Date()) + '.csv', '\ufeff' + csv, 'text/csv;charset=utf-8');
       UI.toast('ok', 'تصدير السجل', rows.length + ' سجل بصيغة CSV.');
     });
+
+    var sb = document.getElementById('btn-schedule-backup');
+    if (sb) sb.addEventListener('click', scheduleBackupModal);
+
+    var vb = document.getElementById('btn-view-backups');
+    if (vb) vb.addEventListener('click', viewBackupsModal);
+
+    var qb = document.getElementById('btn-quick-backup');
+    if (qb) qb.addEventListener('click', function() {
+      var name = 'نسخة سريعة - ' + Store.fmtDateTime(new Date());
+      var backup = Store.saveScheduledBackup(name, null);
+      if (backup) {
+        UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة الاحتياطية: ' + name);
+        renderSettings();
+      }
+    });
+
+    var es = document.getElementById('btn-edit-schedule');
+    if (es) es.addEventListener('click', scheduleBackupModal);
+
+    var ds = document.getElementById('btn-disable-schedule');
+    if (ds) ds.addEventListener('click', function() {
+      UI.confirm({
+        title: 'إيقاف الجدولة',
+        danger: true,
+        confirmText: 'إيقاف',
+        message: 'سيتم إيقاف النسخ الاحتياطي التلقائي المجدول. هل أنت متأكد؟'
+      }).then(function(ok) {
+        if (ok) {
+          localStorage.removeItem('brc-auto-backup-schedule');
+          UI.toast('ok', 'تم الإيقاف', 'أُوقفت الجدولة التلقائية');
+          renderSettings();
+        }
+      });
+    });
+  }
+
+  /* نافذة جدولة النسخ الاحتياطي */
+  function scheduleBackupModal() {
+    var schedule = null;
+    try { schedule = JSON.parse(localStorage.getItem('brc-auto-backup-schedule')); } catch(e) {}
+    
+    var days = [
+      { id: 0, name: 'الأحد' },
+      { id: 1, name: 'الإثنين' },
+      { id: 2, name: 'الثلاثاء' },
+      { id: 3, name: 'الأربعاء' },
+      { id: 4, name: 'الخميس' },
+      { id: 5, name: 'الجمعة' },
+      { id: 6, name: 'السبت' }
+    ];
+
+    var body = '<form id="backup-form">' +
+      '<div class="field mb-2">' +
+      '<label for="backup-name">اسم النسخة الاحتياطية *</label>' +
+      '<input type="text" id="backup-name" required placeholder="مثال: نسخة نهاية الشهر">' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label>نطاق البيانات</label>' +
+      '<div class="flex" style="gap:8px">' +
+      '<label style="display:flex;align-items:center;gap:4px"><input type="radio" name="backup-range" value="all" checked style="width:auto"> كل البيانات</label>' +
+      '<label style="display:flex;align-items:center;gap:4px"><input type="radio" name="backup-range" value="custom" style="width:auto"> نطاق مخصص</label>' +
+      '</div>' +
+      '</div>' +
+      '<div id="custom-range" style="display:none">' +
+      '<div class="flex" style="gap:8px">' +
+      '<div class="field" style="flex:1"><label for="backup-from">من تاريخ</label><input type="date" id="backup-from"></div>' +
+      '<div class="field" style="flex:1"><label for="backup-to">إلى تاريخ</label><input type="date" id="backup-to"></div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label>الجدولة التلقائية</label>' +
+      '<div class="flex" style="gap:8px;flex-wrap:wrap">' +
+      '<label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="backup-auto" style="width:auto" ' + (schedule ? 'checked' : '') + '> تفعيل الجدولة التلقائية</label>' +
+      '</div>' +
+      '</div>' +
+      '<div id="schedule-options" style="display:' + (schedule ? 'block' : 'none') + '">' +
+      '<div class="field mb-2">' +
+      '<label>أيام الأسبوع</label>' +
+      '<div class="flex" style="gap:6px;flex-wrap:wrap">' +
+      days.map(function(day) {
+        var checked = schedule && schedule.days && schedule.days.includes(day.id) ? 'checked' : '';
+        return '<label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:#f4f6fb;border-radius:6px">' +
+          '<input type="checkbox" name="backup-days" value="' + day.id + '" style="width:auto" ' + checked + '> ' + day.name + '</label>';
+      }).join('') +
+      '</div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label for="backup-time">وقت النسخ</label>' +
+      '<input type="time" id="backup-time" value="' + (schedule && schedule.time ? schedule.time : '23:00') + '" style="width:150px">' +
+      '</div>' +
+      '<div class="tiny muted mt-2">' +
+      '<b>اقتراح:</b> يمكنك رفع النسخ الاحتياطية إلى Google Drive أو Dropbox يدوياً للحفاظ عليها.' +
+      '</div>' +
+      '</div>' +
+      '</form>';
+
+    UI.modal({
+      title: 'جدولة النسخ الاحتياطي',
+      subtitle: 'احفظ نسخة احتياطية من البيانات مع جدولة تلقائية',
+      body: body,
+      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
+        '<button class="btn btn-gold" id="backup-save">' + UI.ic('check') + ' حفظ</button>',
+      onMount: function (box, close) {
+        var radios = box.querySelectorAll('input[name="backup-range"]');
+        var customRange = box.querySelector('#custom-range');
+        var autoCheck = box.querySelector('#backup-auto');
+        var scheduleOptions = box.querySelector('#schedule-options');
+        
+        radios.forEach(function(radio) {
+          radio.addEventListener('change', function() {
+            customRange.style.display = this.value === 'custom' ? 'block' : 'none';
+          });
+        });
+
+        autoCheck.addEventListener('change', function() {
+          scheduleOptions.style.display = this.checked ? 'block' : 'none';
+        });
+
+        box.querySelector('#backup-save').addEventListener('click', function () {
+          var name = box.querySelector('#backup-name').value.trim();
+          if (!name) {
+            UI.toast('err', 'اسم مطلوب', 'يرجى إدخال اسم للنسخة الاحتياطية');
+            return;
+          }
+
+          var rangeType = box.querySelector('input[name="backup-range"]:checked').value;
+          var dateRange = null;
+          
+          if (rangeType === 'custom') {
+            var from = box.querySelector('#backup-from').value;
+            var to = box.querySelector('#backup-to').value;
+            if (!from || !to) {
+              UI.toast('err', 'تواريخ مطلوبة', 'يرجى تحديد نطاق التاريخ');
+              return;
+            }
+            dateRange = { from: from, to: to };
+          }
+
+          var backup = Store.saveScheduledBackup(name, dateRange);
+          if (!backup) {
+            UI.toast('err', 'فشل الحفظ', 'لم يتم حفظ النسخة الاحتياطية');
+            return;
+          }
+
+          // حفظ الجدولة التلقائية
+          if (autoCheck.checked) {
+            var selectedDays = [];
+            box.querySelectorAll('input[name="backup-days"]:checked').forEach(function(cb) {
+              selectedDays.push(Number(cb.value));
+            });
+            var time = box.querySelector('#backup-time').value;
+            
+            if (selectedDays.length === 0) {
+              UI.toast('warn', 'تحذير', 'لم يتم اختيار أيام - لن تعمل الجدولة التلقائية');
+            } else {
+              var scheduleData = {
+                name: name,
+                days: selectedDays,
+                time: time,
+                rangeType: rangeType,
+                dateRange: dateRange,
+                createdAt: new Date().toISOString()
+              };
+              localStorage.setItem('brc-auto-backup-schedule', JSON.stringify(scheduleData));
+              UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة والجدولة التلقائية');
+            }
+          } else {
+            UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة الاحتياطية');
+          }
+
+          renderSettings();
+          close();
+        });
+      }
+    });
+  }
+
+  /* نافذة عرض النسخ الاحتياطية */
+  function viewBackupsModal() {
+    var backups = Store.getScheduledBackups();
+    
+    var body = '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:600px">' +
+      '<thead><tr><th>الاسم</th><th>تاريخ الإنشاء</th><th>نطاق البيانات</th><th>إجراءات</th></tr></thead>' +
+      '<tbody>' +
+      (backups.length === 0 ? '<tr><td colspan="4" class="table-empty">لا توجد نسخ احتياطية</td></tr>' :
+        backups.map(function(b) {
+          return '<tr>' +
+            '<td><b>' + UI.esc(b.name) + '</b></td>' +
+            '<td class="tiny">' + Store.fmtDateTime(b.createdAt) + '</td>' +
+            '<td class="tiny">' + (b.dateRange ? b.dateRange.from + ' إلى ' + b.dateRange.to : 'كل البيانات') + '</td>' +
+            '<td><div class="cell-actions">' +
+            '<button class="btn btn-outline btn-sm" data-backup-export="' + b.id + '">' + UI.ic('download') + ' تصدير</button>' +
+            '<button class="btn btn-ok btn-sm" data-backup-restore="' + b.id + '">' + UI.ic('refresh') + ' استعادة</button>' +
+            '<button class="btn btn-danger btn-sm" data-backup-delete="' + b.id + '">' + UI.ic('trash') + '</button>' +
+            '</div></td></tr>';
+        }).join('')) +
+      '</tbody></table></div></div>';
+
+    UI.modal({
+      title: 'النسخ الاحتياطية',
+      subtitle: backups.length + ' نسخة احتياطية',
+      wide: true,
+      body: body,
+      footer: '<button class="btn btn-outline" data-close>إغلاق</button>',
+      onMount: function (box, close) {
+        box.querySelectorAll('[data-backup-export]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var id = btn.getAttribute('data-backup-export');
+            var data = Store.exportScheduledBackup(id);
+            if (data) {
+              UI.download('brc-backup-' + Store.fmtDate(new Date()) + '.json', data, 'application/json');
+              UI.toast('ok', 'تم التصدير', 'حُفظ ملف النسخة الاحتياطية');
+            }
+          });
+        });
+
+        box.querySelectorAll('[data-backup-restore]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var id = btn.getAttribute('data-backup-restore');
+            UI.confirm({
+              title: 'استعادة النسخة الاحتياطية',
+              danger: true,
+              confirmText: 'استعادة',
+              message: 'سيتم استبدال البيانات الحالية بالبيانات من النسخة الاحتياطية. هل أنت متأكد؟'
+            }).then(function(ok) {
+              if (ok) {
+                if (Store.restoreScheduledBackup(id)) {
+                  UI.toast('ok', 'تم الاستعادة', 'استُعيدت البيانات بنجاح');
+                  renderCurrent();
+                  close();
+                } else {
+                  UI.toast('err', 'فشل الاستعادة', 'لم يتم استعادة البيانات');
+                }
+              }
+            });
+          });
+        });
+
+        box.querySelectorAll('[data-backup-delete]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var id = btn.getAttribute('data-backup-delete');
+            UI.confirm({
+              title: 'حذف النسخة الاحتياطية',
+              danger: true,
+              confirmText: 'حذف',
+              message: 'سيتم حذف النسخة الاحتياطية نهائياً. هل أنت متأكد؟'
+            }).then(function(ok) {
+              if (ok) {
+                if (Store.deleteScheduledBackup(id)) {
+                  UI.toast('ok', 'تم الحذف', 'حُذفت النسخة الاحتياطية');
+                  close();
+                  viewBackupsModal(); // إعادة فتح النافذة
+                }
+              }
+            });
+          });
+        });
+      }
+    });
   }
 
   /* إصدار استمارة جديدة للباحث */
@@ -1085,6 +1683,48 @@
       }
     });
   }
+
+  // التحقق من الجدولة التلقائية للنسخ الاحتياطي
+  function checkAutoBackupSchedule() {
+    var schedule = null;
+    try { schedule = JSON.parse(localStorage.getItem('brc-auto-backup-schedule')); } catch(e) { return; }
+    if (!schedule || !schedule.days || !schedule.time) return;
+
+    var now = new Date();
+    var currentDay = now.getDay();
+    var currentTime = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+    
+    // تحقق إذا كان اليوم من الأيام المحددة
+    if (!schedule.days.includes(currentDay)) return;
+    
+    // تحقق إذا كان الوقت مناسباً (خلال 5 دقائق من الوقت المحدد)
+    var [scheduleHour, scheduleMinute] = schedule.time.split(':').map(Number);
+    var scheduleTime = scheduleHour * 60 + scheduleMinute;
+    var currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    if (Math.abs(currentTimeMinutes - scheduleTime) > 5) return;
+    
+    // تحقق إذا تم عمل نسخة اليوم بالفعل
+    var lastBackupKey = 'brc-last-auto-backup-' + now.toISOString().split('T')[0];
+    if (localStorage.getItem(lastBackupKey)) return;
+    
+    // عمل نسخة احتياطية تلقائية
+    var name = 'نسخة تلقائية - ' + Store.fmtDateTime(now);
+    var backup = Store.saveScheduledBackup(name, schedule.dateRange);
+    
+    if (backup) {
+      localStorage.setItem(lastBackupKey, '1');
+      console.log('[BRC] ✓ تم عمل نسخة احتياطية تلقائية:', name);
+      if (window.BRCUI) {
+        window.BRCUI.toast('ok', 'نسخة احتياطية تلقائية', 'تم حفظ النسخة: ' + name);
+      }
+    }
+  }
+
+  // تشغيل التحقق كل دقيقة
+  setInterval(checkAutoBackupSchedule, 60000);
+  // تشغيل التحقق فوراً عند التحميل
+  setTimeout(checkAutoBackupSchedule, 3000);
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

@@ -94,7 +94,7 @@
         holdExpiresAt: null,
         createdAt: created.toISOString(), createdBy: idx % 2 ? 'staff2' : 'staff',
         closedAt: extra.status === 'closed' ? addDays(new Date(), -1).toISOString() : null,
-        notes: '', vacancies: 1
+        notes: '', vacancies: 1, imageUrl: j.imageUrl || ''
       });
     });
     // الباحثون عن عمل + الاستمارات
@@ -176,11 +176,64 @@
     ['attemptLimit', 'validityDays', 'holdHours', 'formFee'].forEach(function (k) {
       if (db.settings[k] == null) db.settings[k] = CFG.rules[k];
     });
+    // ترحيل الصور للوظائف القديمة
+    var needsMigration = false;
+    if (db.jobs && db.jobs.length > 0) {
+      var seedJobs = CFG.seed.jobs;
+      db.jobs.forEach(function(job) {
+        if (!job.imageUrl) {
+          var seedJob = seedJobs.find(function(sj) { return sj.code === job.code; });
+          if (seedJob && seedJob.imageUrl) {
+            job.imageUrl = seedJob.imageUrl;
+            needsMigration = true;
+            console.log('[BRC] ✓ تم إضافة صورة للوظيفة ' + job.code);
+          }
+        }
+      });
+      if (needsMigration) {
+        save();
+        console.log('[BRC] ✓ تم تحديث الصور لجميع الوظائف القديمة');
+        // Trigger re-render for all subscribers
+        setTimeout(function() { emit(); }, 100);
+      }
+    }
     return db;
   }
 
   function save() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) { /* لا تخزين متاح أو المساحة ممتلئة — البيانات تبقى في الذاكرة */ }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+      // حفظ في قائمة التغييرات الأوفلاين
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        var queue = [];
+        try { queue = JSON.parse(localStorage.getItem('brc-offline-queue') || '[]'); } catch(e) {}
+        queue.push({ ts: nowISO(), data: JSON.parse(JSON.stringify(db)) });
+        // احتفظ بآخر 50 نسخة فقط
+        if (queue.length > 50) queue = queue.slice(-50);
+        try { localStorage.setItem('brc-offline-queue', JSON.stringify(queue)); } catch(e) {}
+      }
+    } catch (e) { /* لا تخزين متاح أو المساحة ممتلئة — البيانات تبقى في الذاكرة */ }
+  }
+
+  function syncOfflineChanges() {
+    // مزامنة التغييرات عند العودة للاتصال
+    var queue = [];
+    try { queue = JSON.parse(localStorage.getItem('brc-offline-queue') || '[]'); } catch(e) {}
+    if (queue.length > 0) {
+      audit('مزامنة أوفلاين', 'system', '—', 'تم استعادة الاتصال — تم حفظ ' + queue.length + ' نسخة من التغييرات');
+      // حفظ آخر نسخة كاحتياط
+      try {
+        var lastSync = queue[queue.length - 1];
+        localStorage.setItem('brc-last-offline-sync', JSON.stringify({
+          ts: nowISO(),
+          data: lastSync.data
+        }));
+      } catch(e) {}
+      // مسح قائمة الانتظار
+      try { localStorage.removeItem('brc-offline-queue'); } catch(e) {}
+      save();
+    }
+    return queue.length;
   }
 
   function emit() { sub.version++; sub.listeners.forEach(function (fn) { try { fn(db, sub.version); } catch (e) { } }); }
@@ -298,7 +351,8 @@
       interviewLocation: data.interviewLocation || 'مقر الشركة - الحلة',
       status: 'available', reservedBy: null, holdExpiresAt: null,
       createdAt: nowISO(), createdBy: currentUser() ? currentUser().username : 'system',
-      closedAt: null, notes: '', vacancies: Number(data.vacancies || 1)
+      closedAt: null, notes: '', vacancies: Number(data.vacancies || 1),
+      imageUrl: data.imageUrl || ''
     };
     db.jobs.unshift(job);
     audit('إضافة وظيفة', 'job', job.code, job.title + ' — ' + job.region + ' — الأجر ' + money(job.salaryMin) + ' إلى ' + money(job.salaryMax));
@@ -343,29 +397,62 @@
 
   function createApplicant(data) {
     var issue = new Date();
+    var pending = !!data.pending;
     var app = {
       id: uid('app'), serial: nextSerial(), fullName: data.fullName, phone: data.phone,
       address: data.address, dob: data.dob || '', gender: data.gender || 'ذكر', nationality: data.nationality || 'عراقي',
-      issueDate: issue.toISOString(),
-      expiryDate: addDays(issue, Number(db.settings.validityDays || 30)).toISOString(),
-      status: 'active', createdBy: currentUser() ? currentUser().username : 'system',
+      issueDate: pending ? null : issue.toISOString(),
+      expiryDate: pending ? null : addDays(issue, Number(db.settings.validityDays || 30)).toISOString(),
+      status: pending ? 'pending' : 'active',
+      createdBy: currentUser() ? currentUser().username : 'system',
       createdAt: issue.toISOString(), notes: data.notes || '',
       requestedCode: data.requestedCode || null,
       requestedAt: data.requestedCode ? issue.toISOString() : null,
       fee: Number(data.fee != null ? data.fee : db.settings.formFee),
-      feePaid: !!data.feePaid, printedCount: 0
+      feePaid: !!data.feePaid, printedCount: 0,
+      rejectReason: ''
     };
     db.applicants.unshift(app);
+    if (!pending) createAttempts(app.serial);
+    audit(pending ? 'طلب استمارة جديد' : 'إصدار استمارة', 'applicant', app.serial,
+      (pending ? 'طلب إلكتروني قيد المراجعة من الباحث ' : 'إصدار استمارة للباحث ') + app.fullName + ' — رسم ' + money(app.fee));
+    save(); emit();
+    return app;
+  }
+
+  function createAttempts(serial) {
     for (var i = 1; i <= Number(db.settings.attemptLimit || 5); i++) {
       db.attempts.push({
-        id: uid('att'), serial: app.serial, no: i, jobId: null, jobCode: null, jobTitle: null,
+        id: uid('att'), serial: serial, no: i, jobId: null, jobCode: null, jobTitle: null,
         location: null, employerName: null, employerPhone: null, slotStatus: 'empty',
         selectedAt: null, holdExpiresAt: null, closedAt: null, note: '', staff: null
       });
     }
-    audit('إصدار استمارة', 'applicant', app.serial, 'إصدار استمارة للباحث ' + app.fullName + ' — صلاحية 30 يوماً، رسم ' + money(app.fee));
+  }
+
+  /* قبول طلب استمارة قيد المراجعة ⇒ تتحول لاستمارة رسمية سارية */
+  function approveApplicant(serial) {
+    var app = getApplicant(serial);
+    if (!app || app.status !== 'pending') return { ok: false, error: 'الطلب غير موجود أو ليس قيد المراجعة' };
+    var issue = new Date();
+    app.status = 'active';
+    app.issueDate = issue.toISOString();
+    app.expiryDate = addDays(issue, Number(db.settings.validityDays || 30)).toISOString();
+    if (!getAttempts(serial).length) createAttempts(serial);
+    audit('قبول طلب استمارة', 'applicant', serial, 'قبول طلب الباحث ' + app.fullName + ' — صدرت الاستمارة رسمياً برقم ' + serial);
     save(); emit();
-    return app;
+    return { ok: true, app: app };
+  }
+
+  /* رفض طلب استمارة قيد المراجعة */
+  function rejectApplicant(serial, reason) {
+    var app = getApplicant(serial);
+    if (!app || app.status !== 'pending') return { ok: false, error: 'الطلب غير موجود أو ليس قيد المراجعة' };
+    app.status = 'rejected';
+    app.rejectReason = reason || '';
+    audit('رفض طلب استمارة', 'applicant', serial, 'رفض طلب الباحث ' + app.fullName + (reason ? ' — السبب: ' + reason : ''));
+    save(); emit();
+    return { ok: true, app: app };
   }
 
   function getApplicant(serial) {
@@ -378,7 +465,7 @@
       var copy = Object.assign({}, a);
       copy.attempts = getAttempts(a.serial);
       copy.attemptsUsed = copy.attempts.filter(function (t) { return t.slotStatus !== 'empty'; }).length;
-      copy.daysLeft = diffDays(a.expiryDate, new Date());
+      copy.daysLeft = a.expiryDate ? diffDays(a.expiryDate, new Date()) : null;
       copy.holds = copy.attempts.filter(function (t) { return t.slotStatus === 'reserved'; }).length;
       return copy;
     });
@@ -410,6 +497,8 @@
 
   function formStatus(app) {
     if (!app) return 'active';
+    if (app.status === 'pending') return 'pending';
+    if (app.status === 'rejected') return 'rejected';
     if (getAttempts(app.serial).some(function (t) { return t.slotStatus === 'succeeded'; })) return 'completed';
     if (new Date(app.expiryDate).getTime() < Date.now()) return 'expired';
     if (attemptsLeft(app.serial) === 0) return 'exhausted';
@@ -421,7 +510,10 @@
   function selectAttempt(serial, jobCode) {
     var app = getApplicant(serial);
     if (!app) return { ok: false, error: 'الاستمارة غير موجودة' };
-    if (formStatus(app) === 'expired') return { ok: false, error: 'انتهت صلاحية الاستمارة (30 يوماً)' };
+    var st = formStatus(app);
+    if (st === 'pending') return { ok: false, error: 'الطلب قيد المراجعة — اقبل الطلب أولاً قبل الترشيح' };
+    if (st === 'rejected') return { ok: false, error: 'الطلب مرفوض — لا يمكن الترشيح عليه' };
+    if (st === 'expired') return { ok: false, error: 'انتهت صلاحية الاستمارة (30 يوماً)' };
     var job = getJob(jobCode);
     if (!job) return { ok: false, error: 'الوظيفة غير موجودة' };
     if (job.status !== 'available') return { ok: false, error: 'الوظيفة غير متاحة حالياً (' + CFG.jobStatus[job.status].ar + ')' };
@@ -568,8 +660,11 @@
       phone: app.phone,
       issueDate: app.issueDate,
       expiryDate: app.expiryDate,
+      createdAt: app.createdAt,
       status: formStatus(app),
-      daysLeft: diffDays(app.expiryDate, new Date()),
+      rejectReason: app.rejectReason || '',
+      requestedCode: app.requestedCode || null,
+      daysLeft: app.expiryDate ? diffDays(app.expiryDate, new Date()) : null,
       attemptsLeft: attemptsLeft(app.serial),
       attemptsUsed: getAttempts(app.serial).filter(function (x) { return x.slotStatus !== 'empty'; }).length,
       attemptLimit: Number(db.settings.attemptLimit || 5),
@@ -600,6 +695,7 @@
       closed: db.jobs.filter(function (j) { return j.status === 'closed'; }).length,
       forms: db.applicants.length,
       activeForms: db.applicants.filter(function (a) { return formStatus(a) === 'active'; }).length,
+      pendingForms: db.applicants.filter(function (a) { return formStatus(a) === 'pending'; }).length,
       expiredForms: db.applicants.filter(function (a) { return formStatus(a) === 'expired'; }).length,
       hires: db.attempts.filter(function (t) { return t.slotStatus === 'succeeded'; }).length
     };
@@ -612,12 +708,27 @@
       if (from && a.issueDate < from) return;
       if (to && a.issueDate > to + 'T23:59:59') return;
       var key = a.createdBy || 'system';
-      rows[key] = rows[key] || { user: key, forms: 0, printed: 0, expected: 0, collected: 0, hires: 0, holds: 0 };
+      rows[key] = rows[key] || { user: key, forms: 0, printed: 0, expected: 0, collected: 0, hires: 0, holds: 0, paid: 0, unpaid: 0, partial: 0 };
       rows[key].forms++;
       var fee = Number(a.fee != null ? a.fee : db.settings.formFee);
       rows[key].printed += Number(a.printedCount || 0);
       rows[key].expected += fee;
-      if (a.feePaid) rows[key].collected += fee;
+      
+      // Track payment status
+      var paidAmount = Number(a.paidAmount || 0);
+      if (paidAmount >= fee) {
+        rows[key].collected += fee;
+        rows[key].paid++;
+      } else if (paidAmount > 0) {
+        rows[key].collected += paidAmount;
+        rows[key].partial++;
+      } else if (a.feePaid) {
+        rows[key].collected += fee;
+        rows[key].paid++;
+      } else {
+        rows[key].unpaid++;
+      }
+      
       rows[key].hires += getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'succeeded'; }).length;
       rows[key].holds += getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'reserved'; }).length;
     });
@@ -639,7 +750,7 @@
   }
 
   function pendingActions() {
-    var out = { holds: [], expired: [], exhausted: [], rejected: [] };
+    var out = { holds: [], expired: [], exhausted: [], rejected: [], requests: [] };
     db.jobs.forEach(function (j) {
       if (j.status === 'reserved' && j.holdExpiresAt) {
         var h = diffHours(j.holdExpiresAt, new Date());
@@ -648,6 +759,8 @@
     });
     db.applicants.forEach(function (a) {
       var st = formStatus(a);
+      if (st === 'pending') { out.requests.push(a); return; }
+      if (st === 'rejected') return;
       var used = getAttempts(a.serial).filter(function (t) { return t.slotStatus !== 'empty'; }).length;
       if (st === 'expired') out.expired.push(a);
       else if (used >= Number(db.settings.attemptLimit || 5)) out.exhausted.push(a);
@@ -664,10 +777,30 @@
     save(); emit();
   }
 
-  function setFeePaid(serial, paid) {
+  function setFeePaid(serial, paid, amount) {
     var app = getApplicant(serial); if (!app) return;
-    app.feePaid = !!paid;
-    audit(paid ? 'تسجيل استلام رسم' : 'إلغاء تسجيل الرسم', 'applicant', serial, 'رسم الاستمارة: ' + money(app.fee));
+    var fee = Number(app.fee != null ? app.fee : db.settings.formFee);
+    
+    if (amount !== undefined) {
+      // Partial or full payment with specific amount
+      var paidAmount = Number(amount) || 0;
+      app.paidAmount = paidAmount;
+      app.feePaid = paidAmount >= fee;
+      
+      if (paidAmount >= fee) {
+        audit('تسجيل استلام رسم كامل', 'applicant', serial, 'المبلغ: ' + money(paidAmount) + ' من ' + money(fee));
+      } else if (paidAmount > 0) {
+        audit('تسجيل دفعة جزئية', 'applicant', serial, 'المبلغ: ' + money(paidAmount) + ' من ' + money(fee) + ' — المتبقي: ' + money(fee - paidAmount));
+      } else {
+        audit('إلغاء تسجيل الرسم', 'applicant', serial, 'رسم الاستمارة: ' + money(fee));
+      }
+    } else {
+      // Legacy behavior: mark as fully paid or unpaid
+      app.feePaid = !!paid;
+      app.paidAmount = paid ? fee : 0;
+      audit(paid ? 'تسجيل استلام رسم' : 'إلغاء تسجيل الرسم', 'applicant', serial, 'رسم الاستمارة: ' + money(fee));
+    }
+    
     save(); emit();
   }
 
@@ -708,6 +841,7 @@
     setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'BRC-' + (db.counters.jobCode + 1); },
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,
+    approveApplicant: approveApplicant, rejectApplicant: rejectApplicant,
     getAttempts: getAttempts, attemptsLeft: attemptsLeft, formStatus: formStatus, activeAttempt: activeAttempt,
     // محاولات
     selectAttempt: selectAttempt, setOutcome: setOutcome, releaseHold: releaseHold,
@@ -719,7 +853,10 @@
     stats: stats, financials: financials, financialTotals: financialTotals,
     markPrinted: markPrinted, setFeePaid: setFeePaid,
     // تدقيق
-    audit: audit, listAudit: listAudit,
+    audit: audit, listAudit: listAudit, syncOfflineChanges: syncOfflineChanges,
+    getScheduledBackups: getScheduledBackups, saveScheduledBackup: saveScheduledBackup,
+    deleteScheduledBackup: deleteScheduledBackup, restoreScheduledBackup: restoreScheduledBackup,
+    exportScheduledBackup: exportScheduledBackup,
     // أدوات
     fmtDate: fmtDate, fmtDateTime: fmtDateTime, money: money, diffDays: diffDays, diffHours: diffHours,
     addDays: addDays, addHours: addHours, resetDemo: resetDemo, exportJson: exportJson, importJson: importJson,
@@ -736,3 +873,63 @@
   root.BRCStore = API;
   if (typeof module === 'object' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);
+
+  /* ======================= النسخ الاحتياطي المجدول ======================= */
+  var BACKUP_KEY = 'brc-scheduled-backups';
+
+  function getScheduledBackups() {
+    try {
+      return JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+    } catch (e) { return []; }
+  }
+
+  function saveScheduledBackup(name, dateRange) {
+    var backups = getScheduledBackups();
+    var backup = {
+      id: 'backup-' + Date.now(),
+      name: name,
+      createdAt: nowISO(),
+      dateRange: dateRange,
+      data: JSON.parse(JSON.stringify(db))
+    };
+    backups.push(backup);
+    // احتفظ بآخر 100 نسخة
+    if (backups.length > 100) backups = backups.slice(-100);
+    try {
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
+      audit('نسخة احتياطية', 'backup', backup.id, name + ' — ' + (dateRange ? dateRange.from + ' إلى ' + dateRange.to : 'كل البيانات'));
+      return backup;
+    } catch (e) { return null; }
+  }
+
+  function deleteScheduledBackup(id) {
+    var backups = getScheduledBackups();
+    backups = backups.filter(function(b) { return b.id !== id; });
+    try {
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
+      audit('حذف نسخة احتياطية', 'backup', id, 'تم حذف النسخة الاحتياطية');
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function restoreScheduledBackup(id) {
+    var backups = getScheduledBackups();
+    var backup = backups.find(function(b) { return b.id === id; });
+    if (!backup) return false;
+    try {
+      // حفظ نسخة احتياطية قبل الاستعادة
+      saveScheduledBackup('قبل الاستعادة - ' + Store.fmtDateTime(new Date()), null);
+      db = backup.data;
+      save();
+      emit();
+      audit('استعادة نسخة احتياطية', 'backup', id, 'تم استعادة النسخة: ' + backup.name);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function exportScheduledBackup(id) {
+    var backups = getScheduledBackups();
+    var backup = backups.find(function(b) { return b.id === id; });
+    if (!backup) return null;
+    return JSON.stringify(backup.data, null, 2);
+  }

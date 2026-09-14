@@ -17,10 +17,31 @@
     bindEvents();
     renderAll();
     Store.subscribe(renderAll);
+    initReveal();
 
     // تشغيل قواعد الإفراج التلقائي عند التحميل ثم دورياً
     Store.runMaintenance();
     setInterval(function () { Store.runMaintenance(); }, 60000);
+  }
+
+  /* ---------------- حركات الظهور عند التمرير ---------------- */
+  function initReveal() {
+    var els = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+    if (!els.length) return;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('is-visible'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target);
+        var d = Number(en.target.getAttribute('data-d')) || 0;
+        setTimeout(function () { en.target.classList.add('is-visible'); }, d);
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    els.forEach(function (el) { io.observe(el); });
   }
 
   function fillSelects() {
@@ -51,21 +72,15 @@
     var qsForm = document.getElementById('qs-form');
     if (qsForm) qsForm.addEventListener('submit', function (e) {
       e.preventDefault();
-      var code = (document.getElementById('qs-code') || {}).value || '';
-      var reg = (document.getElementById('qs-region') || {}).value || 'all';
-      filters.q = code.trim();
-      filters.region = reg;
-      var fq = document.getElementById('filter-q');
-      var fr = document.getElementById('filter-region');
-      if (fq) fq.value = filters.q;
-      if (fr) fr.value = reg;
-      renderJobs();
-      var jobs = document.getElementById('jobs');
-      if (jobs) jobs.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      var found = Store.listJobs(filters);
-      if (found.length === 1) openJob(found[0].code);
-      else if (found.length === 0) UI.toast('warn', 'لا نتائج', 'لم نجد وظيفة بهذا الكود أو العنوان — تواصل معنا للاستفسار.');
+      runQuickSearch(
+        (document.getElementById('qs-code') || {}).value || '',
+        (document.getElementById('qs-region') || {}).value || 'all'
+      );
     });
+
+    // البحث عبر مسح الكيو آر كود
+    var qsScan = document.getElementById('qs-scan');
+    if (qsScan) qsScan.addEventListener('click', function () { openQRScanner(); });
 
     // طلب استمارة
     ['btn-request-form', 'btn-request-form-2'].forEach(function (id) {
@@ -122,6 +137,129 @@
     window.location.href = Store.verifyLocalUrl(serial);
   }
 
+  /* ---------------- البحث السريع (إدخال يدوي أو مسح QR) ---------------- */
+  function runQuickSearch(code, region) {
+    code = String(code || '').trim();
+    region = region || 'all';
+    filters.q = code;
+    filters.region = region;
+    var fq = document.getElementById('filter-q');
+    var fr = document.getElementById('filter-region');
+    if (fq) fq.value = code;
+    if (fr) fr.value = region;
+    renderJobs();
+    var jobs = document.getElementById('jobs');
+    if (jobs) jobs.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    var found = Store.listJobs(filters);
+    if (found.length === 1) openJob(found[0].code);
+    else if (found.length === 0) UI.toast('warn', 'لا نتائج', 'لم نجد وظيفة بهذا الكود أو العنوان — تواصل معنا للاستفسار.');
+  }
+
+  function openQRScanner() {
+    if (!root.BRCQRScan || !root.BRCQRScan.supported()) {
+      UI.toast('warn', 'متصفح غير مدعوم', 'متصفحك لا يدعم مسح الكيو آر كود. اكتب الكود يدوياً أو استخدم متصفح كروم على الجوال/الكمبيوتر.');
+      return;
+    }
+
+    var stream = null, raf = null, stopped = false;
+
+    function stop() {
+      stopped = true;
+      if (raf) cancelAnimationFrame(raf);
+      if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    }
+
+    var body =
+      '<div class="scan-stage">' +
+        '<video id="scan-video" playsinline muted autoplay></video>' +
+        '<div class="scan-frame"></div>' +
+        '<div class="scan-line"></div>' +
+      '</div>' +
+      '<p class="scan-status" id="scan-status">وجّه الكاميرا نحو الكيو آر كود...</p>' +
+      '<div class="scan-actions">' +
+        '<label class="btn btn-outline btn-sm" for="scan-file">' + UI.ic('upload') + ' ارفع صورة للكود بدلاً من الكاميرا</label>' +
+        '<input type="file" id="scan-file" accept="image/*" hidden>' +
+      '</div>';
+
+    UI.modal({
+      title: 'البحث بمسح الكيو آر كود',
+      subtitle: 'امسح رمز QR مطبوعاً على بطاقة الوظيفة أو الاستمارة',
+      body: body,
+      onMount: function (box, close) {
+        var video = box.querySelector('#scan-video');
+        var fileInput = box.querySelector('#scan-file');
+        var status = box.querySelector('#scan-status');
+
+        function setStatus(t, cls) {
+          if (status) { status.textContent = t; status.className = 'scan-status' + (cls ? ' ' + cls : ''); }
+        }
+
+        // رفع صورة بديلة عن الكاميرا
+        fileInput.addEventListener('change', function () {
+          var f = fileInput.files && fileInput.files[0];
+          if (!f) return;
+          setStatus('جارٍ قراءة الصورة...');
+          Promise.resolve(typeof createImageBitmap === 'function' ? createImageBitmap(f) : f)
+            .then(function (bmp) { return root.BRCQRScan.detectImage(bmp); })
+            .then(function (vals) {
+              if (vals && vals.length) { stop(); close(); applyScannedText(vals[0]); }
+              else setStatus('لم يُعثر على رمز QR في الصورة — جرّب صورة أوضح.', 'error');
+            })
+            .catch(function () { setStatus('تعذّرت قراءة الصورة.', 'error'); });
+        });
+
+        // بث الكاميرا
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(function (s) {
+              if (stopped) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
+              stream = s;
+              video.srcObject = s;
+              video.play().catch(function () {});
+              tick(video, close);
+            })
+            .catch(function () {
+              setStatus('تعذّر الوصول إلى الكاميرا — استخدم «رفع صورة للكود».', 'error');
+            });
+        } else {
+          setStatus('الكاميرا غير متاحة في هذا المتصفح — ارفع صورة للكود.', 'error');
+        }
+      },
+      onClose: stop
+    });
+
+    function tick(video, close) {
+      if (stopped) return;
+      root.BRCQRScan.detectVideoFrame(video).then(function (vals) {
+        if (stopped) return;
+        if (vals && vals.length) { stop(); close(); applyScannedText(vals[0]); return; }
+        raf = requestAnimationFrame(function () { tick(video, close); });
+      });
+    }
+  }
+
+  /* تحليل نص الرمز الممسوح: كود وظيفة / رابط استمارة / نص حر */
+  function applyScannedText(text) {
+    text = String(text || '').trim();
+    if (!text) { UI.toast('warn', 'كود فارغ', 'لم يُقرأ أي نص من الرمز.'); return; }
+
+    var serial = text.match(/BRC-NO-\d+/i);
+    if (serial) { verifySerial(serial[0]); return; }
+
+    var job = text.match(/BRC-\d{3,}/i);
+    if (job) {
+      var code = job[0].toUpperCase();
+      var input = document.getElementById('qs-code');
+      if (input) input.value = code;
+      runQuickSearch(code, (document.getElementById('qs-region') || {}).value || 'all');
+      return;
+    }
+
+    var input = document.getElementById('qs-code');
+    if (input) input.value = text;
+    runQuickSearch(text, (document.getElementById('qs-region') || {}).value || 'all');
+  }
+
   /* ---------------- العرض ---------------- */
   function renderAll() { renderHeroStats(); renderJobs(); }
 
@@ -164,8 +302,14 @@
       hold = '<span class="tiny muted" title="يُفرج تلقائياً">' +
         (h > 0 ? 'تُفرج خلال ' + Math.ceil(h) + ' ساعة' : 'قيد الإفراج') + '</span>';
     }
+    var imageHtml = '';
+    if (j.imageUrl) {
+      imageHtml = '<div class="job-image"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '" loading="lazy"></div>';
+    }
+    
     return '' +
       '<article class="job-card ' + cls + '">' +
+        imageHtml +
         '<div class="job-head">' +
           '<div>' +
             '<h3 class="job-title">' + UI.esc(j.title) + '</h3>' +
@@ -254,8 +398,8 @@
     var code = prefillCode || '';
     var regionsList = CFG.regions.map(function (r) { return '<option>' + UI.esc(r) + '</option>'; }).join('');
     var body = '' +
-      '<p class="muted small">املأ البيانات الأساسية ليصدر لك رقم تسلسلي فوري واستمارة صالحة 30 يوماً بخمس محاولات. ' +
-      'تُستكمل الإجراءات في مكتب الشركة (الحلة – شارع 60).</p>' +
+      '<p class="muted small">املأ بياناتك الأساسية وسيُراجع طلبك من موظفينا — عند الموافقة تصدر استمارتك ' +
+      'الرسمية برقم تسلسلي صالح 30 يوماً بخمس محاولات.</p>' +
       '<form id="req-form" class="grid grid-2" style="gap:14px">' +
         '<div class="field"><label for="r-name">الاسم الكامل *</label><input type="text" id="r-name" required placeholder="الاسم الثلاثي"></div>' +
         '<div class="field"><label for="r-phone">رقم الهاتف *</label><input type="tel" id="r-phone" required placeholder="07XXXXXXXXX" dir="ltr"></div>' +
@@ -271,7 +415,7 @@
     UI.modal({
       title: 'طلب استمارة إلكترونية', subtitle: 'BRC — نظام الاستمارات', wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
-        '<button class="btn btn-gold" id="req-submit">' + UI.ic('check') + ' إصدار الاستمارة</button>',
+        '<button class="btn btn-gold" id="req-submit">' + UI.ic('check') + ' إصدار الطلب</button>',
       onMount: function (box, close) {
         box.querySelector('#req-submit').addEventListener('click', function () {
           var f = box.querySelector('#req-form');
@@ -291,53 +435,47 @@
             fullName: name, phone: phone, dob: dob, gender: gender,
             address: (address ? address : region + ' - بابل'),
             requestedCode: reqCode || null,
-            notes: reqCode ? 'طلب إلكتروني للوظيفة ' + reqCode : 'طلب إلكتروني من الموقع'
+            notes: reqCode ? 'طلب إلكتروني للوظيفة ' + reqCode : 'طلب إلكتروني من الموقع',
+            pending: true
           });
           close();
-          showIssued(app, reqCode);
+          showRequestReceived(app, reqCode);
         });
       }
     });
   }
 
-  function showIssued(app, reqCode) {
+  function showRequestReceived(app, reqCode) {
     var vUrl = Store.verifyUrl(app.serial);
     var body = '' +
-      '<div class="verify-status ok" style="padding:0 0 16px">' +
-        '<div class="seal">' + UI.ic('check') + '</div>' +
-        '<div><h1 style="font-size:1.2rem">صدرت استمارتك بنجاح</h1>' +
-        '<p class="muted mb-0 small">احتفظ بالرقم التسلسلي وراجع المكتب لاستلام النسخة المطبوعة المختومة.</p></div>' +
+      '<div class="verify-status info" style="padding:0 0 16px">' +
+        '<div class="seal" style="background:#e5eefb;color:#2563a8">' + UI.ic('hourglass') + '</div>' +
+        '<div><h1 style="font-size:1.2rem">استلمنا طلبك بنجاح</h1>' +
+        '<p class="muted mb-0 small">طلبك الآن بانتظار مراجعة موظفينا. عند الموافقة تصدر استمارتك الرسمية ويُرسَل لك الرقم التسلسلي عبر الهاتف.</p></div>' +
       '</div>' +
-      '<div class="grid" style="grid-template-columns:1fr 190px;gap:18px;align-items:start">' +
-        '<div class="data-grid">' +
-          '<div class="data-item"><div class="k">الرقم التسلسلي</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
-          '<div class="data-item"><div class="k">اسم الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
-          '<div class="data-item"><div class="k">تاريخ الإصدار</div><div class="v" dir="ltr">' + Store.fmtDate(app.issueDate) + '</div></div>' +
-          '<div class="data-item"><div class="k">تاريخ الانتهاء</div><div class="v" dir="ltr">' + Store.fmtDate(app.expiryDate) + '</div></div>' +
-          '<div class="data-item"><div class="k">المحاولات المتاحة</div><div class="v">' + Store.attemptsLeft(app.serial) + ' من ' + Store.settings().attemptLimit + '</div></div>' +
-          '<div class="data-item"><div class="k">الوظيفة المطلوبة</div><div class="v mono">' + UI.esc(reqCode || '—') + '</div></div>' +
-        '</div>' +
-        '<div class="verify-qr">' + BRCVoucher.qrSvg(vUrl, 170) +
-          '<span class="tiny muted center" dir="ltr">' + UI.esc(vUrl.replace(/^https?:\/\//, '')) + '</span>' +
-        '</div>' +
+      '<div class="data-grid">' +
+        '<div class="data-item"><div class="k">رقم الطلب</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
+        '<div class="data-item"><div class="k">اسم الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
+        '<div class="data-item"><div class="k">الوظيفة المطلوبة</div><div class="v mono">' + UI.esc(reqCode || '—') + '</div></div>' +
+        '<div class="data-item"><div class="k">الحالة</div><div class="v">' + UI.formBadge('pending') + '</div></div>' +
       '</div>' +
       '<div class="panel mt-3" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:14px 16px">' +
-        '<p class="mb-0 small">' + UI.ic('alert') + ' <b>ملاحظة:</b> هذه الاستمارة إلكترونية مبدئية. النسخة الرسمية هي المطبوعة ' +
-        'والمختومة من مكتب الشركة، وهي وحدها المعتمدة لدى أصحاب العمل. لا تُسلِّم الاستمارة لغيرك ولا تدفع مبالغ لوسطاء.</p>' +
+        '<p class="mb-0 small">' + UI.ic('alert') + ' <b>ملاحظة:</b> احتفظ برقم الطلب لمتابعة الحالة من صفحة «التحقق من استمارة». ' +
+        'النسخة الرسمية المعتمدة لدى أصحاب العمل هي المطبوعة والمختومة من مكتب الشركة.</p>' +
       '</div></div>';
 
     UI.modal({
-      title: 'تم إصدار الاستمارة', subtitle: 'BRC-NO — نظام الاستمارات الموثّق', wide: true, body: body,
-      footer: '<button class="btn btn-lapis" id="issued-print">' + UI.ic('print') + ' طباعة الاستمارة</button>' +
+      title: 'تم إرسال الطلب', subtitle: 'BRC-NO — نظام الاستمارات الموثّق', wide: true, body: body,
+      footer: '<button class="btn btn-lapis" id="req-track">' + UI.ic('eye') + ' متابعة حالة الطلب</button>' +
         '<button class="btn btn-outline" data-close>إغلاق</button>',
       onMount: function (box, close) {
-        box.querySelector('#issued-print').addEventListener('click', function () {
-          BRCVoucher.print(app);
-          UI.toast('ok', 'جاهزة للطباعة', 'تم تحضير الاستمارة بصيغة A4 مع الكيو آر كود.');
+        box.querySelector('#req-track').addEventListener('click', function () {
+          close();
+          window.location.href = Store.verifyLocalUrl(app.serial);
         });
       }
     });
-    UI.toast('ok', 'صدرت الاستمارة', 'الرقم التسلسلي: ' + app.serial);
+    UI.toast('ok', 'استُلم طلبك', 'رقم الطلب: ' + app.serial + ' — بانتظار المراجعة');
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

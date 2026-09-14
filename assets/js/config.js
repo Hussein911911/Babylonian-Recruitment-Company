@@ -10,13 +10,14 @@
     company: {
       nameAr: 'شركة بابل للتوظيف',
       nameEn: 'Babylonian Recruitment Company',
-      legalName: 'شركة بابل للتوظيف (شركة الهدف)',
+      legalName: 'شركة بابل للتوظيف',
       slogan: 'نوفّر الأيادي العاملة الفنية والتخصصية في بابل والفرات الأوسط',
-      phones: ['07760058007', '07863148999'],
-      address: 'حلة - شارع 60 - قرب مستشفى الكفل - مجاور الجيلاوي',
+      phones: ['07760058007', '07715993271'],
+      address: 'حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي',
       addressShort: 'الحلة – بابل، العراق',
-      email: 'info@brc-babil.com',
-      hours: 'السبت – الخميس: 9:00 صباحاً – 6:00 مساءً',
+      email: 'contact@brc-babil.com',
+      hours: 'السبت – الخميس: 9:00 صباحاً – 5:00 مساءً',
+      holiday: 'الجمعة: عطلة رسمية',
       license: 'إجازة عمل رسمية / وزارة العمل والشؤون الاجتماعية',
       branch: 'بابل – الحلة'
     },
@@ -81,6 +82,8 @@
     /* حالات الاستمارة */
     formStatus: {
       active: { ar: 'سارية', cls: 'ok' },
+      pending: { ar: 'قيد المراجعة', cls: 'warn' },
+      rejected: { ar: 'مرفوض', cls: 'danger' },
       expired: { ar: 'منتهية الصلاحية', cls: 'danger' },
       exhausted: { ar: 'استُهلكت المحاولات', cls: 'warn' },
       completed: { ar: 'مكتملة', cls: 'info' }
@@ -91,14 +94,14 @@
      * -------------------------------------------------------------- */
     seed: {
       jobs: [
-        { code: 'BRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة', salaryMin: 600000, salaryMax: 750000, shift: 'صباحي', employer: { name: 'مخازن الفرات للتبريد', phone: '07701234567', address: 'الحلة - المنطقة الصناعية - شارع المعمل' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['لياقة بدنية جيدة', 'خبرة سنة على الأقل', 'شهادة جنسية + سكن'], gender: 'لا فرق' },
-        { code: 'BRC-1043', title: 'سائق حمل (فئة ثالثة)', category: 'خدمات', region: 'المحاويل', salaryMin: 750000, salaryMax: 900000, shift: 'دوام كامل', employer: { name: 'شركة آفاق النقل', phone: '07811234567', address: 'المحاويل - الطريق العام - مجمع النقل' }, interviewLocation: 'المحاويل - مقابل مديرية النقل', requirements: ['إجازة سوق فئة ثالثة', 'خبرة 3 سنوات', 'عدم وجود تسجيل جنائي' ], gender: 'ذكر' },
-        { code: 'BRC-1044', title: 'ممرضة/ممرض (مناوبة)', category: 'صحي', region: 'الكفل', salaryMin: 900000, salaryMax: 1200000, shift: 'نوبات', employer: { name: 'مستشفى الكفل الأهلي', phone: '07731234567', address: 'الكفل - قرب المستشفى القديم' }, interviewLocation: 'مستشفى الكفل الأهلي - الإدارة', requirements: ['شهادة تمريض معتمدة', 'خبرة سنة', 'الالتزام بالنوبات'], gender: 'لا فرق' },
-        { code: 'BRC-1045', title: 'مهندس مدني (تنفيذ)', category: 'هندسي', region: 'الحلة', salaryMin: 1500000, salaryMax: 2200000, shift: 'صباحي', employer: { name: 'مجموعة بابل للإنشاءات', phone: '07741234567', address: 'الحلة - حي الحسين - الشارع الرئيسي' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['شهادة هندسة مدنية', 'خبرة 4 سنوات في المشاريع', 'إجادة AutoCAD'], gender: 'لا فرق' },
-        { code: 'BRC-1046', title: 'باريستا / عامل كافيه', category: 'خدمات', region: 'الهاشمية', salaryMin: 500000, salaryMax: 650000, shift: 'مسائي', employer: { name: 'كافيه دجلة', phone: '07751234567', address: 'الهاشمية - الشارع التجاري' }, interviewLocation: 'كافيه دجلة', requirements: ['حسن المظهر والتعامل', 'خبرة مفضلة'], gender: 'لا فرق' },
-        { code: 'BRC-1047', title: 'أمين مخزن (إلكترونيات)', category: 'إداري', region: 'الحلة', salaryMin: 700000, salaryMax: 850000, shift: 'صباحي', employer: { name: 'شركة الرافدين للإلكترونيات', phone: '07761234567', address: 'الحلة - شارع 60 - مجمع التجارة' }, interviewLocation: 'شركة الرافدين - المكتب الرئيسي', requirements: ['إجادة إكسل', 'أمانة ودقة', 'خبرة مخازن'], gender: 'لا فرق' },
-        { code: 'BRC-1048', title: 'طباخ خطوط إنتاج', category: 'خدمات', region: 'المسيب', salaryMin: 650000, salaryMax: 800000, shift: 'نوبات', employer: { name: 'مطابخ البابلية المركزية', phone: '07771234567', address: 'المسيب - المنطقة الصناعية' }, interviewLocation: 'مطابخ البابلية - القسم الإداري', requirements: ['خبرة مطاعم/مطابخ مركزية', 'صحة جيدة'], gender: 'ذكر' },
-        { code: 'BRC-1049', title: 'فني كهرباء صناعية', category: 'تقني', region: 'الإسكندرية', salaryMin: 800000, salaryMax: 1000000, shift: 'صباحي', employer: { name: 'معمل الإسكندرية للبلاستيك', phone: '07781234567', address: 'الإسكندرية - منطقة المعامل' }, interviewLocation: 'المعمل - مكتب الإدارة', requirements: ['خبرة لوحات كهربائية', 'شهادة مهنية'], gender: 'ذكر' }
+        { code: 'BRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة', salaryMin: 600000, salaryMax: 750000, shift: 'صباحي', employer: { name: 'مخازن الفرات للتبريد', phone: '07701234567', address: 'الحلة - المنطقة الصناعية - شارع المعمل' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['لياقة بدنية جيدة', 'خبرة سنة على الأقل', 'شهادة جنسية + سكن'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80' },
+        { code: 'BRC-1043', title: 'سائق حمل (فئة ثالثة)', category: 'خدمات', region: 'المحاويل', salaryMin: 750000, salaryMax: 900000, shift: 'دوام كامل', employer: { name: 'شركة آفاق النقل', phone: '07811234567', address: 'المحاويل - الطريق العام - مجمع النقل' }, interviewLocation: 'المحاويل - مقابل مديرية النقل', requirements: ['إجازة سوق فئة ثالثة', 'خبرة 3 سنوات', 'عدم وجود تسجيل جنائي' ], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=800&q=80' },
+        { code: 'BRC-1044', title: 'ممرضة/ممرض (مناوبة)', category: 'صحي', region: 'الكفل', salaryMin: 900000, salaryMax: 1200000, shift: 'نوبات', employer: { name: 'مستشفى الكفل الأهلي', phone: '07731234567', address: 'الكفل - قرب المستشفى القديم' }, interviewLocation: 'مستشفى الكفل الأهلي - الإدارة', requirements: ['شهادة تمريض معتمدة', 'خبرة سنة', 'الالتزام بالنوبات'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80' },
+        { code: 'BRC-1045', title: 'مهندس مدني (تنفيذ)', category: 'هندسي', region: 'الحلة', salaryMin: 1500000, salaryMax: 2200000, shift: 'صباحي', employer: { name: 'مجموعة بابل للإنشاءات', phone: '07741234567', address: 'الحلة - حي الحسين - الشارع الرئيسي' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['شهادة هندسة مدنية', 'خبرة 4 سنوات في المشاريع', 'إجادة AutoCAD'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80' },
+        { code: 'BRC-1046', title: 'باريستا / عامل كافيه', category: 'خدمات', region: 'الهاشمية', salaryMin: 500000, salaryMax: 650000, shift: 'مسائي', employer: { name: 'كافيه دجلة', phone: '07751234567', address: 'الهاشمية - الشارع التجاري' }, interviewLocation: 'كافيه دجلة', requirements: ['حسن المظهر والتعامل', 'خبرة مفضلة'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&q=80' },
+        { code: 'BRC-1047', title: 'أمين مخزن (إلكترونيات)', category: 'إداري', region: 'الحلة', salaryMin: 700000, salaryMax: 850000, shift: 'صباحي', employer: { name: 'شركة الرافدين للإلكترونيات', phone: '07761234567', address: 'الحلة - شارع 60 - مجمع التجارة' }, interviewLocation: 'شركة الرافدين - المكتب الرئيسي', requirements: ['إجادة إكسل', 'أمانة ودقة', 'خبرة مخازن'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=800&q=80' },
+        { code: 'BRC-1048', title: 'طباخ خطوط إنتاج', category: 'خدمات', region: 'المسيب', salaryMin: 650000, salaryMax: 800000, shift: 'نوبات', employer: { name: 'مطابخ البابلية المركزية', phone: '07771234567', address: 'المسيب - المنطقة الصناعية' }, interviewLocation: 'مطابخ البابلية - القسم الإداري', requirements: ['خبرة مطاعم/مطابخ مركزية', 'صحة جيدة'], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80' },
+        { code: 'BRC-1049', title: 'فني كهرباء صناعية', category: 'تقني', region: 'الإسكندرية', salaryMin: 800000, salaryMax: 1000000, shift: 'صباحي', employer: { name: 'معمل الإسكندرية للبلاستيك', phone: '07781234567', address: 'الإسكندرية - منطقة المعامل' }, interviewLocation: 'المعمل - مكتب الإدارة', requirements: ['خبرة لوحات كهربائية', 'شهادة مهنية'], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=80' }
       ],
       jobsExtras: {
         'BRC-1049': { status: 'closed' }        // الباقي تُستنتج حالاته من المحاولات المُزرَعة

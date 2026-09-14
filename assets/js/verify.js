@@ -109,11 +109,13 @@
       '</div>';
   }
 
-  function statusClass(k) { return k === 'active' ? 'ok' : (k === 'completed' ? 'info' : (k === 'exhausted' ? 'warn' : 'danger')); }
-  function statusIcon(k) { return k === 'active' ? 'check' : (k === 'completed' ? 'check' : (k === 'exhausted' ? 'alert' : 'x-circle')); }
+  function statusClass(k) { return ({ active: 'ok', completed: 'info', exhausted: 'warn', pending: 'warn', rejected: 'danger' })[k] || 'danger'; }
+  function statusIcon(k) { return ({ active: 'check', completed: 'check', exhausted: 'alert', pending: 'hourglass', rejected: 'x-circle' })[k] || 'x-circle'; }
   function statusTitle(k) {
     return ({
       active: 'استمارة سارية وصحيحة',
+      pending: 'طلب قيد المراجعة',
+      rejected: 'طلب مرفوض',
       expired: 'استمارة منتهية الصلاحية',
       exhausted: 'استُهلكت المحاولات الخمس',
       completed: 'تم التوظيف — استمارة مكتملة'
@@ -124,6 +126,33 @@
     var host = document.getElementById('verify-root');
     var cls = statusClass(r.status);
     var stBadge = UI.formBadge(r.status);
+    var isRequest = r.status === 'pending' || r.status === 'rejected';
+
+    /* سطر الصلاحية حسب الحالة */
+    var daysLine;
+    if (r.status === 'pending') daysLine = 'بانتظار مراجعة الموظفين';
+    else if (r.status === 'rejected') daysLine = 'رُفض الطلب — راجع المكتب للاستفسار';
+    else if (r.daysLeft != null && r.daysLeft >= 0) daysLine = 'المتبقي من الصلاحية: ' + r.daysLeft + ' يوم';
+    else if (r.daysLeft != null) daysLine = 'انتهت قبل ' + Math.abs(r.daysLeft) + ' يوم';
+    else daysLine = '—';
+
+    /* خلايا التاريخ حسب الحالة */
+    var dateCells = isRequest
+      ? '<div class="data-item"><div class="k">تاريخ الطلب</div><div class="v" dir="ltr">' + Store.fmtDate(r.createdAt || '') + '</div></div>' +
+        '<div class="data-item"><div class="k">كود الوظيفة المطلوبة</div><div class="v mono" dir="ltr">' + UI.esc(r.requestedCode || '—') + '</div></div>'
+      : '<div class="data-item"><div class="k">تاريخ الإصدار</div><div class="v" dir="ltr">' + Store.fmtDate(r.issueDate || '') + '</div></div>' +
+        '<div class="data-item"><div class="k">تاريخ الانتهاء</div><div class="v" dir="ltr">' + Store.fmtDate(r.expiryDate || '') + '</div></div>';
+
+    /* رسالة حالة الطلب (قيد المراجعة / مرفوض) */
+    var requestNote = isRequest
+      ? (r.status === 'pending'
+        ? '<div class="panel" style="background:#fdf6e3;border-color:#f0d9a3;margin:0 24px 18px"><div class="panel-body" style="padding:14px 16px">' +
+          '<p class="mb-0 small">' + UI.ic('hourglass') + ' <b>طلبك قيد المراجعة:</b> استلم النظام طلبك وسيراجعه موظفونا خلال وقت قصير. ' +
+          'عند القبول تصدر الاستمارة رسمياً برقمها التسلسلي وتبدأ صلاحية 30 يوماً. يمكنك متابعة الحالة من هذه الصفحة أو الاتصال بنا.</p></div></div>'
+        : '<div class="panel" style="background:#fbe6e5;border-color:#f0c3c1;margin:0 24px 18px"><div class="panel-body" style="padding:14px 16px">' +
+          '<p class="mb-0 small">' + UI.ic('x-circle') + ' <b>نأسف، رُفض الطلب.</b> ' +
+          (r.rejectReason ? 'السبب: ' + UI.esc(r.rejectReason) + '. ' : '') + 'يمكنك مراجعة المكتب للاستفسار أو تقديم طلب جديد.</p></div></div>')
+      : '';
 
     var rows = r.attempts.map(function (t) {
       var filled = t.slotStatus !== 'empty';
@@ -154,18 +183,18 @@
             'الباحث: <b>' + UI.esc(r.fullName) + '</b> — تم التحقق في ' + UI.esc(Store.fmtDateTime(r.verifiedAt)) + '</p>' +
         '</div>' +
         '<div style="text-align:center">' + stBadge +
-          '<div class="tiny muted mt-1">' + (r.daysLeft >= 0 ? 'المتبقي من الصلاحية: ' + r.daysLeft + ' يوم' : 'انتهت قبل ' + Math.abs(r.daysLeft) + ' يوم') + '</div>' +
+          '<div class="tiny muted mt-1">' + daysLine + '</div>' +
         '</div>' +
       '</div>' +
       tokenWarn +
+      requestNote +
       '<div class="panel-body" style="padding-top:0">' +
         '<div class="grid" style="grid-template-columns:minmax(0,1fr) 190px;gap:20px;align-items:start">' +
           '<div><div class="data-grid">' +
             '<div class="data-item"><div class="k">الرقم التسلسلي</div><div class="v mono" dir="ltr">' + UI.esc(r.serial) + '</div></div>' +
             '<div class="data-item"><div class="k">اسم الباحث</div><div class="v">' + UI.esc(r.fullName) + '</div></div>' +
             '<div class="data-item"><div class="k">الهاتف</div><div class="v mono" dir="ltr">' + UI.esc(r.phone) + '</div></div>' +
-            '<div class="data-item"><div class="k">تاريخ الإصدار</div><div class="v" dir="ltr">' + Store.fmtDate(r.issueDate) + '</div></div>' +
-            '<div class="data-item"><div class="k">تاريخ الانتهاء</div><div class="v" dir="ltr">' + Store.fmtDate(r.expiryDate) + '</div></div>' +
+            dateCells +
             '<div class="data-item"><div class="k">المحاولات المستخدمة</div><div class="v">' + r.attemptsUsed + ' من ' + r.attemptLimit + '</div></div>' +
             '<div class="data-item"><div class="k">المحاولات المتاحة</div><div class="v">' + r.attemptsLeft + '</div></div>' +
             '<div class="data-item"><div class="k">المُصدر</div><div class="v">' + UI.esc(r.createdBy) + '</div></div>' +
@@ -174,18 +203,19 @@
             '<span class="tiny muted center">كيو آر كود التحقق الرسمي</span></div>' +
         '</div>' +
 
-        '<h3 class="mt-4">المحاولات المرتبطة بالاستمارة</h3>' +
-        '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:940px">' +
-          '<thead><tr><th>المحاولة</th><th>كود الوظيفة</th><th>المنطقة</th><th>الوظيفة</th>' +
-          '<th>هاتف جهة الاتصال</th><th>حالة المهلة</th><th>وقت الاختيار</th><th>مهلة الحجز</th><th>ملاحظة</th></tr></thead>' +
-          '<tbody>' + rows + '</tbody>' +
-        '</table></div></div>' +
+        (isRequest ? '' :
+          '<h3 class="mt-4">المحاولات المرتبطة بالاستمارة</h3>' +
+          '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:940px">' +
+            '<thead><tr><th>المحاولة</th><th>كود الوظيفة</th><th>المنطقة</th><th>الوظيفة</th>' +
+            '<th>هاتف جهة الاتصال</th><th>حالة المهلة</th><th>وقت الاختيار</th><th>مهلة الحجز</th><th>ملاحظة</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody>' +
+          '</table></div></div>') +
 
         '<div class="panel mt-3" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:14px 16px">' +
           '<p class="mb-0 small">' + UI.ic('shield') + ' <b>ملاحظة قانونية:</b> ' + UI.esc(root.BRCVoucher.DISCLAIMER) + '</p>' +
         '</div></div>' +
         '<div class="flex flex-wrap mt-3">' +
-          '<button class="btn btn-lapis" id="verify-print">' + UI.ic('print') + ' طباعة نسخة الاستمارة</button>' +
+          (isRequest ? '' : '<button class="btn btn-lapis" id="verify-print">' + UI.ic('print') + ' طباعة نسخة الاستمارة</button>') +
           '<button class="btn btn-outline" id="verify-copy">' + UI.ic('share') + ' نسخ رابط التحقق</button>' +
         '</div>' +
       '</div>';

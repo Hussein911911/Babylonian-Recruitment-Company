@@ -39,39 +39,28 @@
   <div class="crenel"></div>
 </section>
 
-<!-- ============================== شريط البحث السريع ============================== -->
-<section class="section" style="padding-top:34px">
+<!-- ============================== البحث السريع ============================== -->
+<section class="section" style="padding-top:26px">
   <div class="container">
-    <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:26px">
-      <div>
-        <span class="eyebrow eyebrow-line">بحث فوري بالكود المصغّر</span>
-        <h2 style="margin-bottom:8px">ابحث عن وظيفتك بالكود: <span class="chip chip-code mono">BRC-1042</span></h2>
-        <p class="muted mb-0">
-          كل وظيفة في الشركة تحمل كوداً مصغّراً فريداً يسهّل المتابعة والتحقق. اكتب الكود في البحث
-          لترى تفاصيل الوظيفة وحالتها الحالية (متاحة / محجوزة مؤقتاً / مغلقة).
-        </p>
+    <form class="quick-search" id="qs-form" autocomplete="off">
+      <span class="qs-label">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> بحث سريع
+      </span>
+      <div class="qs-field qs-main">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
+        <input type="text" id="qs-code" placeholder="اكتب كود الوظيفة أو اسمها..." aria-label="كود الوظيفة أو اسمها">
       </div>
-      <form class="quick-search" id="qs-form" autocomplete="off">
-        <h3><svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> البحث السريع عن وظيفة</h3>
-        <div class="qs-row">
-          <div class="qs-field">
-            <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
-            <input type="text" id="qs-code" placeholder="مثال: BRC-1042 أو اسم الوظيفة" aria-label="كود الوظيفة أو اسمها">
-          </div>
-          <div class="qs-field">
-            <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
-            <select id="qs-region" aria-label="المنطقة"><option value="all">كل مناطق بابل</option></select>
-          </div>
-          <button class="btn btn-gold btn-block" type="submit">
-            <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث الآن
-          </button>
-        </div>
-        <p class="qs-note">
-          <svg class="ic" style="width:15px;height:15px;margin-top:4px"><use href="#i-shield" xlink:href="#i-shield"/></svg>
-          <span>خصوصية تامة: بيانات صاحب العمل (الاسم، الهاتف، العنوان التفصيلي) لا تُعرض للعامة — تُسلّم للباحث عبر الشركة فقط.</span>
-        </p>
-      </form>
-    </div>
+      <button type="button" class="btn btn-ghost qs-scan" id="qs-scan" title="البحث بمسح الكيو آر كود">
+        <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg> مسح QR
+      </button>
+      <div class="qs-field qs-region">
+        <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
+        <select id="qs-region" aria-label="المنطقة"><option value="all">كل مناطق بابل</option></select>
+      </div>
+      <button class="btn btn-gold qs-submit" type="submit">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث
+      </button>
+    </form>
   </div>
 </section>
 
@@ -90,36 +79,30 @@
     </div>
 
     <div class="filters">
-      <div class="field">
-        <label for="filter-q"><svg class="ic" aria-hidden="true"><use href="#i-filter" xlink:href="#i-filter"/></svg>بحث بالكود أو العنوان</label>
-        <div class="search-wrap">
-          <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-          <input type="search" id="filter-q" placeholder="BRC-1042 ، سائق ، ممرضة ...">
-        </div>
+      <div class="f-field f-search">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
+        <input type="search" id="filter-q" placeholder="بحث بالكود أو العنوان..." aria-label="بحث بالكود أو العنوان">
       </div>
-      <div class="field">
-        <label for="filter-region">المنطقة</label>
-        <select id="filter-region"><option value="all">كل المناطق</option></select>
+      <div class="f-field">
+        <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
+        <select id="filter-region" aria-label="المنطقة"><option value="all">كل المناطق</option></select>
       </div>
-      <div class="field">
-        <label for="filter-shift">الدوام</label>
-        <select id="filter-shift"><option value="all">كل الأوقات</option></select>
+      <div class="f-field">
+        <svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg>
+        <select id="filter-shift" aria-label="الدوام"><option value="all">كل الأوقات</option></select>
       </div>
-      <div class="field">
-        <label for="filter-status">الحالة</label>
-        <select id="filter-status">
+      <div class="f-field">
+        <svg class="ic"><use href="#i-filter" xlink:href="#i-filter"/></svg>
+        <select id="filter-status" aria-label="الحالة">
           <option value="all">كل الحالات</option>
           <option value="available">متاحة</option>
           <option value="reserved">محجوزة مؤقتاً</option>
           <option value="closed">مغلقة</option>
         </select>
       </div>
-      <div class="field">
-        <label>&nbsp;</label>
-        <button class="btn btn-outline" id="filter-reset" type="button">
-          <svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تصفير
-        </button>
-      </div>
+      <button class="btn btn-outline btn-sm f-reset" id="filter-reset" type="button" title="مسح كل عوامل التصفية">
+        <svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تصفير
+      </button>
     </div>
 
     <div class="flex-between mb-2">
@@ -142,29 +125,34 @@
 <!-- ============================== كيف نعمل ============================== -->
 <section class="section" id="how">
   <div class="container">
-    <div class="section-head">
+    <div class="section-head reveal">
       <span class="eyebrow">آلية العمل</span>
       <h2>أربع خطوات منظّمة من الاستمارة إلى التوظيف</h2>
       <p>نظام محكم يحفظ حق الباحث عن العمل وحق صاحب العمل في الوقت نفسه.</p>
     </div>
     <div class="steps">
-      <div class="step">
+      <div class="step reveal" data-d="0">
         <div class="num">1</div>
-        <h3>إصدار الاستمارة</h3>
-        <p>تُمنح استمارة رسمية برقم تسلسلي (<span class="mono small">BRC-NO-000120</span>) صالحة <b>30 يوماً</b> وتحتوي <b>خمس محاولات</b> مرتبة.</p>
+        <h3>طلب الاستمارة</h3>
+        <p>يملأ الباحث بياناته ويرسل طلباً للحصول على استمارة رسمية، ثم يتم مراجعة الطلب من الموظف.</p>
       </div>
-      <div class="step">
+      <div class="step reveal" data-d="120">
         <div class="num">2</div>
+        <h3>المراجعة والقبول</h3>
+        <p>يراجع الموظف الطلب ويقبله أو يرفضه. عند القبول تُصدر الاستمارة الرسمية برقم تسلسلي وصلاحيات <b>30 يوماً</b> و<b>خمس محاولات</b>.</p>
+      </div>
+      <div class="step reveal" data-d="240">
+        <div class="num">3</div>
         <h3>اختيار المحاولة</h3>
         <p>يختار الباحث الوظيفة المناسبة فتُسجَّل المحاولة #1 على الاستمارة وتُحجز الوظيفة باسمه.</p>
       </div>
-      <div class="step">
-        <div class="num">3</div>
+      <div class="step reveal" data-d="360">
+        <div class="num">4</div>
         <h3>حجز 24 ساعة</h3>
         <p>تُعلَّق الوظيفة مؤقتاً بانتظار نتيجة المقابلة. إن انتهت المدة دون تثبيت النتيجة تُفرج الوظيفة تلقائياً.</p>
       </div>
-      <div class="step">
-        <div class="num">4</div>
+      <div class="step reveal" data-d="480">
+        <div class="num">5</div>
         <h3>تثبيت النتيجة</h3>
         <p>نجاح: تُغلق الوظيفة ويُثبَّت التوظيف. رفض: تُعاد الوظيفة «متاحة» وتُفعَّل المحاولة التالية تلقائياً حتى الخامسة.</p>
       </div>
@@ -173,40 +161,40 @@
 </section>
 
 <!-- ============================== الخدمات ============================== -->
-<section class="section section-dark" id="services">
+<section class="section section-alt" id="services">
   <div class="container">
-    <div class="section-head">
+    <div class="section-head reveal">
       <span class="eyebrow">خدماتنا</span>
       <h2>توفير الأيادي العاملة الفنية والتخصصية</h2>
       <p>نلتزم بنطاق عملنا الفني والتخصصي، مع متابعة كاملة للمرشح وصاحب العمل حتى تثبيت التوظيف.</p>
     </div>
     <div class="grid grid-3">
-      <div class="service">
+      <div class="service reveal" data-d="0">
         <svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg>
         <h3>توفير العمالة الفنية</h3>
         <p>عمال إنتاج، مخازن، سائقون، فنيون، عمال خدمات — وفق احتياج كل منشأة وعدد الشواغر.</p>
       </div>
-      <div class="service">
+      <div class="service reveal" data-d="90">
         <svg class="ic"><use href="#i-building" xlink:href="#i-building"/></svg>
         <h3>الكوادر التخصصية</h3>
         <p>مهندسون، ممرضون، إداريون، محاسبون — بعد التحقق من الشهادات والخبرة العملية.</p>
       </div>
-      <div class="service">
+      <div class="service reveal" data-d="180">
         <svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg>
         <h3>استمارة موثّقة بكيو آر كود</h3>
         <p>كل استمارة تحمل كيو آر كود يفتح صفحة تحقق تُظهر الرقم التسلسلي وحالة المحاولات فوراً.</p>
       </div>
-      <div class="service">
+      <div class="service reveal" data-d="270">
         <svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg>
         <h3>حجز مؤقت عادل</h3>
         <p>الوظيفة تُحجز لمرشح واحد فقط لمدة 24 ساعة — بلا تكرار ولا وعود مزدوجة.</p>
       </div>
-      <div class="service">
+      <div class="service reveal" data-d="360">
         <svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg>
         <h3>إعادة تفعيل الفرص</h3>
         <p>عند الرفض تُعاد الوظيفة للسوق فوراً، ويُفعَّل للباحث ترشيحٌ بديل دون رسوم جديدة.</p>
       </div>
-      <div class="service">
+      <div class="service reveal" data-d="450">
         <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
         <h3>حفظ الخصوصية</h3>
         <p>بيانات صاحب العمل التفصيلية محجوبة عن العرض العام، وسجل تدقيق دقيق بكل عملية في النظام.</p>
@@ -216,31 +204,31 @@
 </section>
 
 <!-- ============================== عن الشركة + أسد بابل ============================== -->
-<section class="section" id="about">
+<section class="section section-about" id="about">
   <div class="container">
     <div class="lion-grid">
-      <div class="lion-frame">
+      <div class="lion-frame reveal" data-d="0">
         <img src="assets/img/lion-of-babylon.jpg" alt="أسد بابل — منحوتة أثرية بابلية">
         <div class="cap">
           <b>أسد بابل</b>
           <span>منحوتة بابلية خالدة ترمز للقوة والصلابة — نتّخذها رمزاً لالتزامنا المهني في كل تعامل.</span>
         </div>
       </div>
-      <div>
-        <span class="eyebrow eyebrow-line">عن الشركة</span>
-        <h2>شركة بابل للتوظيف (شركة الهدف)</h2>
-        <p class="muted">
+      <div class="about-copy">
+        <span class="eyebrow eyebrow-line reveal" data-d="120">عن الشركة</span>
+        <h2 class="reveal" data-d="180">شركة بابل للتوظيف</h2>
+        <p class="about-lede reveal" data-d="240">
           نعمل من قلب الحلة — بابل، ونخدم المنشآت والمصانع والمستشفيات والمتاجر في عموم الفرات الأوسط،
           عبر منظومة إدارية موثّقة: استمارة رسمية، محاولات منظّمة، وكيو آر كود للتحقق لحظياً.
         </p>
         <ul class="feature-list">
-          <li><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>استمارة صالحة 30 يوماً</b> بمرجع تسلسلي فريد (BRC-NO) وخمس محاولات مرتّبة.</span></li>
-          <li><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>كود مصغّر لكل وظيفة</b> (مثال: <span class="mono">BRC-1042</span>) يسهّل المتابعة والتوثيق.</span></li>
-          <li><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>إفراج تلقائي بعد 24 ساعة</b> حين لا تُثبَّت نتيجة المقابلة — لا احتكار للفرص.</span></li>
-          <li><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>سجل تدقيق بالثانية</b> لكل عملية في المنظومة الداخلية (مستخدم، وقت، IP، تفاصيل).</span></li>
-          <li><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>لوحة مالية للإدارة</b> تُظهر عدد الاستمارات الصادرة والمبالغ المتوقعة لكل موظف.</span></li>
+          <li class="reveal" data-d="300"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>استمارة صالحة 30 يوماً</b> بمرجع تسلسلي فريد (BRC-NO) وخمس محاولات مرتّبة.</span></li>
+          <li class="reveal" data-d="360"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>كود مصغّر لكل وظيفة</b> (مثال: <span class="mono">BRC-1042</span>) يسهّل المتابعة والتوثيق.</span></li>
+          <li class="reveal" data-d="420"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>إفراج تلقائي بعد 24 ساعة</b> حين لا تُثبَّت نتيجة المقابلة — لا احتكار للفرص.</span></li>
+          <li class="reveal" data-d="480"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>سجل تدقيق بالثانية</b> لكل عملية في المنظومة الداخلية (مستخدم، وقت، IP، تفاصيل).</span></li>
+          <li class="reveal" data-d="540"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>لوحة مالية للإدارة</b> تُظهر عدد الاستمارات الصادرة والمبالغ المتوقعة لكل موظف.</span></li>
         </ul>
-        <div class="flex flex-wrap mt-3">
+        <div class="flex flex-wrap mt-3 reveal" data-d="620">
           <a href="#jobs" class="btn btn-lapis"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الفرص المتاحة</a>
           <a href="dashboard.html" class="btn btn-outline"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg> دخول الموظفين</a>
         </div>
@@ -305,20 +293,20 @@
     </div>
     <div class="contact-grid">
       <div class="contact-card">
-        <div class="ic"><svg class="ic"><use href="#i-phone" xlink:href="#i-phone"/></svg></div>
-        <h3>أرقام الهاتف</h3>
-        <p><a href="tel:07760058007" dir="ltr" class="mono">07760058007</a></p>
-        <p><a href="tel:07863148999" dir="ltr" class="mono">07863148999</a></p>
+        <div class="ic"><svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg></div>
+        <h3>أرقام الواتساب</h3>
+        <p><a href="https://wa.me/9647760058007" target="_blank" rel="noopener" dir="ltr" class="mono">07760058007</a></p>
+        <p><a href="https://wa.me/9647715993271" target="_blank" rel="noopener" dir="ltr" class="mono">07715993271</a></p>
       </div>
       <div class="contact-card">
         <div class="ic"><svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg></div>
         <h3>العنوان</h3>
-        <p>حلة - شارع 60 - قرب مستشفى الكفل<br>مجاور الجيلاوي</p>
+        <p><a href="https://www.google.com/maps?q=32.4823913,44.4105048" target="_blank" rel="noopener">حلة - شارع 60 - قرب مدينة حمورابي<br>قرب مجمع الكرعاوي</a></p>
       </div>
       <div class="contact-card">
         <div class="ic"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg></div>
         <h3>أوقات العمل</h3>
-        <p>السبت – الخميس<br>9:00 صباحاً – 6:00 مساءً</p>
+        <p>السبت – الخميس<br>9:00 صباحاً – 5:00 مساءً<br>الجمعة: عطلة رسمية</p>
       </div>
     </div>
 
