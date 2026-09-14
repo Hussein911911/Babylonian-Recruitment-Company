@@ -12,8 +12,29 @@
 --  التشغيل على Supabase:  SQL Editor → الصق الملف → Run
 -- ===========================================================================
 
-create extension if not exists "pgcrypto";
-create extension if not exists "pg_cron";      -- للإفراج التلقائي المجدول (Supabase يدعمها)
+-- ⚠️ على Supabase: pgcrypto و pg_cron تُفعَّلان من اللوحة (Database → Extensions)،
+--    ومحاولة إنشائهما بـ SQL قد تفشل بصلاحية غير كافية — وحينها يتوقف الملف كله
+--    عند هذا السطر ولا يُنشأ أي جدول. لذلك نغلّفهما بحيث لا يُسقطان السكربت،
+--    مع تنبيه واضح بأي امتداد ينقص.
+do $$ begin
+  create extension if not exists "pgcrypto" with schema extensions;
+exception when others then
+  begin
+    create extension if not exists "pgcrypto";
+  exception when others then
+    raise notice 'pgcrypto غير مفعّل — فعّله من Database → Extensions قبل التشغيل (التفاصيل: %)', sqlerrm;
+  end;
+end $$;
+
+do $$ begin
+  create extension if not exists "pg_cron" with schema pg_catalog;
+exception when others then
+  begin
+    create extension if not exists "pg_cron";
+  exception when others then
+    raise notice 'pg_cron غير مفعّل — فعّله من Database → Extensions (بدونه لن يعمل الإفراج التلقائي كل دقيقة) — التفاصيل: %', sqlerrm;
+  end;
+end $$;
 
 create schema if not exists brc;
 set search_path = brc, public;
@@ -54,6 +75,33 @@ create table if not exists brc.staff (
   created_at   timestamptz not null default now()
 );
 
+-- 2.3 الاستمارات (الباحثون عن عمل) — صالحة 30 يوماً، 5 محاولات
+create table if not exists brc.applicants (
+  id            uuid primary key default gen_random_uuid(),
+  serial        text not null unique,                            -- BRC-NO-000120
+  full_name     text not null,
+  phone         text not null,
+  address       text default '',
+  dob           date,
+  gender        text default 'ذكر',
+  nationality   text default 'عراقي',
+  issue_date    timestamptz not null default now(),
+  expiry_date   timestamptz not null default (now() + interval '30 days'),
+  attempt_limit smallint not null default 5 check (attempt_limit between 1 and 10),
+  status        brc.form_status not null default 'active',
+  fee_amount    integer not null default 10000,
+  fee_paid      boolean not null default false,
+  printed_count integer not null default 0,
+  requested_code text,                                           -- الوظيفة المطلوبة من الموقع العام
+  created_by    uuid references brc.staff (id) on delete set null,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  notes         text default ''
+);
+create index if not exists applicants_status_idx on brc.applicants (status);
+create index if not exists applicants_expiry_idx on brc.applicants (expiry_date);
+create index if not exists applicants_created_by_idx on brc.applicants (created_by);
+
 -- 2.2 الوظائف (بيانات صاحب العمل داخلية ولا تُعرض للعامة)
 create table if not exists brc.jobs (
   id                  uuid primary key default gen_random_uuid(),
@@ -87,33 +135,6 @@ create table if not exists brc.jobs (
     (status = 'reserved' and hold_expires_at is not null) or status <> 'reserved'
   )
 );
-
--- 2.3 الاستمارات (الباحثون عن عمل) — صالحة 30 يوماً، 5 محاولات
-create table if not exists brc.applicants (
-  id            uuid primary key default gen_random_uuid(),
-  serial        text not null unique,                            -- BRC-NO-000120
-  full_name     text not null,
-  phone         text not null,
-  address       text default '',
-  dob           date,
-  gender        text default 'ذكر',
-  nationality   text default 'عراقي',
-  issue_date    timestamptz not null default now(),
-  expiry_date   timestamptz not null default (now() + interval '30 days'),
-  attempt_limit smallint not null default 5 check (attempt_limit between 1 and 10),
-  status        brc.form_status not null default 'active',
-  fee_amount    integer not null default 10000,
-  fee_paid      boolean not null default false,
-  printed_count integer not null default 0,
-  requested_code text,                                           -- الوظيفة المطلوبة من الموقع العام
-  created_by    uuid references brc.staff (id) on delete set null,
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now(),
-  notes         text default ''
-);
-create index if not exists applicants_status_idx on brc.applicants (status);
-create index if not exists applicants_expiry_idx on brc.applicants (expiry_date);
-create index if not exists applicants_created_by_idx on brc.applicants (created_by);
 
 -- 2.4 المحاولات (5 خانات لكل استمارة)
 create table if not exists brc.job_attempts (
@@ -206,10 +227,27 @@ begin
 end $$;
 
 -- بصمة التحقق المطبوعة داخل الكيو آر كود (توقيع HMAC عبر مفتاح الخادم)
+-- ⚠️ لا تضع سرّاً افتراضياً مكتوباً في الملف: هذا الملف منشور في المستودع، فأي سرّ مكتوب
+--    هنا يصبح معروفاً للجميع ويصير تزوير البصمة ممكناً. يجب ضبط المفتاح قبل الاستخدام:
+--      alter database postgres set app.brc_secret = '<مفتاح عشوائي 32+ حرفاً>';
+--      -- ثم أعد الاتصال (أو: select pg_reload_conf();)
+--    أو من Supabase: Project Settings → Database → Configuration → Custom settings.
+--    توليد مفتاح قوي:  openssl rand -hex 32
+-- ملاحظة: أُضيف extensions للمسار لأن Supabase يثبّت pgcrypto (دالة hmac) في سكيما
+-- extensions وليس public، فبدونها يفشل النداء بـ «function hmac(...) does not exist».
 create or replace function brc.verify_token(p_serial text) returns text
-language sql stable as $$
-  select encode(hmac(p_serial, coalesce(current_setting('app.brc_secret', true), 'BRC-BABIL-2026'), 'sha256'), 'hex')
-$$;
+language plpgsql stable
+set search_path = brc, public, extensions
+as $$
+declare v_secret text := nullif(current_setting('app.brc_secret', true), '');
+begin
+  -- إن لم يُضبط المفتاح نتوقف بخطأ واضح بدل استخدام سرّ مكشوف في المستودع
+  if v_secret is null or length(v_secret) < 16 then
+    raise exception 'app.brc_secret غير مضبوط أو أقصر من 16 حرفاً — راجع تعليمات ضبط المفتاح أعلى الدالة في docs/schema.sql'
+      using errcode = '22023';
+  end if;
+  return encode(hmac(p_serial, v_secret, 'sha256'), 'hex');
+end $$;
 
 -- ===========================================================================
 --  4) المشغّلات (Triggers)
@@ -360,7 +398,9 @@ create trigger trg_no_duplicate_job before insert or update on brc.job_attempts
 
 -- 4.4 تدقيق تلقائي على كل تغيير (بالثانية + المستخدم + IP + الفروق)
 create or replace function brc.trg_audit() returns trigger
-language plpgsql security definer as $$
+language plpgsql security definer
+set search_path = brc, public
+as $$
 declare
   claims jsonb := coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb;
   hdrs   jsonb := coalesce(nullif(current_setting('request.headers', true), ''), '{}')::jsonb;
@@ -492,7 +532,11 @@ with (security_invoker = false) as
 
 comment on view brc.public_jobs is 'واجهة عامة للوظائف — تُخفي اسم/هاتف/عنوان صاحب العمل ومكان المقابلة';
 
--- 6.2 نتيجة التحقق من الاستمارة (تتطلب بصمة صحيحة)
+-- 6.2 نتيجة التحقق من الاستمارة
+-- ⚠️ أمان: هذه الواجهة تعرض اسم كل باحث ورقمه بلا أي تحقق من البصمة، فهي **للاستخدام
+--    الداخلي/التشخيصي فقط ولا تُمنح لدور anon أبداً**. منحها للزائر يعني سحب أسماء كل
+--    الباحثين بنداء واحد، وتصبح البصمة المطبوعة في الكيو آر كود بلا قيمة.
+--    التحقق العام يتم حصراً عبر brc.verify_form(serial, token) — تُرجع استمارة واحدة.
 create or replace view brc.public_verification
 with (security_invoker = false) as
   select f.serial, f.full_name, f.issue_date, f.expiry_date, f.status, f.attempt_limit,
@@ -540,9 +584,15 @@ create or replace view brc.v_pending_actions as
 -- ===========================================================================
 
 -- 7.1 التحقق من استمارة عبر الكيو آر كود (عام — يتطلب بصمة صحيحة)
+-- 7.1 التحقق من استمارة عبر الكيو آر كود (متاح للزائر)
+-- ⚠️ لا تُضِف stable/immutable هنا: الدالة تُسجّل سطر تدقيق (INSERT) في آخرها،
+--    وPostgreSQL يرفض الكتابة داخل دالة غير volatile بـ:
+--    «INSERT is not allowed in a non-volatile function» → كل فحص كيو آر كود يفشل.
 create or replace function brc.verify_form(p_serial text, p_token text default null)
 returns jsonb
-language plpgsql security definer stable as $$
+language plpgsql security definer
+set search_path = brc, public
+as $$
 declare v jsonb; f record;
 begin
   select * into f from brc.applicants where serial = p_serial;
@@ -587,7 +637,9 @@ end $$;
 -- 7.2 ترشيح وظيفة لمحاولة (موظف/مدير)
 create or replace function brc.select_attempt(p_serial text, p_job_code text)
 returns jsonb
-language plpgsql security definer as $$
+language plpgsql security definer
+set search_path = brc, public
+as $$
 declare slot record; job_row record;
 begin
   if not brc.is_staff() then
@@ -618,7 +670,9 @@ end $$;
 -- 7.3 تثبيت نتيجة المقابلة
 create or replace function brc.set_outcome(p_serial text, p_attempt_no smallint, p_outcome text, p_note text default '')
 returns jsonb
-language plpgsql security definer as $$
+language plpgsql security definer
+set search_path = brc, public
+as $$
 begin
   if not brc.is_staff() then return jsonb_build_object('ok', false, 'error', 'غير مصرّح'); end if;
   if p_outcome not in ('succeeded', 'rejected') then
@@ -643,7 +697,9 @@ end $$;
 -- 7.4 إفراج يدوي عن حجز
 create or replace function brc.release_hold(p_serial text, p_attempt_no smallint, p_reason text default '')
 returns jsonb
-language plpgsql security definer as $$
+language plpgsql security definer
+set search_path = brc, public
+as $$
 begin
   if not brc.is_staff() then return jsonb_build_object('ok', false, 'error', 'غير مصرّح'); end if;
 
@@ -658,18 +714,30 @@ begin
 end $$;
 
 -- 7.5 أدوات الصلاحية
+-- ⚠️ حرجة: هذه الدوال تقرأ من brc.staff المُفعَّل عليه RLS، وسياسات brc.staff نفسها
+--    تنادي هذه الدوال → حلقة مغلقة. لذلك يجب أن تكون SECURITY DEFINER (تعمل بصلاحية
+--    مالك الدالة فتتجاوز RLS على brc.staff وتكسر الحلقة)، مع تثبيت search_path
+--    لمنع اختطاف المسار (security definer بلا search_path ثابت = ثغرة حقن).
+--    بدون security definer يفشل كل وصول بـ:
+--    «infinite recursion detected in policy for relation "staff"»
 create or replace function brc.current_staff_id() returns uuid
-language sql stable as $$
+language sql stable security definer
+set search_path = brc, public
+as $$
   select id from brc.staff where auth_id = auth.uid() limit 1
 $$;
 
 create or replace function brc.is_staff() returns boolean
-language sql stable as $$
+language sql stable security definer
+set search_path = brc, public
+as $$
   select exists (select 1 from brc.staff where auth_id = auth.uid() and active)
 $$;
 
 create or replace function brc.is_admin() returns boolean
-language sql stable as $$
+language sql stable security definer
+set search_path = brc, public
+as $$
   select exists (select 1 from brc.staff where auth_id = auth.uid() and role = 'admin' and active)
 $$;
 
@@ -719,7 +787,7 @@ drop policy if exists applicants_admin_delete on brc.applicants;
 create policy applicants_admin_delete on brc.applicants for delete using (brc.is_admin());
 
 -- 8.4 المحاولات
-drop policy if exists attempts_staff_all on brc.job_attempts;
+drop policy if exists attempts_staff_read on brc.job_attempts;
 create policy attempts_staff_read on brc.job_attempts for select using (brc.is_staff());
 
 drop policy if exists attempts_staff_write on brc.job_attempts;
@@ -753,7 +821,11 @@ create policy settings_admin_write on brc.settings for all using (brc.is_admin()
 grant usage on schema brc to anon, authenticated;
 
 -- الزائر العام: يقرأ الواجهة العامة فقط + يستدعي التحقق
-grant select on brc.public_jobs, brc.public_verification to anon, authenticated;
+-- ⚠️ لا تُمنح brc.public_verification للزائر: تلك الواجهة تكشف serial + full_name + status
+--    لكل الاستمارات بلا أي تحقق من البصمة t=، فيصير أي شخص يملك anon key قادراً على
+--    سحب أسماء كل الباحثين بنداء واحد، وتصبح حماية البصمة في الكيو آر كود بلا معنى.
+--    التحقق يتم حصراً عبر brc.verify_form (تتحقق من البصمة وتُرجع استمارة واحدة).
+grant select on brc.public_jobs to anon, authenticated;
 grant execute on function brc.verify_form(text, text) to anon, authenticated;
 
 -- الموظفون (authenticated): كل عمليات الإدارة
