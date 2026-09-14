@@ -40,48 +40,27 @@
 </section>
 
 <!-- ============================== البحث السريع ============================== -->
-<section class="section" style="padding-top:34px">
+<section class="section" style="padding-top:26px">
   <div class="container">
-    <div class="quick-search">
-      <div class="qs-head">
-        <span class="eyebrow">بحث فوري بالكود المصغّر</span>
-        <h3 style="color:#fff">ابحث عن وظيفتك بالكود أو امسح الكيو آر كود</h3>
-        <p class="muted mb-0" style="color:#b9c6e2">
-          اكتب كود الوظيفة مثل <span class="chip chip-code mono">BRC-1042</span> أو اسمها، أو اضغط
-          «امسح QR» لقراءة الرمز مباشرة — وتظهر لك التفاصيل وحالة الوظيفة (متاحة / محجوزة مؤقتاً / مغلقة) فوراً.
-        </p>
+    <form class="quick-search" id="qs-form" autocomplete="off">
+      <span class="qs-label">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> بحث سريع
+      </span>
+      <div class="qs-field qs-main">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
+        <input type="text" id="qs-code" placeholder="اكتب كود الوظيفة أو اسمها..." aria-label="كود الوظيفة أو اسمها">
       </div>
-
-      <form class="qs-form" id="qs-form" autocomplete="off">
-        <div class="qs-row">
-          <div class="qs-field qs-main">
-            <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-            <input type="text" id="qs-code" placeholder="اكتب كود الوظيفة أو اسمها هنا..." aria-label="كود الوظيفة أو اسمها">
-          </div>
-          <button type="button" class="btn btn-ghost qs-scan" id="qs-scan">
-            <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg> امسح QR
-          </button>
-          <div class="qs-field qs-region">
-            <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
-            <select id="qs-region" aria-label="المنطقة"><option value="all">كل مناطق بابل</option></select>
-          </div>
-          <button class="btn btn-gold qs-submit" type="submit">
-            <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث الآن
-          </button>
-        </div>
-      </form>
-
-      <div class="qs-note">
-        <span>
-          <svg class="ic" style="width:15px;height:15px;margin-top:3px"><use href="#i-shield" xlink:href="#i-shield"/></svg>
-          خصوصية تامة: بيانات صاحب العمل لا تُعرض للعامة — تُسلَّم للباحث عبر الشركة فقط.
-        </span>
-        <span class="qs-scan-hint">
-          <svg class="ic" style="width:15px;height:15px;margin-top:3px"><use href="#i-qr" xlink:href="#i-qr"/></svg>
-          يمكنك مسح الكيو آر كود المطبوع على بطاقة الوظيفة أو الاستمارة للبحث المباشر.
-        </span>
+      <button type="button" class="btn btn-ghost qs-scan" id="qs-scan" title="البحث بمسح الكيو آر كود">
+        <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg> مسح QR
+      </button>
+      <div class="qs-field qs-region">
+        <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
+        <select id="qs-region" aria-label="المنطقة"><option value="all">كل مناطق بابل</option></select>
       </div>
-    </div>
+      <button class="btn btn-gold qs-submit" type="submit">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث
+      </button>
+    </form>
   </div>
 </section>
 
@@ -100,36 +79,30 @@
     </div>
 
     <div class="filters">
-      <div class="field">
-        <label for="filter-q"><svg class="ic" aria-hidden="true"><use href="#i-filter" xlink:href="#i-filter"/></svg>بحث بالكود أو العنوان</label>
-        <div class="search-wrap">
-          <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-          <input type="search" id="filter-q" placeholder="BRC-1042 ، سائق ، ممرضة ...">
-        </div>
+      <div class="f-field f-search">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
+        <input type="search" id="filter-q" placeholder="بحث بالكود أو العنوان...">
       </div>
-      <div class="field">
-        <label for="filter-region">المنطقة</label>
-        <select id="filter-region"><option value="all">كل المناطق</option></select>
+      <div class="f-field">
+        <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
+        <select id="filter-region" aria-label="المنطقة"><option value="all">كل المناطق</option></select>
       </div>
-      <div class="field">
-        <label for="filter-shift">الدوام</label>
-        <select id="filter-shift"><option value="all">كل الأوقات</option></select>
+      <div class="f-field">
+        <svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg>
+        <select id="filter-shift" aria-label="الدوام"><option value="all">كل الأوقات</option></select>
       </div>
-      <div class="field">
-        <label for="filter-status">الحالة</label>
-        <select id="filter-status">
+      <div class="f-field">
+        <svg class="ic"><use href="#i-filter" xlink:href="#i-filter"/></svg>
+        <select id="filter-status" aria-label="الحالة">
           <option value="all">كل الحالات</option>
           <option value="available">متاحة</option>
           <option value="reserved">محجوزة مؤقتاً</option>
           <option value="closed">مغلقة</option>
         </select>
       </div>
-      <div class="field">
-        <label>&nbsp;</label>
-        <button class="btn btn-outline" id="filter-reset" type="button">
-          <svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تصفير
-        </button>
-      </div>
+      <button class="btn btn-outline btn-sm f-reset" id="filter-reset" type="button" title="مسح كل عوامل التصفية">
+        <svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تصفير
+      </button>
     </div>
 
     <div class="flex-between mb-2">

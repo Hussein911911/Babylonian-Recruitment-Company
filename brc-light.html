@@ -282,40 +282,37 @@ a.hc-item:hover { color: var(--gold-2); }
 .hero-stat b { display: block; font-size: 1.6rem; color: var(--gold-2); line-height: 1.2; }
 .hero-stat span { font-size: .78rem; color: #c3cee5; }
 
-/* بطاقة البحث السريع */
+/* شريط البحث السريع المضغوط */
 .quick-search {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   background: linear-gradient(140deg, rgba(9, 18, 40, .97), rgba(16, 42, 86, .94));
-  border: 1px solid var(--line); border-radius: 24px;
-  padding: clamp(22px, 4vw, 38px); position: relative; overflow: hidden;
+  border: 1px solid var(--line); border-radius: 16px;
+  padding: 12px 14px; position: relative; overflow: hidden;
   box-shadow: var(--shadow-lg);
 }
 .quick-search::before {
-  content: ''; position: absolute; inset-inline: 0; top: 0; height: 4px;
+  content: ''; position: absolute; inset-inline: 0; top: 0; height: 3px;
   background: linear-gradient(90deg, transparent, var(--gold), var(--turq), transparent);
 }
 .quick-search > * { position: relative; z-index: 1; }
 
-.qs-head { text-align: center; max-width: 760px; margin: 0 auto 22px; }
-.qs-head .eyebrow {
-  display: inline-flex; align-items: center; gap: 9px; color: var(--gold-2); font-weight: 800;
-  font-size: .8rem; letter-spacing: 2.4px; text-transform: uppercase;
+.qs-label {
+  display: inline-flex; align-items: center; gap: 7px; flex: none;
+  color: var(--gold-2); font-weight: 800; font-size: .86rem; white-space: nowrap;
 }
-.qs-head h3 { margin: 10px 0; font-size: clamp(1.25rem, 2.2vw, 1.6rem); }
-.qs-head p { font-size: .95rem; }
+.qs-label .ic { width: 17px; height: 17px; }
 
-.qs-form { max-width: 920px; margin: 0 auto; }
-.qs-row { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
 .qs-field { position: relative; }
-.qs-field.qs-main { flex: 1 1 280px; }
-.qs-field.qs-region { flex: 1 1 180px; }
+.qs-field.qs-main { flex: 1 1 220px; min-width: 200px; }
+.qs-field.qs-region { flex: 0 1 160px; min-width: 140px; }
 .qs-field > svg {
-  position: absolute; inset-inline-start: 15px; top: 50%; transform: translateY(-50%);
-  width: 18px; height: 18px; color: var(--gold); opacity: .85; pointer-events: none; z-index: 1;
+  position: absolute; inset-inline-start: 13px; top: 50%; transform: translateY(-50%);
+  width: 17px; height: 17px; color: var(--gold); opacity: .85; pointer-events: none; z-index: 1;
 }
 .qs-field input, .qs-field select {
-  height: 100%; min-height: 50px; padding: 11px 13px; padding-inline-start: 46px;
-  border-radius: 12px; border: 1px solid rgba(255, 255, 255, .18);
-  background: rgba(255, 255, 255, .06); color: #fff; font-size: .95rem; width: 100%;
+  height: 42px; min-height: 42px; padding: 8px 12px; padding-inline-start: 40px;
+  border-radius: 11px; border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .06); color: #fff; font-size: .9rem; width: 100%;
 }
 .qs-field input::placeholder { color: #93a3c4; }
 .qs-field input:focus, .qs-field select:focus {
@@ -324,16 +321,8 @@ a.hc-item:hover { color: var(--gold-2); }
 }
 .qs-field select option { color: #12203c; background: #fff; }
 
-.qs-scan, .qs-submit { min-height: 50px; padding: 11px 20px; border-radius: 12px; white-space: nowrap; }
+.qs-scan, .qs-submit { min-height: 42px; padding: 8px 16px; border-radius: 11px; white-space: nowrap; flex: none; }
 .qs-submit { box-shadow: 0 8px 22px rgba(200, 162, 74, .30); }
-
-.qs-note {
-  margin: 16px auto 0; max-width: 920px; display: flex; gap: 10px 24px; flex-wrap: wrap;
-  justify-content: center; font-size: .8rem; color: #b9c6e2;
-}
-.qs-note > span { display: inline-flex; gap: 7px; align-items: flex-start; }
-.qs-note .ic { color: var(--gold-2); flex: none; }
-.qs-scan-hint { color: #9fb2d8; }
 
 /* ===================== نافذة مسح الكيو آر كود ===================== */
 .scan-stage {
@@ -392,11 +381,29 @@ a.hc-item:hover { color: var(--gold-2); }
 /* ============================ 9) بطاقات الوظائف ============================ */
 .filters {
   background: #fff; border: 1px solid var(--line-soft); border-radius: var(--radius);
-  padding: 16px; box-shadow: var(--shadow-sm); margin-bottom: 26px;
-  display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr auto; gap: 12px; align-items: end;
+  padding: 10px 12px; box-shadow: var(--shadow-sm); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: .8rem; font-weight: 700; color: var(--muted); }
+
+.f-field { position: relative; }
+.f-field.f-search { flex: 1 1 200px; min-width: 180px; }
+.f-field select { min-width: 130px; }
+.f-field > svg {
+  position: absolute; inset-inline-start: 11px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; color: var(--muted); pointer-events: none; z-index: 1;
+}
+.f-field input, .f-field select {
+  height: 40px; min-height: 40px; padding: 7px 11px; padding-inline-start: 34px;
+  border-radius: 10px; border: 1px solid #d9dfeb; background: #fff; color: var(--text);
+  font-size: .88rem; width: 100%;
+}
+.f-field input::placeholder { color: #8a94ad; }
+.f-field input:focus, .f-field select:focus {
+  border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200, 162, 74, .18); outline: none;
+}
+.f-reset { min-height: 40px; flex: none; }
 input[type="text"], input[type="search"], input[type="tel"], input[type="number"], input[type="date"],
 input[type="password"], input[type="email"], select, textarea {
   font-family: inherit; font-size: .93rem; color: var(--text);
@@ -750,7 +757,6 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .contact-grid { grid-template-columns: 1fr; }
   .lion-grid { grid-template-columns: 1fr; }
-  .filters { grid-template-columns: 1fr 1fr; }
   .app-shell { grid-template-columns: 1fr; }
   .app-side { position: static; height: auto; }
   .site-footer .foot-main { grid-template-columns: 1fr 1fr; }
@@ -763,7 +769,8 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .main-nav a { width: 100%; }
   .nav-toggle { display: inline-flex; }
   .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .filters { grid-template-columns: 1fr; }
+  .f-field.f-search { flex: 1 1 100%; }
+  .qs-field.qs-main { flex: 1 1 100%; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .steps { grid-template-columns: 1fr; }
   .site-footer .foot-main { grid-template-columns: 1fr; }
@@ -1085,48 +1092,27 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 </section>
 
 <!-- ============================== البحث السريع ============================== -->
-<section class="section" style="padding-top:34px">
+<section class="section" style="padding-top:26px">
   <div class="container">
-    <div class="quick-search">
-      <div class="qs-head">
-        <span class="eyebrow">بحث فوري بالكود المصغّر</span>
-        <h3 style="color:#fff">ابحث عن وظيفتك بالكود أو امسح الكيو آر كود</h3>
-        <p class="muted mb-0" style="color:#b9c6e2">
-          اكتب كود الوظيفة مثل <span class="chip chip-code mono">BRC-1042</span> أو اسمها، أو اضغط
-          «امسح QR» لقراءة الرمز مباشرة — وتظهر لك التفاصيل وحالة الوظيفة (متاحة / محجوزة مؤقتاً / مغلقة) فوراً.
-        </p>
+    <form class="quick-search" id="qs-form" autocomplete="off">
+      <span class="qs-label">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> بحث سريع
+      </span>
+      <div class="qs-field qs-main">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
+        <input type="text" id="qs-code" placeholder="اكتب كود الوظيفة أو اسمها..." aria-label="كود الوظيفة أو اسمها">
       </div>
-
-      <form class="qs-form" id="qs-form" autocomplete="off">
-        <div class="qs-row">
-          <div class="qs-field qs-main">
-            <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-            <input type="text" id="qs-code" placeholder="اكتب كود الوظيفة أو اسمها هنا..." aria-label="كود الوظيفة أو اسمها">
-          </div>
-          <button type="button" class="btn btn-ghost qs-scan" id="qs-scan">
-            <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg> امسح QR
-          </button>
-          <div class="qs-field qs-region">
-            <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
-            <select id="qs-region" aria-label="المنطقة"><option value="all">كل مناطق بابل</option></select>
-          </div>
-          <button class="btn btn-gold qs-submit" type="submit">
-            <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث الآن
-          </button>
-        </div>
-      </form>
-
-      <div class="qs-note">
-        <span>
-          <svg class="ic" style="width:15px;height:15px;margin-top:3px"><use href="#i-shield" xlink:href="#i-shield"/></svg>
-          خصوصية تامة: بيانات صاحب العمل لا تُعرض للعامة — تُسلَّم للباحث عبر الشركة فقط.
-        </span>
-        <span class="qs-scan-hint">
-          <svg class="ic" style="width:15px;height:15px;margin-top:3px"><use href="#i-qr" xlink:href="#i-qr"/></svg>
-          يمكنك مسح الكيو آر كود المطبوع على بطاقة الوظيفة أو الاستمارة للبحث المباشر.
-        </span>
+      <button type="button" class="btn btn-ghost qs-scan" id="qs-scan" title="البحث بمسح الكيو آر كود">
+        <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg> مسح QR
+      </button>
+      <div class="qs-field qs-region">
+        <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
+        <select id="qs-region" aria-label="المنطقة"><option value="all">كل مناطق بابل</option></select>
       </div>
-    </div>
+      <button class="btn btn-gold qs-submit" type="submit">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث
+      </button>
+    </form>
   </div>
 </section>
 
@@ -1145,36 +1131,30 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     </div>
 
     <div class="filters">
-      <div class="field">
-        <label for="filter-q"><svg class="ic" aria-hidden="true"><use href="#i-filter" xlink:href="#i-filter"/></svg>بحث بالكود أو العنوان</label>
-        <div class="search-wrap">
-          <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-          <input type="search" id="filter-q" placeholder="BRC-1042 ، سائق ، ممرضة ...">
-        </div>
+      <div class="f-field f-search">
+        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
+        <input type="search" id="filter-q" placeholder="بحث بالكود أو العنوان...">
       </div>
-      <div class="field">
-        <label for="filter-region">المنطقة</label>
-        <select id="filter-region"><option value="all">كل المناطق</option></select>
+      <div class="f-field">
+        <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
+        <select id="filter-region" aria-label="المنطقة"><option value="all">كل المناطق</option></select>
       </div>
-      <div class="field">
-        <label for="filter-shift">الدوام</label>
-        <select id="filter-shift"><option value="all">كل الأوقات</option></select>
+      <div class="f-field">
+        <svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg>
+        <select id="filter-shift" aria-label="الدوام"><option value="all">كل الأوقات</option></select>
       </div>
-      <div class="field">
-        <label for="filter-status">الحالة</label>
-        <select id="filter-status">
+      <div class="f-field">
+        <svg class="ic"><use href="#i-filter" xlink:href="#i-filter"/></svg>
+        <select id="filter-status" aria-label="الحالة">
           <option value="all">كل الحالات</option>
           <option value="available">متاحة</option>
           <option value="reserved">محجوزة مؤقتاً</option>
           <option value="closed">مغلقة</option>
         </select>
       </div>
-      <div class="field">
-        <label>&nbsp;</label>
-        <button class="btn btn-outline" id="filter-reset" type="button">
-          <svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تصفير
-        </button>
-      </div>
+      <button class="btn btn-outline btn-sm f-reset" id="filter-reset" type="button" title="مسح كل عوامل التصفية">
+        <svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تصفير
+      </button>
     </div>
 
     <div class="flex-between mb-2">
