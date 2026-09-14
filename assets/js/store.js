@@ -298,7 +298,8 @@
       interviewLocation: data.interviewLocation || 'مقر الشركة - الحلة',
       status: 'available', reservedBy: null, holdExpiresAt: null,
       createdAt: nowISO(), createdBy: currentUser() ? currentUser().username : 'system',
-      closedAt: null, notes: '', vacancies: Number(data.vacancies || 1)
+      closedAt: null, notes: '', vacancies: Number(data.vacancies || 1),
+      imageUrl: data.imageUrl || ''
     };
     db.jobs.unshift(job);
     audit('إضافة وظيفة', 'job', job.code, job.title + ' — ' + job.region + ' — الأجر ' + money(job.salaryMin) + ' إلى ' + money(job.salaryMax));

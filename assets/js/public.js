@@ -302,8 +302,14 @@
       hold = '<span class="tiny muted" title="يُفرج تلقائياً">' +
         (h > 0 ? 'تُفرج خلال ' + Math.ceil(h) + ' ساعة' : 'قيد الإفراج') + '</span>';
     }
+    var imageHtml = '';
+    if (j.imageUrl) {
+      imageHtml = '<div class="job-image"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '" loading="lazy"></div>';
+    }
+    
     return '' +
       '<article class="job-card ' + cls + '">' +
+        imageHtml +
         '<div class="job-head">' +
           '<div>' +
             '<h3 class="job-title">' + UI.esc(j.title) + '</h3>' +

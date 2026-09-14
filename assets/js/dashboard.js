@@ -366,7 +366,11 @@
       if (j.status === 'reserved' && j.holdExpiresAt) {
         holdCell = '<div class="tiny">الاستمارة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div>' + UI.holdHtml(j.holdExpiresAt, { withDate: false });
       }
+      var imageCell = j.imageUrl 
+        ? '<img src="' + UI.esc(j.imageUrl) + '" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #ddd" alt="' + UI.esc(j.title) + '">'
+        : '<span class="tiny muted">لا صورة</span>';
       return '<tr>' +
+        '<td>' + imageCell + '</td>' +
         '<td><span class="chip chip-code mono">' + UI.esc(j.code) + '</span></td>' +
         '<td><b>' + UI.esc(j.title) + '</b><div class="tiny muted">' + UI.esc(j.category) + '</div></td>' +
         '<td>' + UI.esc(j.region) + '</td>' +
@@ -385,7 +389,7 @@
           '<button class="btn btn-outline btn-sm" data-job-assign="' + UI.esc(j.code) + '">' + UI.ic('user-plus') + ' ترشيح</button>' +
           '<button class="btn btn-danger btn-sm" data-job-del="' + UI.esc(j.code) + '">' + UI.ic('trash') + '</button>' +
         '</div></td></tr>';
-    }).join('') || '<tr><td colspan="9" class="table-empty">لا توجد وظائف مطابقة</td></tr>';
+    }).join('') || '<tr><td colspan="10" class="table-empty">لا توجد وظائف مطابقة</td></tr>';
 
     tbody.querySelectorAll('[data-job-edit]').forEach(function (b) {
       b.addEventListener('click', function () { jobModal(b.getAttribute('data-job-edit')); });
@@ -427,6 +431,10 @@
     var e = (j && j.employer) || { name: '', phone: '', address: '' };
 
     var body = '<form id="job-form" class="grid grid-2" style="gap:14px">' +
+      '<div class="field" style="grid-column:1/-1"><label for="f-image">صورة الوظيفة (اختياري)</label>' +
+        '<input type="file" id="f-image" accept="image/*" style="margin-bottom:8px">' +
+        '<div id="image-preview" style="margin-top:8px">' + (j && j.imageUrl ? '<img src="' + UI.esc(j.imageUrl) + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #ddd">' : '') + '</div>' +
+        '<p class="tiny muted" style="margin:4px 0 0 0">ارفع صورة جذابة للوظيفة ( JPG, PNG )</p></div>' +
       '<div class="field"><label for="f-title">عنوان الوظيفة *</label><input type="text" id="f-title" required value="' + UI.esc(j ? j.title : '') + '"></div>' +
       '<div class="field"><label for="f-cat">التصنيف</label><select id="f-cat">' + cats + '</select></div>' +
       '<div class="field"><label for="f-region">المنطقة *</label><select id="f-region">' + regionsList + '</select></div>' +
@@ -451,6 +459,28 @@
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="job-save">' + UI.ic('check') + (j ? ' حفظ التعديلات' : ' إضافة الوظيفة') + '</button>',
       onMount: function (box, close) {
+        var imageFile = box.querySelector('#f-image');
+        var imagePreview = box.querySelector('#image-preview');
+        var imageData = j ? j.imageUrl : '';
+        
+        // Handle image upload
+        imageFile.addEventListener('change', function(e) {
+          var file = e.target.files[0];
+          if (!file) return;
+          
+          if (file.size > 2 * 1024 * 1024) {
+            UI.toast('err', 'حجم كبير', 'الحد الأقصى 2 ميجابايت');
+            return;
+          }
+          
+          var reader = new FileReader();
+          reader.onload = function(e) {
+            imageData = e.target.result;
+            imagePreview.innerHTML = '<img src="' + imageData + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #ddd">';
+          };
+          reader.readAsDataURL(file);
+        });
+        
         box.querySelector('#job-save').addEventListener('click', function () {
           var f = box.querySelector('#job-form');
           if (!f.reportValidity()) return;
@@ -467,7 +497,8 @@
             employerName: box.querySelector('#f-ename').value.trim(),
             employerPhone: box.querySelector('#f-ephone').value.trim(),
             employerAddress: box.querySelector('#f-eaddr').value.trim(),
-            interviewLocation: box.querySelector('#f-interview').value.trim()
+            interviewLocation: box.querySelector('#f-interview').value.trim(),
+            imageUrl: imageData
           };
           if (j) {
             Store.updateJob(j.code, {
@@ -475,7 +506,8 @@
               salaryMin: data.salaryMin, salaryMax: data.salaryMax, gender: data.gender,
               vacancies: data.vacancies, requirements: data.requirements,
               employer: { name: data.employerName, phone: data.employerPhone, address: data.employerAddress },
-              interviewLocation: data.interviewLocation
+              interviewLocation: data.interviewLocation,
+              imageUrl: data.imageUrl
             });
             UI.toast('ok', 'تم التحديث', 'حُفظت بيانات الوظيفة ' + j.code);
           } else {
