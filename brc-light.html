@@ -2100,7 +2100,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       <button data-view="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الوظائف <span class="badge-count hidden" id="nav-jobs-count">0</span></button>
       <button data-view="applicants"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg> الباحثون والاستمارات <span class="badge-count hidden" id="nav-apps-count">0</span></button>
       <button data-view="holds"><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> متابعة الحجوزات (24 ساعة) <span class="badge-count hidden" id="nav-holds-count">0</span></button>
-      <button data-view="audit" data-admin-only="false"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> سجل التدقيق</button>
+      <button data-view="audit" data-admin-only="true"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> سجل التدقيق</button>
       <button data-view="finance" data-admin-only="true"><svg class="ic"><use href="#i-chart" xlink:href="#i-chart"/></svg> اللوحة المالية</button>
       <button data-view="settings" data-admin-only="true"><svg class="ic"><use href="#i-settings" xlink:href="#i-settings"/></svg> الإعدادات والنسخ</button>
     </nav>
@@ -2362,7 +2362,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         <div class="table-wrap" style="border:none;box-shadow:none">
           <div class="table-scroll">
             <table class="data" style="min-width:680px">
-              <thead><tr><th>الموظف</th><th>الاستمارات الصادرة</th><th>مرات الطباعة</th><th>الرسم لكل استمارة</th><th>المتوقع تحصيله</th><th>المستلَم</th><th>توظيف ناجح</th><th>حجوزات جارية</th></tr></thead>
+              <thead><tr><th>الموظف</th><th>الاستمارات الصادرة</th><th>مرات الطباعة</th><th>الرسم لكل استمارة</th><th>المتوقع تحصيله</th><th>المستلَم</th><th>حالة الدفع</th><th>توظيف ناجح</th><th>حجوزات جارية</th></tr></thead>
               <tbody id="fin-table-body"></tbody>
             </table>
           </div>
@@ -3755,22 +3755,24 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       if (db.settings[k] == null) db.settings[k] = CFG.rules[k];
     });
     // ترحيل الصور للوظائف القديمة
+    var needsMigration = false;
     if (db.jobs && db.jobs.length > 0) {
       var seedJobs = CFG.seed.jobs;
-      var updated = false;
       db.jobs.forEach(function(job) {
         if (!job.imageUrl) {
           var seedJob = seedJobs.find(function(sj) { return sj.code === job.code; });
           if (seedJob && seedJob.imageUrl) {
             job.imageUrl = seedJob.imageUrl;
-            updated = true;
-            console.log('✓ تم إضافة صورة للوظيفة ' + job.code);
+            needsMigration = true;
+            console.log('[BRC] ✓ تم إضافة صورة للوظيفة ' + job.code);
           }
         }
       });
-      if (updated) {
+      if (needsMigration) {
         save();
-        console.log('✓ تم تحديث الصور للوظائف القديمة');
+        console.log('[BRC] ✓ تم تحديث الصور لجميع الوظائف القديمة');
+        // Trigger re-render for all subscribers
+        setTimeout(function() { emit(); }, 100);
       }
     }
     return db;
@@ -4252,12 +4254,27 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       if (from && a.issueDate < from) return;
       if (to && a.issueDate > to + 'T23:59:59') return;
       var key = a.createdBy || 'system';
-      rows[key] = rows[key] || { user: key, forms: 0, printed: 0, expected: 0, collected: 0, hires: 0, holds: 0 };
+      rows[key] = rows[key] || { user: key, forms: 0, printed: 0, expected: 0, collected: 0, hires: 0, holds: 0, paid: 0, unpaid: 0, partial: 0 };
       rows[key].forms++;
       var fee = Number(a.fee != null ? a.fee : db.settings.formFee);
       rows[key].printed += Number(a.printedCount || 0);
       rows[key].expected += fee;
-      if (a.feePaid) rows[key].collected += fee;
+      
+      // Track payment status
+      var paidAmount = Number(a.paidAmount || 0);
+      if (paidAmount >= fee) {
+        rows[key].collected += fee;
+        rows[key].paid++;
+      } else if (paidAmount > 0) {
+        rows[key].collected += paidAmount;
+        rows[key].partial++;
+      } else if (a.feePaid) {
+        rows[key].collected += fee;
+        rows[key].paid++;
+      } else {
+        rows[key].unpaid++;
+      }
+      
       rows[key].hires += getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'succeeded'; }).length;
       rows[key].holds += getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'reserved'; }).length;
     });
@@ -4306,10 +4323,30 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     save(); emit();
   }
 
-  function setFeePaid(serial, paid) {
+  function setFeePaid(serial, paid, amount) {
     var app = getApplicant(serial); if (!app) return;
-    app.feePaid = !!paid;
-    audit(paid ? 'تسجيل استلام رسم' : 'إلغاء تسجيل الرسم', 'applicant', serial, 'رسم الاستمارة: ' + money(app.fee));
+    var fee = Number(app.fee != null ? app.fee : db.settings.formFee);
+    
+    if (amount !== undefined) {
+      // Partial or full payment with specific amount
+      var paidAmount = Number(amount) || 0;
+      app.paidAmount = paidAmount;
+      app.feePaid = paidAmount >= fee;
+      
+      if (paidAmount >= fee) {
+        audit('تسجيل استلام رسم كامل', 'applicant', serial, 'المبلغ: ' + money(paidAmount) + ' من ' + money(fee));
+      } else if (paidAmount > 0) {
+        audit('تسجيل دفعة جزئية', 'applicant', serial, 'المبلغ: ' + money(paidAmount) + ' من ' + money(fee) + ' — المتبقي: ' + money(fee - paidAmount));
+      } else {
+        audit('إلغاء تسجيل الرسم', 'applicant', serial, 'رسم الاستمارة: ' + money(fee));
+      }
+    } else {
+      // Legacy behavior: mark as fully paid or unpaid
+      app.feePaid = !!paid;
+      app.paidAmount = paid ? fee : 0;
+      audit(paid ? 'تسجيل استلام رسم' : 'إلغاء تسجيل الرسم', 'applicant', serial, 'رسم الاستمارة: ' + money(fee));
+    }
+    
     save(); emit();
   }
 
@@ -6061,10 +6098,19 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         ? '<td class="tiny muted">—</td>'
         : '<td>' + a.attemptsUsed + ' / ' + Store.settings().attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>';
 
-      var statusCell = '<td>' + UI.formBadge(st) +
-        (isPending || isRejected ? '' :
-          (a.feePaid ? '<div class="tiny"><span class="badge ok">الرسم مستلم</span></div>' : '<div class="tiny"><span class="badge muted">الرسم غير مستلم</span></div>')) +
-        '</td>';
+      var statusCell = '<td>' + UI.formBadge(st);
+      if (!isPending && !isRejected) {
+        var fee = Number(a.fee != null ? a.fee : Store.settings().formFee);
+        var paidAmount = Number(a.paidAmount || 0);
+        if (paidAmount >= fee) {
+          statusCell += '<div class="tiny"><span class="badge ok">الرسم مستلم</span></div>';
+        } else if (paidAmount > 0) {
+          statusCell += '<div class="tiny"><span class="badge warn">جزئي: ' + Store.money(paidAmount) + '</span></div>';
+        } else {
+          statusCell += '<div class="tiny"><span class="badge muted">الرسم غير مستلم</span></div>';
+        }
+      }
+      statusCell += '</td>';
 
       var actionsCell;
       if (isPending) {
@@ -6147,10 +6193,84 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     tbody.querySelectorAll('[data-app-fee]').forEach(function (b) {
       b.addEventListener('click', function () {
         var serial = b.getAttribute('data-app-fee');
-        var app = Store.getApplicant(serial);
-        Store.setFeePaid(serial, !app.feePaid);
-        UI.toast('ok', app.feePaid ? 'أُلغي تسجيل الرسم' : 'سُجّل استلام الرسم', serial + ' — ' + Store.money(app.fee));
+        paymentModal(serial);
       });
+    });
+  }
+
+  /* نافذة تسجيل الدفعة (كاملة أو جزئية) */
+  function paymentModal(serial) {
+    var app = Store.getApplicant(serial);
+    if (!app) return;
+    var fee = Number(app.fee != null ? app.fee : Store.settings().formFee);
+    var paid = Number(app.paidAmount || 0);
+    var remaining = Math.max(0, fee - paid);
+    
+    var body = '<div class="field mb-2">' +
+      '<label>الاستمارة</label>' +
+      '<div class="mono">' + UI.esc(serial) + ' — ' + UI.esc(app.fullName) + '</div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label>رسم الاستمارة</label>' +
+      '<div><b>' + Store.money(fee) + '</b></div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label>المبالغ المدفوع سابقاً</label>' +
+      '<div>' + Store.money(paid) + (paid > 0 ? ' <span class="badge ok">مدفوع</span>' : ' <span class="badge muted">غير مدفوع</span>') + '</div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label>المتبقي</label>' +
+      '<div><b style="color:' + (remaining > 0 ? 'var(--danger)' : 'var(--ok)') + '">' + Store.money(remaining) + '</b></div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label for="pay-amount">المبلغ المراد تسجيله (د.ع)</label>' +
+      '<input type="number" id="pay-amount" min="0" max="' + remaining + '" step="1000" value="' + remaining + '" placeholder="0">' +
+      '</div>' +
+      '<div class="flex" style="gap:8px;margin-top:8px">' +
+      '<button class="btn btn-outline btn-sm" id="pay-full">كامل (' + Store.money(remaining) + ')</button>' +
+      '<button class="btn btn-outline btn-sm" id="pay-half">نصف (' + Store.money(Math.round(remaining / 2)) + ')</button>' +
+      '<button class="btn btn-outline btn-sm" id="pay-clear">تصفير</button>' +
+      '</div>';
+    
+    UI.modal({
+      title: 'تسجيل دفعة',
+      subtitle: 'يمكنك تسجيل دفعة كاملة أو جزئية',
+      body: body,
+      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
+        '<button class="btn btn-ok" id="pay-save">' + UI.ic('check') + ' تسجيل الدفعة</button>',
+      onMount: function (box, close) {
+        var input = box.querySelector('#pay-amount');
+        
+        box.querySelector('#pay-full').addEventListener('click', function () {
+          input.value = remaining;
+        });
+        box.querySelector('#pay-half').addEventListener('click', function () {
+          input.value = Math.round(remaining / 2);
+        });
+        box.querySelector('#pay-clear').addEventListener('click', function () {
+          input.value = 0;
+        });
+        
+        box.querySelector('#pay-save').addEventListener('click', function () {
+          var amount = Number(input.value) || 0;
+          if (amount < 0 || amount > remaining) {
+            UI.toast('err', 'مبلغ غير صحيح', 'يجب أن يكون بين 0 و ' + Store.money(remaining));
+            return;
+          }
+          
+          var newTotal = paid + amount;
+          Store.setFeePaid(serial, true, newTotal);
+          
+          if (newTotal >= fee) {
+            UI.toast('ok', 'تم التسجيل', 'سُجّل استلام الرسم كاملاً — ' + Store.money(newTotal));
+          } else if (newTotal > 0) {
+            UI.toast('warn', 'دفعة جزئية', 'سُجّل ' + Store.money(amount) + ' — المتبقي: ' + Store.money(fee - newTotal));
+          } else {
+            UI.toast('info', 'تم التصفير', 'أُلغي تسجيل الرسم');
+          }
+          close();
+        });
+      }
     });
   }
 
@@ -6523,8 +6643,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       return '<tr><td><b>' + UI.esc(r.name) + '</b><div class="tiny muted mono">' + UI.esc(r.user) + '</div></td>' +
         '<td>' + r.forms + '</td><td>' + r.printed + '</td><td>' + Store.money(Store.settings().formFee) + '</td>' +
         '<td><b>' + Store.money(r.expected) + '</b></td><td>' + Store.money(r.collected) + '</td>' +
+        '<td><span class="badge ok">' + r.paid + ' مدفوع</span> <span class="badge warn">' + r.partial + ' جزئي</span> <span class="badge danger">' + r.unpaid + ' غير مدفوع</span></td>' +
         '<td>' + r.hires + '</td><td>' + r.holds + '</td></tr>';
-    }).join('') || '<tr><td colspan="8" class="table-empty">لا بيانات</td></tr>';
+    }).join('') || '<tr><td colspan="9" class="table-empty">لا بيانات</td></tr>';
   }
 
   /* ======================= الإعدادات ======================= */

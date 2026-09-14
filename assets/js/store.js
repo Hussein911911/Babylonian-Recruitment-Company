@@ -676,12 +676,27 @@
       if (from && a.issueDate < from) return;
       if (to && a.issueDate > to + 'T23:59:59') return;
       var key = a.createdBy || 'system';
-      rows[key] = rows[key] || { user: key, forms: 0, printed: 0, expected: 0, collected: 0, hires: 0, holds: 0 };
+      rows[key] = rows[key] || { user: key, forms: 0, printed: 0, expected: 0, collected: 0, hires: 0, holds: 0, paid: 0, unpaid: 0, partial: 0 };
       rows[key].forms++;
       var fee = Number(a.fee != null ? a.fee : db.settings.formFee);
       rows[key].printed += Number(a.printedCount || 0);
       rows[key].expected += fee;
-      if (a.feePaid) rows[key].collected += fee;
+      
+      // Track payment status
+      var paidAmount = Number(a.paidAmount || 0);
+      if (paidAmount >= fee) {
+        rows[key].collected += fee;
+        rows[key].paid++;
+      } else if (paidAmount > 0) {
+        rows[key].collected += paidAmount;
+        rows[key].partial++;
+      } else if (a.feePaid) {
+        rows[key].collected += fee;
+        rows[key].paid++;
+      } else {
+        rows[key].unpaid++;
+      }
+      
       rows[key].hires += getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'succeeded'; }).length;
       rows[key].holds += getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'reserved'; }).length;
     });
@@ -730,10 +745,30 @@
     save(); emit();
   }
 
-  function setFeePaid(serial, paid) {
+  function setFeePaid(serial, paid, amount) {
     var app = getApplicant(serial); if (!app) return;
-    app.feePaid = !!paid;
-    audit(paid ? 'تسجيل استلام رسم' : 'إلغاء تسجيل الرسم', 'applicant', serial, 'رسم الاستمارة: ' + money(app.fee));
+    var fee = Number(app.fee != null ? app.fee : db.settings.formFee);
+    
+    if (amount !== undefined) {
+      // Partial or full payment with specific amount
+      var paidAmount = Number(amount) || 0;
+      app.paidAmount = paidAmount;
+      app.feePaid = paidAmount >= fee;
+      
+      if (paidAmount >= fee) {
+        audit('تسجيل استلام رسم كامل', 'applicant', serial, 'المبلغ: ' + money(paidAmount) + ' من ' + money(fee));
+      } else if (paidAmount > 0) {
+        audit('تسجيل دفعة جزئية', 'applicant', serial, 'المبلغ: ' + money(paidAmount) + ' من ' + money(fee) + ' — المتبقي: ' + money(fee - paidAmount));
+      } else {
+        audit('إلغاء تسجيل الرسم', 'applicant', serial, 'رسم الاستمارة: ' + money(fee));
+      }
+    } else {
+      // Legacy behavior: mark as fully paid or unpaid
+      app.feePaid = !!paid;
+      app.paidAmount = paid ? fee : 0;
+      audit(paid ? 'تسجيل استلام رسم' : 'إلغاء تسجيل الرسم', 'applicant', serial, 'رسم الاستمارة: ' + money(fee));
+    }
+    
     save(); emit();
   }
 
