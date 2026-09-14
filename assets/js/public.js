@@ -392,8 +392,8 @@
     var code = prefillCode || '';
     var regionsList = CFG.regions.map(function (r) { return '<option>' + UI.esc(r) + '</option>'; }).join('');
     var body = '' +
-      '<p class="muted small">املأ البيانات الأساسية ليصدر لك رقم تسلسلي فوري واستمارة صالحة 30 يوماً بخمس محاولات. ' +
-      'تُستكمل الإجراءات في مكتب الشركة (الحلة – شارع 60).</p>' +
+      '<p class="muted small">املأ بياناتك الأساسية وسيُراجع طلبك من موظفينا — عند الموافقة تصدر استمارتك ' +
+      'الرسمية برقم تسلسلي صالح 30 يوماً بخمس محاولات.</p>' +
       '<form id="req-form" class="grid grid-2" style="gap:14px">' +
         '<div class="field"><label for="r-name">الاسم الكامل *</label><input type="text" id="r-name" required placeholder="الاسم الثلاثي"></div>' +
         '<div class="field"><label for="r-phone">رقم الهاتف *</label><input type="tel" id="r-phone" required placeholder="07XXXXXXXXX" dir="ltr"></div>' +
@@ -409,7 +409,7 @@
     UI.modal({
       title: 'طلب استمارة إلكترونية', subtitle: 'BRC — نظام الاستمارات', wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
-        '<button class="btn btn-gold" id="req-submit">' + UI.ic('check') + ' إصدار الاستمارة</button>',
+        '<button class="btn btn-gold" id="req-submit">' + UI.ic('check') + ' إصدار الطلب</button>',
       onMount: function (box, close) {
         box.querySelector('#req-submit').addEventListener('click', function () {
           var f = box.querySelector('#req-form');
@@ -429,53 +429,47 @@
             fullName: name, phone: phone, dob: dob, gender: gender,
             address: (address ? address : region + ' - بابل'),
             requestedCode: reqCode || null,
-            notes: reqCode ? 'طلب إلكتروني للوظيفة ' + reqCode : 'طلب إلكتروني من الموقع'
+            notes: reqCode ? 'طلب إلكتروني للوظيفة ' + reqCode : 'طلب إلكتروني من الموقع',
+            pending: true
           });
           close();
-          showIssued(app, reqCode);
+          showRequestReceived(app, reqCode);
         });
       }
     });
   }
 
-  function showIssued(app, reqCode) {
+  function showRequestReceived(app, reqCode) {
     var vUrl = Store.verifyUrl(app.serial);
     var body = '' +
-      '<div class="verify-status ok" style="padding:0 0 16px">' +
-        '<div class="seal">' + UI.ic('check') + '</div>' +
-        '<div><h1 style="font-size:1.2rem">صدرت استمارتك بنجاح</h1>' +
-        '<p class="muted mb-0 small">احتفظ بالرقم التسلسلي وراجع المكتب لاستلام النسخة المطبوعة المختومة.</p></div>' +
+      '<div class="verify-status info" style="padding:0 0 16px">' +
+        '<div class="seal" style="background:#e5eefb;color:#2563a8">' + UI.ic('hourglass') + '</div>' +
+        '<div><h1 style="font-size:1.2rem">استلمنا طلبك بنجاح</h1>' +
+        '<p class="muted mb-0 small">طلبك الآن بانتظار مراجعة موظفينا. عند الموافقة تصدر استمارتك الرسمية ويُرسَل لك الرقم التسلسلي عبر الهاتف.</p></div>' +
       '</div>' +
-      '<div class="grid" style="grid-template-columns:1fr 190px;gap:18px;align-items:start">' +
-        '<div class="data-grid">' +
-          '<div class="data-item"><div class="k">الرقم التسلسلي</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
-          '<div class="data-item"><div class="k">اسم الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
-          '<div class="data-item"><div class="k">تاريخ الإصدار</div><div class="v" dir="ltr">' + Store.fmtDate(app.issueDate) + '</div></div>' +
-          '<div class="data-item"><div class="k">تاريخ الانتهاء</div><div class="v" dir="ltr">' + Store.fmtDate(app.expiryDate) + '</div></div>' +
-          '<div class="data-item"><div class="k">المحاولات المتاحة</div><div class="v">' + Store.attemptsLeft(app.serial) + ' من ' + Store.settings().attemptLimit + '</div></div>' +
-          '<div class="data-item"><div class="k">الوظيفة المطلوبة</div><div class="v mono">' + UI.esc(reqCode || '—') + '</div></div>' +
-        '</div>' +
-        '<div class="verify-qr">' + BRCVoucher.qrSvg(vUrl, 170) +
-          '<span class="tiny muted center" dir="ltr">' + UI.esc(vUrl.replace(/^https?:\/\//, '')) + '</span>' +
-        '</div>' +
+      '<div class="data-grid">' +
+        '<div class="data-item"><div class="k">رقم الطلب</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
+        '<div class="data-item"><div class="k">اسم الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
+        '<div class="data-item"><div class="k">الوظيفة المطلوبة</div><div class="v mono">' + UI.esc(reqCode || '—') + '</div></div>' +
+        '<div class="data-item"><div class="k">الحالة</div><div class="v">' + UI.formBadge('pending') + '</div></div>' +
       '</div>' +
       '<div class="panel mt-3" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:14px 16px">' +
-        '<p class="mb-0 small">' + UI.ic('alert') + ' <b>ملاحظة:</b> هذه الاستمارة إلكترونية مبدئية. النسخة الرسمية هي المطبوعة ' +
-        'والمختومة من مكتب الشركة، وهي وحدها المعتمدة لدى أصحاب العمل. لا تُسلِّم الاستمارة لغيرك ولا تدفع مبالغ لوسطاء.</p>' +
+        '<p class="mb-0 small">' + UI.ic('alert') + ' <b>ملاحظة:</b> احتفظ برقم الطلب لمتابعة الحالة من صفحة «التحقق من استمارة». ' +
+        'النسخة الرسمية المعتمدة لدى أصحاب العمل هي المطبوعة والمختومة من مكتب الشركة.</p>' +
       '</div></div>';
 
     UI.modal({
-      title: 'تم إصدار الاستمارة', subtitle: 'BRC-NO — نظام الاستمارات الموثّق', wide: true, body: body,
-      footer: '<button class="btn btn-lapis" id="issued-print">' + UI.ic('print') + ' طباعة الاستمارة</button>' +
+      title: 'تم إرسال الطلب', subtitle: 'BRC-NO — نظام الاستمارات الموثّق', wide: true, body: body,
+      footer: '<button class="btn btn-lapis" id="req-track">' + UI.ic('eye') + ' متابعة حالة الطلب</button>' +
         '<button class="btn btn-outline" data-close>إغلاق</button>',
       onMount: function (box, close) {
-        box.querySelector('#issued-print').addEventListener('click', function () {
-          BRCVoucher.print(app);
-          UI.toast('ok', 'جاهزة للطباعة', 'تم تحضير الاستمارة بصيغة A4 مع الكيو آر كود.');
+        box.querySelector('#req-track').addEventListener('click', function () {
+          close();
+          window.location.href = Store.verifyLocalUrl(app.serial);
         });
       }
     });
-    UI.toast('ok', 'صدرت الاستمارة', 'الرقم التسلسلي: ' + app.serial);
+    UI.toast('ok', 'استُلم طلبك', 'رقم الطلب: ' + app.serial + ' — بانتظار المراجعة');
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

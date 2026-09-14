@@ -343,29 +343,62 @@
 
   function createApplicant(data) {
     var issue = new Date();
+    var pending = !!data.pending;
     var app = {
       id: uid('app'), serial: nextSerial(), fullName: data.fullName, phone: data.phone,
       address: data.address, dob: data.dob || '', gender: data.gender || 'ذكر', nationality: data.nationality || 'عراقي',
-      issueDate: issue.toISOString(),
-      expiryDate: addDays(issue, Number(db.settings.validityDays || 30)).toISOString(),
-      status: 'active', createdBy: currentUser() ? currentUser().username : 'system',
+      issueDate: pending ? null : issue.toISOString(),
+      expiryDate: pending ? null : addDays(issue, Number(db.settings.validityDays || 30)).toISOString(),
+      status: pending ? 'pending' : 'active',
+      createdBy: currentUser() ? currentUser().username : 'system',
       createdAt: issue.toISOString(), notes: data.notes || '',
       requestedCode: data.requestedCode || null,
       requestedAt: data.requestedCode ? issue.toISOString() : null,
       fee: Number(data.fee != null ? data.fee : db.settings.formFee),
-      feePaid: !!data.feePaid, printedCount: 0
+      feePaid: !!data.feePaid, printedCount: 0,
+      rejectReason: ''
     };
     db.applicants.unshift(app);
+    if (!pending) createAttempts(app.serial);
+    audit(pending ? 'طلب استمارة جديد' : 'إصدار استمارة', 'applicant', app.serial,
+      (pending ? 'طلب إلكتروني قيد المراجعة من الباحث ' : 'إصدار استمارة للباحث ') + app.fullName + ' — رسم ' + money(app.fee));
+    save(); emit();
+    return app;
+  }
+
+  function createAttempts(serial) {
     for (var i = 1; i <= Number(db.settings.attemptLimit || 5); i++) {
       db.attempts.push({
-        id: uid('att'), serial: app.serial, no: i, jobId: null, jobCode: null, jobTitle: null,
+        id: uid('att'), serial: serial, no: i, jobId: null, jobCode: null, jobTitle: null,
         location: null, employerName: null, employerPhone: null, slotStatus: 'empty',
         selectedAt: null, holdExpiresAt: null, closedAt: null, note: '', staff: null
       });
     }
-    audit('إصدار استمارة', 'applicant', app.serial, 'إصدار استمارة للباحث ' + app.fullName + ' — صلاحية 30 يوماً، رسم ' + money(app.fee));
+  }
+
+  /* قبول طلب استمارة قيد المراجعة ⇒ تتحول لاستمارة رسمية سارية */
+  function approveApplicant(serial) {
+    var app = getApplicant(serial);
+    if (!app || app.status !== 'pending') return { ok: false, error: 'الطلب غير موجود أو ليس قيد المراجعة' };
+    var issue = new Date();
+    app.status = 'active';
+    app.issueDate = issue.toISOString();
+    app.expiryDate = addDays(issue, Number(db.settings.validityDays || 30)).toISOString();
+    if (!getAttempts(serial).length) createAttempts(serial);
+    audit('قبول طلب استمارة', 'applicant', serial, 'قبول طلب الباحث ' + app.fullName + ' — صدرت الاستمارة رسمياً برقم ' + serial);
     save(); emit();
-    return app;
+    return { ok: true, app: app };
+  }
+
+  /* رفض طلب استمارة قيد المراجعة */
+  function rejectApplicant(serial, reason) {
+    var app = getApplicant(serial);
+    if (!app || app.status !== 'pending') return { ok: false, error: 'الطلب غير موجود أو ليس قيد المراجعة' };
+    app.status = 'rejected';
+    app.rejectReason = reason || '';
+    audit('رفض طلب استمارة', 'applicant', serial, 'رفض طلب الباحث ' + app.fullName + (reason ? ' — السبب: ' + reason : ''));
+    save(); emit();
+    return { ok: true, app: app };
   }
 
   function getApplicant(serial) {
@@ -378,7 +411,7 @@
       var copy = Object.assign({}, a);
       copy.attempts = getAttempts(a.serial);
       copy.attemptsUsed = copy.attempts.filter(function (t) { return t.slotStatus !== 'empty'; }).length;
-      copy.daysLeft = diffDays(a.expiryDate, new Date());
+      copy.daysLeft = a.expiryDate ? diffDays(a.expiryDate, new Date()) : null;
       copy.holds = copy.attempts.filter(function (t) { return t.slotStatus === 'reserved'; }).length;
       return copy;
     });
@@ -410,6 +443,8 @@
 
   function formStatus(app) {
     if (!app) return 'active';
+    if (app.status === 'pending') return 'pending';
+    if (app.status === 'rejected') return 'rejected';
     if (getAttempts(app.serial).some(function (t) { return t.slotStatus === 'succeeded'; })) return 'completed';
     if (new Date(app.expiryDate).getTime() < Date.now()) return 'expired';
     if (attemptsLeft(app.serial) === 0) return 'exhausted';
@@ -421,7 +456,10 @@
   function selectAttempt(serial, jobCode) {
     var app = getApplicant(serial);
     if (!app) return { ok: false, error: 'الاستمارة غير موجودة' };
-    if (formStatus(app) === 'expired') return { ok: false, error: 'انتهت صلاحية الاستمارة (30 يوماً)' };
+    var st = formStatus(app);
+    if (st === 'pending') return { ok: false, error: 'الطلب قيد المراجعة — اقبل الطلب أولاً قبل الترشيح' };
+    if (st === 'rejected') return { ok: false, error: 'الطلب مرفوض — لا يمكن الترشيح عليه' };
+    if (st === 'expired') return { ok: false, error: 'انتهت صلاحية الاستمارة (30 يوماً)' };
     var job = getJob(jobCode);
     if (!job) return { ok: false, error: 'الوظيفة غير موجودة' };
     if (job.status !== 'available') return { ok: false, error: 'الوظيفة غير متاحة حالياً (' + CFG.jobStatus[job.status].ar + ')' };
@@ -568,8 +606,11 @@
       phone: app.phone,
       issueDate: app.issueDate,
       expiryDate: app.expiryDate,
+      createdAt: app.createdAt,
       status: formStatus(app),
-      daysLeft: diffDays(app.expiryDate, new Date()),
+      rejectReason: app.rejectReason || '',
+      requestedCode: app.requestedCode || null,
+      daysLeft: app.expiryDate ? diffDays(app.expiryDate, new Date()) : null,
       attemptsLeft: attemptsLeft(app.serial),
       attemptsUsed: getAttempts(app.serial).filter(function (x) { return x.slotStatus !== 'empty'; }).length,
       attemptLimit: Number(db.settings.attemptLimit || 5),
@@ -600,6 +641,7 @@
       closed: db.jobs.filter(function (j) { return j.status === 'closed'; }).length,
       forms: db.applicants.length,
       activeForms: db.applicants.filter(function (a) { return formStatus(a) === 'active'; }).length,
+      pendingForms: db.applicants.filter(function (a) { return formStatus(a) === 'pending'; }).length,
       expiredForms: db.applicants.filter(function (a) { return formStatus(a) === 'expired'; }).length,
       hires: db.attempts.filter(function (t) { return t.slotStatus === 'succeeded'; }).length
     };
@@ -639,7 +681,7 @@
   }
 
   function pendingActions() {
-    var out = { holds: [], expired: [], exhausted: [], rejected: [] };
+    var out = { holds: [], expired: [], exhausted: [], rejected: [], requests: [] };
     db.jobs.forEach(function (j) {
       if (j.status === 'reserved' && j.holdExpiresAt) {
         var h = diffHours(j.holdExpiresAt, new Date());
@@ -648,6 +690,8 @@
     });
     db.applicants.forEach(function (a) {
       var st = formStatus(a);
+      if (st === 'pending') { out.requests.push(a); return; }
+      if (st === 'rejected') return;
       var used = getAttempts(a.serial).filter(function (t) { return t.slotStatus !== 'empty'; }).length;
       if (st === 'expired') out.expired.push(a);
       else if (used >= Number(db.settings.attemptLimit || 5)) out.exhausted.push(a);
@@ -708,6 +752,7 @@
     setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'BRC-' + (db.counters.jobCode + 1); },
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,
+    approveApplicant: approveApplicant, rejectApplicant: rejectApplicant,
     getAttempts: getAttempts, attemptsLeft: attemptsLeft, formStatus: formStatus, activeAttempt: activeAttempt,
     // محاولات
     selectAttempt: selectAttempt, setOutcome: setOutcome, releaseHold: releaseHold,

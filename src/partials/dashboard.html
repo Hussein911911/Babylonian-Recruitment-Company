@@ -47,7 +47,7 @@
     <nav class="side-nav" id="side-nav">
       <button data-view="overview" class="active"><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg> نظرة عامة</button>
       <button data-view="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الوظائف <span class="badge-count hidden" id="nav-jobs-count">0</span></button>
-      <button data-view="applicants"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg> الباحثون والاستمارات</button>
+      <button data-view="applicants"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg> الباحثون والاستمارات <span class="badge-count hidden" id="nav-apps-count">0</span></button>
       <button data-view="holds"><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> متابعة الحجوزات (24 ساعة) <span class="badge-count hidden" id="nav-holds-count">0</span></button>
       <button data-view="audit" data-admin-only="false"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> سجل التدقيق</button>
       <button data-view="finance" data-admin-only="true"><svg class="ic"><use href="#i-chart" xlink:href="#i-chart"/></svg> اللوحة المالية</button>
@@ -186,7 +186,9 @@
               <label for="a-status">حالة الاستمارة</label>
               <select id="a-status">
                 <option value="all">الكل</option>
+                <option value="pending">قيد المراجعة</option>
                 <option value="active">سارية</option>
+                <option value="rejected">مرفوض</option>
                 <option value="expired">منتهية الصلاحية</option>
                 <option value="completed">مكتملة</option>
                 <option value="exhausted">استُهلكت المحاولات</option>

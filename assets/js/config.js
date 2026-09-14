@@ -82,6 +82,8 @@
     /* حالات الاستمارة */
     formStatus: {
       active: { ar: 'سارية', cls: 'ok' },
+      pending: { ar: 'قيد المراجعة', cls: 'warn' },
+      rejected: { ar: 'مرفوض', cls: 'danger' },
       expired: { ar: 'منتهية الصلاحية', cls: 'danger' },
       exhausted: { ar: 'استُهلكت المحاولات', cls: 'warn' },
       completed: { ar: 'مكتملة', cls: 'info' }

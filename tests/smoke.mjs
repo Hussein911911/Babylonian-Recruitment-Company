@@ -136,9 +136,9 @@ check('إغلاق النافذة يعمل', () => {
   return site.doc.querySelector('.modal-backdrop') === null || 'النافذة لم تُغلق';
 });
 
-/* طلب استمارة إلكترونية */
-check('طلب استمارة إلكترونية يُصدر رقماً تسلسلياً ويولّد كيو آر كود', () => {
-  const before = site.window.BRCStore.stats().forms;
+/* طلب استمارة إلكترونية (قيد المراجعة) */
+check('طلب استمارة إلكترونية يُسجَّل كطلب قيد المراجعة برقم تسلسلي', () => {
+  const before = site.window.BRCStore.stats().pendingForms;
   site.doc.getElementById('btn-request-form').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
   const box = lastModal(site.doc);
   if (!box) return 'لم تُفتح نافذة الطلب';
@@ -146,12 +146,28 @@ check('طلب استمارة إلكترونية يُصدر رقماً تسلسل
   box.querySelector('#r-phone').value = '07700000000';
   box.querySelector('#r-code').value = 'BRC-1043';
   box.querySelector('#req-submit').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-  const after = site.window.BRCStore.stats().forms;
+  const after = site.window.BRCStore.stats().pendingForms;
   const apps = site.window.BRCStore.listApplicants({ q: 'اختبار آلي' });
-  if (after !== before + 1 || !apps.length) return 'لم تُسجّل الاستمارة';
+  if (after !== before + 1 || !apps.length) return 'لم يُسجَّل الطلب';
   const serial = apps[0].serial;
-  const valid = serial.startsWith('BRC-NO-') && apps[0].expiryDate && apps[0].requestedCode === 'BRC-1043';
-  return valid || 'بيانات الاستمارة غير صحيحة: ' + JSON.stringify(apps[0]);
+  const valid = serial.startsWith('BRC-NO-') && apps[0].status === 'pending' && !apps[0].expiryDate && apps[0].requestedCode === 'BRC-1043';
+  return valid || 'بيانات الطلب غير صحيحة: ' + JSON.stringify(apps[0]);
+});
+check('قبول طلب قيد المراجعة يحوّله لاستمارة سارية بخمس محاولات', () => {
+  const apps = site.window.BRCStore.listApplicants({ q: 'اختبار آلي' });
+  if (!apps.length) return 'لا يوجد طلب للاختبار';
+  const serial = apps[0].serial;
+  const res = site.window.BRCStore.approveApplicant(serial);
+  const app = site.window.BRCStore.getApplicant(serial);
+  const valid = res.ok === true && app.status === 'active' && !!app.expiryDate && site.window.BRCStore.attemptsLeft(serial) === 5;
+  return valid || 'فشل القبول: ' + JSON.stringify({ res: res, app: app && { status: app.status, expiry: app.expiryDate } });
+});
+check('رفض طلب قيد المراجعة يعلّم الطلب كمرفوض', () => {
+  const r = site.window.BRCStore.createApplicant({ fullName: 'رفض آلي', phone: '07700000009', pending: true });
+  const res = site.window.BRCStore.rejectApplicant(r.serial, 'بيانات ناقصة');
+  const app = site.window.BRCStore.getApplicant(r.serial);
+  const valid = res.ok === true && app.status === 'rejected' && app.rejectReason === 'بيانات ناقصة';
+  return valid || 'فشل الرفض: ' + JSON.stringify({ res: res, app: app && app.status });
 });
 
 /* ======================= 2) قالب الاستمارة المطبوعة ======================= */

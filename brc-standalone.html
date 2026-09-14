@@ -1609,7 +1609,7 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     <nav class="side-nav" id="side-nav">
       <button data-view="overview" class="active"><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg> نظرة عامة</button>
       <button data-view="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الوظائف <span class="badge-count hidden" id="nav-jobs-count">0</span></button>
-      <button data-view="applicants"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg> الباحثون والاستمارات</button>
+      <button data-view="applicants"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg> الباحثون والاستمارات <span class="badge-count hidden" id="nav-apps-count">0</span></button>
       <button data-view="holds"><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> متابعة الحجوزات (24 ساعة) <span class="badge-count hidden" id="nav-holds-count">0</span></button>
       <button data-view="audit" data-admin-only="false"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> سجل التدقيق</button>
       <button data-view="finance" data-admin-only="true"><svg class="ic"><use href="#i-chart" xlink:href="#i-chart"/></svg> اللوحة المالية</button>
@@ -1748,7 +1748,9 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
               <label for="a-status">حالة الاستمارة</label>
               <select id="a-status">
                 <option value="all">الكل</option>
+                <option value="pending">قيد المراجعة</option>
                 <option value="active">سارية</option>
+                <option value="rejected">مرفوض</option>
                 <option value="expired">منتهية الصلاحية</option>
                 <option value="completed">مكتملة</option>
                 <option value="exhausted">استُهلكت المحاولات</option>
@@ -2112,6 +2114,8 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     /* حالات الاستمارة */
     formStatus: {
       active: { ar: 'سارية', cls: 'ok' },
+      pending: { ar: 'قيد المراجعة', cls: 'warn' },
+      rejected: { ar: 'مرفوض', cls: 'danger' },
       expired: { ar: 'منتهية الصلاحية', cls: 'danger' },
       exhausted: { ar: 'استُهلكت المحاولات', cls: 'warn' },
       completed: { ar: 'مكتملة', cls: 'info' }
@@ -3418,29 +3422,62 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
   function createApplicant(data) {
     var issue = new Date();
+    var pending = !!data.pending;
     var app = {
       id: uid('app'), serial: nextSerial(), fullName: data.fullName, phone: data.phone,
       address: data.address, dob: data.dob || '', gender: data.gender || 'ذكر', nationality: data.nationality || 'عراقي',
-      issueDate: issue.toISOString(),
-      expiryDate: addDays(issue, Number(db.settings.validityDays || 30)).toISOString(),
-      status: 'active', createdBy: currentUser() ? currentUser().username : 'system',
+      issueDate: pending ? null : issue.toISOString(),
+      expiryDate: pending ? null : addDays(issue, Number(db.settings.validityDays || 30)).toISOString(),
+      status: pending ? 'pending' : 'active',
+      createdBy: currentUser() ? currentUser().username : 'system',
       createdAt: issue.toISOString(), notes: data.notes || '',
       requestedCode: data.requestedCode || null,
       requestedAt: data.requestedCode ? issue.toISOString() : null,
       fee: Number(data.fee != null ? data.fee : db.settings.formFee),
-      feePaid: !!data.feePaid, printedCount: 0
+      feePaid: !!data.feePaid, printedCount: 0,
+      rejectReason: ''
     };
     db.applicants.unshift(app);
+    if (!pending) createAttempts(app.serial);
+    audit(pending ? 'طلب استمارة جديد' : 'إصدار استمارة', 'applicant', app.serial,
+      (pending ? 'طلب إلكتروني قيد المراجعة من الباحث ' : 'إصدار استمارة للباحث ') + app.fullName + ' — رسم ' + money(app.fee));
+    save(); emit();
+    return app;
+  }
+
+  function createAttempts(serial) {
     for (var i = 1; i <= Number(db.settings.attemptLimit || 5); i++) {
       db.attempts.push({
-        id: uid('att'), serial: app.serial, no: i, jobId: null, jobCode: null, jobTitle: null,
+        id: uid('att'), serial: serial, no: i, jobId: null, jobCode: null, jobTitle: null,
         location: null, employerName: null, employerPhone: null, slotStatus: 'empty',
         selectedAt: null, holdExpiresAt: null, closedAt: null, note: '', staff: null
       });
     }
-    audit('إصدار استمارة', 'applicant', app.serial, 'إصدار استمارة للباحث ' + app.fullName + ' — صلاحية 30 يوماً، رسم ' + money(app.fee));
+  }
+
+  /* قبول طلب استمارة قيد المراجعة ⇒ تتحول لاستمارة رسمية سارية */
+  function approveApplicant(serial) {
+    var app = getApplicant(serial);
+    if (!app || app.status !== 'pending') return { ok: false, error: 'الطلب غير موجود أو ليس قيد المراجعة' };
+    var issue = new Date();
+    app.status = 'active';
+    app.issueDate = issue.toISOString();
+    app.expiryDate = addDays(issue, Number(db.settings.validityDays || 30)).toISOString();
+    if (!getAttempts(serial).length) createAttempts(serial);
+    audit('قبول طلب استمارة', 'applicant', serial, 'قبول طلب الباحث ' + app.fullName + ' — صدرت الاستمارة رسمياً برقم ' + serial);
     save(); emit();
-    return app;
+    return { ok: true, app: app };
+  }
+
+  /* رفض طلب استمارة قيد المراجعة */
+  function rejectApplicant(serial, reason) {
+    var app = getApplicant(serial);
+    if (!app || app.status !== 'pending') return { ok: false, error: 'الطلب غير موجود أو ليس قيد المراجعة' };
+    app.status = 'rejected';
+    app.rejectReason = reason || '';
+    audit('رفض طلب استمارة', 'applicant', serial, 'رفض طلب الباحث ' + app.fullName + (reason ? ' — السبب: ' + reason : ''));
+    save(); emit();
+    return { ok: true, app: app };
   }
 
   function getApplicant(serial) {
@@ -3453,7 +3490,7 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
       var copy = Object.assign({}, a);
       copy.attempts = getAttempts(a.serial);
       copy.attemptsUsed = copy.attempts.filter(function (t) { return t.slotStatus !== 'empty'; }).length;
-      copy.daysLeft = diffDays(a.expiryDate, new Date());
+      copy.daysLeft = a.expiryDate ? diffDays(a.expiryDate, new Date()) : null;
       copy.holds = copy.attempts.filter(function (t) { return t.slotStatus === 'reserved'; }).length;
       return copy;
     });
@@ -3485,6 +3522,8 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
   function formStatus(app) {
     if (!app) return 'active';
+    if (app.status === 'pending') return 'pending';
+    if (app.status === 'rejected') return 'rejected';
     if (getAttempts(app.serial).some(function (t) { return t.slotStatus === 'succeeded'; })) return 'completed';
     if (new Date(app.expiryDate).getTime() < Date.now()) return 'expired';
     if (attemptsLeft(app.serial) === 0) return 'exhausted';
@@ -3496,7 +3535,10 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
   function selectAttempt(serial, jobCode) {
     var app = getApplicant(serial);
     if (!app) return { ok: false, error: 'الاستمارة غير موجودة' };
-    if (formStatus(app) === 'expired') return { ok: false, error: 'انتهت صلاحية الاستمارة (30 يوماً)' };
+    var st = formStatus(app);
+    if (st === 'pending') return { ok: false, error: 'الطلب قيد المراجعة — اقبل الطلب أولاً قبل الترشيح' };
+    if (st === 'rejected') return { ok: false, error: 'الطلب مرفوض — لا يمكن الترشيح عليه' };
+    if (st === 'expired') return { ok: false, error: 'انتهت صلاحية الاستمارة (30 يوماً)' };
     var job = getJob(jobCode);
     if (!job) return { ok: false, error: 'الوظيفة غير موجودة' };
     if (job.status !== 'available') return { ok: false, error: 'الوظيفة غير متاحة حالياً (' + CFG.jobStatus[job.status].ar + ')' };
@@ -3643,8 +3685,11 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
       phone: app.phone,
       issueDate: app.issueDate,
       expiryDate: app.expiryDate,
+      createdAt: app.createdAt,
       status: formStatus(app),
-      daysLeft: diffDays(app.expiryDate, new Date()),
+      rejectReason: app.rejectReason || '',
+      requestedCode: app.requestedCode || null,
+      daysLeft: app.expiryDate ? diffDays(app.expiryDate, new Date()) : null,
       attemptsLeft: attemptsLeft(app.serial),
       attemptsUsed: getAttempts(app.serial).filter(function (x) { return x.slotStatus !== 'empty'; }).length,
       attemptLimit: Number(db.settings.attemptLimit || 5),
@@ -3675,6 +3720,7 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
       closed: db.jobs.filter(function (j) { return j.status === 'closed'; }).length,
       forms: db.applicants.length,
       activeForms: db.applicants.filter(function (a) { return formStatus(a) === 'active'; }).length,
+      pendingForms: db.applicants.filter(function (a) { return formStatus(a) === 'pending'; }).length,
       expiredForms: db.applicants.filter(function (a) { return formStatus(a) === 'expired'; }).length,
       hires: db.attempts.filter(function (t) { return t.slotStatus === 'succeeded'; }).length
     };
@@ -3714,7 +3760,7 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
   }
 
   function pendingActions() {
-    var out = { holds: [], expired: [], exhausted: [], rejected: [] };
+    var out = { holds: [], expired: [], exhausted: [], rejected: [], requests: [] };
     db.jobs.forEach(function (j) {
       if (j.status === 'reserved' && j.holdExpiresAt) {
         var h = diffHours(j.holdExpiresAt, new Date());
@@ -3723,6 +3769,8 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     });
     db.applicants.forEach(function (a) {
       var st = formStatus(a);
+      if (st === 'pending') { out.requests.push(a); return; }
+      if (st === 'rejected') return;
       var used = getAttempts(a.serial).filter(function (t) { return t.slotStatus !== 'empty'; }).length;
       if (st === 'expired') out.expired.push(a);
       else if (used >= Number(db.settings.attemptLimit || 5)) out.exhausted.push(a);
@@ -3783,6 +3831,7 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'BRC-' + (db.counters.jobCode + 1); },
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,
+    approveApplicant: approveApplicant, rejectApplicant: rejectApplicant,
     getAttempts: getAttempts, attemptsLeft: attemptsLeft, formStatus: formStatus, activeAttempt: activeAttempt,
     // محاولات
     selectAttempt: selectAttempt, setOutcome: setOutcome, releaseHold: releaseHold,
@@ -4566,8 +4615,8 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     var code = prefillCode || '';
     var regionsList = CFG.regions.map(function (r) { return '<option>' + UI.esc(r) + '</option>'; }).join('');
     var body = '' +
-      '<p class="muted small">املأ البيانات الأساسية ليصدر لك رقم تسلسلي فوري واستمارة صالحة 30 يوماً بخمس محاولات. ' +
-      'تُستكمل الإجراءات في مكتب الشركة (الحلة – شارع 60).</p>' +
+      '<p class="muted small">املأ بياناتك الأساسية وسيُراجع طلبك من موظفينا — عند الموافقة تصدر استمارتك ' +
+      'الرسمية برقم تسلسلي صالح 30 يوماً بخمس محاولات.</p>' +
       '<form id="req-form" class="grid grid-2" style="gap:14px">' +
         '<div class="field"><label for="r-name">الاسم الكامل *</label><input type="text" id="r-name" required placeholder="الاسم الثلاثي"></div>' +
         '<div class="field"><label for="r-phone">رقم الهاتف *</label><input type="tel" id="r-phone" required placeholder="07XXXXXXXXX" dir="ltr"></div>' +
@@ -4583,7 +4632,7 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     UI.modal({
       title: 'طلب استمارة إلكترونية', subtitle: 'BRC — نظام الاستمارات', wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
-        '<button class="btn btn-gold" id="req-submit">' + UI.ic('check') + ' إصدار الاستمارة</button>',
+        '<button class="btn btn-gold" id="req-submit">' + UI.ic('check') + ' إصدار الطلب</button>',
       onMount: function (box, close) {
         box.querySelector('#req-submit').addEventListener('click', function () {
           var f = box.querySelector('#req-form');
@@ -4603,53 +4652,47 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
             fullName: name, phone: phone, dob: dob, gender: gender,
             address: (address ? address : region + ' - بابل'),
             requestedCode: reqCode || null,
-            notes: reqCode ? 'طلب إلكتروني للوظيفة ' + reqCode : 'طلب إلكتروني من الموقع'
+            notes: reqCode ? 'طلب إلكتروني للوظيفة ' + reqCode : 'طلب إلكتروني من الموقع',
+            pending: true
           });
           close();
-          showIssued(app, reqCode);
+          showRequestReceived(app, reqCode);
         });
       }
     });
   }
 
-  function showIssued(app, reqCode) {
+  function showRequestReceived(app, reqCode) {
     var vUrl = Store.verifyUrl(app.serial);
     var body = '' +
-      '<div class="verify-status ok" style="padding:0 0 16px">' +
-        '<div class="seal">' + UI.ic('check') + '</div>' +
-        '<div><h1 style="font-size:1.2rem">صدرت استمارتك بنجاح</h1>' +
-        '<p class="muted mb-0 small">احتفظ بالرقم التسلسلي وراجع المكتب لاستلام النسخة المطبوعة المختومة.</p></div>' +
+      '<div class="verify-status info" style="padding:0 0 16px">' +
+        '<div class="seal" style="background:#e5eefb;color:#2563a8">' + UI.ic('hourglass') + '</div>' +
+        '<div><h1 style="font-size:1.2rem">استلمنا طلبك بنجاح</h1>' +
+        '<p class="muted mb-0 small">طلبك الآن بانتظار مراجعة موظفينا. عند الموافقة تصدر استمارتك الرسمية ويُرسَل لك الرقم التسلسلي عبر الهاتف.</p></div>' +
       '</div>' +
-      '<div class="grid" style="grid-template-columns:1fr 190px;gap:18px;align-items:start">' +
-        '<div class="data-grid">' +
-          '<div class="data-item"><div class="k">الرقم التسلسلي</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
-          '<div class="data-item"><div class="k">اسم الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
-          '<div class="data-item"><div class="k">تاريخ الإصدار</div><div class="v" dir="ltr">' + Store.fmtDate(app.issueDate) + '</div></div>' +
-          '<div class="data-item"><div class="k">تاريخ الانتهاء</div><div class="v" dir="ltr">' + Store.fmtDate(app.expiryDate) + '</div></div>' +
-          '<div class="data-item"><div class="k">المحاولات المتاحة</div><div class="v">' + Store.attemptsLeft(app.serial) + ' من ' + Store.settings().attemptLimit + '</div></div>' +
-          '<div class="data-item"><div class="k">الوظيفة المطلوبة</div><div class="v mono">' + UI.esc(reqCode || '—') + '</div></div>' +
-        '</div>' +
-        '<div class="verify-qr">' + BRCVoucher.qrSvg(vUrl, 170) +
-          '<span class="tiny muted center" dir="ltr">' + UI.esc(vUrl.replace(/^https?:\/\//, '')) + '</span>' +
-        '</div>' +
+      '<div class="data-grid">' +
+        '<div class="data-item"><div class="k">رقم الطلب</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
+        '<div class="data-item"><div class="k">اسم الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
+        '<div class="data-item"><div class="k">الوظيفة المطلوبة</div><div class="v mono">' + UI.esc(reqCode || '—') + '</div></div>' +
+        '<div class="data-item"><div class="k">الحالة</div><div class="v">' + UI.formBadge('pending') + '</div></div>' +
       '</div>' +
       '<div class="panel mt-3" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:14px 16px">' +
-        '<p class="mb-0 small">' + UI.ic('alert') + ' <b>ملاحظة:</b> هذه الاستمارة إلكترونية مبدئية. النسخة الرسمية هي المطبوعة ' +
-        'والمختومة من مكتب الشركة، وهي وحدها المعتمدة لدى أصحاب العمل. لا تُسلِّم الاستمارة لغيرك ولا تدفع مبالغ لوسطاء.</p>' +
+        '<p class="mb-0 small">' + UI.ic('alert') + ' <b>ملاحظة:</b> احتفظ برقم الطلب لمتابعة الحالة من صفحة «التحقق من استمارة». ' +
+        'النسخة الرسمية المعتمدة لدى أصحاب العمل هي المطبوعة والمختومة من مكتب الشركة.</p>' +
       '</div></div>';
 
     UI.modal({
-      title: 'تم إصدار الاستمارة', subtitle: 'BRC-NO — نظام الاستمارات الموثّق', wide: true, body: body,
-      footer: '<button class="btn btn-lapis" id="issued-print">' + UI.ic('print') + ' طباعة الاستمارة</button>' +
+      title: 'تم إرسال الطلب', subtitle: 'BRC-NO — نظام الاستمارات الموثّق', wide: true, body: body,
+      footer: '<button class="btn btn-lapis" id="req-track">' + UI.ic('eye') + ' متابعة حالة الطلب</button>' +
         '<button class="btn btn-outline" data-close>إغلاق</button>',
       onMount: function (box, close) {
-        box.querySelector('#issued-print').addEventListener('click', function () {
-          BRCVoucher.print(app);
-          UI.toast('ok', 'جاهزة للطباعة', 'تم تحضير الاستمارة بصيغة A4 مع الكيو آر كود.');
+        box.querySelector('#req-track').addEventListener('click', function () {
+          close();
+          window.location.href = Store.verifyLocalUrl(app.serial);
         });
       }
     });
-    UI.toast('ok', 'صدرت الاستمارة', 'الرقم التسلسلي: ' + app.serial);
+    UI.toast('ok', 'استُلم طلبك', 'رقم الطلب: ' + app.serial + ' — بانتظار المراجعة');
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -4769,11 +4812,13 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
       '</div>';
   }
 
-  function statusClass(k) { return k === 'active' ? 'ok' : (k === 'completed' ? 'info' : (k === 'exhausted' ? 'warn' : 'danger')); }
-  function statusIcon(k) { return k === 'active' ? 'check' : (k === 'completed' ? 'check' : (k === 'exhausted' ? 'alert' : 'x-circle')); }
+  function statusClass(k) { return ({ active: 'ok', completed: 'info', exhausted: 'warn', pending: 'warn', rejected: 'danger' })[k] || 'danger'; }
+  function statusIcon(k) { return ({ active: 'check', completed: 'check', exhausted: 'alert', pending: 'hourglass', rejected: 'x-circle' })[k] || 'x-circle'; }
   function statusTitle(k) {
     return ({
       active: 'استمارة سارية وصحيحة',
+      pending: 'طلب قيد المراجعة',
+      rejected: 'طلب مرفوض',
       expired: 'استمارة منتهية الصلاحية',
       exhausted: 'استُهلكت المحاولات الخمس',
       completed: 'تم التوظيف — استمارة مكتملة'
@@ -4784,6 +4829,33 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     var host = document.getElementById('verify-root');
     var cls = statusClass(r.status);
     var stBadge = UI.formBadge(r.status);
+    var isRequest = r.status === 'pending' || r.status === 'rejected';
+
+    /* سطر الصلاحية حسب الحالة */
+    var daysLine;
+    if (r.status === 'pending') daysLine = 'بانتظار مراجعة الموظفين';
+    else if (r.status === 'rejected') daysLine = 'رُفض الطلب — راجع المكتب للاستفسار';
+    else if (r.daysLeft != null && r.daysLeft >= 0) daysLine = 'المتبقي من الصلاحية: ' + r.daysLeft + ' يوم';
+    else if (r.daysLeft != null) daysLine = 'انتهت قبل ' + Math.abs(r.daysLeft) + ' يوم';
+    else daysLine = '—';
+
+    /* خلايا التاريخ حسب الحالة */
+    var dateCells = isRequest
+      ? '<div class="data-item"><div class="k">تاريخ الطلب</div><div class="v" dir="ltr">' + Store.fmtDate(r.createdAt || '') + '</div></div>' +
+        '<div class="data-item"><div class="k">كود الوظيفة المطلوبة</div><div class="v mono" dir="ltr">' + UI.esc(r.requestedCode || '—') + '</div></div>'
+      : '<div class="data-item"><div class="k">تاريخ الإصدار</div><div class="v" dir="ltr">' + Store.fmtDate(r.issueDate || '') + '</div></div>' +
+        '<div class="data-item"><div class="k">تاريخ الانتهاء</div><div class="v" dir="ltr">' + Store.fmtDate(r.expiryDate || '') + '</div></div>';
+
+    /* رسالة حالة الطلب (قيد المراجعة / مرفوض) */
+    var requestNote = isRequest
+      ? (r.status === 'pending'
+        ? '<div class="panel" style="background:#fdf6e3;border-color:#f0d9a3;margin:0 24px 18px"><div class="panel-body" style="padding:14px 16px">' +
+          '<p class="mb-0 small">' + UI.ic('hourglass') + ' <b>طلبك قيد المراجعة:</b> استلم النظام طلبك وسيراجعه موظفونا خلال وقت قصير. ' +
+          'عند القبول تصدر الاستمارة رسمياً برقمها التسلسلي وتبدأ صلاحية 30 يوماً. يمكنك متابعة الحالة من هذه الصفحة أو الاتصال بنا.</p></div></div>'
+        : '<div class="panel" style="background:#fbe6e5;border-color:#f0c3c1;margin:0 24px 18px"><div class="panel-body" style="padding:14px 16px">' +
+          '<p class="mb-0 small">' + UI.ic('x-circle') + ' <b>نأسف، رُفض الطلب.</b> ' +
+          (r.rejectReason ? 'السبب: ' + UI.esc(r.rejectReason) + '. ' : '') + 'يمكنك مراجعة المكتب للاستفسار أو تقديم طلب جديد.</p></div></div>')
+      : '';
 
     var rows = r.attempts.map(function (t) {
       var filled = t.slotStatus !== 'empty';
@@ -4814,18 +4886,18 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
             'الباحث: <b>' + UI.esc(r.fullName) + '</b> — تم التحقق في ' + UI.esc(Store.fmtDateTime(r.verifiedAt)) + '</p>' +
         '</div>' +
         '<div style="text-align:center">' + stBadge +
-          '<div class="tiny muted mt-1">' + (r.daysLeft >= 0 ? 'المتبقي من الصلاحية: ' + r.daysLeft + ' يوم' : 'انتهت قبل ' + Math.abs(r.daysLeft) + ' يوم') + '</div>' +
+          '<div class="tiny muted mt-1">' + daysLine + '</div>' +
         '</div>' +
       '</div>' +
       tokenWarn +
+      requestNote +
       '<div class="panel-body" style="padding-top:0">' +
         '<div class="grid" style="grid-template-columns:minmax(0,1fr) 190px;gap:20px;align-items:start">' +
           '<div><div class="data-grid">' +
             '<div class="data-item"><div class="k">الرقم التسلسلي</div><div class="v mono" dir="ltr">' + UI.esc(r.serial) + '</div></div>' +
             '<div class="data-item"><div class="k">اسم الباحث</div><div class="v">' + UI.esc(r.fullName) + '</div></div>' +
             '<div class="data-item"><div class="k">الهاتف</div><div class="v mono" dir="ltr">' + UI.esc(r.phone) + '</div></div>' +
-            '<div class="data-item"><div class="k">تاريخ الإصدار</div><div class="v" dir="ltr">' + Store.fmtDate(r.issueDate) + '</div></div>' +
-            '<div class="data-item"><div class="k">تاريخ الانتهاء</div><div class="v" dir="ltr">' + Store.fmtDate(r.expiryDate) + '</div></div>' +
+            dateCells +
             '<div class="data-item"><div class="k">المحاولات المستخدمة</div><div class="v">' + r.attemptsUsed + ' من ' + r.attemptLimit + '</div></div>' +
             '<div class="data-item"><div class="k">المحاولات المتاحة</div><div class="v">' + r.attemptsLeft + '</div></div>' +
             '<div class="data-item"><div class="k">المُصدر</div><div class="v">' + UI.esc(r.createdBy) + '</div></div>' +
@@ -4834,18 +4906,19 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
             '<span class="tiny muted center">كيو آر كود التحقق الرسمي</span></div>' +
         '</div>' +
 
-        '<h3 class="mt-4">المحاولات المرتبطة بالاستمارة</h3>' +
-        '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:940px">' +
-          '<thead><tr><th>المحاولة</th><th>كود الوظيفة</th><th>المنطقة</th><th>الوظيفة</th>' +
-          '<th>هاتف جهة الاتصال</th><th>حالة المهلة</th><th>وقت الاختيار</th><th>مهلة الحجز</th><th>ملاحظة</th></tr></thead>' +
-          '<tbody>' + rows + '</tbody>' +
-        '</table></div></div>' +
+        (isRequest ? '' :
+          '<h3 class="mt-4">المحاولات المرتبطة بالاستمارة</h3>' +
+          '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:940px">' +
+            '<thead><tr><th>المحاولة</th><th>كود الوظيفة</th><th>المنطقة</th><th>الوظيفة</th>' +
+            '<th>هاتف جهة الاتصال</th><th>حالة المهلة</th><th>وقت الاختيار</th><th>مهلة الحجز</th><th>ملاحظة</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody>' +
+          '</table></div></div>') +
 
         '<div class="panel mt-3" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:14px 16px">' +
           '<p class="mb-0 small">' + UI.ic('shield') + ' <b>ملاحظة قانونية:</b> ' + UI.esc(root.BRCVoucher.DISCLAIMER) + '</p>' +
         '</div></div>' +
         '<div class="flex flex-wrap mt-3">' +
-          '<button class="btn btn-lapis" id="verify-print">' + UI.ic('print') + ' طباعة نسخة الاستمارة</button>' +
+          (isRequest ? '' : '<button class="btn btn-lapis" id="verify-print">' + UI.ic('print') + ' طباعة نسخة الاستمارة</button>') +
           '<button class="btn btn-outline" id="verify-copy">' + UI.ic('share') + ' نسخ رابط التحقق</button>' +
         '</div>' +
       '</div>';
@@ -5051,6 +5124,7 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     var pa = Store.pendingActions();
     var jobsNav = document.getElementById('nav-jobs-count');
     var holdsNav = document.getElementById('nav-holds-count');
+    var appsNav = document.getElementById('nav-apps-count');
     if (jobsNav) {
       jobsNav.textContent = String(Store.stats().available);
       jobsNav.classList.remove('hidden');
@@ -5059,6 +5133,11 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
       var c = pa.holds.length;
       holdsNav.textContent = String(c);
       holdsNav.classList.toggle('hidden', c === 0);
+    }
+    if (appsNav) {
+      var r = pa.requests.length;
+      appsNav.textContent = String(r);
+      appsNav.classList.toggle('hidden', r === 0);
     }
   }
 
@@ -5101,6 +5180,14 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
     // إجراءات مطلوبة
     var actions = [];
+    pa.requests.forEach(function (r) {
+      actions.push({
+        title: 'طلب استمارة قيد المراجعة: ' + r.serial,
+        sub: r.fullName + ' — ' + (r.requestedCode ? 'يطلب الوظيفة ' + r.requestedCode : 'طلب عام') + ' · ' + r.phone,
+        badge: '<span class="badge warn">قيد المراجعة</span>',
+        act: { label: 'مراجعة', handler: function () { setView('applicants'); reviewRequestModal(r.serial); } }
+      });
+    });
     pa.holds.forEach(function (h) {
       actions.push({
         title: 'حجز جارٍ على الوظيفة ' + h.job.code,
@@ -5351,22 +5438,69 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
       var st = Store.formStatus(a);
       var left = Store.attemptsLeft(a.serial);
       var hold = a.holds ? '<span class="badge warn">حجز جارٍ</span>' : '';
-      return '<tr>' +
-        '<td><span class="mono">' + UI.esc(a.serial) + '</span>' + (a.requestedCode ? '<div class="tiny"><span class="chip chip-gold">طلب: ' + UI.esc(a.requestedCode) + '</span></div>' : '') + '</td>' +
-        '<td><b>' + UI.esc(a.fullName) + '</b><div class="tiny muted">' + UI.esc(a.address || '') + '</div></td>' +
-        '<td class="mono tiny" dir="ltr">' + UI.esc(a.phone) + '</td>' +
-        '<td class="tiny" dir="ltr">' + Store.fmtDate(a.issueDate) + '</td>' +
-        '<td class="tiny" dir="ltr">' + Store.fmtDate(a.expiryDate) + '</td>' +
-        '<td class="tiny">' + (a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>' +
-        '<td>' + a.attemptsUsed + ' / ' + Store.settings().attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>' +
-        '<td>' + UI.formBadge(st) + (a.feePaid ? '<div class="tiny"><span class="badge ok">الرسم مستلم</span></div>' : '<div class="tiny"><span class="badge muted">الرسم غير مستلم</span></div>') + '</td>' +
-        '<td><div class="cell-actions">' +
+      var isPending = st === 'pending';
+      var isRejected = st === 'rejected';
+
+      var requestChip = a.requestedCode ? '<div class="tiny"><span class="chip chip-gold">طلب: ' + UI.esc(a.requestedCode) + '</span></div>' : '';
+      var nameCell = '<b>' + UI.esc(a.fullName) + '</b><div class="tiny muted">' + UI.esc(a.address || '') + '</div>' +
+        (isRejected && a.rejectReason ? '<div class="tiny"><span class="badge danger">السبب: ' + UI.esc(a.rejectReason) + '</span></div>' : '');
+
+      var dateCells = isPending || isRejected
+        ? '<td class="tiny muted">—</td><td class="tiny muted">—</td><td class="tiny muted">—</td>'
+        : '<td class="tiny" dir="ltr">' + Store.fmtDate(a.issueDate) + '</td>' +
+          '<td class="tiny" dir="ltr">' + Store.fmtDate(a.expiryDate) + '</td>' +
+          '<td class="tiny">' + (a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>';
+
+      var attemptsCell = isPending || isRejected
+        ? '<td class="tiny muted">—</td>'
+        : '<td>' + a.attemptsUsed + ' / ' + Store.settings().attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>';
+
+      var statusCell = '<td>' + UI.formBadge(st) +
+        (isPending || isRejected ? '' :
+          (a.feePaid ? '<div class="tiny"><span class="badge ok">الرسم مستلم</span></div>' : '<div class="tiny"><span class="badge muted">الرسم غير مستلم</span></div>')) +
+        '</td>';
+
+      var actionsCell;
+      if (isPending) {
+        actionsCell = '<td><div class="cell-actions">' +
+          '<button class="btn btn-ok btn-sm" data-app-approve="' + UI.esc(a.serial) + '">' + UI.ic('check') + ' قبول</button>' +
+          '<button class="btn btn-danger btn-sm" data-app-reject="' + UI.esc(a.serial) + '">' + UI.ic('x') + ' رفض</button>' +
+          '</div></td>';
+      } else if (isRejected) {
+        actionsCell = '<td class="tiny muted">طلب مرفوض — لا إجراء</td>';
+      } else {
+        actionsCell = '<td><div class="cell-actions">' +
           '<button class="btn btn-lapis btn-sm" data-app-attempts="' + UI.esc(a.serial) + '">' + UI.ic('list') + ' المحاولات</button>' +
           '<button class="btn btn-gold btn-sm" data-app-print="' + UI.esc(a.serial) + '">' + UI.ic('print') + ' طباعة</button>' +
           '<button class="btn btn-outline btn-sm" data-app-verify="' + UI.esc(a.serial) + '">' + UI.ic('qr') + '</button>' +
           '<button class="btn btn-outline btn-sm" data-app-fee="' + UI.esc(a.serial) + '">' + UI.ic('money') + '</button>' +
-        '</div></td></tr>';
+          '</div></td>';
+      }
+
+      return '<tr>' +
+        '<td><span class="mono">' + UI.esc(a.serial) + '</span>' + requestChip + '</td>' +
+        '<td>' + nameCell + '</td>' +
+        '<td class="mono tiny" dir="ltr">' + UI.esc(a.phone) + '</td>' +
+        dateCells +
+        attemptsCell +
+        statusCell +
+        actionsCell +
+        '</tr>';
     }).join('') || '<tr><td colspan="9" class="table-empty">لا توجد استمارات مطابقة</td></tr>';
+
+    tbody.querySelectorAll('[data-app-approve]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var serial = b.getAttribute('data-app-approve');
+        var res = Store.approveApplicant(serial);
+        if (res.ok) {
+          UI.toast('ok', 'قُبل الطلب', 'صدرت الاستمارة ' + serial + ' رسمياً — صلاحية 30 يوماً.');
+          renderApplicants(); renderNavCounts();
+        } else UI.toast('err', 'تعذّر القبول', res.error);
+      });
+    });
+    tbody.querySelectorAll('[data-app-reject]').forEach(function (b) {
+      b.addEventListener('click', function () { reviewRequestModal(b.getAttribute('data-app-reject'), true); });
+    });
 
     tbody.querySelectorAll('[data-app-attempts]').forEach(function (b) {
       b.addEventListener('click', function () { attemptsModal(b.getAttribute('data-app-attempts')); });
@@ -5411,6 +5545,61 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
         Store.setFeePaid(serial, !app.feePaid);
         UI.toast('ok', app.feePaid ? 'أُلغي تسجيل الرسم' : 'سُجّل استلام الرسم', serial + ' — ' + Store.money(app.fee));
       });
+    });
+  }
+
+  /* مراجعة طلب استمارة قيد المراجعة: قبول أو رفض */
+  function reviewRequestModal(serial, rejectMode) {
+    var app = Store.getApplicant(serial);
+    if (!app || Store.formStatus(app) !== 'pending') return;
+    var job = app.requestedCode ? Store.getJob(app.requestedCode) : null;
+    var body =
+      '<div class="data-grid mb-3">' +
+        '<div class="data-item"><div class="k">رقم الطلب</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
+        '<div class="data-item"><div class="k">الاسم الكامل</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
+        '<div class="data-item"><div class="k">الهاتف</div><div class="v mono" dir="ltr">' + UI.esc(app.phone) + '</div></div>' +
+        '<div class="data-item"><div class="k">تاريخ الميلاد</div><div class="v" dir="ltr">' + Store.fmtDate(app.dob || '') + '</div></div>' +
+        '<div class="data-item"><div class="k">الجنس</div><div class="v">' + UI.esc(app.gender || '—') + '</div></div>' +
+        '<div class="data-item"><div class="k">العنوان</div><div class="v">' + UI.esc(app.address || '—') + '</div></div>' +
+        '<div class="data-item" style="grid-column:1/-1"><div class="k">الوظيفة المطلوبة</div><div class="v">' +
+          (job ? '<span class="chip chip-code mono">' + UI.esc(job.code) + '</span> ' + UI.esc(job.title) + ' — ' + UI.esc(job.region) : (UI.esc(app.requestedCode || '—') + ' <span class="tiny muted">(كود غير معروف)</span>')) +
+        '</div></div>' +
+      '</div>' +
+      (rejectMode
+        ? '<div class="field"><label for="rr-reason">سبب الرفض</label><input type="text" id="rr-reason" placeholder="مثال: بيانات ناقصة / لا يطابق الشروط"></div>'
+        : '<div class="panel" style="background:#fdf6e3;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' عند القبول تصدر الاستمارة رسمياً برقم ' + UI.esc(app.serial) + ' وتصبح صالحة 30 يوماً بخمس محاولات.</p></div></div>');
+
+    UI.modal({
+      title: (rejectMode ? 'رفض طلب الاستمارة' : 'مراجعة طلب الاستمارة'),
+      subtitle: 'طلب قيد المراجعة — ' + app.serial,
+      wide: true, body: body,
+      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
+        (rejectMode
+          ? '<button class="btn btn-danger" id="rr-confirm">' + UI.ic('x') + ' تأكيد الرفض</button>'
+          : '<button class="btn btn-ok" id="rr-approve">' + UI.ic('check') + ' قبول وإصدار الاستمارة</button>'),
+      onMount: function (box, close) {
+        var approveBtn = box.querySelector('#rr-approve');
+        if (approveBtn) approveBtn.addEventListener('click', function () {
+          var res = Store.approveApplicant(serial);
+          close();
+          if (res.ok) {
+            UI.toast('ok', 'قُبل الطلب', 'صدرت الاستمارة ' + serial + ' — ' + app.fullName);
+            renderApplicants(); renderNavCounts(); renderOverview();
+            attemptsModal(serial);
+          } else UI.toast('err', 'تعذّر القبول', res.error);
+        });
+        var rejectBtn = box.querySelector('#rr-confirm');
+        if (rejectBtn) rejectBtn.addEventListener('click', function () {
+          var reason = (box.querySelector('#rr-reason') || {}).value || '';
+          var res = Store.rejectApplicant(serial, reason.trim());
+          close();
+          if (res.ok) {
+            UI.toast('ok', 'رُفض الطلب', serial + ' — ' + app.fullName);
+            renderApplicants(); renderNavCounts(); renderOverview();
+          } else UI.toast('err', 'تعذّر الرفض', res.error);
+        });
+      }
     });
   }
 

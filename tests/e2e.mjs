@@ -95,13 +95,10 @@ if (form) {
   const SERIAL = fresh ? fresh.serial : null;
   const TOKEN = SERIAL ? S.token(SERIAL) : '';
   console.log('   ℹ  الرقم التسلسلي: ' + SERIAL + '   |   بصمة التحقق: ' + TOKEN);
-  check('الاستمارة مرتبطة باسم الباحث الصحيح', !!fresh && fresh.fullName === 'علي حسن كاظم الفتلاوي', fresh && fresh.fullName);
-  check('الاستمارة صالحة 30 يوماً من تاريخ الإصدار', !!fresh &&
-    Math.round((new Date(fresh.expiryDate) - new Date(fresh.issueDate)) / 86400000) === 30);
-  check('للاستمارة الجديدة 5 محاولات فارغة', !!SERIAL && S.attemptsLeft(SERIAL) === 5, SERIAL ? String(S.attemptsLeft(SERIAL)) : '—');
-  check('نافذة «تم الإصدار» تعرض الرقم والكيو آر كود', !!site.doc.querySelector('#modal-root svg') &&
-    site.doc.getElementById('modal-root').textContent.includes(SERIAL));
+  check('الطلب مرتبط باسم الباحث الصحيح', !!fresh && fresh.fullName === 'علي حسن كاظم الفتلاوي', fresh && fresh.fullName);
+  check('الطلب سُجّل كـ «قيد المراجعة» (بدون تاريخ انتهاء)', !!fresh && fresh.status === 'pending' && !fresh.expiryDate, fresh && fresh.status);
   check('الوظيفة المطلوبة (BRC-1042) سُجّلت مع الطلب', !!fresh && fresh.requestedCode === 'BRC-1042', fresh && fresh.requestedCode);
+  check('نافذة «تم إرسال الطلب» تعرض رقم الطلب', site.doc.getElementById('modal-root').textContent.includes(SERIAL));
 
   /* ═══ 2) المنظومة الداخلية: الموظف يرى الاستمارة ويرشّح وظيفة ═══════════ */
   step(2, 'المنظومة الداخلية — دخول الموظف وترشيح وظيفة للاستمارة');
@@ -123,9 +120,22 @@ if (form) {
 
   click(dash.w, dash.doc.querySelector('#side-nav button[data-view="applicants"]'));
   await new Promise((r) => setTimeout(r, 100));
-  const rows = [...dash.doc.querySelectorAll('#apps-table-body tr')].map((r) => r.textContent).join(' ');
-  check('جدول الاستمارات يعرض الاستمارة الجديدة', rows.includes(SERIAL));
-  check('الجدول يعرض المحاولات المتبقية للموظف', /5\s*\/\s*5|متبق[^<]*5|5\s*محاولات/.test(rows) || rows.includes('5'));
+  let rows = [...dash.doc.querySelectorAll('#apps-table-body tr')].map((r) => r.textContent).join(' ');
+  check('جدول الاستمارات يعرض الطلب الجديد', rows.includes(SERIAL));
+  check('الطلب معروض بحالة «قيد المراجعة»', /قيد المراجعة/.test(rows));
+
+  // قبول الطلب من جدول الاستمارات (إجراء الموظف عبر الواجهة)
+  const approveBtn = dash.doc.querySelector('[data-app-approve="' + SERIAL + '"]');
+  check('زر قبول الطلب ظاهر للموظف', !!approveBtn);
+  click(dash.w, approveBtn);
+  await new Promise((r) => setTimeout(r, 150));
+  const afterApprove = dash.w.BRCStore.getApplicant(SERIAL);
+  check('بعد القبول: الاستمارة صارت سارية بخمس محاولات', !!afterApprove && afterApprove.status === 'active' &&
+    dash.w.BRCStore.attemptsLeft(SERIAL) === 5, afterApprove && afterApprove.status);
+  check('الاستمارة صالحة 30 يوماً من تاريخ القبول', !!afterApprove &&
+    Math.round((new Date(afterApprove.expiryDate) - new Date(afterApprove.issueDate)) / 86400000) === 30);
+  rows = [...dash.doc.querySelectorAll('#apps-table-body tr')].map((r) => r.textContent).join(' ');
+  check('الجدول يعرض المحاولات المتبقية بعد القبول', /متبق[^<]*5|0\s*\/\s*5/.test(rows));
 
   // ترشيح وظيفة (إجراء الموظف عبر طبقة البيانات ثم تحديث الواجهة)
   const free = dash.w.BRCStore.listJobs({ status: 'available' }).filter((j) => j.code !== 'BRC-1042')[0];

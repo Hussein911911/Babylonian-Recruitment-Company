@@ -175,6 +175,7 @@
     var pa = Store.pendingActions();
     var jobsNav = document.getElementById('nav-jobs-count');
     var holdsNav = document.getElementById('nav-holds-count');
+    var appsNav = document.getElementById('nav-apps-count');
     if (jobsNav) {
       jobsNav.textContent = String(Store.stats().available);
       jobsNav.classList.remove('hidden');
@@ -183,6 +184,11 @@
       var c = pa.holds.length;
       holdsNav.textContent = String(c);
       holdsNav.classList.toggle('hidden', c === 0);
+    }
+    if (appsNav) {
+      var r = pa.requests.length;
+      appsNav.textContent = String(r);
+      appsNav.classList.toggle('hidden', r === 0);
     }
   }
 
@@ -225,6 +231,14 @@
 
     // إجراءات مطلوبة
     var actions = [];
+    pa.requests.forEach(function (r) {
+      actions.push({
+        title: 'طلب استمارة قيد المراجعة: ' + r.serial,
+        sub: r.fullName + ' — ' + (r.requestedCode ? 'يطلب الوظيفة ' + r.requestedCode : 'طلب عام') + ' · ' + r.phone,
+        badge: '<span class="badge warn">قيد المراجعة</span>',
+        act: { label: 'مراجعة', handler: function () { setView('applicants'); reviewRequestModal(r.serial); } }
+      });
+    });
     pa.holds.forEach(function (h) {
       actions.push({
         title: 'حجز جارٍ على الوظيفة ' + h.job.code,
@@ -475,22 +489,69 @@
       var st = Store.formStatus(a);
       var left = Store.attemptsLeft(a.serial);
       var hold = a.holds ? '<span class="badge warn">حجز جارٍ</span>' : '';
-      return '<tr>' +
-        '<td><span class="mono">' + UI.esc(a.serial) + '</span>' + (a.requestedCode ? '<div class="tiny"><span class="chip chip-gold">طلب: ' + UI.esc(a.requestedCode) + '</span></div>' : '') + '</td>' +
-        '<td><b>' + UI.esc(a.fullName) + '</b><div class="tiny muted">' + UI.esc(a.address || '') + '</div></td>' +
-        '<td class="mono tiny" dir="ltr">' + UI.esc(a.phone) + '</td>' +
-        '<td class="tiny" dir="ltr">' + Store.fmtDate(a.issueDate) + '</td>' +
-        '<td class="tiny" dir="ltr">' + Store.fmtDate(a.expiryDate) + '</td>' +
-        '<td class="tiny">' + (a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>' +
-        '<td>' + a.attemptsUsed + ' / ' + Store.settings().attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>' +
-        '<td>' + UI.formBadge(st) + (a.feePaid ? '<div class="tiny"><span class="badge ok">الرسم مستلم</span></div>' : '<div class="tiny"><span class="badge muted">الرسم غير مستلم</span></div>') + '</td>' +
-        '<td><div class="cell-actions">' +
+      var isPending = st === 'pending';
+      var isRejected = st === 'rejected';
+
+      var requestChip = a.requestedCode ? '<div class="tiny"><span class="chip chip-gold">طلب: ' + UI.esc(a.requestedCode) + '</span></div>' : '';
+      var nameCell = '<b>' + UI.esc(a.fullName) + '</b><div class="tiny muted">' + UI.esc(a.address || '') + '</div>' +
+        (isRejected && a.rejectReason ? '<div class="tiny"><span class="badge danger">السبب: ' + UI.esc(a.rejectReason) + '</span></div>' : '');
+
+      var dateCells = isPending || isRejected
+        ? '<td class="tiny muted">—</td><td class="tiny muted">—</td><td class="tiny muted">—</td>'
+        : '<td class="tiny" dir="ltr">' + Store.fmtDate(a.issueDate) + '</td>' +
+          '<td class="tiny" dir="ltr">' + Store.fmtDate(a.expiryDate) + '</td>' +
+          '<td class="tiny">' + (a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>';
+
+      var attemptsCell = isPending || isRejected
+        ? '<td class="tiny muted">—</td>'
+        : '<td>' + a.attemptsUsed + ' / ' + Store.settings().attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>';
+
+      var statusCell = '<td>' + UI.formBadge(st) +
+        (isPending || isRejected ? '' :
+          (a.feePaid ? '<div class="tiny"><span class="badge ok">الرسم مستلم</span></div>' : '<div class="tiny"><span class="badge muted">الرسم غير مستلم</span></div>')) +
+        '</td>';
+
+      var actionsCell;
+      if (isPending) {
+        actionsCell = '<td><div class="cell-actions">' +
+          '<button class="btn btn-ok btn-sm" data-app-approve="' + UI.esc(a.serial) + '">' + UI.ic('check') + ' قبول</button>' +
+          '<button class="btn btn-danger btn-sm" data-app-reject="' + UI.esc(a.serial) + '">' + UI.ic('x') + ' رفض</button>' +
+          '</div></td>';
+      } else if (isRejected) {
+        actionsCell = '<td class="tiny muted">طلب مرفوض — لا إجراء</td>';
+      } else {
+        actionsCell = '<td><div class="cell-actions">' +
           '<button class="btn btn-lapis btn-sm" data-app-attempts="' + UI.esc(a.serial) + '">' + UI.ic('list') + ' المحاولات</button>' +
           '<button class="btn btn-gold btn-sm" data-app-print="' + UI.esc(a.serial) + '">' + UI.ic('print') + ' طباعة</button>' +
           '<button class="btn btn-outline btn-sm" data-app-verify="' + UI.esc(a.serial) + '">' + UI.ic('qr') + '</button>' +
           '<button class="btn btn-outline btn-sm" data-app-fee="' + UI.esc(a.serial) + '">' + UI.ic('money') + '</button>' +
-        '</div></td></tr>';
+          '</div></td>';
+      }
+
+      return '<tr>' +
+        '<td><span class="mono">' + UI.esc(a.serial) + '</span>' + requestChip + '</td>' +
+        '<td>' + nameCell + '</td>' +
+        '<td class="mono tiny" dir="ltr">' + UI.esc(a.phone) + '</td>' +
+        dateCells +
+        attemptsCell +
+        statusCell +
+        actionsCell +
+        '</tr>';
     }).join('') || '<tr><td colspan="9" class="table-empty">لا توجد استمارات مطابقة</td></tr>';
+
+    tbody.querySelectorAll('[data-app-approve]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var serial = b.getAttribute('data-app-approve');
+        var res = Store.approveApplicant(serial);
+        if (res.ok) {
+          UI.toast('ok', 'قُبل الطلب', 'صدرت الاستمارة ' + serial + ' رسمياً — صلاحية 30 يوماً.');
+          renderApplicants(); renderNavCounts();
+        } else UI.toast('err', 'تعذّر القبول', res.error);
+      });
+    });
+    tbody.querySelectorAll('[data-app-reject]').forEach(function (b) {
+      b.addEventListener('click', function () { reviewRequestModal(b.getAttribute('data-app-reject'), true); });
+    });
 
     tbody.querySelectorAll('[data-app-attempts]').forEach(function (b) {
       b.addEventListener('click', function () { attemptsModal(b.getAttribute('data-app-attempts')); });
@@ -535,6 +596,61 @@
         Store.setFeePaid(serial, !app.feePaid);
         UI.toast('ok', app.feePaid ? 'أُلغي تسجيل الرسم' : 'سُجّل استلام الرسم', serial + ' — ' + Store.money(app.fee));
       });
+    });
+  }
+
+  /* مراجعة طلب استمارة قيد المراجعة: قبول أو رفض */
+  function reviewRequestModal(serial, rejectMode) {
+    var app = Store.getApplicant(serial);
+    if (!app || Store.formStatus(app) !== 'pending') return;
+    var job = app.requestedCode ? Store.getJob(app.requestedCode) : null;
+    var body =
+      '<div class="data-grid mb-3">' +
+        '<div class="data-item"><div class="k">رقم الطلب</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
+        '<div class="data-item"><div class="k">الاسم الكامل</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
+        '<div class="data-item"><div class="k">الهاتف</div><div class="v mono" dir="ltr">' + UI.esc(app.phone) + '</div></div>' +
+        '<div class="data-item"><div class="k">تاريخ الميلاد</div><div class="v" dir="ltr">' + Store.fmtDate(app.dob || '') + '</div></div>' +
+        '<div class="data-item"><div class="k">الجنس</div><div class="v">' + UI.esc(app.gender || '—') + '</div></div>' +
+        '<div class="data-item"><div class="k">العنوان</div><div class="v">' + UI.esc(app.address || '—') + '</div></div>' +
+        '<div class="data-item" style="grid-column:1/-1"><div class="k">الوظيفة المطلوبة</div><div class="v">' +
+          (job ? '<span class="chip chip-code mono">' + UI.esc(job.code) + '</span> ' + UI.esc(job.title) + ' — ' + UI.esc(job.region) : (UI.esc(app.requestedCode || '—') + ' <span class="tiny muted">(كود غير معروف)</span>')) +
+        '</div></div>' +
+      '</div>' +
+      (rejectMode
+        ? '<div class="field"><label for="rr-reason">سبب الرفض</label><input type="text" id="rr-reason" placeholder="مثال: بيانات ناقصة / لا يطابق الشروط"></div>'
+        : '<div class="panel" style="background:#fdf6e3;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' عند القبول تصدر الاستمارة رسمياً برقم ' + UI.esc(app.serial) + ' وتصبح صالحة 30 يوماً بخمس محاولات.</p></div></div>');
+
+    UI.modal({
+      title: (rejectMode ? 'رفض طلب الاستمارة' : 'مراجعة طلب الاستمارة'),
+      subtitle: 'طلب قيد المراجعة — ' + app.serial,
+      wide: true, body: body,
+      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
+        (rejectMode
+          ? '<button class="btn btn-danger" id="rr-confirm">' + UI.ic('x') + ' تأكيد الرفض</button>'
+          : '<button class="btn btn-ok" id="rr-approve">' + UI.ic('check') + ' قبول وإصدار الاستمارة</button>'),
+      onMount: function (box, close) {
+        var approveBtn = box.querySelector('#rr-approve');
+        if (approveBtn) approveBtn.addEventListener('click', function () {
+          var res = Store.approveApplicant(serial);
+          close();
+          if (res.ok) {
+            UI.toast('ok', 'قُبل الطلب', 'صدرت الاستمارة ' + serial + ' — ' + app.fullName);
+            renderApplicants(); renderNavCounts(); renderOverview();
+            attemptsModal(serial);
+          } else UI.toast('err', 'تعذّر القبول', res.error);
+        });
+        var rejectBtn = box.querySelector('#rr-confirm');
+        if (rejectBtn) rejectBtn.addEventListener('click', function () {
+          var reason = (box.querySelector('#rr-reason') || {}).value || '';
+          var res = Store.rejectApplicant(serial, reason.trim());
+          close();
+          if (res.ok) {
+            UI.toast('ok', 'رُفض الطلب', serial + ' — ' + app.fullName);
+            renderApplicants(); renderNavCounts(); renderOverview();
+          } else UI.toast('err', 'تعذّر الرفض', res.error);
+        });
+      }
     });
   }
 
