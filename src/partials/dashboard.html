@@ -1,30 +1,64 @@
 <!-- ============================== شاشة الدخول ============================== -->
-<div id="login-wrap" class="section" style="background:linear-gradient(135deg,#060d1f,#102a56 60%,#060d1f);min-height:100vh;display:grid;place-items:center">
-  <div style="width:min(460px,92vw)">
-    <div class="center mb-3">
-      <svg class="emblem" viewBox="0 0 120 120" style="width:86px;height:86px;margin:0 auto 12px" role="img" aria-label="شعار الشركة"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
-      <h1 style="color:#fff;font-size:1.5rem;margin-bottom:4px">المنظومة الداخلية</h1>
-      <p style="color:#c3cee5;font-size:.92rem;margin:0">شركة بابل للتوظيف — لوحة الموظفين والإدارة</p>
+<div id="login-wrap" class="login-screen">
+  <div class="login-bg-pattern"></div>
+  <div class="login-container">
+    <div class="login-header">
+      <div class="login-logo">
+        <svg class="emblem" viewBox="0 0 120 120" role="img" aria-label="شعار الشركة"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
+      </div>
+      <h1>المنظومة الداخلية</h1>
+      <p>شركة بابل للتوظيف</p>
+      <span class="login-subtitle">لوحة الموظفين والإدارة</span>
     </div>
-    <form class="panel" id="login-form" style="border-color:rgba(200,162,74,.35)">
-      <div class="panel-body">
-        <div class="field mb-2">
-          <label for="login-user">اسم المستخدم</label>
-          <input type="text" id="login-user" autocomplete="username" required placeholder="admin أو staff">
+    
+    <form class="login-form" id="login-form">
+      <div class="login-form-header">
+        <svg class="ic" style="width:24px;height:24px"><use href="#i-lock" xlink:href="#i-lock"/></svg>
+        <h2>تسجيل الدخول</h2>
+      </div>
+      
+      <div class="field mb-3">
+        <label for="login-user">
+          <svg class="ic" style="width:18px;height:18px"><use href="#i-user" xlink:href="#i-user"/></svg>
+          اسم المستخدم
+        </label>
+        <input type="text" id="login-user" autocomplete="username" required placeholder="admin أو staff">
+      </div>
+      
+      <div class="field mb-3">
+        <label for="login-pass">
+          <svg class="ic" style="width:18px;height:18px"><use href="#i-lock" xlink:href="#i-lock"/></svg>
+          كلمة المرور
+        </label>
+        <input type="password" id="login-pass" autocomplete="current-password" required placeholder="••••••••">
+      </div>
+      
+      <button class="btn btn-gold btn-block btn-lg login-submit" type="submit" id="login-btn">
+        <svg class="ic"><use href="#i-login" xlink:href="#i-login"/></svg>
+        دخول المنظومة
+      </button>
+      
+      <div class="login-demo-info">
+        <p class="tiny mb-1"><b>حسابات تجريبية:</b></p>
+        <div class="demo-accounts">
+          <div class="demo-account">
+            <span class="demo-badge admin">مدير</span>
+            <code>admin / admin123</code>
+          </div>
+          <div class="demo-account">
+            <span class="demo-badge staff">موظف</span>
+            <code>staff / staff123</code>
+          </div>
         </div>
-        <div class="field mb-2">
-          <label for="login-pass">كلمة المرور</label>
-          <input type="password" id="login-pass" autocomplete="current-password" required placeholder="••••••••">
-        </div>
-        <button class="btn btn-gold btn-block btn-lg" type="submit" id="login-btn">
-          <svg class="ic"><use href="#i-login" xlink:href="#i-login"/></svg> تسجيل الدخول
-        </button>
-        <p class="tiny muted mt-2 mb-0 center">
-          حسابات تجريبية: <b class="mono">admin / admin123</b> (مدير عام) — <b class="mono">staff / staff123</b> (موظف)
-        </p>
       </div>
     </form>
-    <p class="center mt-2"><a href="index.html" style="color:#e8d089"><svg class="ic" style="width:15px;height:15px;vertical-align:-3px"><use href="#i-arrow-left" xlink:href="#i-arrow-left"/></svg> العودة إلى الموقع العام</a></p>
+    
+    <div class="login-footer">
+      <a href="index.html" class="login-back-link">
+        <svg class="ic"><use href="#i-arrow-left" xlink:href="#i-arrow-left"/></svg>
+        العودة إلى الموقع العام
+      </a>
+    </div>
   </div>
 </div>
 
