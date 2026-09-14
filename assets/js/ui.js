@@ -84,8 +84,14 @@
     return { root: box, close: close };
   }
 
+  /* نافذة تأكيد تُرجع Promise<true|false>.
+     ⚠ مهم: close() يستدعي onClose الذي كان يحلّ الوعد بـ false قبل resolve(true)
+     فيصبح كل تأكيد = «إلغاء» (وهذا عطّل أزرار الحذف والإيقاف وإعادة الضبط).
+     الحل: علم «استقرّ الوعد» + حلّ النتيجة قبل الإغلاق. */
   function confirm(opts) {
     return new Promise(function (resolve) {
+      var settled = false;
+      var done = function (v) { if (!settled) { settled = true; resolve(v); } };
       var m = modal({
         title: opts.title || 'تأكيد العملية',
         body: '<p class="mb-0">' + esc(opts.message || '') + '</p>' +
@@ -93,12 +99,12 @@
         footer: '<button class="btn btn-outline" data-cancel>إلغاء</button>' +
           '<button class="btn ' + (opts.danger ? 'btn-danger' : 'btn-lapis') + '" data-ok>' + esc(opts.confirmText || 'تأكيد') + '</button>',
         onMount: function (boxRoot, close) {
-          boxRoot.querySelector('[data-cancel]').addEventListener('click', function () { close(); resolve(false); });
-          boxRoot.querySelector('[data-ok]').addEventListener('click', function () { close(); resolve(true); });
+          boxRoot.querySelector('[data-cancel]').addEventListener('click', function () { done(false); close(); });
+          boxRoot.querySelector('[data-ok]').addEventListener('click', function () { done(true); close(); });
         },
-        onClose: function () { resolve(false); }
+        onClose: function () { done(false); }   // إغلاق بالخلفية أو Escape = إلغاء
       });
-      if (!m) resolve(window.confirm(opts.message || ''));
+      if (!m) done(window.confirm(opts.message || ''));
     });
   }
 

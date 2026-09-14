@@ -47,6 +47,9 @@
     bindSidebar();
     if (Store.currentUser()) enterApp();
     snapshotStatuses();
+    // التقاط النسخة التلقائية المستحقة (لو فُتحت الصفحة بعد وقت الجدولة)
+    var due = Store.checkAutoBackup();
+    if (due) UI.toast('ok', 'نسخة احتياطية تلقائية', 'أُنشئت النسخة المجدولة: ' + due.name);
     lastSessionKey = sessionKey();
     Store.subscribe(function () {
       var key = sessionKey();
@@ -250,6 +253,12 @@
   function tick() {
     var before = state.lastStatuses;
     var actions = Store.runMaintenance();
+    // النسخ الاحتياطي التلقائي المجدول — نسخة واحدة لكل خانة زمنية (يوم + وقت)
+    var auto = Store.checkAutoBackup();
+    if (auto) {
+      UI.toast('ok', 'نسخة احتياطية تلقائية', 'أُنشئت النسخة المجدولة: ' + auto.name + ' (' + (auto.size / 1024).toFixed(1) + ' ك.ب)');
+      renderSettings();
+    }
     Store.db().jobs.forEach(function (j) {
       if (before[j.code] && before[j.code] === 'reserved' && j.status === 'available') {
         UI.toast('warn', 'إفراج تلقائي', 'أُفرجت الوظيفة ' + j.code + ' بعد انتهاء مهلة 24 ساعة.');
@@ -1180,7 +1189,13 @@
   /* ======================= الإعدادات ======================= */
   function renderSettings() {
     var s = Store.settings();
-    var set = function (id, v) { var e = document.getElementById(id); if (e) e.value = v; };
+    /* right-target helper: حقول الإدخال تأخذ value، والعناصر الأخرى (div/span)
+       تأخذ textContent — سابقاً كان .value على <div> لا يُظهر أي رقم أبداً. */
+    var set = function (id, v) {
+      var e = document.getElementById(id); if (!e) return;
+      if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.tagName)) e.value = v;
+      else e.textContent = v;
+    };
     set('set-attempts', s.attemptLimit); set('set-days', s.validityDays);
     set('set-hours', s.holdHours); set('set-fee', s.formFee);
     var auto = document.getElementById('set-auto');
@@ -1188,28 +1203,55 @@
     var db = Store.db();
     set('db-jobs', db.jobs.length); set('db-apps', db.applicants.length);
     set('db-attempts', db.attempts.length); set('db-audit', db.audit.length);
-    var backups = Store.getScheduledBackups();
+    var backups = Store.listBackupMeta();
     set('db-backups', backups.length);
     var vb = document.getElementById('set-verify-base');
     if (vb) vb.textContent = CFG.verifyBase;
 
-    // عرض حالة الجدولة
+    // الأزرار تُربط هنا أيضاً (ربط آمن لا يتكرر) لتبقى تعمل بعد أي إعادة رسم
+    bindBackupActions();
+
+    // عرض حالة الجدولة التلقائية + آخر نسخة
+    var DAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     var scheduleStatus = document.getElementById('schedule-status');
     if (scheduleStatus) {
-      var schedule = null;
-      try { schedule = JSON.parse(localStorage.getItem('brc-auto-backup-schedule')); } catch(e) {}
-      
+      var schedule = Store.getAutoSchedule();
+      var html = '';
       if (schedule) {
-        var days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-        var selectedDays = schedule.days.map(function(d) { return days[d]; }).join('، ');
-        scheduleStatus.innerHTML = '<b style="color:var(--ok)">✓ مفعّل</b> — ' + selectedDays + ' الساعة ' + schedule.time;
+        var selectedDays = schedule.days.map(function (d) { return DAY_NAMES[d]; }).join('، ');
+        html = '<b style="color:var(--ok)">✓ مفعّل</b> — ' + UI.esc(selectedDays) + ' الساعة ' + UI.esc(schedule.time);
+        var lastRun = Store.lastAutoRun();
+        html += '<br>آخر تنفيذ تلقائي: ' + (lastRun ? UI.esc(String(lastRun).replace('T', ' الساعة ')) : 'لم يُنفَّذ بعد');
       } else {
-        scheduleStatus.innerHTML = '<span style="color:var(--muted)">لم يتم تفعيل الجدولة بعد</span>';
+        html = '<span style="color:var(--muted)">لم يتم تفعيل الجدولة بعد</span>';
       }
+      var lastAuto = backups.filter(function (b) { return b.auto; }).slice(-1)[0];
+      if (lastAuto) html += '<br>آخر نسخة تلقائية محفوظة: ' + UI.esc(lastAuto.name) + ' — ' + UI.esc(Store.fmtDateTime(lastAuto.createdAt));
+      scheduleStatus.innerHTML = html;
     }
+
+    // إخفاء أزرار الجدولة إن لم تكن مفعّلة (تعديل/إيقاف/نفّذ الآن)
+    var hasSchedule = !!Store.getAutoSchedule();
+    ['btn-edit-schedule', 'btn-disable-schedule', 'btn-run-auto-backup'].forEach(function (id) {
+      var b = document.getElementById(id);
+      if (b) b.classList.toggle('hidden', !hasSchedule);
+    });
   }
 
   /* ======================= الأحداث العامة ======================= */
+
+  /* ربط idempotent: لا يربط الحدث على العنصر إلا مرة واحدة مهما تكرّرت
+     إعادة الرسم — هكذا تبقى الأزرار تعمل بعد أي تحديث للواجهة بدون
+     أن تُنفَّذ مرتين (وهو سبب تعطّل أزرار النسخ الاحتياطي سابقاً). */
+  function bindOnce(el, ev, fn) {
+    if (!el) return false;
+    var flag = 'brcBound_' + ev;
+    if (el[flag]) return false;
+    el[flag] = true;
+    el.addEventListener(ev, fn);
+    return true;
+  }
+
   function bindToolbars() {
     var bindInput = function (id, obj, key, render) {
       var e = document.getElementById(id);
@@ -1379,47 +1421,55 @@
       UI.toast('ok', 'تصدير السجل', rows.length + ' سجل بصيغة CSV.');
     });
 
-    var sb = document.getElementById('btn-schedule-backup');
-    if (sb) sb.addEventListener('click', scheduleBackupModal);
+    // أزرار النسخ الاحتياطي والجدولة (تُربط بطريقة آمنة لا تتكرر)
+    bindBackupActions();
+  }
 
-    var vb = document.getElementById('btn-view-backups');
-    if (vb) vb.addEventListener('click', viewBackupsModal);
+  /* ======================= النسخ الاحتياطي والجدولة =======================
+   *  تُستدعى من bindActions() عند الإقلاع ومن renderSettings() بعد كل
+   *  إعادة رسم — bindOnce يضمن ألا يُربط الزر مرتين (لا نوافذ مكرّرة). */
+  function bindBackupActions() {
+    bindOnce(document.getElementById('btn-schedule-backup'), 'click', scheduleBackupModal);
+    bindOnce(document.getElementById('btn-edit-schedule'), 'click', scheduleBackupModal);
+    bindOnce(document.getElementById('btn-view-backups'), 'click', viewBackupsModal);
 
-    var qb = document.getElementById('btn-quick-backup');
-    if (qb) qb.addEventListener('click', function() {
+    bindOnce(document.getElementById('btn-quick-backup'), 'click', function () {
       var name = 'نسخة سريعة - ' + Store.fmtDateTime(new Date());
       var backup = Store.saveScheduledBackup(name, null);
       if (backup) {
-        UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة الاحتياطية: ' + name);
-        renderSettings();
+        UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة الاحتياطية: ' + name + ' (' + (backup.size / 1024).toFixed(1) + ' ك.ب)');
+      } else {
+        UI.toast('err', 'فشل الحفظ', Store.lastBackupErrorMessage() || 'لم يتم حفظ النسخة الاحتياطية');
       }
+      renderSettings();
     });
 
-    var es = document.getElementById('btn-edit-schedule');
-    if (es) es.addEventListener('click', scheduleBackupModal);
+    bindOnce(document.getElementById('btn-run-auto-backup'), 'click', function () {
+      var backup = Store.saveScheduledBackup('نسخة تلقائية يدوية - ' + Store.fmtDateTime(new Date()), null, { auto: true });
+      if (backup) UI.toast('ok', 'تم التنفيذ', 'أُنشئت النسخة التلقائية: ' + backup.name);
+      else UI.toast('err', 'فشل التنفيذ', Store.lastBackupErrorMessage() || 'تعذّر إنشاء النسخة');
+      renderSettings();
+    });
 
-    var ds = document.getElementById('btn-disable-schedule');
-    if (ds) ds.addEventListener('click', function() {
+    bindOnce(document.getElementById('btn-disable-schedule'), 'click', function () {
       UI.confirm({
         title: 'إيقاف الجدولة',
         danger: true,
         confirmText: 'إيقاف',
-        message: 'سيتم إيقاف النسخ الاحتياطي التلقائي المجدول. هل أنت متأكد؟'
-      }).then(function(ok) {
-        if (ok) {
-          localStorage.removeItem('brc-auto-backup-schedule');
-          UI.toast('ok', 'تم الإيقاف', 'أُوقفت الجدولة التلقائية');
-          renderSettings();
-        }
+        message: 'سيتم إيقاف النسخ الاحتياطي التلقائي المجدول. النسخ المحفوظة تبقى كما هي. هل أنت متأكد؟'
+      }).then(function (ok) {
+        if (!ok) return;
+        Store.clearAutoSchedule();
+        UI.toast('ok', 'تم الإيقاف', 'أُوقفت الجدولة التلقائية');
+        renderSettings();
       });
     });
   }
 
   /* نافذة جدولة النسخ الاحتياطي */
   function scheduleBackupModal() {
-    var schedule = null;
-    try { schedule = JSON.parse(localStorage.getItem('brc-auto-backup-schedule')); } catch(e) {}
-    
+    var schedule = Store.getAutoSchedule();
+
     var days = [
       { id: 0, name: 'الأحد' },
       { id: 1, name: 'الإثنين' },
@@ -1459,7 +1509,7 @@
       '<label>أيام الأسبوع</label>' +
       '<div class="flex" style="gap:6px;flex-wrap:wrap">' +
       days.map(function(day) {
-        var checked = schedule && schedule.days && schedule.days.includes(day.id) ? 'checked' : '';
+        var checked = schedule && schedule.days && schedule.days.indexOf(day.id) >= 0 ? 'checked' : '';
         return '<label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:#f4f6fb;border-radius:6px">' +
           '<input type="checkbox" name="backup-days" value="' + day.id + '" style="width:auto" ' + checked + '> ' + day.name + '</label>';
       }).join('') +
@@ -1519,34 +1569,29 @@
 
           var backup = Store.saveScheduledBackup(name, dateRange);
           if (!backup) {
-            UI.toast('err', 'فشل الحفظ', 'لم يتم حفظ النسخة الاحتياطية');
+            UI.toast('err', 'فشل الحفظ', Store.lastBackupErrorMessage() || 'لم يتم حفظ النسخة الاحتياطية');
             return;
           }
 
-          // حفظ الجدولة التلقائية
+          // حفظ الجدولة التلقائية عبر المتجر (مصدر واحد للحقيقة)
           if (autoCheck.checked) {
             var selectedDays = [];
-            box.querySelectorAll('input[name="backup-days"]:checked').forEach(function(cb) {
+            box.querySelectorAll('input[name="backup-days"]:checked').forEach(function (cb) {
               selectedDays.push(Number(cb.value));
             });
-            var time = box.querySelector('#backup-time').value;
-            
+            var time = box.querySelector('#backup-time').value || '23:00';
+
             if (selectedDays.length === 0) {
-              UI.toast('warn', 'تحذير', 'لم يتم اختيار أيام - لن تعمل الجدولة التلقائية');
+              UI.toast('warn', 'حُفظت النسخة فقط', 'اختر يوماً واحداً على الأقل لتفعيل الجدولة التلقائية');
+            } else if (Store.saveAutoSchedule(selectedDays, time)) {
+              var DAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+              UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة وتفعّلت الجدولة: ' +
+                selectedDays.map(function (d) { return DAY_NAMES[d]; }).join('، ') + ' الساعة ' + time);
             } else {
-              var scheduleData = {
-                name: name,
-                days: selectedDays,
-                time: time,
-                rangeType: rangeType,
-                dateRange: dateRange,
-                createdAt: new Date().toISOString()
-              };
-              localStorage.setItem('brc-auto-backup-schedule', JSON.stringify(scheduleData));
-              UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة والجدولة التلقائية');
+              UI.toast('err', 'حُفظت النسخة فقط', Store.lastBackupErrorMessage() || 'تعذّر حفظ الجدولة');
             }
           } else {
-            UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة الاحتياطية');
+            UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة الاحتياطية: ' + backup.name);
           }
 
           renderSettings();
@@ -1558,28 +1603,32 @@
 
   /* نافذة عرض النسخ الاحتياطية */
   function viewBackupsModal() {
-    var backups = Store.getScheduledBackups();
-    
-    var body = '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:600px">' +
-      '<thead><tr><th>الاسم</th><th>تاريخ الإنشاء</th><th>نطاق البيانات</th><th>إجراءات</th></tr></thead>' +
+    var backups = Store.listBackupMeta().slice().reverse();   // الأحدث أولاً
+
+    var body = '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:720px">' +
+      '<thead><tr><th>الاسم</th><th>تاريخ الإنشاء</th><th>النطاق</th><th>الحجم</th><th>إجراءات</th></tr></thead>' +
       '<tbody>' +
-      (backups.length === 0 ? '<tr><td colspan="4" class="table-empty">لا توجد نسخ احتياطية</td></tr>' :
-        backups.map(function(b) {
+      (backups.length === 0 ? '<tr><td colspan="5" class="table-empty">لا توجد نسخ احتياطية</td></tr>' :
+        backups.map(function (b) {
+          var tags = (b.auto ? ' <span class="badge ok">تلقائية</span>' : '') +
+                     (b.partial ? ' <span class="badge warn">نطاق مخصص</span>' : '');
           return '<tr>' +
-            '<td><b>' + UI.esc(b.name) + '</b></td>' +
-            '<td class="tiny">' + Store.fmtDateTime(b.createdAt) + '</td>' +
-            '<td class="tiny">' + (b.dateRange ? b.dateRange.from + ' إلى ' + b.dateRange.to : 'كل البيانات') + '</td>' +
+            '<td><b>' + UI.esc(b.name) + '</b>' + tags + '</td>' +
+            '<td class="tiny">' + UI.esc(Store.fmtDateTime(b.createdAt)) + '</td>' +
+            '<td class="tiny">' + (b.dateRange ? UI.esc(b.dateRange.from + ' إلى ' + b.dateRange.to) : 'كل البيانات') +
+              (b.records ? '<br><span class="muted">' + b.records.applicants + ' استمارة · ' + b.records.audit + ' سجل</span>' : '') + '</td>' +
+            '<td class="tiny">' + ((b.size || 0) / 1024).toFixed(1) + ' ك.ب</td>' +
             '<td><div class="cell-actions">' +
             '<button class="btn btn-outline btn-sm" data-backup-export="' + b.id + '">' + UI.ic('download') + ' تصدير</button>' +
             '<button class="btn btn-ok btn-sm" data-backup-restore="' + b.id + '">' + UI.ic('refresh') + ' استعادة</button>' +
-            '<button class="btn btn-danger btn-sm" data-backup-delete="' + b.id + '">' + UI.ic('trash') + '</button>' +
+            '<button class="btn btn-danger btn-sm" data-backup-delete="' + b.id + '" aria-label="حذف النسخة">' + UI.ic('trash') + '</button>' +
             '</div></td></tr>';
         }).join('')) +
       '</tbody></table></div></div>';
 
     UI.modal({
       title: 'النسخ الاحتياطية',
-      subtitle: backups.length + ' نسخة احتياطية',
+      subtitle: backups.length + ' نسخة احتياطية (يُحتفظ بآخر 20 نسخة في المتصفح)',
       wide: true,
       body: body,
       footer: '<button class="btn btn-outline" data-close>إغلاق</button>',
@@ -1591,6 +1640,8 @@
             if (data) {
               UI.download('brc-backup-' + Store.fmtDate(new Date()) + '.json', data, 'application/json');
               UI.toast('ok', 'تم التصدير', 'حُفظ ملف النسخة الاحتياطية');
+            } else {
+              UI.toast('err', 'فشل التصدير', 'النسخة غير موجودة أو لا تحتوي بيانات');
             }
           });
         });
@@ -1598,20 +1649,23 @@
         box.querySelectorAll('[data-backup-restore]').forEach(function(btn) {
           btn.addEventListener('click', function() {
             var id = btn.getAttribute('data-backup-restore');
+            var meta = Store.listBackupMeta().filter(function (b) { return b.id === id; })[0] || {};
             UI.confirm({
               title: 'استعادة النسخة الاحتياطية',
               danger: true,
               confirmText: 'استعادة',
-              message: 'سيتم استبدال البيانات الحالية بالبيانات من النسخة الاحتياطية. هل أنت متأكد؟'
-            }).then(function(ok) {
-              if (ok) {
-                if (Store.restoreScheduledBackup(id)) {
-                  UI.toast('ok', 'تم الاستعادة', 'استُعيدت البيانات بنجاح');
-                  renderCurrent();
-                  close();
-                } else {
-                  UI.toast('err', 'فشل الاستعادة', 'لم يتم استعادة البيانات');
-                }
+              message: meta.partial
+                ? 'هذه نسخة بنطاق مخصص: ستُدمَج استماراتها وسجلاتها مع البيانات الحالية (لن يُحذف شيء). تُحفظ نسخة أمان تلقائياً قبل الاستعادة.'
+                : 'سيتم استبدال البيانات الحالية ببيانات النسخة «' + (meta.name || '') + '». تُحفظ نسخة أمان تلقائياً قبل الاستعادة. هل أنت متأكد؟'
+            }).then(function (ok) {
+              if (!ok) return;
+              if (Store.restoreScheduledBackup(id)) {
+                UI.toast('ok', 'تمت الاستعادة', 'استُعيدت البيانات بنجاح');
+                snapshotStatuses();
+                renderCurrent();
+                close();
+              } else {
+                UI.toast('err', 'فشل الاستعادة', Store.lastBackupErrorMessage() || 'لم يتم استعادة البيانات');
               }
             });
           });
@@ -1630,7 +1684,10 @@
                 if (Store.deleteScheduledBackup(id)) {
                   UI.toast('ok', 'تم الحذف', 'حُذفت النسخة الاحتياطية');
                   close();
-                  viewBackupsModal(); // إعادة فتح النافذة
+                  renderSettings();
+                  viewBackupsModal(); // إعادة فتح النافذة بالقائمة المحدّثة
+                } else {
+                  UI.toast('err', 'فشل الحذف', 'لم يتم حذف النسخة الاحتياطية');
                 }
               }
             });
@@ -1684,47 +1741,11 @@
     });
   }
 
-  // التحقق من الجدولة التلقائية للنسخ الاحتياطي
-  function checkAutoBackupSchedule() {
-    var schedule = null;
-    try { schedule = JSON.parse(localStorage.getItem('brc-auto-backup-schedule')); } catch(e) { return; }
-    if (!schedule || !schedule.days || !schedule.time) return;
-
-    var now = new Date();
-    var currentDay = now.getDay();
-    var currentTime = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-    
-    // تحقق إذا كان اليوم من الأيام المحددة
-    if (!schedule.days.includes(currentDay)) return;
-    
-    // تحقق إذا كان الوقت مناسباً (خلال 5 دقائق من الوقت المحدد)
-    var [scheduleHour, scheduleMinute] = schedule.time.split(':').map(Number);
-    var scheduleTime = scheduleHour * 60 + scheduleMinute;
-    var currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
-    
-    if (Math.abs(currentTimeMinutes - scheduleTime) > 5) return;
-    
-    // تحقق إذا تم عمل نسخة اليوم بالفعل
-    var lastBackupKey = 'brc-last-auto-backup-' + now.toISOString().split('T')[0];
-    if (localStorage.getItem(lastBackupKey)) return;
-    
-    // عمل نسخة احتياطية تلقائية
-    var name = 'نسخة تلقائية - ' + Store.fmtDateTime(now);
-    var backup = Store.saveScheduledBackup(name, schedule.dateRange);
-    
-    if (backup) {
-      localStorage.setItem(lastBackupKey, '1');
-      console.log('[BRC] ✓ تم عمل نسخة احتياطية تلقائية:', name);
-      if (window.BRCUI) {
-        window.BRCUI.toast('ok', 'نسخة احتياطية تلقائية', 'تم حفظ النسخة: ' + name);
-      }
-    }
-  }
-
-  // تشغيل التحقق كل دقيقة
-  setInterval(checkAutoBackupSchedule, 60000);
-  // تشغيل التحقق فوراً عند التحميل
-  setTimeout(checkAutoBackupSchedule, 3000);
+  /* محرّك النسخ الاحتياطي التلقائي موحّد في المتجر (Store.checkAutoBackup):
+     نسخة واحدة لكل خانة زمنية (يوم + وقت) مع التقاط الفائت في نفس اليوم.
+     يُستدعى عند الإقلاع وكل 30 ثانية داخل tick() — فلا حاجة لمؤقّت منفصل هنا
+     (المؤقّت القديم كان يعمل فقط ضمن ±5 دقائق من الوقت المحدّد ولا يلتقط
+     النسخة الفائتة، ولهذا كان يبدو أن الجدولة «لا تعمل»). */
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
