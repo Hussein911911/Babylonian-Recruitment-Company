@@ -680,14 +680,15 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .tfoot-note { padding: 10px 14px; background: #fcfbf8; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--line-soft); }
 
 /* ============================ 16) لوحة الموظفين ============================ */
-.app-shell { display: grid; grid-template-columns: minmax(0, 1fr); background: #f4f6fb; position: relative; }
+.app-shell { background: #f4f6fb; position: relative; width: 100%; }
 .app-side {
   background: linear-gradient(180deg, var(--night), var(--lapis) 60%, #0a1730);
   color: #cdd7ea; padding: 16px 14px; position: fixed; top: 0; inset-inline-start: 0; height: 100vh; overflow-y: auto;
   border-inline-end: 1px solid rgba(200, 162, 74, .22);
-  width: 260px; z-index: 1000; transform: translateX(100%); transition: transform .3s ease;
+  width: 260px; z-index: 1000; transform: translateX(-100%); transition: transform .3s ease;
 }
-.app-side.open { transform: translateX(0); }
+[dir="rtl"] .app-side { transform: translateX(100%); }
+.app-side.open { transform: translateX(0) !important; }
 .side-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; opacity: 0; pointer-events: none; transition: opacity .3s;
 }
@@ -735,14 +736,16 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 }
 .side-foot { margin-top: 16px; border-top: 1px solid rgba(255, 255, 255, .10); padding-top: 12px; }
 .side-foot p { display: none; }
-.app-main { padding: 0 clamp(12px, 2vw, 24px) 40px; min-width: 0; }
+.app-main { padding: 0; margin: 0; min-width: 0; width: 100%; }
 .app-top {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; margin-top: 8px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; padding: 8px clamp(12px, 2vw, 24px); background: #fff; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap;
 }
 .app-top h1 { font-size: clamp(1.15rem, 2.2vw, 1.5rem); margin: 0; line-height: 1.2; }
 .app-top .sub { color: var(--muted); font-size: .82rem; margin-top: 2px; }
 .view { display: none; }
 .view.active { display: block; animation: fade .2s ease-out; }
+.view > * { padding: 0 clamp(12px, 2vw, 24px); }
+.view > *:first-child { padding-top: 16px; }
 @keyframes fade { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
 
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
