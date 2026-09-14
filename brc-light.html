@@ -3764,10 +3764,14 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           if (seedJob && seedJob.imageUrl) {
             job.imageUrl = seedJob.imageUrl;
             updated = true;
+            console.log('✓ تم إضافة صورة للوظيفة ' + job.code);
           }
         }
       });
-      if (updated) save();
+      if (updated) {
+        save();
+        console.log('✓ تم تحديث الصور للوظائف القديمة');
+      }
     }
     return db;
   }
