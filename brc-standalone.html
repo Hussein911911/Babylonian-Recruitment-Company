@@ -451,22 +451,48 @@ textarea { min-height: 96px; resize: vertical; line-height: 1.7; }
 .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; counters: step; }
 .step {
   background: #fff; border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 24px 20px;
-  position: relative; box-shadow: var(--shadow-sm);
+  position: relative; box-shadow: var(--shadow-sm); overflow: hidden;
 }
+.step::before, .service::before {
+  content: ''; position: absolute; inset-inline: 0; top: 0; height: 3px;
+  background: linear-gradient(90deg, var(--gold), var(--turq));
+  transform: scaleX(0); transform-origin: center;
+  transition: transform .45s cubic-bezier(.22, .61, .36, 1);
+}
+.step:hover::before, .service:hover::before { transform: scaleX(1); }
 .step .num {
   width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center;
   background: linear-gradient(135deg, var(--lapis-2), var(--lapis-3)); color: var(--gold-2);
   font-weight: 900; font-size: 1.1rem; margin-bottom: 14px; box-shadow: 0 8px 18px rgba(16, 42, 86, .22);
+  transition: transform .3s ease, box-shadow .3s ease;
 }
+.step:hover .num { transform: translateY(-2px) scale(1.07) rotate(-2deg); box-shadow: 0 12px 24px rgba(16, 42, 86, .32); }
 .step h3 { font-size: 1.02rem; }
 .step p { font-size: .89rem; color: var(--muted); margin: 0; }
 .service {
   background: linear-gradient(180deg, #fff, #fdfbf6); border: 1px solid var(--line-soft);
   border-radius: var(--radius); padding: 24px 20px; height: 100%;
+  position: relative; overflow: hidden;
 }
-.service svg { width: 34px; height: 34px; color: var(--gold-3); margin-bottom: 12px; }
+.service svg {
+  width: 34px; height: 34px; color: var(--gold-3); margin-bottom: 12px;
+  transition: transform .35s ease, color .35s ease;
+}
+.service:hover svg { transform: translateY(-3px) scale(1.1); color: var(--gold); }
 .service h3 { font-size: 1.02rem; }
 .service p { font-size: .89rem; color: var(--muted); margin: 0; }
+
+/* ---------------- حركات الظهور عند التمرير (Scroll Reveal) ---------------- */
+.reveal {
+  opacity: 0; transform: translateY(28px);
+  transition:
+    opacity .7s cubic-bezier(.22, .61, .36, 1),
+    transform .7s cubic-bezier(.22, .61, .36, 1),
+    box-shadow .3s ease, border-color .3s ease, background .3s ease;
+  will-change: opacity, transform;
+}
+.reveal.is-visible { opacity: 1; transform: none; }
+.step:hover, .service:hover { box-shadow: var(--shadow); border-color: var(--gold-3); }
 
 /* ============================ 11) قسم أسد بابل ============================ */
 .lion-grid { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: clamp(24px, 4vw, 54px); align-items: center; }
@@ -808,6 +834,7 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .quote-band { background-attachment: scroll; }
+  .reveal { opacity: 1 !important; transform: none !important; }
 }
 
 </style>
@@ -1177,28 +1204,28 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 <!-- ============================== كيف نعمل ============================== -->
 <section class="section" id="how">
   <div class="container">
-    <div class="section-head">
+    <div class="section-head reveal">
       <span class="eyebrow">آلية العمل</span>
       <h2>أربع خطوات منظّمة من الاستمارة إلى التوظيف</h2>
       <p>نظام محكم يحفظ حق الباحث عن العمل وحق صاحب العمل في الوقت نفسه.</p>
     </div>
     <div class="steps">
-      <div class="step">
+      <div class="step reveal" data-d="0">
         <div class="num">1</div>
         <h3>إصدار الاستمارة</h3>
         <p>تُمنح استمارة رسمية برقم تسلسلي (<span class="mono small">BRC-NO-000120</span>) صالحة <b>30 يوماً</b> وتحتوي <b>خمس محاولات</b> مرتبة.</p>
       </div>
-      <div class="step">
+      <div class="step reveal" data-d="120">
         <div class="num">2</div>
         <h3>اختيار المحاولة</h3>
         <p>يختار الباحث الوظيفة المناسبة فتُسجَّل المحاولة #1 على الاستمارة وتُحجز الوظيفة باسمه.</p>
       </div>
-      <div class="step">
+      <div class="step reveal" data-d="240">
         <div class="num">3</div>
         <h3>حجز 24 ساعة</h3>
         <p>تُعلَّق الوظيفة مؤقتاً بانتظار نتيجة المقابلة. إن انتهت المدة دون تثبيت النتيجة تُفرج الوظيفة تلقائياً.</p>
       </div>
-      <div class="step">
+      <div class="step reveal" data-d="360">
         <div class="num">4</div>
         <h3>تثبيت النتيجة</h3>
         <p>نجاح: تُغلق الوظيفة ويُثبَّت التوظيف. رفض: تُعاد الوظيفة «متاحة» وتُفعَّل المحاولة التالية تلقائياً حتى الخامسة.</p>
@@ -1210,38 +1237,38 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 <!-- ============================== الخدمات ============================== -->
 <section class="section section-dark" id="services">
   <div class="container">
-    <div class="section-head">
+    <div class="section-head reveal">
       <span class="eyebrow">خدماتنا</span>
       <h2>توفير الأيادي العاملة الفنية والتخصصية</h2>
       <p>نلتزم بنطاق عملنا الفني والتخصصي، مع متابعة كاملة للمرشح وصاحب العمل حتى تثبيت التوظيف.</p>
     </div>
     <div class="grid grid-3">
-      <div class="service">
+      <div class="service reveal" data-d="0">
         <svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg>
         <h3>توفير العمالة الفنية</h3>
         <p>عمال إنتاج، مخازن، سائقون، فنيون، عمال خدمات — وفق احتياج كل منشأة وعدد الشواغر.</p>
       </div>
-      <div class="service">
+      <div class="service reveal" data-d="90">
         <svg class="ic"><use href="#i-building" xlink:href="#i-building"/></svg>
         <h3>الكوادر التخصصية</h3>
         <p>مهندسون، ممرضون، إداريون، محاسبون — بعد التحقق من الشهادات والخبرة العملية.</p>
       </div>
-      <div class="service">
+      <div class="service reveal" data-d="180">
         <svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg>
         <h3>استمارة موثّقة بكيو آر كود</h3>
         <p>كل استمارة تحمل كيو آر كود يفتح صفحة تحقق تُظهر الرقم التسلسلي وحالة المحاولات فوراً.</p>
       </div>
-      <div class="service">
+      <div class="service reveal" data-d="270">
         <svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg>
         <h3>حجز مؤقت عادل</h3>
         <p>الوظيفة تُحجز لمرشح واحد فقط لمدة 24 ساعة — بلا تكرار ولا وعود مزدوجة.</p>
       </div>
-      <div class="service">
+      <div class="service reveal" data-d="360">
         <svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg>
         <h3>إعادة تفعيل الفرص</h3>
         <p>عند الرفض تُعاد الوظيفة للسوق فوراً، ويُفعَّل للباحث ترشيحٌ بديل دون رسوم جديدة.</p>
       </div>
-      <div class="service">
+      <div class="service reveal" data-d="450">
         <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
         <h3>حفظ الخصوصية</h3>
         <p>بيانات صاحب العمل التفصيلية محجوبة عن العرض العام، وسجل تدقيق دقيق بكل عملية في النظام.</p>
@@ -4078,10 +4105,31 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     bindEvents();
     renderAll();
     Store.subscribe(renderAll);
+    initReveal();
 
     // تشغيل قواعد الإفراج التلقائي عند التحميل ثم دورياً
     Store.runMaintenance();
     setInterval(function () { Store.runMaintenance(); }, 60000);
+  }
+
+  /* ---------------- حركات الظهور عند التمرير ---------------- */
+  function initReveal() {
+    var els = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+    if (!els.length) return;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('is-visible'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target);
+        var d = Number(en.target.getAttribute('data-d')) || 0;
+        setTimeout(function () { en.target.classList.add('is-visible'); }, d);
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    els.forEach(function (el) { io.observe(el); });
   }
 
   function fillSelects() {

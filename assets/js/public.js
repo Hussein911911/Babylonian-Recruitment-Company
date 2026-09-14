@@ -17,10 +17,31 @@
     bindEvents();
     renderAll();
     Store.subscribe(renderAll);
+    initReveal();
 
     // تشغيل قواعد الإفراج التلقائي عند التحميل ثم دورياً
     Store.runMaintenance();
     setInterval(function () { Store.runMaintenance(); }, 60000);
+  }
+
+  /* ---------------- حركات الظهور عند التمرير ---------------- */
+  function initReveal() {
+    var els = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+    if (!els.length) return;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('is-visible'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target);
+        var d = Number(en.target.getAttribute('data-d')) || 0;
+        setTimeout(function () { en.target.classList.add('is-visible'); }, d);
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    els.forEach(function (el) { io.observe(el); });
   }
 
   function fillSelects() {
