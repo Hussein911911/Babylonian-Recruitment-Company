@@ -176,6 +176,21 @@
     ['attemptLimit', 'validityDays', 'holdHours', 'formFee'].forEach(function (k) {
       if (db.settings[k] == null) db.settings[k] = CFG.rules[k];
     });
+    // ترحيل الصور للوظائف القديمة
+    if (db.jobs && db.jobs.length > 0) {
+      var seedJobs = CFG.seed.jobs;
+      var updated = false;
+      db.jobs.forEach(function(job) {
+        if (!job.imageUrl) {
+          var seedJob = seedJobs.find(function(sj) { return sj.code === job.code; });
+          if (seedJob && seedJob.imageUrl) {
+            job.imageUrl = seedJob.imageUrl;
+            updated = true;
+          }
+        }
+      });
+      if (updated) save();
+    }
     return db;
   }
 
