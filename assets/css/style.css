@@ -113,22 +113,23 @@ code, .mono { font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
 .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
-/* ============================ 4) الشريط العلوي والترويسة ============================ */
-.topbar {
-  background: linear-gradient(90deg, var(--night), var(--lapis-2) 45%, var(--night));
-  color: #dfe6f5; font-size: .82rem; border-bottom: 1px solid var(--line);
-}
-.topbar .container { display: flex; align-items: center; justify-content: space-between; min-height: 40px; gap: 14px; flex-wrap: wrap; }
-.topbar a { color: #e8d089; display: inline-flex; align-items: center; gap: 6px; }
-.topbar .tb-items { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
-.topbar .sep { width: 1px; height: 16px; background: var(--line); }
+/* ============================ 4) الترويسة ============================ */
+.header-main { display: flex; align-items: center; justify-content: space-between; gap: 14px 18px; flex-wrap: wrap; }
+.header-contact { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; color: #dbe3f5; font-size: .82rem; }
+.hc-item { display: inline-flex; align-items: center; gap: 7px; }
+.hc-item .ic { color: var(--gold-2); flex: none; }
+.hc-item a { color: inherit; }
+.hc-item a:hover { color: var(--gold-2); }
+.hc-phones { display: inline-flex; align-items: center; gap: 8px; }
+.hc-phones a { color: var(--gold-2); font-weight: 700; }
+.header-actions { display: flex; align-items: center; gap: 10px; flex: none; }
 
 .site-header {
   position: sticky; top: 0; z-index: 60; background: rgba(9, 18, 40, .92);
   backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
   box-shadow: 0 8px 30px rgba(0, 0, 0, .25);
 }
-.site-header .container { display: flex; align-items: center; justify-content: space-between; min-height: var(--header-h); gap: 16px; }
+.site-header .container { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }
 .brand { display: flex; align-items: center; gap: 12px; color: #fff; }
 .brand .emblem { width: 52px; height: 52px; flex: none; filter: drop-shadow(0 3px 8px rgba(0, 0, 0, .4)); }
 .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
@@ -143,6 +144,7 @@ code, .mono { font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
 .main-nav a:hover { background: rgba(200, 162, 74, .14); color: #fff; }
 .main-nav a.active { color: var(--gold-2); background: rgba(200, 162, 74, .16); }
 .nav-toggle { display: none; background: transparent; border: 1px solid var(--line); color: #fff; border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+.site-header .main-nav { border-top: 1px solid var(--line); padding-top: 8px; justify-content: center; }
 
 /* ===================== الأيقونات (القاعدة الأساسية) =====================
    كل أيقونة تُرسم بـ <svg class="ic"><use href="#i-…"/></svg>
@@ -645,7 +647,7 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
   #print-root, #print-root * { visibility: visible !important; }
   #print-root { display: block !important; position: absolute; inset: 0; width: 100%; }
   #print-root .voucher { width: 100%; }
-  .no-print, .toast-wrap, .modal-backdrop, .app-side, .site-header, .topbar, .site-footer { display: none !important; }
+  .no-print, .toast-wrap, .modal-backdrop, .app-side, .site-header, .site-footer { display: none !important; }
   .voucher .v-watermark { opacity: .06; }
 }
 
@@ -660,6 +662,7 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .app-shell { grid-template-columns: 1fr; }
   .app-side { position: static; height: auto; }
   .site-footer .foot-main { grid-template-columns: 1fr 1fr; }
+  .hc-email, .hc-hours { display: none; }
 }
 @media (max-width: 720px) {
   body { font-size: 15px; }
@@ -676,7 +679,9 @@ table.data .cell-actions { display: flex; gap: 6px; flex-wrap: wrap; }
   .bar-row { grid-template-columns: 100px 1fr 96px; }
   .modal-foot { justify-content: stretch; }
   .modal-foot .btn { flex: 1; }
-  .topbar .tb-items { gap: 10px; }
+  .header-contact { order: 3; flex: 1 1 100%; }
+  .hc-email, .hc-hours { display: inline-flex; }
+  .site-header .main-nav { border-top: 0; padding-top: 0; justify-content: initial; }
 }
 /* خط زخرفي ذهبي بجانب العنوان الفرعي (يمتدّ في اتجاه القراءة) */
 .eyebrow-line {
