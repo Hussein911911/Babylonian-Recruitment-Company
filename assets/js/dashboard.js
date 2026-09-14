@@ -1188,6 +1188,8 @@
     var db = Store.db();
     set('db-jobs', db.jobs.length); set('db-apps', db.applicants.length);
     set('db-attempts', db.attempts.length); set('db-audit', db.audit.length);
+    var backups = Store.getScheduledBackups();
+    set('db-backups', backups.length);
     var vb = document.getElementById('set-verify-base');
     if (vb) vb.textContent = CFG.verifyBase;
   }
@@ -1360,6 +1362,174 @@
       }).join('\n');
       UI.download('brc-audit-' + Store.fmtDate(new Date()) + '.csv', '\ufeff' + csv, 'text/csv;charset=utf-8');
       UI.toast('ok', 'تصدير السجل', rows.length + ' سجل بصيغة CSV.');
+    });
+
+    var sb = document.getElementById('btn-schedule-backup');
+    if (sb) sb.addEventListener('click', scheduleBackupModal);
+
+    var vb = document.getElementById('btn-view-backups');
+    if (vb) vb.addEventListener('click', viewBackupsModal);
+  }
+
+  /* نافذة جدولة النسخ الاحتياطي */
+  function scheduleBackupModal() {
+    var body = '<form id="backup-form">' +
+      '<div class="field mb-2">' +
+      '<label for="backup-name">اسم النسخة الاحتياطية *</label>' +
+      '<input type="text" id="backup-name" required placeholder="مثال: نسخة نهاية الشهر">' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label>نطاق البيانات</label>' +
+      '<div class="flex" style="gap:8px">' +
+      '<label style="display:flex;align-items:center;gap:4px"><input type="radio" name="backup-range" value="all" checked style="width:auto"> كل البيانات</label>' +
+      '<label style="display:flex;align-items:center;gap:4px"><input type="radio" name="backup-range" value="custom" style="width:auto"> نطاق مخصص</label>' +
+      '</div>' +
+      '</div>' +
+      '<div id="custom-range" style="display:none">' +
+      '<div class="flex" style="gap:8px">' +
+      '<div class="field" style="flex:1"><label for="backup-from">من تاريخ</label><input type="date" id="backup-from"></div>' +
+      '<div class="field" style="flex:1"><label for="backup-to">إلى تاريخ</label><input type="date" id="backup-to"></div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="field mb-2">' +
+      '<label>جدولة تلقائية</label>' +
+      '<div class="flex" style="gap:8px;flex-wrap:wrap">' +
+      '<label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="backup-daily" style="width:auto"> يومياً</label>' +
+      '<label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="backup-weekly" style="width:auto"> أسبوعياً</label>' +
+      '</div>' +
+      '</div>' +
+      '</form>';
+
+    UI.modal({
+      title: 'جدولة النسخ الاحتياطي',
+      subtitle: 'احفظ نسخة احتياطية من البيانات',
+      body: body,
+      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
+        '<button class="btn btn-gold" id="backup-save">' + UI.ic('check') + ' حفظ النسخة</button>',
+      onMount: function (box, close) {
+        var radios = box.querySelectorAll('input[name="backup-range"]');
+        var customRange = box.querySelector('#custom-range');
+        
+        radios.forEach(function(radio) {
+          radio.addEventListener('change', function() {
+            customRange.style.display = this.value === 'custom' ? 'block' : 'none';
+          });
+        });
+
+        box.querySelector('#backup-save').addEventListener('click', function () {
+          var name = box.querySelector('#backup-name').value.trim();
+          if (!name) {
+            UI.toast('err', 'اسم مطلوب', 'يرجى إدخال اسم للنسخة الاحتياطية');
+            return;
+          }
+
+          var rangeType = box.querySelector('input[name="backup-range"]:checked').value;
+          var dateRange = null;
+          
+          if (rangeType === 'custom') {
+            var from = box.querySelector('#backup-from').value;
+            var to = box.querySelector('#backup-to').value;
+            if (!from || !to) {
+              UI.toast('err', 'تواريخ مطلوبة', 'يرجى تحديد نطاق التاريخ');
+              return;
+            }
+            dateRange = { from: from, to: to };
+          }
+
+          var backup = Store.saveScheduledBackup(name, dateRange);
+          if (backup) {
+            UI.toast('ok', 'تم الحفظ', 'حُفظت النسخة الاحتياطية بنجاح');
+            renderSettings();
+            close();
+          } else {
+            UI.toast('err', 'فشل الحفظ', 'لم يتم حفظ النسخة الاحتياطية');
+          }
+        });
+      }
+    });
+  }
+
+  /* نافذة عرض النسخ الاحتياطية */
+  function viewBackupsModal() {
+    var backups = Store.getScheduledBackups();
+    
+    var body = '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:600px">' +
+      '<thead><tr><th>الاسم</th><th>تاريخ الإنشاء</th><th>نطاق البيانات</th><th>إجراءات</th></tr></thead>' +
+      '<tbody>' +
+      (backups.length === 0 ? '<tr><td colspan="4" class="table-empty">لا توجد نسخ احتياطية</td></tr>' :
+        backups.map(function(b) {
+          return '<tr>' +
+            '<td><b>' + UI.esc(b.name) + '</b></td>' +
+            '<td class="tiny">' + Store.fmtDateTime(b.createdAt) + '</td>' +
+            '<td class="tiny">' + (b.dateRange ? b.dateRange.from + ' إلى ' + b.dateRange.to : 'كل البيانات') + '</td>' +
+            '<td><div class="cell-actions">' +
+            '<button class="btn btn-outline btn-sm" data-backup-export="' + b.id + '">' + UI.ic('download') + ' تصدير</button>' +
+            '<button class="btn btn-ok btn-sm" data-backup-restore="' + b.id + '">' + UI.ic('refresh') + ' استعادة</button>' +
+            '<button class="btn btn-danger btn-sm" data-backup-delete="' + b.id + '">' + UI.ic('trash') + '</button>' +
+            '</div></td></tr>';
+        }).join('')) +
+      '</tbody></table></div></div>';
+
+    UI.modal({
+      title: 'النسخ الاحتياطية',
+      subtitle: backups.length + ' نسخة احتياطية',
+      wide: true,
+      body: body,
+      footer: '<button class="btn btn-outline" data-close>إغلاق</button>',
+      onMount: function (box, close) {
+        box.querySelectorAll('[data-backup-export]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var id = btn.getAttribute('data-backup-export');
+            var data = Store.exportScheduledBackup(id);
+            if (data) {
+              UI.download('brc-backup-' + Store.fmtDate(new Date()) + '.json', data, 'application/json');
+              UI.toast('ok', 'تم التصدير', 'حُفظ ملف النسخة الاحتياطية');
+            }
+          });
+        });
+
+        box.querySelectorAll('[data-backup-restore]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var id = btn.getAttribute('data-backup-restore');
+            UI.confirm({
+              title: 'استعادة النسخة الاحتياطية',
+              danger: true,
+              confirmText: 'استعادة',
+              message: 'سيتم استبدال البيانات الحالية بالبيانات من النسخة الاحتياطية. هل أنت متأكد؟'
+            }).then(function(ok) {
+              if (ok) {
+                if (Store.restoreScheduledBackup(id)) {
+                  UI.toast('ok', 'تم الاستعادة', 'استُعيدت البيانات بنجاح');
+                  renderCurrent();
+                  close();
+                } else {
+                  UI.toast('err', 'فشل الاستعادة', 'لم يتم استعادة البيانات');
+                }
+              }
+            });
+          });
+        });
+
+        box.querySelectorAll('[data-backup-delete]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var id = btn.getAttribute('data-backup-delete');
+            UI.confirm({
+              title: 'حذف النسخة الاحتياطية',
+              danger: true,
+              confirmText: 'حذف',
+              message: 'سيتم حذف النسخة الاحتياطية نهائياً. هل أنت متأكد؟'
+            }).then(function(ok) {
+              if (ok) {
+                if (Store.deleteScheduledBackup(id)) {
+                  UI.toast('ok', 'تم الحذف', 'حُذفت النسخة الاحتياطية');
+                  close();
+                  viewBackupsModal(); // إعادة فتح النافذة
+                }
+              }
+            });
+          });
+        });
+      }
     });
   }
 

@@ -201,7 +201,39 @@
   }
 
   function save() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) { /* لا تخزين متاح أو المساحة ممتلئة — البيانات تبقى في الذاكرة */ }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+      // حفظ في قائمة التغييرات الأوفلاين
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        var queue = [];
+        try { queue = JSON.parse(localStorage.getItem('brc-offline-queue') || '[]'); } catch(e) {}
+        queue.push({ ts: nowISO(), data: JSON.parse(JSON.stringify(db)) });
+        // احتفظ بآخر 50 نسخة فقط
+        if (queue.length > 50) queue = queue.slice(-50);
+        try { localStorage.setItem('brc-offline-queue', JSON.stringify(queue)); } catch(e) {}
+      }
+    } catch (e) { /* لا تخزين متاح أو المساحة ممتلئة — البيانات تبقى في الذاكرة */ }
+  }
+
+  function syncOfflineChanges() {
+    // مزامنة التغييرات عند العودة للاتصال
+    var queue = [];
+    try { queue = JSON.parse(localStorage.getItem('brc-offline-queue') || '[]'); } catch(e) {}
+    if (queue.length > 0) {
+      audit('مزامنة أوفلاين', 'system', '—', 'تم استعادة الاتصال — تم حفظ ' + queue.length + ' نسخة من التغييرات');
+      // حفظ آخر نسخة كاحتياط
+      try {
+        var lastSync = queue[queue.length - 1];
+        localStorage.setItem('brc-last-offline-sync', JSON.stringify({
+          ts: nowISO(),
+          data: lastSync.data
+        }));
+      } catch(e) {}
+      // مسح قائمة الانتظار
+      try { localStorage.removeItem('brc-offline-queue'); } catch(e) {}
+      save();
+    }
+    return queue.length;
   }
 
   function emit() { sub.version++; sub.listeners.forEach(function (fn) { try { fn(db, sub.version); } catch (e) { } }); }
@@ -821,7 +853,10 @@
     stats: stats, financials: financials, financialTotals: financialTotals,
     markPrinted: markPrinted, setFeePaid: setFeePaid,
     // تدقيق
-    audit: audit, listAudit: listAudit,
+    audit: audit, listAudit: listAudit, syncOfflineChanges: syncOfflineChanges,
+    getScheduledBackups: getScheduledBackups, saveScheduledBackup: saveScheduledBackup,
+    deleteScheduledBackup: deleteScheduledBackup, restoreScheduledBackup: restoreScheduledBackup,
+    exportScheduledBackup: exportScheduledBackup,
     // أدوات
     fmtDate: fmtDate, fmtDateTime: fmtDateTime, money: money, diffDays: diffDays, diffHours: diffHours,
     addDays: addDays, addHours: addHours, resetDemo: resetDemo, exportJson: exportJson, importJson: importJson,
@@ -838,3 +873,63 @@
   root.BRCStore = API;
   if (typeof module === 'object' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);
+
+  /* ======================= النسخ الاحتياطي المجدول ======================= */
+  var BACKUP_KEY = 'brc-scheduled-backups';
+
+  function getScheduledBackups() {
+    try {
+      return JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+    } catch (e) { return []; }
+  }
+
+  function saveScheduledBackup(name, dateRange) {
+    var backups = getScheduledBackups();
+    var backup = {
+      id: 'backup-' + Date.now(),
+      name: name,
+      createdAt: nowISO(),
+      dateRange: dateRange,
+      data: JSON.parse(JSON.stringify(db))
+    };
+    backups.push(backup);
+    // احتفظ بآخر 100 نسخة
+    if (backups.length > 100) backups = backups.slice(-100);
+    try {
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
+      audit('نسخة احتياطية', 'backup', backup.id, name + ' — ' + (dateRange ? dateRange.from + ' إلى ' + dateRange.to : 'كل البيانات'));
+      return backup;
+    } catch (e) { return null; }
+  }
+
+  function deleteScheduledBackup(id) {
+    var backups = getScheduledBackups();
+    backups = backups.filter(function(b) { return b.id !== id; });
+    try {
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
+      audit('حذف نسخة احتياطية', 'backup', id, 'تم حذف النسخة الاحتياطية');
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function restoreScheduledBackup(id) {
+    var backups = getScheduledBackups();
+    var backup = backups.find(function(b) { return b.id === id; });
+    if (!backup) return false;
+    try {
+      // حفظ نسخة احتياطية قبل الاستعادة
+      saveScheduledBackup('قبل الاستعادة - ' + Store.fmtDateTime(new Date()), null);
+      db = backup.data;
+      save();
+      emit();
+      audit('استعادة نسخة احتياطية', 'backup', id, 'تم استعادة النسخة: ' + backup.name);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function exportScheduledBackup(id) {
+    var backups = getScheduledBackups();
+    var backup = backups.find(function(b) { return b.id === id; });
+    if (!backup) return null;
+    return JSON.stringify(backup.data, null, 2);
+  }

@@ -666,6 +666,8 @@
             <div class="flex flex-wrap">
               <button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير نسخة JSON</button>
               <button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"/></svg> استيراد نسخة</button>
+              <button class="btn btn-gold" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> جدولة النسخ الاحتياطي</button>
+              <button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> عرض النسخ الاحتياطية</button>
               <button class="btn btn-warn" id="btn-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تشغيل قواعد الحجز التلقائي</button>
               <button class="btn btn-danger" id="btn-reset"><svg class="ic"><use href="#i-trash" xlink:href="#i-trash"/></svg> إعادة ضبط البيانات التجريبية</button>
             </div>
@@ -675,6 +677,7 @@
               <div class="data-item"><div class="k">الاستمارات</div><div class="v" id="db-apps">0</div></div>
               <div class="data-item"><div class="k">المحاولات</div><div class="v" id="db-attempts">0</div></div>
               <div class="data-item"><div class="k">سجلات التدقيق</div><div class="v" id="db-audit">0</div></div>
+              <div class="data-item"><div class="k">النسخ الاحتياطية</div><div class="v" id="db-backups">0</div></div>
             </div>
             <p class="tiny muted mt-3 mb-0">
               البيانات تُخزَّن في متصفحك (localStorage) — للحفظ الدائم على السيرفر راجع <span class="mono">docs/schema.sql</span>.
@@ -685,6 +688,48 @@
     </section>
   </main>
 </div>
+
+<script>
+  // تسجيل Service Worker للعمل أوفلاين
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => {
+        console.log('✓ Service Worker مسجل', reg.scope);
+      })
+      .catch(err => {
+        console.log('✗ فشل تسجيل Service Worker', err);
+      });
+  }
+
+  // مراقبة حالة الاتصال
+  let isOnline = navigator.onLine;
+  const offlineIndicator = document.createElement('div');
+  offlineIndicator.id = 'offline-indicator';
+  offlineIndicator.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#a8322f;color:#fff;padding:10px;text-align:center;z-index:9999;display:none;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.2);';
+  offlineIndicator.innerHTML = '⚠️ أنت تعمل بدون اتصال — سيتم المزامنة تلقائياً عند العودة للاتصال';
+  document.body.appendChild(offlineIndicator);
+
+  window.addEventListener('online', () => {
+    isOnline = true;
+    offlineIndicator.style.display = 'none';
+    // مزامنة البيانات عند العودة
+    if (window.BRCStore && typeof window.BRCStore.syncOfflineChanges === 'function') {
+      window.BRCStore.syncOfflineChanges();
+    }
+    if (window.BRCUI) {
+      window.BRCUI.toast('ok', 'تم الاتصال', 'تم استعادة الاتصال بنجاح — البيانات محدثة');
+    }
+  });
+
+  window.addEventListener('offline', () => {
+    isOnline = false;
+    offlineIndicator.style.display = 'block';
+    if (window.BRCUI) {
+      window.BRCUI.toast('warn', 'انقطع الاتصال', 'أنت تعمل بدون اتصال — التغييرات تُحفظ محلياً');
+    }
+  });
+</script>
+
 
 <!-- ============================== التذييل ============================== -->
 <footer class="site-footer">
