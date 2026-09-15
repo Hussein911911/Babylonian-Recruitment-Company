@@ -3927,8 +3927,13 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
   function login(username, password, opts) {
     /* الوضع السحابي: كلمات المرور المحلية (المنشورة في config.js) ليست باباً
-       للدخول. الدخول الفعلي: signIn ← Supabase Auth ← جدول brc.staff. */
-    if (cloud.state === 'on' && !(opts && opts.forceLocal)) {
+       للدخول. الدخول الفعلي: signIn ← Supabase Auth ← جدول brc.staff.
+       ⚠️ الاستثناء الوحيد مُعلَن في الإعداد لا مُستنتَج: متى أنشأ المسؤول حسابات
+       الموظفين ووضع enforceAuth=true في supabase-config.js يُغلق هذا الباب في
+       طبقة البيانات نفسها — لا في الواجهة فقط (لو كان الإغلاق في الواجهة وحدها
+       لكفى نداء واحد من طرف ثالث لتجاوزه). ما دام المفتاح false فالنظام في وضع
+       انتقالي معلوم، وتُعرض حالة الوضع بوضوح في أعلى الشاشة. */
+    if (cloud.state === 'on' && enforceAuth() && !(opts && opts.forceLocal)) {
       audit('محاولة دخول محلي مرفوضة', 'auth', username || '—',
         'النظام في الوضع السحابي — الدخول عبر Supabase Auth فقط');
       saveLocal(); emit();
@@ -3942,6 +3947,17 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     memSession = session;
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) { }
     audit('تسجيل دخول', 'auth', username, 'دخول ناجح إلى المنظومة (' + (u.role === 'admin' ? 'مدير عام' : 'موظف') + ')');
+    /* ⚠️ خطر حقيقي في الوضع الانتقالي: لو كان في هذا المتصفح توكن جلسة سحابية
+       لموظف آخر، ثم دخل شخص بكلمة المرور المحلية، لصارت كل كتاباته تُنسب إلى
+       **ذلك الموظف** في القاعدة (التوكن هو من يكتب لا الشاشة). القاعدة هنا
+       صريحة: إمّا أنت المستخدم السحابي، وإمّا وضع محلي بلا أي كتابة سحابية —
+       لذلك نفصل الجلسة السحابية عند الدخول المحلي. */
+    if (cloud.state === 'on' && cloud.role === 'staff') {
+      console.warn('[BRC] دخول محلي مع جلسة سحابية قائمة — تُفصل الجلسة السحابية حتى لا تُنسب الكتابات لصاحبها');
+      saveLocal(); emit();
+      signOutCloud();
+      return session;
+    }
     save(); emit();
     return session;
   }
@@ -4809,9 +4825,18 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     try { return (JSON.parse(localStorage.getItem('brc-cloud-queue') || '[]') || []).length; } catch (e) { return 0; }
   }
 
+  /* هل الدخول من القاعدة حصراً؟ مفتاح صريح في supabase-config.js يملكه المسؤول،
+     لأن التحوّل من «كلمات مرور في الكود» إلى «حسابات رسمية» يحتاج لحظة يضبطها
+     هو بعد إنشاء الحسابات — لا لحظة يقررها الكود عنه. */
+  function enforceAuth() {
+    var c = cloudCfg();
+    return !!(c && c.enforceAuth);
+  }
+
   function cloudStatus() {
     return {
-      configured: cloudConfigured(), state: cloud.state, role: cloud.role,
+      configured: cloudConfigured(), enforceAuth: enforceAuth(),
+      state: cloud.state, role: cloud.role,
       readOnly: cloud.readOnly, error: cloud.error, detail: cloud.detail,
       failedTables: cloud.failedTables.slice(), pending: pendingQueueLength(),
       lastPushAt: cloud.lastPushAt, lastError: cloud.lastError
@@ -5167,12 +5192,16 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
   function signOutCloud() {
     var out = (cloud.auth && cloud.auth.logout) ? cloud.auth.logout() : Promise.resolve({ ok: true });
+    var unsub = cloud.unsubscribe;
     return out.catch(function () { return { ok: true }; }).then(function () {
       /* بعد الخروج نُفرغ ما لا يجوز أن يبقى على الجهاز (بيانات الباحثين كانت
          كلها في الذاكرة والكاش)، ثم نُعيد الإقلاع كزائر فتبقى الواجهة العامة. */
       try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
       db = blankDb();
       saveLocal();
+      /* نُلغي الاشتراك اللحظي فعلاً: قناة قديمة تبقى تستقبل أحداثاً بعد الخروج
+         تعني مصفوفة ذاكرة تُحدَّث ببيانات لا يحق لصاحب الجلسة الجديد رؤيتها. */
+      if (unsub) { try { unsub(); } catch (e) { } }
       cloud.unsubscribe = null;
       cloud.sync = null;
       cloud.role = 'guest'; cloud.state = 'off';
@@ -6672,10 +6701,15 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
             enterApp();
             return;
           }
-          if (r && r.code === 'offline') {
-            /* لا اتصال بالسحابة: نسمح بالوضع المحلي **بتنبيه صريح** حتى لا يتوقف
-               العمل عند انقطاع الشبكة، مع بقاء البانر الأحمر معروضاً دائماً. */
-            UI.toast('warn', 'وضع محلي مؤقّت', 'تعذّر الاتصال بالسحابة — الدخول محلي والبيانات غير مشتركة مع بقية الموظفين.');
+          var transitional = !cs.enforceAuth && r && ['offline', 'bad_credentials', 'no_staff_row', 'no_user', 'inactive'].includes(r.code);
+          if (transitional) {
+            /* انقطاع، أو قاعدة لم تُهيّأ بعدُ بحسابات موظفين (enforceAuth=false):
+               نسمح بالوضع المحلي **بتنبيه صريح** حتى لا يتوقف العمل، مع بقاء
+               البانر معروضاً دائماً يشرح الوضع. أما متى كانت enforceAuth=true
+               فلا مسار محلي إطلاقاً — وهذا هو الوضع النهائي المقصود. */
+            UI.toast('warn', 'وضع محلي مؤقّت',
+              (r.code === 'offline' ? 'تعذّر الاتصال بالسحابة — ' : 'لا يوجد حساب موظف في القاعدة بعد — ') +
+              'الدخول محلي والبيانات غير مشتركة مع بقية الموظفين.');
             localLogin();
             return;
           }
@@ -6710,6 +6744,12 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       title = 'وضع محلي مؤقّت — البيانات غير مشتركة';
       body = (st.error || 'تعذّر الاتصال بالسحابة') + (st.detail ? ' — ' + st.detail : '') +
         ' | أي وظيفة أو استمارة تُنشأ الآن تبقى في هذا المتصفح وحده.';
+    } else if (st.state === 'on' && st.role !== 'staff' && !st.enforceAuth) {
+      tone = 'warn';
+      title = 'وضع انتقالي — الدخول محلي';
+      body = 'القاعدة متصلة، لكن لم يُنشأ بعدُ حساب موظف فيها. حتى ذلك الحين: ' +
+        'الدخول بكلمات المرور المحلية، والبيانات في هذا المتصفح وحده ولا تصل إلى القاعدة. ' +
+        'لإكمال التحوّل: أنشئ حساباً لكل موظف واربطه بسطر في brc.staff ثم اجعل enforceAuth: true.';
     } else if (st.state === 'on' && st.role !== 'staff') {
       tone = 'warn';
       title = 'غير مسجَّل الدخول بالسحابة';

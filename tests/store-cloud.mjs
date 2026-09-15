@@ -33,6 +33,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * =========================================================================== */
 function makeMock(opts = {}) {
   const calls = [];
+  let signedOut = false;      // signOut يُلغي الجلسة فعلاً (كما يفعل الخادم)
   const state = Object.assign({
     jobs: [], applicants: [], job_attempts: [], audit_log: [], settings: [], staff: [], public_jobs: []
   }, opts.rows || {});
@@ -113,12 +114,13 @@ function makeMock(opts = {}) {
       },
       getSession() {
         calls.push({ auth: 'getSession' });
+        if (signedOut) return Promise.resolve({ data: { session: null }, error: null });
         /* الافتراضي: جلسة موظف مسجَّل (كي تُقرأ جداول brc). مرّر session: null
            لتمثيل زائر بلا حساب. */
         const sess = opts.session === undefined ? { user: { id: 'auth-1' }, access_token: 'tk' } : opts.session;
         return Promise.resolve({ data: { session: sess }, error: null });
       },
-      signOut() { calls.push({ auth: 'signOut' }); return Promise.resolve({ error: null }); },
+      signOut() { calls.push({ auth: 'signOut' }); signedOut = true; return Promise.resolve({ error: null }); },
       updateUser(p) { calls.push({ auth: 'updateUser', payload: p }); return Promise.resolve({ error: null }); }
     }
   };
@@ -145,7 +147,10 @@ function bootStore(mock, extra = {}) {
   sandbox.setTimeout = setTimeout; sandbox.clearTimeout = clearTimeout;
   sandbox.setInterval = () => 0; sandbox.clearInterval = () => { };
   sandbox.location = { origin: 'http://localhost', protocol: 'http:' };
-  sandbox.BRCSupabaseConfig = { url: 'https://x.supabase.co', publishableKey: 'sb_publishable_test', schema: 'brc', enabled: true };
+  sandbox.BRCSupabaseConfig = {
+    url: 'https://x.supabase.co', publishableKey: 'sb_publishable_test', schema: 'brc',
+    enabled: true, enforceAuth: extra.enforceAuth === true
+  };
   sandbox.fetch = function () { };                       // المتصفح الحقيقي يوفّره
   if (extra.noFetch) delete sandbox.fetch;
   if (extra.noVendor) { /* بلا مكتبة سوبابيس */ } else {
@@ -283,12 +288,13 @@ step(3, 'الجلسة — الدخول من القاعدة لا من config.js')
       ? { data: { user: { id: 'auth-1', email }, session: { access_token: 'tk' } }, error: null }
       : { data: null, error: { message: 'Invalid login credentials' } })
   });
-  const { Store } = bootStore(mock);
+  const { Store } = bootStore(mock, { enforceAuth: true });
   Store.init();
   await sleep(120);
 
   const refused = Store.login('admin', 'admin123');
-  check('كلمة مرور config.js المحلية مرفوضة في الوضع السحابي', refused === null, JSON.stringify(refused));
+  check('كلمة مرور config.js المحلية مرفوضة في الوضع النهائي', refused === null, JSON.stringify(refused));
+  check('الوضع النهائي مُعلن في الحالة', Store.cloudStatus().enforceAuth === true);
   check('المحاولة المرفوضة سُجّلت محلياً للتدقيق',
     Store.listAudit({}).some((l) => /دخول محلي/.test(l.action)), JSON.stringify(Store.listAudit({}).slice(0, 2)));
 
@@ -306,6 +312,45 @@ step(3, 'الجلسة — الدخول من القاعدة لا من config.js')
   const bad = await Store.signIn('hussein', 'wrong-password');
   check('كلمة مرور خاطئة تُرفض برسالة عربية', bad && bad.ok === false && bad.code === 'bad_credentials' && /غير صحيحة/.test(bad.error),
     JSON.stringify(bad));
+}
+
+step('3أ', 'الوضع الانتقالي — allow محلي معلَن، وبلا أي كتابة في القاعدة');
+{
+  /* enforceAuth=false هو الوضع الافتراضي الحالي (المسؤول لم يُنشئ الحسابات بعدُ).
+     في هذا الوضع: الدخول المحلي مسموح صراحةً، لكن **لا شيء يصل للقاعدة** لأن
+     الكتابة تحتاج جلسة موظف — فلا يظنّ أحد أن بياناته مشتركة. */
+  /* (أ) زائر/موظف بلا جلسة سحابية: الوضع الانتقالي المعتاد */
+  const mock = makeMock({ rows: cloudRows(), session: null });
+  const { Store } = bootStore(mock, { enforceAuth: false });
+  Store.init();
+  await sleep(120);
+  check('الوضع الانتقالي مُعلن في الحالة', Store.cloudStatus().enforceAuth === false);
+  check('بلا جلسة: الوضع عام (لا صلاحية كتابة)', Store.cloudStatus().role === 'public');
+  const s = Store.login('admin', 'admin123');
+  check('الدخول المحلي مسموح في الوضع الانتقالي (المنظومة لا تتوقف)', !!s && s.role === 'admin', JSON.stringify(s));
+  const before = mock.__calls.filter((c) => ['insert', 'update', 'delete'].includes(c.op)).length;
+  Store.createJob({ title: 'وظيفة محلية', category: 'خدمات', region: 'بابل', salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: '' }, interviewLocation: '' });
+  await sleep(950);
+  const after = mock.__calls.filter((c) => ['insert', 'update', 'delete'].includes(c.op)).length;
+  check('لا كتابة تصل للقاعدة بجلسة محلية (البيانات غير مشتركة)', after === before,
+    `before=${before} after=${after}`);
+
+  /* (ب) جلسة سحابية لموظف آخر قائمة في المتصفح + دخول محلي:
+     أخطر حالة — لولا الفصل لصارت الكتابات باسم صاحب الجلسة. */
+  const mock2 = makeMock({ rows: cloudRows() });
+  const b = bootStore(mock2, { enforceAuth: false });
+  b.Store.init();
+  await sleep(120);
+  check('قبل الدخول المحلي: جلسة سحابية لموظف (صلاحية كتابة)', b.Store.cloudStatus().role === 'staff');
+  b.Store.login('admin', 'admin123');
+  await sleep(400);
+  check('الدخول المحلي يفصل الجلسة السحابية (لا كتابة باسم غيرك)', b.Store.cloudStatus().role !== 'staff',
+    JSON.stringify(b.Store.cloudStatus()));
+  const b0 = mock2.__calls.filter((c) => ['insert', 'update', 'delete'].includes(c.op)).length;
+  b.Store.createJob({ title: 'وظيفة', category: 'خدمات', region: 'بابل', salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: '' }, interviewLocation: '' });
+  await sleep(950);
+  const b1 = mock2.__calls.filter((c) => ['insert', 'update', 'delete'].includes(c.op)).length;
+  check('بعد الفصل: لا كتابة في القاعدة إطلاقاً', b1 === b0, `before=${b0} after=${b1}`);
 }
 
 step('3ب', 'الجلسة — حالات الحدود (حساب بلا سطر موظف · حساب موقوف)');
