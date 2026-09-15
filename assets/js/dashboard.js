@@ -285,6 +285,26 @@
       el = wrap.firstChild;
       host.appendChild(el);
     }
+    /* تذكير قبل التسليم: كلمات المرور المكتوبة في كود الواجهة ما زالت صالحة.
+       لا يُعرض أي منها هنا — التذكير يذكّر بالحذف لا بالبيانات. ويختفي وحده
+       بمجرد إغلاق الباب (enforceAuth: true). */
+    if (st.devAccountsActive) {
+      var warn = document.getElementById('brc-dev-accounts');
+      if (!warn) {
+        var wrap = document.createElement('div');
+        wrap.innerHTML = '<div id="brc-dev-accounts" style="margin-top:12px;padding:10px 12px;border-radius:10px;' +
+          'font-size:.78rem;line-height:1.8;background:#fffbeb;border:1px solid #fde68a;color:#78350f"></div>';
+        warn = wrap.firstChild;
+        el.parentNode.insertBefore(warn, el.nextSibling);
+      }
+      warn.innerHTML = '<b>⚙️ تذكير للفريق (لا يظهر للزبون):</b> حسابات الدخول المكتوبة في ' +
+        '<code>assets/js/config.js</code> ما زالت فعّالة. تُحذف قبل التسليم — ' +
+        'هذه آخر خطوة في <b>docs/pre-delivery-checklist.md</b>.';
+    } else {
+      var old = document.getElementById('brc-dev-accounts');
+      if (old) old.remove();
+    }
+
     if (st.state === 'degraded') {
       el.style.cssText += ';background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d';
       el.innerHTML = '<b>لم يتم الاتصال بقاعدة الشركة.</b><br>' + UI.esc(st.error || '') +

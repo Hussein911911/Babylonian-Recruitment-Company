@@ -382,18 +382,31 @@ section('8) الملف المستقل — يعمل بلا إنترنت وبلا 
 
 for (const file of PAGES.filter((f) => f.startsWith('brc-'))) {
   const s = loaded[file];
-  const ext = [];
   /* نفحص الموارد المطلوبة للتشغيل فقط (صور/خطوط/سكربتات/ستايلات) —
      أما روابط التنقل الخارجية (واتساب، خرائط جوجل، بريد) فهي مقصودة
-     ولا تمنع الملف من العمل بلا إنترنت. */
+     ولا تمنع الملف من العمل بلا إنترنت.
+
+     ونفرّق بين نوعين لأن أثرهما مختلف تماماً:
+       • كود/أنماط/خطوط/أيقونات خارجية → **فشل**: بدونها لا يعمل الملف أصلاً.
+       • صور بطاقات الوظائف → **ملاحظة**: بيانات عرض تجريبية، وفقدانها لا يمنع
+         العمل (تظهر البطاقة بلا صورة). مصدرها حقول imageUrl في بيانات العرض.
+         إن أردت ملفاً يعمل بلا إنترنت بصوره: انقل الصور إلى assets/img/jobs/
+         وحدّث imageUrl إليها. */
+  const blocking = [];
+  const photos = [];
   s.doc.querySelectorAll('[src], link[rel="stylesheet"], link[rel="icon"], source[srcset], script[src], img[src]').forEach((el) => {
     for (const a of ['src', 'href', 'srcset']) {
       const v = el.getAttribute(a);
-      if (v && /^(https?:)?\/\//.test(v) && !v.includes('brc-babil.com')) ext.push(v);
+      if (!v || !/^(https?:)?\/\//.test(v) || v.includes('brc-babil.com')) continue;
+      const inJobCard = el.tagName === 'IMG' && !!(el.closest('.job-card') || el.closest('#jobs-grid'));
+      (inJobCard ? photos : blocking).push(v);
     }
   });
-  if (ext.length) bad(file + ' — لا مراجع خارجية للموارد (صور/خطوط/كود)', ext.slice(0, 5).join(', '));
-  else ok(file + ' — لا مراجع خارجية للموارد (كل الصور والخطوط والكود داخل الملف)');
+  if (blocking.length) bad(file + ' — لا مراجع خارجية للكود والأنماط والخطوط', blocking.slice(0, 5).join(', '));
+  else ok(file + ' — لا مراجع خارجية للكود والأنماط والخطوط (كل ما يلزم للتشغيل داخل الملف)');
+  if (photos.length) warnf(file + ' — صور بطاقات الوظائف من بيانات العرض (' + photos.length + ' صورة) خارج الملف',
+    'لا تكسر الملف؛ ولجعلها محلية: انسخها إلى assets/img/jobs/ وحدّث imageUrl في config.js');
+  else ok(file + ' — لا صور وظائف خارجية (كل الصور داخل الملف)');
 
   const raw = readFileSync(join(ROOT, file), 'utf8');
   const dataUris = (raw.match(/data:[a-z]+\/[a-z0-9.+-]+;base64,/g) || []).length;

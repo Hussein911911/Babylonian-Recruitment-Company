@@ -75,10 +75,14 @@ const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'voucher', 'public',
  *  أي تنبيه لأن BRCSupabaseConfig لا يكون محمّلاً أصلاً).
  *  'vendor/supabase' مسار خاص: assets/vendor/supabase.js
  * ------------------------------------------------------------------------- */
-const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth', 'cloud-sync'];
+const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth', 'cloud-sync', 'cloud-http'];
+/* ⚠️ الصفحات العامة تستخدم cloud-http (عميل مصغّر ~5KB) لا مكتبة سوبابيس الكاملة
+   (213KB): الزائر يقرأ الواجهة العامة ويستدعي دالتين فقط، ولا يحتاج تسجيل دخول
+   ولا اتصالاً لحظياً. قياس الحجم أظهر أن المكتبة الكاملة كانت ثلث ما ينزّله.
+   اللوحة تبقى على المكتبة الكاملة لأنها تحتاج Auth و Realtime فعلاً. */
 const SCRIPTS = {
-  public: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'qr-scan', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'voucher', 'public'],
-  verify: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'voucher', 'verify'],
+  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'voucher', 'public'],
+  verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'voucher', 'verify'],
   dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'voucher', 'dashboard']
 };
 

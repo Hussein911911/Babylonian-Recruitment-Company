@@ -79,10 +79,18 @@ window.fetch = function () {};
 `;
 
 class Loader extends ResourceLoader {
+  constructor(opts = {}) { super(); this.opts = opts; }
   fetch(url, options) {
     /* نستبدل مكتبة سوبابيس وحدها — بقية الملفات تُخدم حقيقية */
     if (url.includes('/vendor/supabase.js')) {
       return Promise.resolve(Buffer.from(MOCK_SRC, 'utf8'));
+    }
+    /* سيناريو «المسؤول أكمل التحوّل»: نفس ملف الإعداد لكن بـ enforceAuth=true،
+       لأن هذا المفتاح يُقرأ عند الإقلاع — فتبديله يجب أن يمرّ من نقطة الإقلاع
+       نفسها لا من بعد التحميل. */
+    if (url.includes('/assets/js/supabase-config.js') && this.opts.enforceAuth) {
+      return super.fetch(url, options).then((buf) =>
+        Buffer.from(String(buf).replace('enforceAuth: false', 'enforceAuth: true'), 'utf8'));
     }
     return super.fetch(url, options);
   }
@@ -98,12 +106,9 @@ async function open(opts = {}) {
   vc.on('error', (...a) => errors.push(a.map(String).join(' ')));
   const dom = await JSDOM.fromFile(resolve(ROOT, 'dashboard.html'), {
     url: pathToFileURL(resolve(ROOT, 'dashboard.html')).href,
-    runScripts: 'dangerously', resources: new Loader(), pretendToBeVisual: true, virtualConsole: vc
+    runScripts: 'dangerously', resources: new Loader(opts), pretendToBeVisual: true, virtualConsole: vc
   });
   await new Promise((r) => setTimeout(r, 260));
-  /* الإعداد يُقرأ لحظياً عند كل فحص (cloudStatus) — فيمكن قلبه بعد التحميل
-     لتمثيل «المسؤول أكمل إنشاء الحسابات ثم فعّل التحوّل». */
-  if (opts.enforceAuth) dom.window.BRCSupabaseConfig.enforceAuth = true;
   return { dom, window: dom.window, doc: dom.window.document, errors };
 }
 
@@ -133,6 +138,10 @@ check('الوظيفة المعلنة وصلت من الواجهة العامة',
 const note = t1.doc.getElementById('brc-cloud-note');
 const banner = t1.doc.getElementById('brc-cloud-banner');
 check('شاشة الدخول تُعلن الحالة (ملاحظة ظاهرة)', !!note && /متصل|انتقالي|محلي/.test(note.textContent), note && note.textContent.slice(0, 60));
+const devWarn = t1.doc.getElementById('brc-dev-accounts');
+check('تذكير الفريق بحذف حسابات الكود ظاهر (قبل التسليم)', !!devWarn && /تُحذف قبل التسليم/.test(devWarn.textContent),
+  devWarn && devWarn.textContent.slice(0, 80));
+check('التذكير لا يعرض أي كلمة مرور', !!devWarn && !/admin123|staff123/.test(devWarn.textContent));
 check('بانر الحالة ظاهر في أعلى الصفحة', !!banner, 'لا بانر');
 check('البانر يشرح الوضع الانتقالي وخطوة إكمال التحوّل',
   !!banner && /انتقالي|محلي/.test(banner.textContent) && /enforceAuth|حساب/.test(banner.textContent),
@@ -157,6 +166,8 @@ const t2 = await open({ enforceAuth: true });
 t2.window.BRCStore.logout();
 await new Promise((r) => setTimeout(r, 120));
 check('مفتاح enforceAuth مفعّل كما ضبطه المسؤول', t2.window.BRCStore.cloudStatus().enforceAuth === true);
+check('بعد إغلاق الباب: تذكير الفريق يختفي تلقائياً', !t2.doc.getElementById('brc-dev-accounts'),
+  'التذكير ما زال ظاهراً');
 login(t2.window, t2.doc, 'admin', 'admin123');
 await new Promise((r) => setTimeout(r, 300));
 check('كلمة مرور config.js لم تُدخل أحداً', shellHidden(t2.doc), 'دخل بالباب الخلفي!');

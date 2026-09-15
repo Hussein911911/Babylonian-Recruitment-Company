@@ -1170,10 +1170,18 @@
     var f = root.fetch || (typeof globalThis !== 'undefined' && globalThis.fetch);
     return typeof f === 'function';
   }
+  /* أي عميل متاح؟ مكتبة سوبابيس الكاملة (لوحة الموظفين: دخول + لحظي) أو العميل
+     المصغّر (الصفحات العامة: قراءة الواجهة العامة ودالتان). */
+  function cloudLib() {
+    if (root.supabase && root.supabase.createClient) return 'supabase';
+    if (root.BRCHttp && root.BRCHttp.createClient) return 'mini';
+    return null;
+  }
+
   function cloudWillBoot(opts) {
     if (opts && opts.cloud === false) return false;
     if (!cloudConfigured() || !hasFetch()) return false;
-    return !!(root.supabase && root.BRCCloud && root.BRCSync);
+    return !!(cloudLib() && root.BRCCloud && root.BRCSync);
   }
 
   function pendingQueueLength() {
@@ -1189,9 +1197,19 @@
     return !!(c && c.enforceAuth);
   }
 
+  /* هل حسابات المطوّر (المكتوبة في config.js) ما زالت فعّالة؟
+     تُستخدم لتذكير الظاهر في اللوحة حتى لا تُنسى قبل التسليم: الباب الخلفي
+     يبقى ما دام enforceAuth=false وكلمات المرور في الكود. التذكير يختفي
+     تلقائياً في اللحظة التي يُغلق فيها الباب. */
+  function devAccountsActive() {
+    if (enforceAuth()) return false;
+    var users = (db && db.settings && db.settings.users) || CFG.users || [];
+    return users.length > 0;
+  }
+
   function cloudStatus() {
     return {
-      configured: cloudConfigured(), enforceAuth: enforceAuth(),
+      configured: cloudConfigured(), enforceAuth: enforceAuth(), devAccountsActive: devAccountsActive(),
       state: cloud.state, role: cloud.role,
       readOnly: cloud.readOnly, error: cloud.error, detail: cloud.detail,
       failedTables: cloud.failedTables.slice(), pending: pendingQueueLength(),
@@ -1239,6 +1257,10 @@
 
   function createCloudClient() {
     var c = cloudCfg();
+    if (cloudLib() === 'mini') {
+      /* صفحات الزوار: عميل بلا مصادقة ولا اتصال لحظي — وهذا حدّها الصحيح */
+      return root.BRCHttp.createClient(c.url, c.publishableKey, { schema: c.schema || 'brc' });
+    }
     return root.supabase.createClient(c.url, c.publishableKey, {
       /* ⚠️ السكيما تُوضع تحت db لا في الجذر: supabase-js يتجاهل الجذر ويحذّر */
       db: { schema: c.schema || 'brc' },
@@ -1258,7 +1280,7 @@
       cloud.error = 'النظام يعمل محلياً — البيانات غير مشتركة';
       cloud.detail = !hasFetch()
         ? 'المتصفح لا يوفر fetch (أو يعمل في بيئة اختبار)'
-        : 'مكتبة سوبابيس غير محمّلة (assets/vendor/supabase.js)';
+        : 'مكتبة سوبابيس غير محمّلة (assets/vendor/supabase.js أو assets/js/cloud-http.js)';
       notifyCloudStatus();
       return Promise.resolve(cloudStatus());
     }
@@ -1279,9 +1301,17 @@
     return cloud.bootPromise;
   }
 
+  /* هل نستطيع قراءة جداول الموظفين؟ بلا عميل يدير الجلسة لا — وفي الصفحات
+     العامة نتجه لمسار الزائر مباشرة. بلا هذا يطلب كل زائر ستة جداول مرفوضة
+     (ضجيج في الشبكة وسجل المشروع، وبطء في أول رسم بلا أي فائدة). */
+  function canReadStaffTables() {
+    return cloudLib() === 'supabase' && !!root.BRCCloudAuth;
+  }
+
   function restoreThenLoad() {
     /* استعادة الجلسة قبل القراءة: بدونها يقرأ الموظف كزائر فيرى الوظائف العامة
        فقط، فيبدو أن بياناته «ضاعت» بعد تحديث الصفحة. */
+    if (!canReadStaffTables()) return publicBoot(null);
     if (!cloud.auth) return loadFromCloud();
     return cloud.auth.restore().then(function (r) {
       if (r && r.ok) { applyStaffSession(r.profile); return loadFromCloud(); }
@@ -1516,6 +1546,10 @@
      مع جملة عربية مفهومة — لا استثناءات تصل إلى الواجهة. */
   function signIn(username, password) {
     if (!cloudConfigured()) return Promise.resolve({ ok: false, code: 'no_cloud', error: 'لا يوجد إعداد سحابة' });
+    /* صفحات الزوار تستخدم العميل المصغّر (بلا مصادقة عن قصد): الدخول من اللوحة */
+    if (!canReadStaffTables()) {
+      return Promise.resolve({ ok: false, code: 'no_auth', error: 'الدخول متاح من لوحة الموظفين: /dashboard' });
+    }
     if (!cloudWillBoot()) {
       return Promise.resolve({ ok: false, code: 'offline', error: cloud.error || 'النظام في الوضع المحلي' });
     }
