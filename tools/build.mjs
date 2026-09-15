@@ -67,16 +67,38 @@ const partials = {
 };
 const CSS = read('assets/css/style.css');
 const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'voucher', 'public', 'verify', 'dashboard'];
+
+/* ---------------------------------------------------------------------------
+ *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
+ *  جاهزاً عند أول init()، ولا تُدمج في brc-standalone/brc-light (تلك نسخة
+ *  تُشارَك كملف واحد بلا إنترنت ولا معنى لسوبابيس فيها — فتشتغل محلياً بلا
+ *  أي تنبيه لأن BRCSupabaseConfig لا يكون محمّلاً أصلاً).
+ *  'vendor/supabase' مسار خاص: assets/vendor/supabase.js
+ * ------------------------------------------------------------------------- */
+const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth', 'cloud-sync', 'cloud-http'];
+/* ⚠️ الصفحات العامة تستخدم cloud-http (عميل مصغّر ~5KB) لا مكتبة سوبابيس الكاملة
+   (213KB): الزائر يقرأ الواجهة العامة ويستدعي دالتين فقط، ولا يحتاج تسجيل دخول
+   ولا اتصالاً لحظياً. قياس الحجم أظهر أن المكتبة الكاملة كانت ثلث ما ينزّله.
+   اللوحة تبقى على المكتبة الكاملة لأنها تحتاج Auth و Realtime فعلاً. */
 const SCRIPTS = {
-  public: ['config', 'qr', 'qr-scan', 'store', 'ui', 'voucher', 'public'],
-  verify: ['config', 'qr', 'store', 'ui', 'voucher', 'verify'],
-  dashboard: ['config', 'qr', 'store', 'ui', 'voucher', 'dashboard']
+  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'voucher', 'public'],
+  verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'voucher', 'verify'],
+  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'voucher', 'dashboard']
 };
 
+/* مسار الأصل من الاسم: 'vendor/x' → assets/vendor/x.js وإلا assets/js/x.js */
+const scriptPath = (n) => n.startsWith('vendor/')
+  ? `assets/vendor/${n.slice(7)}.js`
+  : `assets/js/${n}.js`;
+
 /* بصمة الأصول: تُضاف كـ ?v= لروابط CSS/JS حتى لا يعلَق المتصفح بنسخة قديمة
-   بعد النشر (تتغير تلقائياً فقط عند تعديل الأصول — بلا عشوائية بين البناءات). */
+   بعد النشر (تتغير تلقائياً فقط عند تعديل الأصول — بلا عشوائية بين البناءات).
+   ⚠️ تشمل طبقة السحابة أيضاً: لو حسبناها من JS_ORDER وحده لما تغيّر الرقم عند
+   تعديل cloud-sync.js — فيبقى المتصفح على نسخة قديمة **بصمت**، وهو أسوأ أنواع
+   الأخطاء لأن الكود الجديد لا يصل أصلاً. */
 const ASSET_VER = process.env.BRC_ASSET_VER || createHash('sha1')
-  .update([CSS, ...JS_ORDER.map((n) => read(`assets/js/${n}.js`))].join('\u0000'))
+  .update([CSS, ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
+           ...CLOUD_ORDER.map((n) => read(scriptPath(n)))].join('\u0000'))
   .digest('hex').slice(0, 10);
 const verQ = (p) => `${p}?v=${ASSET_VER}`;
 
@@ -115,7 +137,7 @@ function buildPage({ title, desc, body, scripts }) {
     partials.header + '\n' +
     body + '\n' +
     partials.footer + '\n' +
-    scripts.map((n) => `<script src="${verQ(`assets/js/${n}.js`)}"></script>`).join('\n') +
+    scripts.map((n) => `<script src="${verQ(scriptPath(n))}"></script>`).join('\n') +
     '\n</body>\n</html>\n';
 }
 

@@ -267,9 +267,43 @@ for (const [js, page] of CONTRACT) {
 {
   const union = new Set([...pageIds('index.html'), ...pageIds('verify.html'), ...pageIds('dashboard.html')]);
   const inStandalone = pageIds('brc-standalone.html');
-  const missing = [...union].filter((id) => !inStandalone.has(id));
+  /* نفس السماح المطبّق في الفحص أعلاه: معرّف يُنشئه الكود ديناميكياً (id="…" داخل
+     قالب نصي) هو موجود فعلاً في الملف المستقل ولو لم يكن في بنيته الأولية. بلا
+     هذا السماح يُرفض أي عنصر يُبنى بالكود عند الشرط — وهو أسلوب مشروع ومستخدم
+     في التنبيهات والنوافذ هنا. */
+  const standaloneSrc = readFileSync(join(ROOT, 'brc-standalone.html'), 'utf8');
+  const missing = [...union].filter((id) => !inStandalone.has(id) && !standaloneSrc.includes('id="' + id + '"'));
   if (missing.length) bad('brc-standalone.html — يجمع معرّفات كل الصفحات', 'ناقص: ' + missing.slice(0, 10).join(', '));
   else ok('brc-standalone.html — يجمع ' + union.size + ' معرّفاً من الصفحات الثلاث كاملة');
+}
+
+// لا شيء يشير الزائر إلى الدخول أو يكشف بياناته في الصفحات المنشورة
+/* ما نمنعه هنا محدَّد:
+   1) نص الحسابات التجريبية أو أنماطها على شاشة الدخول (كانت تعرض admin/admin123
+      لمن يفتح اللوحة — أي أن «صفحة دخول» صارت «إعلاناً بكلمة المرور»).
+   2) روابط تفتح لوحة الموظفين من الموقع العام (رأس/تذييل/نداء) — الزائر لا
+      يحتاجها، ووجودها يعرّف أي زائر بعنوان المنظومة الداخلية.
+   الفحص على الصفحات المنشورة نفسها لا على الأجزاء (src/partials) ليشمل أي
+   بناء مستقبلي ينسى أحدها. */
+{
+  const published = ['index.html', 'verify.html', 'dashboard.html', 'brc-standalone.html', 'brc-light.html'];
+  const leaked = [];
+  for (const f of published) {
+    const src = readFileSync(join(ROOT, f), 'utf8');
+    if (/حسابات تجريبية/.test(src)) leaked.push(f + ': نص الحسابات التجريبية');
+    if (/demo-account|login-demo-info/.test(src)) leaked.push(f + ': أنماط الحسابات التجريبية');
+  }
+  if (leaked.length) bad('لا حسابات تجريبية ظاهرة على شاشة الدخول', leaked.join(' | '));
+  else ok('لا حسابات تجريبية ظاهرة على شاشة الدخول (في ' + published.length + ' صفحات منشورة)');
+
+  const linked = [];
+  for (const f of ['index.html', 'verify.html']) {
+    const src = readFileSync(join(ROOT, f), 'utf8');
+    const m = src.match(/href="dashboard\.html"/g);
+    if (m) linked.push(f + ' (' + m.length + ')');
+  }
+  if (linked.length) bad('لا روابط للوحة الموظفين من الموقع العام', linked.join(' | '));
+  else ok('لا روابط للوحة الموظفين من الموقع العام ولا صفحة التحقق');
 }
 
 // معرّفات مكرّرة داخل الصفحة نفسها
@@ -348,18 +382,31 @@ section('8) الملف المستقل — يعمل بلا إنترنت وبلا 
 
 for (const file of PAGES.filter((f) => f.startsWith('brc-'))) {
   const s = loaded[file];
-  const ext = [];
   /* نفحص الموارد المطلوبة للتشغيل فقط (صور/خطوط/سكربتات/ستايلات) —
      أما روابط التنقل الخارجية (واتساب، خرائط جوجل، بريد) فهي مقصودة
-     ولا تمنع الملف من العمل بلا إنترنت. */
+     ولا تمنع الملف من العمل بلا إنترنت.
+
+     ونفرّق بين نوعين لأن أثرهما مختلف تماماً:
+       • كود/أنماط/خطوط/أيقونات خارجية → **فشل**: بدونها لا يعمل الملف أصلاً.
+       • صور بطاقات الوظائف → **ملاحظة**: بيانات عرض تجريبية، وفقدانها لا يمنع
+         العمل (تظهر البطاقة بلا صورة). مصدرها حقول imageUrl في بيانات العرض.
+         إن أردت ملفاً يعمل بلا إنترنت بصوره: انقل الصور إلى assets/img/jobs/
+         وحدّث imageUrl إليها. */
+  const blocking = [];
+  const photos = [];
   s.doc.querySelectorAll('[src], link[rel="stylesheet"], link[rel="icon"], source[srcset], script[src], img[src]').forEach((el) => {
     for (const a of ['src', 'href', 'srcset']) {
       const v = el.getAttribute(a);
-      if (v && /^(https?:)?\/\//.test(v) && !v.includes('brc-babil.com')) ext.push(v);
+      if (!v || !/^(https?:)?\/\//.test(v) || v.includes('brc-babil.com')) continue;
+      const inJobCard = el.tagName === 'IMG' && !!(el.closest('.job-card') || el.closest('#jobs-grid'));
+      (inJobCard ? photos : blocking).push(v);
     }
   });
-  if (ext.length) bad(file + ' — لا مراجع خارجية للموارد (صور/خطوط/كود)', ext.slice(0, 5).join(', '));
-  else ok(file + ' — لا مراجع خارجية للموارد (كل الصور والخطوط والكود داخل الملف)');
+  if (blocking.length) bad(file + ' — لا مراجع خارجية للكود والأنماط والخطوط', blocking.slice(0, 5).join(', '));
+  else ok(file + ' — لا مراجع خارجية للكود والأنماط والخطوط (كل ما يلزم للتشغيل داخل الملف)');
+  if (photos.length) warnf(file + ' — صور بطاقات الوظائف من بيانات العرض (' + photos.length + ' صورة) خارج الملف',
+    'لا تكسر الملف؛ ولجعلها محلية: انسخها إلى assets/img/jobs/ وحدّث imageUrl في config.js');
+  else ok(file + ' — لا صور وظائف خارجية (كل الصور داخل الملف)');
 
   const raw = readFileSync(join(ROOT, file), 'utf8');
   const dataUris = (raw.match(/data:[a-z]+\/[a-z0-9.+-]+;base64,/g) || []).length;

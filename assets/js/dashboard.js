@@ -37,6 +37,10 @@
   /* ======================= التهيئة ======================= */
   function init() {
     Store.init();
+    /* حالة السحابة تُعرض دائماً: على شاشة الدخول قبل الدخول، وفي أعلى المنظومة بعده */
+    cloudBanner(Store.cloudStatus());
+    cloudLoginNote(Store.cloudStatus());
+    if (Store.onCloudStatus) Store.onCloudStatus(function (st) { cloudBanner(st); cloudLoginNote(st); });
     Store.runMaintenance();
     UI.startCountdowns();
     fillStatic();
@@ -132,10 +136,65 @@
       e.preventDefault();
       var u = document.getElementById('login-user').value.trim();
       var p = document.getElementById('login-pass').value;
-      var s = Store.login(u, p);
-      if (!s) { UI.toast('err', 'فشل الدخول', 'اسم المستخدم أو كلمة المرور غير صحيحة.'); return; }
-      UI.toast('ok', 'مرحباً ' + s.name, s.role === 'admin' ? 'دخلت بصلاحية المدير العام.' : 'دخلت بصلاحية موظف.');
-      enterApp();
+      var btn = form.querySelector('button[type="submit"]');
+      var label = btn ? btn.textContent : '';
+
+      function busy(on, txt) {
+        if (!btn) return;
+        btn.disabled = !!on;
+        btn.textContent = on ? txt : label;
+      }
+      function localLogin() {
+        var s = Store.login(u, p);
+        if (!s) { UI.toast('err', 'فشل الدخول', 'اسم المستخدم أو كلمة المرور غير صحيحة.'); return; }
+        UI.toast('ok', 'مرحباً ' + s.name, s.role === 'admin' ? 'دخلت بصلاحية المدير العام.' : 'دخلت بصلاحية موظف.');
+        enterApp();
+      }
+
+      var cs = Store.cloudStatus ? Store.cloudStatus() : null;
+      /* متى كانت السحابة مُعدَّة فالدخول يمرّ بها حصراً (Supabase Auth + brc.staff).
+         المسار المحلي يبقى للتشغيل بلا إنترنت فقط، ولا يُسمح به متى كانت السحابة
+         متاحة (store.login يرفضه بنفسه أيضاً — حماية مزدوجة مقصودة).
+         ⚠️ إن كنا نعلم مسبقاً أن الاتصال ساقط (degraded) فلا معنى لانتظار طلب
+         شبكي محكوم عليه بالفشل: نُدخل الموظف محلياً فوراً مع بقاء التنبيه ظاهراً. */
+      if (cs && cs.configured && cs.state === 'connecting' && Store.signIn && Store.waitForCloud) {
+        busy(true, 'جارٍ الاتصال…');
+        Store.waitForCloud().then(function (st) {
+          busy(false, '');
+          if (st && st.state === 'on') { cloudLogin(); return; }
+          UI.toast('warn', 'وضع محلي مؤقّت', 'تعذّر الاتصال بالسحابة — الدخول محلي والبيانات غير مشتركة.');
+          localLogin();
+        });
+        return;
+      }
+      if (cs && cs.configured && cs.state === 'on' && Store.signIn) { cloudLogin(); return; }
+      localLogin();
+
+      function cloudLogin() {
+        busy(true, 'جارٍ التحقق…');
+        Store.signIn(u, p).then(function (r) {
+          busy(false, '');
+          if (r && r.ok) {
+            UI.toast('ok', 'مرحباً ' + (r.session ? r.session.name : u),
+              r.session && r.session.role === 'admin' ? 'دخلت بصلاحية المدير العام.' : 'دخلت بصلاحية موظف.');
+            enterApp();
+            return;
+          }
+          var transitional = !cs.enforceAuth && r && ['offline', 'bad_credentials', 'no_staff_row', 'no_user', 'inactive'].includes(r.code);
+          if (transitional) {
+            /* انقطاع، أو قاعدة لم تُهيّأ بعدُ بحسابات موظفين (enforceAuth=false):
+               نسمح بالوضع المحلي **بتنبيه صريح** حتى لا يتوقف العمل، مع بقاء
+               البانر معروضاً دائماً يشرح الوضع. أما متى كانت enforceAuth=true
+               فلا مسار محلي إطلاقاً — وهذا هو الوضع النهائي المقصود. */
+            UI.toast('warn', 'وضع محلي مؤقّت',
+              (r.code === 'offline' ? 'تعذّر الاتصال بالسحابة — ' : 'لا يوجد حساب موظف في القاعدة بعد — ') +
+              'الدخول محلي والبيانات غير مشتركة مع بقية الموظفين.');
+            localLogin();
+            return;
+          }
+          UI.toast('err', 'فشل الدخول', (r && r.error) || 'اسم المستخدم أو كلمة المرور غير صحيحة.');
+        });
+      }
     });
     var logout = document.getElementById('btn-logout');
     if (logout) logout.addEventListener('click', function () {
@@ -143,6 +202,122 @@
       showLogin();
       UI.toast('info', 'تم تسجيل الخروج', 'أُغلقت الجلسة وسُجّلت في سجل التدقيق.');
     });
+  }
+
+  /* ==========================================================================
+   *  حالة الاتصال بالسحابة — معروضة دائماً لا مخفية
+   *  ---------------------------------------------------------------------------
+   *  لماذا بانر دائم؟ لأن النظام يعمل في وضعين مختلفين تماماً: قاعدة مشتركة،
+   *  أو قاعدة في هذا المتصفح وحده. الفرق بينهما **فارق في الثقة**: في الوضع
+   *  المحلي قد يبدو كل شيء طبيعياً (استمارات، وظائف، تدقيق) بينما موظف آخر
+   *  يرى شيئاً مختلفاً تماماً — أو لا يرى ما أُصدر هنا أبداً. إخفاء هذا الفرق
+   *  وراء «يعمل بلا أخطاء» أخطر من إظهاره.
+   * ========================================================================== */
+  function cloudBanner(st) {
+    var el = document.getElementById('brc-cloud-banner');
+    if (!st || !st.configured) { if (el) el.remove(); return; }
+
+    var tone = null, title = '', body = '';
+    if (st.state === 'degraded') {
+      tone = 'err';
+      title = 'وضع محلي مؤقّت — البيانات غير مشتركة';
+      body = (st.error || 'تعذّر الاتصال بالسحابة') + (st.detail ? ' — ' + st.detail : '') +
+        ' | أي وظيفة أو استمارة تُنشأ الآن تبقى في هذا المتصفح وحده.';
+    } else if (st.state === 'on' && st.role !== 'staff' && !st.enforceAuth) {
+      tone = 'warn';
+      title = 'وضع انتقالي — الدخول محلي';
+      body = 'القاعدة متصلة، لكن لم يُنشأ بعدُ حساب موظف فيها. حتى ذلك الحين: ' +
+        'الدخول بكلمات المرور المحلية، والبيانات في هذا المتصفح وحده ولا تصل إلى القاعدة. ' +
+        'لإكمال التحوّل: أنشئ حساباً لكل موظف واربطه بسطر في brc.staff ثم اجعل enforceAuth: true.';
+    } else if (st.state === 'on' && st.role !== 'staff') {
+      tone = 'warn';
+      title = 'غير مسجَّل الدخول بالسحابة';
+      body = 'البيانات المعروضة هي الوظائف المعلنة فقط. لا إصدار استمارات ولا تعديل قبل تسجيل الدخول.';
+    } else if (st.state === 'connecting') {
+      tone = 'info';
+      title = 'جارٍ الاتصال بقاعدة الشركة…';
+      body = 'قد تتأخّر البيانات لحظات.';
+    } else if (st.lastError || st.pending) {
+      tone = 'warn';
+      title = 'لم تُحفظ كل التغييرات في القاعدة بعد';
+      body = (st.lastError || '') + (st.pending ? ' — عمليات في الانتظار: ' + st.pending : '') +
+        ' (ستُعاد تلقائياً عند عودة الاتصال)';
+    } else if (st.state === 'on' && st.role === 'staff') {
+      tone = 'ok';
+      title = 'متصل بقاعدة الشركة';
+      body = 'البيانات مشتركة بين الموظفين' + (st.lastPushAt ? ' — آخر حفظ: ' + Store.fmtDateTime(st.lastPushAt) : '');
+    } else {
+      if (el) el.remove();
+      return;
+    }
+
+    var colors = {
+      err: ['#7f1d1d', '#fef2f2', '#fecaca'],
+      warn: ['#78350f', '#fffbeb', '#fde68a'],
+      info: ['#1e3a8a', '#eff6ff', '#bfdbfe'],
+      ok: ['#14532d', '#f0fdf4', '#bbf7d0']
+    }[tone];
+
+    if (!el) {
+      var box = document.createElement('div');
+      box.innerHTML = '<div id="brc-cloud-banner" role="status"></div>';
+      el = box.firstChild;
+      document.body.insertBefore(el, document.body.firstChild);
+    }
+    el.style.cssText = 'position:sticky;top:0;z-index:9000;font-family:inherit;direction:rtl;' +
+      'padding:8px 14px;font-size:.82rem;line-height:1.7;border-bottom:1px solid ' + colors[2] +
+      ';background:' + colors[1] + ';color:' + colors[0] + ';display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+    el.innerHTML = '<b style="white-space:nowrap">' + UI.esc(title) + '</b><span>' + UI.esc(body) + '</span>' +
+      (tone === 'err' ? '<a href="supabase-check.html" style="margin-inline-start:auto;color:' + colors[0] +
+        ';font-weight:700;text-decoration:underline;white-space:nowrap">فحص الاتصال</a>' : '');
+  }
+
+  /* ملاحظة على شاشة الدخول: سبب التعذّر خطوةً بخطوة — أهمّ ما يحتاجه المسؤول
+     عند أول تشغيل (سكيما غير مطبَّقة / سكيما غير مُعرَّضة / صلاحية ناقصة). */
+  function cloudLoginNote(st) {
+    var host = document.querySelector('#login-wrap .login-container');
+    if (!host) return;
+    var el = document.getElementById('brc-cloud-note');
+    if (!st || !st.configured || st.state === 'off') { if (el) el.remove(); return; }
+    if (!el) {
+      var wrap = document.createElement('div');
+      wrap.innerHTML = '<div id="brc-cloud-note" style="margin-top:14px;padding:10px 12px;border-radius:10px;font-size:.78rem;line-height:1.8"></div>';
+      el = wrap.firstChild;
+      host.appendChild(el);
+    }
+    /* تذكير قبل التسليم: كلمات المرور المكتوبة في كود الواجهة ما زالت صالحة.
+       لا يُعرض أي منها هنا — التذكير يذكّر بالحذف لا بالبيانات. ويختفي وحده
+       بمجرد إغلاق الباب (enforceAuth: true). */
+    if (st.devAccountsActive) {
+      var warn = document.getElementById('brc-dev-accounts');
+      if (!warn) {
+        var wrap = document.createElement('div');
+        wrap.innerHTML = '<div id="brc-dev-accounts" style="margin-top:12px;padding:10px 12px;border-radius:10px;' +
+          'font-size:.78rem;line-height:1.8;background:#fffbeb;border:1px solid #fde68a;color:#78350f"></div>';
+        warn = wrap.firstChild;
+        el.parentNode.insertBefore(warn, el.nextSibling);
+      }
+      warn.innerHTML = '<b>⚙️ تذكير للفريق (لا يظهر للزبون):</b> حسابات الدخول المكتوبة في ' +
+        '<code>assets/js/config.js</code> ما زالت فعّالة. تُحذف قبل التسليم — ' +
+        'هذه آخر خطوة في <b>docs/pre-delivery-checklist.md</b>.';
+    } else {
+      var old = document.getElementById('brc-dev-accounts');
+      if (old) old.remove();
+    }
+
+    if (st.state === 'degraded') {
+      el.style.cssText += ';background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d';
+      el.innerHTML = '<b>لم يتم الاتصال بقاعدة الشركة.</b><br>' + UI.esc(st.error || '') +
+        (st.detail ? '<br>' + UI.esc(st.detail) : '') +
+        '<br>سيعمل الدخول محلياً (وضع مؤقّت) — <a href="supabase-check.html" style="text-decoration:underline">افتح صفحة فحص الاتصال</a>.';
+    } else if (st.state === 'on') {
+      el.style.cssText += ';background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d';
+      el.innerHTML = (st.role === 'staff'
+        ? '<b>متصل بقاعدة الشركة.</b> سجّل الدخول بحسابك الرسمي.'
+        : '<b>متصل بقاعدة الشركة.</b> الدخول بحساب الموظف الرسمي (يُنشئه المدير في Supabase).');
+    } else {
+      el.remove();
+    }
   }
 
   function enterApp() {

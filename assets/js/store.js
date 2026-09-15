@@ -1,9 +1,23 @@
 /* ===========================================================================
  *  BRC — محرّك البيانات ومنطق العمل
  *  ---------------------------------------------------------------------------
- *  نسخة تعمل بالكامل داخل المتصفح (localStorage) — تُسهّل الحفظ والتشغيل
- *  بلا إنترنت. نفس المنطق مُنفّذ في النسخة السحابية عبر PostgreSQL + Supabase
- *  (انظر مجلد docs/schema.sql: المشغلات triggers وسياسات RLS).
+ *  نسختان في ملف واحد — والفرق بينهما فرق ثقة لا فرق شيفرة:
+ *
+ *   1) الوضع السحابي (الافتراضي عند وجود إعداد Supabase):
+ *      • القراءة من الذاكرة فوراً (تُملأ من سوبابيس عند الإقلاع) فلا تتغيّر
+ *        أي نقطة استدعاء من النقاط الـ222 — وكلها متزامنة.
+ *      • الكتابة: تُحدَّث الذاكرة فوراً ثم تُدفع لسوبابيس في الخلفية عبر فرق
+ *        مركزي واحد (cloud-sync.js)، ويُبلَّغ باقي الموظفين عبر Realtime.
+ *      • الدخول عبر Supabase Auth والدور من brc.staff: لا كلمات مرور في كود
+ *        الواجهة، ولا قاعدة بيانات منفصلة لكل متصفح.
+ *      • إن تعذّر الوصول للسحابة يعمل النظام محلياً **بتنبيه صريح دائم**
+ *        (وضع مؤقّت لا تُعتمد عليه البيانات المشتركة).
+ *
+ *   2) الوضع المحلي (بلا إعداد سحابة، أو عبر init({cloud:false})):
+ *      كل شيء في localStorage — للطباعة والتشغيل بلا إنترنت والتجارب.
+ *
+ *  نفس المنطق مُنفّذ في PostgreSQL + Supabase (docs/schema.sql: المشغلات
+ *  triggers وسياسات RLS ودوال select_attempt/set_outcome/verify_form).
  *
  *  المنطق المطبّق هنا مطابق للمواصفات:
  *   • استمارة لكل باحث عن عمل، صالحة 30 يوماً، وتحتوي 5 محاولات.
@@ -215,7 +229,7 @@
     return db;
   }
 
-  function save() {
+  function saveLocal() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
       // حفظ في قائمة التغييرات الأوفلاين
@@ -228,6 +242,14 @@
         try { localStorage.setItem('brc-offline-queue', JSON.stringify(queue)); } catch(e) {}
       }
     } catch (e) { /* لا تخزين متاح أو المساحة ممتلئة — البيانات تبقى في الذاكرة */ }
+  }
+
+  /* كل حفظ محلي يتبعه دفع للسحابة — نقطة واحدة، فلا تُنسى عملية كتابة.
+     الدفع مؤجَّل (debounce): العملية الواحدة قد تستدعي save() مرتين، ولا معنى
+     لرحلتين إلى القاعدة لنفس التغيير. */
+  function save() {
+    saveLocal();
+    schedulePush();
   }
 
   function syncOfflineChanges() {
@@ -259,7 +281,20 @@
 
   var memSession = null;   // جلسة احتياطية في الذاكرة عند تعذّر sessionStorage
 
-  function login(username, password) {
+  function login(username, password, opts) {
+    /* الوضع السحابي: كلمات المرور المحلية (المنشورة في config.js) ليست باباً
+       للدخول. الدخول الفعلي: signIn ← Supabase Auth ← جدول brc.staff.
+       ⚠️ الاستثناء الوحيد مُعلَن في الإعداد لا مُستنتَج: متى أنشأ المسؤول حسابات
+       الموظفين ووضع enforceAuth=true في supabase-config.js يُغلق هذا الباب في
+       طبقة البيانات نفسها — لا في الواجهة فقط (لو كان الإغلاق في الواجهة وحدها
+       لكفى نداء واحد من طرف ثالث لتجاوزه). ما دام المفتاح false فالنظام في وضع
+       انتقالي معلوم، وتُعرض حالة الوضع بوضوح في أعلى الشاشة. */
+    if (cloud.state === 'on' && enforceAuth() && !(opts && opts.forceLocal)) {
+      audit('محاولة دخول محلي مرفوضة', 'auth', username || '—',
+        'النظام في الوضع السحابي — الدخول عبر Supabase Auth فقط');
+      saveLocal(); emit();
+      return null;
+    }
     var u = (db.settings.users || CFG.users).filter(function (x) {
       return x.username === username && x.password === password;
     })[0];
@@ -268,6 +303,17 @@
     memSession = session;
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) { }
     audit('تسجيل دخول', 'auth', username, 'دخول ناجح إلى المنظومة (' + (u.role === 'admin' ? 'مدير عام' : 'موظف') + ')');
+    /* ⚠️ خطر حقيقي في الوضع الانتقالي: لو كان في هذا المتصفح توكن جلسة سحابية
+       لموظف آخر، ثم دخل شخص بكلمة المرور المحلية، لصارت كل كتاباته تُنسب إلى
+       **ذلك الموظف** في القاعدة (التوكن هو من يكتب لا الشاشة). القاعدة هنا
+       صريحة: إمّا أنت المستخدم السحابي، وإمّا وضع محلي بلا أي كتابة سحابية —
+       لذلك نفصل الجلسة السحابية عند الدخول المحلي. */
+    if (cloud.state === 'on' && cloud.role === 'staff') {
+      console.warn('[BRC] دخول محلي مع جلسة سحابية قائمة — تُفصل الجلسة السحابية حتى لا تُنسب الكتابات لصاحبها');
+      saveLocal(); emit();
+      signOutCloud();
+      return session;
+    }
     save(); emit();
     return session;
   }
@@ -277,7 +323,10 @@
     if (s) audit('تسجيل خروج', 'auth', s.username, 'إنهاء الجلسة');
     memSession = null;
     try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { }
-    save(); emit();
+    saveLocal(); emit();
+    /* الجلسة السحابية تُنهى فعلاً (signOut) — وإلا بقي التوكن صالحاً في
+       المتصفح ولو ظهرت الواجهة كأنها خرجت. signOutCloud يمسح الكاش أيضاً. */
+    if (s && s.cloud) signOutCloud();
   }
 
   function currentUser() {
@@ -601,6 +650,10 @@
 
   /* تُنفّذ عند تحميل الصفحة وكل 30 ثانية وكل دقيقة على الواجهة */
   function runMaintenance() {
+    /* في الوضع السحابي بلا جلسة موظف: لا كتابة إطلاقاً. أي تعديل هنا يُرفض من
+       RLS (42501) ويبقى في قائمة انتظار الدفع يعيد المحاولة بلا نهاية — والصيانة
+       الحقيقية تجري في القاعدة نفسها (pg_cron → brc.run_auto_release). */
+    if (cloud.state === 'on' && cloud.role !== 'staff') return [];
     var actions = [];
     var now = new Date();
     if (!db.settings || db.settings.autoReleaseEnabled === false) { /* معطّل من الإعدادات */ }
@@ -664,15 +717,37 @@
   function verifyUrl(serial) { return verifyBaseUrl() + '?form=' + encodeURIComponent(serial) + '&t=' + token(serial); }
   function verifyLocalUrl(serial) { return CFG.verifyLocal + '?form=' + encodeURIComponent(serial) + '&t=' + token(serial); }
 
+  /* تقنيع للعرض العام بلا بصمة مطابقة — مطابق لدالتي brc.mask_name/mask_phone
+     في القاعدة حتى يكون سلوك الوضعين واحداً (المحلي والسحابي). */
+  function maskName(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return '';
+    if (s.length <= 2) return s.slice(0, 1) + '…';
+    return s.slice(0, 1) + new Array(Math.min(s.length - 1, 12) + 1).join('•');
+  }
+  function maskPhone(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return '';
+    if (s.length <= 5) return s.slice(0, 2) + '•••';
+    return s.slice(0, 4) + new Array(Math.max(s.length - 6, 1) + 1).join('•') + s.slice(-2);
+  }
+
   function verify(serial, t) {
     var app = getApplicant(serial);
     if (!app) return { ok: false, error: 'لا توجد استمارة بهذا الرقم', serial: serial };
     var validToken = token(serial);
+    var tokenOk = !!t && t === validToken;
+    /* ⚠️ بلا بصمة مطابقة تُقنَّع بيانات الباحث في الرد نفسه (لا في العرض فقط):
+       الأرقام التسلسلية متتابعة، فلو أظهرنا الاسم والهاتف لكل من يُدخل رقماً
+       لتساءل أي زائر أسماء وهواتف كل الباحثين بنداءات متسلسلة. البصمة المطبوعة
+       في الكيو آر كود هي المفتاح؛ ومن يُدخل الرقم يدوياً يراه مقنّعاً. */
+    var masked = !tokenOk;
     var payload = {
       ok: true,
       serial: app.serial,
-      fullName: app.fullName,
-      phone: app.phone,
+      fullName: masked ? maskName(app.fullName) : app.fullName,
+      phone: masked ? maskPhone(app.phone) : app.phone,
+      masked: masked,
       issueDate: app.issueDate,
       expiryDate: app.expiryDate,
       createdAt: app.createdAt,
@@ -691,11 +766,11 @@
           selectedAt: x.selectedAt, holdExpiresAt: x.holdExpiresAt, closedAt: x.closedAt
         };
       }),
-      tokenOk: !t || t === validToken,
+      tokenOk: tokenOk,
       verifiedAt: nowISO()
     };
     audit('تحقق من استمارة (QR)', 'applicant', app.serial,
-      'فحص عبر رابط التحقق' + (t && t !== validToken ? ' — تحذير: بصمة غير مطابقة' : ' — بصمة صحيحة'));
+      'فحص عبر رابط التحقق' + (!t ? ' — بلا بصمة (عرض مقنّع)' : (tokenOk ? ' — بصمة صحيحة' : ' — تحذير: بصمة غير مطابقة')));
     save();
     return payload;
   }
@@ -820,6 +895,13 @@
   }
 
   function resetDemo() {
+    /* ⚠️ في الوضع السحابي «إعادة الضبط» تعني: حذف كل وظائف القاعدة واستماراتها
+       وإدراج البيانات التجريبية مكانها — عملية تدميرية للمشروع كله. ممنوعة هنا
+       بحسم؛ من يحتاجها فعلاً يُفرغ الجداول من Supabase مباشرةً. */
+    if (cloud.state === 'on' && cloud.role === 'staff') {
+      console.warn('[BRC] إعادة الضبط مرفوضة في الوضع السحابي');
+      return false;
+    }
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
     db = seedDb(); save();
     audit('إعادة ضبط البيانات', 'system', '—', 'إعادة تهيئة قاعدة البيانات المحلية إلى البيانات التجريبية');
@@ -829,6 +911,11 @@
   function exportJson() { return JSON.stringify(db, null, 2); }
 
   function importJson(text) {
+    /* نفس منطق إعادة الضبط: الاستيراد يستبدل كل البيانات، ولو مرّ في الوضع
+       السحابي لمحا ما في القاعدة ودفع الملف المحلي مكانه. */
+    if (cloud.state === 'on' && cloud.role === 'staff') {
+      throw new Error('الاستيراد مرفوض في الوضع السحابي — البيانات مرجعها القاعدة');
+    }
     var parsed = JSON.parse(text);
     if (!parsed.jobs || !parsed.applicants) throw new Error('ملف غير صالح');
     db = parsed; save();
@@ -1038,12 +1125,568 @@
     emit();
     return backup;
   }
+  /* =========================================================================
+   *  طبقة السحابة (Supabase) — الإقلاع، والدفع، والجلسة
+   *  -------------------------------------------------------------------------
+   *  ثلاث مسؤوليات فقط، وكلها في هذا الموضع وحده:
+   *    1) الإقلاع: نجلب الحالة من القاعدة و«نتبنّاها» — نستبدل محتوى كائن db
+   *       نفسه (لا نُعيد إسناده) فتبقى كل المراجع في الواجهة صالحة، ثم emit()
+   *       ليُعاد الرسم. القراءة بعدها كلها من الذاكرة وبلا انتظار.
+   *    2) الدفع: كل save() تُجدول دفعة واحدة مؤجَّلة (debounce) تستدعي
+   *       BRCSync.push(db) الذي يشتقّ الفرق المركزي ويرسله.
+   *    3) الجلسة: الدخول عبر Supabase Auth والدور من brc.staff، مع استعادة
+   *       الجلسة عند تحديث الصفحة.
+   *
+   *  لماذا لا نمنع العمل عند تعذّر الاتصال؟ لأن المنع يعني «المنظومة متوقفة»
+   *  عند أي انقطاع. لذلك نعمل محلياً **بتنبيه صريح** (بانر أحمر دائم يخبر
+   *  الموظف أن البيانات غير مشتركة وأن هذا وضع مؤقّت) — والفرق بين وضعين
+   *  معروضين بوضوح خير من صمت يظنّ الموظف معه أن عمله محفوظ للجميع.
+   * ======================================================================= */
+
+  var CORE_TABLES = ['jobs', 'applicants', 'job_attempts'];
+  var PUSH_DELAY = 700;   // تجميع الحفظ المتلاحق في دفعة واحدة
+
+  var cloud = {
+    client: null, sync: null, auth: null,
+    state: 'off',          // off | connecting | on | degraded
+    role: 'guest',         // staff | public | guest
+    error: null, detail: null, failedTables: [],
+    readOnly: false, applying: false, needsReload: false,
+    timer: null, pushing: false,
+    lastPushAt: null, lastPush: null, lastError: null,
+    unsubscribe: null, bootPromise: null, listeners: []
+  };
+
+  function cloudCfg() { return root.BRCSupabaseConfig || null; }
+
+  function cloudConfigured() {
+    var c = cloudCfg();
+    return !!(c && c.enabled && c.url && c.publishableKey);
+  }
+
+  /* هل يمكن الإقلاع فعلاً؟ لا يكفي وجود الإعداد: بلا مكتبة سوبابيس أو بلا
+     fetch لا معنى للمحاولة — نُعلن الوضع المحلي صراحةً بدل انتظار طويل صامت. */
+  function hasFetch() {
+    var f = root.fetch || (typeof globalThis !== 'undefined' && globalThis.fetch);
+    return typeof f === 'function';
+  }
+  /* أي عميل متاح؟ مكتبة سوبابيس الكاملة (لوحة الموظفين: دخول + لحظي) أو العميل
+     المصغّر (الصفحات العامة: قراءة الواجهة العامة ودالتان). */
+  function cloudLib() {
+    if (root.supabase && root.supabase.createClient) return 'supabase';
+    if (root.BRCHttp && root.BRCHttp.createClient) return 'mini';
+    return null;
+  }
+
+  function cloudWillBoot(opts) {
+    if (opts && opts.cloud === false) return false;
+    if (!cloudConfigured() || !hasFetch()) return false;
+    return !!(cloudLib() && root.BRCCloud && root.BRCSync);
+  }
+
+  function pendingQueueLength() {
+    if (cloud.sync) return cloud.sync.queueLength();
+    try { return (JSON.parse(localStorage.getItem('brc-cloud-queue') || '[]') || []).length; } catch (e) { return 0; }
+  }
+
+  /* هل الدخول من القاعدة حصراً؟ مفتاح صريح في supabase-config.js يملكه المسؤول،
+     لأن التحوّل من «كلمات مرور في الكود» إلى «حسابات رسمية» يحتاج لحظة يضبطها
+     هو بعد إنشاء الحسابات — لا لحظة يقررها الكود عنه. */
+  function enforceAuth() {
+    var c = cloudCfg();
+    return !!(c && c.enforceAuth);
+  }
+
+  /* هل حسابات المطوّر (المكتوبة في config.js) ما زالت فعّالة؟
+     تُستخدم لتذكير الظاهر في اللوحة حتى لا تُنسى قبل التسليم: الباب الخلفي
+     يبقى ما دام enforceAuth=false وكلمات المرور في الكود. التذكير يختفي
+     تلقائياً في اللحظة التي يُغلق فيها الباب. */
+  function devAccountsActive() {
+    if (enforceAuth()) return false;
+    var users = (db && db.settings && db.settings.users) || CFG.users || [];
+    return users.length > 0;
+  }
+
+  function cloudStatus() {
+    return {
+      configured: cloudConfigured(), enforceAuth: enforceAuth(), devAccountsActive: devAccountsActive(),
+      state: cloud.state, role: cloud.role,
+      readOnly: cloud.readOnly, error: cloud.error, detail: cloud.detail,
+      failedTables: cloud.failedTables.slice(), pending: pendingQueueLength(),
+      lastPushAt: cloud.lastPushAt, lastError: cloud.lastError
+    };
+  }
+
+  function onCloudStatus(fn) {
+    if (typeof fn !== 'function') return function () {};
+    cloud.listeners.push(fn);
+    return function () { var i = cloud.listeners.indexOf(fn); if (i >= 0) cloud.listeners.splice(i, 1); };
+  }
+  function notifyCloudStatus() {
+    var st = cloudStatus();
+    cloud.listeners.forEach(function (fn) { try { fn(st); } catch (e) { } });
+  }
+
+  /* رسائل الأخطاء: ترجمة أكواد PostgREST إلى جملة يقولها الموظف للمسؤول
+     مباشرةً، مع خطوة الإصلاح — بدل «خطأ غير معروف» في سجل المتصفح. */
+  function describeError(err) {
+    var e = err || {};
+    var code = e.code || (e.error && e.error.code) || '';
+    var msg = String(e.message || (e.error && e.error.message) || e || '');
+    if (code === 'PGRST205' || /schema cache|does not exist/i.test(msg)) {
+      return { text: 'المخطط غير مطبَّق على القاعدة (جدول مفقود)', hint: 'طبّق docs/schema.sql على المشروع' };
+    }
+    if (code === 'PGRST106' || /exposed|Invalid schema/i.test(msg)) {
+      return { text: 'سكيما brc غير مُعرَّضة للمشروع', hint: 'Settings → API → Exposed schemas: أضف brc' };
+    }
+    if (code === '42501' || /permission denied/i.test(msg)) {
+      return { text: 'لا صلاحية كافية (RLS/منح مفقود)', hint: 'راجع سياسات ومنح §8 و§9 في docs/schema.sql' };
+    }
+    if (code === 'PGRST301' || /JWT|token/i.test(msg)) {
+      return { text: 'الجلسة منتهية — أعد الدخول', hint: '' };
+    }
+    if (/Failed to fetch|NetworkError|fetch failed|load failed/i.test(msg)) {
+      return { text: 'تعذّر الوصول إلى سوبابيس (شبكة أو حجب)', hint: 'تحقق من الاتصال ثم أعد التحميل' };
+    }
+    return { text: msg ? ('خطأ من القاعدة: ' + msg) : 'خطأ غير معروف', hint: '' };
+  }
+  function setCloudError(err) {
+    var d = describeError(err);
+    cloud.error = d.text; cloud.detail = d.hint || '';
+  }
+
+  function createCloudClient() {
+    var c = cloudCfg();
+    if (cloudLib() === 'mini') {
+      /* صفحات الزوار: عميل بلا مصادقة ولا اتصال لحظي — وهذا حدّها الصحيح */
+      return root.BRCHttp.createClient(c.url, c.publishableKey, { schema: c.schema || 'brc' });
+    }
+    return root.supabase.createClient(c.url, c.publishableKey, {
+      /* ⚠️ السكيما تُوضع تحت db لا في الجذر: supabase-js يتجاهل الجذر ويحذّر */
+      db: { schema: c.schema || 'brc' },
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'brc-auth' }
+    });
+  }
+
+  /* ---------------------------- الإقلاع ---------------------------- */
+  function bootCloud(opts) {
+    if (opts && opts.cloud === false) { cloud.state = 'off'; cloud.role = 'guest'; return Promise.resolve(cloudStatus()); }
+    if (!cloudConfigured()) { cloud.state = 'off'; cloud.role = 'guest'; return Promise.resolve(cloudStatus()); }
+    if (cloud.bootPromise) return cloud.bootPromise;
+
+    if (!cloudWillBoot(opts)) {
+      cloud.state = 'degraded';
+      cloud.role = 'guest';
+      cloud.error = 'النظام يعمل محلياً — البيانات غير مشتركة';
+      cloud.detail = !hasFetch()
+        ? 'المتصفح لا يوفر fetch (أو يعمل في بيئة اختبار)'
+        : 'مكتبة سوبابيس غير محمّلة (assets/vendor/supabase.js أو assets/js/cloud-http.js)';
+      notifyCloudStatus();
+      return Promise.resolve(cloudStatus());
+    }
+
+    cloud.state = 'connecting';
+    try { cloud.client = createCloudClient(); }
+    catch (e) { cloud.state = 'degraded'; cloud.role = 'guest'; setCloudError(e); notifyCloudStatus(); return Promise.resolve(cloudStatus()); }
+
+    if (root.BRCCloudAuth) { try { cloud.auth = root.BRCCloudAuth.create(cloud.client); } catch (e) { cloud.auth = null; } }
+
+    cloud.bootPromise = restoreThenLoad()
+      .catch(function (e) { cloud.state = 'degraded'; cloud.role = 'guest'; setCloudError(e); return cloudStatus(); })
+      .then(function (st) {
+        cloud.bootPromise = null;
+        notifyCloudStatus();
+        return st;
+      });
+    return cloud.bootPromise;
+  }
+
+  /* هل نستطيع قراءة جداول الموظفين؟ بلا عميل يدير الجلسة لا — وفي الصفحات
+     العامة نتجه لمسار الزائر مباشرة. بلا هذا يطلب كل زائر ستة جداول مرفوضة
+     (ضجيج في الشبكة وسجل المشروع، وبطء في أول رسم بلا أي فائدة). */
+  function canReadStaffTables() {
+    return cloudLib() === 'supabase' && !!root.BRCCloudAuth;
+  }
+
+  function restoreThenLoad() {
+    /* استعادة الجلسة قبل القراءة: بدونها يقرأ الموظف كزائر فيرى الوظائف العامة
+       فقط، فيبدو أن بياناته «ضاعت» بعد تحديث الصفحة. */
+    if (!canReadStaffTables()) return publicBoot(null);
+    if (!cloud.auth) return loadFromCloud();
+    return cloud.auth.restore().then(function (r) {
+      if (r && r.ok) { applyStaffSession(r.profile); return loadFromCloud(); }
+      /* بلا جلسة موظف: لا معنى لمحاولة قراءة brc.jobs/applicants — anon ممنوع
+         منها فتُرفض كلها (6 طلبات فاشلة في كل تحميل صفحة، وفي سجل المشروع ضجيج
+         «permission denied» لا يدلّ على خلل حقيقي). نبدأ من الواجهة العامة
+         مباشرةً، وهي أيضاً ما يراه الزائر في الموقع. */
+      return publicBoot(null);
+    }).catch(function () { return loadFromCloud(); });
+  }
+
+  function loadFromCloud() {
+    return root.BRCCloud.fetchAll(cloud.client).then(function (cdb) {
+      var failed = (cdb.meta && cdb.meta.failedTables) || [];
+      cloud.failedTables = failed;
+      var coreFailed = failed.filter(function (t) { return CORE_TABLES.indexOf(t) >= 0; });
+      if (coreFailed.length) {
+        /* الجداول الأساسية محجوبة: إمّا زائر بلا جلسة (وهذا هو المتوقّع في
+           الموقع العام وقبل الدخول) أو المخطط/الصلاحيات ناقصة. نجرب المسار
+           العام قبل إعلان التعذّر — لأن anon ممنوع من brc.jobs أصلاً. */
+        var errs = (cdb.meta && cdb.meta.errors) || [];
+        var first = null;
+        for (var i = 0; i < errs.length; i++) {
+          if (CORE_TABLES.indexOf(errs[i].table) >= 0) { first = errs[i].error; break; }
+        }
+        return publicBoot(first);
+      }
+      adoptCloudDb(cdb);
+      cloud.role = 'staff'; cloud.readOnly = false;
+      cloud.state = 'on'; cloud.error = null; cloud.detail = null;
+      startSync(); startRealtime();
+      return cloudStatus();
+    });
+  }
+
+  function publicBoot(coreError) {
+    if (!root.BRCCloud.fetchPublicJobs) { cloud.state = 'degraded'; setCloudError(coreError); return cloudStatus(); }
+    return root.BRCCloud.fetchPublicJobs(cloud.client).then(function (res) {
+      if (!res || !res.ok) {
+        cloud.state = 'degraded'; cloud.role = 'guest';
+        setCloudError((res && res.error) || coreError);
+        return cloudStatus();
+      }
+      adoptPublicJobs(res.jobs || []);
+      cloud.role = 'public'; cloud.readOnly = true;
+      cloud.state = 'on'; cloud.error = null; cloud.detail = null;
+      /* رسالة الحالة هنا مقصودة: «متصل» + «بلا صلاحية كتابة» لأن ما نراه هو
+         الواجهة العامة. الموظف غير المسجَّل يرى هذا تماماً كما يراه الزائر. */
+      return cloudStatus();
+    }).catch(function (e) {
+      cloud.state = 'degraded'; cloud.role = 'guest'; setCloudError(e); return cloudStatus();
+    });
+  }
+
+  /* تبنّي بيانات القاعدة في كائن db **نفسه** — لا إعادة إسناد: الواجهة تحمل
+     مراجع كثيرة إلى db، وإعادة الإسناد تكسرها بصمت. */
+  function adoptCloudDb(cdb) {
+    cloud.applying = true;
+    try {
+      db.meta = cdb.meta || db.meta;
+      db.counters = cdb.counters || db.counters;
+      db.settings = cdb.settings || {};
+      db.jobs = cdb.jobs || [];
+      db.applicants = cdb.applicants || [];
+      db.attempts = cdb.attempts || [];
+      db.audit = cdb.audit || [];
+      db.staff = cdb.staff || [];
+    } finally { cloud.applying = false; }
+    saveLocal();
+    emit();
+  }
+
+  /* للزائر: الوظائف العامة فقط. لا نلمس بقية الجداول (لا نُفرغها) لأن الموظف
+     غير المسجَّل قد يكون على نفس المتصفح ولديه كاش سابق. */
+  function adoptPublicJobs(jobs) {
+    cloud.applying = true;
+    try {
+      db.jobs = jobs || [];
+      var maxJob = db.counters && db.counters.jobCode ? db.counters.jobCode : 1041;
+      (jobs || []).forEach(function (j) {
+        var m = /^BRC-(\d+)$/.exec(j.code || '');
+        if (m) maxJob = Math.max(maxJob, Number(m[1]));
+      });
+      if (!db.counters) db.counters = { jobCode: maxJob, formSerial: 119 };
+      else db.counters.jobCode = maxJob;
+    } finally { cloud.applying = false; }
+    saveLocal();
+    emit();
+  }
+
+  /* ---------------------------- الدفع ---------------------------- */
+  function startSync() {
+    cloud.sync = root.BRCSync.create(cloud.client, {
+      snapshot: root.BRCSync.snapshotOf(db),
+      log: function (m) { console.log('[BRC/sync] ' + m); },
+      hooks: {
+        onKeyRegenerated: function (op, res) {
+          /* القاعدة ولّدت مفتاحاً بديلاً (تصادم من موظف آخر في نفس اللحظة).
+             لا نُصلح المفتاح محلياً: تغيير كود وظيفة أو رقم استمارة يستوجب
+             تحديث كل المحاولات المرتبطة — والقاعدة هي المرجع. نُعيد القراءة. */
+          console.warn('[BRC/sync] أُعيد توليد المفتاح في القاعدة — نُعيد القراءة لتصحيح الأرقام');
+          cloud.needsReload = true;
+        }
+      },
+      onError: function (err, op) {
+        var d = describeError(err);
+        cloud.lastError = d.text + ' — ' + op.op + ' ' + op.table + ' (' + op.key + ')';
+        console.warn('[BRC/sync] فشلت ' + op.op + ' ' + op.table + ': ' + cloud.lastError);
+      },
+      onFatal: function (err) {
+        setCloudError(err);
+        cloud.lastError = cloud.error;
+        console.error('[BRC/sync] توقف الدفع: ' + cloud.error);
+        notifyCloudStatus();
+      }
+    });
+  }
+
+  function schedulePush() {
+    if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.sync) return;
+    if (cloud.timer) clearTimeout(cloud.timer);
+    cloud.timer = setTimeout(function () { pushCloud(); }, PUSH_DELAY);
+  }
+
+  function pushCloud() {
+    if (cloud.timer) { clearTimeout(cloud.timer); cloud.timer = null; }
+    if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.sync) return Promise.resolve({ skipped: true });
+    if (cloud.pushing) return Promise.resolve({ skipped: true });
+    cloud.pushing = true;
+    return cloud.sync.push(db).then(function (res) {
+      cloud.pushing = false;
+      cloud.lastPushAt = nowISO();
+      cloud.lastPush = res;
+      if (res && res.failed) {
+        /* العملية الفاشلة تبقى معلّقة (لا تُوسم كمُزامَنة) وتُعاد في الدفعة
+           التالية — انظر advanceSnapshot في cloud-sync.js. */
+        cloud.lastError = 'تعذّر دفع ' + res.failed + ' عملية — ستُعاد تلقائياً';
+        console.warn('[BRC/sync] ' + cloud.lastError + ': ' + (res.pending || []).join(', '));
+      }
+      if (cloud.needsReload) { cloud.needsReload = false; return reloadFromCloud(); }
+      return res;
+    }).catch(function (e) {
+      cloud.pushing = false;
+      setCloudError(e);
+      cloud.lastError = cloud.error;
+      return { error: e };
+    });
+  }
+
+  /* إعادة قراءة كاملة — بعد تغيير من موظف آخر أو بعد استعادة الاتصال */
+  function reloadFromCloud() {
+    if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client) return Promise.resolve(cloudStatus());
+    return root.BRCCloud.fetchAll(cloud.client).then(function (cdb) {
+      if (((cdb.meta && cdb.meta.failedTables) || []).length) return cloudStatus();
+      adoptCloudDb(cdb);
+      if (cloud.sync) cloud.sync.setSnapshot(db);
+      return cloudStatus();
+    }).catch(function (e) { setCloudError(e); return cloudStatus(); });
+  }
+
+  /* --------------------------- Realtime ---------------------------
+   *  تغيير من موظف آخر: نُطبّقه على الذاكرة ونُبلّغ الواجهة. المهم بعد
+   *  التطبيق أن نُقدّم لقطة المزامنة للسطر المتغيّر وحده، وإلا أعاد الدفع
+   *  إدراج سطر أدرجه غيرنا (تصادم مفتاح ← صف مكرر برقم جديد!) أو حذف سطر
+   *  حُذف مسبقاً. نُقدّم السطر وحده لا اللقطة كلها، حتى لا نُوسم تعديلاً
+   *  محلياً معلّقاً بأنه مُزامَن فيضيع.
+   * ---------------------------------------------------------------- */
+  function absorbRealtime(table, payload) {
+    if (!cloud.sync) return;
+    var type = payload.eventType || payload.type;
+    var row = payload.new || payload.record || null;
+    var old = payload.old || payload.old_record || null;
+    var snap = cloud.sync.getSnapshot();
+    var op = { table: table, op: type === 'DELETE' ? 'delete' : 'update', key: null, local: null };
+
+    if (table === 'jobs') {
+      op.key = (row && row.code) || (old && old.code);
+      op.local = findLocal(db.jobs, function (x) { return x.code === op.key; });
+    } else if (table === 'applicants') {
+      op.key = (row && row.serial) || (old && old.serial);
+      op.local = findLocal(db.applicants, function (x) { return x.serial === op.key; });
+    } else if (table === 'job_attempts') {
+      var r = row || old || {};
+      op.key = String(r.serial) + ':' + String(r.attempt_no);
+      op.local = findLocal(db.attempts, function (x) { return (x.serial + ':' + x.no) === op.key; });
+    } else if (table === 'audit_log') {
+      op.key = (row && row.id) || (old && old.id);
+      op.local = findLocal(db.audit, function (x) { return String(x.id) === String(op.key); });
+    } else if (table === 'settings') {
+      if (row) root.BRCSync.advanceSnapshot(snap, { table: 'settings', op: 'update', key: row.key, local: { key: row.key, value: row.value } });
+      return;
+    } else if (table === 'staff') {
+      return;   // الموظفون لا يُدفعون من الواجهة
+    } else { return; }
+
+    if (op.key == null) return;
+    if (op.op === 'delete') { root.BRCSync.advanceSnapshot(snap, { table: table, op: 'delete', key: op.key, local: null }); return; }
+    if (!op.local) return;   // لم يصلنا السطر بعد (ترتيب الأحداث) — لا نُقدّم شيئاً
+    root.BRCSync.advanceSnapshot(snap, op);
+  }
+
+  function findLocal(list, pred) {
+    list = list || [];
+    for (var i = 0; i < list.length; i++) if (pred(list[i])) return list[i];
+    return null;
+  }
+
+  function startRealtime() {
+    if (cloud.unsubscribe || !root.BRCCloud.subscribeAll) return;
+    cloud.unsubscribe = root.BRCCloud.subscribeAll(cloud.client, db, function (table, payload) {
+      try { absorbRealtime(table, payload); } catch (e) { console.warn('[BRC/realtime] ' + (e && e.message || e)); }
+      saveLocal();   // الكاش المحلي يبقى مطابقاً لما نعرضه
+      emit();
+    }, function (e) {
+      console.warn('[BRC/realtime] ' + ((e && e.message) || e));
+    });
+  }
+
+  /* --------------------------- الجلسة --------------------------- */
+  function applyStaffSession(profile) {
+    if (!profile) return null;
+    var session = {
+      username: profile.username, name: profile.name, role: profile.role || 'staff',
+      title: profile.title || '', at: nowISO(), authId: profile.authId || null, cloud: true
+    };
+    memSession = session;
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) { }
+    return session;
+  }
+
+  /* الدخول السحابي: غير متزامن بطبيعته. كل الأخطاء تُعاد ككائن {ok:false}
+     مع جملة عربية مفهومة — لا استثناءات تصل إلى الواجهة. */
+  function signIn(username, password) {
+    if (!cloudConfigured()) return Promise.resolve({ ok: false, code: 'no_cloud', error: 'لا يوجد إعداد سحابة' });
+    /* صفحات الزوار تستخدم العميل المصغّر (بلا مصادقة عن قصد): الدخول من اللوحة */
+    if (!canReadStaffTables()) {
+      return Promise.resolve({ ok: false, code: 'no_auth', error: 'الدخول متاح من لوحة الموظفين: /dashboard' });
+    }
+    if (!cloudWillBoot()) {
+      return Promise.resolve({ ok: false, code: 'offline', error: cloud.error || 'النظام في الوضع المحلي' });
+    }
+    if (cloud.state === 'connecting') {
+      return (cloud.bootPromise || Promise.resolve()).then(function () { return signIn(username, password); });
+    }
+    if (!cloud.client || !root.BRCCloudAuth) {
+      return Promise.resolve({ ok: false, code: 'offline', error: 'مكتبة الدخول غير محمّلة' });
+    }
+    var auth = cloud.auth || (cloud.auth = root.BRCCloudAuth.create(cloud.client));
+    return auth.login(username, password).then(function (r) {
+      if (!r || !r.ok) return r || { ok: false, code: 'auth_failed', error: 'فشل الدخول' };
+      applyStaffSession(r.profile);
+      saveLocal();
+      emit();
+      /* كان الإقلاع السابق كزائر (الوظائف العامة فقط). بعد الدخول نُعيد الإقلاع
+         لنجلب جداول الموظفين كاملة — وإلا بقي الموظف يرى نصف البيانات.
+         ⚠️ ترتيب مقصود: التدقيق **بعد** تبني بيانات القاعدة، لأن التبنّي يستبدل
+         db.audit بما في القاعدة فيضيع السطر المكتوب قبله. */
+      cloud.bootPromise = null;
+      return bootCloud().then(function () {
+        audit('تسجيل دخول', 'auth', r.profile.username,
+          'دخول عبر Supabase Auth (' + (r.profile.role === 'admin' ? 'مدير عام' : 'موظف') + ')');
+        save();
+        emit();
+        return { ok: true, session: currentUser(), profile: r.profile };
+      });
+    });
+  }
+
+  function signOutCloud() {
+    var out = (cloud.auth && cloud.auth.logout) ? cloud.auth.logout() : Promise.resolve({ ok: true });
+    var unsub = cloud.unsubscribe;
+    return out.catch(function () { return { ok: true }; }).then(function () {
+      /* بعد الخروج نُفرغ ما لا يجوز أن يبقى على الجهاز (بيانات الباحثين كانت
+         كلها في الذاكرة والكاش)، ثم نُعيد الإقلاع كزائر فتبقى الواجهة العامة. */
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
+      db = blankDb();
+      saveLocal();
+      /* نُلغي الاشتراك اللحظي فعلاً: قناة قديمة تبقى تستقبل أحداثاً بعد الخروج
+         تعني مصفوفة ذاكرة تُحدَّث ببيانات لا يحق لصاحب الجلسة الجديد رؤيتها. */
+      if (unsub) { try { unsub(); } catch (e) { } }
+      cloud.unsubscribe = null;
+      cloud.sync = null;
+      cloud.role = 'guest'; cloud.state = 'off';
+      cloud.bootPromise = null;
+      return bootCloud();
+    });
+  }
+
+  function changeCloudPassword(newPassword) {
+    if (!cloud.client || !root.BRCCloudAuth) return Promise.resolve({ ok: false, error: 'غير متاح في الوضع المحلي' });
+    var auth = cloud.auth || root.BRCCloudAuth.create(cloud.client);
+    return auth.changePassword(newPassword);
+  }
+
+  /* ---------------------------------------------------------------------------
+   *  الطلب الإلكتروني من الموقع العام — نقطة كتابة الزائر الوحيدة
+   *  ---------------------------------------------------------------------------
+   *  الزائر لا يملك — ولا يجب أن يملك — صلاحية إدراج في brc.applicants. لذلك
+   *  الطلب يمرّ عبر دالة القاعدة brc.request_form التي تتحقق من المدخلات وتضع
+   *  الحالة 'pending' دائماً. الإدراج المباشر من الواجهة كان يعني: إمّا منح
+   *  anon صلاحية كتابة على جدول الاستمارات (مرفوض)، أو طلب يُرفض بـ 42501
+   *  ويبقى في قائمة الانتظار يحاول بلا نهاية.
+   *  في الوضع المحلي (بلا سحابة) نُكمل بالمسار المحلي كما كان تماماً.
+   * ------------------------------------------------------------------------- */
+  function submitPublicRequest(data) {
+    var st = cloudStatus();
+    var viaCloud = st.configured && st.state === 'on' && st.role !== 'staff' &&
+      root.BRCCloud && root.BRCCloud.requestForm && cloud.client;
+
+    if (!viaCloud) {
+      var appLocal = createApplicant({
+        fullName: data.fullName, phone: data.phone, dob: data.dob, gender: data.gender,
+        address: data.address, requestedCode: data.requestedCode || null,
+        notes: data.notes, pending: true
+      });
+      return Promise.resolve({ ok: true, serial: appLocal.serial, app: appLocal, mode: 'local' });
+    }
+
+    return root.BRCCloud.requestForm(cloud.client, data).then(function (r) {
+      if (!r || !r.ok) return r || { ok: false, error: 'تعذّر إرسال الطلب' };
+      /* نضيف الطلب إلى الذاكرة للعرض (وإلى الكاش). لا دفع: لا جلسة موظف،
+         وصفّ القاعدة هو المرجع — وعند الدخول لاحقاً تُتبنّى بيانات القاعدة. */
+      if (!db.applicants) db.applicants = [];
+      var app = {
+        id: uid('app'), serial: r.serial, fullName: data.fullName, phone: data.phone,
+        address: data.address || '', dob: data.dob || '', gender: data.gender || 'ذكر',
+        nationality: 'عراقي', issueDate: null, expiryDate: null, status: 'pending',
+        rejectReason: '', createdBy: 'system', createdAt: nowISO(),
+        notes: data.notes || '', requestedCode: data.requestedCode || null,
+        fee: Number(db.settings.formFee || 10000), feePaid: false, printedCount: 0
+      };
+      db.applicants.unshift(app);
+      saveLocal(); emit();
+      return { ok: true, serial: r.serial, app: app, mode: 'cloud' };
+    }).catch(function (e) {
+      return { ok: false, error: 'تعذّر الاتصال بالخادم: ' + (e && e.message || e) };
+    });
+  }
+
+  /* التحقق السحابي (صفحة التحقق للزائر): دالة القاعدة تتحقق من البصمة
+     وتُرجع استمارة واحدة — بخلاف قراءة الجدول الذي يسحب بيانات الجميع. */
+  function verifyCloud(serial, t) {
+    if (cloud.state !== 'on' || !cloud.client || !root.BRCCloud.verifyForm) {
+      return Promise.resolve({ ok: false, code: 'offline', error: cloud.error || 'لا اتصال بالسحابة' });
+    }
+    return root.BRCCloud.verifyForm(cloud.client, serial, t);
+  }
+
+  /* استعادة الاتصال: إقلاع كامل إن كنا في الوضع المحلي، وإلا دفع ما تبقّى */
+  function onOnline() {
+    if (cloudConfigured() && cloud.state === 'degraded') {
+      cloud.bootPromise = null;
+      bootCloud().then(function () { if (cloud.role === 'staff') runMaintenance(); });
+    } else if (cloud.state === 'on' && cloud.role === 'staff') {
+      pushCloud();
+    }
+  }
+  if (root.addEventListener) root.addEventListener('online', onOnline);
+
+
 
   /* ======================= تصدير ======================= */
 
   var API = {
     // بنية
-    init: function () { load(); runMaintenance(); startTicker(); return db; },
+    init: function (opts) {
+      load();
+      /* في الوضع السحابي لا تُجرَ صيانة على كاش محلّي قد يمثّل حالة قديمة
+         (قد تُفرج عن حجز تغيّر في القاعدة منذ ساعات) — نؤجّلها حتى تُتبنّى
+         بيانات السحابة، ثم تُجرى على الحالة الصحيحة. */
+      if (!cloudWillBoot(opts)) runMaintenance();
+      startTicker();
+      bootCloud(opts).then(function () { if (cloud.role === 'staff') runMaintenance(); });
+      return db;
+    },
     subscribe: subscribe, emit: emit,   // emit مكشوفة للاختبارات وأدوات المزامنة الخارجية
     db: function () { return db; },
     settings: function () { return db.settings; },
@@ -1054,6 +1697,14 @@
     },
     // جلسة
     login: login, logout: logout, currentUser: currentUser, isAdmin: isAdmin,
+    // سحابة
+    signIn: signIn, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
+    cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
+    reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
+    cloudQueueLength: pendingQueueLength,
+    waitForCloud: function () { return cloud.bootPromise || Promise.resolve(cloudStatus()); },
+    /* العمليات المعلّقة الآن (للتشخيص والعرض) — لا تُرسل شيئاً */
+    diffCloud: function () { return (cloud.sync && cloud.state === 'on') ? cloud.sync.diff(db) : []; },
     // وظائف
     listJobs: listJobs, getJob: getJob, createJob: createJob, updateJob: updateJob,
     setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'BRC-' + (db.counters.jobCode + 1); },
@@ -1067,6 +1718,7 @@
     runMaintenance: runMaintenance, pendingActions: pendingActions,
     // تحقق
     verify: verify, verifyUrl: verifyUrl, verifyBaseUrl: verifyBaseUrl, verifyLocalUrl: verifyLocalUrl, token: token,
+    maskName: maskName, maskPhone: maskPhone, submitPublicRequest: submitPublicRequest,
     // مالية
     stats: stats, financials: financials, financialTotals: financialTotals,
     markPrinted: markPrinted, setFeePaid: setFeePaid,

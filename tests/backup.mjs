@@ -15,6 +15,8 @@
  *    3) مستوى الواجهة: كل أزرار «الإعدادات والنسخ» تعمل فعلاً بالنقر
  *       (سريعة / جدولة / عرض / تعديل / نفّذ الآن / إيقاف) + عدّادات الواجهة
  *    4) نافذة التأكيد: «تأكيد» = نعم (كانت ترجع false دائماً بسبب onClose)
+ *    5) الأزرار المكمّلة في لوحة «النسخ الاحتياطي والصيانة»: تصدير JSON /
+ *       استيراد نسخة (صالحة وتالفة) / تشغيل قواعد الحجز / نسخ رابط التحقق
  *
  *  التشغيل:  node tests/backup.mjs     أو     npm run test:backup
  * =========================================================================== */
@@ -87,6 +89,33 @@ try {
   const lastModal = () => doc.querySelector('#modal-root .modal-backdrop:last-child');
   const txt = (id) => { const e = doc.getElementById(id); return e ? e.textContent.trim() : null; };
 
+  /* جسر التنزيل: jsdom لا ينفّذ URL.createObjectURL — بدونه يرمي UI.download
+     استثناءً يُسكته مرشّح «Not implemented» فلا نكتشف تعطّل زر التصدير.
+     نلتقط التنزيلات هنا لنتحقق من الأزرار التي تُنتج ملفات فعلاً. */
+  const downloads = [];
+  w.URL.createObjectURL = () => 'blob:test';
+  w.URL.revokeObjectURL = () => {};
+  const nativeCreate = doc.createElement.bind(doc);
+  doc.createElement = function (tag) {
+    var el = nativeCreate(tag);
+    if (String(tag).toLowerCase() === 'a') {
+      el.click = function () { downloads.push({ name: el.download, href: el.href }); };
+    }
+    return el;
+  };
+  /* جسر الحافظة: نتحقق أن «نسخ الرابط» استُدعي فعلاً */
+  const copied = [];
+  Object.defineProperty(w.navigator, 'clipboard', {
+    value: { writeText: function (t) { copied.push(t); return Promise.resolve(); } },
+    configurable: true
+  });
+  /* محاكاة اختيار ملف لزر «استيراد نسخة» */
+  const setFile = function (input, name, content) {
+    var f = new w.File([content], name, { type: 'application/json' });
+    Object.defineProperty(input, 'files', { value: [f], configurable: true, writable: true });
+    input.dispatchEvent(new w.Event('change', { bubbles: true }));
+  };
+
   step(1, 'سلامة التحميل والدخول بصلاحية المدير');
   check('لا أخطاء JavaScript عند تحميل dashboard.html', errors.length === 0, errors.join(' | '));
   check('BRCStore يوفّر دوال النسخ الاحتياطي', ['getScheduledBackups', 'saveScheduledBackup', 'deleteScheduledBackup',
@@ -126,6 +155,29 @@ try {
   check('deleteScheduledBackup يحذف النسخة', S.deleteScheduledBackup(b2.id) === true && S.getScheduledBackups().length === nBefore - 1);
   check('deleteScheduledBackup لمعرّف غير موجود تُرجع false', S.deleteScheduledBackup('backup-لا-يوجد') === false);
 
+  /* دورة كاملة: تصدير ← استيراد — يجب أن تنجو كل المفاتيح حرفياً.
+     (سجل التدقيق وحده يزيد سطراً مقصوداً: «استيراد بيانات».) */
+  const rt = S.saveScheduledBackup('نسخة الدورة الكاملة', null);
+  const exportedRaw = S.exportScheduledBackup(rt.id);
+  const beforeKeys = JSON.parse(exportedRaw);
+  S.importJson(exportedRaw);
+  const afterDb = S.db();
+  const survived = ['meta', 'counters', 'jobs', 'applicants', 'attempts', 'settings']
+    .every((k) => JSON.stringify(afterDb[k]) === JSON.stringify(beforeKeys[k]));
+  check('دورة تصدير←استيراد تحفظ كل البيانات حرفياً (jobs/applicants/attempts/settings)', survived);
+  check('الاستيراد يضيف سطر تدقيق مقصوداً فقط', afterDb.audit.length === beforeKeys.audit.length + 1,
+    afterDb.audit.length + ' مقابل ' + (beforeKeys.audit.length + 1));
+
+  /* الدمج الجزئي يجب ألا يكرّر السجلات */
+  const partial2 = S.saveScheduledBackup('دمج جزئي', { from: '2020-01-01', to: '2030-12-31' });
+  const appsBeforeMerge = S.db().applicants.length;
+  S.restoreScheduledBackup(partial2.id);
+  const serials = S.db().applicants.map((a) => a.serial);
+  const attemptKeys = S.db().attempts.map((t) => t.serial + ':' + t.no);
+  check('الاستعادة الجزئية لا تكرّر الاستمارات', S.db().applicants.length === appsBeforeMerge && new Set(serials).size === serials.length,
+    S.db().applicants.length + ' مقابل ' + appsBeforeMerge);
+  check('الاستعادة الجزئية لا تكرّر المحاولات', new Set(attemptKeys).size === attemptKeys.length);
+
   step(3, 'أمان مساحة التخزين — الحد الأقصى 20 نسخة');
   w.localStorage.removeItem('brc-scheduled-backups');
   for (let i = 0; i < 25; i++) S.saveScheduledBackup('نسخة ' + i, null);
@@ -152,7 +204,17 @@ try {
   check('عند وقت الجدولة تُنشأ نسخة تلقائية', !!auto1 && auto1.auto === true && /نسخة تلقائية/.test(auto1.name));
   check('آخر تنفيذ سُجّل بمفتاح الخانة الزمنية (يوم+وقت)', S.lastAutoRun() === S.fmtDate(at(0, SLOT_H, SLOT_M)) + 'T12:30', S.lastAutoRun());
   check('إعادة الفحص في نفس الخانة لا تُنشئ نسخة مكرّرة', S.checkAutoBackup(at(0, SLOT_H, SLOT_M + 5)) === null && S.getScheduledBackups().length === 1);
-  check('التقاط النسخة الفائتة في نفس اليوم (فُتحت الصفحة متأخرة)', S.lastAutoRun() !== null && S.checkAutoBackup(at(0, 23, 59)) === null);
+  /* سيناريو الالتقاط الفائت الحقيقي: جدولة جديدة لم تُنفَّذ قط (08:00)
+     ثم تُفتح اللوحة متأخرة (23:59) — يجب أن تُنشأ النسخة الفائتة مرة واحدة.
+     (الفحص السابق كان يتحقق فقط من «عدم التكرار» ولا يثبت الالتقاط.) */
+  w.localStorage.removeItem('brc-scheduled-backups');
+  w.localStorage.removeItem('brc-auto-backup-last-run');
+  S.saveAutoSchedule([now.getDay()], '08:00');
+  check('قبل وقت الجدولة (07:59) لا نسخة', S.checkAutoBackup(at(0, 7, 59)) === null);
+  const late = S.checkAutoBackup(at(0, 23, 59));
+  check('التقاط النسخة الفائتة في نفس اليوم (فُتحت الصفحة متأخرة)', !!late && late.auto === true, late ? late.name : 'null');
+  check('الالتقاط يُنتج نسخة واحدة ولا يكرّرها', S.getScheduledBackups().length === 1 && S.checkAutoBackup(at(0, 23, 59)) === null,
+    S.getScheduledBackups().length + '');
   check('يوم غير مجدول لا يُنشئ نسخة', S.checkAutoBackup(at(1, SLOT_H, SLOT_M)) === null);
   const day2 = (now.getDay() + 1) % 7;
   check('إضافة يوم ثانٍ للجدولة تُنفَّذ في يومه (خانة زمنية جديدة)',
@@ -237,6 +299,73 @@ try {
   check('نافذة تأكيد إعادة الضبط ظهرت', !!cancelBtn);
   click(cancelBtn); await wait(300);
   check('«إلغاء» يُلغي فعلاً (البيانات لم تُمسح)', S.db().jobs.length > 0 && !modalOpen());
+
+  step(8, 'الأزرار المكمّلة — تصدير JSON / استيراد نسخة / صيانة / نسخ الرابط');
+  click(doc.querySelector('#side-nav button[data-view="settings"]')); await wait(250);
+  const jobsNow = S.db().jobs.length;
+
+  // (أ) تصدير JSON الكامل
+  click(doc.getElementById('btn-export')); await wait(300);
+  check('زر «تصدير JSON» أنتج ملف تنزيل فعلاً', downloads.length === 1, downloads.length + ' تنزيل');
+  check('اسم ملف التصدير بالصيغة brc-backup-YYYY-MM-DD.json',
+    /^brc-backup-\d{4}-\d{2}-\d{2}\.json$/.test(downloads[0] ? downloads[0].name : ''), downloads[0] && downloads[0].name);
+
+  // (ب) استيراد نسخة صالحة
+  const imf = doc.getElementById('import-file');
+  check('عنصر اختيار ملف الاستيراد موجود', !!imf);
+  const snapshot = S.exportJson();
+  const trimmed = JSON.parse(snapshot); trimmed.jobs = trimmed.jobs.slice(0, 2);
+  setFile(imf, 'brc-backup.json', JSON.stringify(trimmed)); await wait(600);
+  check('زر «استيراد نسخة» استورد البيانات فعلاً', S.db().jobs.length === 2, S.db().jobs.length + ' مقابل 2');
+  check('الاستيراد سُجّل في سجل التدقيق', S.listAudit({}).some((l) => /استيراد/.test(l.action)));
+
+  // (ج) ملف تالف = فشل آمن (لا مسح للبيانات)
+  const beforeBad = JSON.stringify(S.db());
+  setFile(imf, 'bad.json', '{"لا":"صالح"}'); await wait(500);
+  check('ملف غير صالح لا يمسح البيانات (فشل آمن)', JSON.stringify(S.db()) === beforeBad);
+
+  // (د) استعادة البيانات الأصلية عبر الاستيراد
+  setFile(imf, 'brc-backup.json', snapshot); await wait(600);
+  check('استعادة البيانات الأصلية عبر الاستيراد نجحت', S.db().jobs.length === jobsNow, S.db().jobs.length + ' مقابل ' + jobsNow);
+
+  // (هـ) تشغيل قواعد الحجز التلقائي
+  click(doc.getElementById('btn-maintenance')); await wait(300);
+  check('زر «تشغيل قواعد الحجز التلقائي» نُفّذ بلا أخطاء JS', errors.length === 0, errors.join(' | '));
+
+  // (و) نسخ رابط التحقق من بطاقة الاستمارة
+  click(doc.querySelector('#side-nav button[data-view="applicants"]')); await wait(400);
+  const openBtn = doc.querySelector('#view-applicants tbody [data-app-verify]');
+  check('صفوف الاستمارات متاحة', !!openBtn);
+  if (openBtn) {
+    click(openBtn); await wait(400);
+    const copyBtn = doc.getElementById('copy-url');
+    check('زر «نسخ الرابط» موجود في بطاقة الاستمارة', !!copyBtn);
+    if (copyBtn) {
+      click(copyBtn); await wait(400);
+      check('النسخ استُدعي عبر الحافظة', copied.length === 1, JSON.stringify(copied));
+      check('الرابط منسوخ بالمسار النظيف /verify?form=..&t=..',
+        /\/verify\?form=[A-Za-z0-9-]+&t=[a-z0-9]+$/.test(copied[0] || ''), copied[0]);
+    }
+    const cl = lastModal() && lastModal().querySelector('[data-close]');
+    if (cl) { click(cl); await wait(250); }
+  }
+
+  // (ز) زر «تأكيد» في إعادة الضبط يعمل (عكس «إلغاء» في الخطوة 7)
+  const seedCount = S.db().jobs.length;
+  S.createJob({ title: 'وظيفة اختبار إعادة الضبط', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي' });
+  await wait(200);
+  check('أُضيفت وظيفة للتحقق من أثر إعادة الضبط', S.db().jobs.length === seedCount + 1, S.db().jobs.length + '');
+  click(doc.getElementById('btn-reset')); await wait(300);
+  const okReset = lastModal() && lastModal().querySelector('[data-ok]');
+  check('نافذة تأكيد إعادة الضبط ظهرت مرة أخرى', !!okReset);
+  if (okReset) {
+    click(okReset); await wait(700);
+    check('«تأكيد» حذف الوظيفة المضافة وأعاد البيانات التجريبية', S.db().jobs.length === seedCount,
+      S.db().jobs.length + ' مقابل ' + seedCount);
+    check('«تأكيد» سُجّل في سجل التدقيق', S.listAudit({}).some((l) => /إعادة ضبط/.test(l.action)));
+    check('النافذة أُغلقت بعد التأكيد', !modalOpen());
+  }
+  check('لا أخطاء JavaScript في كل خطوات الأزرار المكمّلة', errors.length === 0, errors.join(' | '));
 
   w.close && w.close();
 } catch (e) {

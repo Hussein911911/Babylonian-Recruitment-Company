@@ -288,11 +288,26 @@ check('حد المحاولات الخمس مُطبّق', () => {
 console.log('\n=== 4) صفحة التحقق (verify.html) ===');
 const verify = await load('verify.html', { search: '?form=BRC-NO-000120' });
 check('صفحة التحقق تُحمّل بدون أخطاء', () => verify.errors.length === 0 || verify.errors.join(' | '));
-check('تُظهر الرقم التسلسلي واسم الباحث وحالة الاستمارة', () => {
+check('بلا بصمة: تُظهر الرقم والحالة مع تقنيع اسم الباحث وهاتفه', () => {
   const t = verify.doc.getElementById('verify-root').textContent;
-  return (t.includes('BRC-NO-000120') && t.includes('حسين كاظم عبد الله') &&
-    (t.includes('سارية') || t.includes('منتهية') || t.includes('استُهلكت') || t.includes('مكتملة'))) || 'بيانات ناقصة';
+  const masked = !t.includes('حسين كاظم عبد الله');
+  return (t.includes('BRC-NO-000120') && masked &&
+    (t.includes('سارية') || t.includes('منتهية') || t.includes('استُهلكت') || t.includes('مكتملة'))) ||
+    ('الاسم ظاهر بلا بصمة؟ ' + !masked);
 });
+check('بالنمط: الاسم مقنّع في الرد نفسه لا في العرض فقط', () => {
+  const r = verify.window.BRCStore.verify('BRC-NO-000120');
+  return (r.masked === true && !r.fullName.includes('حسين') && /•/.test(r.fullName) && /•/.test(r.phone)) ||
+    JSON.stringify({ masked: r.masked, fullName: r.fullName, phone: r.phone });
+});
+/* بالبصمة الصحيحة (كما في رابط الكيو آر كود) تظهر البيانات كاملة */
+const vTok = verify.window.BRCStore.token('BRC-NO-000120');
+const verifyTok = await load('verify.html', { search: '?form=BRC-NO-000120&t=' + vTok });
+check('بالبصمة الصحيحة: اسم الباحث يظهر كاملاً', () => {
+  const t = verifyTok.doc.getElementById('verify-root').textContent;
+  return t.includes('حسين كاظم عبد الله') || 'الاسم غير ظاهر مع بصمة صحيحة';
+});
+
 check('تعرض جدول المحاولات مع أكواد الوظائف', () => {
   const rows = verify.doc.querySelectorAll('#verify-root table.data tbody tr').length;
   const hasCode = verify.doc.getElementById('verify-root').textContent.includes('BRC-1042');

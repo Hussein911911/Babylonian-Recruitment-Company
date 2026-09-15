@@ -183,10 +183,35 @@
     return d + ' يوم';
   }
 
+  /* شريط تنبيه للصفحات العامة عند تعذّر الاتصال بقاعدة الشركة.
+     لماذا؟ لأن الصفحة تعمل ببيانات المتصفح حين يتعذّر الاتصال — فقد يرى زائر
+     وظيفة غير موجودة في القاعدة، أو «تحققاً» لاستمارة من نسخة قديمة. الصمت هنا
+     ضرره على الباحث لا على النظام، فنُعلن الحالة بدل إخفائها. */
+  function syncNotice(host) {
+    /* ملاحظة: لا نسمّي المتغيّر el — فهو اسم الدالة المساعدة لبناء العناصر هنا */
+    var hostEl = typeof host === 'string' ? document.querySelector(host) : host;
+    if (!hostEl) return false;
+    var old = document.getElementById('brc-sync-notice');
+    if (old) old.remove();
+    var st = root.BRCStore && root.BRCStore.cloudStatus ? root.BRCStore.cloudStatus() : null;
+    if (!st || !st.configured || st.state !== 'degraded') return false;
+
+    var node = el('<div id="brc-sync-notice" role="status"></div>');
+    if (!node) return false;
+    node.style.cssText = 'margin:14px auto 0;padding:10px 14px;border-radius:12px;font-size:.82rem;' +
+      'line-height:1.8;background:#fffbeb;border:1px solid #fde68a;color:#78350f;text-align:center';
+    node.innerHTML = ic('alert') + ' <b>وضع عرض مؤقّت:</b> تعذّر الاتصال بقاعدة الشركة حالياً، ' +
+      'والمعروض هنا من نسخة المتصفح — قد لا يطابق السجل الرسمي. ' +
+      '<a href="supabase-check.html" style="color:inherit;text-decoration:underline">فحص الاتصال</a>';
+    hostEl.insertBefore(node, hostEl.firstChild);
+    return true;
+  }
+
   root.BRCUI = {
     esc: esc, ic: ic, el: el, money: money, fmtDate: fmtDate, fmtDateTime: fmtDateTime,
     badge: badge, jobBadge: jobBadge, slotBadge: slotBadge, formBadge: formBadge,
     toast: toast, modal: modal, confirm: confirm, holdHtml: holdHtml, humanDuration: humanDuration,
+    syncNotice: syncNotice,
     startCountdowns: startCountdowns, debounce: debounce, download: download,
     fillSelect: fillSelect, relativeDays: relativeDays
   };
