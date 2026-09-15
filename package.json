@@ -8,13 +8,14 @@
     "start": "node tools/serve.mjs",
     "test": "node tests/smoke.mjs",
     "test:backup": "node tests/backup.mjs",
-    "test:all": "node tests/smoke.mjs && node tests/schema.mjs && node tests/backup.mjs && node tests/e2e.mjs && node tests/audit.mjs",
+    "test:all": "node tests/smoke.mjs && node tests/schema.mjs && node tests/supabase-check.mjs && node tests/backup.mjs && node tests/e2e.mjs && node tests/audit.mjs",
     "e2e": "node tests/e2e.mjs",
     "audit": "node tests/audit.mjs",
     "verify:qr": "node tests/qr-report.mjs",
     "verify:qr:full": "node tests/qr-crosscheck.mjs",
     "build:light": "node tools/build.mjs --light",
-    "test:schema": "node tests/schema.mjs"
+    "test:schema": "node tests/schema.mjs",
+    "test:supabase": "node tests/supabase-check.mjs"
   },
   "devDependencies": {
     "jsdom": "^26.1.0",

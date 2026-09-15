@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>فحص الاتصال بـ Supabase — شركة بابل للتوظيف</title>
+<link rel="icon" href="assets/img/favicon.svg">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  body { background: var(--lapis-900, #0b1a3a); padding: 28px 16px 60px; }
+  .check-wrap { max-width: 900px; margin: 0 auto; }
+  .check-head { text-align: center; margin-bottom: 26px; }
+  .check-head h1 { color: var(--gold, #e8d089); font-size: 1.7rem; margin: 0 0 8px; }
+  .check-head p { color: #9fb0cc; margin: 0; font-size: .95rem; }
+  .panel { background: #fff; border-radius: 14px; padding: 22px; margin-bottom: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  .panel h2 { margin: 0 0 14px; font-size: 1.1rem; color: #16305e; display: flex; align-items: center; gap: 8px; }
+  .kv { display: grid; grid-template-columns: 170px 1fr; gap: 8px 14px; font-size: .9rem; }
+  .kv .k { color: #5b6b85; font-weight: 600; }
+  .kv .v { color: #16305e; word-break: break-all; direction: ltr; text-align: right; }
+  .status { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: .78rem; font-weight: 700; }
+  .s-ok   { background: #e6f6ec; color: #10693a; }
+  .s-bad  { background: #fdeaea; color: #a11919; }
+  .s-warn { background: #fff6e0; color: #8a5a00; }
+  .s-wait { background: #eef1f6; color: #5b6b85; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  th, td { padding: 9px 10px; text-align: right; border-bottom: 1px solid #e7ebf2; }
+  th { background: #f6f8fc; color: #16305e; font-weight: 700; font-size: .82rem; }
+  td.mono { direction: ltr; text-align: right; font-family: ui-monospace, monospace; font-size: .8rem; color: #5b6b85; }
+  .summary { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+  .sum-box { flex: 1; min-width: 130px; text-align: center; padding: 14px 10px; border-radius: 12px; }
+  .sum-ok  { background: #e6f6ec; } .sum-bad { background: #fdeaea; } .sum-warn { background: #fff6e0; }
+  .sum-box b { display: block; font-size: 1.8rem; line-height: 1.2; }
+  .sum-ok b { color: #10693a; } .sum-bad b { color: #a11919; } .sum-warn b { color: #8a5a00; }
+  .sum-box span { font-size: .8rem; color: #47536b; }
+  #log { background: #0d1b33; color: #b9c9e6; border-radius: 10px; padding: 14px; font-family: ui-monospace, monospace; font-size: .78rem; direction: ltr; text-align: left; max-height: 260px; overflow: auto; white-space: pre-wrap; margin: 0; }
+  .hint { background: #f6f8fc; border-right: 4px solid #16305e; padding: 12px 14px; border-radius: 8px; font-size: .87rem; color: #33415c; margin-top: 12px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="check-wrap">
+  <div class="check-head">
+    <h1>فحص الاتصال بقاعدة البيانات</h1>
+    <p>شركة بابل للتوظيف — التحقّق من إعداد Supabase قبل الربط</p>
+  </div>
+
+  <div class="panel">
+    <h2>إعداد الاتصال</h2>
+    <div class="kv">
+      <div class="k">المشروع</div><div class="v" id="c-url">—</div>
+      <div class="k">المفتاح العام</div><div class="v" id="c-key">—</div>
+      <div class="k">السكيما</div><div class="v" id="c-schema">—</div>
+      <div class="k">المكتبة</div><div class="v" id="c-lib">—</div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-lapis" id="run">إعادة الفحص</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>الخلاصة</h2>
+    <div class="summary">
+      <div class="sum-box sum-ok"><b id="n-ok">0</b><span>ناجح</span></div>
+      <div class="sum-box sum-bad"><b id="n-bad">0</b><span>فاشل</span></div>
+      <div class="sum-box sum-warn"><b id="n-warn">0</b><span>تنبيه</span></div>
+    </div>
+    <div class="hint" id="verdict">جارٍ الفحص…</div>
+  </div>
+
+  <div class="panel">
+    <h2>الفخوص التفصيلية</h2>
+    <table>
+      <thead><tr><th style="width:34%">الفحص</th><th style="width:14%">الحالة</th><th>التفصيل</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="3" class="mono">…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>سجل التقني</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<script src="assets/vendor/supabase.js"></script>
+<script src="assets/js/supabase-config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var CFG = window.BRCSupabaseConfig || {};
+  var rows = document.getElementById('rows');
+  var logEl = document.getElementById('log');
+  var results = [];
+
+  document.getElementById('c-url').textContent = CFG.url || 'غير مضبوط';
+  document.getElementById('c-key').textContent = CFG.publishableKey ? CFG.publishableKey.slice(0, 22) + '…' : 'غير مضبوط';
+  document.getElementById('c-schema').textContent = CFG.schema || 'brc';
+  document.getElementById('c-lib').textContent = (window.supabase && window.supabase.createClient)
+    ? 'supabase-js محمّلة محلياً ✓' : 'غير محمّلة ✗';
+
+  function log(msg) {
+    logEl.textContent += msg + '\n';
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function record(name, state, detail) {
+    results.push({ name: name, state: state, detail: detail });
+    var cls = state === 'ok' ? 's-ok' : state === 'bad' ? 's-bad' : 's-warn';
+    var label = state === 'ok' ? 'ناجح' : state === 'bad' ? 'فاشل' : 'تنبيه';
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + name + '</td>' +
+      '<td><span class="status ' + cls + '">' + label + '</span></td>' +
+      '<td class="mono">' + String(detail || '').replace(/[<>&]/g, function (c) {
+        return { '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c];
+      }) + '</td>';
+    rows.appendChild(tr);
+    /* تحديث العدّادات فوراً حتى تظهر التقدّم أثناء الفحص */
+    document.getElementById('n-ok').textContent = results.filter(function (r) { return r.state === 'ok'; }).length;
+    document.getElementById('n-bad').textContent = results.filter(function (r) { return r.state === 'bad'; }).length;
+    document.getElementById('n-warn').textContent = results.filter(function (r) { return r.state === 'warn'; }).length;
+  }
+
+  /* مهلة زمنية: بلا هذا يبقى الفحص معلّقاً للأبد إذا كانت الشبكة تحجب سوبابيس
+     (لا يصل خطأ ولا استجابة). كل فحص يجب أن ينتهي بقرار خلال TIMEOUT_MS. */
+  var TIMEOUT_MS = 12000;
+  function withTimeout(promise, label) {
+    return Promise.race([
+      promise,
+      new Promise(function (_, rej) {
+        setTimeout(function () { rej(new Error('انتهت المهلة (' + (TIMEOUT_MS / 1000) + 'ث) — الشبكة لا تستجيب' + (label ? ': ' + label : ''))); }, TIMEOUT_MS);
+      })
+    ]);
+  }
+
+  /* ---------------------------------------------------------------------
+   *  التفسير: PostgREST لا يقول «الجدول موجود لكن ممنوع عليك» بنفس الرسالة
+   *  دائماً، فنعتمد على التمييز التالي:
+   *    • PGRST205 / 42P01  → الجدول غير موجود أو السكيما brc غير مكشوفة = مشكلة
+   *    • 401/403 أو نتيجة (حتى الفارغة) → الكائن **موجود** والحماية تعمل = سليم
+   * ------------------------------------------------------------------- */
+  function classify(err) {
+    if (!err) return null;
+    var code = err.code || '';
+    var msg = (err.message || '') + ' ' + (err.details || '') + ' ' + (err.hint || '');
+    if (code === 'PGRST205' || /Could not find the table|does not exist|schema cache/i.test(msg)) return 'missing';
+    if (code === '42P01') return 'missing';
+    if (code === 'PGRST106' || /schema must be one of the following|Invalid schema/i.test(msg)) return 'schema';
+    if (code === '42501' || code === '401' || code === '403' || /permission denied|JWT|Unauthorized/i.test(msg)) return 'protected';
+    return 'other';
+  }
+
+  async function probe(sb, table, label) {
+    try {
+      var res = await withTimeout(sb.from(table).select('*').limit(1), table);
+      if (!res) { record(label + '  (' + table + ')', 'bad', 'لا استجابة من الخادم'); return false; }
+      var kind = classify(res.error);
+      if (!res.error) {
+        record(label + '  (' + table + ')', 'ok', 'موجود — أُرجع ' + (res.data ? res.data.length : 0) + ' صف (متاح للمفتاح العام)');
+        return true;
+      }
+      if (kind === 'protected') {
+        record(label + '  (' + table + ')', 'ok', 'موجود ومحمي بـ RLS ✓ (' + (res.error.code || '') + ')');
+        return true;
+      }
+      record(label + '  (' + table + ')', 'bad', (res.error.code || '') + ' — ' + (res.error.message || ''));
+      return false;
+    } catch (e) {
+      record(label + '  (' + table + ')', 'bad', String(e && e.message || e));
+      return false;
+    }
+  }
+
+  async function run() {
+    rows.innerHTML = ''; logEl.textContent = ''; results = [];
+    document.getElementById('verdict').textContent = 'جارٍ الفحص…';
+
+    log('URL    : ' + CFG.url);
+    log('schema : ' + (CFG.schema || 'brc'));
+    log('lib    : ' + (window.supabase ? 'loaded' : 'MISSING'));
+    log('---');
+
+    if (!window.supabase || !window.supabase.createClient) {
+      record('تحميل مكتبة supabase-js', 'bad', 'assets/vendor/supabase.js لم تُحمّل');
+      finish(); return;
+    }
+    if (!CFG.url || !CFG.publishableKey) {
+      record('إعداد المشروع', 'bad', 'assets/js/supabase-config.js ناقص');
+      finish(); return;
+    }
+    record('تحميل مكتبة supabase-js', 'ok', 'v2 (UMD محلي)');
+
+    /* حماية: في بيئات نادرة قد لا تتوفّر fetch (or بيئة اختبار) */
+    var doFetch = (typeof window.fetch === 'function') ? window.fetch.bind(window) : null;
+    if (!doFetch) record('توفّر fetch في المتصفح', 'warn', 'غير متوفّر — فحص الاتصال سيُتخطّى');
+
+    var sb;
+    try {
+      sb = window.supabase.createClient(CFG.url, CFG.publishableKey, {
+        db: { schema: CFG.schema || 'brc' },
+        auth: { persistSession: false }
+      });
+      record('إنشاء عميل الاتصال', 'ok', 'createClient نجح');
+    } catch (e) {
+      record('إنشاء عميل الاتصال', 'bad', String(e && e.message || e));
+      finish(); return;
+    }
+
+    /* 1) الوصول للمشروع عبر Auth health (لا يحتاج جداول) — وهو الفحص الحاسم:
+       إذا فشل لأسباب شبكة، لا فائدة من إطلاق بقية الفحوص (كلها ستنتظر المهلة
+       واحداً واحداً). لذلك نتوقف هنا برسالة واضحة بدل انتظار دقيقتين. */
+    var reachable = false;
+    if (!doFetch) {
+      record('الوصول لمشروع Supabase', 'warn', 'تعذّر الفحص — المتصفح لا يوفّر fetch');
+      record('بقية الفحوص', 'warn', 'لم تُنفَّذ — تحتاج fetch');
+      finish(); return;
+    }
+    try {
+      var ctl = new AbortController();
+      var timer = setTimeout(function () { ctl.abort(); }, TIMEOUT_MS);
+      var h;
+      try {
+        if (!doFetch) throw new Error('fetch غير متوفّر في هذا المتصفح');
+        h = await doFetch(CFG.url + '/auth/v1/health', {
+          headers: { apikey: CFG.publishableKey, Authorization: 'Bearer ' + CFG.publishableKey },
+          signal: ctl.signal
+        });
+      } finally { clearTimeout(timer); }
+      var hb = await h.text();
+      log('auth/health -> ' + h.status + ' ' + hb.slice(0, 120));
+      if (h.status === 200) { record('الوصول لمشروع Supabase', 'ok', 'HTTP 200 — المشروع حيّ'); reachable = true; }
+      else if (h.status === 401 || h.status === 403) record('الوصول لمشروع Supabase', 'bad', 'HTTP ' + h.status + ' — المفتاح غير مقبول (تأكد أنه Publishable وليس Secret)');
+      else { record('الوصول لمشروع Supabase', 'warn', 'HTTP ' + h.status); reachable = true; }
+    } catch (e) {
+      var em2 = String(e && e.message || e);
+      if (/abort|مهلة|timeout/i.test(em2)) {
+        record('الوصول لمشروع Supabase', 'bad', 'انتهت المهلة — الشبكة لا تستجيب لـ *.supabase.co (جدار حماية / فلترة DNS / انقطاع)');
+      } else {
+        record('الوصول لمشروع Supabase', 'bad', 'تعذّر الوصول: ' + em2);
+      }
+    }
+
+    if (!reachable) {
+      record('بقية الفحوص', 'warn', 'لم تُنفَّذ — تحتاج اتصالاً بالمشروع أولاً');
+      log('aborted: project unreachable');
+      finish(); return;
+    }
+
+    /* 2) هل السكيما brc مكشوفة؟ */
+    try {
+      var t = await withTimeout(sb.from('staff').select('id').limit(1), 'staff');
+      if (!t) throw new Error('لا استجابة');
+      var k = classify(t.error);
+      log('probe brc.staff -> code=' + (t.error && t.error.code) + ' msg=' + (t.error && t.error.message));
+      if (k === 'schema') record('كشف السكيما brc', 'bad', 'غير مضافة في Exposed schemas — Project Settings → API');
+      else if (k === 'missing') record('كشف السكيما brc', 'bad', 'السكيما أو الجداول غير موجودة — نفّذ docs/schema.sql أولاً');
+      else record('كشف السكيما brc', 'ok', 'متاحة للواجهة ✓');
+    } catch (e) { record('كشف السكيما brc', 'bad', String(e && e.message || e)); }
+
+    /* 3) الجداول الستة */
+    var tables = ['staff', 'applicants', 'jobs', 'job_attempts', 'audit_log', 'settings'];
+    var okTables = 0;
+    for (var i = 0; i < tables.length; i++) {
+      if (await probe(sb, tables[i], 'جدول')) okTables++;
+    }
+    log('tables ok: ' + okTables + '/' + tables.length);
+
+    /* 4) الواجهات */
+    var views = ['public_jobs', 'v_financials_by_staff', 'v_pending_actions'];
+    for (var v = 0; v < views.length; v++) {
+      await probe(sb, views[v], 'واجهة');
+    }
+
+    /* 5) هل البصمة تعمل؟ (تكشف إن كان app.brc_secret مضبوطاً) */
+    try {
+      var r = await withTimeout(sb.rpc('verify_form', { p_serial: 'BRC-NO-000120', p_token: null }), 'verify_form');
+      if (!r) throw new Error('لا استجابة');
+      log('rpc verify_form -> ' + JSON.stringify(r.error || r.data).slice(0, 200));
+      if (r.error) {
+        var em = (r.error.message || '') + ' ' + (r.error.hint || '');
+        if (/brc_secret/i.test(em)) {
+          record('ضبط سرّ البصمة (app.brc_secret)', 'bad', 'غير مضبوط — نفّذ: alter database postgres set app.brc_secret = …');
+        } else if (/permission|JWT|Unauthorized/i.test(em)) {
+          record('ضبط سرّ البصمة (app.brc_secret)', 'warn', 'الدالة محجوبة عن المفتاح العام — لا يمكن التحقق من هنا');
+        } else {
+          record('ضبط سرّ البصمة (app.brc_secret)', 'warn', em.slice(0, 120));
+        }
+      } else {
+        record('ضبط سرّ البصمة (app.brc_secret)', 'ok', 'الدالة تعمل — المفتاح المضبوط سليم');
+      }
+    } catch (e) { record('ضبط سرّ البصمة (app.brc_secret)', 'warn', String(e && e.message || e)); }
+
+    /* 6) دوال RPC الأخرى (وجودها فقط) */
+    for (var f = 0; f < ['select_attempt', 'set_outcome', 'release_hold'].length; f++) {
+      var fn = ['select_attempt', 'set_outcome', 'release_hold'][f];
+      try {
+        var rr = await withTimeout(sb.rpc(fn, {}), fn);
+        if (!rr) { record('دالة ' + fn, 'bad', 'لا استجابة'); continue; }
+        var kk = classify(rr.error);
+        if (rr.error && kk === 'missing' && /function|schema cache/i.test(rr.error.message || '')) {
+          record('دالة ' + fn, 'bad', 'غير موجودة');
+        } else {
+          record('دالة ' + fn, 'ok', 'موجودة (' + (rr.error ? 'محمية: ' + (rr.error.code || '') : 'استُدعيت') + ')');
+        }
+      } catch (e) { record('دالة ' + fn, 'warn', String(e && e.message || e)); }
+    }
+
+    finish();
+  }
+
+  function finish() {
+    var ok = results.filter(function (r) { return r.state === 'ok'; }).length;
+    var bad = results.filter(function (r) { return r.state === 'bad'; }).length;
+    var warn = results.filter(function (r) { return r.state === 'warn'; }).length;
+    document.getElementById('n-ok').textContent = ok;
+    document.getElementById('n-bad').textContent = bad;
+    document.getElementById('n-warn').textContent = warn;
+
+    var v = document.getElementById('verdict');
+    if (bad === 0 && ok > 0) {
+      v.innerHTML = '<b style="color:#10693a">✓ الإعداد سليم — يمكن بدء الربط.</b><br>' +
+        'قاعدة البيانات مهيّأة والمفتاح العام يعمل وسياسات الحماية فعّالة.<br>' +
+        '<span style="color:#5b6b85">ملاحظة: سرّ البصمة و pg_cron لا يمكن التحقق منهما من المتصفح — تأكّد منهما في Supabase.</span>';
+    } else if (bad > 0) {
+      v.innerHTML = '<b style="color:#a11919">✗ الإعداد ناقص — ' + bad + ' فحص فاشل.</b><br>' +
+        'راجع الجدول أعلاه. أشهر سببين: لم يُنفَّذ <code>docs/schema.sql</code>، أو السكيما <code>brc</code> غير مضافة في <b>Exposed schemas</b>.';
+    } else {
+      v.innerHTML = 'الفحص انتهى بتحذيرات — راجع الجدول.';
+    }
+    log('--- done: ok=' + ok + ' bad=' + bad + ' warn=' + warn);
+  }
+
+  document.getElementById('run').addEventListener('click', run);
+  run();
+})();
+</script>
+</body>
+</html>
