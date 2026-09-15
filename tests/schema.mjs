@@ -125,6 +125,39 @@ check('الزائر يستطيع نداء brc.verify_form', /verify_form/i.test(
 check('لا جدول حساس ممنوح للزائر مباشرة',
   !/\b(applicants|audit_log|staff|settings)\b/i.test(grantLines.filter((l) => /\banon\b/i.test(l) && !/revoke/i.test(l)).join(' ')));
 
+/* ------------------------- 5ب) منح الدوال للزائر ------------------------- */
+step('5ب', 'منح الدوال — لا دالة حسّاسة قابلة للنداء من الزائر');
+
+/* PostgreSQL يمنح EXECUTE لدور PUBLIC تلقائياً على كل دالة جديدة، وكل الأدوار
+   أعضاء في PUBLIC. فكل دالة لا يُبطَل منحها صراحةً **قابلة للنداء من anon** عبر
+   /rest/v1/rpc/<name>. هذا الفحص يمنع عودة تلك الثغرة. */
+const ALL_FUNCS = [
+  'brc.verify_token(text)', 'brc.next_job_code()', 'brc.next_form_serial()',
+  'brc.run_auto_release()', 'brc.is_staff()', 'brc.is_admin()', 'brc.current_staff_id()'
+];
+const revokedFromPublic = [...stripped(RAW).matchAll(/revoke\s+execute\s+on\s+function\s+([\w.]+\([^)]*\))\s+from\s+public/gi)]
+  .map((x) => x[1].replace(/\s+/g, '').toLowerCase());
+const notRevoked = ALL_FUNCS.filter((f) => !revokedFromPublic.includes(f.replace(/\s+/g, '').toLowerCase()));
+
+check('كل دالة حسّاسة مُبطَلة من دور public (وإلا يصلها الزائر عبر RPC)', notRevoked.length === 0,
+  'غير مُبطَلة: ' + notRevoked.join(', '));
+check('brc.verify_token مُبطَلة تحديداً (من يملكها يصوغ كيو آر كود مزيّفاً)',
+  revokedFromPublic.includes('brc.verify_token(text)'));
+check('الإبطال من public وليس من anon فقط (anon يورث من public فلا يكفي)',
+  revokedFromPublic.length > 0 && !/revoke\s+execute[\s\S]{0,80}?from\s+anon\s*;/i.test(stripped(RAW)));
+
+/* الدوال التي يناديها الموظف عبر RLS/المشغّلات يجب أن تُعاد له صراحةً */
+const grantedAuth = [...stripped(RAW).matchAll(/grant\s+execute\s+on\s+function\s+([\w.]+\([^)]*\))\s+to\s+([^;]+);/gi)]
+  .map((x) => ({ fn: x[1].replace(/\s+/g, '').toLowerCase(), to: x[2] }));
+for (const need of ['brc.is_staff()', 'brc.is_admin()', 'brc.current_staff_id()', 'brc.next_job_code()', 'brc.next_form_serial()']) {
+  const g = grantedAuth.find((x) => x.fn === need.replace(/\s+/g, '').toLowerCase());
+  check(`${need} مُعاد منحها لـ authenticated بعد الإبطال (وإلا يفشل وصول الموظف)`,
+    !!g && /authenticated/i.test(g.to), g ? g.to.trim() : 'لا منح');
+}
+check('brc.verify_token غير ممنوحة لأي دور (تُنادى داخلياً من دالة SECURITY DEFINER)',
+  !grantedAuth.some((x) => x.fn === 'brc.verify_token(text)'),
+  grantedAuth.filter((x) => x.fn === 'brc.verify_token(text)').map((x) => x.to).join(', '));
+
 /* ------------------------- 6) الأسرار المكشوفة ------------------------- */
 step(6, 'الأسرار — لا مفتاح مكتوب في المستودع');
 

@@ -829,6 +829,43 @@ create policy settings_admin_write on brc.settings for all using (brc.is_admin()
 -- ===========================================================================
 grant usage on schema brc to anon, authenticated;
 
+-- ---------------------------------------------------------------------------
+--  ⚠️ إبطال المنح الافتراضي — كان ثغرة أمنية حقيقية:
+--
+--  PostgreSQL يمنح EXECUTE على كل دالة جديدة لدور PUBLIC **تلقائياً**، وكل
+--  الأدوار (بما فيها anon) أعضاء في PUBLIC. فكل دالة لم نذكرها كانت قابلة
+--  للنداء من الزائر عبر:
+--      POST /rest/v1/rpc/<اسم الدالة>
+--
+--  ⚠️ وإبطالها من anon وحده لا يكفي: anon يورث الصلاحية من PUBLIC فيبقى
+--     قادراً. الإبطال الصحيح يكون **من public**، ثم نُعيد المنح لمن يحتاجه.
+--
+--  أخطرها brc.verify_token: تُرجع توقيع HMAC لأي رقم تسلسلي، والأرقام متسلسلة
+--  ومطبوعة على الاستمارات (BRC-NO-000120، 121، …). فمن يناديها يحسب البصمة
+--  الصحيحة لأي استمارة ويصوغ رابط كيو آر كود مزيّفاً — فتفقد البصمة المطبوعة
+--  قيمتها الأمنية بالكامل.
+--
+--  لا تتأثر الأدوار التالية: مالك الدالة (له كل الصلاحيات) · وbrc.verify_form
+--  SECURITY DEFINER فهي تنادي verify_token بصلاحية المالك لا بصلاحية الزائر.
+-- ---------------------------------------------------------------------------
+revoke execute on function brc.verify_token(text)    from public;
+revoke execute on function brc.next_job_code()       from public;
+revoke execute on function brc.next_form_serial()    from public;
+revoke execute on function brc.run_auto_release()    from public;
+revoke execute on function brc.is_staff()            from public;
+revoke execute on function brc.is_admin()            from public;
+revoke execute on function brc.current_staff_id()    from public;
+
+-- إعادة المنح لمن يحتاجها فعلاً (بعد الإبطال أعلاه):
+--   • is_staff/is_admin/current_staff_id → تُنادى داخل سياسات RLS الخاصة
+--     بالموظفين، فبدونها يفشل كل وصول للموظف بـ permission denied.
+--   • next_job_code/next_form_serial → يناديها المشغّل brc.trg_defaults عند الإدراج.
+grant execute on function brc.is_staff()            to authenticated, service_role;
+grant execute on function brc.is_admin()            to authenticated, service_role;
+grant execute on function brc.current_staff_id()    to authenticated, service_role;
+grant execute on function brc.next_job_code()       to authenticated, service_role;
+grant execute on function brc.next_form_serial()    to authenticated, service_role;
+
 -- الزائر العام: يقرأ الواجهة العامة فقط + يستدعي التحقق
 -- ⚠️ لا تُمنح brc.public_verification للزائر: تلك الواجهة تكشف serial + full_name + status
 --    لكل الاستمارات بلا أي تحقق من البصمة t=، فيصير أي شخص يملك anon key قادراً على
