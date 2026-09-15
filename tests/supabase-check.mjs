@@ -13,6 +13,7 @@
  *
  *  التشغيل:  node tests/supabase-check.mjs
  * =========================================================================== */
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -127,6 +128,30 @@ console.log('═'.repeat(74));
 
 try {
   await waitForServer();
+
+  /* ---------- 0) تناسق الإعداد بين الملفات ---------- */
+  console.log('\n▌ الحالة 0 — تناسق إعداد المشروع بين الملفات');
+  {
+    const cfgJs = readFileSync(join(ROOT, 'assets', 'js', 'supabase-config.js'), 'utf8');
+    const tomlTxt = readFileSync(join(ROOT, 'supabase', 'config.toml'), 'utf8');
+    const url = (cfgJs.match(/url:\s*'([^']+)'/) || [])[1] || '';
+    const key = (cfgJs.match(/publishableKey:\s*'([^']+)'/) || [])[1] || '';
+    const schema = (cfgJs.match(/schema:\s*'([^']+)'/) || [])[1] || '';
+    const ref = url.replace(/^https:\/\//, '').replace(/\.supabase\.co.*$/, '');
+    const pid = (tomlTxt.match(/project_id\s*=\s*"([^"]+)"/) || [])[1] || '';
+
+    check('رابط المشروع بصيغة صحيحة', /^https:\/\/[a-z0-9]+\.supabase\.co$/.test(url), url);
+    check('معرّف المشروع في supabase/config.toml يطابق الرابط (خطأ كتابي شائع)',
+      !!pid && pid === ref, `config.toml="${pid}" مقابل الرابط="${ref}"`);
+    check('المفتاح العام بصيغة Publishable (لا Secret)',
+      /^sb_publishable_/.test(key), key.slice(0, 18) + '…');
+    /* نجرّد تعليقات JS أولاً: الملف يحذّر من sb_secret_ داخل تعليق (مقصود).
+       الفحص يستهدف سرّاً **فعلياً** في كود يُنفَّذ. */
+    const cfgBare = cfgJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    check('لا مفتاح سرّي مكتوب في كود الواجهة',
+      !/sb_secret_[A-Za-z0-9]/.test(cfgBare) && !/service_role["']?\s*[:=]/i.test(cfgBare));
+    check('السكيما المضبوطة هي brc', schema === 'brc', schema);
+  }
 
   /* ---------- 1) الإعداد سليم تماماً ---------- */
   console.log('\n▌ الحالة 1 — كل شيء مضبوط (الجداول موجودة ومحمية بـ RLS)');

@@ -13,7 +13,7 @@
  *  لا يحتاج قاعدة بيانات ولا حزماً خارجية — تحليل نصي دقيق مع تجريد كتل
  *  الاقتباس الدولاري ($$…$$) حتى لا تتشوّش الأجساد الداخلية للدوال.
  * =========================================================================== */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -166,6 +166,34 @@ for (const [label, re] of [
 
 const trigCount = [...stripped(RAW).matchAll(/create\s+trigger\s+\w+/gi)].length;
 check('المشغّلات السبعة موجودة (توليد الأكواد/الحجز/التدقيق)', trigCount === 7, trigCount + '');
+
+/* ------------------------- 9) مزامنة ملف الـ migration ------------------------- */
+step(9, 'ملف الـ migration — متطابق مع المصدر (تكاملة GitHub في Supabase)');
+
+const MIG_DIR = join(ROOT, 'supabase', 'migrations');
+const MIG_NAME = '20260915000000_brc_initial_schema.sql';
+let migNames = [];
+try { migNames = readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql')); } catch { migNames = []; }
+
+check('مجلد supabase/migrations موجود وفيه ملف', migNames.length > 0, 'الموجود: ' + (migNames.join(', ') || 'لا شيء'));
+check('اسم ملف الـ migration ثابت ومعروف', migNames.includes(MIG_NAME), migNames.join(', '));
+
+if (migNames.includes(MIG_NAME)) {
+  const migSql = readFileSync(join(MIG_DIR, MIG_NAME), 'utf8');
+  check('ملف الـ migration مطابق حرفياً لـ docs/schema.sql (لا انحراف)',
+    migSql === RAW,
+    'حجم المصدر ' + RAW.length + ' مقابل ' + migSql.length +
+    ' — شغّل npm run schema:sync');
+  check('ملف الـ migration صالح نحوياً', /create\s+table\s+if\s+not\s+exists\s+brc\.staff/i.test(migSql));
+  /* نجرّد التعليقات أولاً: الملف يشرح كيفية ضبط السرّ داخل تعليق (وهذا مقصود
+     وليس سرّاً). الفحص يهدف إلى كشف سرّ **فعلي** في كود قابل للتنفيذ. */
+  const migBare = migSql.replace(/--[^\n]*/g, '');
+  check('ملف الـ migration لا يحوي سرّاً فعلياً (المستودع عام)',
+    !/app\.brc_secret\s*=\s*'[^']+'/i.test(migBare) && !/sb_secret_[A-Za-z0-9]/i.test(migBare),
+    'وُجد تعيين سرّ في كود قابل للتنفيذ');
+} else {
+  bad('ملف الـ migration مطابق', 'غير موجود');
+}
 
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
