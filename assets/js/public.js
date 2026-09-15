@@ -17,6 +17,12 @@
     bindEvents();
     renderAll();
     Store.subscribe(renderAll);
+    /* شريط الحالة + تحديثه عند تغيّرها: العرض المحلي لا يُقدَّم كسجل رسمي بلا تنبيه */
+    if (UI.syncNotice) UI.syncNotice('#jobs-grid');
+    if (Store.onCloudStatus) Store.onCloudStatus(function (st) {
+      if (UI.syncNotice) UI.syncNotice('#jobs-grid');
+      renderAll();
+    });
     initReveal();
 
     // تشغيل قواعد الإفراج التلقائي عند التحميل ثم دورياً

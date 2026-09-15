@@ -121,6 +121,12 @@
 
     mount();
 
+    /* التحقق من نسخة المتصفح ليس تحققاً رسمياً — نُعلن الحالة دائماً */
+    if (UI.syncNotice) UI.syncNotice('#verify-root');
+    if (Store.onCloudStatus) Store.onCloudStatus(function () {
+      if (UI.syncNotice) UI.syncNotice('#verify-root');
+    });
+
     if (refreshTimer) clearInterval(refreshTimer);
     refreshTimer = setInterval(function () {
       if (!current.serial) return;
