@@ -77,7 +77,9 @@ server.listen(PORT, HOST, () => {
   console.log('— خادم معاينة شركة بابل للتوظيف يعمل —');
   console.log('  الموقع العام   : http://localhost:' + PORT + '/');
   console.log('  صفحة التحقق    : http://localhost:' + PORT + '/verify.html?form=BRC-NO-000120');
-  console.log('  لوحة الموظفين  : http://localhost:' + PORT + '/dashboard.html   (admin/admin123 أو staff/staff123)');
+  /* لا نطبع بيانات دخول في الطرفية: من يرى الشاشة يرى ما لا يحق له، ونفس
+     السبب الذي أوجب حذف الحسابات التجريبية من الشاشة ينطبق على السجل. */
+  console.log('  لوحة الموظفين  : http://localhost:' + PORT + '/dashboard.html');
   console.log('  الملف المستقل  : http://localhost:' + PORT + '/brc-standalone.html');
   console.log('  مسارات نظيفة   : /verify  ·  /dashboard  ·  /standalone  ·  /light   (مثل Render)');
 });

@@ -1269,59 +1269,6 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   gap: 10px;
 }
 
-.login-demo-info {
-  margin-top: 24px;
-  padding: 18px;
-  background: rgba(31, 143, 150, 0.08);
-  border: 1px solid rgba(31, 143, 150, 0.2);
-  border-radius: 12px;
-}
-
-.login-demo-info p {
-  color: #c3cee5;
-  margin: 0 0 10px;
-}
-
-.demo-accounts {
-  display: grid;
-  gap: 10px;
-}
-
-.demo-account {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-.demo-badge {
-  font-size: 0.75rem;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.demo-badge.admin {
-  background: linear-gradient(135deg, var(--gold), var(--gold-2));
-  color: var(--night);
-}
-
-.demo-badge.staff {
-  background: linear-gradient(135deg, var(--lapis-2), var(--lapis-3));
-  color: #fff;
-}
-
-.demo-account code {
-  color: #e8d089;
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
 .login-footer {
   text-align: center;
   margin-top: 24px;
@@ -1591,9 +1538,6 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       </div>
 
       <div class="header-actions">
-        <a href="#!dashboard" class="btn btn-gold btn-sm">
-          <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg> لوحة الموظفين
-        </a>
         <button class="nav-toggle" id="nav-toggle" aria-label="إظهار القائمة" aria-expanded="false">
           <svg class="ic" style="width:20px;height:20px"><use href="#i-menu" xlink:href="#i-menu"/></svg>
         </button>
@@ -1845,7 +1789,6 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         </ul>
         <div class="flex flex-wrap mt-3 reveal" data-d="620">
           <a href="#jobs" class="btn btn-lapis"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الفرص المتاحة</a>
-          <a href="#!dashboard" class="btn btn-outline"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg> دخول الموظفين</a>
         </div>
       </div>
     </div>
@@ -2054,20 +1997,6 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         <svg class="ic"><use href="#i-login" xlink:href="#i-login"/></svg>
         دخول المنظومة
       </button>
-      
-      <div class="login-demo-info">
-        <p class="tiny mb-1"><b>حسابات تجريبية:</b></p>
-        <div class="demo-accounts">
-          <div class="demo-account">
-            <span class="demo-badge admin">مدير</span>
-            <code>admin / admin123</code>
-          </div>
-          <div class="demo-account">
-            <span class="demo-badge staff">موظف</span>
-            <code>staff / staff123</code>
-          </div>
-        </div>
-      </div>
     </form>
     
     <div class="login-footer">
@@ -2542,7 +2471,6 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           <li><a href="#services">خدماتنا</a></li>
           <li><a href="#about">عن الشركة</a></li>
           <li><a href="#!verify">التحقق من استمارة</a></li>
-          <li><a href="#!dashboard">دخول الموظفين</a></li>
         </ul>
       </div>
       <div>

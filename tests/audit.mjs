@@ -277,6 +277,35 @@ for (const [js, page] of CONTRACT) {
   else ok('brc-standalone.html — يجمع ' + union.size + ' معرّفاً من الصفحات الثلاث كاملة');
 }
 
+// لا شيء يشير الزائر إلى الدخول أو يكشف بياناته في الصفحات المنشورة
+/* ما نمنعه هنا محدَّد:
+   1) نص الحسابات التجريبية أو أنماطها على شاشة الدخول (كانت تعرض admin/admin123
+      لمن يفتح اللوحة — أي أن «صفحة دخول» صارت «إعلاناً بكلمة المرور»).
+   2) روابط تفتح لوحة الموظفين من الموقع العام (رأس/تذييل/نداء) — الزائر لا
+      يحتاجها، ووجودها يعرّف أي زائر بعنوان المنظومة الداخلية.
+   الفحص على الصفحات المنشورة نفسها لا على الأجزاء (src/partials) ليشمل أي
+   بناء مستقبلي ينسى أحدها. */
+{
+  const published = ['index.html', 'verify.html', 'dashboard.html', 'brc-standalone.html', 'brc-light.html'];
+  const leaked = [];
+  for (const f of published) {
+    const src = readFileSync(join(ROOT, f), 'utf8');
+    if (/حسابات تجريبية/.test(src)) leaked.push(f + ': نص الحسابات التجريبية');
+    if (/demo-account|login-demo-info/.test(src)) leaked.push(f + ': أنماط الحسابات التجريبية');
+  }
+  if (leaked.length) bad('لا حسابات تجريبية ظاهرة على شاشة الدخول', leaked.join(' | '));
+  else ok('لا حسابات تجريبية ظاهرة على شاشة الدخول (في ' + published.length + ' صفحات منشورة)');
+
+  const linked = [];
+  for (const f of ['index.html', 'verify.html']) {
+    const src = readFileSync(join(ROOT, f), 'utf8');
+    const m = src.match(/href="dashboard\.html"/g);
+    if (m) linked.push(f + ' (' + m.length + ')');
+  }
+  if (linked.length) bad('لا روابط للوحة الموظفين من الموقع العام', linked.join(' | '));
+  else ok('لا روابط للوحة الموظفين من الموقع العام ولا صفحة التحقق');
+}
+
 // معرّفات مكرّرة داخل الصفحة نفسها
 for (const file of PAGES) {
   const all = [...loaded[file].doc.querySelectorAll('[id]')].map((e) => e.id);

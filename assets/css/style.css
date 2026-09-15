@@ -1252,59 +1252,6 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   gap: 10px;
 }
 
-.login-demo-info {
-  margin-top: 24px;
-  padding: 18px;
-  background: rgba(31, 143, 150, 0.08);
-  border: 1px solid rgba(31, 143, 150, 0.2);
-  border-radius: 12px;
-}
-
-.login-demo-info p {
-  color: #c3cee5;
-  margin: 0 0 10px;
-}
-
-.demo-accounts {
-  display: grid;
-  gap: 10px;
-}
-
-.demo-account {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-.demo-badge {
-  font-size: 0.75rem;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.demo-badge.admin {
-  background: linear-gradient(135deg, var(--gold), var(--gold-2));
-  color: var(--night);
-}
-
-.demo-badge.staff {
-  background: linear-gradient(135deg, var(--lapis-2), var(--lapis-3));
-  color: #fff;
-}
-
-.demo-account code {
-  color: #e8d089;
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
 .login-footer {
   text-align: center;
   margin-top: 24px;
