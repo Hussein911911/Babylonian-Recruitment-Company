@@ -53,29 +53,81 @@ function makeFakeSupabase(scenario) {
     if (state === 'rls') return { code: '42501', message: 'permission denied for table ' + table, details: null, hint: null };
     return null;
   };
+  /* ذاكرة جدول بسيطة: تُتيح اختبار «الإدراج ثم القراءة ثم الحذف» كما يحدث فعلاً
+     (بدونها يُقرأ الفحص كفاشل لأن القراءة لا ترى ما أُدرج) */
+  const mem = {};
+  const matches = (row, filters) => filters.every(([c, v]) => String(row[c]) === String(v));
+
   const builder = (table) => {
     const st = scenario.tableState ? scenario.tableState(table) : 'rls';
     const err = errFor(st, table);
-    const res = { data: err ? null : [], error: err, count: null, status: err ? 400 : 200, statusText: err ? 'Bad Request' : 'OK' };
-    const p = Promise.resolve(res);
-    const chain = { select: () => chain, limit: () => chain, order: () => chain, eq: () => chain,
-      single: () => p, then: (a, b) => p.then(a, b), catch: (b) => p.catch(b) };
+    let op = 'select';
+    let filters = [];
+    const respond = () => {
+      if (scenario.opError) {
+        const e = scenario.opError(op, table, filters);
+        if (e) return { data: null, error: e, count: null, status: 400, statusText: 'Bad Request' };
+      }
+      if (op === 'insert') {
+        const row = Object.assign({ id: 'row-' + Math.random().toString(36).slice(2, 7) }, scenario.lastInsert || {});
+        (mem[table] = mem[table] || []).push(row);
+        return { data: [row], error: null, count: null, status: 201, statusText: 'Created' };
+      }
+      if (op === 'delete') {
+        const before = (mem[table] || []).length;
+        mem[table] = (mem[table] || []).filter((r) => !matches(r, filters));
+        return { data: null, error: null, count: before - mem[table].length, status: 204, statusText: 'No Content' };
+      }
+      const stored = mem[table] || [];
+      const data = stored.length ? stored.filter((r) => matches(r, filters))
+                                 : ((scenario.rows && scenario.rows(table)) || []);
+      return { data: data, error: err, count: null, status: err ? 400 : 200, statusText: err ? 'Bad Request' : 'OK' };
+    };
+    const chain = {
+      select: () => chain, limit: () => chain, order: () => chain, single: () => p,
+      eq: (c, v) => { filters.push([c, v]); return chain; },
+      insert: (payload) => { op = 'insert'; scenario.lastInsert = payload; return chain; },
+      update: () => { op = 'update'; return chain; },
+      delete: () => { op = 'delete'; return chain; }
+    };
+    const p = Promise.resolve().then(respond);
+    chain.then = (a, b) => p.then(a, b);
+    chain.catch = (b) => p.catch(b);
     return chain;
   };
   return {
     createClient: () => ({
       from: builder,
-      rpc: (name) => {
+      rpc: (name, args) => {
+        if (scenario.rpc) {
+          const r = scenario.rpc(name, args);
+          if (r) return Promise.resolve(r);
+        }
         if (scenario.rpcError) {
           const e = scenario.rpcError(name);
           return Promise.resolve({ data: null, error: e, status: 400, statusText: 'Bad Request' });
         }
         return Promise.resolve({ data: { ok: true }, error: null, status: 200, statusText: 'OK' });
       },
-      auth: { getSession: () => Promise.resolve({ data: { session: null } }) }
+      auth: {
+        getSession: () => Promise.resolve({ data: { session: null } }),
+        signInWithPassword: (creds) => Promise.resolve(
+          scenario.staffAuth ? scenario.staffAuth(creds)
+            : { data: { user: { id: 'auth-1', email: creds.email }, session: {} }, error: null }),
+        signOut: () => Promise.resolve({ error: null })
+      }
     })
   };
 }
+
+/* ملء نموذج فحص الموظف والضغط على الزر — الفحص يجري فعلاً في الصفحة */
+async function runStaffCheck(w, doc, user = 'admin', pass = 'correct-pass') {
+  doc.getElementById('s-user').value = user;
+  doc.getElementById('s-pass').value = pass;
+  doc.getElementById('run-staff').dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
+  await wait(700);
+}
+const chipsOf = (doc, id) => [...doc.querySelectorAll('#' + id + ' > div')].map((d) => d.textContent.replace(/\s+/g, ' ').trim());
 
 async function loadPage(scenario) {
   const vc = new VirtualConsole();
@@ -247,6 +299,105 @@ try {
       doc.getElementById('c-lib').textContent);
     check('لا مرجع CDN في الصفحة', !/https?:\/\/(cdn|unpkg|esm\.sh|jsdelivr)/i.test(doc.documentElement.outerHTML));
   }
+
+/* ===========================================================================
+ *  فحص الجاهزية للتسليم — السيناريوهات الأربعة الحاسمة
+ * =========================================================================== */
+console.log('\n▌ فحص الجاهزية — مشروع مُعدّ بالكامل وحساب موظف يعمل');
+{
+  const { w, doc, errors } = await loadPage({
+    reachable: true,
+    /* حساب موظف مُعدّ بالكامل: كل شيء يُقرأ (لا RLS مانعة) */
+    tableState: () => 'ok',
+    rows: (t) => (t === 'public_jobs' ? [{ code: 'BRC-1042' }] : (t === 'staff' ? [{ id: 's1', username: 'admin', role: 'admin' }] : [])),
+    rpc: (name) => (name === 'verify_form'
+      ? { data: { ok: false, error: 'لا توجد استمارة بهذا الرقم' }, error: null }
+      : (name === 'request_form' ? { data: { ok: false, error: 'الاسم غير صالح' }, error: null } : null))
+  });
+  check('لا أخطاء JS', errors.length === 0, errors.join(' | '));
+  const pub = chipsOf(doc, 'ready-public').join(' | ');
+  check('المسار العام: الوظائف المعلنة تُقرأ', /يقرأ الوظائف المعلنة/.test(pub) && /✓/.test(pub), pub.slice(0, 120));
+  check('المسار العام: دالة التحقق تُرجع «لا توجد استمارة» لا خطأً', /verify_form|دالة التحقق/.test(pub) && !/✗/.test(pub.split('|')[1] || ''), pub.slice(0, 200));
+  check('المسار العام: دالة الطلب ترفض المدخل الفارغ (تحققت من المدخلات)', /request_form|الطلب الإلكتروني/.test(pub), pub.slice(0, 240));
+  check('المسار العام: خلاصة «مسار الزائر جاهز»', /مسار الزائر جاهز/.test(pub), pub.slice(-160));
+
+  await runStaffCheck(w, doc);
+  const stf = chipsOf(doc, 'ready-staff').join(' | ');
+  check('حساب الموظف: الدخول نجح', /الدخول بحساب الموظف/.test(stf), stf.slice(0, 120));
+  check('حساب الموظف: البريد المُشتق صحيح', /admin@brc-babil\.com/.test(stf), stf.slice(0, 160));
+  check('حساب الموظف: السطر في brc.staff موجود والدور مقروء', /مرتبط بسطر في brc\.staff/.test(stf) && /admin/.test(stf), stf.slice(0, 200));
+  check('حساب الموظف: الإدراج نجح', /الكتابة: إدراج وظيفة/.test(stf) && !/إدراج وظيفة[^|]*✗/.test(stf), stf.slice(0, 260));
+  check('حساب الموظف: الحذف نجح (لا يبقى أثر للفحص)', /حذف الوظيفة الاختبارية/.test(stf) && /حُذفت/.test(stf), stf.slice(0, 320));
+  check('الخلاصة تقول: جاهز للتسليم', /جاهز للتسليم ✓/.test(stf), stf.slice(-200));
+  check('الحكم النهائي أعلى الصفحة يقول جاهز للتسليم', /جاهز للتسليم/.test(doc.getElementById('verdict').textContent) &&
+    !/الإعداد سليم/.test(doc.getElementById('verdict').textContent),
+    doc.getElementById('verdict').textContent.replace(/\s+/g, ' ').slice(0, 140));
+  check('الحكم يذكّر بإغلاق الباب الخلفي (enforceAuth)', /enforceAuth/.test(doc.getElementById('verdict').textContent));
+  check('لا فحص من المسار العام فشل', !/✗/.test(chipsOf(doc, 'ready-public').join(' ')), chipsOf(doc, 'ready-public').join(' | ').slice(0, 200));
+}
+
+console.log('\n▌ فحص الجاهزية — حساب موجود لكن غير مرتبط بـ brc.staff');
+{
+  const { w, doc } = await loadPage({
+    reachable: true,
+    tableState: () => 'ok',
+    rows: (t) => (t === 'public_jobs' ? [{ code: 'BRC-1042' }] : []),
+    rpc: (name) => ({ data: { ok: false }, error: null })
+  });
+  await runStaffCheck(w, doc);
+  const stf = chipsOf(doc, 'ready-staff').join(' | ');
+  check('يُبلَّغ أن الحساب غير مرتبط بموظف', /لا سطر لهذا الحساب/.test(stf), stf.slice(0, 200));
+  check('الرسالة تدلّ على مكان الحل (brc.staff / §6)', /brc\.staff|supabase-setup/.test(stf));
+  check('لا يُقال «جاهز للتسليم»', !/جاهز للتسليم ✓/.test(stf) && !/جاهز للتسليم/.test(doc.getElementById('verdict').textContent));
+}
+
+console.log('\n▌ فحص الجاهزية — الكتابة مرفوضة (نقص منح/سياسة: 42501)');
+{
+  const { w, doc } = await loadPage({
+    reachable: true,
+    tableState: () => 'ok',
+    rows: (t) => (t === 'public_jobs' ? [] : (t === 'staff' ? [{ id: 's1', username: 'admin', role: 'admin' }] : [])),
+    rpc: (name) => ({ data: { ok: false }, error: null }),
+    opError: (op) => (op === 'insert'
+      ? { code: '42501', message: 'permission denied for table jobs', details: null, hint: null } : null)
+  });
+  await runStaffCheck(w, doc);
+  const stf = chipsOf(doc, 'ready-staff').join(' | ');
+  check('يُبلَّغ أن الإدراج فشل', /إدراج وظيفة/.test(stf) && /permission denied/.test(stf), stf.slice(0, 220));
+  check('رمز الخطأ ظاهر للمسؤول (42501)', /42501/.test(stf));
+  check('التوجيه إلى منح §9 وسياسات §8', /schema\.sql/.test(stf));
+  check('الخلاصة تقول: غير جاهز للتسليم', /غير جاهز للتسليم/.test(stf), stf.slice(-160));
+  check('لا يُعلن الجاهزية في الحكم النهائي', !/جاهز للتسليم\./.test(doc.getElementById('verdict').textContent));
+}
+
+console.log('\n▌ فحص الجاهزية — كلمة مرور خاطئة');
+{
+  const { w, doc } = await loadPage({
+    reachable: true,
+    tableState: () => 'ok',
+    rows: () => [],
+    staffAuth: () => ({ data: null, error: { message: 'Invalid login credentials' } }),
+    rpc: (name) => ({ data: { ok: false }, error: null })
+  });
+  await runStaffCheck(w, doc, 'admin', 'wrong');
+  const stf = chipsOf(doc, 'ready-staff').join(' | ');
+  check('الرسالة عربية ومفهومة (لا نص سوبابيس الإنجليزي)', /غير صحيحة/.test(stf) && !/Invalid login/.test(stf), stf.slice(0, 160));
+  check('لا يكمل فحوص الكتابة بعد فشل الدخول', !/إدراج وظيفة/.test(stf));
+}
+
+console.log('\n▌ فحص الجاهزية — المسار العام معطّل (دالة التحقق غير مُمنوحة)');
+{
+  const { doc } = await loadPage({
+    reachable: true,
+    tableState: () => 'rls',
+    rows: () => [],
+    rpcError: (name) => (name === 'verify_form'
+      ? { code: '42501', message: 'permission denied for function verify_form', details: null, hint: null } : null)
+  });
+  const pub = chipsOf(doc, 'ready-public').join(' | ');
+  check('الكشف أن دالة التحقق محجوبة (الزوار لن يتحققوا)', /permission denied/.test(pub), pub.slice(0, 200));
+  check('الخلاصة تقول إن المسار العام لا يعمل', /المسار العام لا يعمل/.test(pub), pub.slice(-180));
+}
 
 } catch (e) {
   bad('خطأ غير متوقع في الاختبار', e && e.stack ? e.stack.split('\n').slice(0, 4).join(' | ') : String(e));

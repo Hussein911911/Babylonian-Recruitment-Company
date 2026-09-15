@@ -77,6 +77,38 @@
   </div>
 
   <div class="panel">
+    <h2>فحص الجاهزية للتسليم</h2>
+    <p class="muted" style="margin:0 0 12px;font-size:.85rem;line-height:1.9">
+      الفحوص أعلاه تتحقق من <b>الإعداد</b>. هذان الفحصان يجيبان على سؤال آخر:
+      <b>هل يُسلَّم النظام فعلاً؟</b> الأول يعمل تلقائياً ويثبت أن مسار الزائر
+      (الموقع العام + التحقق) يعمل. والثاني يحتاج حساب موظف، ويثبت أن الكتابة
+      الحقيقية تصل — وهو الفحص الذي لا بديل عنه.
+    </p>
+    <div id="ready-public" style="margin-bottom:14px"></div>
+
+    <h3 style="font-size:.95rem;margin:14px 0 8px">فحص حساب الموظف (كتابة فعلية)</h3>
+    <div class="fields" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <label style="display:block">
+        <span style="display:block;font-size:.78rem;margin-bottom:4px">اسم المستخدم</span>
+        <input id="s-user" type="text" dir="ltr" placeholder="admin" autocomplete="username"
+               style="padding:8px 10px;border:1px solid #ccd3e0;border-radius:8px;font:inherit">
+      </label>
+      <label style="display:block">
+        <span style="display:block;font-size:.78rem;margin-bottom:4px">كلمة المرور</span>
+        <input id="s-pass" type="password" dir="ltr" autocomplete="current-password"
+               style="padding:8px 10px;border:1px solid #ccd3e0;border-radius:8px;font:inherit">
+      </label>
+      <button class="btn btn-gold" id="run-staff">فحص حساب الموظف</button>
+    </div>
+    <p class="muted" style="margin:10px 0 0;font-size:.78rem;line-height:1.8">
+      ⚠️ هذا الفحص <b>ينشئ وظيفة اختبارية مؤقتة ثم يحذفها فوراً</b> ليتأكد أن
+      الكتابة تصل ويسمح بها الحماية (RLS). لا شيء يبقى بعد الفحص.
+      كلمة المرور لا تُحفظ ولا تُرسل لأي مكان غير Supabase نفسه.
+    </p>
+    <div id="ready-staff" style="margin-top:14px"></div>
+  </div>
+
+  <div class="panel">
     <h2>سجل التقني</h2>
     <pre id="log"></pre>
   </div>
@@ -304,8 +336,245 @@
       } catch (e) { record('دالة ' + fn, 'warn', String(e && e.message || e)); }
     }
 
+    /* فحص جاهزية مسار الزائر — تلقائي لأنه لا يحتاج بيانات دخول */
+    await publicReadiness(sb);
+
     finish();
   }
+
+  /* ==========================================================================
+   *  فحص الجاهزية للتسليم
+   *  ---------------------------------------------------------------------------
+   *  لماذا فحصان منفصلان؟ لأن «الإعداد سليم» شيء، و«يُسلَّم» شيء آخر:
+   *    • المسار العام: الواجهة العامة تُقرأ، ودالتا التحقق والطلب موجودتان
+   *      وتتصرفان كما صُمّمتا (لا تكفي «موجودة» — بل نتحقق من سلوكهما فعلاً).
+   *    • مسار الموظف: لا بد من جلسة حقيقية ثم **كتابة فعلية** (إدراج وظيفة
+   *      اختبارية وحذفها). هذا هو الفحص الذي يكشف نقص أي منح أو سياسة — وهو
+   *      بالضبط ما كان ينقص المشروع قبل الآن (RLS وحدها لا تمنح صلاحية).
+   *  ولا يمكن فحص مسار الموظف بلا كلمة مرور — لذلك هو بطلب المسؤول لا تلقائياً.
+   * ======================================================================== */
+
+  var readyBox = document.getElementById('ready-public');
+  var staffBox = document.getElementById('ready-staff');
+
+  /* صف نتيجة داخل لوحة مستقلة (لا يخلط عدّادات فحوص الإعداد) */
+  function chip(host, name, state, detail) {
+    var colors = { ok: ['#0f5132', '#f0fdf4', '#bbf7d0'], bad: ['#7f1d1d', '#fef2f2', '#fecaca'], warn: ['#78350f', '#fffbeb', '#fde68a'] };
+    var c = colors[state] || colors.warn;
+    var icon = state === 'ok' ? '✓' : state === 'bad' ? '✗' : '!';
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-radius:10px;' +
+      'margin-bottom:6px;font-size:.83rem;line-height:1.8;background:' + c[1] + ';border:1px solid ' + c[2] + ';color:' + c[0];
+    row.innerHTML = '<b>' + icon + '</b><div><b>' + name + '</b>' +
+      (detail ? '<div style="opacity:.85">' + String(detail).replace(/[<>&]/g, function (x) {
+        return { '<': '&lt;', '>': '&gt;', '&': '&amp;' }[x];
+      }) + '</div>' : '') + '</div>';
+    host.appendChild(row);
+    if (state === 'bad') window.__brcReadyBad = (window.__brcReadyBad || 0) + 1;
+  }
+
+  function summarize(host, okCount, badCount, okText, badText) {
+    var box = document.createElement('div');
+    box.style.cssText = 'margin-top:10px;padding:12px 14px;border-radius:12px;font-size:.9rem;line-height:1.9;' +
+      (badCount ? 'background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d' : 'background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d');
+    box.innerHTML = badCount
+      ? '<b>✗ لم تكتمل: ' + badCount + ' فحص فاشل.</b><br>' + badText
+      : '<b>✓ ' + okText + '</b>';
+    host.appendChild(box);
+    return !badCount;
+  }
+
+  /* ---------- المسار العام (تلقائي) ---------- */
+  async function publicReadiness(sb) {
+    var bad = 0;
+    readyBox.innerHTML = '';
+    var before = window.__brcReadyBad || 0;
+
+    /* (أ) الواجهة العامة تُقرأ — وهي ما يعتمد عليه الموقع العام بالكامل */
+    try {
+      var pj = await withTimeout(sb.from('public_jobs').select('*').limit(1), 'public_jobs');
+      if (!pj) { chip(readyBox, 'الموقع العام يقرأ الوظائف المعلنة', 'bad', 'لا استجابة'); }
+      else if (pj.error) { chip(readyBox, 'الموقع العام يقرأ الوظائف المعلنة', 'bad', (pj.error.message || 'خطأ')); }
+      else {
+        var n = (pj.data || []).length;
+        chip(readyBox, 'الموقع العام يقرأ الوظائف المعلنة', n ? 'ok' : 'warn',
+          n ? (n + ' صف مُقروء — المسار العام يعمل') : 'الواجهة تعمل لكن لا وظائف معلنة بعد (طبيعي قبل إدخال البيانات)');
+      }
+    } catch (e) { chip(readyBox, 'الموقع العام يقرأ الوظائف المعلنة', 'bad', String(e && e.message || e)); }
+
+    /* (ب) دالة التحقق: نتحقق من **سلوكها** لا وجودها. برقم غير موجود يجب أن
+       تُرجع {ok:false, error:'لا توجد استمارة…'} — وليس خطأ قاعدة بيانات.
+       لو رجعت خطأً فالمعنى أن المنح أو السكيما ناقصة، وصفحة التحقق ستُظهر
+       «لا توجد استمارة» لكل رقم حتى الصحيح (عطل صامت من منظور الباحث). */
+    try {
+      var vf = await withTimeout(sb.rpc('verify_form', { p_serial: 'BRC-NO-000000', p_token: null }), 'verify_form');
+      if (!vf) chip(readyBox, 'دالة التحقق (verify_form) تعمل', 'bad', 'لا استجابة');
+      else if (vf.error) chip(readyBox, 'دالة التحقق (verify_form) تعمل', 'bad', (vf.error.message || 'خطأ') + ' — راجع منح §9 في schema.sql');
+      else if (vf.data && vf.data.ok === false) chip(readyBox, 'دالة التحقق (verify_form) تعمل', 'ok', 'ترجع «لا توجد استمارة» كما هو المتوقّع');
+      else chip(readyBox, 'دالة التحقق (verify_form) تعمل', 'warn', 'استُدعيت لكن بشكل غير متوقّع: ' + JSON.stringify(vf.data).slice(0, 80));
+    } catch (e) { chip(readyBox, 'دالة التحقق (verify_form) تعمل', 'bad', String(e && e.message || e)); }
+
+    /* (ج) دالة الطلب الإلكتروني: نستدعيها بمدخل غير صالح **عمداً** — فترد
+       «الاسم غير صالح» بلا أن تُدرج شيئاً. هكذا نتحقق من وجودها ومن أنها
+       تتحقق من المدخلات فعلاً (لا نُدرج صفاً وهمياً في قاعدة حقيقية). */
+    try {
+      var rf = await withTimeout(sb.rpc('request_form', {
+        p_full_name: '', p_phone: '', p_address: '', p_dob: null, p_gender: 'ذكر', p_notes: '', p_requested_code: null
+      }), 'request_form');
+      if (!rf) chip(readyBox, 'دالة الطلب الإلكتروني (request_form) تعمل', 'bad', 'لا استجابة');
+      else if (rf.error) chip(readyBox, 'دالة الطلب الإلكتروني (request_form) تعمل', 'bad', (rf.error.message || 'خطأ') + ' — الزائر لن يستطيع إرسال طلب');
+      else if (rf.data && rf.data.ok === false) chip(readyBox, 'دالة الطلب الإلكتروني (request_form) تعمل', 'ok', 'ترفض المدخل الفارغ كما هو المتوقّع');
+      else chip(readyBox, 'دالة الطلب الإلكتروني (request_form) تعمل', 'warn', 'استُدعيت بشكل غير متوقّع: ' + JSON.stringify(rf.data).slice(0, 80));
+    } catch (e) { chip(readyBox, 'دالة الطلب الإلكتروني (request_form) تعمل', 'bad', String(e && e.message || e)); }
+
+    bad = (window.__brcReadyBad || 0) - before;
+    summarize(readyBox, 3 - bad, bad,
+      'مسار الزائر جاهز — الموقع العام والتحقق والطلب تعمل من القاعدة.',
+      'المسار العام لا يعمل بعد: الزوار لن يروا الوظائف ولن يقدروا يتحققوا من استمارة. راجع الجدول أعلاه وصفحة §5 في docs/supabase-setup.md.');
+  }
+
+  /* ---------- مسار الموظف (بطلب المسؤول) ---------- */
+  function deriveEmail(username) {
+    var v = String(username || '').trim().toLowerCase();
+    if (!v) return '';
+    if (v.indexOf('@') > 0) return v;
+    return v + '@' + ((window.BRCSupabaseConfig && window.BRCSupabaseConfig.authEmailDomain) || 'brc-babil.com');
+  }
+
+  async function staffReadiness() {
+    var user = document.getElementById('s-user').value.trim();
+    var pass = document.getElementById('s-pass').value;
+    staffBox.innerHTML = '';
+    window.__brcReadyBad = 0;
+    if (!user || !pass) { chip(staffBox, 'المدخلات', 'bad', 'أدخل اسم المستخدم وكلمة المرور'); return; }
+
+    var staffSb;
+    try {
+      staffSb = window.supabase.createClient(CFG.url, CFG.publishableKey, {
+        db: { schema: CFG.schema || 'brc' },
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+    } catch (e) { chip(staffBox, 'إنشاء عميل الفحص', 'bad', String(e && e.message || e)); return; }
+
+    /* 1) الدخول */
+    var auth;
+    try {
+      auth = await withTimeout(staffSb.auth.signInWithPassword({ email: deriveEmail(user), password: pass }), 'signIn');
+    } catch (e) { chip(staffBox, 'الدخول بحساب الموظف', 'bad', String(e && e.message || e)); return; }
+    if (!auth) { chip(staffBox, 'الدخول بحساب الموظف', 'bad', 'لا استجابة'); return; }
+    if (auth.error) {
+      var msg = String(auth.error.message || '');
+      chip(staffBox, 'الدخول بحساب الموظف', 'bad',
+        /invalid login/i.test(msg) ? 'اسم المستخدم أو كلمة المرور غير صحيحة' : msg);
+      return;
+    }
+    chip(staffBox, 'الدخول بحساب الموظف', 'ok', deriveEmail(user));
+
+    var uid = auth.data && auth.data.user ? auth.data.user.id : null;
+
+    /* 2) سطر الموظف في brc.staff — عليه تُبنى كل الصلاحيات */
+    var staffRow = null;
+    try {
+      var sr = await withTimeout(staffSb.from('staff').select('*').eq('auth_id', uid).limit(1), 'staff');
+      if (sr && !sr.error && (sr.data || []).length) {
+        staffRow = sr.data[0];
+        chip(staffBox, 'الحساب مرتبط بسطر في brc.staff', 'ok',
+          staffRow.username + ' — ' + (staffRow.role === 'admin' ? 'مدير عام' : 'موظف'));
+      } else {
+        chip(staffBox, 'الحساب مرتبط بسطر في brc.staff', 'bad',
+          'لا سطر لهذا الحساب — الدخول سيُرفض برسالة «غير مرتبط بموظف». نفّذ insert في brc.staff (docs/supabase-setup.md §6).');
+      }
+    } catch (e) { chip(staffBox, 'الحساب مرتبط بسطر في brc.staff', 'bad', String(e && e.message || e)); }
+
+    /* 3) قراءة الإعدادات والوظائف (منح + سياسات) */
+    try {
+      var st2 = await withTimeout(staffSb.from('settings').select('*'), 'settings');
+      var rules = st2 && !st2.error ? (st2.data || []).filter(function (r) { return r.key === 'rules'; }) : [];
+      chip(staffBox, 'قراءة قواعد العمل من القاعدة', (rules.length ? 'ok' : 'warn'),
+        st2 && st2.error ? (st2.error.message || 'خطأ')
+          : (rules.length ? 'صف rules موجود — القيم: ' + JSON.stringify(rules[0].value).slice(0, 90)
+                          : 'لا صف rules (ستُستخدم القيم الافتراضية)'));
+    } catch (e) { chip(staffBox, 'قراءة قواعد العمل من القاعدة', 'bad', String(e && e.message || e)); }
+
+    try {
+      var jr = await withTimeout(staffSb.from('jobs').select('code').limit(5), 'jobs');
+      chip(staffBox, 'قراءة الوظائف كموظف', (jr && !jr.error ? 'ok' : 'bad'),
+        jr && jr.error ? (jr.error.message || 'خطأ') : ((jr.data || []).length + ' وظيفة مُقروءة'));
+    } catch (e) { chip(staffBox, 'قراءة الوظائف كموظف', 'bad', String(e && e.message || e)); }
+
+    /* 4) الكتابة الفعلية: إدراج وظيفة اختبارية ثم حذفها.
+       هذا الفحص وحده هو ما يثبت أن المنح والسياسات تسمح بالكتابة — وهو ما
+       فشل سابقاً بـ 42501 لأن RLS وحدها لا تمنح صلاحية. */
+    var testCode = 'BRC-TEST-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+    var inserted = false;
+    try {
+      var ins = await withTimeout(staffSb.from('jobs').insert({
+        code: testCode, title: 'وظيفة فحص مؤقتة', category: 'خدمات', region: 'بابل',
+        salary_min: 1, salary_max: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1,
+        requirements: [], description: 'فحص جاهزية — تُحذف فوراً', status: 'available',
+        employer_name: 'فحص', employer_phone: '0', employer_address: '', interview_location: ''
+      }).select(), 'insert');
+      if (ins && !ins.error) {
+        inserted = true;
+        chip(staffBox, 'الكتابة: إدراج وظيفة', 'ok', testCode);
+      } else {
+        chip(staffBox, 'الكتابة: إدراج وظيفة', 'bad',
+          (ins && ins.error ? (ins.error.message + ' [' + (ins.error.code || '') + ']') : 'لا استجابة') +
+          ' — راجع منح §9 وسياسات §8 في schema.sql');
+      }
+    } catch (e) { chip(staffBox, 'الكتابة: إدراج وظيفة', 'bad', String(e && e.message || e)); }
+
+    if (inserted) {
+      try {
+        var rd = await withTimeout(staffSb.from('jobs').select('code').eq('code', testCode), 'read-back');
+        var found = rd && !rd.error && (rd.data || []).some(function (r) { return r.code === testCode; });
+        chip(staffBox, 'الكتابة: قراءة ما كُتب', found ? 'ok' : 'bad', found ? 'الوظيفة وصلت فعلاً' : 'لم تُقرأ بعد الإدراج');
+      } catch (e) { chip(staffBox, 'الكتابة: قراءة ما كُتب', 'bad', String(e && e.message || e)); }
+
+      /* الحذف — نُصرّ عليه: وظيفة اختبارية تبقى في قاعدة حقيقية أسوأ من فحص ناقص */
+      var deleted = false;
+      try {
+        var del = await withTimeout(staffSb.from('jobs').delete().eq('code', testCode), 'delete');
+        deleted = !!(del && !del.error);
+        chip(staffBox, 'الكتابة: حذف الوظيفة الاختبارية', deleted ? 'ok' : 'bad',
+          deleted ? 'حُذفت — لم يبقَ أثر للفحص'
+                  : 'لم تُحذف: ' + (del && del.error ? del.error.message : 'سبب غير معروف') +
+                    ' — احذف ' + testCode + ' يدوياً من Supabase');
+      } catch (e) { chip(staffBox, 'الكتابة: حذف الوظيفة الاختبارية', 'bad', String(e && e.message || e)); }
+      if (!deleted) log('⚠️ بقيت وظيفة اختبارية بالكود ' + testCode);
+    }
+
+    /* 5) سجل التدقيق: هل تُقرأ سطوره؟ */
+    try {
+      var au = await withTimeout(staffSb.from('audit_log').select('id').limit(3), 'audit');
+      chip(staffBox, 'قراءة سجل التدقيق', (au && !au.error ? 'ok' : 'warn'),
+        au && au.error ? (au.error.message || 'خطأ') : ((au.data || []).length + ' سطر'));
+    } catch (e) { chip(staffBox, 'قراءة سجل التدقيق', 'warn', String(e && e.message || e)); }
+
+    try { await staffSb.auth.signOut(); } catch (e) { /* تجاهل */ }
+
+    var badCount = window.__brcReadyBad || 0;
+    var done = summarize(staffBox, 8 - badCount, badCount,
+      'جاهز للتسليم ✓ — الدخول والقراءة والكتابة والحذف كلها تعمل من القاعدة.',
+      'النظام غير جاهز للتسليم بعد: راجع البنود الفاشلة أعلاه. لا تُسلّم قبل أن تصير كلها ✓.');
+    window.__brcStaffDone = true;
+    log('--- staff readiness: ' + (done ? 'READY' : 'NOT READY'));
+    if (done) {
+      var v = document.getElementById('verdict');
+      v.innerHTML = '<b style="color:#10693a">✓ جاهز للتسليم.</b><br>' +
+        'الاتصال سليم، ومسار الزائر يعمل، والدخول والكتابة يعملان من القاعدة بحساب موظف حقيقي.<br>' +
+        '<span style="color:#5b6b85">الخطوة الأخيرة الموصى بها: اجعل <code>enforceAuth: true</code> في ' +
+        '<code>assets/js/supabase-config.js</code> لإغلاق الدخول بكلمات مرور الكود نهائياً.</span>';
+    }
+  }
+
+  document.getElementById('run-staff').addEventListener('click', function () {
+    var b = this;
+    b.disabled = true; b.textContent = 'جارٍ الفحص…';
+    staffReadiness().catch(function (e) {
+      chip(staffBox, 'فحص حساب الموظف', 'bad', String(e && e.message || e));
+    }).then(function () { b.disabled = false; b.textContent = 'فحص حساب الموظف'; });
+  });
 
   function finish() {
     var ok = results.filter(function (r) { return r.state === 'ok'; }).length;
@@ -316,9 +585,15 @@
     document.getElementById('n-warn').textContent = warn;
 
     var v = document.getElementById('verdict');
+    /* ⚠️ لا نطمس حكم الجاهزية: فحص الإعداد يبدأ عند التحميل وينتهي بعد ثوانٍ،
+       وقد يكون فحص حساب الموظف قد اكتمل قبله (ردود سريعة/شبكة سريعة) — فلو
+       كتبنا حكم الإعداد بعده لمحونا أهم نتيجة في الصفحة بلا أن يلاحظ أحد. */
+    if (window.__brcStaffDone) { log('--- تخطّي طمس حكم الجاهزية'); return; }
     if (bad === 0 && ok > 0) {
-      v.innerHTML = '<b style="color:#10693a">✓ الإعداد سليم — يمكن بدء الربط.</b><br>' +
+      v.innerHTML = '<b style="color:#10693a">✓ الإعداد سليم.</b><br>' +
         'قاعدة البيانات مهيّأة والمفتاح العام يعمل وسياسات الحماية فعّالة.<br>' +
+        '<b>الخطوة التالية:</b> انزل إلى «فحص الجاهزية للتسليم» وأجرِ فحص حساب الموظف — ' +
+        'هو الذي يثبت أن الكتابة تصل فعلاً، وهو الفحص الحاسم قبل التسليم.<br>' +
         '<span style="color:#5b6b85">ملاحظة: سرّ البصمة و pg_cron لا يمكن التحقق منهما من المتصفح — تأكّد منهما في Supabase.</span>';
     } else if (bad > 0) {
       v.innerHTML = '<b style="color:#a11919">✗ الإعداد ناقص — ' + bad + ' فحص فاشل.</b><br>' +
