@@ -102,6 +102,7 @@ create table if not exists brc.applicants (
   fee_paid      boolean not null default false,
   printed_count integer not null default 0,
   requested_code text,                                           -- الوظيفة المطلوبة من الموقع العام
+  reject_reason text default '',                                 -- سبب الرفض (يظهر للباحث في صفحة التحقق)
   created_by    uuid references brc.staff (id) on delete set null,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now(),
@@ -136,6 +137,8 @@ create table if not exists brc.jobs (
   reserved_by         text references brc.applicants (serial) on delete set null,  -- استمارة الحجز الحالي
   hold_expires_at     timestamptz,                               -- مهلة 24 ساعة
   closed_at           timestamptz,
+  notes               text default '',                           -- ملاحظات داخلية على الوظيفة
+  image_url           text default '',                           -- صورة بطاقة الوظيفة
   created_by          uuid references brc.staff (id) on delete set null,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
@@ -198,13 +201,20 @@ insert into brc.settings (key, value) values
       'form_fee', 10000,
       'auto_release', true)),
   ('company', jsonb_build_object(
-      'name_ar', 'شركة بابل للتوظيف',
-      'name_en', 'Babylonian Recruitment Company',
-      'legal_name', 'شركة بابل للتوظيف (شركة الهدف)',
-      'phones', jsonb_build_array('07760058007', '07863148999'),
-      'address', 'حلة - شارع 60 - قرب مستشفى الكفل - مجاور الجيلاوي',
+      'nameAr',      'شركة بابل للتوظيف',
+      'nameEn',      'Babylonian Recruitment Company',
+      'legalName',   'شركة بابل للتوظيف',
+      'slogan',      'نوفّر الأيادي العاملة الفنية والتخصصية في بابل والفرات الأوسط',
+      'phones',      jsonb_build_array('07760058007', '07715993271'),
+      'address',     'حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي',
+      'addressShort','الحلة – بابل، العراق',
+      'email',       'contact@brc-babil.com',
+      'hours',       'السبت – الخميس: 9:00 صباحاً – 5:00 مساءً',
+      'holiday',     'الجمعة: عطلة رسمية',
+      'license',     'إجازة عمل رسمية / وزارة العمل والشؤون الاجتماعية',
+      'branch',      'بابل – الحلة',
       'verify_base', 'https://brc-babil.com/verify',
-      'disclaimer', 'ملاحظات مهمة: خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية. الشركة غير مسؤولة قانونياً وعشائياً عن الشخص المرسل وصاحب العمل.'))
+      'disclaimer',  'ملاحظات مهمة: خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية. الشركة غير مسؤولة قانونياً وعشائياً عن الشخص المرسل وصاحب العمل.'))
 on conflict (key) do nothing;
 
 -- ===========================================================================
@@ -535,7 +545,12 @@ with (security_invoker = false) as
          vacancies, requirements, status,
          (status = 'reserved') as is_reserved,
          hold_expires_at,
-         created_at
+         created_at,
+         -- الوصف والصورة جزء من الإعلان نفسه فيظهران للزائر (بخلاف اسم صاحب
+         -- العمل وهاتفه ومكان المقابلة التي تبقى محجوبة للداخل). بدون هذين
+         -- العمودين تظهر بطاقات الوظائف في الموقع العام بلا وصف ولا صورة.
+         coalesce(description, '') as description,
+         coalesce(image_url, '') as image_url
     from brc.jobs
    where status <> 'closed' or created_at > now() - interval '120 days';
 
@@ -602,12 +617,15 @@ returns jsonb
 language plpgsql security definer
 set search_path = brc, public
 as $$
-declare v jsonb; f record;
+declare v jsonb; f record; v_ok boolean;
 begin
   select * into f from brc.applicants where serial = p_serial;
   if f.serial is null then
     return jsonb_build_object('ok', false, 'error', 'لا توجد استمارة بهذا الرقم');
   end if;
+
+  v_ok := (p_token is not null
+           and (p_token = left(brc.verify_token(f.serial), 8) or p_token = brc.verify_token(f.serial)));
 
   select jsonb_build_object(
     'ok', true,
@@ -619,9 +637,20 @@ begin
     'status', f.status,
     'daysLeft', ceil(extract(epoch from (f.expiry_date - now())) / 86400.0),
     'attemptLimit', f.attempt_limit,
+    'requestedCode', f.requested_code,
+    'rejectReason', coalesce(f.reject_reason, ''),
+    'createdAt', f.created_at,
     'attemptsUsed', (select count(*) from brc.job_attempts a where a.serial = f.serial and a.slot_status <> 'empty'),
     'attemptsLeft', (select count(*) from brc.job_attempts a where a.serial = f.serial and a.slot_status = 'empty'),
-    'tokenOk', (p_token is null or p_token = left(brc.verify_token(f.serial), 8) or p_token = brc.verify_token(f.serial)),
+    'tokenOk', v_ok,
+    /* ⚠️ خصوصية: بلا بصمة مطابقة تُقنَّع بيانات الباحث (الاسم والهاتف).
+       السبب: الأرقام التسلسلية تُطلق تتابعاً (BRC-NO-000120, 121, …) فيستطيع
+       أي زائر سحب أسماء وهواتف كل الباحثين بنداءات متتابعة — وهي بيانات أشخاص
+       حقيقيين. البصمة المطبوعة في الكيو آر كود هي المفتاح، ومن يُدخل الرقم
+       يدوياً يحصل على تأكيد صحة الاستمارة وحالتها بلا بيانات شخصية. */
+    'fullName', case when v_ok then f.full_name else brc.mask_name(f.full_name) end,
+    'phone',    case when v_ok then f.phone     else brc.mask_phone(f.phone)    end,
+    'masked',   not v_ok,
     'attempts', (
       select coalesce(jsonb_agg(jsonb_build_object(
                'no', a.attempt_no,
@@ -642,6 +671,92 @@ begin
 
   return v;
 end $$;
+
+-- 7.1ب طلب استمارة إلكتروني من الموقع العام (بلا حساب ولا جلسة)
+-- ---------------------------------------------------------------------------
+--  لماذا دالة بدل إدراج مباشر؟ لأن anon ممنوع تماماً من جدول brc.applicants
+--  (revoke all + لا سياسة له). فبلا دالة لا يمكن للزائر إرسال طلب أصلاً؛ ومع
+--  الدالة يبقى الجدول محجوباً ويمرّ الطلب من مسار واحد نتحكم بمحتواه:
+--    • تحقق من الاسم والهاتف
+--    • حدّ إغراق (3 طلبات لنفس الرقم في 24 ساعة) — الدالة مفتوحة للزوار
+--    • الحالة دائماً 'pending' مهما أرسل المتصل (لا يستطيع إصدار استمارة سارية)
+--    • رقم التسلسل من تسلسل القاعدة، والدور والمبلغ من إعدادات القاعدة
+--  الحقول الثابتة عمداً: status · serial · fee_amount · attempt_limit · created_by
+create or replace function brc.request_form(
+  p_full_name     text,
+  p_phone         text,
+  p_address       text default '',
+  p_dob           date default null,
+  p_gender        text default 'ذكر',
+  p_notes         text default '',
+  p_requested_code text default null
+) returns jsonb
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare
+  v_serial text;
+  v_name   text := btrim(coalesce(p_full_name, ''));
+  v_phone  text := btrim(coalesce(p_phone, ''));
+  v_code   text := nullif(upper(btrim(coalesce(p_requested_code, ''))), '');
+  v_recent int;
+begin
+  if length(v_name) < 2 or length(v_name) > 120 then
+    return jsonb_build_object('ok', false, 'error', 'الاسم غير صالح');
+  end if;
+  if length(v_phone) < 7 or length(v_phone) > 20 then
+    return jsonb_build_object('ok', false, 'error', 'رقم الهاتف غير صالح');
+  end if;
+
+  select count(*) into v_recent from brc.applicants
+   where phone = v_phone and created_at > now() - interval '24 hours';
+  if v_recent >= 3 then
+    return jsonb_build_object('ok', false, 'error', 'وصلت طلبات كثيرة من هذا الرقم خلال 24 ساعة — راجع المكتب');
+  end if;
+
+  /* كود وظيفة غير معروف يُهمَل بدل رفض الطلب كله (نفس سلوك الواجهة) */
+  if v_code is not null and not exists (select 1 from brc.jobs where code = v_code) then
+    v_code := null;
+  end if;
+
+  /* بلا serial: المشغّل brc.trg_defaults يولّده من brc.next_form_serial()
+     وينشئ خانات المحاولات الخمس. وissued/expiry لهما قيم افتراضية في الجدول
+     (لا يمكن أن تكونا فارغتين: NOT NULL)، والقبول لاحقاً يعيد ضبطهما. */
+  insert into brc.applicants (full_name, phone, address, dob, gender, status, notes,
+                              requested_code, created_by)
+  values (v_name, v_phone, coalesce(nullif(btrim(coalesce(p_address, '')), ''), ''),
+          p_dob, coalesce(nullif(btrim(coalesce(p_gender, '')), ''), 'ذكر'),
+          'pending',
+          coalesce(nullif(btrim(coalesce(p_notes, '')), ''), 'طلب إلكتروني من الموقع'),
+          v_code, null)
+  returning serial into v_serial;
+
+  insert into brc.audit_log (username, role, action, entity, entity_id, details)
+  values ('public', 'public', 'طلب استمارة إلكتروني', 'applicant', v_serial,
+          'طلب من الموقع العام — ' || v_name || coalesce(' — الوظيفة ' || v_code, ''));
+
+  return jsonb_build_object('ok', true, 'serial', v_serial, 'status', 'pending');
+end $$;
+
+-- 7.1ج تقنيع بيانات الباحث للعرض العام بلا بصمة
+--   الاسم: أول حرف + نقاط  ·  الهاتف: أول 4 وأخر 2 مع إخفاء الوسط
+create or replace function brc.mask_name(p text) returns text
+language sql immutable as $$
+  select case
+    when coalesce(p, '') = '' then ''
+    when length(btrim(p)) <= 2 then left(btrim(p), 1) || '…'
+    else left(btrim(p), 1) || repeat('•', least(length(btrim(p)) - 1, 12))
+  end
+$$;
+
+create or replace function brc.mask_phone(p text) returns text
+language sql immutable as $$
+  select case
+    when coalesce(p, '') = '' then ''
+    when length(btrim(p)) <= 5 then left(btrim(p), 2) || '•••'
+    else left(btrim(p), 4) || repeat('•', greatest(length(btrim(p)) - 6, 1)) || right(btrim(p), 2)
+  end
+$$;
 
 -- 7.2 ترشيح وظيفة لمحاولة (موظف/مدير)
 create or replace function brc.select_attempt(p_serial text, p_job_code text)
@@ -808,8 +923,17 @@ drop policy if exists audit_read on brc.audit_log;
 create policy audit_read on brc.audit_log for select
   using (brc.is_admin() or (brc.is_staff() and username = (select username from brc.staff where auth_id = auth.uid())));
 
+--  الإضافة من الواجهة تكون باسم صاحب الجلسة أو باسم النظام؛ المشغّلات نفسها
+--  security definer فتتجاوز هذه السياسة. بلا هذا القيد يستطيع أي موظف تزوير
+--  سطر تدقيق باسم غيره (السجل هو دليل المراجعة، فقيمته في صدق النسبة).
 drop policy if exists audit_insert on brc.audit_log;
-create policy audit_insert on brc.audit_log for insert with check (true);  -- المشغّلات والدوال فقط
+create policy audit_insert on brc.audit_log for insert
+  with check (
+    brc.is_staff() and (
+      username = (select username from brc.staff where auth_id = auth.uid())
+      or username = 'system'
+    )
+  );
 
 drop policy if exists audit_no_update on brc.audit_log;
 create policy audit_no_update on brc.audit_log for update using (false);
@@ -851,6 +975,9 @@ grant usage on schema brc to anon, authenticated;
 revoke execute on function brc.verify_token(text)    from public;
 revoke execute on function brc.next_job_code()       from public;
 revoke execute on function brc.next_form_serial()    from public;
+revoke execute on function brc.request_form(text, text, text, date, text, text, text) from public;
+revoke execute on function brc.mask_name(text)       from public;
+revoke execute on function brc.mask_phone(text)      from public;
 revoke execute on function brc.run_auto_release()    from public;
 revoke execute on function brc.is_staff()            from public;
 revoke execute on function brc.is_admin()            from public;
@@ -870,13 +997,29 @@ grant execute on function brc.next_form_serial()    to authenticated, service_ro
 -- ⚠️ لا تُمنح brc.public_verification للزائر: تلك الواجهة تكشف serial + full_name + status
 --    لكل الاستمارات بلا أي تحقق من البصمة t=، فيصير أي شخص يملك anon key قادراً على
 --    سحب أسماء كل الباحثين بنداء واحد، وتصبح حماية البصمة في الكيو آر كود بلا معنى.
---    التحقق يتم حصراً عبر brc.verify_form (تتحقق من البصمة وتُرجع استمارة واحدة).
+--    التحقق يتم حصراً عبر brc.verify_form (تتحقق من البصمة وتُرجع استمارة واحدة،
+--    وتُقنّع الاسم والهاتف إن لم تكن البصمة مطابقة).
+--    والطلب الإلكتروني يمرّ عبر brc.request_form التي تتحقق من المدخلات وتضع
+--    الحالة 'pending' دائماً — فالزائر لا يستطيع إصدار استمارة سارية.
 grant select on brc.public_jobs to anon, authenticated;
 grant execute on function brc.verify_form(text, text) to anon, authenticated;
+grant execute on function brc.request_form(text, text, text, date, text, text, text) to anon, authenticated;
 
 -- الموظفون (authenticated): كل عمليات الإدارة
 grant select, insert, update on brc.jobs, brc.applicants, brc.job_attempts to authenticated;
 grant select on brc.audit_log, brc.settings, brc.staff, brc.v_financials_by_staff, brc.v_pending_actions to authenticated;
+
+--  ⚠️ الدرس المستفاد: سياسة RLS **لا تمنح** صلاحية، بل تقيّد صلاحية قائمة.
+--     فكل جدول تحتاجه الواجهة كتابةً يجب أن يكون له GRANT صريح، وإلا فالطلب
+--     يُرفض بـ 42501 «permission denied» **حتى لو وُجدت السياسة**. الأعمدة
+--     التالية أُضيفت لأن الواجهة تكتبها فعلاً (تعديل إعدادات، إدراج سطور تدقيق،
+--     حذف وظيفة/استمارة) — وكلها تبقى مقيّدة بالسياسات أعلاه:
+--       • settings:     التعديل للمدير فقط (settings_admin_write)
+--       • audit_log:    الإضافة باسم صاحب الجلسة أو 'system' (audit_insert)
+--       • delete jobs/applicants: للمدير فقط (jobs_admin_delete …)
+grant insert on brc.audit_log to authenticated;
+grant insert, update on brc.settings to authenticated;
+grant delete on brc.jobs, brc.applicants to authenticated;
 grant execute on function brc.select_attempt(text, text) to authenticated;
 grant execute on function brc.set_outcome(text, smallint, text, text) to authenticated;
 grant execute on function brc.release_hold(text, smallint, text) to authenticated;

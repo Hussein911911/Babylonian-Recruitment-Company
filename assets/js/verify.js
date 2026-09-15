@@ -52,9 +52,56 @@
     if (input && serial) input.value = serial;
 
     if (!serial) return renderEmpty();
+
+    var st = Store.cloudStatus ? Store.cloudStatus() : null;
+    /* الزائر لا يقرأ جدول brc.applicants (RLS) — فالتحقق يمرّ عبر دالة القاعدة
+       brc.verify_form التي تتحقق من البصمة وتُرجع استمارة واحدة مقنّعة إن لم
+       تطابق. لولا هذا لظهر لأي زائر «لا توجد استمارة بهذا الرقم» دائماً. */
+    if (st && st.configured && st.state === 'on' && st.role !== 'staff' && Store.verifyCloud) {
+      var host = document.getElementById('verify-root');
+      host.innerHTML = '<div class="verify-status info"><div class="seal">' +
+        UI.ic('shield') + '</div><div><h1>جارٍ التحقق من القاعدة الرسمية…</h1>' +
+        '<p class="muted mb-0 small">يتم فحص الرقم والبصمة في نظام الشركة.</p></div></div>';
+      Store.verifyCloud(serial, token).then(function (r) {
+        if (!r || !r.ok) return renderNotFound(serial, r && r.error);
+        renderResult(cloudShape(r.form), token);
+      });
+      return;
+    }
+
     var result = Store.verify(serial, token);
     if (!result.ok) return renderNotFound(serial);
     renderResult(result, token);
+  }
+
+  /* تحويل رد دالة القاعدة إلى الشكل الذي تتوقّعه renderResult تماماً.
+     حساب الحالة هنا (لا في SQL) ليبقى سلوك الوضعين واحداً: القاعدة تُخزّن
+     'active' حتى بعد التوظيف، والحالة المعروضة تُشتقّ من المحاولات. */
+  function cloudShape(f) {
+    var attempts = f.attempts || [];
+    var status = f.status;
+    if (status !== 'pending' && status !== 'rejected' && status !== 'expired') {
+      if (attempts.some(function (a) { return a.slotStatus === 'succeeded'; })) status = 'completed';
+      else if (f.expiryDate && new Date(f.expiryDate).getTime() < Date.now()) status = 'expired';
+      else if (f.attemptsLeft === 0) status = 'exhausted';
+      else status = 'active';
+    }
+    return {
+      ok: true, serial: f.serial, fullName: f.fullName, phone: f.phone,
+      masked: f.masked === true, issueDate: f.issueDate, expiryDate: f.expiryDate,
+      createdAt: f.createdAt || f.issueDate, status: status,
+      rejectReason: f.rejectReason || '', requestedCode: f.requestedCode || null,
+      daysLeft: f.daysLeft, attemptsLeft: f.attemptsLeft, attemptsUsed: f.attemptsUsed,
+      attemptLimit: f.attemptLimit, tokenOk: f.tokenOk !== false,
+      attempts: attempts.map(function (a) {
+        return {
+          no: a.no, jobCode: a.jobCode, jobTitle: a.jobTitle, location: a.location,
+          /* هاتف صاحب العمل لا يظهر للزائر (واجهة التحقق العامة تحجبه) */
+          employerPhone: '—', slotStatus: a.slotStatus, note: a.note,
+          selectedAt: a.selectedAt, holdExpiresAt: a.holdExpiresAt, closedAt: a.closedAt
+        };
+      })
+    };
   }
 
   function init() {
@@ -78,7 +125,7 @@
     refreshTimer = setInterval(function () {
       if (!current.serial) return;
       Store.runMaintenance();
-      var fresh = Store.verify(current.serial, '');
+      var fresh = Store.verify(current.serial, current.token);
       if (fresh.ok) renderResult(fresh, current.token);
     }, 30000);
   }
@@ -93,13 +140,14 @@
       '</div>';
   }
 
-  function renderNotFound(serial) {
+  function renderNotFound(serial, reason) {
     var host = document.getElementById('verify-root');
     host.innerHTML = '' +
       '<div class="verify-status danger">' +
         '<div class="seal">' + UI.ic('alert') + '</div>' +
         '<div><h1>لا توجد استمارة بهذا الرقم</h1>' +
-        '<p class="muted mb-0 small">الرقم المُدخل: <b class="mono" dir="ltr">' + UI.esc(serial) + '</b> — تأكد من الرقم أو راجع المكتب على الأرقام الرسمية.</p></div>' +
+        '<p class="muted mb-0 small">' + (reason ? UI.esc(reason) + ' — ' : '') +
+        'الرقم المُدخل: <b class="mono" dir="ltr">' + UI.esc(serial) + '</b> — تأكد من الرقم أو راجع المكتب على الأرقام الرسمية.</p></div>' +
       '</div>' +
       '<div class="panel-body" style="padding-top:0">' +
         '<div class="panel" style="background:#fbe6e5;border-color:#f0c3c1"><div class="panel-body" style="padding:14px 16px">' +

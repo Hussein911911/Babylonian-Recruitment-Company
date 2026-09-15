@@ -114,6 +114,7 @@
       issueDate: toISO(r.issue_date),
       expiryDate: toISO(r.expiry_date),
       status: r.status || 'active',
+      rejectReason: r.reject_reason || '',
       createdBy: r.created_by || null,
       createdAt: toISO(r.created_at),
       notes: r.notes || '',
@@ -133,15 +134,30 @@
        الخادم رقماً آخر وظهر اختلاف مؤقت حتى إعادة الجلب.
      • عند التعارض (رقم موجود) يفشل الإدراج بـ unique violation — وتعامل معه
        طبقة الكتابة بإعادة المحاولة بلا serial ليولّده الخادم. */
+  /* ⚠️ الحقول الناقصة هنا كانت تُنتج «كتابة بلا أثر»: تغيير الحالة إلى مقبول أو
+     مرفوض كان يُنتج عملية تعديل (لأن status داخل التطبيع) لكن الصف المُرسل لا
+     يحمل status — فيبقى الطلب «قيد المراجعة» في القاعدة ولو ظهر مقبولاً في
+     الواجهة. القاعدة: كل حقل يسبّب عملية يجب أن يكون داخل الصف المُرسل. */
   function applicantToDb(o) {
-    return {
+    var row = {
       serial: o.serial || undefined,
       full_name: o.fullName, phone: o.phone, address: o.address || '',
       dob: o.dob || null, gender: o.gender || 'ذكر', nationality: o.nationality || 'عراقي',
+      status: o.status || 'active',
       fee_amount: n(o.fee, 10000), fee_paid: !!o.feePaid,
       printed_count: n(o.printedCount), notes: o.notes || '',
+      reject_reason: o.rejectReason || '',
       requested_code: o.requestedCode || null
     };
+    /* الحقول الزمنية تُرسل إن وُجدت فقط:
+       • طلب إلكتروني (قيد المراجعة) بلا تاريخ إصدار محلياً — وإرسال null يخالف
+         قيد NOT NULL فيخفق الإدراج كله.
+       • وعند القبول تُرسل التواريخ الجديدة فعلاً، وإلا بقي تاريخ الإصدار تاريخ
+         الطلب وانتهت الصلاحية 30 يوماً من لحظة الطلب لا من لحظة الإصدار. */
+    if (o.issueDate) row.issue_date = o.issueDate;
+    if (o.expiryDate) row.expiry_date = o.expiryDate;
+    if (o.attemptLimit != null) row.attempt_limit = n(o.attemptLimit, 5);
+    return row;
   }
 
   /* ------------------------- تحويل المحاولات (attempts) -------------------------
@@ -171,10 +187,17 @@
     };
   }
 
+  var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   function attemptToDb(o) {
     return {
       serial: o.serial, attempt_no: n(o.no),
-      job_id: o.jobId || null, job_code: o.jobCode || null,
+      /* ⚠️ job_id يُرسل فقط إن كان UUID صالحاً: المعرّفات المحلية المولَّدة
+         (uid('job') = 'job-xxxx') ليست UUID، وإرسالها يُفشل الإدراج بـ
+         «invalid input syntax for type uuid». عند غيابها يبقى job_code
+         وهو كافٍ لربط المحاولة بالوظيفة. */
+      job_id: UUID_RE.test(String(o.jobId || '')) ? o.jobId : null,
+      job_code: o.jobCode || null,
       slot_status: o.slotStatus || 'empty',
       selected_at: o.selectedAt || null, hold_expires_at: o.holdExpiresAt || null,
       closed_at: o.closedAt || null, outcome_note: o.note || ''
@@ -319,6 +342,95 @@
   }
 
   /* ============================================================================
+   *  القراءة العامة (بلا تسجيل دخول) — للزائر
+   *  ---------------------------------------------------------------------------
+   *  anon لا يملك صلاحية على brc.jobs إطلاقاً (RLS)، بل على العرض brc.public_jobs
+   *  فقط. فلو قرأ الزائر brc.jobs لرجع الجدول فارغاً/مرفوضاً وظهر الموقع بلا وظائف.
+   *  لذلك للزائر مسار قراءة منفصل — وهذا هو الفرق بين «يعمل عند الموظف» و«يعمل
+   *  عند الزائر»، وهو فرق يُكتشف متأخراً عادةً (الموظف مُسجَّل دخوله فلا يرى الخلل).
+   * ========================================================================== */
+  function fetchPublicJobs(client) {
+    return client.from('public_jobs').select('*').then(function (res) {
+      if (res && res.error) {
+        return { ok: false, error: res.error, jobs: [] };
+      }
+      return { ok: true, jobs: (res && res.data || []).map(jobFromDb) };
+    });
+  }
+
+  /* ------------------------- الطلب الإلكتروني (زائر) -------------------------
+   *  إدراج مباشر في brc.applicants ممنوع على anon (revoke all) — فالطلب يمرّ
+   *  عبر brc.request_form التي تتحقق من المدخلات وتضع الحالة 'pending' دائماً.
+   * ----------------------------------------------------------------------- */
+  function requestForm(client, data) {
+    return client.rpc('request_form', {
+      p_full_name: String(data.fullName || '').trim(),
+      p_phone: String(data.phone || '').trim(),
+      p_address: String(data.address || '').trim(),
+      /* التاريخ الفارغ '' ليس تاريخاً صالحاً في PostgreSQL — نرسل null */
+      p_dob: data.dob ? data.dob : null,
+      p_gender: data.gender || 'ذكر',
+      p_notes: data.notes || '',
+      p_requested_code: data.requestedCode || null
+    }).then(function (res) {
+      if (res && res.error) {
+        return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر إرسال الطلب' };
+      }
+      var d = res && res.data;
+      if (!d || typeof d !== 'object') return { ok: false, code: 'empty', error: 'لا رد من الخادم' };
+      if (d.ok === false) return { ok: false, code: 'rejected', error: d.error || 'تعذّر إرسال الطلب' };
+      return { ok: true, serial: d.serial, status: d.status || 'pending' };
+    }).catch(function (e) {
+      return { ok: false, code: 'network', error: 'تعذّر الاتصال: ' + (e && e.message || e) };
+    });
+  }
+
+  /* ------------------------- التحقق العام من استمارة -------------------------
+   *  نفس المنطق: جدول brc.applicants ليس مقروءاً للزائر، فالتحقق يمرّ حصراً عبر
+   *  الدالة brc.verify_form(serial, token) التي تتحقق من البصمة وتُرجع استمارة
+   *  واحدة. الفرق الجوهري: لو قرأنا الجدول لسحب الزائر بيانات كل الباحثين.
+   * ------------------------------------------------------------------------- */
+  function verifyForm(client, serial, token) {
+    if (!serial) return Promise.resolve({ ok: false, code: 'bad_input', error: 'أدخل رقم الاستمارة' });
+    return client.rpc('verify_form', { p_serial: String(serial).trim(), p_token: token || null })
+      .then(function (res) {
+        if (res && res.error) {
+          return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر التحقق' };
+        }
+        var data = res && res.data;
+        if (!data || typeof data !== 'object') {
+          return { ok: false, code: 'empty', error: 'لا نتيجة من الخادم' };
+        }
+        if (data.ok === false) return { ok: false, code: 'not_found', error: data.error || 'لا توجد استمارة' };
+        /* نُطبّع الأسماء إلى camelCase كما تتوقّع الواجهة (بما فيها المحاولات) */
+        return {
+          ok: true,
+          form: {
+            serial: data.serial, fullName: data.fullName, phone: data.phone,
+            issueDate: data.issueDate, expiryDate: data.expiryDate, status: data.status,
+            daysLeft: data.daysLeft, attemptLimit: data.attemptLimit,
+            attemptsUsed: data.attemptsUsed, attemptsLeft: data.attemptsLeft,
+            tokenOk: data.tokenOk !== false,
+            masked: data.masked === true,
+            requestedCode: data.requestedCode || null,
+            rejectReason: data.rejectReason || '',
+            createdAt: data.createdAt || data.issueDate,
+            attempts: (data.attempts || []).map(function (a) {
+              return {
+                no: a.no, jobCode: a.jobCode, jobTitle: a.jobTitle, location: a.location,
+                slotStatus: a.slotStatus, selectedAt: a.selectedAt,
+                holdExpiresAt: a.holdExpiresAt, closedAt: a.closedAt, note: a.note
+              };
+            })
+          }
+        };
+      })
+      .catch(function (e) {
+        return { ok: false, code: 'network', error: 'تعذّر الاتصال: ' + (e && e.message || e) };
+      });
+  }
+
+  /* ============================================================================
    *  تطبيق تغيير Realtime على كائن db — ترتيب حسب النوع:
    *    upsert: استبدال أو إضافة   ·   delete: حذف
    *  التغيير المُستلزم: تغيير في جدول الوظائف يحدّث البيانات المُسطّحة للمحاولات
@@ -433,6 +545,8 @@
     settingsFromDb: settingsFromDb, settingsToDb: settingsToDb,
     /* بيانات */
     buildDb: buildDb, fetchAll: fetchAll, TABLES: TABLES,
+    fetchPublicJobs: fetchPublicJobs, verifyForm: verifyForm,
+    requestForm: requestForm,
     applyChange: applyChange, subscribeAll: subscribeAll,
     synthId: synthId
   };

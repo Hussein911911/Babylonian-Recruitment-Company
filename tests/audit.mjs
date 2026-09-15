@@ -267,7 +267,12 @@ for (const [js, page] of CONTRACT) {
 {
   const union = new Set([...pageIds('index.html'), ...pageIds('verify.html'), ...pageIds('dashboard.html')]);
   const inStandalone = pageIds('brc-standalone.html');
-  const missing = [...union].filter((id) => !inStandalone.has(id));
+  /* نفس السماح المطبّق في الفحص أعلاه: معرّف يُنشئه الكود ديناميكياً (id="…" داخل
+     قالب نصي) هو موجود فعلاً في الملف المستقل ولو لم يكن في بنيته الأولية. بلا
+     هذا السماح يُرفض أي عنصر يُبنى بالكود عند الشرط — وهو أسلوب مشروع ومستخدم
+     في التنبيهات والنوافذ هنا. */
+  const standaloneSrc = readFileSync(join(ROOT, 'brc-standalone.html'), 'utf8');
+  const missing = [...union].filter((id) => !inStandalone.has(id) && !standaloneSrc.includes('id="' + id + '"'));
   if (missing.length) bad('brc-standalone.html — يجمع معرّفات كل الصفحات', 'ناقص: ' + missing.slice(0, 10).join(', '));
   else ok('brc-standalone.html — يجمع ' + union.size + ' معرّفاً من الصفحات الثلاث كاملة');
 }

@@ -73,7 +73,16 @@ const funcs = [];
 let f;
 while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 
-check('عدد الدوال المتوقّع (15)', funcs.length === 15, funcs.length + '');
+check('عدد الدوال المتوقّع (18)', funcs.length === 18, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+/* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
+   لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
+const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
+  'brc.trg_defaults', 'brc.trg_attempt_hold', 'brc.trg_no_duplicate_job', 'brc.trg_audit',
+  'brc.run_auto_release', 'brc.is_staff', 'brc.is_admin', 'brc.current_staff_id',
+  'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
+  'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold'];
+check('كل الدوال المتوقّعة موجودة بالاسم', EXPECTED_FUNCS.every((n) => funcs.some((x) => x.name === n)),
+  'المفقود: ' + EXPECTED_FUNCS.filter((n) => !funcs.some((x) => x.name === n)).join(', '));
 
 const badVol = funcs.filter((fn) =>
   /\b(stable|immutable)\b/i.test(fn.text) && /\binsert\s+into\b|\bupdate\s+[\w.]+\s+set\b|\bdelete\s+from\b/i.test(fn.text));
@@ -124,6 +133,47 @@ check('الزائر يستطيع قراءة brc.public_jobs فقط', /public_job
 check('الزائر يستطيع نداء brc.verify_form', /verify_form/i.test(anonTargets));
 check('لا جدول حساس ممنوح للزائر مباشرة',
   !/\b(applicants|audit_log|staff|settings)\b/i.test(grantLines.filter((l) => /\banon\b/i.test(l) && !/revoke/i.test(l)).join(' ')));
+
+/* ------------------------- 10) تطابق بيانات الشركة ------------------------- */
+step(10, 'بيانات الشركة — لا تناقض بين config.js و schema.sql');
+
+/* بيانات الشركة تظهر على الاستمارات المطبوعة وأكواد الكيو آر كود، فاختلافها
+   بين الواجهة وقاعدة البيانات يعني استمارة مطبوعة بعنوان أو هاتف مختلفين. */
+const cfgSrc = readFileSync(join(ROOT, 'assets', 'js', 'config.js'), 'utf8');
+const cfgCompany = {};
+{
+  const block = cfgSrc.slice(cfgSrc.indexOf('company: {'), cfgSrc.indexOf('/* --------------------------------------------------------------', cfgSrc.indexOf('company: {')));
+  for (const m of block.matchAll(/(\w+):\s*'([^']*)'/g)) cfgCompany[m[1]] = m[2];
+  const ph = block.match(/phones:\s*\[([^\]]*)\]/);
+  if (ph) cfgCompany.phones = ph[1].split(',').map((x) => x.trim().replace(/^'|'$/g, '')).filter(Boolean);
+}
+check('قراءة بيانات الشركة من config.js', Object.keys(cfgCompany).length > 5, Object.keys(cfgCompany).join(','));
+
+const schemaCompany = {};
+{
+  const start = RAW.indexOf("('company', jsonb_build_object(");
+  const block = RAW.slice(start, RAW.indexOf('on conflict (key) do nothing', start));
+  for (const m of block.matchAll(/'(\w+)',\s*'([^']*)'/g)) schemaCompany[m[1]] = m[2];
+  const ph = block.match(/'phones',\s*jsonb_build_array\(([^)]*)\)/);
+  if (ph) schemaCompany.phones = ph[1].split(',').map((x) => x.trim().replace(/^'|'$/g, '')).filter(Boolean);
+}
+check('قراءة بيانات الشركة من schema.sql', Object.keys(schemaCompany).length > 5, Object.keys(schemaCompany).join(','));
+
+/* الحقول الحرجة: تظهر مطبوعة على الاستمارة */
+for (const key of ['nameAr', 'nameEn', 'legalName', 'address', 'email']) {
+  check(`حقل «${key}» متطابق بين الواجهة والقاعدة`, cfgCompany[key] === schemaCompany[key],
+    `config="${cfgCompany[key]}" ← → schema="${schemaCompany[key]}"`);
+}
+check('أرقام الهاتف متطابقة (كانت مختلفة: 07715993271 مقابل 07863148999)',
+  Array.isArray(cfgCompany.phones) && Array.isArray(schemaCompany.phones) &&
+  cfgCompany.phones.join('|') === schemaCompany.phones.join('|'),
+  `config=[${(cfgCompany.phones || []).join(', ')}] ← → schema=[${(schemaCompany.phones || []).join(', ')}]`);
+check('اسم الشركة القانوني متطابق (كان مختلفاً: «(شركة الهدف)» في القاعدة فقط)',
+  cfgCompany.legalName === schemaCompany.legalName);
+check('العنوان متطابق', cfgCompany.address === schemaCompany.address);
+check('لا حقل في الواجهة ناقص في القاعدة',
+  Object.keys(cfgCompany).filter((k) => k !== 'phones').every((k) => schemaCompany[k] !== undefined),
+  Object.keys(cfgCompany).filter((k) => k !== 'phones' && schemaCompany[k] === undefined).join(', '));
 
 /* ------------------------- 5ب) منح الدوال للزائر ------------------------- */
 step('5ب', 'منح الدوال — لا دالة حسّاسة قابلة للنداء من الزائر');

@@ -431,15 +431,30 @@
             UI.toast('warn', 'كود غير معروف', 'لا توجد وظيفة بالكود ' + reqCode + ' — سنسجّل طلبك بدون تحديد كود.');
             reqCode = '';
           }
-          var app = Store.createApplicant({
+          var payload = {
             fullName: name, phone: phone, dob: dob, gender: gender,
             address: (address ? address : region + ' - بابل'),
             requestedCode: reqCode || null,
-            notes: reqCode ? 'طلب إلكتروني للوظيفة ' + reqCode : 'طلب إلكتروني من الموقع',
-            pending: true
-          });
-          close();
-          showRequestReceived(app, reqCode);
+            notes: reqCode ? 'طلب إلكتروني للوظيفة ' + reqCode : 'طلب إلكتروني من الموقع'
+          };
+          /* الزائر لا يملك صلاحية إدراج في جدول الاستمارات، فالطلب يمرّ عبر دالة
+             القاعدة brc.request_form (في الوضع المحلي يُنفَّذ محلياً كما قبل). */
+          var btn = box.querySelector('#req-submit');
+          if (btn) { btn.disabled = true; btn.textContent = 'جارٍ الإرسال…'; }
+          var done = function (r) {
+            if (btn) { btn.disabled = false; btn.textContent = 'إصدار الطلب'; }
+            if (!r || !r.ok) {
+              UI.toast('err', 'تعذّر إرسال الطلب', (r && r.error) || 'حاول مرة أخرى بعد قليل.');
+              return;
+            }
+            close();
+            showRequestReceived(r.app, reqCode);
+          };
+          if (Store.submitPublicRequest) {
+            Store.submitPublicRequest(payload).then(done);
+          } else {
+            done({ ok: true, app: Store.createApplicant(Object.assign(payload, { pending: true })) });
+          }
         });
       }
     });
