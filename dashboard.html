@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=023ff0b616">
+<link rel="stylesheet" href="assets/css/style.css?v=be750353a5">
 </head>
 <body>
 <!-- ===========================================================================
@@ -649,6 +649,7 @@
             <div class="flex flex-wrap" style="gap:8px">
               <button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> نسخة احتياطية سريعة</button>
               <button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير JSON</button>
+              <button class="btn btn-outline" id="btn-export-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg> نسخة مشفّرة للابتوب</button>
               <button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"/></svg> استيراد نسخة</button>
               <button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> جدولة النسخ التلقائي</button>
               <button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> عرض النسخ الاحتياطية</button>
@@ -670,8 +671,7 @@
                   <button class="btn btn-outline btn-sm" id="btn-disable-schedule"><svg class="ic"><use href="#i-x" xlink:href="#i-x"/></svg> إيقاف الجدولة</button>
                 </div>
                 <p class="tiny muted mt-2 mb-0">
-                  تعمل الجدولة ما دامت الصفحة مفتوحة في المتصفح: تُنشأ نسخة واحدة في اليوم والوقت المحدّدين،
-                  وتُلتقط تلقائياً عند فتح الصفحة إذا فات وقتها في نفس اليوم. يُحتفظ بآخر 20 نسخة.
+                  الجدولة المحلية تعمل عند فتح لوحة المدير. للنسخ التلقائي خارج الموقع يجب تفعيل Backup/PITR في Supabase وربط مخزن خارجي خاص؛ لا تعتمد على المتصفح وحده.
                 </p>
               </div>
             </div>
@@ -814,16 +814,16 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=023ff0b616"></script>
-<script src="assets/vendor/supabase.js?v=023ff0b616"></script>
-<script src="assets/js/supabase-config.js?v=023ff0b616"></script>
-<script src="assets/js/qr.js?v=023ff0b616"></script>
-<script src="assets/js/cloud.js?v=023ff0b616"></script>
-<script src="assets/js/cloud-auth.js?v=023ff0b616"></script>
-<script src="assets/js/cloud-sync.js?v=023ff0b616"></script>
-<script src="assets/js/store.js?v=023ff0b616"></script>
-<script src="assets/js/ui.js?v=023ff0b616"></script>
-<script src="assets/js/voucher.js?v=023ff0b616"></script>
-<script src="assets/js/dashboard.js?v=023ff0b616"></script>
+<script src="assets/js/config.js?v=be750353a5"></script>
+<script src="assets/vendor/supabase.js?v=be750353a5"></script>
+<script src="assets/js/supabase-config.js?v=be750353a5"></script>
+<script src="assets/js/qr.js?v=be750353a5"></script>
+<script src="assets/js/cloud.js?v=be750353a5"></script>
+<script src="assets/js/cloud-auth.js?v=be750353a5"></script>
+<script src="assets/js/cloud-sync.js?v=be750353a5"></script>
+<script src="assets/js/store.js?v=be750353a5"></script>
+<script src="assets/js/ui.js?v=be750353a5"></script>
+<script src="assets/js/voucher.js?v=be750353a5"></script>
+<script src="assets/js/dashboard.js?v=be750353a5"></script>
 </body>
 </html>

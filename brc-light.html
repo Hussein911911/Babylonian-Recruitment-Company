@@ -2355,6 +2355,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
             <div class="flex flex-wrap" style="gap:8px">
               <button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> نسخة احتياطية سريعة</button>
               <button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير JSON</button>
+              <button class="btn btn-outline" id="btn-export-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg> نسخة مشفّرة للابتوب</button>
               <button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"/></svg> استيراد نسخة</button>
               <button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> جدولة النسخ التلقائي</button>
               <button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> عرض النسخ الاحتياطية</button>
@@ -2376,8 +2377,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
                   <button class="btn btn-outline btn-sm" id="btn-disable-schedule"><svg class="ic"><use href="#i-x" xlink:href="#i-x"/></svg> إيقاف الجدولة</button>
                 </div>
                 <p class="tiny muted mt-2 mb-0">
-                  تعمل الجدولة ما دامت الصفحة مفتوحة في المتصفح: تُنشأ نسخة واحدة في اليوم والوقت المحدّدين،
-                  وتُلتقط تلقائياً عند فتح الصفحة إذا فات وقتها في نفس اليوم. يُحتفظ بآخر 20 نسخة.
+                  الجدولة المحلية تعمل عند فتح لوحة المدير. للنسخ التلقائي خارج الموقع يجب تفعيل Backup/PITR في Supabase وربط مخزن خارجي خاص؛ لا تعتمد على المتصفح وحده.
                 </p>
               </div>
             </div>
@@ -2571,11 +2571,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
      * المستخدمون (نظام تجريبي يعمل بالكامل داخل المتصفح)
      * في النسخة السحابية تُدار الحسابات والصلاحيات عبر Supabase Auth + RLS
      * -------------------------------------------------------------- */
-    users: [
-      { username: 'admin', password: 'admin123', name: 'المدير العام', role: 'admin', title: 'الإدارة العامة' },
-      { username: 'staff', password: 'staff123', name: 'أحمد الموسوي', role: 'staff', title: 'موظف توظيف' },
-      { username: 'staff2', password: 'staff123', name: 'زينب الحسيني', role: 'staff', title: 'موظفة توظيف' }
-    ],
+    users: [],
 
     /* مناطق عمل الشركة */
     regions: [
@@ -6532,6 +6528,23 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
   var lastSessionKey = null;
 
+
+  /* نسخة خارجية مشفّرة للابتوب: كلمة المرور لا تُرسل إلى أي خادم. */
+  function encryptedBackup(text, password) {
+    if (!root.crypto || !root.crypto.subtle) return Promise.reject(new Error('المتصفح لا يدعم التشفير الآمن'));
+    var enc = new TextEncoder(), salt = crypto.getRandomValues(new Uint8Array(16));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey'])
+      .then(function (base) { return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: salt, iterations: 250000, hash: 'SHA-256' },
+        base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']); })
+      .then(function (key) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, enc.encode(text)); })
+      .then(function (buf) {
+        function b64(x) { var a = new Uint8Array(x), out = ''; for (var i = 0; i < a.length; i += 0x8000) out += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(out); }
+        return JSON.stringify({ format: 'BRC-ENCRYPTED-BACKUP-v1', algorithm: 'AES-256-GCM', kdf: 'PBKDF2-SHA-256', iterations: 250000, salt: b64(salt), iv: b64(iv), data: b64(buf) });
+      });
+  }
+
   /* مفتاح الجلسة: يُستخدم لرصد الدخول/الخروج وإعادة ضبط الواجهة والصلاحيات */
   function sessionKey() {
     var u = Store.currentUser();
@@ -8079,6 +8092,19 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       UI.download('brc-backup-' + Store.fmtDate(new Date()) + '.json', Store.exportJson(), 'application/json');
       UI.toast('ok', 'تصدير النسخة', 'حُفظ ملف JSON يحتوي كل البيانات والسجلات.');
     });
+    var exEncrypted = document.getElementById('btn-export-encrypted');
+    if (exEncrypted) exEncrypted.addEventListener('click', function () {
+      var p1 = window.prompt('اكتب كلمة مرور قوية للنسخة المشفّرة:');
+      if (!p1 || p1.length < 10) { UI.toast('warn', 'كلمة المرور قصيرة', 'استخدم 10 أحرف أو أكثر واحفظها خارج الموقع.'); return; }
+      var p2 = window.prompt('أعد كتابة كلمة المرور:');
+      if (p1 !== p2) { UI.toast('err', 'لم تتطابق كلمتا المرور', 'لم يتم إنشاء النسخة.'); return; }
+      exEncrypted.disabled = true;
+      encryptedBackup(Store.exportJson(), p1).then(function (data) {
+        UI.download('BRC-backup-' + Store.fmtDate(new Date()) + '.brc.enc.json', data, 'application/json');
+        UI.toast('ok', 'تم إنشاء النسخة المشفّرة', 'احفظ الملف وكلمة المرور في مكانين آمنين.');
+      }).catch(function (e) { UI.toast('err', 'فشل التشفير', e.message); }).then(function () { exEncrypted.disabled = false; });
+    });
+
     var im = document.getElementById('btn-import');
     var imf = document.getElementById('import-file');
     if (im && imf) {
