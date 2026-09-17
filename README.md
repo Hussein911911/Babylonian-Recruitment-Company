@@ -58,6 +58,20 @@ npm start                      # ثم افتح http://localhost:4173
 #    index.html · verify.html · dashboard.html · brc-standalone.html
 ```
 
+### النشر — Cloudflare Pages فقط
+المنصّة المعتمدة للنشر هي **Cloudflare Pages** (أُزيل إعداد Render و `render.yaml` من المستودع):
+
+- **البناء:** لا شيء (موقع ثابت) — Production branch: `main` · Build command: فارغ · Output directory: `.`
+- **الترويسات والمسارات النظيفة:** `_headers` و `_redirects` في الجذر يقرأهما Cloudflare تلقائياً
+  (بديل حرفي لِما كان في `render.yaml`): ترويسات أمنية، منع تخزين `sw.js`، وكاش طويل للأصول،
+  وإعادة كتابة `/verify` · `/dashboard` · `/standalone` · `/light`.
+- **معاينات الفروع:** تُفعَّل من Settings → Builds & deployments → Preview deployments،
+  فيحصل كل فرع على رابط `<branch>.<project>.pages.dev`.
+- **النطاق الرسمي:** Custom domains → `brc-babil.com` + `www`، ورابط التحقق المطبوع يتبعه تلقائياً.
+- **بعد كل تحديث واجهة:** `node tools/build.mjs && node tools/build.mjs --light` ثم ارفع `CACHE_NAME` في `sw.js`.
+
+📄 **الخطوات الكاملة + إلغاء Render + قائمة فحص بعد النشر:** `docs/deploy-cloudflare.md`
+
 ### الحفظ والنقل
 - **ملف واحد:** `brc-standalone.html` (≈ 2.6 ميجابايت) — انسخه على فلاش/هاتف/إيميل، افتحه بأي متصفح،
   ويعمل **بلا إنترنت**: الصور والخطوط والكود كلها داخله. مساراته: `#home` `#jobs` `#!verify?form=...` `#!dashboard`.

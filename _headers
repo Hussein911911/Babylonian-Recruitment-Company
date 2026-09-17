@@ -1,0 +1,30 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  شركة بابل للتوظيف (BRC) — ترويسات النشر على Cloudflare Pages
+#  ---------------------------------------------------------------------------
+#  هذا الملف يقرأه Cloudflare Pages تلقائياً من جذر مجلد النشر (.) بلا أي بناء.
+#  النشر الوحيد المعتمد للمشروع هو Cloudflare Pages (pages.dev / النطاق الرسمي).
+#  تفاصيل الخطوات في docs/deploy-cloudflare.md
+# ═══════════════════════════════════════════════════════════════════════════
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+  Permissions-Policy: geolocation=(), microphone=(), camera=(self)
+
+# Service Worker: يجب ألّا يُخزَّن طويلاً وإلا بقيت أجهزة الموظفين على نسخة قديمة
+/sw.js
+  Cache-Control: no-cache, must-revalidate
+
+# النسخة المستقلّة القابلة للتنزيل: تتغيّر مع كل بناء
+/brc-standalone.html
+  Cache-Control: no-cache
+/brc-light.html
+  Cache-Control: no-cache
+
+# الخطوط والأصول الثابتة: تخزين طويل
+/assets/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/img/*
+  Cache-Control: public, max-age=604800

@@ -14,7 +14,7 @@
  *  التشغيل:  node tests/audit.mjs
  * =========================================================================== */
 import { JSDOM, VirtualConsole } from 'jsdom';
-import { readFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -477,6 +477,59 @@ for (const file of PAGES.filter((f) => f.startsWith('brc-'))) {
 {
   const routes = ['', '#jobs', '#!verify?form=BRC-NO-000120', '#!dashboard'];
   ok('مسارات التنقل داخل الملف الواحد: ' + routes.join('  ·  '));
+}
+
+/* ═══ 8.5) إعداد النشر — Cloudflare Pages وحده ════════════════════════════ */
+section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا رابط ثانٍ');
+
+{
+  const rootFiles = readdirSync(ROOT, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => e.name);
+  /* قرار الإدارة: Cloudflare Pages هي المنصّة الوحيدة. أي ملف إعداد لمنصّة أخرى
+     يعني رابطاً ثانياً للموقع — نفس المشكلة التي أُلغيت. */
+  const otherHosts = rootFiles.filter((f) => /^(render|netlify|vercel|firebase|\.platform|app)\.(ya?ml|json|toml)$/i.test(f) ||
+    /^(vercel\.json|netlify\.toml|firebase\.json)$/i.test(f) || f === 'render.yaml');
+  if (otherHosts.length) bad('لا إعداد نشر لمنصّة ثانية في الجذر', otherHosts.join(', '));
+  else ok('لا إعداد نشر لمنصّة ثانية — Cloudflare Pages وحدها (لا Render/Netlify/Vercel)');
+
+  const need = ['_headers', '_redirects'];
+  const missingCf = need.filter((f) => !rootFiles.includes(f));
+  if (missingCf.length) bad('ملفّات Cloudflare Pages موجودة', 'ناقص: ' + missingCf.join(', '));
+  else ok('ملفّات Cloudflare Pages في الجذر: _headers (ترويسات) · _redirects (مسارات نظيفة)');
+
+  const redirects = readFileSync(join(ROOT, '_redirects'), 'utf8');
+  const cleanRoutes = ['/verify', '/dashboard', '/standalone', '/light'];
+  const badRoutes = cleanRoutes.filter((r) => !new RegExp('^\\s*' + r + '\\s+\\S+\\s+200\\s*$', 'm').test(redirects));
+  if (badRoutes.length) bad('المسارات النظيفة كلها معرّفة بـ 200', 'ناقص: ' + badRoutes.join(', '));
+  else ok('المسارات النظيفة معرّفة في _redirects: ' + cleanRoutes.join(' · '));
+
+  const headers = readFileSync(join(ROOT, '_headers'), 'utf8');
+  const needHeaders = ['X-Content-Type-Options', 'Referrer-Policy', 'X-Frame-Options'];
+  const missingHeaders = needHeaders.filter((h) => !headers.includes(h));
+  const swNoCache = /\/sw\.js[\s\S]{0,80}no-cache/i.test(headers);
+  if (missingHeaders.length) bad('ترويسات الأمان في _headers', 'ناقص: ' + missingHeaders.join(', '));
+  else if (!swNoCache) bad('منع تخزين sw.js مؤقتاً', 'غير موجود في _headers');
+  else ok('ترويسات الأمان كاملة + sw.js بلا كاش (يُجبر الأجهزة على النسخة الجديدة)');
+
+  /* رابط التحقق المطبوع يجب أن يبقى نظيفاً (بلا .html) لأنه يتغيّر إلى النطاق الرسمي */
+  const vurl = loaded['index.html'].window.BRCStore.verifyLocalUrl('BRC-NO-000120');
+  if (!/^verify\.html\?/.test(vurl)) bad('رابط التحقق المحلي', vurl);
+  else ok('رابط التحقق المحلي نظيف ويطابق مسار /verify في _redirects');
+
+  /* لا إشارة تشغيلية لمنصّة ثانية في الكود والإعداد (المستندات تُذكر الإلغاء تاريخياً فلا تُفحص) */
+  const scanned = ['assets/js/store.js', 'assets/js/config.js', 'tools/serve.mjs', 'sw.js', '_redirects', '_headers', 'package.json'];
+  const leftovers = scanned.filter((f) => existsSync(join(ROOT, f)) && /onrender|render\.yaml|render\.com|netlify\.toml|vercel\.json/i.test(readFileSync(join(ROOT, f), 'utf8')));
+  if (leftovers.length) bad('لا إشارة تشغيلية لمنصّة نشر ثانية في الكود', leftovers.join(' · '));
+  else ok('لا إشارة تشغيلية لمنصّة ثانية في الكود والإعداد (' + scanned.length + ' ملفات)');
+
+  if (!existsSync(join(ROOT, 'docs', 'deploy-cloudflare.md'))) bad('دليل النشر على Cloudflare موجود', 'docs/deploy-cloudflare.md مفقود');
+  else {
+    const guide = readFileSync(join(ROOT, 'docs', 'deploy-cloudflare.md'), 'utf8');
+    const topics = [['Production branch', /Production branch/i], ['إلغاء Render', /Delete Service|إلغاء Render/i],
+      ['النطاق الرسمي', /Custom domain/i], ['نشر wrangler', /wrangler pages deploy/i], ['فحص بعد النشر', /Purge Everything/i]];
+    const missingTopics = topics.filter(([, re]) => !re.test(guide)).map(([k]) => k);
+    if (missingTopics.length) bad('دليل Cloudflare يغطّي الخطوات كاملة', 'ناقص: ' + missingTopics.join(' · '));
+    else ok('دليل النشر docs/deploy-cloudflare.md يغطّي الإعداد والمعاينات والنطاق وإلغاء Render والفحص');
+  }
 }
 
 /* ═══ 9) سلامة البيانات والمنطق في المتصفح ══════════════════════════════ */
