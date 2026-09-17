@@ -4,12 +4,12 @@
  *  ---------------------------------------------------------------------------
  *  يحاكي رحلة حقيقية كاملة ببيانات واحدة تنتقل بين الصفحات:
  *
- *    1) زائر يطلب استمارة من الموقع العام (يملأ النموذج ويضغط الإصدار)
- *    2) الموظف يدخل المنظومة ويرى الاستمارة الجديدة ويرشّح لها وظيفة
+ *    1) زائر يتصفّح الوظائف فقط ويحجز بالتواصل (بلا تقديم ولا تحقق)
+ *    2) المكتب يسجّل الطلب، والموظف يعتمده ويحجز الوظيفة للاستمارة
  *    3) رفض المرشح ⇒ الوظيفة ترجع «متاحة» والمحاولة التالية تُفعَّل
- *    4) مسح كيو آر كود الاستمارة ⇒ صفحة التحقق تعرض الحالة والمحاولات
- *    5) الموظف يطبع الاستمارة ⇒ قالب A4 يمتدّ إلى حاوية الطباعة
- *    6) بصمة مزيفة ⇒ تحذير أمني واضح
+ *    4) الموظف يفحص الاستمارة بكيو آر كود ⇒ الحالة والمحاولات
+ *    5) الزائر يحاول التحقق ⇒ بوابة تمنعه بلا أي بيانات + بصمة مزيفة ⇒ تحذير
+ *    6) الموظف يطبع الاستمارة ⇒ قالب A4 يمتدّ إلى حاوية الطباعة
  *
  *  ملاحظة: كل نافذة متصفح افتراضي (jsdom) لها تخزينها الخاص، فننقل قاعدة
  *  البيانات بين الصفحات عبر export/import — وهذا يحاكي «نفس المتصفح» تماماً.
@@ -30,7 +30,21 @@ const ok = (t) => { pass++; console.log('   ✅ ' + t); };
 const bad = (t, d) => { fail++; problems.push(t + (d ? ' — ' + d : '')); console.log('   ❌ ' + t + (d ? '  → ' + d : '')); };
 const check = (t, cond, detail) => (cond ? ok(t) : bad(t, detail));
 
-async function open(file, query) {
+/* jsdom لا يوفّر sessionStorage لأصول file:// — نزرع جلسة الموظف عبر واجهة تخزين بديلة */
+const STAFF_SESSION = { username: 'staff', name: 'موظف فحص', role: 'staff', title: 'موظف توظيف', at: new Date().toISOString() };
+function staffStorage() {
+  const m = new Map([['brc_session_v2', JSON.stringify(STAFF_SESSION)]]);
+  return {
+    getItem: (k) => (m.has(String(k)) ? m.get(String(k)) : null),
+    setItem: (k, v) => m.set(String(k), String(v)),
+    removeItem: (k) => m.delete(String(k)),
+    clear: () => m.clear(),
+    key: (i) => Array.from(m.keys())[i] || null,
+    get length() { return m.size; }
+  };
+}
+
+async function open(file, query, opts = {}) {
   const vc = new VirtualConsole();
   const errors = [];
   vc.on('jsdomError', (e) => {
@@ -46,6 +60,7 @@ async function open(file, query) {
     beforeParse(w) {
       Object.defineProperty(w, 'print', { configurable: true, writable: true, value: () => { w.__printed = (w.__printed || 0) + 1; } });
       w.__printed = 0;
+      if (opts.session === 'staff') Object.defineProperty(w, 'sessionStorage', { configurable: true, value: staffStorage() });
     }
   });
   await new Promise((r) => { dom.window.addEventListener('load', r); setTimeout(r, 6000); });
@@ -64,86 +79,113 @@ console.log('\n' + '═'.repeat(72));
 console.log('  BRC — اختبار المسار الكامل (من الزائر إلى التحقق والطباعة)');
 console.log('═'.repeat(72));
 
-/* ═══ 1) الموقع العام: طلب استمارة كما يفعل الزائر ═════════════════════════ */
-step(1, 'الموقع العام — زائر يطلب استمارة إلكترونية');
+/* ═══ 1) الموقع العام: الزائر يتصفّح ويحجز — بلا تقديم ولا تحقق ════════════ */
+step(1, 'الموقع العام — زائر يتصفّح الوظائف ويحجز بالتواصل مع الشركة');
 
 const site = await open('index.html');
 const W = site.w;
 const S = W.BRCStore;
 
+const cards = site.doc.querySelectorAll('#jobs-grid .job-card').length;
+check('الوظائف المتاحة معروضة للزائر (' + cards + ' بطاقة)', cards >= 8);
+
+/* سياسة الشركة: لا طلب استمارة ولا تحقق من الزائر */
+const badRequest = site.doc.getElementById('btn-request-form') || site.doc.getElementById('btn-request-form-2') ||
+  site.doc.getElementById('req-form') || site.doc.querySelector('[data-action="request-form"]');
+check('لا يوجد أي زر «اطلب استمارة» موجّه للزائر', !badRequest, badRequest && badRequest.outerHTML.slice(0, 60));
+const badVerify = site.doc.getElementById('verify-quick') || site.doc.getElementById('verify-serial') ||
+  site.doc.querySelector('[data-action="verify"]');
+check('لا توجد واجهة تحقق من الاستمارة في الموقع العام', !badVerify, badVerify && badVerify.outerHTML.slice(0, 60));
+check('لا نص «ترشّح» في العرض العام', !/ترشّح/.test(site.doc.getElementById('jobs-grid').textContent));
+
+/* الحجز: رابط واتساب يحمل كود الوظيفة */
+const bookLink = [...site.doc.querySelectorAll('#jobs-grid .job-card a[href^="https://wa.me/"]')];
+check('كل بطاقة وظيفة متاحة تحمل زر حجز بالواتساب (' + bookLink.length + ')', bookLink.length >= 1);
+check('رسالة الواتساب تحمل كود الوظيفة ورقم الشركة', (() => {
+  const href = decodeURIComponent(bookLink[0].getAttribute('href'));
+  return /wa\.me\/9647/.test(href) && /BRC-\d{3,}/.test(href) || href.slice(0, 90);
+})());
+
+/* تفاصيل الوظيفة: خاتمة حجز لا طلب استمارة */
+const detailsBtn = site.doc.querySelector('#jobs-grid [data-action="job-details"]');
+if (detailsBtn) {
+  click(W, detailsBtn);
+  await new Promise((r) => setTimeout(r, 160));
+  const box = site.doc.querySelector('.modal-backdrop .modal');
+  const mtext = box ? box.textContent : '';
+  check('نافذة التفاصيل تعرض تحذير خصوصية صاحب العمل', /خصوصية صاحب العمل/.test(mtext));
+  check('نافذة التفاصيل تدعو للحجز بالتواصل (بلا نموذج تقديم)', /خابر الشركة|مراجعة المكتب|راجع المكتب/.test(mtext) &&
+    !box.querySelector('[data-request]') && !box.querySelector('input'));
+  const reserveLink = box.querySelector('a[href^="https://wa.me/"]');
+  check('خاتمة النافذة فيها زر واتساب للحجز', !!reserveLink, 'لا يوجد رابط حجز');
+  if (reserveLink) check('رابط الحجز في النافذة يحمل كود الوظيفة', /BRC-\d{3,}/.test(decodeURIComponent(reserveLink.getAttribute('href'))));
+  const close = box.querySelector('[data-close]');
+  if (close) click(W, close);
+  await new Promise((r) => setTimeout(r, 120));
+}
+
+/* الطلب: يُسجّله المكتب (الزبون خابر أو راجع الشركة) ثم يعتمده الموظف */
 const before = S.listApplicants().length;
-click(W, site.doc.getElementById('btn-request-form'));
-await new Promise((r) => setTimeout(r, 120));
+const RECORD = S.createApplicant({
+  fullName: 'علي حسن كاظم الفتلاوي', phone: '07701234567', address: 'الحلة - شارع 40 - محلة الجيلاوي',
+  region: 'الحلة', requestedCode: 'BRC-1042', pending: true
+});
+const SERIAL = RECORD && RECORD.serial;
+const TOKEN = SERIAL ? S.token(SERIAL) : '';
+check('طلب الزائر (هاتفياً / حضورياً) سُجّل في المكتب (' + before + ' → ' + S.listApplicants().length + ')',
+  S.listApplicants().length === before + 1);
+console.log('   ℹ  الرقم التسلسلي: ' + SERIAL + '   |   بصمة التحقق: ' + TOKEN);
+check('الطلب مرتبط باسم الباحث الصحيح', !!RECORD && RECORD.fullName === 'علي حسن كاظم الفتلاوي');
+check('الطلب سُجّل كـ «قيد المراجعة» (بدون تاريخ انتهاء)', !!RECORD && RECORD.status === 'pending' && !RECORD.expiryDate);
+check('الوظيفة المطلوبة (BRC-1042) سُجّلت مع الطلب', !!RECORD && RECORD.requestedCode === 'BRC-1042');
 
-const form = site.doc.getElementById('req-form');
-check('نموذج الطلب فُتح في نافذة', !!form);
-if (form) {
-  const issuedModalBefore = site.doc.querySelectorAll('#modal-root .modal').length;
-  setVal(W, site.doc.getElementById('r-name'), 'علي حسن كاظم الفتلاوي');
-  setVal(W, site.doc.getElementById('r-phone'), '07701234567');
-  setVal(W, site.doc.getElementById('r-dob'), '1996-04-12');
-  if (site.doc.getElementById('r-address')) setVal(W, site.doc.getElementById('r-address'), 'الحلة - شارع 40 - محلة الجيلاوي');
-  if (site.doc.getElementById('r-region')) setVal(W, site.doc.getElementById('r-region'), 'الحلة');
-  if (site.doc.getElementById('r-code')) setVal(W, site.doc.getElementById('r-code'), 'BRC-1042');
-  click(W, site.doc.getElementById('req-submit'));
-  await new Promise((r) => setTimeout(r, 250));
+{
+  /* ═══ 2) المنظومة الداخلية: الموظف يعتمد الطلب ويحجز الوظيفة ═══════════ */
+  step(2, 'المنظومة الداخلية — دخول الموظف واعتماد الطلب وحجز وظيفة');
 
-  const after = S.listApplicants().length;
-  check('الاستمارة أصدرت رقماً جديداً (' + before + ' → ' + after + ')', after === before + 1);
+  const DB = S.exportJSON ? S.exportJSON() : S.exportJson();
 
-  const fresh = S.listApplicants().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-  const SERIAL = fresh ? fresh.serial : null;
-  const TOKEN = SERIAL ? S.token(SERIAL) : '';
-  console.log('   ℹ  الرقم التسلسلي: ' + SERIAL + '   |   بصمة التحقق: ' + TOKEN);
-  check('الطلب مرتبط باسم الباحث الصحيح', !!fresh && fresh.fullName === 'علي حسن كاظم الفتلاوي', fresh && fresh.fullName);
-  check('الطلب سُجّل كـ «قيد المراجعة» (بدون تاريخ انتهاء)', !!fresh && fresh.status === 'pending' && !fresh.expiryDate, fresh && fresh.status);
-  check('الوظيفة المطلوبة (BRC-1042) سُجّلت مع الطلب', !!fresh && fresh.requestedCode === 'BRC-1042', fresh && fresh.requestedCode);
-  check('نافذة «تم إرسال الطلب» تعرض رقم الطلب', site.doc.getElementById('modal-root').textContent.includes(SERIAL));
+  /* بلا جلسة: المنظومة لا تُفتح إطلاقاً */
+  const anon = await open('dashboard.html');
+  check('بلا جلسة موظف: شاشة الدخول تحجب المنظومة', !!anon.doc.getElementById('login-wrap') &&
+    !anon.doc.getElementById('login-wrap').classList.contains('hidden') &&
+    anon.doc.getElementById('app-shell').classList.contains('hidden'));
 
-  /* ═══ 2) المنظومة الداخلية: الموظف يرى الاستمارة ويرشّح وظيفة ═══════════ */
-  step(2, 'المنظومة الداخلية — دخول الموظف وترشيح وظيفة للاستمارة');
-
-  const DB = S.exportJson();
-  const dash = await open('dashboard.html');
+  /* بجلسة موظف (كأنه سجّل الدخول في نفس المتصفح) */
+  const dash = await open('dashboard.html', undefined, { session: 'staff' });
   dash.w.BRCStore.importJson(DB);
   dash.w.BRCStore.emit && dash.w.BRCStore.emit();
-
-  check('شاشة الدخول تظهر قبل المصادقة', !!dash.doc.getElementById('login-wrap') &&
-    !dash.doc.getElementById('login-wrap').classList.contains('hidden'));
-  setVal(dash.w, dash.doc.getElementById('login-user'), 'staff');
-  setVal(dash.w, dash.doc.getElementById('login-pass'), 'staff123');
-  click(dash.w, dash.doc.getElementById('login-form').querySelector('button[type=submit]') || dash.doc.querySelector('#login-form button'));
-  await new Promise((r) => setTimeout(r, 150));
+  dash.w.BRCRefresh && dash.w.BRCRefresh();
+  await new Promise((r) => setTimeout(r, 200));
 
   const logged = dash.w.BRCStore.currentUser();
-  check('الموظف دخل بنجاح (' + (logged ? logged.name + ' — ' + logged.role : 'فشل') + ')', !!logged && logged.role === 'staff');
+  check('الموظف داخل المنظومة (' + (logged ? logged.name + ' — ' + logged.role : 'فشل') + ')',
+    !!logged && logged.role === 'staff' && !dash.doc.getElementById('app-shell').classList.contains('hidden'));
 
   click(dash.w, dash.doc.querySelector('#side-nav button[data-view="applicants"]'));
-  await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 120));
   let rows = [...dash.doc.querySelectorAll('#apps-table-body tr')].map((r) => r.textContent).join(' ');
-  check('جدول الاستمارات يعرض الطلب الجديد', rows.includes(SERIAL));
+  check('جدول الاستمارات يعرض الطلب المسجَّل', rows.includes(SERIAL));
   check('الطلب معروض بحالة «قيد المراجعة»', /قيد المراجعة/.test(rows));
 
-  // قبول الطلب من جدول الاستمارات (إجراء الموظف عبر الواجهة)
+  // اعتماد الطلب من جدول الاستمارات (إجراء الموظف عبر الواجهة)
   const approveBtn = dash.doc.querySelector('[data-app-approve="' + SERIAL + '"]');
-  check('زر قبول الطلب ظاهر للموظف', !!approveBtn);
-  click(dash.w, approveBtn);
-  await new Promise((r) => setTimeout(r, 150));
+  check('زر اعتماد الطلب ظاهر للموظف', !!approveBtn);
+  if (approveBtn) click(dash.w, approveBtn);
+  await new Promise((r) => setTimeout(r, 180));
   const afterApprove = dash.w.BRCStore.getApplicant(SERIAL);
-  check('بعد القبول: الاستمارة صارت سارية بخمس محاولات', !!afterApprove && afterApprove.status === 'active' &&
+  check('بعد الاعتماد: الاستمارة صارت سارية بخمس محاولات', !!afterApprove && afterApprove.status === 'active' &&
     dash.w.BRCStore.attemptsLeft(SERIAL) === 5, afterApprove && afterApprove.status);
-  check('الاستمارة صالحة 30 يوماً من تاريخ القبول', !!afterApprove &&
+  check('الاستمارة صالحة 30 يوماً من تاريخ الاعتماد', !!afterApprove &&
     Math.round((new Date(afterApprove.expiryDate) - new Date(afterApprove.issueDate)) / 86400000) === 30);
-  rows = [...dash.doc.querySelectorAll('#apps-table-body tr')].map((r) => r.textContent).join(' ');
-  check('الجدول يعرض المحاولات المتبقية بعد القبول', /متبق[^<]*5|0\s*\/\s*5/.test(rows));
 
-  // ترشيح وظيفة (إجراء الموظف عبر طبقة البيانات ثم تحديث الواجهة)
+  // حجز وظيفة للاستمارة (إجراء الموظف)
   const free = dash.w.BRCStore.listJobs({ status: 'available' }).filter((j) => j.code !== 'BRC-1042')[0];
   const picked = dash.w.BRCStore.selectAttempt(SERIAL, free.code);
   dash.w.BRCRefresh && dash.w.BRCRefresh();
   await new Promise((r) => setTimeout(r, 120));
 
-  check('الترشيح نجح وخصّص المحاولة #' + (picked.ok ? picked.attempt.no : '?') + ' على ' + free.code, picked.ok === true, picked.error);
+  check('الحجز نجح وخصّص المحاولة #' + (picked.ok ? picked.attempt.no : '?') + ' على ' + free.code, picked.ok === true, picked.error);
   const jobAfterPick = dash.w.BRCStore.getJob(free.code);
   check('الوظيفة رُصدت «محجوزة مؤقتاً» بمهلة 24 ساعة', jobAfterPick.status === 'reserved' &&
     Math.round((new Date(jobAfterPick.holdExpiresAt) - Date.now()) / 3600000) === 24,
@@ -173,11 +215,28 @@ if (form) {
 
   const DB2 = dash.w.BRCStore.exportJson();
 
-  /* ═══ 4) التحقق بكيو آر كود الاستمارة ══════════════════════════════════ */
-  step(4, 'صفحة التحقق — فحص الاستمارة من رابط الكيو آر كود');
+  /* ═══ 4) الزائر يحاول التحقق ⇒ بوابة تمنعه ════════════════════════════ */
+  step(4, 'سياسة التحقق — الزائر لا يرى أي بيانات استمارة');
 
   const q = '?form=' + encodeURIComponent(SERIAL) + '&t=' + TOKEN;
-  const ver = await open('verify.html', q);
+  const qAny = '?form=BRC-NO-000120';
+  const visitor = await open('verify.html', q);
+  visitor.w.BRCStore.importJson(DB2);
+  visitor.w.BRCVerify.mount(q);            // نفس ما يفعله فتح رابط الكيو آر كود
+  await new Promise((r) => setTimeout(r, 150));
+  const vGate = visitor.doc.getElementById('verify-root').textContent;
+  check('الزائر يرى بوابة «خاص بموظفي الشركة والإدارة»', /موظفي الشركة والإدارة/.test(vGate));
+  check('لا تسريب لأي بيانات استمارة للزائر', !vGate.includes(SERIAL) && !vGate.includes('علي حسن كاظم') && !/محاولة/.test(vGate));
+  check('الزائر يوجَّه لتسجيل دخول الموظفين أو التواصل للحجز',
+    /تسجيل دخول الموظفين/.test(vGate) && /wa\.me/.test(visitor.doc.getElementById('verify-root').innerHTML));
+  check('أداة البحث اليدوي مخفية عن الزائر',
+    (visitor.doc.getElementById('verify-form') || { closest: () => null }).closest('.panel') === null ||
+    visitor.doc.getElementById('verify-form').closest('.panel').classList.contains('hidden'));
+
+  /* ═══ 5) الموظف يفحص الاستمارة بكيو آر كود ═════════════════════════════ */
+  step(5, 'صفحة التحقق — الموظف يفحص الاستمارة من رابط الكيو آر كود');
+
+  const ver = await open('verify.html', q, { session: 'staff' });
   ver.w.BRCStore.importJson(DB2);          // نفس قاعدة البيانات (محاكاة نفس المتصفح)
   ver.w.BRCVerify.mount(q);                // إعادة العرض من رابط الكيو آر كود
   await new Promise((r) => setTimeout(r, 150));
@@ -190,11 +249,11 @@ if (form) {
   check('كيو آر كود التحقق مرسوم في الصفحة', !!ver.doc.querySelector('#verify-root svg'));
   check('لا أخطاء في صفحة التحقق', ver.errors.length === 0, ver.errors[0]);
 
-  /* ═══ 5) بصمة مزيفة ⇒ تحذير أمني ═══════════════════════════════════════ */
-  step(5, 'الأمان — بصمة مزيفة يجب أن تُرفع كتحذير');
+  /* ═══ 6) بصمة مزيفة ⇒ تحذير أمني ═══════════════════════════════════════ */
+  step(6, 'الأمان — بصمة مزيفة يجب أن تُرفع كتحذير (بجلسة الموظف)');
 
   const qf = '?form=' + encodeURIComponent(SERIAL) + '&t=deadbeef';
-  const fake = await open('verify.html', qf);
+  const fake = await open('verify.html', qf, { session: 'staff' });
   fake.w.BRCStore.importJson(DB2);
   fake.w.BRCVerify.mount(qf);              // رابط ببصمة مزيفة
   await new Promise((r) => setTimeout(r, 150));
@@ -202,10 +261,10 @@ if (form) {
   check('تحذير التلاعب ظاهر للبصمة المزيفة', /تحذير|غير مطابق|تلاعب|مزيفة/.test(ftext));
   check('الرقم الصحيح لم يُسرَّب بثقة في حالة البصمة المزيفة', !!ftext.includes(SERIAL));
 
-  /* ═══ 6) الطباعة: قالب A4 يمتدّ إلى حاوية الطباعة ══════════════════════ */
-  step(6, 'الطباعة — استمارة A4 كاملة بالكيو آر كود');
+  /* ═══ 7) الطباعة: قالب A4 يمتدّ إلى حاوية الطباعة ══════════════════════ */
+  step(7, 'الطباعة — استمارة A4 كاملة بالكيو آر كود (من المنظومة)');
 
-  const ver2 = await open('verify.html', q);
+  const ver2 = await open('verify.html', q, { session: 'staff' });
   ver2.w.BRCStore.importJson(DB2);
   ver2.w.BRCVerify.mount(q);
   await new Promise((r) => setTimeout(r, 120));
@@ -223,18 +282,18 @@ if (form) {
     ['جدول المحاولات الخمس', /كود الوظيفة/],
     ['الكيو آر كود', /<svg[\s\S]*<path/],
     ['الإخلاء القانوني', /غير مسؤولة قانونياً وعشائياً/],
-    ['التواقيع', /توقيع|v-sign/],
-    ['علامة مائية بابلية', /v-watermark/]
+    ['التواقيع', /توقيع|v-sign/]
   ];
   const missing = must.filter(([, re]) => !re.test(printHtml)).map(([k]) => k);
   check('الاستمارة المطبوعة تحوي كل عناصر A4 (' + (must.length - missing.length) + '/' + must.length + ')', missing.length === 0, missing.join(' · '));
+  check('الورقة المطبوعة نظيفة بلا علامة مائية', !/v-watermark|brick-pattern/.test(printHtml), 'ما زالت العلامة المائية تُدرج في الطباعة');
   check('نافذة الطباعة استُدعيت فعلاً', ver2.w.__printed > 0, 'عدد الاستدعاءات ' + ver2.w.__printed);
   check('الطباعة سُجّلت في عدّاد الاستمارة', ver2.w.BRCStore.getApplicant(SERIAL).printedCount > 0);
 
-  /* ═══ 7) الملف المستقل: نفس المسار بالهاش ══════════════════════════════ */
-  step(7, 'الملف المستقل — التحقق بالمسار الهاشي والتنقل');
+  /* ═══ 8) الملف المستقل: مسار التحقق بجلسة الموظف ═══════════════════════ */
+  step(8, 'الملف المستقل — التحقق بالمسار الهاشي والتنقل (بجلسة موظف)');
 
-  const solo = await open('brc-standalone.html', '#!verify?form=' + encodeURIComponent(SERIAL) + '&t=' + TOKEN);
+  const solo = await open('brc-standalone.html', '#!verify?form=' + encodeURIComponent(SERIAL) + '&t=' + TOKEN, { session: 'staff' });
   solo.w.BRCStore.importJson(DB2);
   solo.w.dispatchEvent(new solo.w.Event('hashchange'));   // محاكاة فتح الرابط من الكيو آر كود
   await new Promise((r) => setTimeout(r, 400));

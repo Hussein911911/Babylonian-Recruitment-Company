@@ -1,0 +1,123 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  نشر آلي على Cloudflare Pages — ملف جاهز لـ GitHub Actions
+#  ---------------------------------------------------------------------------
+#  ⚠️ لماذا هو هنا وليس في .github/workflows؟ لأن ربط GitHub في هذه الجلسة
+#     لا يملك صلاحية كتابة ملفات الـ workflows. التفعيل يدوي بثلاث نقرات:
+#
+#   1) من صفحة المستودع: Add file → Create new file
+#   2) اكتب المسار بالضبط:  .github/workflows/deploy-cloudflare.yml
+#   3) انسخ كل ما تحت السطر الفاصل (---) والصقه → Commit changes
+#
+#  ثم أضف السرّين (Settings → Secrets and variables → Actions):
+#      CLOUDFLARE_API_TOKEN   ·   CLOUDFLARE_ACCOUNT_ID
+#  وبعدها كل دفعة إلى main تُبنى وتُنشر تلقائياً على نفس مشروع Cloudflare.
+#  وقبل إضافتهما: الملف يبني ويفحص ثم يتخطّى خطوة النشر بلا فشل.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ───────────────────────── انسخ من هنا إلى الآخر ─────────────────────────
+
+name: نشر على Cloudflare Pages
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  نشر آلي إلى مشروع Cloudflare Pages نفسه (نفس الرابط pages.dev).
+#
+#  لماذا؟ المنصّة المعتمدة للنشر هي Cloudflare Pages وحدها، ومشروعك الحالي
+#  «Direct Upload» غير مربوط بـ Git — فهذا الملف هو الجسر: كل دفعة إلى main
+#  تُبنى وتُنشر تلقائياً بلا رفع يدوي.
+#
+#  الإعداد (مرة واحدة) — أضف مفتاحين في:
+#    Settings → Secrets and variables → Actions → New repository secret
+#      • CLOUDFLARE_API_TOKEN   ← من Cloudflare: My Profile → API Tokens →
+#                                 Create Token → قالب «Edit Cloudflare Workers»
+#                                 (أو صلاحية مخصّصة: Account → Cloudflare Pages → Edit)
+#      • CLOUDFLARE_ACCOUNT_ID  ← من Cloudflare: Workers & Pages → يمين الصفحة
+#
+#  ⚠️ المفتاحان سرّان: يُضافان في GitHub فقط — لا في الكود ولا في المحادثة.
+#  قبل إضافتهما يعمل هذا الملف بلا فشل: يبني ويفحص ثم يتخطّى خطوة النشر.
+#
+#  لو ربطت المشروع بـ Git لاحقاً (مشروع جديد + نقل النطاق) فاحذف هذا الملف
+#  أو أوقفه، وإلا صار نشران لنفس الموقع.
+# ═══════════════════════════════════════════════════════════════════════════
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cf-pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: بناء وفحص ونشر
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: تنزيل المستودع
+        uses: actions/checkout@v4
+
+      - name: تجهيز Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: تثبيت الاعتماديات (مطابق للقفل)
+        run: npm ci
+
+      - name: بناء الصفحات + الملف المستقل
+        run: npm run build
+
+      - name: بناء النسخة الخفيفة
+        run: npm run build:light
+
+      - name: تجميع مجلد النشر dist/
+        run: npm run dist
+
+      - name: تدقيق شامل (حارس الجودة قبل النشر)
+        run: npm run audit
+
+      - name: هل مفاتيح Cloudflare متوفّرة؟
+        id: guard
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$ACCOUNT" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=النشر متخطّى::أضف CLOUDFLARE_API_TOKEN و CLOUDFLARE_ACCOUNT_ID في أسرار المستودع ليصير النشر آلياً."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: التحقق من عدم تغيّر الملفات المبنية (البناء حتمي)
+        run: git diff --exit-code -- index.html verify.html dashboard.html brc-standalone.html brc-light.html
+
+      - name: نشر على Cloudflare Pages
+        if: steps.guard.outputs.ready == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            pages deploy dist
+            --project-name=babylonian-recruitment-company
+            --branch=main
+            --commit-dirty=true
+
+      # ── نشر معاينة لكل فرع/طلب دمج (اختياري): أزل التعليق لتشتغل روابط معاينة
+      #    بهيئة <branch>.<project>.pages.dev — نفس فكرة معاينات Render التي أُلغيت
+      #
+      # - name: نشر معاينة للفرع
+      #   if: github.ref != 'refs/heads/main' && steps.guard.outputs.ready == 'true'
+      #   uses: cloudflare/wrangler-action@v3
+      #   with:
+      #     apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      #     accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      #     command: >-
+      #       pages deploy dist
+      #       --project-name=babylonian-recruitment-company
+      #       --branch=${{ github.head_ref || github.ref_name }}
+      #       --commit-dirty=true

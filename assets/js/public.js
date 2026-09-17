@@ -1,6 +1,8 @@
 /* ===========================================================================
  *  BRC — منطق الموقع العام
- *  لوحة الوظائف، البحث الفوري، صفحة الوظيفة، وطلب الاستمارة الإلكترونية.
+ *  لوحة الوظائف، البحث الفوري، صفحة الوظيفة، ودعوة الزائر للتواصل مع الشركة.
+ *  ⚠️ سياسة الشركة: الزائر يتصفّح فقط — لا تقديم استمارة ولا تحقق منها.
+ *     إصدار الاستمارات والتحقق منها محصور بالموظفين والإدارة في المنظومة الداخلية.
  * =========================================================================== */
 (function (root) {
   'use strict';
@@ -88,25 +90,12 @@
     var qsScan = document.getElementById('qs-scan');
     if (qsScan) qsScan.addEventListener('click', function () { openQRScanner(); });
 
-    // طلب استمارة
-    ['btn-request-form', 'btn-request-form-2'].forEach(function (id) {
-      var b = document.getElementById(id);
-      if (b) b.addEventListener('click', function () { requestFormModal(); });
-    });
+    /* ⚠️ سياسة الشركة: الزائر لا يقدّم طلب استمارة ولا يتحقق من أي استمارة.
+       كل ما يفعله هنا: يتصفّح الوظائف ثم يخابر الشركة أو يراجع المكتب للحجز.
+       أدوات الإصدار والتحقق محصورة بالموظفين والإدارة في المنظومة الداخلية. */
     document.addEventListener('click', function (e) {
-      var a = e.target.closest && e.target.closest('[data-action="request-form"]');
-      if (a) { e.preventDefault(); requestFormModal(a.getAttribute('data-code') || ''); }
       var v = e.target.closest && e.target.closest('[data-action="job-details"]');
       if (v) { e.preventDefault(); openJob(v.getAttribute('data-code')); }
-      var vf = e.target.closest && e.target.closest('[data-action="verify"]');
-      if (vf) { e.preventDefault(); verifySerial(vf.getAttribute('data-serial')); }
-    });
-
-    // التحقق السريع
-    var vForm = document.getElementById('verify-quick');
-    if (vForm) vForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      verifySerial((document.getElementById('verify-serial') || {}).value || '');
     });
 
     // قائمة الجوال
@@ -134,16 +123,6 @@
     if (y) y.textContent = String(new Date().getFullYear());
   }
 
-  function verifySerial(serial) {
-    serial = String(serial || '').trim().toUpperCase();
-    if (!serial) { UI.toast('warn', 'أدخل الرقم التسلسلي', 'مثال: BRC-NO-000120'); return; }
-    if (serial.indexOf('BRC-NO') !== 0) serial = 'BRC-NO-' + serial.replace(/[^0-9]/g, '').padStart(6, '0');
-    var app = Store.getApplicant(serial);
-    if (!app) { UI.toast('err', 'استمارة غير موجودة', 'تأكد من الرقم التسلسلي أو راجع المكتب.'); return; }
-    window.location.href = Store.verifyLocalUrl(serial);
-  }
-
-  /* ---------------- البحث السريع (إدخال يدوي أو مسح QR) ---------------- */
   function runQuickSearch(code, region) {
     code = String(code || '').trim();
     region = region || 'all';
@@ -189,7 +168,7 @@
 
     UI.modal({
       title: 'البحث بمسح الكيو آر كود',
-      subtitle: 'امسح رمز QR مطبوعاً على بطاقة الوظيفة أو الاستمارة',
+      subtitle: 'امسح رمز QR المطبوع على بطاقة الوظيفة للوصول إليها مباشرة',
       body: body,
       onMount: function (box, close) {
         var video = box.querySelector('#scan-video');
@@ -249,8 +228,14 @@
     text = String(text || '').trim();
     if (!text) { UI.toast('warn', 'كود فارغ', 'لم يُقرأ أي نص من الرمز.'); return; }
 
+    /* رمز استمارة (BRC-NO-…): التحقق محصور بالموظفين والإدارة، فلا نكشف
+       هنا أي بيانات — مجرد تنبيه واضح للزائر. */
     var serial = text.match(/BRC-NO-\d+/i);
-    if (serial) { verifySerial(serial[0]); return; }
+    if (serial) {
+      UI.toast('info', 'هذه استمارة شركة بابل للتوظيف',
+        'التحقق من الاستمارات متاح لموظفي الشركة والإدارة فقط. للحجز أو الاستفسار خابر الشركة أو راجع المكتب.', 8000);
+      return;
+    }
 
     var job = text.match(/BRC-\d{3,}/i);
     if (job) {
@@ -299,6 +284,23 @@
     host.innerHTML = jobs.map(cardHtml).join('');
   }
 
+  /* رابط الحجز: واتساب الشركة برسالة جاهزة تحمل كود الوظيفة وعنوانها،
+     حتى يصل الاستفسار واضحاً لمكتب الشركة مباشرة. */
+  function waNumber() {
+    var raw = (CFG.company && CFG.company.whatsapp) ||
+      (CFG.company && CFG.company.phones && CFG.company.phones[0]) || '07760058007';
+    var d = String(raw).replace(/\D/g, '');
+    if (d.indexOf('00') === 0) d = d.slice(2);
+    else if (d.charAt(0) === '0') d = '964' + d.slice(1);
+    return d;
+  }
+
+  function bookUrl(code, title) {
+    var msg = 'مرحباً شركة بابل للتوظيف، أرغب بالحجز على وظيفة ' + (code || '') +
+      (title ? ' — ' + title : '') + '.';
+    return 'https://wa.me/' + waNumber() + '?text=' + encodeURIComponent(msg);
+  }
+
   function cardHtml(j) {
     var st = CFG.jobStatus[j.status];
     var cls = j.status === 'reserved' ? 'is-reserved' : (j.status === 'closed' ? 'is-closed' : '');
@@ -308,9 +310,15 @@
       hold = '<span class="tiny muted" title="يُفرج تلقائياً">' +
         (h > 0 ? 'تُفرج خلال ' + Math.ceil(h) + ' ساعة' : 'قيد الإفراج') + '</span>';
     }
+    /* صورة الوظيفة: تُحمَّل بتحميل مؤجّل (أسرع على الموبايل)، ومعها بديل رمزي
+       يظهر إن تعذّر تحميل الصورة (بلا إنترنت أو رابط معطّل) فلا تظهر أيقونة
+       صورة مكسورة في القائمة */
     var imageHtml = '';
     if (j.imageUrl) {
-      imageHtml = '<div class="job-image"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '" loading="lazy"></div>';
+      imageHtml = '<div class="job-image">' +
+        '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
+        '<img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async" referrerpolicy="no-referrer"' +
+        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()"></div>';
     }
     
     return '' +
@@ -340,7 +348,7 @@
             hold +
             '<button class="btn btn-outline btn-sm" data-action="job-details" data-code="' + UI.esc(j.code) + '">التفاصيل</button>' +
             (j.status === 'available'
-              ? '<button class="btn btn-gold btn-sm" data-action="request-form" data-code="' + UI.esc(j.code) + '">' + UI.ic('user-plus') + ' ترشّح</button>'
+              ? '<a class="btn btn-gold btn-sm" href="' + bookUrl(j.code) + '" target="_blank" rel="noopener">' + UI.ic('whatsapp') + ' احجز</a>'
               : '<button class="btn btn-outline btn-sm" disabled>' + st.ar + '</button>') +
           '</div>' +
         '</div>' +
@@ -375,128 +383,25 @@
         '<div class="panel-body" style="padding:14px 16px">' +
           '<p class="mb-0 small">' + UI.ic('lock', '') +
           ' <b>خصوصية صاحب العمل:</b> لا تُعرض بياناته التفصيلية (الاسم، الهاتف، العنوان) في الموقع العام. ' +
-          'تُسلَّم هذه البيانات للباحث عبر شركة بابل للتوظيف بعد إصدار الاستمارة وتثبيت المحاولة، وفق سياسة الشركة.</p>' +
+          'تُسلَّم هذه البيانات للباحث عبر شركة بابل للتوظيف عند مراجعة المكتب وإصدار الاستمارة، وفق سياسة الشركة.</p>' +
         '</div>' +
       '</div>' +
       (reqs ? '<h3 class="mt-3">الشروط والمتطلبات</h3><ul class="feature-list">' + reqs + '</ul>' : '') +
       (j.description ? '<p class="muted mt-2">' + UI.esc(j.description) + '</p>' : '') +
       '<div class="panel mt-3"><div class="panel-body" style="padding:14px 16px">' +
         '<p class="mb-0 small">' + UI.ic('hourglass') +
-        ' <b>آلية الحجز:</b> عند اختيارك هذه الوظيفة كمحاولة، تُحجز مؤقتاً <b>24 ساعة</b> بانتظار نتيجة المقابلة، ' +
-        'وإن لم تُثبَّت النتيجة تُعاد الوظيفة تلقائياً إلى «متاحة».</p>' +
+        ' <b>آلية الحجز:</b> الحجز يتم من مكتب الشركة — خابرنا أو راجع المكتب، فتُسجَّل الوظيفة كمحاولة على استمارتك ' +
+        'وتُحجز مؤقتاً <b>24 ساعة</b> بانتظار نتيجة المقابلة، وإن لم تُثبَّت النتيجة تُعاد الوظيفة تلقائياً إلى «متاحة».</p>' +
       '</div></div>';
 
     UI.modal({
       title: j.title, subtitle: 'تفاصيل الوظيفة — ' + j.region, body: body, wide: true,
       footer: (j.status === 'available'
-        ? '<button class="btn btn-gold" data-request="' + UI.esc(j.code) + '">' + UI.ic('user-plus') + ' اطلب استمارة لهذه الوظيفة</button>'
+        ? '<a class="btn btn-gold" href="' + bookUrl(j.code, j.title) + '" target="_blank" rel="noopener">' +
+          UI.ic('whatsapp') + ' خابر الشركة للحجز على هذه الوظيفة</a>'
         : '<button class="btn btn-outline" disabled>الوظيفة ' + CFG.jobStatus[j.status].ar + '</button>') +
-        '<button class="btn btn-outline" data-close>إغلاق</button>',
-      onMount: function (box, close) {
-        var b = box.querySelector('[data-request]');
-        if (b) b.addEventListener('click', function () { close(); requestFormModal(b.getAttribute('data-request')); });
-      }
+        '<button class="btn btn-outline" data-close>إغلاق</button>'
     });
-  }
-
-  /* ---------------- طلب استمارة إلكترونية ---------------- */
-  function requestFormModal(prefillCode) {
-    var code = prefillCode || '';
-    var regionsList = CFG.regions.map(function (r) { return '<option>' + UI.esc(r) + '</option>'; }).join('');
-    var body = '' +
-      '<p class="muted small">املأ بياناتك الأساسية وسيُراجع طلبك من موظفينا — عند الموافقة تصدر استمارتك ' +
-      'الرسمية برقم تسلسلي صالح 30 يوماً بخمس محاولات.</p>' +
-      '<form id="req-form" class="grid grid-2" style="gap:14px">' +
-        '<div class="field"><label for="r-name">الاسم الكامل *</label><input type="text" id="r-name" required placeholder="الاسم الثلاثي"></div>' +
-        '<div class="field"><label for="r-phone">رقم الهاتف *</label><input type="tel" id="r-phone" required placeholder="07XXXXXXXXX" dir="ltr"></div>' +
-        '<div class="field"><label for="r-dob">تاريخ الميلاد</label><input type="date" id="r-dob"></div>' +
-        '<div class="field"><label for="r-gender">الجنس</label><select id="r-gender"><option>ذكر</option><option>أنثى</option></select></div>' +
-        '<div class="field"><label for="r-region">منطقة السكن</label><select id="r-region">' + regionsList + '</select></div>' +
-        '<div class="field"><label for="r-code">كود الوظيفة المطلوبة</label><input type="text" id="r-code" value="' + UI.esc(code) + '" placeholder="BRC-1042 (اختياري)" dir="ltr"></div>' +
-        '<div class="field" style="grid-column:1/-1"><label for="r-address">العنوان التفصيلي</label><input type="text" id="r-address" placeholder="المنطقة - المحلة - أقرب نقطة دالة"></div>' +
-      '</form>' +
-      '<p class="tiny muted mt-2 mb-0">بالمتابعة أنت توافق على أن خدمات الشركة تنحصر بتوفير الأيادي العاملة الفنية والتخصصية فقط، ' +
-      'وأن الشركة غير مسؤولة قانونياً وعشائياً عن الشخص المرسل وصاحب العمل.</p>';
-
-    UI.modal({
-      title: 'طلب استمارة إلكترونية', subtitle: 'BRC — نظام الاستمارات', wide: true, body: body,
-      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
-        '<button class="btn btn-gold" id="req-submit">' + UI.ic('check') + ' إصدار الطلب</button>',
-      onMount: function (box, close) {
-        box.querySelector('#req-submit').addEventListener('click', function () {
-          var f = box.querySelector('#req-form');
-          if (!f.reportValidity()) return;
-          var name = box.querySelector('#r-name').value.trim();
-          var phone = box.querySelector('#r-phone').value.trim();
-          var dob = box.querySelector('#r-dob').value;
-          var gender = box.querySelector('#r-gender').value;
-          var region = box.querySelector('#r-region').value;
-          var address = box.querySelector('#r-address').value.trim();
-          var reqCode = box.querySelector('#r-code').value.trim().toUpperCase();
-          if (reqCode && !Store.getJob(reqCode)) {
-            UI.toast('warn', 'كود غير معروف', 'لا توجد وظيفة بالكود ' + reqCode + ' — سنسجّل طلبك بدون تحديد كود.');
-            reqCode = '';
-          }
-          var payload = {
-            fullName: name, phone: phone, dob: dob, gender: gender,
-            address: (address ? address : region + ' - بابل'),
-            requestedCode: reqCode || null,
-            notes: reqCode ? 'طلب إلكتروني للوظيفة ' + reqCode : 'طلب إلكتروني من الموقع'
-          };
-          /* الزائر لا يملك صلاحية إدراج في جدول الاستمارات، فالطلب يمرّ عبر دالة
-             القاعدة brc.request_form (في الوضع المحلي يُنفَّذ محلياً كما قبل). */
-          var btn = box.querySelector('#req-submit');
-          if (btn) { btn.disabled = true; btn.textContent = 'جارٍ الإرسال…'; }
-          var done = function (r) {
-            if (btn) { btn.disabled = false; btn.textContent = 'إصدار الطلب'; }
-            if (!r || !r.ok) {
-              UI.toast('err', 'تعذّر إرسال الطلب', (r && r.error) || 'حاول مرة أخرى بعد قليل.');
-              return;
-            }
-            close();
-            showRequestReceived(r.app, reqCode);
-          };
-          if (Store.submitPublicRequest) {
-            Store.submitPublicRequest(payload).then(done);
-          } else {
-            done({ ok: true, app: Store.createApplicant(Object.assign(payload, { pending: true })) });
-          }
-        });
-      }
-    });
-  }
-
-  function showRequestReceived(app, reqCode) {
-    var vUrl = Store.verifyUrl(app.serial);
-    var body = '' +
-      '<div class="verify-status info" style="padding:0 0 16px">' +
-        '<div class="seal" style="background:#e5eefb;color:#2563a8">' + UI.ic('hourglass') + '</div>' +
-        '<div><h1 style="font-size:1.2rem">استلمنا طلبك بنجاح</h1>' +
-        '<p class="muted mb-0 small">طلبك الآن بانتظار مراجعة موظفينا. عند الموافقة تصدر استمارتك الرسمية ويُرسَل لك الرقم التسلسلي عبر الهاتف.</p></div>' +
-      '</div>' +
-      '<div class="data-grid">' +
-        '<div class="data-item"><div class="k">رقم الطلب</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
-        '<div class="data-item"><div class="k">اسم الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
-        '<div class="data-item"><div class="k">الوظيفة المطلوبة</div><div class="v mono">' + UI.esc(reqCode || '—') + '</div></div>' +
-        '<div class="data-item"><div class="k">الحالة</div><div class="v">' + UI.formBadge('pending') + '</div></div>' +
-      '</div>' +
-      '<div class="panel mt-3" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:14px 16px">' +
-        '<p class="mb-0 small">' + UI.ic('alert') + ' <b>ملاحظة:</b> احتفظ برقم الطلب لمتابعة الحالة من صفحة «التحقق من استمارة». ' +
-        'النسخة الرسمية المعتمدة لدى أصحاب العمل هي المطبوعة والمختومة من مكتب الشركة.</p>' +
-      '</div></div>';
-
-    UI.modal({
-      title: 'تم إرسال الطلب', subtitle: 'BRC-NO — نظام الاستمارات الموثّق', wide: true, body: body,
-      footer: '<button class="btn btn-lapis" id="req-track">' + UI.ic('eye') + ' متابعة حالة الطلب</button>' +
-        '<button class="btn btn-outline" data-close>إغلاق</button>',
-      onMount: function (box, close) {
-        box.querySelector('#req-track').addEventListener('click', function () {
-          close();
-          window.location.href = Store.verifyLocalUrl(app.serial);
-        });
-      }
-    });
-    UI.toast('ok', 'استُلم طلبك', 'رقم الطلب: ' + app.serial + ' — بانتظار المراجعة');
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

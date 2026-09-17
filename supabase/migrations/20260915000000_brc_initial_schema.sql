@@ -607,8 +607,10 @@ create or replace view brc.v_pending_actions as
 --  7) دوال RPC (تُنادى من الواجهة)
 -- ===========================================================================
 
--- 7.1 التحقق من استمارة عبر الكيو آر كود (عام — يتطلب بصمة صحيحة)
--- 7.1 التحقق من استمارة عبر الكيو آر كود (متاح للزائر)
+-- 7.1 التحقق من استمارة عبر الكيو آر كود (للموظفين والإدارة فقط)
+-- ⚠️ سياسة الشركة: الزائر لا يتحقق من أي استمارة — التحقق للموظفين والإدارة.
+--    لذلك لا تُمنح هذه الدالة لـ anon (انظر قسم الصلاحيات أسفل الملف)، وصفحة
+--    verify.html تحجب الزائر قبل أي عرض بيانات (assets/js/verify.js).
 -- ⚠️ لا تُضِف stable/immutable هنا: الدالة تُسجّل سطر تدقيق (INSERT) في آخرها،
 --    وPostgreSQL يرفض الكتابة داخل دالة غير volatile بـ:
 --    «INSERT is not allowed in a non-volatile function» → كل فحص كيو آر كود يفشل.
@@ -971,6 +973,9 @@ grant usage on schema brc to anon, authenticated;
 --
 --  لا تتأثر الأدوار التالية: مالك الدالة (له كل الصلاحيات) · وbrc.verify_form
 --  SECURITY DEFINER فهي تنادي verify_token بصلاحية المالك لا بصلاحية الزائر.
+--
+--  ⚠️ ولا يكفي إبطال verify_form/request_form من anon: anon يورث من PUBLIC —
+--     لذلك تُبطَلان من public أولاً ثم تُمنحان للدور authenticated وحده (أسفل).
 -- ---------------------------------------------------------------------------
 revoke execute on function brc.verify_token(text)    from public;
 revoke execute on function brc.next_job_code()       from public;
@@ -982,6 +987,9 @@ revoke execute on function brc.run_auto_release()    from public;
 revoke execute on function brc.is_staff()            from public;
 revoke execute on function brc.is_admin()            from public;
 revoke execute on function brc.current_staff_id()    from public;
+-- الزائر لا يقدّم ولا يتحقق: الدالتان تُنزعان من PUBLIC ثم تُمنحان للموظفين فقط
+revoke execute on function brc.verify_form(text, text) from public;
+revoke execute on function brc.request_form(text, text, text, date, text, text, text) from public;
 
 -- إعادة المنح لمن يحتاجها فعلاً (بعد الإبطال أعلاه):
 --   • is_staff/is_admin/current_staff_id → تُنادى داخل سياسات RLS الخاصة
@@ -993,17 +1001,21 @@ grant execute on function brc.current_staff_id()    to authenticated, service_ro
 grant execute on function brc.next_job_code()       to authenticated, service_role;
 grant execute on function brc.next_form_serial()    to authenticated, service_role;
 
--- الزائر العام: يقرأ الواجهة العامة فقط + يستدعي التحقق
--- ⚠️ لا تُمنح brc.public_verification للزائر: تلك الواجهة تكشف serial + full_name + status
---    لكل الاستمارات بلا أي تحقق من البصمة t=، فيصير أي شخص يملك anon key قادراً على
---    سحب أسماء كل الباحثين بنداء واحد، وتصبح حماية البصمة في الكيو آر كود بلا معنى.
---    التحقق يتم حصراً عبر brc.verify_form (تتحقق من البصمة وتُرجع استمارة واحدة،
---    وتُقنّع الاسم والهاتف إن لم تكن البصمة مطابقة).
---    والطلب الإلكتروني يمرّ عبر brc.request_form التي تتحقق من المدخلات وتضع
---    الحالة 'pending' دائماً — فالزائر لا يستطيع إصدار استمارة سارية.
+-- الزائر العام: يقرأ الواجهة العامة (الوظائف) فقط — بلا تقديم وبلا تحقق
+-- ⚠️ سياسة الشركة (قرار الإدارة): الزائر يتصفّح الوظائف ويحجز بالتواصل، ولا يقدّم
+--    استمارة ولا يتحقق من أي استمارة. التحقق من الاستمارات وإصدارها للموظفين
+--    والإدارة فقط. لذلك:
+--      • لا تُمنح brc.verify_form للزائر (anon): كانت هذه هي نقطة التحقق العام.
+--        التحقق الآن يتم بجلسة موظف مصادَق عليها (authenticated) من صفحة
+--        verify.html — وهي محجوبة عن الزائر ببوابة صلاحية.
+--      • لا تُمنح brc.request_form للزائر: الطلب صار يُسجّله المكتب (هاتفياً أو
+--        حضورياً) من المنظومة الداخلية.
+-- ⚠️ ولا تُمنح brc.public_verification أصلاً: تلك الواجهة تكشف serial + full_name
+--    + status لكل الاستمارات بلا تحقق من البصمة، فيسحب أي حامل لـ anon key أسماء
+--    كل الباحثين بنداء واحد.
 grant select on brc.public_jobs to anon, authenticated;
-grant execute on function brc.verify_form(text, text) to anon, authenticated;
-grant execute on function brc.request_form(text, text, text, date, text, text, text) to anon, authenticated;
+grant execute on function brc.verify_form(text, text) to authenticated, service_role;
+grant execute on function brc.request_form(text, text, text, date, text, text, text) to authenticated, service_role;
 
 -- الموظفون (authenticated): كل عمليات الإدارة
 grant select, insert, update on brc.jobs, brc.applicants, brc.job_attempts to authenticated;

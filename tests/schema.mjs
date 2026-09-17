@@ -130,7 +130,12 @@ const anonTargets = anonGrants.join(' ');
 check('brc.public_verification ليست ممنوحة لدور anon (منع تسريب أسماء الباحثين)',
   !/public_verification/i.test(anonTargets), anonTargets.slice(0, 160));
 check('الزائر يستطيع قراءة brc.public_jobs فقط', /public_jobs/i.test(anonTargets));
-check('الزائر يستطيع نداء brc.verify_form', /verify_form/i.test(anonTargets));
+/* سياسة الشركة: الزائر يتصفّح الوظائف فقط — لا يقدّم استمارة ولا يتحقق من أي واحدة.
+   الفحص هنا يقرأ سطور GRANT (لا REVOKE) فلا يُخدع بإبطال لاحق. */
+check('الزائر لا يستطيع نداء brc.verify_form (التحقق للموظفين والإدارة)', !/verify_form/i.test(anonTargets), anonTargets.slice(0, 160));
+check('الزائر لا يستطيع نداء brc.request_form (لا تقديم استمارة من الموقع)', !/request_form/i.test(anonTargets), anonTargets.slice(0, 160));
+const authGrants = grantLines.filter((l) => /\bauthenticated\b/i.test(l)).join(' ');
+check('الموظف المسجَّل يستطيع نداء brc.verify_form', /verify_form/i.test(authGrants));
 check('لا جدول حساس ممنوح للزائر مباشرة',
   !/\b(applicants|audit_log|staff|settings)\b/i.test(grantLines.filter((l) => /\banon\b/i.test(l) && !/revoke/i.test(l)).join(' ')));
 

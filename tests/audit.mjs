@@ -14,7 +14,7 @@
  *  التشغيل:  node tests/audit.mjs
  * =========================================================================== */
 import { JSDOM, VirtualConsole } from 'jsdom';
-import { readFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -196,12 +196,15 @@ section('3.c) الطباعة — مقاس A4 وطباعة الاستمارة ف�
   const hidesAll = /body\s*\*\s*{[^}]*visibility:\s*hidden/i.test(css);
   const showsRoot = /#print-root[^{]*{[^}]*visibility:\s*visible/i.test(css);
   const hiddenOnScreen = /#print-root\s*{[^}]*display:\s*none/i.test(css);
-  const wm = /\.voucher\s+\.v-watermark/.test(css);
+  /* الورقة المطبوعة يجب أن تكون نظيفة: لا علامة مائية ولا أي صورة خلفية داخل الاستمارة */
+  const noWm = !/v-watermark/.test(css);
+  const noBgInPrint = /\.voucher,\s*\.voucher\s*\*[^{]*{[^}]*background-image:\s*none/i.test(css);
   if (!hasPage) bad('مقاس الورق A4 محدَّد (@page)', 'لا يوجد size: A4');
   else if (!hidesAll || !showsRoot) bad('الطباعة تُظهر الاستمارة وحدها', 'visibility: hidden=' + hidesAll + ' / visible=' + showsRoot);
   else if (!hiddenOnScreen) bad('حاوية الطباعة مخفية على الشاشة');
-  else if (!wm) bad('العلامة المائية للطباعة معرّفة');
-  else ok('عقد الطباعة سليم: A4 portrait، تُطبع الاستمارة وحدها، والماء البابلي شفاف');
+  else if (!noWm) bad('لا علامة مائية في الاستمارة المطبوعة', 'ما زالت .v-watermark موجودة في CSS');
+  else if (!noBgInPrint) bad('صور الخلفية مُلغاة داخل الاستمارة عند الطباعة');
+  else ok('عقد الطباعة سليم: A4 portrait، تُطبع الاستمارة وحدها، والورقة بيضاء نظيفة بلا علامة مائية');
 }
 
 /* ═══ 4) الأصول على القرص ════════════════════════════════════════════════ */
@@ -297,13 +300,70 @@ for (const [js, page] of CONTRACT) {
   else ok('لا حسابات تجريبية ظاهرة على شاشة الدخول (في ' + published.length + ' صفحات منشورة)');
 
   const linked = [];
-  for (const f of ['index.html', 'verify.html']) {
+  for (const f of ['index.html']) {
     const src = readFileSync(join(ROOT, f), 'utf8');
     const m = src.match(/href="dashboard\.html"/g);
     if (m) linked.push(f + ' (' + m.length + ')');
   }
   if (linked.length) bad('لا روابط للوحة الموظفين من الموقع العام', linked.join(' | '));
-  else ok('لا روابط للوحة الموظفين من الموقع العام ولا صفحة التحقق');
+  else ok('لا روابط للوحة الموظفين من الموقع العام');
+}
+
+/* ── سياسة الصلاحيات (طلب الإدارة): الزائر يتصفّح الوظائف فقط ───────────────
+   لا تقديم استمارة، ولا التحقق من أي استمارة. الفحص على الصفحات المنشورة
+   وعلى القوالب المصدرية معاً، حتى لا يعود أحدها في بناء لاحق. */
+{
+  const visitorUi = [
+    [/id="btn-request-form/, 'زر «اطلب استمارة»'],
+    [/data-action="request-form"/, 'إجراء طلب استمارة'],
+    [/id="verify-quick"/, 'نموذج التحقق السريع'],
+    [/id="verify-serial"/, 'حقل الرقم التسلسلي'],
+    [/data-action="verify"/, 'إجراء التحقق اليدوي']
+  ];
+  const found = [];
+  for (const f of ['index.html', 'brc-standalone.html', 'brc-light.html', 'src/partials/public.html', 'src/partials/footer.html', 'src/partials/header.html']) {
+    const src = readFileSync(join(ROOT, f), 'utf8');
+    for (const [re, label] of visitorUi) if (re.test(src)) found.push(f + ': ' + label);
+  }
+  if (found.length) bad('الموقع العام بلا واجهة تقديم أو تحقق للزائر', found.join(' | '));
+  else ok('الموقع العام بلا أي واجهة تقديم استمارة أو تحقق منها (6 ملفات)');
+
+  const navLeak = [];
+  for (const f of ['src/partials/header.html', 'src/partials/footer.html', 'index.html', 'brc-standalone.html', 'brc-light.html']) {
+    const src = readFileSync(join(ROOT, f), 'utf8');
+    if (/href="verify\.html"/.test(src)) navLeak.push(f);
+    if (/data-action="request-form"/.test(src)) navLeak.push(f + ' (طلب استمارة)');
+  }
+  if (navLeak.length) bad('لا رابط لصفحة التحقق أو طلب استمارة في تنقّل الزائر', navLeak.join(' | '));
+  else ok('تنقّل الزائر خالٍ من روابط التحقق وطلب الاستمارة (5 ملفات)');
+
+  // صفحة التحقق: بوابة صلاحية قبل أي عرض بيانات
+  const vjs = readFileSync(join(ROOT, 'assets/js/verify.js'), 'utf8');
+  const hasGate = /function isStaff\(/.test(vjs) && /renderStaffGate/.test(vjs) &&
+    /if \(!isStaff\(\)\) \{ renderStaffGate\(\); return; \}/.test(vjs);
+  if (!hasGate) bad('verify.js — بوابة صلاحية تحجب الزائر قبل أي عرض', 'البوابة غير مكتملة');
+  else ok('verify.js — بوابة صلاحية تحجب الزائر قبل قراءة أو عرض أي بيانات');
+
+  const pjs = readFileSync(join(ROOT, 'assets/js/public.js'), 'utf8');
+  const rogue = [];
+  if (/requestFormModal|showRequestReceived/.test(pjs)) rogue.push('نموذج طلب الاستمارة');
+  if (/verifySerial|verify-quick|verify-serial/.test(pjs)) rogue.push('التحقق من الموقع العام');
+  if (/data-action="request-form"|data-action="verify"/.test(pjs)) rogue.push('إجراءات الزائر');
+  if (rogue.length) bad('public.js — خالٍ من منطق الطلب والتحقق', rogue.join(' | '));
+  else ok('public.js — خالٍ تماماً من منطق تقديم الطلب والتحقق (عرض وتواصل فقط)');
+
+  const w = loaded['index.html'].window;
+  const hrefs = [...loaded['index.html'].doc.querySelectorAll('#jobs-grid a[href^="https://wa.me/"]')];
+  const msgOk = hrefs.length > 0 && hrefs.every((a) => /BRC-\d{3,}/.test(decodeURIComponent(a.getAttribute('href'))));
+  if (!msgOk) bad('بطاقات الوظائف — زر حجز بالواتساب يحمل كود الوظيفة', 'عدد الأزرار: ' + hrefs.length);
+  else ok('بطاقات الوظائف — ' + hrefs.length + ' زر حجز بالواتساب، كلها تحمل كود الوظيفة في الرسالة');
+
+  const t = w.BRCStore.token('BRC-NO-000120');
+  const noToken = w.BRCStore.verify('BRC-NO-000120');
+  if (noToken.masked !== true) bad('طبقة البيانات — التحقق بلا بصمة يبقى مقنّعاً', 'masked=' + noToken.masked);
+  else ok('طبقة البيانات — لا كشف بيانات بلا بصمة صحيحة (تقنيع في الرد نفسه)');
+  if (!w.BRCStore.verify('BRC-NO-000120', t).ok) bad('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل', 'فشل');
+  else ok('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل للموظف');
 }
 
 // معرّفات مكرّرة داخل الصفحة نفسها
@@ -419,6 +479,101 @@ for (const file of PAGES.filter((f) => f.startsWith('brc-'))) {
   ok('مسارات التنقل داخل الملف الواحد: ' + routes.join('  ·  '));
 }
 
+/* ═══ 8.5) إعداد النشر — Cloudflare Pages وحده ════════════════════════════ */
+section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا رابط ثانٍ');
+
+{
+  const rootFiles = readdirSync(ROOT, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => e.name);
+  /* قرار الإدارة: Cloudflare Pages هي المنصّة الوحيدة. أي ملف إعداد لمنصّة أخرى
+     يعني رابطاً ثانياً للموقع — نفس المشكلة التي أُلغيت. */
+  const otherHosts = rootFiles.filter((f) => /^(render|netlify|vercel|firebase|\.platform|app)\.(ya?ml|json|toml)$/i.test(f) ||
+    /^(vercel\.json|netlify\.toml|firebase\.json)$/i.test(f) || f === 'render.yaml');
+  if (otherHosts.length) bad('لا إعداد نشر لمنصّة ثانية في الجذر', otherHosts.join(', '));
+  else ok('لا إعداد نشر لمنصّة ثانية — Cloudflare Pages وحدها (لا Render/Netlify/Vercel)');
+
+  const need = ['_headers', '_redirects'];
+  const missingCf = need.filter((f) => !rootFiles.includes(f));
+  if (missingCf.length) bad('ملفّات Cloudflare Pages موجودة', 'ناقص: ' + missingCf.join(', '));
+  else ok('ملفّات Cloudflare Pages في الجذر: _headers (ترويسات) · _redirects (مسارات نظيفة)');
+
+  const redirects = readFileSync(join(ROOT, '_redirects'), 'utf8');
+  const cleanRoutes = ['/verify', '/dashboard', '/standalone', '/light'];
+  const badRoutes = cleanRoutes.filter((r) => !new RegExp('^\\s*' + r + '\\s+\\S+\\s+200\\s*$', 'm').test(redirects));
+  if (badRoutes.length) bad('المسارات النظيفة كلها معرّفة بـ 200', 'ناقص: ' + badRoutes.join(', '));
+  else ok('المسارات النظيفة معرّفة في _redirects: ' + cleanRoutes.join(' · '));
+
+  const headers = readFileSync(join(ROOT, '_headers'), 'utf8');
+  const needHeaders = ['X-Content-Type-Options', 'Referrer-Policy', 'X-Frame-Options'];
+  const missingHeaders = needHeaders.filter((h) => !headers.includes(h));
+  const swNoCache = /\/sw\.js[\s\S]{0,80}no-cache/i.test(headers);
+  if (missingHeaders.length) bad('ترويسات الأمان في _headers', 'ناقص: ' + missingHeaders.join(', '));
+  else if (!swNoCache) bad('منع تخزين sw.js مؤقتاً', 'غير موجود في _headers');
+  else ok('ترويسات الأمان كاملة + sw.js بلا كاش (يُجبر الأجهزة على النسخة الجديدة)');
+
+  /* رابط التحقق المطبوع يجب أن يبقى نظيفاً (بلا .html) لأنه يتغيّر إلى النطاق الرسمي */
+  const vurl = loaded['index.html'].window.BRCStore.verifyLocalUrl('BRC-NO-000120');
+  if (!/^verify\.html\?/.test(vurl)) bad('رابط التحقق المحلي', vurl);
+  else ok('رابط التحقق المحلي نظيف ويطابق مسار /verify في _redirects');
+
+  /* لا إشارة تشغيلية لمنصّة ثانية في الكود والإعداد (المستندات تُذكر الإلغاء تاريخياً فلا تُفحص) */
+  const scanned = ['assets/js/store.js', 'assets/js/config.js', 'tools/serve.mjs', 'sw.js', '_redirects', '_headers', 'package.json'];
+  const leftovers = scanned.filter((f) => existsSync(join(ROOT, f)) && /onrender|render\.yaml|render\.com|netlify\.toml|vercel\.json/i.test(readFileSync(join(ROOT, f), 'utf8')));
+  if (leftovers.length) bad('لا إشارة تشغيلية لمنصّة نشر ثانية في الكود', leftovers.join(' · '));
+  else ok('لا إشارة تشغيلية لمنصّة ثانية في الكود والإعداد (' + scanned.length + ' ملفات)');
+
+  /* مجلد النشر: سكربت التجميع + النشر الآلي بمفاتيح Cloudflare */
+  const distScript = join(ROOT, 'tools', 'dist.mjs');
+  if (!existsSync(distScript)) bad('سكربت تجميع مجلد النشر', 'tools/dist.mjs مفقود');
+  else {
+    const dsrc = readFileSync(distScript, 'utf8');
+    const needs = [['_headers', /_headers/], ['_redirects', /_redirects/], ['sw.js', /sw\.js/],
+      ['الصفحات الأساسية', /index\.html/], ['النسخة المستقلة', /brc-standalone\.html/]];
+    const gaps = needs.filter(([, re]) => !re.test(dsrc)).map(([k]) => k);
+    if (gaps.length) bad('tools/dist.mjs يجمع ملفات الموقع الصحيحة', 'ناقص: ' + gaps.join(' · '));
+    else ok('tools/dist.mjs — مجلد نشر نظيف يجمع الصفحات وsw.js و_headers و_redirects والأصول');
+  }
+
+  /* ملف النشر الآلي يبقى في docs/ (صلاحية الـ token لا تسمح بكتابة .github/workflows)
+     ويُفعَّل بنقله إلى .github/workflows/ — انظر ترويسة الملف نفسه. */
+  const wf = join(ROOT, 'docs', 'deploy-cloudflare-workflow.yml');
+  const wfLive = join(ROOT, '.github', 'workflows', 'deploy-cloudflare.yml');
+  if (!existsSync(wf) && !existsSync(wfLive)) bad('ملف النشر الآلي موجود', 'docs/deploy-cloudflare-workflow.yml مفقود');
+  else {
+    const wsrc = readFileSync(existsSync(wfLive) ? wfLive : wf, 'utf8');
+    const mustHave = [
+      ['مشروع Cloudflare الصحيح', /--project-name=babylonian-recruitment-company/],
+      ['نشر من مجلد dist', /pages deploy dist/],
+      ['فرع الإنتاج main', /--branch=main/],
+      ['مفتاح API من الأسرار', /CLOUDFLARE_API_TOKEN/],
+      ['Account ID من الأسرار', /CLOUDFLARE_ACCOUNT_ID/],
+      ['تخطّي النشر بلا مفاتيح (لا فشل)', /steps\.guard\.outputs\.ready == 'true'/],
+      ['بوابة فحص قبل النشر', /npm run audit/]
+    ];
+    const gaps = mustHave.filter(([, re]) => !re.test(wsrc)).map(([k]) => k);
+    if (gaps.length) bad('ملف النشر الآلي مكتمل', 'ناقص: ' + gaps.join(' · '));
+    else ok('النشر الآلي: GitHub Actions → Cloudflare Pages (dist · نفس المشروع · بلا مفاتيح يتخطّى النشر)');
+    if (!existsSync(wfLive) && !/أنشئ ملفاً جديداً|Add file|Create new file/.test(wsrc))
+      bad('ملف النشر يشرح طريقة تفعيله', 'لا تعليمات تفعيل داخل الملف');
+    else ok('مسار التفعيل موثّق: انسخ الملف إلى .github/workflows/deploy-cloudflare.yml (نقرتان)');
+
+    /* لا مفاتيح مكتوبة داخل الملف — الأسرار في GitHub فقط */
+    if (/sb_secret_|api[_-]?token\s*[:=]\s*['"][A-Za-z0-9]{20,}/i.test(wsrc)) bad('ملف النشر بلا أي مفتاح مكتوب', 'يوجد مفتاح ظاهر');
+    else ok('ملف النشر لا يحوي أي مفتاح مكتوب (الأسرار من GitHub Secrets فقط)');
+  }
+
+  if (!existsSync(join(ROOT, 'docs', 'deploy-cloudflare.md'))) bad('دليل النشر على Cloudflare موجود', 'docs/deploy-cloudflare.md مفقود');
+  else {
+    const guide = readFileSync(join(ROOT, 'docs', 'deploy-cloudflare.md'), 'utf8');
+    const topics = [['Production branch', /Production branch/i], ['إلغاء Render', /إلغاء Render/i],
+      ['النطاق الرسمي', /Custom domain/i], ['نشر wrangler', /wrangler pages deploy/i], ['فحص بعد النشر', /Purge Everything/i],
+      ['مجلد dist', /npm run dist/i], ['النشر الآلي بمفاتيح', /CLOUDFLARE_API_TOKEN/],
+      ['الطريق أ (Direct Upload)', /Create deployment/i]];
+    const missingTopics = topics.filter(([, re]) => !re.test(guide)).map(([k]) => k);
+    if (missingTopics.length) bad('دليل Cloudflare يغطّي الخطوات كاملة', 'ناقص: ' + missingTopics.join(' · '));
+    else ok('دليل النشر docs/deploy-cloudflare.md يغطّي الإعداد والمعاينات والنطاق وإلغاء Render والفحص');
+  }
+}
+
 /* ═══ 9) سلامة البيانات والمنطق في المتصفح ══════════════════════════════ */
 section('9) سلامة البيانات — البيانات التجريبية والقواعد الأساسية');
 
@@ -503,12 +658,15 @@ section('10) الاستمارة المطبوعة A4 — البنية الكام�
     'خمس خانات': /المحاولة #?5|المحاولة الخامسة|>5</,
     'الكيو آر كود': /<svg/,
     'التواقيع': /v-sign|التوقيع/,
-    'الإخلاء القانوني': /غير مسؤولة قانونياً وعشائياً/,
-    'علامة مائية': /v-watermark/
+    'الإخلاء القانوني': /غير مسؤولة قانونياً وعشائياً/
   };
   const missing = Object.entries(must).filter(([, re]) => !re.test(html)).map(([k]) => k);
   if (missing.length) bad('قالب الاستمارة يحتوي كل العناصر المطلوبة', 'ناقص: ' + missing.join(' · '));
   else ok('قالب الاستمارة يحتوي كل العناصر المطلوبة (' + Object.keys(must).length + ' عنصراً)');
+
+  /* الورقة البيضاء: ممنوع أي علامة مائية أو صورة خلفية داخل قالب الاستمارة */
+  if (/v-watermark|brick-pattern/.test(html)) bad('الاستمارة المطبوعة بلا علامة مائية', 'القالب ما زال يُدرج صورة العلامة المائية');
+  else ok('الاستمارة المطبوعة نظيفة: لا علامة مائية ولا صورة خلفية (ورقة بيضاء)');
 
   const rows = (html.match(/<tr/g) || []).length;
   if (rows < 5) bad('الاستمارة تعرض المحاولات الخمس', rows + ' صفوف'); else ok('الاستمارة تعرض جدول المحاولات: ' + rows + ' صفاً');

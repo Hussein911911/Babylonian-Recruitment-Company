@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 # مخرجات مؤقتة للاختبارات
 tests/.tmp/
+
+# مجلد النشر المُجمَّع (يُبنى بـ npm run dist)
+dist/

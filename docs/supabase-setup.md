@@ -239,6 +239,38 @@ select tablename, count(*) from pg_policies
 
 ---
 
+## 7.1) تحديث على قاعدة **قائمة** — سحب التحقق والطلب من الزائر
+
+> نفّذ هذا القسم فقط إذا كانت قاعدتك قد شُغّلت سابقاً بمخطط قديم. القاعدة الجديدة
+> (`docs/schema.sql` الحالي) تتضمّن هذا التقييد أصلاً.
+
+**السياسة:** الزائر يتصفّح الوظائف فقط، ولا يقدّم استمارة ولا يتحقق من أي استمارة —
+التحقق والإصدار للموظفين والإدارة فقط.
+
+```sql
+-- 1) الزائر لا ينفّذ verify_form ولا request_form
+--    (الإبطال من public إلزامي: anon يرث صلاحياته من public)
+revoke execute on function public.verify_form(text, text) from anon;
+revoke execute on function public.request_form(text, text, text, date, text, text, text) from anon;
+
+-- 2) الموظفون المسجّلون ينفّذون التحقق من صفحة verify.html بجلستهم
+grant execute on function public.verify_form(text, text) to authenticated;
+grant execute on function public.request_form(text, text, text, date, text, text, text) to authenticated;
+```
+
+**تحقّق بعد التنفيذ** — الزائر يجب أن يرى `permission denied`، والموظف يجب أن ينجح:
+
+```sql
+select has_function_privilege('anon', 'public.verify_form(text, text)', 'execute') as anon_allowed,
+       has_function_privilege('authenticated', 'public.verify_form(text, text)', 'execute') as staff_allowed;
+-- المتوقع: anon_allowed = false  |  staff_allowed = true
+```
+
+> ⚠️ إن كان اسم السكيما عندك `brc` لا `public`، بدّل الاسم في السطرين أعلاه.
+> وبعد التنفيذ: أي محاولة تحقق من الزائر تُرفض في القاعدة أيضاً — لا في الواجهة فقط.
+
+---
+
 ## 8) ✅ ما أحتاجه منك في النهاية
 
 انسخ هذا واملأه:

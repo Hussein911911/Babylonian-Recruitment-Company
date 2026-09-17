@@ -39,7 +39,7 @@ const server = createServer(async (req, res) => {
     let pathname = decodeURIComponent(url.pathname);
     if (pathname === '/' || pathname === '') pathname = '/index.html';
 
-    // مسارات نظيفة مطابقة لإعداد Render (render.yaml) — لتعمل المعاينة المحلية مثل الإنتاج
+    // مسارات نظيفة مطابقة لملف _redirects في Cloudflare Pages — لتطابق المعاينة المحلية الإنتاج
     const CLEAN_ROUTES = {
       '/verify': '/verify.html',
       '/dashboard': '/dashboard.html',
