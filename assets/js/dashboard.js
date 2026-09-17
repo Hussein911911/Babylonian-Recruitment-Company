@@ -163,7 +163,20 @@
       }
       function localLogin() {
         var s = Store.login(u, p);
-        if (!s) { UI.toast('err', 'فشل الدخول', 'اسم المستخدم أو كلمة المرور غير صحيحة.'); return; }
+        if (!s) {
+          /* ⚠️ إن لم تكن هناك أي حسابات محلية (النظام مربوط بقاعدة الشركة عبر
+             Supabase Auth) فالسبب الحقيقي للفشل هو انقطاع الاتصال — لا خطأ في
+             كلمة المرور. إظهار «كلمة المرور غير صحيحة» هنا يضلّل الموظف ويجعله
+             يعيد المحاولة بلا داعٍ بدل أن يفحص الإنترنت. */
+          var csLocal = Store.cloudStatus ? Store.cloudStatus() : null;
+          if (csLocal && csLocal.enforceAuth && !csLocal.devAccountsActive) {
+            UI.toast('err', 'تعذّر الدخول — لا اتصال بقاعدة الشركة',
+              'حسابات الموظفين محفوظة في القاعدة، فيلزم اتصال بالإنترنت. تحقّق من الشبكة ثم أعد المحاولة.');
+            return;
+          }
+          UI.toast('err', 'فشل الدخول', 'اسم المستخدم أو كلمة المرور غير صحيحة.');
+          return;
+        }
         UI.toast('ok', 'مرحباً ' + s.name, s.role === 'admin' ? 'دخلت بصلاحية المدير العام.' : 'دخلت بصلاحية موظف.');
         enterApp();
       }
@@ -179,7 +192,11 @@
         Store.waitForCloud().then(function (st) {
           busy(false, '');
           if (st && st.state === 'on') { cloudLogin(); return; }
-          UI.toast('warn', 'وضع محلي مؤقّت', 'تعذّر الاتصال بالسحابة — الدخول محلي والبيانات غير مشتركة.');
+          var stLocal = Store.cloudStatus ? Store.cloudStatus() : null;
+          UI.toast('warn', 'وضع محلي مؤقّت',
+            (stLocal && stLocal.enforceAuth && !stLocal.devAccountsActive)
+              ? 'تعذّر الاتصال بقاعدة الشركة — الدخول يتطلب إنترنت، والبيانات المعروضة نسخة محفوظة.'
+              : 'تعذّر الاتصال بالسحابة — الدخول محلي والبيانات غير مشتركة.');
           localLogin();
         });
         return;
@@ -239,7 +256,9 @@
       tone = 'err';
       title = 'وضع محلي مؤقّت — البيانات غير مشتركة';
       body = (st.error || 'تعذّر الاتصال بالسحابة') + (st.detail ? ' — ' + st.detail : '') +
-        ' | أي وظيفة أو استمارة تُنشأ الآن تبقى في هذا المتصفح وحده.';
+        ' | أي وظيفة أو استمارة تُنشأ الآن تبقى في هذا المتصفح وحده.' +
+        (st.enforceAuth && !st.devAccountsActive
+          ? ' | تنبيه: حسابات الموظفين في القاعدة، فالدخول إلى المنظومة يتطلب إنترنت.' : '');
     } else if (st.state === 'on' && st.role !== 'staff' && !st.enforceAuth) {
       tone = 'warn';
       title = 'وضع انتقالي — الدخول محلي';
@@ -281,12 +300,28 @@
       el = box.firstChild;
       document.body.insertBefore(el, document.body.firstChild);
     }
+    /* مضغوط ومطويّ: التفاصيل في سطر واحد قابل للفتح بدل شريط يستهلك أعلى الشاشة */
     el.style.cssText = 'position:sticky;top:0;z-index:9000;font-family:inherit;direction:rtl;' +
-      'padding:8px 14px;font-size:.82rem;line-height:1.7;border-bottom:1px solid ' + colors[2] +
-      ';background:' + colors[1] + ';color:' + colors[0] + ';display:flex;gap:10px;align-items:center;flex-wrap:wrap';
-    el.innerHTML = '<b style="white-space:nowrap">' + UI.esc(title) + '</b><span>' + UI.esc(body) + '</span>' +
+      'padding:6px 12px;font-size:.8rem;line-height:1.55;border-bottom:1px solid ' + colors[2] +
+      ';background:' + colors[1] + ';color:' + colors[0] + ';display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+    var isOpen = (function () { try { return sessionStorage.getItem('brc_banner_open') === '1'; } catch (e) { return false; } })();
+    el.innerHTML = '<b style="white-space:nowrap">' + UI.esc(title) + '</b>' +
+      '<span id="brc-cloud-more" style="display:' + (isOpen ? 'inline' : 'none') + '">' + UI.esc(body) + '</span>' +
+      '<button type="button" data-banner-toggle aria-expanded="' + (isOpen ? 'true' : 'false') + '" ' +
+        'style="background:transparent;border:1px solid ' + colors[2] + ';color:' + colors[0] +
+        ';font:inherit;font-weight:700;cursor:pointer;border-radius:8px;padding:1px 9px">' +
+        (isOpen ? 'إخفاء' : 'التفاصيل') + '</button>' +
       (tone === 'err' ? '<a href="supabase-check.html" style="margin-inline-start:auto;color:' + colors[0] +
         ';font-weight:700;text-decoration:underline;white-space:nowrap">فحص الاتصال</a>' : '');
+    var tgl = el.querySelector('[data-banner-toggle]');
+    if (tgl) tgl.addEventListener('click', function () {
+      var more = el.querySelector('#brc-cloud-more');
+      var open = more.style.display !== 'none';
+      more.style.display = open ? 'none' : 'inline';
+      tgl.textContent = open ? 'التفاصيل' : 'إخفاء';
+      tgl.setAttribute('aria-expanded', open ? 'false' : 'true');
+      try { sessionStorage.setItem('brc_banner_open', open ? '0' : '1'); } catch (e) { }
+    });
   }
 
   /* ملاحظة على شاشة الدخول: سبب التعذّر خطوةً بخطوة — أهمّ ما يحتاجه المسؤول

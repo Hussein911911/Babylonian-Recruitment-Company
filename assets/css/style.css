@@ -93,6 +93,11 @@ p { margin: 0 0 1rem; }
 a { color: var(--lapis-2); text-decoration: none; }
 a:hover { color: var(--gold-3); }
 img { max-width: 100%; display: block; }
+/* حماية عامة: المحتوى العريض (جداول، أكواد، روابط طويلة) يلتفّ ولا يمدّ الصفحة
+   أفقياً — أي أن المستخدم لا يحتاج تحريك الشاشة يميناً ويساراً أبداً */
+html, body { max-width: 100%; overflow-x: hidden; }
+p, li, h1, h2, h3, h4, h5, h6, td, th, label, .v, .k, .meta { overflow-wrap: anywhere; }
+svg, video, canvas, iframe { max-width: 100%; }
 code, .mono { font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace; letter-spacing: .3px; }
 :focus-visible { outline: 3px solid var(--turq); outline-offset: 2px; border-radius: 6px; }
 .container { width: min(1220px, 92vw); margin-inline: auto; }
@@ -412,11 +417,17 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
   z-index: 2;
 }
 .job-image {
-  width: 100%; height: 180px; overflow: hidden; position: relative; background: linear-gradient(135deg, #f4f6fb, #e8ecf5);
+  width: 100%; height: 180px; overflow: hidden; position: relative;
+  background: linear-gradient(135deg, #f4f6fb, #e8ecf5);
+  display: grid; place-items: center;
 }
 .job-image img {
   width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;
+  grid-area: 1 / 1; position: relative; z-index: 1;
 }
+/* بديل رمزي يظهر أثناء التحميل أو عند تعذّره — بدل أيقونة الصورة المكسورة */
+.job-image .job-ph { grid-area: 1 / 1; color: #b9c3d6; display: grid; place-items: center; }
+.job-image .job-ph .ic { width: 46px; height: 46px; }
 .job-card:hover .job-image img { transform: scale(1.05); }
 .job-card:hover { transform: translateY(-5px); box-shadow: var(--shadow); border-color: var(--line); }
 .job-card.is-reserved::before { background: linear-gradient(90deg, var(--warn), var(--gold)); }
@@ -1035,6 +1046,16 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 }
 @media (max-width: 720px) {
   body { font-size: 15px; }
+  /* ترويسة مضغوطة للموبايل: 4 أسطر تواصل كانت تستهلك ~28% من الشاشة وتبقى
+     ملتصقة فتحجب المحتوى — على الموبايل نُبقي العنوان + زرّي الاتصال والمهام */
+  .site-header .container { padding: 7px 0; gap: 6px; }
+  .brand .emblem { width: 42px; height: 42px; }
+  .brand-text b { font-size: 1rem; }
+  .brand-text span { display: none; }
+  .header-contact { order: 3; flex: 1 1 100%; gap: 8px 14px; font-size: .78rem; }
+  .hc-address, .hc-email, .hc-hours { display: none; }
+  .hc-phones-item { width: 100%; }
+  .header-contact .hc-item { gap: 6px; }
   .main-nav { display: none; position: absolute; inset-inline: 0; top: 100%; background: #08132b; flex-direction: column; padding: 12px; border-bottom: 1px solid var(--line); }
   .main-nav.open { display: flex; }
   .main-nav a { width: 100%; }
@@ -1050,7 +1071,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .modal-foot { justify-content: stretch; }
   .modal-foot .btn { flex: 1; }
   .header-contact { order: 3; flex: 1 1 100%; }
-  .hc-email, .hc-hours { display: inline-flex; }
+  /* على الموبايل تُبقى أرقام الواتساب فقط (أهم ما يحتاجه الباحث) */
+  .hc-email, .hc-hours, .hc-address { display: none; }
   .site-header .main-nav { border-top: 0; padding-top: 0; justify-content: initial; }
 }
 /* خط زخرفي ذهبي بجانب العنوان الفرعي (يمتدّ في اتجاه القراءة) */
@@ -1295,4 +1317,71 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     width: 65px;
     height: 65px;
   }
+}
+
+/* ============================================================================
+   20) تناسق الشاشات الصغيرة — الموبايل أولاً (طلب العميل: ترتيب نظيف وتعامل
+   سواسية بين الموبايل والحاسبة، بلا عناصر مقطوعة أو متراكبة)
+   ----------------------------------------------------------------------------
+   • شريط القائمة العلوي في اللوحة: العنوان في سطر، والأدوات (بحث + أزرار)
+     في سطر مستقل بعرض كامل — بدل تكسّرها عشوائياً على الموبايل.
+   • الجداول تُمرَّر أفقياً بسلاسة داخل غلافها (table-scroll) فلا تُقصّ الأعمدة.
+   • شريط حالة الاتصال يبقى لاصقاً لكن بحجم مضغوط لا يسرق الشاشة.
+   ============================================================================ */
+
+/* 🔴 جذر مشكلة «الألواح المقطوعة» على الموبايل: عناصر الشبكة/المرونة لا تتقلّص
+   دون min-width:0، فيدفعها الجدول العريض داخلها لتتجاوز الشاشة (كان لوح
+   «المستخدمون والصلاحيات» بعرض 522px على شاشة 390px). بهذه القاعدة يتقلّص
+   اللوح لعرض الشاشة ويتمرّر الجدول داخله وحده. */
+.grid > *, .grid-2 > *, .grid-3 > *, .grid-4 > *,
+.panel, .panel-body, .panel-head > *, .view, .view > *,
+.app-main, .app-top > *, .table-wrap, .table-scroll,
+.stat-grid > *, .data-grid > *, .steps > *, .contact-grid > * { min-width: 0; }
+.panel, .table-wrap, .table-scroll { max-width: 100%; }
+@media (max-width: 720px) {
+  /* --- شريط أدوات اللوحة --- */
+  .app-top { padding: 10px 12px; gap: 8px; }
+  .app-top h1 { font-size: 1.1rem; }
+  .app-top .sub { font-size: .78rem; }
+  .app-top > div { min-width: 0; }
+  .app-top .search-wrap { width: 100%; min-width: 0 !important; }
+  .app-top .flex.flex-wrap { width: 100%; gap: 6px; }
+  .app-top .flex.flex-wrap .btn { flex: 1 1 30%; justify-content: center; }
+  .hamburger-btn { width: 38px; height: 38px; flex: none; }
+
+  /* --- المحتوى: فراغات أصغر حتى تُستثمر الشاشة --- */
+  .view > * { padding: 10px 12px; }
+  .view > .stat-grid { padding: 12px; }
+  .view > .panel { margin: 0 12px 10px 12px; }
+
+  .panel-head { flex-wrap: wrap; gap: 8px; }
+  .panel { border-radius: 12px; }
+  .card-pad { padding: 14px; }
+
+  /* --- الجداول: تمرير أفقي داخل الغلاف فقط --- */
+  .table-scroll { -webkit-overflow-scrolling: touch; }
+  .table-scroll table.data { min-width: 640px; }
+  .table-wrap { border-radius: 12px; }
+
+  /* --- شريط حالة الاتصال: مضغوط --- */
+  #brc-cloud-banner { padding: 6px 10px !important; font-size: .76rem !important; gap: 6px !important; }
+  #brc-cloud-banner b { white-space: normal !important; }
+
+  /* --- اللوحات والنوافذ على الموبايل --- */
+  .modal { width: 100%; max-height: 94vh; border-radius: 14px; }
+  .modal-head, .modal-body, .modal-foot { padding: 14px 16px; }
+  .modal-foot .btn { flex: 1 1 auto; }
+  .toast-wrap { inset-inline: 12px; inset-block-start: 12px; }
+  .toast { min-width: 0; width: 100%; }
+}
+
+@media (max-width: 420px) {
+  .app-top .flex.flex-wrap .btn { flex: 1 1 46%; }
+  .brand-text b { font-size: .95rem; }
+  .footer-phones a, .mono { overflow-wrap: anywhere; }
+}
+
+/* على الشاشات الواسعة جداً: لا نمدّ النص بعرض مفرط (قراءة مرتاحة) */
+@media (min-width: 1440px) {
+  .app-top h1 { font-size: 1.4rem; }
 }

@@ -308,9 +308,15 @@
       hold = '<span class="tiny muted" title="يُفرج تلقائياً">' +
         (h > 0 ? 'تُفرج خلال ' + Math.ceil(h) + ' ساعة' : 'قيد الإفراج') + '</span>';
     }
+    /* صورة الوظيفة: تُحمَّل بتحميل مؤجّل (أسرع على الموبايل)، ومعها بديل رمزي
+       يظهر إن تعذّر تحميل الصورة (بلا إنترنت أو رابط معطّل) فلا تظهر أيقونة
+       صورة مكسورة في القائمة */
     var imageHtml = '';
     if (j.imageUrl) {
-      imageHtml = '<div class="job-image"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '" loading="lazy"></div>';
+      imageHtml = '<div class="job-image">' +
+        '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
+        '<img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async" referrerpolicy="no-referrer"' +
+        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()"></div>';
     }
     
     return '' +

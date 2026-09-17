@@ -110,6 +110,11 @@ p { margin: 0 0 1rem; }
 a { color: var(--lapis-2); text-decoration: none; }
 a:hover { color: var(--gold-3); }
 img { max-width: 100%; display: block; }
+/* حماية عامة: المحتوى العريض (جداول، أكواد، روابط طويلة) يلتفّ ولا يمدّ الصفحة
+   أفقياً — أي أن المستخدم لا يحتاج تحريك الشاشة يميناً ويساراً أبداً */
+html, body { max-width: 100%; overflow-x: hidden; }
+p, li, h1, h2, h3, h4, h5, h6, td, th, label, .v, .k, .meta { overflow-wrap: anywhere; }
+svg, video, canvas, iframe { max-width: 100%; }
 code, .mono { font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace; letter-spacing: .3px; }
 :focus-visible { outline: 3px solid var(--turq); outline-offset: 2px; border-radius: 6px; }
 .container { width: min(1220px, 92vw); margin-inline: auto; }
@@ -429,11 +434,17 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
   z-index: 2;
 }
 .job-image {
-  width: 100%; height: 180px; overflow: hidden; position: relative; background: linear-gradient(135deg, #f4f6fb, #e8ecf5);
+  width: 100%; height: 180px; overflow: hidden; position: relative;
+  background: linear-gradient(135deg, #f4f6fb, #e8ecf5);
+  display: grid; place-items: center;
 }
 .job-image img {
   width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;
+  grid-area: 1 / 1; position: relative; z-index: 1;
 }
+/* بديل رمزي يظهر أثناء التحميل أو عند تعذّره — بدل أيقونة الصورة المكسورة */
+.job-image .job-ph { grid-area: 1 / 1; color: #b9c3d6; display: grid; place-items: center; }
+.job-image .job-ph .ic { width: 46px; height: 46px; }
 .job-card:hover .job-image img { transform: scale(1.05); }
 .job-card:hover { transform: translateY(-5px); box-shadow: var(--shadow); border-color: var(--line); }
 .job-card.is-reserved::before { background: linear-gradient(90deg, var(--warn), var(--gold)); }
@@ -1052,6 +1063,16 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 }
 @media (max-width: 720px) {
   body { font-size: 15px; }
+  /* ترويسة مضغوطة للموبايل: 4 أسطر تواصل كانت تستهلك ~28% من الشاشة وتبقى
+     ملتصقة فتحجب المحتوى — على الموبايل نُبقي العنوان + زرّي الاتصال والمهام */
+  .site-header .container { padding: 7px 0; gap: 6px; }
+  .brand .emblem { width: 42px; height: 42px; }
+  .brand-text b { font-size: 1rem; }
+  .brand-text span { display: none; }
+  .header-contact { order: 3; flex: 1 1 100%; gap: 8px 14px; font-size: .78rem; }
+  .hc-address, .hc-email, .hc-hours { display: none; }
+  .hc-phones-item { width: 100%; }
+  .header-contact .hc-item { gap: 6px; }
   .main-nav { display: none; position: absolute; inset-inline: 0; top: 100%; background: #08132b; flex-direction: column; padding: 12px; border-bottom: 1px solid var(--line); }
   .main-nav.open { display: flex; }
   .main-nav a { width: 100%; }
@@ -1067,7 +1088,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .modal-foot { justify-content: stretch; }
   .modal-foot .btn { flex: 1; }
   .header-contact { order: 3; flex: 1 1 100%; }
-  .hc-email, .hc-hours { display: inline-flex; }
+  /* على الموبايل تُبقى أرقام الواتساب فقط (أهم ما يحتاجه الباحث) */
+  .hc-email, .hc-hours, .hc-address { display: none; }
   .site-header .main-nav { border-top: 0; padding-top: 0; justify-content: initial; }
 }
 /* خط زخرفي ذهبي بجانب العنوان الفرعي (يمتدّ في اتجاه القراءة) */
@@ -1314,6 +1336,73 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   }
 }
 
+/* ============================================================================
+   20) تناسق الشاشات الصغيرة — الموبايل أولاً (طلب العميل: ترتيب نظيف وتعامل
+   سواسية بين الموبايل والحاسبة، بلا عناصر مقطوعة أو متراكبة)
+   ----------------------------------------------------------------------------
+   • شريط القائمة العلوي في اللوحة: العنوان في سطر، والأدوات (بحث + أزرار)
+     في سطر مستقل بعرض كامل — بدل تكسّرها عشوائياً على الموبايل.
+   • الجداول تُمرَّر أفقياً بسلاسة داخل غلافها (table-scroll) فلا تُقصّ الأعمدة.
+   • شريط حالة الاتصال يبقى لاصقاً لكن بحجم مضغوط لا يسرق الشاشة.
+   ============================================================================ */
+
+/* 🔴 جذر مشكلة «الألواح المقطوعة» على الموبايل: عناصر الشبكة/المرونة لا تتقلّص
+   دون min-width:0، فيدفعها الجدول العريض داخلها لتتجاوز الشاشة (كان لوح
+   «المستخدمون والصلاحيات» بعرض 522px على شاشة 390px). بهذه القاعدة يتقلّص
+   اللوح لعرض الشاشة ويتمرّر الجدول داخله وحده. */
+.grid > *, .grid-2 > *, .grid-3 > *, .grid-4 > *,
+.panel, .panel-body, .panel-head > *, .view, .view > *,
+.app-main, .app-top > *, .table-wrap, .table-scroll,
+.stat-grid > *, .data-grid > *, .steps > *, .contact-grid > * { min-width: 0; }
+.panel, .table-wrap, .table-scroll { max-width: 100%; }
+@media (max-width: 720px) {
+  /* --- شريط أدوات اللوحة --- */
+  .app-top { padding: 10px 12px; gap: 8px; }
+  .app-top h1 { font-size: 1.1rem; }
+  .app-top .sub { font-size: .78rem; }
+  .app-top > div { min-width: 0; }
+  .app-top .search-wrap { width: 100%; min-width: 0 !important; }
+  .app-top .flex.flex-wrap { width: 100%; gap: 6px; }
+  .app-top .flex.flex-wrap .btn { flex: 1 1 30%; justify-content: center; }
+  .hamburger-btn { width: 38px; height: 38px; flex: none; }
+
+  /* --- المحتوى: فراغات أصغر حتى تُستثمر الشاشة --- */
+  .view > * { padding: 10px 12px; }
+  .view > .stat-grid { padding: 12px; }
+  .view > .panel { margin: 0 12px 10px 12px; }
+
+  .panel-head { flex-wrap: wrap; gap: 8px; }
+  .panel { border-radius: 12px; }
+  .card-pad { padding: 14px; }
+
+  /* --- الجداول: تمرير أفقي داخل الغلاف فقط --- */
+  .table-scroll { -webkit-overflow-scrolling: touch; }
+  .table-scroll table.data { min-width: 640px; }
+  .table-wrap { border-radius: 12px; }
+
+  /* --- شريط حالة الاتصال: مضغوط --- */
+  #brc-cloud-banner { padding: 6px 10px !important; font-size: .76rem !important; gap: 6px !important; }
+  #brc-cloud-banner b { white-space: normal !important; }
+
+  /* --- اللوحات والنوافذ على الموبايل --- */
+  .modal { width: 100%; max-height: 94vh; border-radius: 14px; }
+  .modal-head, .modal-body, .modal-foot { padding: 14px 16px; }
+  .modal-foot .btn { flex: 1 1 auto; }
+  .toast-wrap { inset-inline: 12px; inset-block-start: 12px; }
+  .toast { min-width: 0; width: 100%; }
+}
+
+@media (max-width: 420px) {
+  .app-top .flex.flex-wrap .btn { flex: 1 1 46%; }
+  .brand-text b { font-size: .95rem; }
+  .footer-phones a, .mono { overflow-wrap: anywhere; }
+}
+
+/* على الشاشات الواسعة جداً: لا نمدّ النص بعرض مفرط (قراءة مرتاحة) */
+@media (min-width: 1440px) {
+  .app-top h1 { font-size: 1.4rem; }
+}
+
 </style>
 </head>
 <body>
@@ -1513,11 +1602,11 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       </a>
 
       <div class="header-contact">
-        <a class="hc-item" href="https://www.google.com/maps?q=32.4823913,44.4105048" target="_blank" rel="noopener" title="فتح الموقع في خرائط جوجل">
+        <a class="hc-item hc-address" href="https://www.google.com/maps?q=32.4823913,44.4105048" target="_blank" rel="noopener" title="فتح الموقع في خرائط جوجل">
           <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
           <span>حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي</span>
         </a>
-        <span class="hc-item">
+        <span class="hc-item hc-phones-item">
           <svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg>
           <span class="hc-phones">
             <a href="https://wa.me/9647760058007" target="_blank" rel="noopener" dir="ltr" class="mono">07760058007</a>
@@ -6013,9 +6102,15 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       hold = '<span class="tiny muted" title="يُفرج تلقائياً">' +
         (h > 0 ? 'تُفرج خلال ' + Math.ceil(h) + ' ساعة' : 'قيد الإفراج') + '</span>';
     }
+    /* صورة الوظيفة: تُحمَّل بتحميل مؤجّل (أسرع على الموبايل)، ومعها بديل رمزي
+       يظهر إن تعذّر تحميل الصورة (بلا إنترنت أو رابط معطّل) فلا تظهر أيقونة
+       صورة مكسورة في القائمة */
     var imageHtml = '';
     if (j.imageUrl) {
-      imageHtml = '<div class="job-image"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '" loading="lazy"></div>';
+      imageHtml = '<div class="job-image">' +
+        '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
+        '<img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async" referrerpolicy="no-referrer"' +
+        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()"></div>';
     }
     
     return '' +
@@ -6675,7 +6770,20 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       }
       function localLogin() {
         var s = Store.login(u, p);
-        if (!s) { UI.toast('err', 'فشل الدخول', 'اسم المستخدم أو كلمة المرور غير صحيحة.'); return; }
+        if (!s) {
+          /* ⚠️ إن لم تكن هناك أي حسابات محلية (النظام مربوط بقاعدة الشركة عبر
+             Supabase Auth) فالسبب الحقيقي للفشل هو انقطاع الاتصال — لا خطأ في
+             كلمة المرور. إظهار «كلمة المرور غير صحيحة» هنا يضلّل الموظف ويجعله
+             يعيد المحاولة بلا داعٍ بدل أن يفحص الإنترنت. */
+          var csLocal = Store.cloudStatus ? Store.cloudStatus() : null;
+          if (csLocal && csLocal.enforceAuth && !csLocal.devAccountsActive) {
+            UI.toast('err', 'تعذّر الدخول — لا اتصال بقاعدة الشركة',
+              'حسابات الموظفين محفوظة في القاعدة، فيلزم اتصال بالإنترنت. تحقّق من الشبكة ثم أعد المحاولة.');
+            return;
+          }
+          UI.toast('err', 'فشل الدخول', 'اسم المستخدم أو كلمة المرور غير صحيحة.');
+          return;
+        }
         UI.toast('ok', 'مرحباً ' + s.name, s.role === 'admin' ? 'دخلت بصلاحية المدير العام.' : 'دخلت بصلاحية موظف.');
         enterApp();
       }
@@ -6691,7 +6799,11 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         Store.waitForCloud().then(function (st) {
           busy(false, '');
           if (st && st.state === 'on') { cloudLogin(); return; }
-          UI.toast('warn', 'وضع محلي مؤقّت', 'تعذّر الاتصال بالسحابة — الدخول محلي والبيانات غير مشتركة.');
+          var stLocal = Store.cloudStatus ? Store.cloudStatus() : null;
+          UI.toast('warn', 'وضع محلي مؤقّت',
+            (stLocal && stLocal.enforceAuth && !stLocal.devAccountsActive)
+              ? 'تعذّر الاتصال بقاعدة الشركة — الدخول يتطلب إنترنت، والبيانات المعروضة نسخة محفوظة.'
+              : 'تعذّر الاتصال بالسحابة — الدخول محلي والبيانات غير مشتركة.');
           localLogin();
         });
         return;
@@ -6751,7 +6863,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       tone = 'err';
       title = 'وضع محلي مؤقّت — البيانات غير مشتركة';
       body = (st.error || 'تعذّر الاتصال بالسحابة') + (st.detail ? ' — ' + st.detail : '') +
-        ' | أي وظيفة أو استمارة تُنشأ الآن تبقى في هذا المتصفح وحده.';
+        ' | أي وظيفة أو استمارة تُنشأ الآن تبقى في هذا المتصفح وحده.' +
+        (st.enforceAuth && !st.devAccountsActive
+          ? ' | تنبيه: حسابات الموظفين في القاعدة، فالدخول إلى المنظومة يتطلب إنترنت.' : '');
     } else if (st.state === 'on' && st.role !== 'staff' && !st.enforceAuth) {
       tone = 'warn';
       title = 'وضع انتقالي — الدخول محلي';
@@ -6793,12 +6907,28 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       el = box.firstChild;
       document.body.insertBefore(el, document.body.firstChild);
     }
+    /* مضغوط ومطويّ: التفاصيل في سطر واحد قابل للفتح بدل شريط يستهلك أعلى الشاشة */
     el.style.cssText = 'position:sticky;top:0;z-index:9000;font-family:inherit;direction:rtl;' +
-      'padding:8px 14px;font-size:.82rem;line-height:1.7;border-bottom:1px solid ' + colors[2] +
-      ';background:' + colors[1] + ';color:' + colors[0] + ';display:flex;gap:10px;align-items:center;flex-wrap:wrap';
-    el.innerHTML = '<b style="white-space:nowrap">' + UI.esc(title) + '</b><span>' + UI.esc(body) + '</span>' +
+      'padding:6px 12px;font-size:.8rem;line-height:1.55;border-bottom:1px solid ' + colors[2] +
+      ';background:' + colors[1] + ';color:' + colors[0] + ';display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+    var isOpen = (function () { try { return sessionStorage.getItem('brc_banner_open') === '1'; } catch (e) { return false; } })();
+    el.innerHTML = '<b style="white-space:nowrap">' + UI.esc(title) + '</b>' +
+      '<span id="brc-cloud-more" style="display:' + (isOpen ? 'inline' : 'none') + '">' + UI.esc(body) + '</span>' +
+      '<button type="button" data-banner-toggle aria-expanded="' + (isOpen ? 'true' : 'false') + '" ' +
+        'style="background:transparent;border:1px solid ' + colors[2] + ';color:' + colors[0] +
+        ';font:inherit;font-weight:700;cursor:pointer;border-radius:8px;padding:1px 9px">' +
+        (isOpen ? 'إخفاء' : 'التفاصيل') + '</button>' +
       (tone === 'err' ? '<a href="supabase-check.html" style="margin-inline-start:auto;color:' + colors[0] +
         ';font-weight:700;text-decoration:underline;white-space:nowrap">فحص الاتصال</a>' : '');
+    var tgl = el.querySelector('[data-banner-toggle]');
+    if (tgl) tgl.addEventListener('click', function () {
+      var more = el.querySelector('#brc-cloud-more');
+      var open = more.style.display !== 'none';
+      more.style.display = open ? 'none' : 'inline';
+      tgl.textContent = open ? 'التفاصيل' : 'إخفاء';
+      tgl.setAttribute('aria-expanded', open ? 'false' : 'true');
+      try { sessionStorage.setItem('brc_banner_open', open ? '0' : '1'); } catch (e) { }
+    });
   }
 
   /* ملاحظة على شاشة الدخول: سبب التعذّر خطوةً بخطوة — أهمّ ما يحتاجه المسؤول
