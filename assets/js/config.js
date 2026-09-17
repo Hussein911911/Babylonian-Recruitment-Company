@@ -46,11 +46,7 @@
      * المستخدمون (نظام تجريبي يعمل بالكامل داخل المتصفح)
      * في النسخة السحابية تُدار الحسابات والصلاحيات عبر Supabase Auth + RLS
      * -------------------------------------------------------------- */
-    users: [
-      { username: 'admin', password: 'admin123', name: 'المدير العام', role: 'admin', title: 'الإدارة العامة' },
-      { username: 'staff', password: 'staff123', name: 'أحمد الموسوي', role: 'staff', title: 'موظف توظيف' },
-      { username: 'staff2', password: 'staff123', name: 'زينب الحسيني', role: 'staff', title: 'موظفة توظيف' }
-    ],
+    users: [],
 
     /* مناطق عمل الشركة */
     regions: [

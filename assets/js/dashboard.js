@@ -12,6 +12,23 @@
 
   var lastSessionKey = null;
 
+
+  /* نسخة خارجية مشفّرة للابتوب: كلمة المرور لا تُرسل إلى أي خادم. */
+  function encryptedBackup(text, password) {
+    if (!root.crypto || !root.crypto.subtle) return Promise.reject(new Error('المتصفح لا يدعم التشفير الآمن'));
+    var enc = new TextEncoder(), salt = crypto.getRandomValues(new Uint8Array(16));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey'])
+      .then(function (base) { return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: salt, iterations: 250000, hash: 'SHA-256' },
+        base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']); })
+      .then(function (key) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, enc.encode(text)); })
+      .then(function (buf) {
+        function b64(x) { var a = new Uint8Array(x), out = ''; for (var i = 0; i < a.length; i += 0x8000) out += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(out); }
+        return JSON.stringify({ format: 'BRC-ENCRYPTED-BACKUP-v1', algorithm: 'AES-256-GCM', kdf: 'PBKDF2-SHA-256', iterations: 250000, salt: b64(salt), iv: b64(iv), data: b64(buf) });
+      });
+  }
+
   /* مفتاح الجلسة: يُستخدم لرصد الدخول/الخروج وإعادة ضبط الواجهة والصلاحيات */
   function sessionKey() {
     var u = Store.currentUser();
@@ -1559,6 +1576,19 @@
       UI.download('brc-backup-' + Store.fmtDate(new Date()) + '.json', Store.exportJson(), 'application/json');
       UI.toast('ok', 'تصدير النسخة', 'حُفظ ملف JSON يحتوي كل البيانات والسجلات.');
     });
+    var exEncrypted = document.getElementById('btn-export-encrypted');
+    if (exEncrypted) exEncrypted.addEventListener('click', function () {
+      var p1 = window.prompt('اكتب كلمة مرور قوية للنسخة المشفّرة:');
+      if (!p1 || p1.length < 10) { UI.toast('warn', 'كلمة المرور قصيرة', 'استخدم 10 أحرف أو أكثر واحفظها خارج الموقع.'); return; }
+      var p2 = window.prompt('أعد كتابة كلمة المرور:');
+      if (p1 !== p2) { UI.toast('err', 'لم تتطابق كلمتا المرور', 'لم يتم إنشاء النسخة.'); return; }
+      exEncrypted.disabled = true;
+      encryptedBackup(Store.exportJson(), p1).then(function (data) {
+        UI.download('BRC-backup-' + Store.fmtDate(new Date()) + '.brc.enc.json', data, 'application/json');
+        UI.toast('ok', 'تم إنشاء النسخة المشفّرة', 'احفظ الملف وكلمة المرور في مكانين آمنين.');
+      }).catch(function (e) { UI.toast('err', 'فشل التشفير', e.message); }).then(function () { exEncrypted.disabled = false; });
+    });
+
     var im = document.getElementById('btn-import');
     var imf = document.getElementById('import-file');
     if (im && imf) {
