@@ -300,13 +300,70 @@ for (const [js, page] of CONTRACT) {
   else ok('لا حسابات تجريبية ظاهرة على شاشة الدخول (في ' + published.length + ' صفحات منشورة)');
 
   const linked = [];
-  for (const f of ['index.html', 'verify.html']) {
+  for (const f of ['index.html']) {
     const src = readFileSync(join(ROOT, f), 'utf8');
     const m = src.match(/href="dashboard\.html"/g);
     if (m) linked.push(f + ' (' + m.length + ')');
   }
   if (linked.length) bad('لا روابط للوحة الموظفين من الموقع العام', linked.join(' | '));
-  else ok('لا روابط للوحة الموظفين من الموقع العام ولا صفحة التحقق');
+  else ok('لا روابط للوحة الموظفين من الموقع العام');
+}
+
+/* ── سياسة الصلاحيات (طلب الإدارة): الزائر يتصفّح الوظائف فقط ───────────────
+   لا تقديم استمارة، ولا التحقق من أي استمارة. الفحص على الصفحات المنشورة
+   وعلى القوالب المصدرية معاً، حتى لا يعود أحدها في بناء لاحق. */
+{
+  const visitorUi = [
+    [/id="btn-request-form/, 'زر «اطلب استمارة»'],
+    [/data-action="request-form"/, 'إجراء طلب استمارة'],
+    [/id="verify-quick"/, 'نموذج التحقق السريع'],
+    [/id="verify-serial"/, 'حقل الرقم التسلسلي'],
+    [/data-action="verify"/, 'إجراء التحقق اليدوي']
+  ];
+  const found = [];
+  for (const f of ['index.html', 'brc-standalone.html', 'brc-light.html', 'src/partials/public.html', 'src/partials/footer.html', 'src/partials/header.html']) {
+    const src = readFileSync(join(ROOT, f), 'utf8');
+    for (const [re, label] of visitorUi) if (re.test(src)) found.push(f + ': ' + label);
+  }
+  if (found.length) bad('الموقع العام بلا واجهة تقديم أو تحقق للزائر', found.join(' | '));
+  else ok('الموقع العام بلا أي واجهة تقديم استمارة أو تحقق منها (6 ملفات)');
+
+  const navLeak = [];
+  for (const f of ['src/partials/header.html', 'src/partials/footer.html', 'index.html', 'brc-standalone.html', 'brc-light.html']) {
+    const src = readFileSync(join(ROOT, f), 'utf8');
+    if (/href="verify\.html"/.test(src)) navLeak.push(f);
+    if (/data-action="request-form"/.test(src)) navLeak.push(f + ' (طلب استمارة)');
+  }
+  if (navLeak.length) bad('لا رابط لصفحة التحقق أو طلب استمارة في تنقّل الزائر', navLeak.join(' | '));
+  else ok('تنقّل الزائر خالٍ من روابط التحقق وطلب الاستمارة (5 ملفات)');
+
+  // صفحة التحقق: بوابة صلاحية قبل أي عرض بيانات
+  const vjs = readFileSync(join(ROOT, 'assets/js/verify.js'), 'utf8');
+  const hasGate = /function isStaff\(/.test(vjs) && /renderStaffGate/.test(vjs) &&
+    /if \(!isStaff\(\)\) \{ renderStaffGate\(\); return; \}/.test(vjs);
+  if (!hasGate) bad('verify.js — بوابة صلاحية تحجب الزائر قبل أي عرض', 'البوابة غير مكتملة');
+  else ok('verify.js — بوابة صلاحية تحجب الزائر قبل قراءة أو عرض أي بيانات');
+
+  const pjs = readFileSync(join(ROOT, 'assets/js/public.js'), 'utf8');
+  const rogue = [];
+  if (/requestFormModal|showRequestReceived/.test(pjs)) rogue.push('نموذج طلب الاستمارة');
+  if (/verifySerial|verify-quick|verify-serial/.test(pjs)) rogue.push('التحقق من الموقع العام');
+  if (/data-action="request-form"|data-action="verify"/.test(pjs)) rogue.push('إجراءات الزائر');
+  if (rogue.length) bad('public.js — خالٍ من منطق الطلب والتحقق', rogue.join(' | '));
+  else ok('public.js — خالٍ تماماً من منطق تقديم الطلب والتحقق (عرض وتواصل فقط)');
+
+  const w = loaded['index.html'].window;
+  const hrefs = [...loaded['index.html'].doc.querySelectorAll('#jobs-grid a[href^="https://wa.me/"]')];
+  const msgOk = hrefs.length > 0 && hrefs.every((a) => /BRC-\d{3,}/.test(decodeURIComponent(a.getAttribute('href'))));
+  if (!msgOk) bad('بطاقات الوظائف — زر حجز بالواتساب يحمل كود الوظيفة', 'عدد الأزرار: ' + hrefs.length);
+  else ok('بطاقات الوظائف — ' + hrefs.length + ' زر حجز بالواتساب، كلها تحمل كود الوظيفة في الرسالة');
+
+  const t = w.BRCStore.token('BRC-NO-000120');
+  const noToken = w.BRCStore.verify('BRC-NO-000120');
+  if (noToken.masked !== true) bad('طبقة البيانات — التحقق بلا بصمة يبقى مقنّعاً', 'masked=' + noToken.masked);
+  else ok('طبقة البيانات — لا كشف بيانات بلا بصمة صحيحة (تقنيع في الرد نفسه)');
+  if (!w.BRCStore.verify('BRC-NO-000120', t).ok) bad('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل', 'فشل');
+  else ok('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل للموظف');
 }
 
 // معرّفات مكرّرة داخل الصفحة نفسها

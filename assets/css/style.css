@@ -118,6 +118,8 @@ code, .mono { font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
 .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* عمودان (نص + صورة): يتحوّلان لعمود واحد على الشاشات الضيقة */
+.split-2 { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(24px, 4vw, 48px); align-items: center; }
 
 /* ============================ 4) الترويسة ============================ */
 .header-main { display: flex; align-items: center; justify-content: space-between; gap: 14px 18px; flex-wrap: wrap; }
@@ -976,6 +978,11 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 }
 .verify-hero > * { position: relative; z-index: 1; }
 .verify-card { background: #fff; border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); margin-top: -34px; position: relative; overflow: hidden; }
+/* لوح توضيحات صفحة التحقق — يُخفى عن الزائر بلا جلسة موظف (انظر verify.js) */
+.verify-hints { margin-top: 1.35rem; }
+.verify-hints h3 { font-size: 1rem; }
+.verify-hints p { color: var(--muted); font-size: .92rem; margin: 0; }
+
 .verify-status { padding: 22px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .verify-status .seal { width: 62px; height: 62px; border-radius: 18px; display: grid; place-items: center; flex: none; }
 .verify-status .seal svg { width: 30px; height: 30px; }
@@ -1043,6 +1050,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .lion-grid { grid-template-columns: 1fr; }
   .site-footer .foot-main { grid-template-columns: 1fr 1fr; }
   .hc-email, .hc-hours { display: none; }
+  .split-2 { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
   body { font-size: 15px; }
@@ -1063,7 +1071,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .f-field.f-search { flex: 1 1 100%; }
   .qs-field.qs-main { flex: 1 1 100%; }
-  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .grid-2, .grid-3, .grid-4, .split-2 { grid-template-columns: 1fr; }
   .steps { grid-template-columns: 1fr; }
   .site-footer .foot-main { grid-template-columns: 1fr; }
   .attempt-slot { grid-template-columns: 40px 1fr; }

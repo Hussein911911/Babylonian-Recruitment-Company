@@ -43,6 +43,7 @@
 
   /* العرض حسب المتغيرات الحالية */
   function mount(queryString) {
+    if (!isStaff()) { renderStaffGate(); return; }
     var p = params(queryString);
     var serial = normalizeSerial(p.form || p.serial || '');
     var token = p.t || '';
@@ -104,10 +105,54 @@
     };
   }
 
+  /* ===========================================================================
+   *  بوابة الصلاحية — سياسة الشركة (طلب الإدارة):
+   *  الزائر لا يتحقق من أي استمارة. التحقق محصور بالموظفين والإدارة، ويُفتح
+   *  لمن يملك جلسة دخول فعّالة في المنظومة الداخلية (نفس نافذة المتصفح).
+   *  البوابة تُطبَّق **قبل** أي قراءة أو عرض بيانات، فلا يظهر للزائر حتى وجود
+   *  الرقم التسلسلي أو عدمه (لا تسريب معلومات إطلاقاً).
+   * =========================================================================== */
+  function isStaff() {
+    try {
+      var u = Store.currentUser && Store.currentUser();
+      return !!(u && (u.role === 'staff' || u.role === 'admin'));
+    } catch (e) { return false; }
+  }
+
+  function renderStaffGate() {
+    var host = document.getElementById('verify-root');
+    if (host) {
+      host.innerHTML = '' +
+        '<div class="verify-status warn" style="padding:26px 24px">' +
+          '<div class="seal" style="background:#fdf3e0;color:#8a6d2c">' + UI.ic('lock') + '</div>' +
+          '<div>' +
+            '<h1>التحقق من الاستمارات خاص بموظفي الشركة والإدارة</h1>' +
+            '<p class="muted mb-2 small">سجّل الدخول إلى المنظومة الداخلية بحساب الموظف الرسمي، ثم أعد فتح رابط ' +
+            'الكيو آر كود أو اكتب الرقم التسلسلي هنا. <b>الزبائن الكرام:</b> للحجز أو الاستفسار خابرونا أو راجعوا المكتب.</p>' +
+            '<div class="flex flex-wrap" style="gap:10px">' +
+              '<a class="btn btn-lapis" href="dashboard.html">' + UI.ic('login') + ' تسجيل دخول الموظفين</a>' +
+              '<a class="btn btn-gold" href="https://wa.me/9647760058007" target="_blank" rel="noopener">' +
+                UI.ic('whatsapp') + ' خابر الشركة للحجز</a>' +
+              '<a class="btn btn-outline" href="index.html">' + UI.ic('arrow-left') + ' العودة للموقع</a>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+    }
+    /* إخفاء أداة البحث اليدوي ولوح التوضيحات حتى لا يوحي للزائر أن التحقق متاح له */
+    var form = document.getElementById('verify-form');
+    if (form && form.closest('.panel')) form.closest('.panel').classList.add('hidden');
+    var hints = document.querySelectorAll('.verify-hints');
+    hints.forEach(function (h) { h.classList.add('hidden'); });
+  }
+
   function init() {
     if (booted) return;
     booted = true;
     Store.init();
+
+    /* البوابة أولاً: بلا جلسة موظف لا تحقق ولا عرض بيانات */
+    if (!isStaff()) { renderStaffGate(); return; }
+
     UI.startCountdowns();
 
     var form = document.getElementById('verify-form');

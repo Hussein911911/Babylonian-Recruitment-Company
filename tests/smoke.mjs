@@ -49,7 +49,9 @@ function closeAllModals(doc) {
   });
 }
 
-async function load(file, { hash = '', search = '', waitMs = 260 } = {}) {
+const STAFF_SESSION = { username: 'staff', name: 'موظف فحص', role: 'staff', title: 'موظف توظيف', at: new Date().toISOString() };
+
+async function load(file, { hash = '', search = '', waitMs = 260, session = null } = {}) {
   const errors = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', (e) => {
@@ -61,7 +63,23 @@ async function load(file, { hash = '', search = '', waitMs = 260 } = {}) {
   const url = pathToFileURL(resolve(ROOT, file)).href + (search || '') + (hash || '');
   const dom = await JSDOM.fromFile(resolve(ROOT, file), {
     url, runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true,
-    virtualConsole: vc
+    virtualConsole: vc,
+    /* jsdom لا يوفّر sessionStorage لأصول file:// — نزرع جلسة الموظف عبر واجهة تخزين بديلة */
+    beforeParse(window) {
+      if (!session) return;
+      const m = new Map([['brc_session_v2', JSON.stringify(session)]]);
+      Object.defineProperty(window, 'sessionStorage', {
+        configurable: true,
+        value: {
+          getItem: (k) => (m.has(String(k)) ? m.get(String(k)) : null),
+          setItem: (k, v) => m.set(String(k), String(v)),
+          removeItem: (k) => m.delete(String(k)),
+          clear: () => m.clear(),
+          key: (i) => Array.from(m.keys())[i] || null,
+          get length() { return m.size; }
+        }
+      });
+    }
   });
   const { window } = dom;
   // تضبيط ما لا توفره jsdom
@@ -136,22 +154,41 @@ check('إغلاق النافذة يعمل', () => {
   return site.doc.querySelector('.modal-backdrop') === null || 'النافذة لم تُغلق';
 });
 
-/* طلب استمارة إلكترونية (قيد المراجعة) */
-check('طلب استمارة إلكترونية يُسجَّل كطلب قيد المراجعة برقم تسلسلي', () => {
+/* ═══ سياسة الشركة: الزائر لا يقدّم طلباً ولا يتحقق — للعرض والتواصل فقط ═══ */
+check('الموقع العام بلا أي زر تقديم أو طلب استمارة', () => {
+  const bad = site.doc.getElementById('btn-request-form') || site.doc.getElementById('btn-request-form-2') ||
+    site.doc.getElementById('req-form') || site.doc.querySelector('[data-action="request-form"]');
+  return !bad || 'ما زال هناك عنصر طلب استمارة موجّه للزائر';
+});
+check('الموقع العام بلا واجهة تحقق للزائر', () => {
+  const bad = site.doc.getElementById('verify-quick') || site.doc.getElementById('verify-serial') ||
+    site.doc.querySelector('[data-action="verify"]');
+  return !bad || 'ما زالت واجهة التحقق ظاهرة للزائر';
+});
+check('بطاقة الوظيفة تعرض «احجز» برابط واتساب يحمل كود الوظيفة', () => {
+  site.doc.getElementById('filter-reset') && site.doc.getElementById('filter-reset')
+    .dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  const a = site.doc.querySelector('#jobs-grid .job-card a[href^="https://wa.me/"]');
+  if (!a) return 'لا يوجد زر حجز بالواتساب في بطاقة الوظيفة';
+  const href = a.getAttribute('href');
+  const codeOk = /BRC-\d{3,}/.test(decodeURIComponent(href)) || 'الرسالة لا تحمل كود الوظيفة';
+  return (codeOk === true && /9647/.test(href)) || String(codeOk);
+});
+check('لا يوجد أي زر «ترشّح» في العرض العام', () => {
+  const t = site.doc.getElementById('jobs-grid').textContent;
+  return (!/ترشّح/.test(t) && !/اطلب استمارة/.test(t)) || 'ما زال نص الترشح/الطلب ظاهراً للزائر';
+});
+
+/* مسار الطلب يبقى داخلياً: الموظف يسجّل الطلب (كما لو استقبله المكتب) ثم يعتمده */
+check('تسجيل طلب قيد المراجعة من المنظومة الداخلية', () => {
   const before = site.window.BRCStore.stats().pendingForms;
-  site.doc.getElementById('btn-request-form').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-  const box = lastModal(site.doc);
-  if (!box) return 'لم تُفتح نافذة الطلب';
-  box.querySelector('#r-name').value = 'اختبار آلي';
-  box.querySelector('#r-phone').value = '07700000000';
-  box.querySelector('#r-code').value = 'BRC-1043';
-  box.querySelector('#req-submit').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  const app = site.window.BRCStore.createApplicant({
+    fullName: 'اختبار آلي', phone: '07700000000', address: 'الحلة - بابل',
+    requestedCode: 'BRC-1043', pending: true
+  });
   const after = site.window.BRCStore.stats().pendingForms;
-  const apps = site.window.BRCStore.listApplicants({ q: 'اختبار آلي' });
-  if (after !== before + 1 || !apps.length) return 'لم يُسجَّل الطلب';
-  const serial = apps[0].serial;
-  const valid = serial.startsWith('BRC-NO-') && apps[0].status === 'pending' && !apps[0].expiryDate && apps[0].requestedCode === 'BRC-1043';
-  return valid || 'بيانات الطلب غير صحيحة: ' + JSON.stringify(apps[0]);
+  const valid = app && app.status === 'pending' && !app.expiryDate && app.requestedCode === 'BRC-1043';
+  return (after === before + 1 && valid) || 'لم يُسجَّل الطلب: ' + JSON.stringify(app);
 });
 check('قبول طلب قيد المراجعة يحوّله لاستمارة سارية بخمس محاولات', () => {
   const apps = site.window.BRCStore.listApplicants({ q: 'اختبار آلي' });
@@ -286,8 +323,26 @@ check('حد المحاولات الخمس مُطبّق', () => {
 
 /* ======================= 4) صفحة التحقق ======================= */
 console.log('\n=== 4) صفحة التحقق (verify.html) ===');
-const verify = await load('verify.html', { search: '?form=BRC-NO-000120' });
-check('صفحة التحقق تُحمّل بدون أخطاء', () => verify.errors.length === 0 || verify.errors.join(' | '));
+/* الزائر: بوابة تسدّ التحقق كلياً (بلا أي بيانات) */
+const gate = await load('verify.html', { search: '?form=BRC-NO-000120' });
+check('صفحة التحقق للزائر تعرض بوابة «للموظفين والإدارة فقط»', () => {
+  const t = gate.doc.getElementById('verify-root').textContent;
+  return /موظفي الشركة والإدارة|تسجيل دخول الموظفين/.test(t) || 'لا توجد بوابة للزائر';
+});
+check('الزائر لا يرى أي بيانات استمارة (لا رقم ولا اسم ولا محاولات)', () => {
+  const t = gate.doc.getElementById('verify-root').textContent;
+  const leak = t.includes('BRC-NO-000120') || t.includes('حسين') || /محاولة/.test(t);
+  return !leak || 'تسريب بيانات للزائر في صفحة التحقق';
+});
+check('لا يمكن للزائر تشغيل التحقق من رابط الكيو آر كود (يبقى محجوباً)', () => {
+  gate.window.BRCVerify.mount('?form=BRC-NO-000120&t=deadbeef');
+  const t = gate.doc.getElementById('verify-root').textContent;
+  return (/موظفي الشركة والإدارة/.test(t) && !t.includes('BRC-NO-000120')) || 'البوابة لا تحمي mount()';
+});
+
+/* الموظف: التحقق يعمل كما كان */
+const verify = await load('verify.html', { search: '?form=BRC-NO-000120', session: STAFF_SESSION });
+check('بجلسة موظف: صفحة التحقق تُحمّل بدون أخطاء', () => verify.errors.length === 0 || verify.errors.join(' | '));
 check('بلا بصمة: تُظهر الرقم والحالة مع تقنيع اسم الباحث وهاتفه', () => {
   const t = verify.doc.getElementById('verify-root').textContent;
   const masked = !t.includes('حسين كاظم عبد الله');
@@ -302,7 +357,7 @@ check('بالنمط: الاسم مقنّع في الرد نفسه لا في ال
 });
 /* بالبصمة الصحيحة (كما في رابط الكيو آر كود) تظهر البيانات كاملة */
 const vTok = verify.window.BRCStore.token('BRC-NO-000120');
-const verifyTok = await load('verify.html', { search: '?form=BRC-NO-000120&t=' + vTok });
+const verifyTok = await load('verify.html', { search: '?form=BRC-NO-000120&t=' + vTok, session: STAFF_SESSION });
 check('بالبصمة الصحيحة: اسم الباحث يظهر كاملاً', () => {
   const t = verifyTok.doc.getElementById('verify-root').textContent;
   return t.includes('حسين كاظم عبد الله') || 'الاسم غير ظاهر مع بصمة صحيحة';
@@ -454,18 +509,26 @@ check('لا مسارات ملفات خارجية (كل شيء مدمج)', () => 
   if (/url\(['"]?\.\.\//.test(html)) bads.push('font/img url');
   return bads.length === 0 || bads.join(',');
 });
+/* نسخة ثانية بجلسة موظف: التحقق يفتح داخل الملف المستقل */
+const stStaff = await load('brc-standalone.html', { hash: '#!verify?form=BRC-NO-000120', session: STAFF_SESSION });
+
 check('القسم العام يعرض الوظائف داخل الملف المستقل', () => {
   const n = st.doc.querySelectorAll('#jobs-grid .job-card').length;
   return n >= 8 || 'عدد البطاقات ' + n;
 });
-check('المسار الهاشي يعرض قسم التحقق ويعرض بيانات الاستمارة', () => {
+check('مسار التحقق بالملف المستقل محجوب عن الزائر', () => {
   st.window.location.hash = '#!verify?form=BRC-NO-000120';
   st.window.dispatchEvent(new st.window.Event('hashchange'));
   const root = st.doc.getElementById('verify-root').textContent;
   const routeHidden = st.doc.getElementById('route-verify').hidden;
   const siteHidden = st.doc.getElementById('route-site').hidden;
-  return (!routeHidden && siteHidden && root.includes('BRC-NO-000120')) ||
+  const blocked = /موظفي الشركة والإدارة/.test(root) && !root.includes('BRC-NO-000120');
+  return (!routeHidden && siteHidden && blocked) ||
     ('مخفي التحقق: ' + routeHidden + ' / النص: ' + root.slice(0, 60));
+});
+check('مسار التحقق بالملف المستقل يعمل بجلسة موظف', () => {
+  const root = stStaff.doc.getElementById('verify-root').textContent;
+  return root.includes('BRC-NO-000120') || ('النص: ' + root.slice(0, 90));
 });
 check('المسار الهاشي يعرض المنظومة الداخلية', () => {
   st.window.location.hash = '#!dashboard';
@@ -473,11 +536,67 @@ check('المسار الهاشي يعرض المنظومة الداخلية', ()
   const hidden = st.doc.getElementById('route-dashboard').hidden;
   return (!hidden && !!st.doc.getElementById('login-wrap')) || 'لم يُعرض مسار اللوحة';
 });
+check('الملف المستقل بلا زر تقديم أو طلب استمارة للزائر', () => {
+  const bad = st.doc.getElementById('btn-request-form') || st.doc.getElementById('btn-request-form-2') ||
+    st.doc.querySelector('[data-action="request-form"]') || st.doc.getElementById('verify-quick');
+  return !bad || 'ما زال عنصر طلب/تحقق ظاهراً في الملف المستقل';
+});
 check('العودة إلى الموقع العام تعمل', () => {
   st.window.location.hash = '#jobs';
   st.window.dispatchEvent(new st.window.Event('hashchange'));
   return (!st.doc.getElementById('route-site').hidden && st.doc.getElementById('route-verify').hidden) || 'فشل الرجوع';
 });
+
+/* ═══════════ 8) أدوات الموظف والمدير: التحقق يبقى داخل المنظومة ═══════════ */
+console.log('\n=== 8) أدوات الموظف — التحقق من المنظومة الداخلية (بجلسة موظف) ===');
+{
+  const dash = await load('dashboard.html', { session: STAFF_SESSION });
+  const DB = site.window.BRCStore.exportJson();
+  dash.window.BRCStore.importJson(DB);
+  dash.window.BRCStore.emit && dash.window.BRCStore.emit();
+  dash.window.BRCRefresh && dash.window.BRCRefresh();
+  await new Promise((r) => setTimeout(r, 200));
+
+  check('المنظومة تُفتح بجلسة الموظف مباشرة', () => !dash.doc.getElementById('app-shell').classList.contains('hidden'));
+
+  const viewBtn = dash.doc.querySelector('#side-nav button[data-view="applicants"]');
+  if (viewBtn) viewBtn.dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 120));
+
+  const verifyBtn = dash.doc.querySelector('[data-app-verify="BRC-NO-000120"]');
+  check('زر التحقق من الاستمارة موجود في جدول الموظف',
+    () => !!verifyBtn || ('الأزرار الموجودة: ' + dash.doc.querySelectorAll('[data-app-verify]').length));
+
+  if (verifyBtn) {
+    verifyBtn.dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 150));
+    const box = lastModal(dash.doc);
+    const bt = box ? box.textContent : '';
+    check('نافذة التحقق تعرض الرقم ورابط التحقق المطبوع',
+      () => (/BRC-NO-000120/.test(bt) && /\/verify(\.html)?\?form=/.test(bt)) || bt.slice(0, 120));
+    check('كيو آر كود الاستمارة مرسوم داخل النافذة', () => !!(box && box.querySelector('svg')));
+    check('زر «فتح صفحة التحقق» موجود للموظف', () => !!(box && box.querySelector('#go-verify')));
+    check('رابط التحقق المحلي صالح',
+      () => /verify\.html\?form=BRC-NO-000120/.test(dash.window.BRCStore.verifyLocalUrl('BRC-NO-000120')),
+      dash.window.BRCStore.verifyLocalUrl('BRC-NO-000120'));
+    const close = box && box.querySelector('[data-close]');
+    if (close) close.dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
+  }
+
+  /* المدير: نفس الأدوات + الصلاحيات الإدارية قائمة */
+  const admin = await load('dashboard.html', { session: { username: 'admin', name: 'مدير فحص', role: 'admin', title: 'مدير عام', at: new Date().toISOString() } });
+  admin.window.BRCStore.importJson(DB);
+  admin.window.BRCStore.emit && admin.window.BRCStore.emit();
+  await new Promise((r) => setTimeout(r, 150));
+  check('لوحة المدير تفتح وتُظهر أدوات الإدارة (اللوحة المالية)', () => {
+    const fin = admin.doc.querySelector('[data-view="finance"]');
+    return (!!fin && !fin.classList.contains('hidden')) || 'زر اللوحة المالية غير ظاهر للمدير';
+  });
+  check('المدير يرى صفحة التحقق كموظف (نفس البوابة تُجيزه)', () => {
+    const u = admin.window.BRCStore.currentUser();
+    return !!u && (u.role === 'admin' || u.role === 'staff');
+  });
+}
 
 /* ======================= النتيجة ======================= */
 console.log('\n' + '='.repeat(58));
