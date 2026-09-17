@@ -521,11 +521,53 @@ section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا ر�
   if (leftovers.length) bad('لا إشارة تشغيلية لمنصّة نشر ثانية في الكود', leftovers.join(' · '));
   else ok('لا إشارة تشغيلية لمنصّة ثانية في الكود والإعداد (' + scanned.length + ' ملفات)');
 
+  /* مجلد النشر: سكربت التجميع + النشر الآلي بمفاتيح Cloudflare */
+  const distScript = join(ROOT, 'tools', 'dist.mjs');
+  if (!existsSync(distScript)) bad('سكربت تجميع مجلد النشر', 'tools/dist.mjs مفقود');
+  else {
+    const dsrc = readFileSync(distScript, 'utf8');
+    const needs = [['_headers', /_headers/], ['_redirects', /_redirects/], ['sw.js', /sw\.js/],
+      ['الصفحات الأساسية', /index\.html/], ['النسخة المستقلة', /brc-standalone\.html/]];
+    const gaps = needs.filter(([, re]) => !re.test(dsrc)).map(([k]) => k);
+    if (gaps.length) bad('tools/dist.mjs يجمع ملفات الموقع الصحيحة', 'ناقص: ' + gaps.join(' · '));
+    else ok('tools/dist.mjs — مجلد نشر نظيف يجمع الصفحات وsw.js و_headers و_redirects والأصول');
+  }
+
+  /* ملف النشر الآلي يبقى في docs/ (صلاحية الـ token لا تسمح بكتابة .github/workflows)
+     ويُفعَّل بنقله إلى .github/workflows/ — انظر ترويسة الملف نفسه. */
+  const wf = join(ROOT, 'docs', 'deploy-cloudflare-workflow.yml');
+  const wfLive = join(ROOT, '.github', 'workflows', 'deploy-cloudflare.yml');
+  if (!existsSync(wf) && !existsSync(wfLive)) bad('ملف النشر الآلي موجود', 'docs/deploy-cloudflare-workflow.yml مفقود');
+  else {
+    const wsrc = readFileSync(existsSync(wfLive) ? wfLive : wf, 'utf8');
+    const mustHave = [
+      ['مشروع Cloudflare الصحيح', /--project-name=babylonian-recruitment-company/],
+      ['نشر من مجلد dist', /pages deploy dist/],
+      ['فرع الإنتاج main', /--branch=main/],
+      ['مفتاح API من الأسرار', /CLOUDFLARE_API_TOKEN/],
+      ['Account ID من الأسرار', /CLOUDFLARE_ACCOUNT_ID/],
+      ['تخطّي النشر بلا مفاتيح (لا فشل)', /steps\.guard\.outputs\.ready == 'true'/],
+      ['بوابة فحص قبل النشر', /npm run audit/]
+    ];
+    const gaps = mustHave.filter(([, re]) => !re.test(wsrc)).map(([k]) => k);
+    if (gaps.length) bad('ملف النشر الآلي مكتمل', 'ناقص: ' + gaps.join(' · '));
+    else ok('النشر الآلي: GitHub Actions → Cloudflare Pages (dist · نفس المشروع · بلا مفاتيح يتخطّى النشر)');
+    if (!existsSync(wfLive) && !/أنشئ ملفاً جديداً|Add file|Create new file/.test(wsrc))
+      bad('ملف النشر يشرح طريقة تفعيله', 'لا تعليمات تفعيل داخل الملف');
+    else ok('مسار التفعيل موثّق: انسخ الملف إلى .github/workflows/deploy-cloudflare.yml (نقرتان)');
+
+    /* لا مفاتيح مكتوبة داخل الملف — الأسرار في GitHub فقط */
+    if (/sb_secret_|api[_-]?token\s*[:=]\s*['"][A-Za-z0-9]{20,}/i.test(wsrc)) bad('ملف النشر بلا أي مفتاح مكتوب', 'يوجد مفتاح ظاهر');
+    else ok('ملف النشر لا يحوي أي مفتاح مكتوب (الأسرار من GitHub Secrets فقط)');
+  }
+
   if (!existsSync(join(ROOT, 'docs', 'deploy-cloudflare.md'))) bad('دليل النشر على Cloudflare موجود', 'docs/deploy-cloudflare.md مفقود');
   else {
     const guide = readFileSync(join(ROOT, 'docs', 'deploy-cloudflare.md'), 'utf8');
-    const topics = [['Production branch', /Production branch/i], ['إلغاء Render', /Delete Service|إلغاء Render/i],
-      ['النطاق الرسمي', /Custom domain/i], ['نشر wrangler', /wrangler pages deploy/i], ['فحص بعد النشر', /Purge Everything/i]];
+    const topics = [['Production branch', /Production branch/i], ['إلغاء Render', /إلغاء Render/i],
+      ['النطاق الرسمي', /Custom domain/i], ['نشر wrangler', /wrangler pages deploy/i], ['فحص بعد النشر', /Purge Everything/i],
+      ['مجلد dist', /npm run dist/i], ['النشر الآلي بمفاتيح', /CLOUDFLARE_API_TOKEN/],
+      ['الطريق أ (Direct Upload)', /Create deployment/i]];
     const missingTopics = topics.filter(([, re]) => !re.test(guide)).map(([k]) => k);
     if (missingTopics.length) bad('دليل Cloudflare يغطّي الخطوات كاملة', 'ناقص: ' + missingTopics.join(' · '));
     else ok('دليل النشر docs/deploy-cloudflare.md يغطّي الإعداد والمعاينات والنطاق وإلغاء Render والفحص');

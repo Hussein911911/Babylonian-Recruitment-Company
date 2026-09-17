@@ -68,7 +68,11 @@ npm start                      # ثم افتح http://localhost:4173
 - **معاينات الفروع:** تُفعَّل من Settings → Builds & deployments → Preview deployments،
   فيحصل كل فرع على رابط `<branch>.<project>.pages.dev`.
 - **النطاق الرسمي:** Custom domains → `brc-babil.com` + `www`، ورابط التحقق المطبوع يتبعه تلقائياً.
-- **بعد كل تحديث واجهة:** `node tools/build.mjs && node tools/build.mjs --light` ثم ارفع `CACHE_NAME` في `sw.js`.
+- **مجلد النشر:** `npm run dist` يبني `dist/` (ملفات الموقع فقط بلا أدوات/اختبارات) — وهو ما يُرفع أو ما يُنشر آلياً.
+- **ثلاثة طرق للتحديث:** (أ) رفع `dist/` يدوياً في لوحة Cloudflare — فوري بلا مفاتيح،
+  (ب) `.github/workflows/deploy-cloudflare.yml` + مفتاحان في أسرار GitHub — آلي على **نفس الرابط**،
+  (ج) مشروع جديد مربوط بـ Git ثم نقل النطاق إليه.
+- **بعد كل تحديث واجهة:** `npm run build && npm run build:light` ثم ارفع `CACHE_NAME` في `sw.js`.
 
 📄 **الخطوات الكاملة + إلغاء Render + قائمة فحص بعد النشر:** `docs/deploy-cloudflare.md`
 

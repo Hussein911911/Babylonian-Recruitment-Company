@@ -14,6 +14,7 @@
     "verify:qr": "node tests/qr-report.mjs",
     "verify:qr:full": "node tests/qr-crosscheck.mjs",
     "build:light": "node tools/build.mjs --light",
+    "dist": "node tools/dist.mjs",
     "test:schema": "node tests/schema.mjs",
     "test:supabase": "node tests/supabase-check.mjs",
     "schema:sync": "node tools/sync-schema.mjs",

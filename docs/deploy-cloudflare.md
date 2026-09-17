@@ -7,45 +7,93 @@
 
 ---
 
-## 1) إعداد المشروع في Cloudflare (مرة واحدة)
+## 1) حالة النشر الحالية (اقرأ هذا أولاً)
 
-لوحة Cloudflare → **Workers & Pages** → **Create** → **Pages** → **Connect to Git** →
-اختر مستودع `Babylonian-Recruitment-Company`، ثم اضبط القيم التالية حرفياً:
-
-| الحقل | القيمة |
+| الحقيقة | التفصيل |
 |---|---|
-| Production branch | `main` |
-| Framework preset | `None` |
-| Build command | **(اتركه فارغاً)** |
-| Build output directory | `.` |
-| Root directory | `/` |
-| Environment variables | **لا شيء** — لا أسرار ولا مفاتيح في البناء |
+| منصّة النشر | **Cloudflare Pages** — مشروع `babylonian-recruitment-company` |
+| الرابط | `https://babylonian-recruitment-company.pages.dev` |
+| نوع المشروع | **Direct Upload** (غير مربوط بـ Git) — لا يتحدّث تلقائياً |
+| Render | 🗑️ **محذوف** — رابط `onrender.com` صار `Not Found` |
+| النتيجة | أي تحديث للموقع يحتاج إحدى الطرق الثلاث أسفله |
 
-> الشرط الوحيد للبناء هو `git clone` — لأن التابع `brc-standalone.html` و`brc-light.html`
-> ملفّان ملتزمان في المستودع أصلاً (يُبنَيان محلياً بـ `node tools/build.mjs` قبل الدفع).
-
-بعد الحفظ: أول نشر تلقائي يبدأ خلال دقيقة، ويصبح على
-`https://<project-name>.pages.dev`.
+> كيف عرفنا أنه Direct Upload؟ سجل النشر على GitHub يحوي عمليات Render فقط
+> (`... - babylonian-recruitment-company PR #7`) ولا يحوي أي عملية من Cloudflare —
+> ولو كان مربوطاً بـ Git لظهرت عمليات نشر باسم المشروع عند كل دفعة.
 
 ---
 
-## 2) معاينات الفروع والطلبات (بديل معاينات Render)
+## 2) الطريق أ — تحديث فوري بملف جاهز (بلا مفاتيح ولا انتظار)
 
-Cloudflare Pages يبني كل فرع غير إنتاجي تلقائياً إن كان الخيار مفعّلاً:
+1. `npm run build && npm run build:light && npm run dist` → يتكوّن مجلد **`dist/`**
+   (41 ملفاً · ‎5.5 ميجابايت — ملفات الموقع فقط، بلا `tests/` ولا `src/` ولا `docs/`).
+2. في Cloudflare: **Workers & Pages → babylonian-recruitment-company → Create deployment**.
+3. **اسحب مجلد `dist`** أو ملف ZIP له إلى منطقة الرفع → Deploy.
+4. بعد ثوانٍ الرابط نفسه يعرض النسخة الجديدة.
 
-**Settings → Builds & deployments → Preview deployments → All non-Production branches**
-
-فنحصل على رابط معاينة لكل فرع/طلب دمج بهيئة:
-
-```
-https://<branch-slug>.<project-name>.pages.dev
-```
-
-عملياً: أي شغل جديد أدفعه إلى فرع العمل يظهر فوراً على رابط معاينة — بلا حاجة إلى Render.
+> ⚠️ الملفات المبنية (`brc-standalone.html` و `brc-light.html`) تُبنى محلياً ثم تُرفع —
+> لا تُعدَّل يدوياً ولا تُبنى على Cloudflare.
 
 ---
 
-## 3) النطاق الرسمي
+## 3) الطريق ب — نشر آلي على **نفس الرابط** (موصى به)
+
+الملف **`docs/deploy-cloudflare-workflow.yml`** جاهز: يبني، يفحص (`npm run audit`)،
+يجمّع `dist/`، ثم ينشر بمفتاح Cloudflare عند كل دفعة إلى `main`.
+
+**تفعيله (نقرتان):** GitHub → Add file → Create new file → اكتب المسار
+`.github/workflows/deploy-cloudflare.yml` → انسخ محتوى الملف (من سطر الفصل) والصقه → Commit.
+> لماذا لم يكن الملف في مكانه مباشرة؟ لأن ربط GitHub في هذه الجلسة لا يملك صلاحية
+> كتابة ملفات الـ workflows — فالتفعيل يدوي مرة واحدة (نفس أسلوب `docs/ci-workflow.yml`).
+
+الخطوات (مرة واحدة):
+
+1. Cloudflare → **My Profile → API Tokens → Create Token**
+   - القالب الجاهز: **Edit Cloudflare Workers** (يغطّي Pages)، أو صلاحية مخصّصة:
+     `Account → Cloudflare Pages → Edit`
+   - انسخ المفتاح (يظهر مرة واحدة).
+2. من Cloudflare احتفظ بـ **Account ID**: Workers & Pages → يمين الصفحة.
+3. GitHub → المستودع → **Settings → Secrets and variables → Actions → New repository secret**:
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+4. ادمج PR في `main` (أو شغّل الـ Action يدوياً من تبويب Actions: **Run workflow**).
+
+بعد ذلك: كل دفع إلى `main` = نشر تلقائي على نفس نطاق `pages.dev`.
+وإن حذفت المفاتيح يتوقف النشر الآلي بصمت (الملف يبني ويفحص ثم يتخطّى خطوة النشر).
+
+---
+
+## 4) الطريق ج — أتمتة كاملة بمشروع مربوط بـ Git
+
+ميزة: بلا مفاتيح API وبلا أي ملف إضافي. الثمن: مشروع جديد ⇒ رابط `pages.dev`
+جديد، فتنقل إليه النطاق الرسمي (والروابط القديمة تبقى تعمل حتى تُطفأ).
+
+1. Cloudflare → **Workers & Pages → Create → Pages → Connect to Git** → اختر المستودع.
+2. الإعدادات:
+
+   | الحقل | القيمة |
+   |---|---|---|
+   | Production branch | `main` |
+   | Framework preset | `None` |
+   | Build command | **(اتركه فارغاً)** |
+   | Build output directory | `.` |
+   | Environment variables | لا شيء |
+
+3. **Custom domains** → أضف `brc-babil.com` إلى المشروع الجديد.
+4. أوقف النشر الآلي القديم: احذف `.github/workflows/deploy-cloudflare.yml` (المفعَّل)
+   أو اتركه (لن يضرّ، لكن سيصير نشران لنفس الموقع — الأنظف حذفه).
+5. بعد التأكد من عمل المشروع الجديد: احذف مشروع Direct Upload القديم.
+
+---
+
+## 5) معاينات الفروع (بديل معاينات Render)
+
+في الطريق ج: **Settings → Builds & deployments → Preview deployments →
+All non-Production branches**، فيحصل كل فرع على رابط
+`https://<branch-slug>.<project>.pages.dev`.
+وفي الطريق ب: أزل التعليق عن الخطوة الأخيرة داخل الملف لنشر معاينة لكل فرع.
+
+## 6) النطاق الرسمي
 
 **Custom domains → Set up a custom domain →** أضف:
 
@@ -62,7 +110,7 @@ Cloudflare يضيف سجلات DNS بنفسه (عندما يكون النطاق 
 
 ---
 
-## 4) الترويسات والمسارات النظيفة (تلقائي بلا إعداد)
+## 7) الترويسات والمسارات النظيفة (تلقائي بلا إعداد)
 
 | الملف | ماذا يفعل |
 |---|---|
@@ -74,46 +122,47 @@ Cloudflare يضيف سجلات DNS بنفسه (عندما يكون النطاق 
 
 ---
 
-## 4.1) تنظيف الملفات المنشورة (اختياري لكن مُستحسن)
+## 8) ما يُنشر وما لا يُنشر — `dist/`
 
-بالإعداد الافتراضي (Output directory = `.`) يُنشر كل ما في المستودع — بما فيه
-`tests/` و `docs/` و `src/` و `supabase/`. لا أسرار فيها (الأسرار كلها خارج الكود
-بحكم التصميم)، لكن الأنظف ألّا تكون متاحة للتحميل من الموقع.
+`npm run dist` يبني مجلد نشر نظيفاً بلا أدوات ولا اختبارات:
 
-الحلّ بلا أدوات: اجعل مجلد النشر `dist` بأمر بناء من سطر واحد:
-
-| الحقل | القيمة |
+| يُنشر | لا يُنشر |
 |---|---|
-| Build command | `mkdir -p dist && cp -r index.html verify.html dashboard.html brc-standalone.html brc-light.html sw.js _headers _redirects assets dist/` |
-| Build output directory | `dist` |
+| `index.html` · `verify.html` · `dashboard.html` | `tests/` · `src/` · `docs/` · `tools/` · `supabase/` |
+| `brc-standalone.html` · `brc-light.html` · `supabase-check.html` | `package.json` · `package-lock.json` · `README.md` |
+| `sw.js` · `_headers` · `_redirects` · `assets/**` | `node_modules/` · `dist/` نفسه |
 
-> 🔁 إذا أضفت يوماً صفحة أو ملفاً جديداً في الجذر فأضِفه إلى الأمر نفسه، وإلا لن يُنشر.
-> وإذا لم ترغب بهذه المسؤولية الإضافية فاترك الإعداد الافتراضي (`Output = .`) — فالنشر
-> الافتراضي صالح تماماً والملفات المكشوفة ليست حسّاسة.
+والسكربت يفحص نفسه: يفشل إن كان أي ملف يطلبه المتصفح غير موجود في `dist/`
+(صورة، خط، سكربت) — فلا يُنشر موقع بأصل ناقص بصمت.
 
----
-
-## 5) إلغاء Render نهائياً (خطواتك أنت — لا تُنفَّذ من المستودع)
-
-حذف `render.yaml` يمنع أي نشر تكويني جديد، لكن **الخدمة نفسها تبقى حيّة برابطها**
-حتى تُحذف من لوحة Render:
-
-1. [dashboard.render.com](https://dashboard.render.com) → الخدمة `babylonian-recruitment-company`
-2. **Settings → Delete Service** (وإن أردت خطوة ألطف: **Settings → Disconnect** من GitHub ثم Delete)
-3. تأكّد أن رابط `...onrender.com` صار `404` أو توقّف
-4. امسح رابط onrender من أي مكان يُشارَك مع الناس (واتساب · ستوري · بطاقات · سيرة الشركة)
-
-> 🔴 لا تترك الخدمة معلّقة بلا سبب: أي رابط منشور يبقى نسخةً ثانية من الموقع —
-> وهذا بالضبط سبب إلغائها.
+> في الطريق ج (مشروع مربوط بـ Git) اضبط **Build command**:
+> `npm ci && npm run build && npm run build:light && npm run dist`
+> و **Build output directory**: `dist`.
 
 ---
 
-## 6) النشر بلا Git (اختياري — نشر مباشر)
+## 9) إلغاء Render — تم ✅
+
+- `render.yaml` حُذف من المستودع، وسُجّل ذلك في `tests/audit.mjs` (يفشل الاختبار
+  تلقائياً لو عاد ملف إعداد لمنصّة نشر ثانية).
+- خدمة Render حُذفت من لوحة Render **وتحقّقنا**: رابط
+  `babylonian-recruitment-company.onrender.com` يعيد **Not Found**.
+- وما زال عليك (دقيقتان): امسح رابط `onrender.com` من أي مكان يُشارَك مع الناس
+  (واتساب · ستوري · بطاقة · توقيع بريد) — لأنه لم يبقَ يعمل.
+
+> ⚠️ إذا كان الرابط القديم مطبوعاً في كيو آر كود استمارات صادرة، فالمسح لا يزال
+> يعمل من الاستمارات الورقية طالما الرابط المطبوع كان النطاق الرسمي. وإن كنت
+> طبعت استمارات على رابط onrender تحديداً، أعد طباعتها بالرقم التسلسلي نفسه.
+
+---
+
+## 10) النشر المباشر من جهازك (wrangler)
 
 ```bash
 npm i -g wrangler          # مرة واحدة
 wrangler login             # يفتح المتصفح لتأكيد الحساب
-wrangler pages deploy . --project-name babylonian-recruitment-company
+npm run build && npm run build:light && npm run dist
+wrangler pages deploy dist --project-name babylonian-recruitment-company
 ```
 
 مفيد للنشر السريع من جهازك بلا انتظار Git. أما النشر المعتاد فيبقى تلقائياً عند
@@ -121,7 +170,7 @@ wrangler pages deploy . --project-name babylonian-recruitment-company
 
 ---
 
-## 7) بعد كل تحديث للواجهة — لا تنسَ
+## 11) بعد كل تحديث للواجهة — لا تنسَ
 
 1. `node tools/build.mjs && node tools/build.mjs --light` (لتحديث `brc-standalone.html` و `brc-light.html`)
 2. ارفع رقم الكاش في `sw.js` (`CACHE_NAME = 'brc-cache-v3'` → `v4` …)
@@ -131,7 +180,7 @@ wrangler pages deploy . --project-name babylonian-recruitment-company
 
 ---
 
-## 8) فحص سريع بعد النشر
+## 12) فحص سريع بعد النشر
 
 - [ ] الصفحة الرئيسية تفتح: `https://<project>.pages.dev/`
 - [ ] `/verify` **لا** تعرض بيانات استمارة للزائر — تعرض بوابة «خاص بموظفي الشركة والإدارة»
