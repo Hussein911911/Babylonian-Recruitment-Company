@@ -196,12 +196,15 @@ section('3.c) الطباعة — مقاس A4 وطباعة الاستمارة ف�
   const hidesAll = /body\s*\*\s*{[^}]*visibility:\s*hidden/i.test(css);
   const showsRoot = /#print-root[^{]*{[^}]*visibility:\s*visible/i.test(css);
   const hiddenOnScreen = /#print-root\s*{[^}]*display:\s*none/i.test(css);
-  const wm = /\.voucher\s+\.v-watermark/.test(css);
+  /* الورقة المطبوعة يجب أن تكون نظيفة: لا علامة مائية ولا أي صورة خلفية داخل الاستمارة */
+  const noWm = !/v-watermark/.test(css);
+  const noBgInPrint = /\.voucher,\s*\.voucher\s*\*[^{]*{[^}]*background-image:\s*none/i.test(css);
   if (!hasPage) bad('مقاس الورق A4 محدَّد (@page)', 'لا يوجد size: A4');
   else if (!hidesAll || !showsRoot) bad('الطباعة تُظهر الاستمارة وحدها', 'visibility: hidden=' + hidesAll + ' / visible=' + showsRoot);
   else if (!hiddenOnScreen) bad('حاوية الطباعة مخفية على الشاشة');
-  else if (!wm) bad('العلامة المائية للطباعة معرّفة');
-  else ok('عقد الطباعة سليم: A4 portrait، تُطبع الاستمارة وحدها، والماء البابلي شفاف');
+  else if (!noWm) bad('لا علامة مائية في الاستمارة المطبوعة', 'ما زالت .v-watermark موجودة في CSS');
+  else if (!noBgInPrint) bad('صور الخلفية مُلغاة داخل الاستمارة عند الطباعة');
+  else ok('عقد الطباعة سليم: A4 portrait، تُطبع الاستمارة وحدها، والورقة بيضاء نظيفة بلا علامة مائية');
 }
 
 /* ═══ 4) الأصول على القرص ════════════════════════════════════════════════ */
@@ -503,12 +506,15 @@ section('10) الاستمارة المطبوعة A4 — البنية الكام�
     'خمس خانات': /المحاولة #?5|المحاولة الخامسة|>5</,
     'الكيو آر كود': /<svg/,
     'التواقيع': /v-sign|التوقيع/,
-    'الإخلاء القانوني': /غير مسؤولة قانونياً وعشائياً/,
-    'علامة مائية': /v-watermark/
+    'الإخلاء القانوني': /غير مسؤولة قانونياً وعشائياً/
   };
   const missing = Object.entries(must).filter(([, re]) => !re.test(html)).map(([k]) => k);
   if (missing.length) bad('قالب الاستمارة يحتوي كل العناصر المطلوبة', 'ناقص: ' + missing.join(' · '));
   else ok('قالب الاستمارة يحتوي كل العناصر المطلوبة (' + Object.keys(must).length + ' عنصراً)');
+
+  /* الورقة البيضاء: ممنوع أي علامة مائية أو صورة خلفية داخل قالب الاستمارة */
+  if (/v-watermark|brick-pattern/.test(html)) bad('الاستمارة المطبوعة بلا علامة مائية', 'القالب ما زال يُدرج صورة العلامة المائية');
+  else ok('الاستمارة المطبوعة نظيفة: لا علامة مائية ولا صورة خلفية (ورقة بيضاء)');
 
   const rows = (html.match(/<tr/g) || []).length;
   if (rows < 5) bad('الاستمارة تعرض المحاولات الخمس', rows + ' صفوف'); else ok('الاستمارة تعرض جدول المحاولات: ' + rows + ' صفاً');

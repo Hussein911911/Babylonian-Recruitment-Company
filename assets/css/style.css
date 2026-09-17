@@ -1009,10 +1009,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .voucher .v-note { border: 1px dashed #8a6d2c; background: #fdf9ee; border-radius: 7px; padding: 7px 10px; font-size: 10.2px; line-height: 1.7; }
 .voucher .v-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 12px; text-align: center; font-size: 10.5px; }
 .voucher .v-sign div { border-top: 1px solid #333; padding-top: 4px; }
-.voucher .v-watermark {
-  position: absolute; inset: 0; display: grid; place-items: center; opacity: .045; pointer-events: none;
-}
-.voucher .v-watermark img { width: 70%; }
+/* لا علامة مائية: الاستمارة تُطبع على ورقة بيضاء نظيفة بلا أي مربع/نقش باهت */
 .voucher-sheet { position: relative; }
 
 @media print {
@@ -1023,7 +1020,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   #print-root { display: block !important; position: absolute; inset: 0; width: 100%; }
   #print-root .voucher { width: 100%; }
   .no-print, .toast-wrap, .modal-backdrop, .app-side, .site-header, .site-footer { display: none !important; }
-  .voucher .v-watermark { opacity: .06; }
+  .voucher, .voucher * { background-image: none !important; box-shadow: none !important; text-shadow: none !important; }
 }
 
 /* ============================ 19) استجابة الشاشات ============================ */

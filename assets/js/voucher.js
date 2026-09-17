@@ -52,7 +52,6 @@
 
     return '' +
     '<div class="voucher voucher-sheet">' +
-      '<div class="v-watermark"><img src="' + (root.BRC_IMG_BRICK || 'assets/img/brick-pattern.jpg') + '" alt=""></div>' +
 
       /* الترويسة */
       '<div class="v-head">' +

@@ -223,11 +223,11 @@ if (form) {
     ['جدول المحاولات الخمس', /كود الوظيفة/],
     ['الكيو آر كود', /<svg[\s\S]*<path/],
     ['الإخلاء القانوني', /غير مسؤولة قانونياً وعشائياً/],
-    ['التواقيع', /توقيع|v-sign/],
-    ['علامة مائية بابلية', /v-watermark/]
+    ['التواقيع', /توقيع|v-sign/]
   ];
   const missing = must.filter(([, re]) => !re.test(printHtml)).map(([k]) => k);
   check('الاستمارة المطبوعة تحوي كل عناصر A4 (' + (must.length - missing.length) + '/' + must.length + ')', missing.length === 0, missing.join(' · '));
+  check('الورقة المطبوعة نظيفة بلا علامة مائية', !/v-watermark|brick-pattern/.test(printHtml), 'ما زالت العلامة المائية تُدرج في الطباعة');
   check('نافذة الطباعة استُدعيت فعلاً', ver2.w.__printed > 0, 'عدد الاستدعاءات ' + ver2.w.__printed);
   check('الطباعة سُجّلت في عدّاد الاستمارة', ver2.w.BRCStore.getApplicant(SERIAL).printedCount > 0);
 

@@ -191,13 +191,11 @@ function buildStandalone() {
 
   // 3) حزمة JavaScript مدمجة + ضبط + راوتر
   const jsBundle = JS_ORDER.map((n) => `/* ===================== ${n}.js ===================== */\n` + read(`assets/js/${n}.js`)).join('\n;\n');
-  const brick = dataUri('assets/img/brick-pattern.jpg');
   const icon = dataUri('assets/img/favicon.svg');
 
   const boot = `
 /* ===== ضبط النسخة المستقلة ===== */
 BRC_CONFIG.verifyLocal = '#!verify';
-window.BRC_IMG_BRICK = ${brick ? JSON.stringify(brick.uri) : 'null'};
 ${icon ? `(function(){var l=document.querySelector('link[rel="icon"]');if(l)l.href=${JSON.stringify(icon.uri)};})();` : ''}
 </body>`;
   // (نُبقي وسم الإغلاق في النهاية بعد الراوتر)
