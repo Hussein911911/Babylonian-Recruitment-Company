@@ -190,7 +190,11 @@ function buildStandalone() {
   const dash = prep(partials.dashboard);
 
   // 3) حزمة JavaScript مدمجة + ضبط + راوتر
-  const jsBundle = JS_ORDER.map((n) => `/* ===================== ${n}.js ===================== */\n` + read(`assets/js/${n}.js`)).join('\n;\n');
+  /* ⚠️ الروابط الموجودة داخل نصوص JS (مثل بوابة صفحة التحقق التي تبني HTML
+     بالسلاسل) يجب أن تُعاد كتابتها أيضاً، وإلا بقي في الملف المستقل رابط إلى
+     صفحة منفصلة (dashboard.html/index.html) فيسقط فحص الاكتفاء الذاتي ويخرج
+     البناء بكود 1 — وهو ما يُفشل النشر الآلي على Cloudflare Pages. */
+  const jsBundle = JS_ORDER.map((n) => `/* ===================== ${n}.js ===================== */\n` + rewriteLinks(read(`assets/js/${n}.js`))).join('\n;\n');
   const icon = dataUri('assets/img/favicon.svg');
 
   const boot = `
