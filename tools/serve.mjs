@@ -54,13 +54,10 @@ const server = createServer(async (req, res) => {
       res.end();
       return;
     }
-    /* /index و /index.html → الجذر: رابط واحد قانوني للصفحة الرئيسية (بلا تكرار
-       في نتائج البحث). يُفحص قبل تعيين الجذر إلى index.html وإلا دارت الحلقة. */
-    if (bare === '/index' || bare === '/index.html') {
-      res.writeHead(301, { Location: '/' + (url.search || '') });
-      res.end();
-      return;
-    }
+    /* ⛔ لا تُضِف هنا تحويل «/index.html → /»: المعاينة يجب أن تطابق Cloudflare
+       Pages، وهناك يُطبَّع /index.html ↔ / داخلياً فتدور القاعدة حلقة لا تنتهي
+       (ERR_TOO_MANY_REDIRECTS) تُسقط الصفحة الرئيسية كلها. التطبيع يتم في
+       nav.js على جانب العميل حيث لا حلقة. */
     const clean = CLEAN_ROUTES[bare];
     if (clean) pathname = clean;
     if (pathname === '/' || pathname === '') pathname = '/index.html';

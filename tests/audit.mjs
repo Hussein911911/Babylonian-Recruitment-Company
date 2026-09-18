@@ -829,6 +829,40 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
     else ok('مسارات الأقسام النظيفة تُحوَّل إلى مراسيها: ' + sections.join(' · '));
   }
 
+  /* 11.6ب ⛔ لا حلقة تحويل تُسقط الصفحة الرئيسية
+     ------------------------------------------------------------------
+     حادثة حقيقية (معاينة 2026-09-18): أُضيفت قاعدة «/index.html → /» فظنناها
+     تحسين SEO بريء، لكن Cloudflare Pages يُطبّع /index.html ↔ / داخلياً،
+     فأعادت القاعدة تقييم نفسها على الهدف ودارت حلقة لا تنتهي أسقطت **الصفحة
+     الرئيسية كلها** بـ ERR_TOO_MANY_REDIRECTS — لا المسار وحده.
+     الدرس: أي قاعدة مصدرها الجذر أو /index.html، أو هدفها يساوي مصدرها، خطر
+     وجودي على الموقع. هذا الفحص يمنعها من العودة. */
+  {
+    const redirects = readFileSync(join(ROOT, '_redirects'), 'utf8');
+    const rules = redirects.split('\n')
+      .map((l) => l.replace(/#.*$/, '').trim()).filter(Boolean)
+      .map((l) => l.split(/\s+/)).filter((p) => p.length >= 2);
+
+    const loops = [];
+    for (const [from, to] of rules) {
+      const norm = (u) => u.replace(/\/index\.html$/, '/').replace(/#.*$/, '').replace(/\/+$/, '') || '/';
+      /* مصدر يُطبّعه المضيف إلى الجذر = حلقة مؤكّدة */
+      if (norm(from) === '/') loops.push(from + ' → ' + to + ' (مصدره الجذر)');
+      /* الهدف يساوي المصدر بعد التطبيع = حلقة كذلك (ما لم يكن إعادة كتابة 200) */
+      else if (norm(from) === norm(to) && !/^200$/.test(rules.find((r) => r[0] === from)?.[2] || '')) {
+        loops.push(from + ' → ' + to + ' (الهدف = المصدر)');
+      }
+    }
+    if (loops.length) bad('لا قاعدة تحويل تدور حلقة وتُسقط الصفحة الرئيسية', loops.join(' | '));
+    else ok('لا حلقة تحويل في _redirects — الجذر و/index.html بلا قواعد (' + rules.length + ' قاعدة مفحوصة)');
+
+    /* وخادم المعاينة يجب أن يطابق: لا تحويل للجذر فيه أيضاً */
+    const serve = readFileSync(join(ROOT, 'tools/serve.mjs'), 'utf8');
+    if (/bare === '\/index\.html'|bare === '\/index'/.test(serve)) {
+      bad('خادم المعاينة بلا تحويل للجذر (يطابق Cloudflare)', 'ما زال يحوّل /index.html');
+    } else ok('خادم المعاينة يطابق Cloudflare: لا تحويل للجذر ولا حلقة محتملة');
+  }
+
   // 11.7 عامل الخدمة: جيل جديد + احتياط تنقّل + nav.js في الكاش
   {
     const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
