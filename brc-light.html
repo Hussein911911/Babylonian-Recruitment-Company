@@ -150,8 +150,11 @@ a.hc-item:hover { color: var(--gold-2); }
 .hc-phones { display: inline-flex; align-items: center; gap: 8px; }
 .hc-phones a { color: var(--gold-2); font-weight: 700; }
 .header-actions { display: flex; align-items: center; gap: 10px; flex: none; }
-/* زر «دخول الموظفين» — ظاهر دائماً في الترويسة (سطح مكتب وجوال) */
+/* زر «تسجيل الدخول» — ظاهر دائماً في الترويسة (سطح مكتب وجوال).
+   على الشاشات الضيّقة يُختصر النص إلى «دخول» حتى لا يزاحم زر القائمة،
+   والأيقونة تبقى في الحالتين فيظلّ معناه واضحاً. */
 .header-login { flex: none; text-decoration: none; }
+.header-login-short { display: none; }
 
 .site-header {
   position: sticky; top: 0; z-index: 60; background: rgba(9, 18, 40, .92);
@@ -1117,6 +1120,10 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .main-nav.open { display: flex; }
   .main-nav a { width: 100%; }
   .nav-toggle { display: inline-flex; }
+  /* الموبايل: «دخول» بدل «تسجيل الدخول» — الزر يبقى ظاهراً بلا زحام */
+  .header-login-full { display: none; }
+  .header-login-short { display: inline; }
+  .header-login { padding-inline: 12px; }
   .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .f-field.f-search { flex: 1 1 100%; }
   .qs-field.qs-main { flex: 1 1 100%; }
@@ -1668,8 +1675,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
              الدخول طبيعي بنقرة واحدة — لا ضغط مطوّل ولا إيماءات مخفية).
              في النسخة المستقلة يُعاد كتابته تلقائياً إلى #!dashboard عند البناء. -->
         <a class="btn btn-gold btn-sm header-login" href="#!dashboard" title="بوابة المنظومة الداخلية — لموظفي الشركة والإدارة">
-          <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
-          دخول الموظفين
+          <svg class="ic"><use href="#i-login" xlink:href="#i-login"/></svg>
+          <span class="header-login-full">تسجيل الدخول</span>
+          <span class="header-login-short">دخول</span>
         </a>
         <button class="nav-toggle" id="nav-toggle" aria-label="إظهار القائمة" aria-expanded="false">
           <svg class="ic" style="width:20px;height:20px"><use href="#i-menu" xlink:href="#i-menu"/></svg>
@@ -5740,7 +5748,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     return p.replace(/[^/]*$/, '') || '/';
   }
 
-  /* تحويل رابط واحد */
+  /* تحويل رابط واحد إلى الصفحة الرئيسية (روابط الأقسام) */
   function normalize(a) {
     var href = a.getAttribute('href') || '';
     var i = href.indexOf(FILE_NAME);
@@ -5756,9 +5764,40 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     /* file:// — يبقى كما هو (اسم الملف هو الطريق الصحيح على القرص) */
   }
 
+  /* ---------------------------------------------------------------------------
+   *  روابط الصفحات المستقلة (دخول الموظفين / التحقق)
+   *  ---------------------------------------------------------------------------
+   *  نفس علّة روابط الأقسام تماماً: "dashboard.html" رابط **نسبي**، فإن كانت
+   *  الصفحة الحالية على مسار فرعي أو على مسار نظيف بلا اسم ملف (/verify مثلاً)
+   *  حسبه المتصفح من المجلد الخطأ ورجع «صفحة غير موجودة» — وهذا ما كان يحدث
+   *  عند النقر على زر «تسجيل الدخول».
+   *  الحل: مسار مطلق من جذر النشر (homeHref) + اسم الملف. نُبقي امتداد .html
+   *  عمداً لأنه يعمل على كل استضافة ثابتة، بينما المسار النظيف (/dashboard)
+   *  يعتمد على قراءة المضيف لملف _redirects وليس كل مضيف يفعل ذلك.
+   * ------------------------------------------------------------------------- */
+  var PAGES = ['dashboard.html', 'verify.html'];
+
+  function normalizePage(a) {
+    if (isFile) return;                                // من القرص: الاسم النسبي صحيح
+    var href = a.getAttribute('href') || '';
+    if (/^(https?:|#|mailto:|tel:|\/)/i.test(href)) return;   // مطلق أو مرساة — لا يُلمس
+    for (var i = 0; i < PAGES.length; i++) {
+      var name = PAGES[i];
+      if (href === name || href.indexOf(name + '?') === 0 || href.indexOf(name + '#') === 0) {
+        a.setAttribute('href', homeHref() + href);
+        return;
+      }
+    }
+  }
+
   function normalizeAll() {
     var list = doc.querySelectorAll('a[href*="' + FILE_NAME + '"]');
     for (var i = 0; i < list.length; i++) normalize(list[i]);
+
+    for (var p = 0; p < PAGES.length; p++) {
+      var pages = doc.querySelectorAll('a[href^="' + PAGES[p] + '"]');
+      for (var j = 0; j < pages.length; j++) normalizePage(pages[j]);
+    }
   }
 
   /* ارتفاع الترويسة اللاصقة — حتى لا يختفي عنوان القسم تحتها بعد القفز */

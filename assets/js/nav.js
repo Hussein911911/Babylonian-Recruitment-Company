@@ -46,7 +46,7 @@
     return p.replace(/[^/]*$/, '') || '/';
   }
 
-  /* تحويل رابط واحد */
+  /* تحويل رابط واحد إلى الصفحة الرئيسية (روابط الأقسام) */
   function normalize(a) {
     var href = a.getAttribute('href') || '';
     var i = href.indexOf(FILE_NAME);
@@ -62,9 +62,40 @@
     /* file:// — يبقى كما هو (اسم الملف هو الطريق الصحيح على القرص) */
   }
 
+  /* ---------------------------------------------------------------------------
+   *  روابط الصفحات المستقلة (دخول الموظفين / التحقق)
+   *  ---------------------------------------------------------------------------
+   *  نفس علّة روابط الأقسام تماماً: "dashboard.html" رابط **نسبي**، فإن كانت
+   *  الصفحة الحالية على مسار فرعي أو على مسار نظيف بلا اسم ملف (/verify مثلاً)
+   *  حسبه المتصفح من المجلد الخطأ ورجع «صفحة غير موجودة» — وهذا ما كان يحدث
+   *  عند النقر على زر «تسجيل الدخول».
+   *  الحل: مسار مطلق من جذر النشر (homeHref) + اسم الملف. نُبقي امتداد .html
+   *  عمداً لأنه يعمل على كل استضافة ثابتة، بينما المسار النظيف (/dashboard)
+   *  يعتمد على قراءة المضيف لملف _redirects وليس كل مضيف يفعل ذلك.
+   * ------------------------------------------------------------------------- */
+  var PAGES = ['dashboard.html', 'verify.html'];
+
+  function normalizePage(a) {
+    if (isFile) return;                                // من القرص: الاسم النسبي صحيح
+    var href = a.getAttribute('href') || '';
+    if (/^(https?:|#|mailto:|tel:|\/)/i.test(href)) return;   // مطلق أو مرساة — لا يُلمس
+    for (var i = 0; i < PAGES.length; i++) {
+      var name = PAGES[i];
+      if (href === name || href.indexOf(name + '?') === 0 || href.indexOf(name + '#') === 0) {
+        a.setAttribute('href', homeHref() + href);
+        return;
+      }
+    }
+  }
+
   function normalizeAll() {
     var list = doc.querySelectorAll('a[href*="' + FILE_NAME + '"]');
     for (var i = 0; i < list.length; i++) normalize(list[i]);
+
+    for (var p = 0; p < PAGES.length; p++) {
+      var pages = doc.querySelectorAll('a[href^="' + PAGES[p] + '"]');
+      for (var j = 0; j < pages.length; j++) normalizePage(pages[j]);
+    }
   }
 
   /* ارتفاع الترويسة اللاصقة — حتى لا يختفي عنوان القسم تحتها بعد القفز */

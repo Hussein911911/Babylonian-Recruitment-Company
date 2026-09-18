@@ -747,6 +747,53 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
     else ok('تطبيع الروابط يعمل على ' + cases.length + ' حالات (نطاق جذري · مسار فرعي · تحقق · لوحة · 404) بلا بقايا index.html');
   }
 
+  // 11.3ب زر «تسجيل الدخول» يفتح شاشة الدخول فعلاً من أي صفحة وأي نطاق
+  {
+    /* الخلفية: "dashboard.html" رابط نسبي — من مسار نظيف (/verify) أو مسار فرعي
+       يحسبه المتصفح من المجلد الخطأ فيرجع «صفحة غير موجودة». nav.js يثبّته على
+       جذر النشر. هنا نتأكد أن الزر موجود، ونصّه واضح، ووجهته صحيحة فعلاً. */
+    const navSrc = readFileSync(join(ROOT, 'assets/js/nav.js'), 'utf8');
+    const cases = [
+      ['index.html', 'https://brc.example.com/', '/dashboard.html'],
+      ['index.html', 'https://host.tld/sub/', '/sub/dashboard.html'],
+      ['verify.html', 'https://brc.example.com/verify', '/dashboard.html'],
+      ['404.html', 'https://host.tld/sub/typo', '/sub/dashboard.html']
+    ];
+    const failures = [];
+    for (const [file, url, want] of cases) {
+      const dom = new JSDOM(readFileSync(join(ROOT, file), 'utf8'), { url, runScripts: 'outside-only' });
+      const w = dom.window;
+      w.eval(navSrc);
+      w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
+      const btn = w.document.querySelector('.header-login');
+      if (!btn) failures.push(file + ': لا زر دخول');
+      else {
+        const got = btn.getAttribute('href');
+        if (got !== want) failures.push(file + ' @ ' + url + ': ' + got + ' ≠ ' + want);
+        if (!/تسجيل الدخول|دخول/.test(btn.textContent)) failures.push(file + ': نص الزر غير واضح');
+      }
+      w.close();
+    }
+    if (failures.length) bad('زر تسجيل الدخول يصل إلى شاشة الدخول من كل صفحة', failures.join(' | '));
+    else ok('زر «تسجيل الدخول» يفتح شاشة الدخول من ' + cases.length + ' حالات (جذر · مسار فرعي · تحقق · 404)');
+  }
+
+  // 11.3ج شاشة الدخول نفسها مكتملة العناصر
+  {
+    const dash = readFileSync(join(ROOT, 'dashboard.html'), 'utf8');
+    const need = {
+      'حاوية شاشة الدخول': /id="login-wrap"/,
+      'نموذج الدخول': /id="login-form"/,
+      'حقل المستخدم': /id="login-user"/,
+      'حقل كلمة المرور': /id="login-pass"/,
+      'زر الإرسال': /id="login-btn"/,
+      'رابط العودة للموقع': /login-back-link/
+    };
+    const missing = Object.entries(need).filter(([, re]) => !re.test(dash)).map(([k]) => k);
+    if (missing.length) bad('شاشة الدخول مكتملة العناصر', 'ناقص: ' + missing.join(' · '));
+    else ok('شاشة الدخول مكتملة: ' + Object.keys(need).length + ' عناصر (مستخدم · كلمة مرور · إرسال · عودة)');
+  }
+
   // 11.4 الملف المستقل لا يتأثّر: راوتره الخاص يبقى صاحب القرار
   {
     const standalonePages = ['brc-standalone.html'].concat(LIGHT ? ['brc-light.html'] : []);
