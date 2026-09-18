@@ -84,11 +84,6 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
 const SCRIPTS = {
   public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'public'],
   verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
-  /* ⚠️ archive.js ليس هنا عمداً — يُحمَّل **عند الطلب** فقط (أول ضغطة على زر
-     «أرشيف للتلكرام»). السبب: 13KB لميزة تُستعمل مرة كل يومين لا يجوز أن
-     يدفع ثمنها كل فتح للوحة، وميزانية الأداء (700KB) رفضتها فعلاً. انظر
-     loadArchive() في dashboard.js. ولا يُدمج في الملف المستقل أصلاً: لا معنى
-     لأرشيف يؤرشف نفسه، ولا fetch على file://. */
   dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard']
 };
 
