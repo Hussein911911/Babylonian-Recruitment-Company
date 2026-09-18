@@ -85,6 +85,12 @@ try {
   const { w, doc, errors, click } = await openDashboard();
   const S = w.BRCStore;
   const UI = w.BRCUI;
+  /* حساب مدير fixture محلي: الإنتاج أغلق الدخول المحلي نهائياً (users: [] و
+     enforceAuth: true — وهذا صحيح ولا يُخفض). jsdom بلا fetch فالوضع هنا محلي
+     بحت، والاختبار يختبر النسخ الاحتياطي لا المصادقة — فنزرع حسابه الخاص. */
+  w.BRC_CONFIG.users = [
+    { username: 'admin', password: 'admin123', name: 'مدير الفحص', role: 'admin', title: 'مدير عام' }
+  ];
   const modalOpen = () => !!doc.querySelector('#modal-root .modal');
   const lastModal = () => doc.querySelector('#modal-root .modal-backdrop:last-child');
   const txt = (id) => { const e = doc.getElementById(id); return e ? e.textContent.trim() : null; };

@@ -316,12 +316,17 @@ step(3, 'الجلسة — الدخول من القاعدة لا من config.js')
 
 step('3أ', 'الوضع الانتقالي — allow محلي معلَن، وبلا أي كتابة في القاعدة');
 {
-  /* enforceAuth=false هو الوضع الافتراضي الحالي (المسؤول لم يُنشئ الحسابات بعدُ).
-     في هذا الوضع: الدخول المحلي مسموح صراحةً، لكن **لا شيء يصل للقاعدة** لأن
-     الكتابة تحتاج جلسة موظف — فلا يظنّ أحد أن بياناته مشتركة. */
+  /* enforceAuth=false وضعٌ مضى في الإنتاج (الوضع النهائي الآن: enforceAuth=true
+     و users=[])، لكن مسار الكود ما زال موجوداً فيجب اختباره. هذه المحاكاة
+     تعيد إنتاج «ما كان عليه config.js في تلك المرحلة» — حسابات fixtures داخل
+     sandbox الاختبار وحده، لا في ملفات الإنتاج (لا يُخفض الأمن لأجل اختبار). */
+  const TRANSITIONAL_USERS = [
+    { username: 'admin', password: 'admin123', name: 'مدير انتقالي (اختبار)', role: 'admin', title: 'مدير عام' }
+  ];
   /* (أ) زائر/موظف بلا جلسة سحابية: الوضع الانتقالي المعتاد */
   const mock = makeMock({ rows: cloudRows(), session: null });
-  const { Store } = bootStore(mock, { enforceAuth: false });
+  const { Store, sandbox } = bootStore(mock, { enforceAuth: false });
+  sandbox.BRC_CONFIG.users = TRANSITIONAL_USERS;
   Store.init();
   await sleep(120);
   check('الوضع الانتقالي مُعلن في الحالة', Store.cloudStatus().enforceAuth === false);
@@ -339,6 +344,7 @@ step('3أ', 'الوضع الانتقالي — allow محلي معلَن، وب�
      أخطر حالة — لولا الفصل لصارت الكتابات باسم صاحب الجلسة. */
   const mock2 = makeMock({ rows: cloudRows() });
   const b = bootStore(mock2, { enforceAuth: false });
+  b.sandbox.BRC_CONFIG.users = TRANSITIONAL_USERS;
   b.Store.init();
   await sleep(120);
   check('قبل الدخول المحلي: جلسة سحابية لموظف (صلاحية كتابة)', b.Store.cloudStatus().role === 'staff');
@@ -370,8 +376,12 @@ step('3ب', 'الجلسة — حالات الحدود (حساب بلا سطر م
   const r2 = await b.Store.signIn('hussein', 'x');
   check('حساب موقوف يُرفض', r2.ok === false && r2.code === 'inactive', JSON.stringify(r2));
 
-  /* بلا مكتبة سوبابيس محمّلة: وضع محلي مع تنبيه صريح، والدخول المحلي متاح */
+  /* بلا مكتبة سوبابيس محمّلة: وضع محلي مع تنبيه صريح، والدخول المحلي متاح
+     (حساب fixture محلي — في الإنتاج users=[] ولا دخول محلي مع enforceAuth=true) */
   const c = bootStore(makeMock({ rows: cloudRows() }), { noVendor: true });
+  c.sandbox.BRC_CONFIG.users = [
+    { username: 'admin', password: 'admin123', name: 'مدير محلي (اختبار)', role: 'admin', title: 'مدير عام' }
+  ];
   c.Store.init();
   await sleep(30);
   const st = c.Store.cloudStatus();

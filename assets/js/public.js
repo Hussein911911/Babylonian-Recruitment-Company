@@ -11,25 +11,81 @@
 
   var filters = { q: '', region: 'all', shift: 'all', status: 'all' };
 
+  /* -------------- وضع القاعدة العامة (Supabase مفعّل) --------------
+   * لماذا هذا التمييز؟ مع enabled=true يجب ألا يرى الزائر **أي** بيانات من
+   * المتصفح (CFG.seed أو كاش localStorage): الوظائف المعروضة مرجعها قاعدة
+   * الشركة وحدها. فقبل وصول رد القاعدة نعرض هيكل تحميل (skeleton)، وبعده
+   * إمّا الوظائف المعلنة، أو «لا توجد وظائف معروضة حالياً» إن كانت القاعدة
+   * فارغة، أو «تعذّر الاتصال بقاعدة الشركة» إن فشل الاتصال — ولا نسقط إلى
+   * البيانات التجريبية أبداً. أما إن كان المتصفح لا يستطيع الاتصال أصلاً
+   * (بلا fetch — نسخة قديمة جداً أو ملف مستقل بلا إنترنت) فالوضع محلي
+   * ويعمل كما هو.
+   * ⚠️ الموظف المسجَّل على نفس الصفحة يرى بياناته الكاملة (state=on, staff). */
+  var cloudMode = false;      // السحابة مفعّلة وقابلة للإقلاع في هذا المتصفح
+  var cloudSettled = false;   // وصل رد القاعدة (نجاح أو فشل) — قبله لا تُعرض بيانات متصفح
+
+  function cloudBlocked() {
+    if (!cloudMode) return false;
+    if (!cloudSettled) return true;
+    var st = Store.cloudStatus();
+    return !(st && st.state === 'on');
+  }
+
   /* ---------------- التهيئة ---------------- */
   function init() {
     Store.init();
     UI.startCountdowns();
     fillSelects();
     bindEvents();
-    renderAll();
-    Store.subscribe(renderAll);
-    /* شريط الحالة + تحديثه عند تغيّرها: العرض المحلي لا يُقدَّم كسجل رسمي بلا تنبيه */
-    if (UI.syncNotice) UI.syncNotice('#jobs-grid');
-    if (Store.onCloudStatus) Store.onCloudStatus(function (st) {
-      if (UI.syncNotice) UI.syncNotice('#jobs-grid');
+
+    var st = Store.cloudStatus ? Store.cloudStatus() : null;
+    cloudMode = !!(st && st.configured && st.willBoot);
+    if (cloudMode) {
+      renderSkeleton();
+      Store.waitForCloud().then(settleCloud, settleCloud);
+    } else {
       renderAll();
-    });
+    }
+
+    Store.subscribe(onDataChanged);
+    /* شريط الحالة + تحديثه عند تغيّرها: العرض المحلي لا يُقدَّم كسجل رسمي بلا تنبيه.
+       في وضع القاعدة لا نعرضه: رسالة الفشل داخل الشبكة أدقّ (لا نعرض بيانات متصفح
+       أصلاً فلا معنى لقول «المعروض من نسخة المتصفح»). */
+    if (UI.syncNotice && !cloudMode) UI.syncNotice('#jobs-grid');
+    if (Store.onCloudStatus) Store.onCloudStatus(onCloudChanged);
     initReveal();
 
-    // تشغيل قواعد الإفراج التلقائي عند التحميل ثم دورياً
-    Store.runMaintenance();
-    setInterval(function () { Store.runMaintenance(); }, 60000);
+    // تشغيل قواعد الإفراج التلقائي عند التحميل ثم دورياً (في وضع القاعدة:
+    // بعد التبنّي فقط — لا صيانة على كاش متصفح قد لا يعني شيئاً للزائر)
+    if (!cloudMode) Store.runMaintenance();
+    setInterval(function () {
+      if (!cloudMode || cloudSettled) Store.runMaintenance();
+    }, 60000);
+  }
+
+  /* وصول رد القاعدة: عرض المعلن، أو رسالة الفشل — لا شيء بينهما */
+  function settleCloud(st) {
+    cloudSettled = true;
+    st = st || (Store.cloudStatus ? Store.cloudStatus() : null);
+    if (st && st.state === 'on') renderAll();
+    else renderCloudError();
+  }
+
+  /* أي تغيير في البيانات (emit): يُعرض فقط إن كنا نملك بيانات معروضة أصلاً */
+  function onDataChanged() {
+    if (cloudBlocked()) return;
+    renderAll();
+  }
+
+  function onCloudChanged() {
+    if (!cloudMode) {
+      if (UI.syncNotice) UI.syncNotice('#jobs-grid');
+      renderAll();
+      return;
+    }
+    if (!cloudSettled) return;
+    if (cloudBlocked()) renderCloudError();
+    else renderAll();
   }
 
   /* ---------------- حركات الظهور عند التمرير ---------------- */
@@ -96,6 +152,9 @@
     document.addEventListener('click', function (e) {
       var v = e.target.closest && e.target.closest('[data-action="job-details"]');
       if (v) { e.preventDefault(); openJob(v.getAttribute('data-code')); }
+      /* إعادة محاولة الاتصال بقاعدة الشركة من رسالة الفشل */
+      var r = e.target.closest && e.target.closest('[data-action="retry-cloud"]');
+      if (r) { e.preventDefault(); window.location.reload(); }
     });
 
     // قائمة الجوال
@@ -124,6 +183,12 @@
   }
 
   function runQuickSearch(code, region) {
+    if (cloudBlocked()) {
+      UI.toast(cloudSettled ? 'error' : 'info', cloudSettled ? 'تعذّر الاتصال' : 'جارٍ التحميل',
+        cloudSettled ? 'تعذّر الاتصال بقاعدة الشركة — أعد المحاولة أو خابرنا هاتفياً.'
+                     : 'تُحمَّل الوظائف من قاعدة الشركة الآن — لحظات ويكتمل البحث.', 6000);
+      return;
+    }
     code = String(code || '').trim();
     region = region || 'all';
     filters.q = code;
@@ -254,18 +319,86 @@
   /* ---------------- العرض ---------------- */
   function renderAll() { renderHeroStats(); renderJobs(); }
 
-  root.BRCRefresh = function () { renderAll(); };
+  root.BRCRefresh = function () {
+    if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }
+    renderAll();
+  };
+
+  /* هيكل تحميل يظهر بدل بيانات المتصفح لحظة انتظار رد القاعدة */
+  function skeletonCard() {
+    return '<article class="job-card skeleton" aria-hidden="true">' +
+      '<div class="skel-body">' +
+        '<div class="skel-line w60" style="height:16px"></div>' +
+        '<div class="skel-line w40"></div>' +
+        '<div class="skel-line"></div><div class="skel-line w80"></div><div class="skel-line w60"></div>' +
+      '</div>' +
+      '<div class="skel-foot"><span class="skel-line sq"></span><span class="skel-line sq" style="width:96px"></span></div>' +
+    '</article>';
+  }
+
+  function renderSkeleton() {
+    var host = document.getElementById('jobs-grid');
+    if (host) host.innerHTML = skeletonCard().repeat(6);
+    var empty = document.getElementById('jobs-empty');
+    if (empty) empty.classList.add('hidden');
+    var count = document.getElementById('jobs-count');
+    if (count) count.textContent = '…';
+    var hs = document.getElementById('hero-stats');
+    if (hs) {
+      hs.innerHTML = ['w60', 'w40', 'w60', 'w40'].map(function (w) {
+        return '<div class="hero-stat skeleton"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
+      }).join('');
+    }
+  }
+
+  /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
+  function renderCloudError() {
+    var host = document.getElementById('jobs-grid');
+    if (host) {
+      host.innerHTML =
+        '<div class="empty-state" role="alert">' +
+          '<svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg>' +
+          '<h3>تعذّر الاتصال بقاعدة الشركة</h3>' +
+          '<p class="mb-2">تعذّر تحميل الوظائف المعلنة الآن — تحقّق من اتصالك بالإنترنت ثم أعد المحاولة، أو خابرنا على الأرقام الرسمية.</p>' +
+          '<button class="btn btn-outline btn-sm" data-action="retry-cloud">' + UI.ic('refresh') + ' إعادة المحاولة</button>' +
+        '</div>';
+    }
+    var empty = document.getElementById('jobs-empty');
+    if (empty) empty.classList.add('hidden');
+    var count = document.getElementById('jobs-count');
+    if (count) count.textContent = '—';
+    var hs = document.getElementById('hero-stats');
+    if (hs) {
+      hs.innerHTML = ['—', '—'].map(function () {
+        return '<div class="hero-stat"><b>—</b><span>…</span></div>';
+      }).join('');
+    }
+  }
 
   function renderHeroStats() {
     var host = document.getElementById('hero-stats');
     if (!host) return;
-    var s = Store.stats();
-    var items = [
-      { v: s.available, l: 'وظيفة متاحة الآن' },
-      { v: s.totalJobs, l: 'وظيفة مُسجّلة في النظام' },
-      { v: s.forms, l: 'استمارة صادرة' },
-      { v: s.hires, l: 'توظيف ناجح مكتمل' }
-    ];
+    if (cloudBlocked()) return;   // الهيكل/رسالة الفشل تسيّر العرض هنا
+    /* الزائر في وضع القاعدة يرى إحصاءات الوظائف المعلنة فقط — أعداد الاستمارات
+       والتوظيف بيانات داخلية (وأي رقم متصفح هنا سيكون من البيانات التجريبية
+       أو كاش قديم أصلاً). الموظف المسجَّل يرى اللوحة كاملة. */
+    var staff = false;
+    try { staff = !!(Store.currentUser && Store.currentUser()); } catch (e) { staff = false; }
+    if (cloudMode && !staff) {
+      var jobsAll = Store.listJobs({});
+      var items = [
+        { v: jobsAll.filter(function (j) { return j.status === 'available'; }).length, l: 'وظيفة متاحة الآن' },
+        { v: jobsAll.length, l: 'وظيفة معروضة' }
+      ];
+    } else {
+      var s = Store.stats();
+      items = [
+        { v: s.available, l: 'وظيفة متاحة الآن' },
+        { v: s.totalJobs, l: 'وظيفة مُسجّلة في النظام' },
+        { v: s.forms, l: 'استمارة صادرة' },
+        { v: s.hires, l: 'توظيف ناجح مكتمل' }
+      ];
+    }
     host.innerHTML = items.map(function (i) {
       return '<div class="hero-stat"><b>' + i.v + '</b><span>' + i.l + '</span></div>';
     }).join('');
@@ -274,13 +407,27 @@
   function renderJobs() {
     var host = document.getElementById('jobs-grid');
     if (!host) return;
+    if (cloudBlocked()) { if (!cloudSettled) renderSkeleton(); else renderCloudError(); return; }
     var jobs = Store.listJobs(filters);
     var count = document.getElementById('jobs-count');
     if (count) count.textContent = jobs.length;
     var upd = document.getElementById('jobs-updated');
     if (upd) upd.textContent = Store.fmtDateTime(new Date());
     var empty = document.getElementById('jobs-empty');
-    if (empty) empty.classList.toggle('hidden', jobs.length > 0);
+    if (empty) {
+      var showEmpty = jobs.length === 0;
+      empty.classList.toggle('hidden', !showEmpty);
+      if (showEmpty) {
+        /* رسالتان مختلفتان: قاعدة بلا وظائف معلنة ≠ تصفية بلا نتائج */
+        var noListings = cloudMode && Store.listJobs({}).length === 0;
+        var h = empty.querySelector('h3');
+        var p = empty.querySelector('p');
+        if (h) h.textContent = noListings ? 'لا توجد وظائف معروضة حالياً' : 'لا توجد وظائف مطابقة';
+        if (p) p.textContent = noListings
+          ? 'تُنشر فرص العمل هنا فور اعتمادها من قِبل الشركة — تابعونا أو خابرنا لمعرفة الشواغر الحالية.'
+          : 'جرّب كوداً آخر أو صفّر عوامل التصفية، أو تواصل معنا لتسجيلك في قائمة الانتظار.';
+      }
+    }
     host.innerHTML = jobs.map(cardHtml).join('');
   }
 

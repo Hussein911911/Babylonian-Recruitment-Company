@@ -1210,6 +1210,12 @@
   function cloudStatus() {
     return {
       configured: cloudConfigured(), enforceAuth: enforceAuth(), devAccountsActive: devAccountsActive(),
+      /* هل سيُقلع الاتصال بالقاعدة فعلاً؟ (الإعداد مفعّل + المتصفح يوفر fetch +
+         مكتبة عميل محمّلة). الصفحة العامة تعتمد عليه لقرار مهم: مع willBoot=true
+         لا تُعرض للزائر أي بيانات متصفح (seed/كاش) إطلاقاً — بل هيكل تحميل ثم
+         بيانات القاعدة أو رسالة فشل. أما بلا fetch (متصفح قديم جداً أو بيئة
+         اختبار محلية) فلا معنى لإخفاء البيانات المحلية عن نسخة لا تملك غيرها. */
+      willBoot: cloudWillBoot(),
       state: cloud.state, role: cloud.role,
       readOnly: cloud.readOnly, error: cloud.error, detail: cloud.detail,
       failedTables: cloud.failedTables.slice(), pending: pendingQueueLength(),

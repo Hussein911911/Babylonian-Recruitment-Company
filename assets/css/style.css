@@ -133,6 +133,8 @@ a.hc-item:hover { color: var(--gold-2); }
 .hc-phones { display: inline-flex; align-items: center; gap: 8px; }
 .hc-phones a { color: var(--gold-2); font-weight: 700; }
 .header-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+/* زر «دخول الموظفين» — ظاهر دائماً في الترويسة (سطح مكتب وجوال) */
+.header-login { flex: none; text-decoration: none; }
 
 .site-header {
   position: sticky; top: 0; z-index: 60; background: rgba(9, 18, 40, .92);
@@ -408,6 +410,36 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 .search-wrap input { padding-inline-start: 34px; }
 
 .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(325px, 1fr)); gap: 20px; }
+
+/* ===== هيكل التحميل (Skeleton) — أثناء قراءة الوظائف من قاعدة الشركة =====
+   يظهر بدل أي بيانات متصفح حتى لا يرى الزائر وظائف تجريبية أو قديمة. */
+.job-card.skeleton, .hero-stat.skeleton { pointer-events: none; }
+.job-card.skeleton::before { display: none; }
+.skel-line {
+  height: 12px; border-radius: 7px; margin: 8px 0;
+  background: linear-gradient(90deg, #edf0f7 25%, #f7f9fd 45%, #edf0f7 65%);
+  background-size: 220% 100%;
+  animation: skelWave 1.3s ease-in-out infinite;
+}
+.skel-line.w60 { width: 60%; } .skel-line.w40 { width: 40%; } .skel-line.w80 { width: 80%; }
+.skel-line.sq {
+  width: 74px; height: 24px; border-radius: 9px; margin: 0;
+  display: inline-block; background: linear-gradient(90deg, #edf0f7 25%, #f7f9fd 45%, #edf0f7 65%);
+  background-size: 220% 100%; animation: skelWave 1.3s ease-in-out infinite;
+}
+.job-card.skeleton .skel-body { padding: 18px; display: flex; flex-direction: column; }
+.job-card.skeleton .skel-foot {
+  margin-top: auto; padding: 14px 18px; border-top: 1px dashed var(--line-soft);
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+}
+.hero-stat.skeleton { min-height: 74px; }
+@keyframes skelWave {
+  0% { background-position: 130% 0; }
+  100% { background-position: -90% 0; }
+}
+/* حالة تعذّر الاتصال بقاعدة الشركة داخل شبكة الوظائف */
+.jobs-grid .empty-state { grid-column: 1 / -1; }
+
 .job-card {
   background: #fff; border: 1px solid var(--line-soft); border-radius: var(--radius);
   overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-sm);

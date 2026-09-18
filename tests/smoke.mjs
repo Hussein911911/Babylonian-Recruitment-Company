@@ -15,7 +15,7 @@
  *      node tests/smoke.mjs
  *  أو: NODE_PATH=/path/to/node_modules node tests/smoke.mjs
  * =========================================================================== */
-import { JSDOM, VirtualConsole } from 'jsdom';
+import { JSDOM, VirtualConsole, ResourceLoader } from 'jsdom';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -384,6 +384,15 @@ check('بصمة تحقق غير مطابقة تُرفع كتحذير', () => {
 /* ======================= 5) المنظومة الداخلية ======================= */
 console.log('\n=== 5) المنظومة الداخلية (dashboard.html) ===');
 const dash = await load('dashboard.html');
+/* حسابات فحص محلية (fixtures): الإنتاج أغلق باب الدخول المحلي نهائياً
+   (users: [] و enforceAuth: true في supabase-config.js) — وهذا هو الصحيح
+   أمنياً ولا يُخفض للاختبارات. فاختبارات الواجهة الداخلية تزرع حساباتها في
+   هذا المتصفح الافتراضي وحده (كما تُزرع جلسة الموظف أعلاه)، والدخول هنا
+   محلي بحت لأن jsdom بلا fetch فلا سحابة أصلاً. */
+dash.window.BRC_CONFIG.users = [
+  { username: 'admin', password: 'admin123', name: 'مدير الفحص', role: 'admin', title: 'مدير عام' },
+  { username: 'staff', password: 'staff123', name: 'موظف فحص', role: 'staff', title: 'موظف توظيف' }
+];
 check('شاشة الدخول تظهر في البداية', () =>
   (!dash.doc.getElementById('login-wrap').classList.contains('hidden') &&
     dash.doc.getElementById('app-shell').classList.contains('hidden')) || 'الحالة الابتدائية خاطئة');
@@ -546,6 +555,162 @@ check('العودة إلى الموقع العام تعمل', () => {
   st.window.dispatchEvent(new st.window.Event('hashchange'));
   return (!st.doc.getElementById('route-site').hidden && st.doc.getElementById('route-verify').hidden) || 'فشل الرجوع';
 });
+
+/* ======================= 7) الموقع العام في وضع قاعدة الشركة =======================
+ * المحاكاة: نفس index.html المنشورة، مع window.fetch وهمي يُحقن عبر ملف
+ * supabase-config.js (يُحمَّل قبل store.js) يجيب عن public_jobs فقط — تماماً
+ * كعميل REST الحقيقي. هكذا نتحقق من سلوك الزائر الحقيقي على النسخة المنشورة:
+ * لا بيانات متصفح (seed/كاش) إطلاقاً، بل هيكل تحميل ثم المعلن من القاعدة،
+ * أو «لا توجد وظائف معروضة حالياً»، أو «تعذّر الاتصال بقاعدة الشركة». */
+console.log('\n=== 7) الموقع العام في وضع قاعدة الشركة (Supabase مفعّل) ===');
+{
+  const REST = 'https://vqsvztudvfukyuerzcgx.supabase.co/rest/v1/';
+  const CLOUD_JOBS = [
+    { code: 'BRC-9001', title: 'فني تشغيل من القاعدة', category: 'تقني', region: 'الحلة', shift: 'صباحي',
+      salary_min: 700000, salary_max: 900000, gender: 'لا فرق', vacancies: 2, requirements: ['خبرة سنتين'],
+      status: 'available', is_reserved: false, hold_expires_at: null,
+      created_at: '2026-09-01T00:00:00.000Z', description: 'وصف معلن', image_url: '' },
+    { code: 'BRC-9002', title: 'محاسب من القاعدة', category: 'إداري', region: 'المسيب', shift: 'دوام كامل',
+      salary_min: 900000, salary_max: 1200000, gender: 'لا فرق', vacancies: 1, requirements: [],
+      status: 'available', is_reserved: false, hold_expires_at: null,
+      created_at: '2026-09-02T00:00:00.000Z', description: '', image_url: '' }
+  ];
+
+  function cloudMockScript(scenario) {
+    return `
+;(function () {
+  var REST = ${JSON.stringify(REST)};
+  var ROWS = ${JSON.stringify(scenario.fail ? [] : (scenario.jobs || []))};
+  var FAIL = ${scenario.fail ? 'true' : 'false'};
+  var DELAY = ${scenario.delay || 400};
+  window.__brcMockFetchCalls = 0;
+  window.fetch = function (url) {
+    window.__brcMockFetchCalls++;
+    var u = String(url);
+    var out;
+    if (u.indexOf(REST + 'public_jobs') === 0) {
+      out = FAIL
+        ? Promise.reject(new Error('mock: network down'))
+        : Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(ROWS)); } });
+    } else {
+      out = Promise.reject(new Error('unexpected fetch: ' + u));
+    }
+    /* معالج فوري حتى لا يصبح الوعد المرفوض unhandledRejection قبل انقضاء المهلة */
+    out.catch(function () {});
+    return new Promise(function (res, rej) { setTimeout(function () { out.then(res, rej); }, DELAY); });
+  };
+})();`;
+  }
+
+  class CloudMockLoader extends ResourceLoader {
+    constructor(scenario) { super(); this.scenario = scenario; }
+    fetch(url, options) {
+      if (String(url).includes('/assets/js/supabase-config.js')) {
+        return super.fetch(url, options)
+          .then((buf) => Buffer.from(String(buf) + '\n' + cloudMockScript(this.scenario), 'utf8'));
+      }
+      return super.fetch(url, options);
+    }
+  }
+
+  async function loadCloudIndex(scenario) {
+    const vc = new VirtualConsole();
+    const errors = [];
+    vc.on('jsdomError', (e) => {
+      if (/Could not load|Error: Not implemented/.test(String(e.message))) return;
+      errors.push(e.message);
+    });
+    vc.on('error', (...a) => errors.push(a.map(String).join(' ')));
+    const dom = await JSDOM.fromFile(resolve(ROOT, 'index.html'), {
+      url: pathToFileURL(resolve(ROOT, 'index.html')).href,
+      runScripts: 'dangerously', resources: new CloudMockLoader(scenario),
+      pretendToBeVisual: true, virtualConsole: vc
+    });
+    return { dom, window: dom.window, doc: dom.window.document, errors };
+  }
+
+  async function pollUntil(fn, timeoutMs, label) {
+    const t0 = Date.now();
+    for (;;) {
+      if (fn()) return true;
+      if (Date.now() - t0 > timeoutMs) throw new Error('انتهت مهلة الانتظار: ' + label);
+      await new Promise((r) => setTimeout(r, 60));
+    }
+  }
+
+  /* نسخة await من check (الفحوص هنا تنتظر رد القاعدة الوهمي) */
+  async function acheck(name, fn) {
+    try {
+      const r = await fn();
+      if (r === true || r === undefined) ok(name);
+      else bad(name, String(r));
+    } catch (e) { bad(name, e.message); }
+  }
+
+  /* (أ) النجاح: هيكل تحميل ثم المعلن من القاعدة — ولا أثر للبيانات التجريبية */
+  const okPage = await loadCloudIndex({ jobs: CLOUD_JOBS, delay: 400 });
+  check('الصفحة العامة لا أخطاء JavaScript في الوضع السحابي', () => okPage.errors.length === 0 || okPage.errors.join(' | '));
+  await acheck('هيكل التحميل يظهر أثناء قراءة public_jobs (لا بيانات متصفح)', async () => {
+    await pollUntil(() => okPage.doc.querySelectorAll('#jobs-grid .job-card.skeleton').length > 0, 4000, 'ظهور الهيكل');
+    const grid = okPage.doc.getElementById('jobs-grid').textContent;
+    return (!grid.includes('BRC-1042') && okPage.doc.querySelectorAll('#hero-stats .hero-stat.skeleton').length === 4) ||
+      'ظهرت بيانات المتصفح أثناء التحميل أو الهيكل ناقص';
+  });
+  await acheck('بعد الرد: الوظائف المعلنة من القاعدة (لا التجريبية)', async () => {
+    await pollUntil(() => okPage.doc.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length > 0, 5000, 'وصول الوظائف');
+    const grid = okPage.doc.getElementById('jobs-grid').textContent;
+    return (grid.includes('BRC-9001') && grid.includes('BRC-9002') && !grid.includes('BRC-1042')) ||
+      'البطاقات ليست من القاعدة: ' + grid.slice(0, 80);
+  });
+  await acheck('إحصاءات الزائر من المعلن فقط (لا أعداد استمارات داخلية)', async () => {
+    const stats = [...okPage.doc.querySelectorAll('#hero-stats .hero-stat')].map((s) => s.textContent);
+    return (stats.length === 2 && /متاحة/.test(stats[0]) && /معروضة/.test(stats[1])) ||
+      'الإحصاءات: ' + JSON.stringify(stats);
+  });
+  await acheck('الزائر = طلب واحد فقط (public_jobs) ولا صلاحية كتابة', async () => {
+    const st = okPage.window.BRCStore.cloudStatus();
+    return (okPage.window.__brcMockFetchCalls === 1 && st.state === 'on' && st.role === 'public' && st.readOnly === true) ||
+      JSON.stringify({ calls: okPage.window.__brcMockFetchCalls, state: st.state, role: st.role });
+  });
+  await acheck('بطاقة الوظيفة تعرض «احجز» بواتساب يحمل كود الوظيفة المعلنة', async () => {
+    const a = okPage.doc.querySelector('#jobs-grid .job-card a[href^="https://wa.me/"]');
+    return (a && /BRC-9001|BRC-9002/.test(decodeURIComponent(a.getAttribute('href')))) || 'لا زر حجز واتساب';
+  });
+  okPage.dom.window.close();
+
+  /* (ب) قاعدة متصلة لكن لا وظائف معلنة */
+  const emptyPage = await loadCloudIndex({ jobs: [], delay: 200 });
+  await acheck('قاعدة بلا وظائف معلنة: رسالة «لا توجد وظائف معروضة حالياً»', async () => {
+    await pollUntil(() => {
+      const e = emptyPage.doc.getElementById('jobs-empty');
+      return e && !e.classList.contains('hidden');
+    }, 5000, 'رسالة الفراغ');
+    const e = emptyPage.doc.getElementById('jobs-empty');
+    const h = e.querySelector('h3');
+    const cards = emptyPage.doc.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length;
+    return (h && h.textContent.includes('لا توجد وظائف معروضة حالياً') && cards === 0) ||
+      ('العنوان: ' + (h && h.textContent) + ' / بطاقات: ' + cards);
+  });
+  await acheck('حالة الفراغ لا تعرض البيانات التجريبية إطلاقاً', async () => {
+    const body = emptyPage.doc.getElementById('jobs-grid').textContent + emptyPage.doc.getElementById('hero-stats').textContent;
+    return !body.includes('BRC-1042') || 'ظهرت بيانات seed مع قاعدة فارغة';
+  });
+  emptyPage.dom.window.close();
+
+  /* (ج) فشل الاتصال: رسالة فشل صريحة + إعادة محاولة — لا سقوط لبيانات المتصفح */
+  const failPage = await loadCloudIndex({ fail: true, delay: 200 });
+  await acheck('فشل الاتصال: «تعذّر الاتصال بقاعدة الشركة» + زر إعادة المحاولة', async () => {
+    await pollUntil(() => /تعذّر الاتصال بقاعدة الشركة/.test(failPage.doc.getElementById('jobs-grid').textContent), 5000, 'رسالة الفشل');
+    const retry = failPage.doc.querySelector('#jobs-grid [data-action="retry-cloud"]');
+    const st = failPage.window.BRCStore.cloudStatus();
+    return (!!retry && st.state === 'degraded') || JSON.stringify({ retry: !!retry, state: st.state });
+  });
+  await acheck('عند الفشل لا تُعرض وظائف المتصفح التجريبية', async () => {
+    const grid = failPage.doc.getElementById('jobs-grid').textContent;
+    return (!grid.includes('BRC-1042') && !grid.includes('عامل مخزن')) || 'سقط العرض إلى بيانات seed عند الفشل';
+  });
+  failPage.dom.window.close();
+}
 
 /* ═══════════ 8) أدوات الموظف والمدير: التحقق يبقى داخل المنظومة ═══════════ */
 console.log('\n=== 8) أدوات الموظف — التحقق من المنظومة الداخلية (بجلسة موظف) ===');
