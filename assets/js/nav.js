@@ -190,9 +190,104 @@
     setTimeout(function () { scrollToId(id, false); }, 60);
   }
 
+  /* ---------------------------------------------------------------------------
+   *  بوابة الموظفين المخفية — ضغطة مطوّلة على اسم الشركة
+   *  ---------------------------------------------------------------------------
+   *  طلب الإدارة (2026-09-19): لا زر دخول ظاهر في الموقع العام. الموقع واجهة
+   *  للباحثين عن عمل، ووجود زر «تسجيل الدخول» يعرّف كل زائر بعنوان المنظومة
+   *  الداخلية. البديل: ضغطة مطوّلة (1.2 ثانية) على اسم الشركة في الترويسة.
+   *
+   *  تفاصيل تهمّ الاستعمال الحقيقي على الجوال:
+   *   • نُلغي المؤقّت عند أي تمرير (scroll/touchmove) — وإلا فتحت اللوحة لمن
+   *     أمسك الشاشة ليمرّر الصفحة، وهو أكثر ما يحدث على الموبايل.
+   *   • نمنع قائمة السياق (contextmenu) وتحديد النص أثناء الضغط على الاسم،
+   *     لأن أندرويد يُظهر «نسخ/مشاركة» بعد ~500ms فيقطع الإيماءة.
+   *   • عند نجاح الضغطة نمنع نقرة المتصفح التالية (click) حتى لا ينتقل إلى
+   *     #home بعد فتح اللوحة.
+   *   • اهتزاز خفيف (إن توفّر) كإشعار بنجاح الإيماءة — بلا أي عنصر مرئي يفضح
+   *     وجود البوابة.
+   * ------------------------------------------------------------------------- */
+  var LONG_PRESS_MS = 1200;
+  var MOVE_TOLERANCE = 12;          // بكسل — أكثر من هذا يُعدّ تمريراً لا ضغطاً
+
+  function dashboardHref() {
+    /* الملف المستقل: راوتر داخلي بـ #! لا صفحة منفصلة */
+    if (isStandalone()) return '#!dashboard';
+    if (isFile) return 'dashboard.html';
+    /* نفس منطق normalizePage: المسار النظيف من جذر النشر. لو كان المضيف لا
+       يدعمه فقد بدّلت verifyPageLink الروابط الظاهرة، ونتبع قرارها نفسه. */
+    var probe = doc.querySelector('a[data-brc-page="dashboard.html"]');
+    if (probe) return probe.getAttribute('href');
+    return homeHref() + 'dashboard';
+  }
+
+  function bindStaffGate() {
+    var brand = doc.querySelector('.brand[data-staff-gate]');
+    if (!brand) return;
+
+    var timer = null, startX = 0, startY = 0, fired = false;
+
+    function clear() {
+      if (timer) { clearTimeout(timer); timer = null; }
+    }
+
+    function start(x, y) {
+      fired = false;
+      startX = x; startY = y;
+      clear();
+      timer = setTimeout(function () {
+        fired = true;
+        timer = null;
+        if (root.navigator && root.navigator.vibrate) {
+          try { root.navigator.vibrate(30); } catch (e) { /* غير مدعوم */ }
+        }
+        root.location.href = dashboardHref();
+      }, LONG_PRESS_MS);
+    }
+
+    function moved(x, y) {
+      if (Math.abs(x - startX) > MOVE_TOLERANCE || Math.abs(y - startY) > MOVE_TOLERANCE) clear();
+    }
+
+    /* اللمس (الجوال) */
+    brand.addEventListener('touchstart', function (e) {
+      var t = e.touches && e.touches[0];
+      if (t) start(t.clientX, t.clientY);
+    }, { passive: true });
+    brand.addEventListener('touchmove', function (e) {
+      var t = e.touches && e.touches[0];
+      if (t) moved(t.clientX, t.clientY);
+    }, { passive: true });
+    brand.addEventListener('touchend', clear);
+    brand.addEventListener('touchcancel', clear);
+
+    /* الفأرة (سطح المكتب) — الزر الأيسر فقط */
+    brand.addEventListener('mousedown', function (e) {
+      if (e.button === 0) start(e.clientX, e.clientY);
+    });
+    brand.addEventListener('mousemove', function (e) { moved(e.clientX, e.clientY); });
+    brand.addEventListener('mouseup', clear);
+    brand.addEventListener('mouseleave', clear);
+
+    /* التمرير يُلغي الإيماءة (المستخدم يمرّر الصفحة لا يفتح اللوحة) */
+    root.addEventListener('scroll', clear, { passive: true });
+
+    /* بعد نجاح الضغطة: امنع الانتقال إلى #home */
+    brand.addEventListener('click', function (e) {
+      if (fired) { e.preventDefault(); e.stopPropagation(); fired = false; }
+    });
+
+    /* أندرويد يُظهر قائمة «نسخ/مشاركة» أثناء الضغط المطوّل فتقطع الإيماءة */
+    brand.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  }
+
   function boot() {
-    if (isStandalone()) return;
+    /* الملف المستقل: راوتره الخاص يدير الروابط والتمرير، فلا نطبّع شيئاً —
+       لكن بوابة الموظفين المخفية تُربط فيه أيضاً (الضغطة المطوّلة تفتح
+       #!dashboard بدل صفحة منفصلة). */
+    if (isStandalone()) { bindStaffGate(); return; }
     normalizeAll();
+    bindStaffGate();
     doc.addEventListener('click', onClick);
     root.addEventListener('hashchange', function () {
       var h = root.location.hash || '';
@@ -210,5 +305,8 @@
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  root.BRCNav = { normalize: normalizeAll, scrollToId: scrollToId, homeHref: homeHref };
+  root.BRCNav = {
+    normalize: normalizeAll, scrollToId: scrollToId, homeHref: homeHref,
+    dashboardHref: dashboardHref        // تُستعمل في فحص التدقيق أيضاً
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

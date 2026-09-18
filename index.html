@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=9beef68c53">
+<link rel="stylesheet" href="assets/css/style.css?v=98adff194d">
 </head>
 <body>
 <!-- ===========================================================================
@@ -203,7 +203,9 @@
 <header class="site-header">
   <div class="container">
     <div class="header-main">
-      <a class="brand" href="index.html#home">
+      <!-- اسم الشركة = بوابة الموظفين المخفية: نقرة عادية → أعلى الصفحة،
+           وضغطة مطوّلة (1.2 ثانية) → شاشة تسجيل الدخول. المنطق في nav.js. -->
+      <a class="brand" id="brand-home" href="index.html#home" data-staff-gate>
         <svg class="emblem" viewBox="0 0 120 120" role="img" aria-label="شعار شركة بابل للتوظيف"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
         <span class="brand-text">
           <b>شركة بابل للتوظيف</b>
@@ -234,14 +236,11 @@
       </div>
 
       <div class="header-actions">
-        <!-- بوابة الموظفين: زر ظاهر دائماً في ترويسة الموقع العام (طلب الإدارة:
-             الدخول طبيعي بنقرة واحدة — لا ضغط مطوّل ولا إيماءات مخفية).
-             في النسخة المستقلة يُعاد كتابته تلقائياً إلى #!dashboard عند البناء. -->
-        <a class="btn btn-gold btn-sm header-login" href="dashboard.html" title="بوابة المنظومة الداخلية — لموظفي الشركة والإدارة">
-          <svg class="ic"><use href="#i-login" xlink:href="#i-login"/></svg>
-          <span class="header-login-full">تسجيل الدخول</span>
-          <span class="header-login-short">دخول</span>
-        </a>
+        <!-- بوابة الموظفين: لا زر ظاهر (طلب الإدارة 2026-09-19).
+             الدخول يتم بـ«ضغطة مطوّلة على اسم الشركة» في الترويسة — انظر
+             assets/js/nav.js (longPress). السبب: الموقع واجهة للباحثين عن عمل،
+             ووجود زر دخول ظاهر يعرّف كل زائر بعنوان المنظومة الداخلية.
+             الوصول المباشر عبر /dashboard يبقى متاحاً لمن يعرفه من الموظفين. -->
         <button class="nav-toggle" id="nav-toggle" aria-label="إظهار القائمة" aria-expanded="false">
           <svg class="ic" style="width:20px;height:20px"><use href="#i-menu" xlink:href="#i-menu"/></svg>
         </button>
@@ -671,17 +670,17 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=9beef68c53"></script>
-<script src="assets/js/supabase-config.js?v=9beef68c53"></script>
-<script src="assets/js/cloud-http.js?v=9beef68c53"></script>
-<script src="assets/js/qr.js?v=9beef68c53"></script>
-<script src="assets/js/qr-scan.js?v=9beef68c53"></script>
-<script src="assets/js/cloud.js?v=9beef68c53"></script>
-<script src="assets/js/cloud-sync.js?v=9beef68c53"></script>
-<script src="assets/js/store.js?v=9beef68c53"></script>
-<script src="assets/js/ui.js?v=9beef68c53"></script>
-<script src="assets/js/nav.js?v=9beef68c53"></script>
-<script src="assets/js/voucher.js?v=9beef68c53"></script>
-<script src="assets/js/public.js?v=9beef68c53"></script>
+<script src="assets/js/config.js?v=98adff194d"></script>
+<script src="assets/js/supabase-config.js?v=98adff194d"></script>
+<script src="assets/js/cloud-http.js?v=98adff194d"></script>
+<script src="assets/js/qr.js?v=98adff194d"></script>
+<script src="assets/js/qr-scan.js?v=98adff194d"></script>
+<script src="assets/js/cloud.js?v=98adff194d"></script>
+<script src="assets/js/cloud-sync.js?v=98adff194d"></script>
+<script src="assets/js/store.js?v=98adff194d"></script>
+<script src="assets/js/ui.js?v=98adff194d"></script>
+<script src="assets/js/nav.js?v=98adff194d"></script>
+<script src="assets/js/voucher.js?v=98adff194d"></script>
+<script src="assets/js/public.js?v=98adff194d"></script>
 </body>
 </html>

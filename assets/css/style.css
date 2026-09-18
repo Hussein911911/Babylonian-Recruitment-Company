@@ -133,11 +133,15 @@ a.hc-item:hover { color: var(--gold-2); }
 .hc-phones { display: inline-flex; align-items: center; gap: 8px; }
 .hc-phones a { color: var(--gold-2); font-weight: 700; }
 .header-actions { display: flex; align-items: center; gap: 10px; flex: none; }
-/* زر «تسجيل الدخول» — ظاهر دائماً في الترويسة (سطح مكتب وجوال).
-   على الشاشات الضيّقة يُختصر النص إلى «دخول» حتى لا يزاحم زر القائمة،
-   والأيقونة تبقى في الحالتين فيظلّ معناه واضحاً. */
-.header-login { flex: none; text-decoration: none; }
-.header-login-short { display: none; }
+/* بوابة الموظفين: لا زر ظاهر. الدخول بضغطة مطوّلة على اسم الشركة (nav.js).
+   نمنع تحديد النص وقائمة اللمس على الاسم حتى لا تقطع نافذةُ «نسخ/مشاركة»
+   في أندرويد الإيماءةَ بعد نصف ثانية. */
+.brand[data-staff-gate] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
 
 .site-header {
   position: sticky; top: 0; z-index: 60; background: rgba(9, 18, 40, .92);
@@ -1103,10 +1107,6 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .main-nav.open { display: flex; }
   .main-nav a { width: 100%; }
   .nav-toggle { display: inline-flex; }
-  /* الموبايل: «دخول» بدل «تسجيل الدخول» — الزر يبقى ظاهراً بلا زحام */
-  .header-login-full { display: none; }
-  .header-login-short { display: inline; }
-  .header-login { padding-inline: 12px; }
   .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .f-field.f-search { flex: 1 1 100%; }
   .qs-field.qs-main { flex: 1 1 100%; }

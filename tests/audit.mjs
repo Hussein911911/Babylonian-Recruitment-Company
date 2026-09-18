@@ -299,30 +299,45 @@ for (const [js, page] of CONTRACT) {
   if (leaked.length) bad('لا حسابات تجريبية ظاهرة على شاشة الدخول', leaked.join(' | '));
   else ok('لا حسابات تجريبية ظاهرة على شاشة الدخول (في ' + published.length + ' صفحات منشورة)');
 
-  /* سياسة الدخول (طلب الإدارة، 2026-09): بوابة الموظفين **زر ظاهر** واحد في
-     ترويسة الموقع العام (دخول طبيعي بنقرة — لا ضغط مطوّل ولا روابط مخفية)،
-     وفي النسخة المستقلة يُعاد كتابته إلى #!dashboard عند البناء. المسموح:
-     رابط واحد من الترويسة بالضبط؛ أي رابط إضافي للوحة متناثر في جسم الصفحة
-     يبقى تسريباً يُرفض. */
+  /* سياسة الدخول (طلب الإدارة، 2026-09-19 — نسخت قرار 2026-09 السابق):
+     **لا زر دخول ظاهر** في الموقع العام إطلاقاً. البوابة إيماءة مخفية: ضغطة
+     مطوّلة على اسم الشركة في الترويسة (nav.js → bindStaffGate). السبب: الموقع
+     واجهة للباحثين عن عمل، وزر «تسجيل الدخول» الظاهر يعرّف كل زائر بعنوان
+     المنظومة الداخلية. الفحص: لا زر، ولا أي رابط للوحة في الصفحات العامة. */
   const linked = [];
-  for (const f of ['index.html']) {
+  for (const f of ['index.html', 'brc-standalone.html', 'brc-light.html']) {
     const src = readFileSync(join(ROOT, f), 'utf8');
-    const inHeader = src.match(/class="btn btn-gold btn-sm header-login" href="dashboard\.html"/g) || [];
-    const all = src.match(/href="dashboard\.html"/g) || [];
-    if (inHeader.length !== 1 || all.length !== 1) {
-      linked.push(f + ' (رابط رسمي: ' + inHeader.length + ' · إجمالي: ' + all.length + ')');
-    }
+    if (/header-login/.test(src)) linked.push(f + ': زر دخول ظاهر ما زال موجوداً');
+    /* نفحص **عناصر DOM حقيقية** لا النص الخام: رابط «تسجيل دخول الموظفين»
+       داخل شيفرة verify.js يظهر على بوابة الصلاحية للموظف وحده بعد أن يُحجب
+       الزائر — وهو مشروع، وليس رابطاً ظاهراً في الموقع العام. */
+    const p = loaded[f];
+    if (!p) continue;
+    const anchors = [...p.doc.querySelectorAll('a[href]')]
+      /* نستثني ما هو داخل مسار مخفي (route-verify في الملف المستقل): ذاك رابط
+         على بوابة الصلاحية التي لا يراها إلا الموظف بعد حجب الزائر. */
+      .filter((a) => !a.closest('[hidden]'))
+      .map((a) => a.getAttribute('href'))
+      .filter((h) => /^(#!dashboard|\/?dashboard(\.html)?|\/dashboard)$/.test(h));
+    if (anchors.length) linked.push(f + ': ' + anchors.length + ' رابط ظاهر للوحة');
   }
-  for (const f of ['brc-standalone.html', 'brc-light.html']) {
-    const src = readFileSync(join(ROOT, f), 'utf8');
-    const inHeader = src.match(/class="btn btn-gold btn-sm header-login" href="#!dashboard"/g) || [];
-    const external = src.match(/href="dashboard\.html"/g) || [];
-    if (inHeader.length !== 1 || external.length !== 0) {
-      linked.push(f + ' (رابط رسمي: ' + inHeader.length + ' · خارجي: ' + external.length + ')');
+  if (linked.length) bad('لا زر ولا رابط ظاهر للوحة في الصفحات العامة', linked.join(' | '));
+  else ok('بوابة الموظفين مخفية تماماً: لا زر ولا رابط للوحة في الصفحات العامة الثلاث');
+
+  /* الإيماءة نفسها موجودة وموصولة فعلاً — وإلا صار الدخول مستحيلاً بلا أثر */
+  {
+    const navSrc = readFileSync(join(ROOT, 'assets/js/nav.js'), 'utf8');
+    const gate = [];
+    if (!/data-staff-gate/.test(navSrc)) gate.push('لا يبحث عن اسم الشركة');
+    if (!/touchstart/.test(navSrc) || !/mousedown/.test(navSrc)) gate.push('لا يدعم اللمس والفأرة معاً');
+    if (!/LONG_PRESS_MS/.test(navSrc)) gate.push('بلا مهلة ضغط');
+    if (!/scroll/.test(navSrc)) gate.push('التمرير لا يُلغي الإيماءة (تفتح بالخطأ)');
+    for (const f of ['index.html', 'brc-standalone.html']) {
+      if (!/data-staff-gate/.test(readFileSync(join(ROOT, f), 'utf8'))) gate.push(f + ': الاسم بلا علامة البوابة');
     }
+    if (gate.length) bad('بوابة الضغطة المطوّلة موصولة وسليمة', gate.join(' | '));
+    else ok('بوابة الضغطة المطوّلة على اسم الشركة: لمس + فأرة، تُلغى بالتمرير، ومعلَّمة في الصفحات');
   }
-  if (linked.length) bad('بوابة دخول الموظفين: زر واحد في الترويسة فقط', linked.join(' | '));
-  else ok('بوابة دخول الموظفين: زر «دخول الموظفين» ظاهر في الترويسة وحدها (لا روابط متناثرة)');
 }
 
 /* ── سياسة الصلاحيات (طلب الإدارة): الزائر يتصفّح الوظائف فقط ───────────────
@@ -752,36 +767,76 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
     else ok('تطبيع الروابط يعمل على ' + cases.length + ' حالات (نطاق جذري · مسار فرعي · تحقق · لوحة · 404) بلا بقايا index.html');
   }
 
-  // 11.3ب زر «تسجيل الدخول» يفتح شاشة الدخول فعلاً من أي صفحة وأي نطاق
+  // 11.3ب الضغطة المطوّلة على اسم الشركة تفتح شاشة الدخول فعلاً (محاكاة حقيقية)
   {
-    /* الخلفية: "dashboard.html" رابط نسبي — من مسار نظيف (/verify) أو مسار فرعي
-       يحسبه المتصفح من المجلد الخطأ فيرجع «صفحة غير موجودة». nav.js يثبّته على
-       جذر النشر. هنا نتأكد أن الزر موجود، ونصّه واضح، ووجهته صحيحة فعلاً. */
+    /* نحاكي الإيماءة كاملة داخل jsdom: touchstart ثم انتظار المهلة، ونرصد إلى
+       أين ذهب location. ونتأكد أيضاً من الحالتين اللتين تُفسدان التجربة:
+       نقرة قصيرة يجب ألّا تفتح اللوحة، وتمرير أثناء الضغط يجب أن يُلغيها. */
     const navSrc = readFileSync(join(ROOT, 'assets/js/nav.js'), 'utf8');
-    const cases = [
-      ['index.html', 'https://brc.example.com/', '/dashboard'],
-      ['index.html', 'https://host.tld/sub/', '/sub/dashboard'],
-      ['verify.html', 'https://brc.example.com/verify', '/dashboard'],
-      ['404.html', 'https://host.tld/sub/typo', '/sub/dashboard']
-    ];
-    const failures = [];
-    for (const [file, url, want] of cases) {
-      const dom = new JSDOM(readFileSync(join(ROOT, file), 'utf8'), { url, runScripts: 'outside-only' });
+
+    function press(file, url, { ms = 1400, move = 0, scroll = false } = {}) {
+      /* jsdom يمنع اعتراض location.href، ويرمي عند محاولة التنقّل خطأً بلا
+         تفاصيل. لذلك نرصد شيئين معاً:
+           1) **محاولة التنقّل** حدثت (jsdomError = الإيماءة اشتغلت فعلاً)
+           2) **الوجهة** من BRCNav.dashboardHref() الذي يحسبها بنفس المنطق
+         مجتمعين يثبتان أن الضغطة تفتح العنوان الصحيح، ويبقيان الفحص صادقاً في
+         الحالتين السالبتين (نقرة قصيرة/تمرير: لا محاولة تنقّل إطلاقاً). */
+      const vcon = new VirtualConsole();
+      let navigated = false;
+      vcon.on('jsdomError', (err) => {
+        if (/Not implemented: navigation/.test(String(err && err.message))) navigated = true;
+      });
+      const dom = new JSDOM(readFileSync(join(ROOT, file), 'utf8'),
+        { url, runScripts: 'outside-only', virtualConsole: vcon });
       const w = dom.window;
-      w.fetch = () => Promise.resolve({ ok: true });   // مضيف يدعم المسارات النظيفة
+      w.fetch = () => Promise.resolve({ ok: true });
       w.eval(navSrc);
       w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
-      const btn = w.document.querySelector('.header-login');
-      if (!btn) failures.push(file + ': لا زر دخول');
-      else {
-        const got = btn.getAttribute('href');
-        if (got !== want) failures.push(file + ' @ ' + url + ': ' + got + ' ≠ ' + want);
-        if (!/تسجيل الدخول|دخول/.test(btn.textContent)) failures.push(file + ': نص الزر غير واضح');
-      }
-      w.close();
+      const brand = w.document.querySelector('.brand[data-staff-gate]');
+      if (!brand) return { navigated: false, missing: true };
+
+      const touch = (type, x, y) => {
+        const e = new w.Event(type, { bubbles: true });
+        e.touches = [{ clientX: x, clientY: y }];
+        brand.dispatchEvent(e);
+      };
+      touch('touchstart', 100, 100);
+      if (move) touch('touchmove', 100 + move, 100);
+      if (scroll) w.dispatchEvent(new w.Event('scroll'));
+      /* jsdom يستخدم مؤقتات حقيقية — ننتظر فعلياً */
+      return new Promise((r) => setTimeout(
+        () => r({ navigated, href: w.BRCNav && w.BRCNav.dashboardHref && w.BRCNav.dashboardHref() }), ms));
     }
-    if (failures.length) bad('زر تسجيل الدخول يصل إلى شاشة الدخول من كل صفحة', failures.join(' | '));
-    else ok('زر «تسجيل الدخول» يفتح شاشة الدخول من ' + cases.length + ' حالات (جذر · مسار فرعي · تحقق · 404)');
+
+    const failures = [];
+    /* الحالة الأساسية: ضغطة مكتملة من عدة صفحات ونطاقات */
+    for (const [file, url, want] of [
+      ['index.html', 'https://brc.example.com/', '/dashboard'],
+      ['index.html', 'https://host.tld/sub/', '/sub/dashboard']
+    ]) {
+      const { navigated, href, missing } = await press(file, url);
+      if (missing) failures.push(file + ': لا علامة بوابة على اسم الشركة');
+      else if (!navigated) failures.push(file + ' @ ' + url + ': الضغطة لم تفتح شيئاً');
+      else if (href !== want) failures.push(file + ' @ ' + url + ': الوجهة ' + href + ' ≠ ' + want);
+    }
+    /* نقرة قصيرة (300ms) يجب ألّا تفتح اللوحة */
+    {
+      const { navigated } = await press('index.html', 'https://brc.example.com/', { ms: 300 });
+      if (navigated) failures.push('نقرة قصيرة فتحت اللوحة');
+    }
+    /* تمرير أثناء الضغط يجب أن يُلغي الإيماءة */
+    {
+      const { navigated } = await press('index.html', 'https://brc.example.com/', { scroll: true });
+      if (navigated) failures.push('التمرير لم يُلغِ الإيماءة');
+    }
+    /* تحريك الإصبع بعيداً يُلغيها أيضاً */
+    {
+      const { navigated } = await press('index.html', 'https://brc.example.com/', { move: 60 });
+      if (navigated) failures.push('تحريك الإصبع لم يُلغِ الإيماءة');
+    }
+
+    if (failures.length) bad('الضغطة المطوّلة على اسم الشركة تفتح شاشة الدخول', failures.join(' | '));
+    else ok('الضغطة المطوّلة تفتح /dashboard (جذر · مسار فرعي)، والنقرة القصيرة والتمرير وتحريك الإصبع لا تفتحها');
   }
 
   // 11.3ج شاشة الدخول نفسها مكتملة العناصر

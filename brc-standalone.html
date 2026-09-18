@@ -150,11 +150,15 @@ a.hc-item:hover { color: var(--gold-2); }
 .hc-phones { display: inline-flex; align-items: center; gap: 8px; }
 .hc-phones a { color: var(--gold-2); font-weight: 700; }
 .header-actions { display: flex; align-items: center; gap: 10px; flex: none; }
-/* زر «تسجيل الدخول» — ظاهر دائماً في الترويسة (سطح مكتب وجوال).
-   على الشاشات الضيّقة يُختصر النص إلى «دخول» حتى لا يزاحم زر القائمة،
-   والأيقونة تبقى في الحالتين فيظلّ معناه واضحاً. */
-.header-login { flex: none; text-decoration: none; }
-.header-login-short { display: none; }
+/* بوابة الموظفين: لا زر ظاهر. الدخول بضغطة مطوّلة على اسم الشركة (nav.js).
+   نمنع تحديد النص وقائمة اللمس على الاسم حتى لا تقطع نافذةُ «نسخ/مشاركة»
+   في أندرويد الإيماءةَ بعد نصف ثانية. */
+.brand[data-staff-gate] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
 
 .site-header {
   position: sticky; top: 0; z-index: 60; background: rgba(9, 18, 40, .92);
@@ -1120,10 +1124,6 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .main-nav.open { display: flex; }
   .main-nav a { width: 100%; }
   .nav-toggle { display: inline-flex; }
-  /* الموبايل: «دخول» بدل «تسجيل الدخول» — الزر يبقى ظاهراً بلا زحام */
-  .header-login-full { display: none; }
-  .header-login-short { display: inline; }
-  .header-login { padding-inline: 12px; }
   .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .f-field.f-search { flex: 1 1 100%; }
   .qs-field.qs-main { flex: 1 1 100%; }
@@ -1640,7 +1640,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 <header class="site-header">
   <div class="container">
     <div class="header-main">
-      <a class="brand" href="#home">
+      <!-- اسم الشركة = بوابة الموظفين المخفية: نقرة عادية → أعلى الصفحة،
+           وضغطة مطوّلة (1.2 ثانية) → شاشة تسجيل الدخول. المنطق في nav.js. -->
+      <a class="brand" id="brand-home" href="#home" data-staff-gate>
         <svg class="emblem" viewBox="0 0 120 120" role="img" aria-label="شعار شركة بابل للتوظيف"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
         <span class="brand-text">
           <b>شركة بابل للتوظيف</b>
@@ -1671,14 +1673,11 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       </div>
 
       <div class="header-actions">
-        <!-- بوابة الموظفين: زر ظاهر دائماً في ترويسة الموقع العام (طلب الإدارة:
-             الدخول طبيعي بنقرة واحدة — لا ضغط مطوّل ولا إيماءات مخفية).
-             في النسخة المستقلة يُعاد كتابته تلقائياً إلى #!dashboard عند البناء. -->
-        <a class="btn btn-gold btn-sm header-login" href="#!dashboard" title="بوابة المنظومة الداخلية — لموظفي الشركة والإدارة">
-          <svg class="ic"><use href="#i-login" xlink:href="#i-login"/></svg>
-          <span class="header-login-full">تسجيل الدخول</span>
-          <span class="header-login-short">دخول</span>
-        </a>
+        <!-- بوابة الموظفين: لا زر ظاهر (طلب الإدارة 2026-09-19).
+             الدخول يتم بـ«ضغطة مطوّلة على اسم الشركة» في الترويسة — انظر
+             assets/js/nav.js (longPress). السبب: الموقع واجهة للباحثين عن عمل،
+             ووجود زر دخول ظاهر يعرّف كل زائر بعنوان المنظومة الداخلية.
+             الوصول المباشر عبر /dashboard يبقى متاحاً لمن يعرفه من الموظفين. -->
         <button class="nav-toggle" id="nav-toggle" aria-label="إظهار القائمة" aria-expanded="false">
           <svg class="ic" style="width:20px;height:20px"><use href="#i-menu" xlink:href="#i-menu"/></svg>
         </button>
@@ -5892,9 +5891,104 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     setTimeout(function () { scrollToId(id, false); }, 60);
   }
 
+  /* ---------------------------------------------------------------------------
+   *  بوابة الموظفين المخفية — ضغطة مطوّلة على اسم الشركة
+   *  ---------------------------------------------------------------------------
+   *  طلب الإدارة (2026-09-19): لا زر دخول ظاهر في الموقع العام. الموقع واجهة
+   *  للباحثين عن عمل، ووجود زر «تسجيل الدخول» يعرّف كل زائر بعنوان المنظومة
+   *  الداخلية. البديل: ضغطة مطوّلة (1.2 ثانية) على اسم الشركة في الترويسة.
+   *
+   *  تفاصيل تهمّ الاستعمال الحقيقي على الجوال:
+   *   • نُلغي المؤقّت عند أي تمرير (scroll/touchmove) — وإلا فتحت اللوحة لمن
+   *     أمسك الشاشة ليمرّر الصفحة، وهو أكثر ما يحدث على الموبايل.
+   *   • نمنع قائمة السياق (contextmenu) وتحديد النص أثناء الضغط على الاسم،
+   *     لأن أندرويد يُظهر «نسخ/مشاركة» بعد ~500ms فيقطع الإيماءة.
+   *   • عند نجاح الضغطة نمنع نقرة المتصفح التالية (click) حتى لا ينتقل إلى
+   *     #home بعد فتح اللوحة.
+   *   • اهتزاز خفيف (إن توفّر) كإشعار بنجاح الإيماءة — بلا أي عنصر مرئي يفضح
+   *     وجود البوابة.
+   * ------------------------------------------------------------------------- */
+  var LONG_PRESS_MS = 1200;
+  var MOVE_TOLERANCE = 12;          // بكسل — أكثر من هذا يُعدّ تمريراً لا ضغطاً
+
+  function dashboardHref() {
+    /* الملف المستقل: راوتر داخلي بـ #! لا صفحة منفصلة */
+    if (isStandalone()) return '#!dashboard';
+    if (isFile) return 'dashboard.html';
+    /* نفس منطق normalizePage: المسار النظيف من جذر النشر. لو كان المضيف لا
+       يدعمه فقد بدّلت verifyPageLink الروابط الظاهرة، ونتبع قرارها نفسه. */
+    var probe = doc.querySelector('a[data-brc-page="dashboard.html"]');
+    if (probe) return probe.getAttribute('href');
+    return homeHref() + 'dashboard';
+  }
+
+  function bindStaffGate() {
+    var brand = doc.querySelector('.brand[data-staff-gate]');
+    if (!brand) return;
+
+    var timer = null, startX = 0, startY = 0, fired = false;
+
+    function clear() {
+      if (timer) { clearTimeout(timer); timer = null; }
+    }
+
+    function start(x, y) {
+      fired = false;
+      startX = x; startY = y;
+      clear();
+      timer = setTimeout(function () {
+        fired = true;
+        timer = null;
+        if (root.navigator && root.navigator.vibrate) {
+          try { root.navigator.vibrate(30); } catch (e) { /* غير مدعوم */ }
+        }
+        root.location.href = dashboardHref();
+      }, LONG_PRESS_MS);
+    }
+
+    function moved(x, y) {
+      if (Math.abs(x - startX) > MOVE_TOLERANCE || Math.abs(y - startY) > MOVE_TOLERANCE) clear();
+    }
+
+    /* اللمس (الجوال) */
+    brand.addEventListener('touchstart', function (e) {
+      var t = e.touches && e.touches[0];
+      if (t) start(t.clientX, t.clientY);
+    }, { passive: true });
+    brand.addEventListener('touchmove', function (e) {
+      var t = e.touches && e.touches[0];
+      if (t) moved(t.clientX, t.clientY);
+    }, { passive: true });
+    brand.addEventListener('touchend', clear);
+    brand.addEventListener('touchcancel', clear);
+
+    /* الفأرة (سطح المكتب) — الزر الأيسر فقط */
+    brand.addEventListener('mousedown', function (e) {
+      if (e.button === 0) start(e.clientX, e.clientY);
+    });
+    brand.addEventListener('mousemove', function (e) { moved(e.clientX, e.clientY); });
+    brand.addEventListener('mouseup', clear);
+    brand.addEventListener('mouseleave', clear);
+
+    /* التمرير يُلغي الإيماءة (المستخدم يمرّر الصفحة لا يفتح اللوحة) */
+    root.addEventListener('scroll', clear, { passive: true });
+
+    /* بعد نجاح الضغطة: امنع الانتقال إلى #home */
+    brand.addEventListener('click', function (e) {
+      if (fired) { e.preventDefault(); e.stopPropagation(); fired = false; }
+    });
+
+    /* أندرويد يُظهر قائمة «نسخ/مشاركة» أثناء الضغط المطوّل فتقطع الإيماءة */
+    brand.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  }
+
   function boot() {
-    if (isStandalone()) return;
+    /* الملف المستقل: راوتره الخاص يدير الروابط والتمرير، فلا نطبّع شيئاً —
+       لكن بوابة الموظفين المخفية تُربط فيه أيضاً (الضغطة المطوّلة تفتح
+       #!dashboard بدل صفحة منفصلة). */
+    if (isStandalone()) { bindStaffGate(); return; }
     normalizeAll();
+    bindStaffGate();
     doc.addEventListener('click', onClick);
     root.addEventListener('hashchange', function () {
       var h = root.location.hash || '';
@@ -5912,7 +6006,10 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  root.BRCNav = { normalize: normalizeAll, scrollToId: scrollToId, homeHref: homeHref };
+  root.BRCNav = {
+    normalize: normalizeAll, scrollToId: scrollToId, homeHref: homeHref,
+    dashboardHref: dashboardHref        // تُستعمل في فحص التدقيق أيضاً
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 ;
