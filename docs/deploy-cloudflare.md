@@ -12,105 +12,94 @@
 | الحقيقة | التفصيل |
 |---|---|
 | منصّة النشر | **Cloudflare Pages** — مشروع `babylonian-recruitment-company` |
-| الرابط | `https://babylonian-recruitment-company.pages.dev` |
-| نوع المشروع | **Direct Upload** (غير مربوط بـ Git) — لا يتحدّث تلقائياً |
+| الرابط الحي | `https://babylonian-recruitment-company.pages.dev` |
+| نوع المشروع | **مربوط بـ Git (Connect to Git)** — Production branch: `main` |
+| النشر التلقائي | ✅ **يعمل**: كل دفعة إلى `main` تُبنى وتُنشر تلقائياً، وكل PR يحصل على رابط معاينة |
 | Render | 🗑️ **محذوف** — رابط `onrender.com` صار `Not Found` |
-| النتيجة | أي تحديث للموقع يحتاج إحدى الطرق الثلاث أسفله |
 
-> كيف عرفنا أنه Direct Upload؟ سجل النشر على GitHub يحوي عمليات Render فقط
-> (`... - babylonian-recruitment-company PR #7`) ولا يحوي أي عملية من Cloudflare —
-> ولو كان مربوطاً بـ Git لظهرت عمليات نشر باسم المشروع عند كل دفعة.
+> الدليل على الربط بـ Git: كل كومِت على `main` يحمل فحص **Cloudflare Pages** من تطبيق
+> `cloudflare-workers-and-pages` على GitHub — وهذا الفحص لا يظهر إلا في المشاريع
+> المربوطة بـ Git، وآخر نشرات `main` كلها ناجحة (✅).
+>
+> ⚠️ نسخة سابقة من هذا الملف قالت إن المشروع «Direct Upload غير مربوط بـ Git» —
+> **كان تشخيصاً خاطئاً**. تحقّق دائماً من فحص الكومِت نفسه لا من الوثائق.
+
+**كيف تتحقق بنفسك؟** من صفحة المستودع على GitHub: أي كومِت على `main` يعرض بجانبه
+✅ Cloudflare Pages. أو من لوحة Cloudflare: Workers & Pages → المشروع → Deployments.
 
 ---
 
-## 2) الطريق أ — تحديث فوري بملف جاهز (بلا مفاتيح ولا انتظار)
+## 2) التحديث المعتاد: ادفع إلى `main` فقط (لا شيء آخر)
+
+1. ادمج التغييرات في `main` (أو ادمج PR فيها).
+2. Cloudflare يبني وينشر تلقائياً خلال دقيقة تقريباً على نفس الرابط.
+3. راقب فحص `Cloudflare Pages` على الكومِت حتى يصير ✅ — ثم افتح الرابط.
+
+هذا هو الطريق الوحيد المعتاد. **لا تضف** `.github/workflows/deploy-cloudflare.yml` ولا
+`CLOUDFLARE_API_TOKEN` في أسرار GitHub: الربط بـ Git قائم فعلاً، وإضافة workflow
+تعني نشرين لنفس الموقع ومصدرَين للحقيقة. (الملفان `docs/deploy-cloudflare-workflow.yml`
+و `docs/ci-workflow.yml` داخل مجلد التوثيق **معطّلان** — مجرد نصوص لا ينفّذها أحد.)
+
+---
+
+## 3) إعدادات المشروع في لوحة Cloudflare (Settings → Builds & deployments)
+
+| الحفل | القيمة |
+|---|---|
+| Production branch | `main` |
+| Build command | **(فارغ)** — الملفات المبنية (`index.html` · `brc-standalone.html` …) مودَعة في Git أصلاً |
+| Build output directory | `.` |
+| Preview deployments | All non-Production branches — كل PR يحصل على `<slug>.babylonian-recruitment-company.pages.dev` |
+
+> إن وُجد أمر بناء قديم فاحذفه: نشر المستودع من جذر محفوظ في Git أبسط وأسرع،
+> ولا معنى لإعادة بناء ملفات مبنية أصلاً. وإن اضطررت لضبط أمر بناء يوماً فليكن:
+> `npm ci && npm run build && npm run build:light && npm run dist` مع Output = `dist`.
+
+---
+
+## 4) رفع يدوي للطوارئ فقط (Create deployment)
+
+لحالة يتعذّر فيها Git مؤقتاً فقط:
 
 1. `npm run build && npm run build:light && npm run dist` → يتكوّن مجلد **`dist/`**
-   (41 ملفاً · ‎5.5 ميجابايت — ملفات الموقع فقط، بلا `tests/` ولا `src/` ولا `docs/`).
+   (40 ملفاً · ‎5.5 ميجابايت — ملفات الموقع فقط، بلا `tests/` ولا `src/` ولا `docs/`).
 2. في Cloudflare: **Workers & Pages → babylonian-recruitment-company → Create deployment**.
 3. **اسحب مجلد `dist`** أو ملف ZIP له إلى منطقة الرفع → Deploy.
-4. بعد ثوانٍ الرابط نفسه يعرض النسخة الجديدة.
 
-> ⚠️ الملفات المبنية (`brc-standalone.html` و `brc-light.html`) تُبنى محلياً ثم تُرفع —
+> ⚠️ هذا الاستثناء يُنتج نشراً غير مربوط بكومِت فيظهر في اللوحة بلا رسالة — اجعله
+> لحالة الضرورة فقط، ثم عد إلى النشر من Git في أول دفعة تالية.
+> والملفات المبنية (`brc-standalone.html` و `brc-light.html`) تُبنى محلياً —
 > لا تُعدَّل يدوياً ولا تُبنى على Cloudflare.
 
----
+مثلها تماماً النشر المباشر بـ wrangler من جهازك (للطوارئ أيضاً):
 
-## 3) الطريق ب — نشر آلي على **نفس الرابط** (موصى به)
-
-الملف **`docs/deploy-cloudflare-workflow.yml`** جاهز: يبني، يفحص (`npm run audit`)،
-يجمّع `dist/`، ثم ينشر بمفتاح Cloudflare عند كل دفعة إلى `main`.
-
-**تفعيله (نقرتان):** GitHub → Add file → Create new file → اكتب المسار
-`.github/workflows/deploy-cloudflare.yml` → انسخ محتوى الملف (من سطر الفصل) والصقه → Commit.
-> لماذا لم يكن الملف في مكانه مباشرة؟ لأن ربط GitHub في هذه الجلسة لا يملك صلاحية
-> كتابة ملفات الـ workflows — فالتفعيل يدوي مرة واحدة (نفس أسلوب `docs/ci-workflow.yml`).
-
-الخطوات (مرة واحدة):
-
-1. Cloudflare → **My Profile → API Tokens → Create Token**
-   - القالب الجاهز: **Edit Cloudflare Workers** (يغطّي Pages)، أو صلاحية مخصّصة:
-     `Account → Cloudflare Pages → Edit`
-   - انسخ المفتاح (يظهر مرة واحدة).
-2. من Cloudflare احتفظ بـ **Account ID**: Workers & Pages → يمين الصفحة.
-3. GitHub → المستودع → **Settings → Secrets and variables → Actions → New repository secret**:
-   - `CLOUDFLARE_API_TOKEN`
-   - `CLOUDFLARE_ACCOUNT_ID`
-4. ادمج PR في `main` (أو شغّل الـ Action يدوياً من تبويب Actions: **Run workflow**).
-
-بعد ذلك: كل دفع إلى `main` = نشر تلقائي على نفس نطاق `pages.dev`.
-وإن حذفت المفاتيح يتوقف النشر الآلي بصمت (الملف يبني ويفحص ثم يتخطّى خطوة النشر).
+```bash
+npm i -g wrangler          # مرة واحدة
+wrangler login             # يفتح المتصفح لتأكيد الحساب
+npm run build && npm run build:light && npm run dist
+wrangler pages deploy dist --project-name babylonian-recruitment-company
+```
 
 ---
 
-## 4) الطريق ج — أتمتة كاملة بمشروع مربوط بـ Git
+## 5) النطاق الرسمي — `brc-babil.com` غير مسجَّل بعد ⚠️
 
-ميزة: بلا مفاتيح API وبلا أي ملف إضافي. الثمن: مشروع جديد ⇒ رابط `pages.dev`
-جديد، فتنقل إليه النطاق الرسمي (والروابط القديمة تبقى تعمل حتى تُطفأ).
+استعلام DNS للنطاق يرجع **NXDOMAIN** (لا سجل A ولا NS — النطاق غير مسجَّل أصلاً)،
+فلا تضفه في Custom domains ولن يعمل قبل تسجيله وامتلاكه.
 
-1. Cloudflare → **Workers & Pages → Create → Pages → Connect to Git** → اختر المستودع.
-2. الإعدادات:
-
-   | الحقل | القيمة |
-   |---|---|---|
-   | Production branch | `main` |
-   | Framework preset | `None` |
-   | Build command | **(اتركه فارغاً)** |
-   | Build output directory | `.` |
-   | Environment variables | لا شيء |
-
-3. **Custom domains** → أضف `brc-babil.com` إلى المشروع الجديد.
-4. أوقف النشر الآلي القديم: احذف `.github/workflows/deploy-cloudflare.yml` (المفعَّل)
-   أو اتركه (لن يضرّ، لكن سيصير نشران لنفس الموقع — الأنظف حذفه).
-5. بعد التأكد من عمل المشروع الجديد: احذف مشروع Direct Upload القديم.
+- الرابط الحي الفعلي هو نطاق `pages.dev`، وهو نفسه **رابط الكيو آر الاحتياطي**
+  في `assets/js/config.js` (`verifyBase`) — فاستمارات اليوم المطبوعة تفتح دائماً.
+- `autoVerifyBase: true` يجعل الرابط المطبوع يتبع نطاق النشر تلقائياً؛ فمتى سجّلت
+  النطاق وربطته في **Custom domains → Set up a custom domain**
+  (`brc-babil.com` + `www.brc-babil.com`) انتقلت الاستمارات الجديدة إليه بلا أي
+  تعديل في الكود.
+- **لا تطبع استمارات على النطاق قبل تسجيله وربطه فعلاً** — وإلا صار كيو آر الورقة
+  رابطاً ميتاً. والاستمارات المطبوعة على نطاق قديم تعمل ما دام النطاق يعمل؛ لا تُغلق
+  نطاقاً قديماً قبل انتهاء صلاحية كل استماراته (30 يوماً).
 
 ---
 
-## 5) معاينات الفروع (بديل معاينات Render)
-
-في الطريق ج: **Settings → Builds & deployments → Preview deployments →
-All non-Production branches**، فيحصل كل فرع على رابط
-`https://<branch-slug>.<project>.pages.dev`.
-وفي الطريق ب: أزل التعليق عن الخطوة الأخيرة داخل الملف لنشر معاينة لكل فرع.
-
-## 6) النطاق الرسمي
-
-**Custom domains → Set up a custom domain →** أضف:
-
-- `brc-babil.com`
-- `www.brc-babil.com`
-
-Cloudflare يضيف سجلات DNS بنفسه (عندما يكون النطاق على Cloudflare أصلاً). بعد الربط
-لا نحتاج أي تعديل بالكود: الرابط المطبوع في كيو آر كود الاستمارات يتبع نطاق النشر
-تلقائياً (`autoVerifyBase` في `assets/js/config.js`)، فيتحوّل من `pages.dev` إلى
-`brc-babil.com/verify` وحده.
-
-> ⚠️ الاستمارات المطبوعة على نطاق قديم تبقى تعمل ما دام ذلك النطاق مفتوحاً.
-> لا تُغلق نطاقاً قديماً قبل أن تنتهي صلاحية كل الاستمارات المطبوعة عليه (30 يوماً).
-
----
-
-## 7) الترويسات والمسارات النظيفة (تلقائي بلا إعداد)
+## 6) الترويسات والمسارات النظيفة (تلقائي بلا إعداد)
 
 | الملف | ماذا يفعل |
 |---|---|
@@ -122,9 +111,10 @@ Cloudflare يضيف سجلات DNS بنفسه (عندما يكون النطاق 
 
 ---
 
-## 8) ما يُنشر وما لا يُنشر — `dist/`
+## 7) ما يُنشر وما لا يُنشر — `dist/`
 
-`npm run dist` يبني مجلد نشر نظيفاً بلا أدوات ولا اختبارات:
+`npm run dist` يبني مجلد نشر نظيفاً بلا أدوات ولا اختبارات (يُستعمل للرفع اليدوي
+الاستثنائي فقط — النشر من Git ينشر جذر المستودع كاملاً بلا حاجة إليه):
 
 | يُنشر | لا يُنشر |
 |---|---|
@@ -135,13 +125,9 @@ Cloudflare يضيف سجلات DNS بنفسه (عندما يكون النطاق 
 والسكربت يفحص نفسه: يفشل إن كان أي ملف يطلبه المتصفح غير موجود في `dist/`
 (صورة، خط، سكربت) — فلا يُنشر موقع بأصل ناقص بصمت.
 
-> في الطريق ج (مشروع مربوط بـ Git) اضبط **Build command**:
-> `npm ci && npm run build && npm run build:light && npm run dist`
-> و **Build output directory**: `dist`.
-
 ---
 
-## 9) إلغاء Render — تم ✅
+## 8) إلغاء Render — تم ✅
 
 - `render.yaml` حُذف من المستودع، وسُجّل ذلك في `tests/audit.mjs` (يفشل الاختبار
   تلقائياً لو عاد ملف إعداد لمنصّة نشر ثانية).
@@ -156,37 +142,26 @@ Cloudflare يضيف سجلات DNS بنفسه (عندما يكون النطاق 
 
 ---
 
-## 10) النشر المباشر من جهازك (wrangler)
-
-```bash
-npm i -g wrangler          # مرة واحدة
-wrangler login             # يفتح المتصفح لتأكيد الحساب
-npm run build && npm run build:light && npm run dist
-wrangler pages deploy dist --project-name babylonian-recruitment-company
-```
-
-مفيد للنشر السريع من جهازك بلا انتظار Git. أما النشر المعتاد فيبقى تلقائياً عند
-كل دفعة إلى `main`.
-
----
-
-## 11) بعد كل تحديث للواجهة — لا تنسَ
+## 9) بعد كل تحديث للواجهة — لا تنسَ
 
 1. `node tools/build.mjs && node tools/build.mjs --light` (لتحديث `brc-standalone.html` و `brc-light.html`)
-2. ارفع رقم الكاش في `sw.js` (`CACHE_NAME = 'brc-cache-v3'` → `v4` …)
+2. ارفع رقم الكاش في `sw.js` (`CACHE_NAME = 'brc-cache-v4'` → `v5` …)
    — بدونه تبقى أجهزة الموظفين على النسخة القديمة من الكاش
-3. دفع إلى `main` → نشر تلقائي على Cloudflare
+3. دفع إلى `main` → نشر تلقائي على Cloudflare Pages
 4. إن ظهرت نسخة قديمة للزائر: **Caching → Configuration → Purge Everything**
 
 ---
 
-## 12) فحص سريع بعد النشر
+## 10) فحص سريع بعد النشر
 
-- [ ] الصفحة الرئيسية تفتح: `https://<project>.pages.dev/`
+- [ ] فحص `Cloudflare Pages` على الكومِت المدموج في `main` أصبح ✅
+- [ ] الصفحة الرئيسية تفتح: `https://babylonian-recruitment-company.pages.dev/`
+- [ ] زر «دخول الموظفين» ظاهر في ترويسة الصفحة الرئيسية ويفتح `/dashboard`
+- [ ] الوظائف تُقرأ من قاعدة الشركة (skeleton لحظة الفتح ثم المعلن، لا بيانات تجريبية)
 - [ ] `/verify` **لا** تعرض بيانات استمارة للزائر — تعرض بوابة «خاص بموظفي الشركة والإدارة»
 - [ ] `/dashboard` تعرض شاشة الدخول (وبجلسة موظف تفتح المنظومة)
 - [ ] `/standalone` و `/light` يفتحان الملفّين المستقلَّين
 - [ ] DevTools → Network → Header للاستجابة الأولى يحوي `x-content-type-options: nosniff`
-- [ ] الـ Service Worker عندك صار `brc-cache-v3` (DevTools → Application → Cache Storage)
-- [ ] الوظائف تظهر كما في قاعدة الشركة (Supabase) — إن ظهرت «0 وظيفة» فالقاعدة نفسها
-      بلا وظائف مُدخلة، أضِفها من المنظومة الداخلية (`إضافة وظيفة`) أو من SQL Editor
+- [ ] الـ Service Worker عندك صار `brc-cache-v4` (DevTools → Application → Cache Storage)
+- [ ] إن كانت القاعدة بلا وظائف معلنة تظهر «لا توجد وظائف معروضة حالياً» — أضِف
+      الوظائف من المنظومة الداخلية (`إضافة وظيفة`) أو من SQL Editor

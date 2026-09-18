@@ -85,12 +85,23 @@ class Loader extends ResourceLoader {
     if (url.includes('/vendor/supabase.js')) {
       return Promise.resolve(Buffer.from(MOCK_SRC, 'utf8'));
     }
-    /* سيناريو «المسؤول أكمل التحوّل»: نفس ملف الإعداد لكن بـ enforceAuth=true،
-       لأن هذا المفتاح يُقرأ عند الإقلاع — فتبديله يجب أن يمرّ من نقطة الإقلاع
-       نفسها لا من بعد التحميل. */
-    if (url.includes('/assets/js/supabase-config.js') && this.opts.enforceAuth) {
-      return super.fetch(url, options).then((buf) =>
-        Buffer.from(String(buf).replace('enforceAuth: false', 'enforceAuth: true'), 'utf8'));
+    /* المفتاح يُقرأ عند الإقلاع — فتبديله يجب أن يمرّ من نقطة الإقلاع نفسها لا
+       من بعد التحميل. نطبّع القيمة في الاتجاهين (الإنتاج اليوم enforceAuth=true،
+       وسيناريو الوضع الانتقالي يفرض false لمحاكاة ما قبل إغلاق الباب). */
+    if (url.includes('/assets/js/supabase-config.js')) {
+      return super.fetch(url, options).then((buf) => {
+        let src = String(buf);
+        if (this.opts.enforceAuth === true || this.opts.enforceAuth === false) {
+          src = src.replace(/enforceAuth:\s*(true|false)/, 'enforceAuth: ' + this.opts.enforceAuth);
+        }
+        /* حسابات الوضع الانتقالي (fixtures): تُزرع هنا (قبل store.js وdashboard.js)
+           حتى يراها الإقلاع — كما كانت config.js تحملها آنذاك. الإنتاج: users=[]. */
+        if (this.opts.users) {
+          src += '\n/* fixtures اختبارية للوضع الانتقالي — لا وجود لها في الإنتاج */\n' +
+            'window.BRC_CONFIG.users = ' + JSON.stringify(this.opts.users) + ';\n';
+        }
+        return Buffer.from(src, 'utf8');
+      });
     }
     return super.fetch(url, options);
   }
@@ -124,10 +135,17 @@ console.log('  BRC — لوحة التحكم في الوضع السحابي');
 console.log('═'.repeat(74));
 
 /* ===========================================================================
- *  1) الوضع الانتقالي (enforceAuth=false)
+ *  1) الوضع الانتقالي (enforceAuth=false) — سيناريو تاريخي مُحاكى
+ *     الإنتاج اليوم على الوضع النهائي (enforceAuth=true و users=[])، لكن مسار
+ *     الوضع الانتقالي ما زال في الكود فيجب فحصه. الحسابات هنا fixtures تُزرع
+ *     في نافذة الاختبار وحدها (تعيد إنتاج config.js كما كان آنذاك) — لا يُخفض
+ *     أمن الإنتاج لأجل الاختبار.
  * =========================================================================== */
 step(1, 'الوضع الانتقالي — القاعدة متصلة والكتابة غير ممكنة');
-const t1 = await open();
+const t1 = await open({
+  enforceAuth: false,
+  users: [{ username: 'staff', password: 'staff123', name: 'موظف انتقالي (اختبار)', role: 'staff', title: 'موظف توظيف' }]
+});
 check('لا أخطاء JavaScript في الصفحة', t1.errors.length === 0 || t1.errors.join(' | '));
 const st = t1.window.BRCStore.cloudStatus();
 check('الإقلاع: متصل بالقاعدة (وضع عام بلا جلسة)', st.state === 'on' && st.role === 'public', JSON.stringify(st));

@@ -299,14 +299,30 @@ for (const [js, page] of CONTRACT) {
   if (leaked.length) bad('لا حسابات تجريبية ظاهرة على شاشة الدخول', leaked.join(' | '));
   else ok('لا حسابات تجريبية ظاهرة على شاشة الدخول (في ' + published.length + ' صفحات منشورة)');
 
+  /* سياسة الدخول (طلب الإدارة، 2026-09): بوابة الموظفين **زر ظاهر** واحد في
+     ترويسة الموقع العام (دخول طبيعي بنقرة — لا ضغط مطوّل ولا روابط مخفية)،
+     وفي النسخة المستقلة يُعاد كتابته إلى #!dashboard عند البناء. المسموح:
+     رابط واحد من الترويسة بالضبط؛ أي رابط إضافي للوحة متناثر في جسم الصفحة
+     يبقى تسريباً يُرفض. */
   const linked = [];
   for (const f of ['index.html']) {
     const src = readFileSync(join(ROOT, f), 'utf8');
-    const m = src.match(/href="dashboard\.html"/g);
-    if (m) linked.push(f + ' (' + m.length + ')');
+    const inHeader = src.match(/class="btn btn-gold btn-sm header-login" href="dashboard\.html"/g) || [];
+    const all = src.match(/href="dashboard\.html"/g) || [];
+    if (inHeader.length !== 1 || all.length !== 1) {
+      linked.push(f + ' (رابط رسمي: ' + inHeader.length + ' · إجمالي: ' + all.length + ')');
+    }
   }
-  if (linked.length) bad('لا روابط للوحة الموظفين من الموقع العام', linked.join(' | '));
-  else ok('لا روابط للوحة الموظفين من الموقع العام');
+  for (const f of ['brc-standalone.html', 'brc-light.html']) {
+    const src = readFileSync(join(ROOT, f), 'utf8');
+    const inHeader = src.match(/class="btn btn-gold btn-sm header-login" href="#!dashboard"/g) || [];
+    const external = src.match(/href="dashboard\.html"/g) || [];
+    if (inHeader.length !== 1 || external.length !== 0) {
+      linked.push(f + ' (رابط رسمي: ' + inHeader.length + ' · خارجي: ' + external.length + ')');
+    }
+  }
+  if (linked.length) bad('بوابة دخول الموظفين: زر واحد في الترويسة فقط', linked.join(' | '));
+  else ok('بوابة دخول الموظفين: زر «دخول الموظفين» ظاهر في الترويسة وحدها (لا روابط متناثرة)');
 }
 
 /* ── سياسة الصلاحيات (طلب الإدارة): الزائر يتصفّح الوظائف فقط ───────────────
