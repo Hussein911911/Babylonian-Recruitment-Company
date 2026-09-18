@@ -37,7 +37,6 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
     let pathname = decodeURIComponent(url.pathname);
-    if (pathname === '/' || pathname === '') pathname = '/index.html';
 
     // مسارات نظيفة مطابقة لملف _redirects في Cloudflare Pages — لتطابق المعاينة المحلية الإنتاج
     const CLEAN_ROUTES = {
@@ -46,8 +45,25 @@ const server = createServer(async (req, res) => {
       '/standalone': '/brc-standalone.html',
       '/light': '/brc-light.html'
     };
-    const clean = CLEAN_ROUTES[pathname.replace(/\/+$/, '') || pathname];
+    /* أقسام الصفحة الرئيسية: /jobs → /#jobs (تحويل 301 مطابق لـ _redirects) */
+    const SECTION_ROUTES = ['home', 'jobs', 'how', 'services', 'about', 'contact'];
+    const bare = pathname.replace(/\/+$/, '') || pathname;
+
+    if (SECTION_ROUTES.includes(bare.slice(1))) {
+      res.writeHead(301, { Location: '/#' + bare.slice(1) });
+      res.end();
+      return;
+    }
+    /* /index و /index.html → الجذر: رابط واحد قانوني للصفحة الرئيسية (بلا تكرار
+       في نتائج البحث). يُفحص قبل تعيين الجذر إلى index.html وإلا دارت الحلقة. */
+    if (bare === '/index' || bare === '/index.html') {
+      res.writeHead(301, { Location: '/' + (url.search || '') });
+      res.end();
+      return;
+    }
+    const clean = CLEAN_ROUTES[bare];
     if (clean) pathname = clean;
+    if (pathname === '/' || pathname === '') pathname = '/index.html';
     const safe = normalize(pathname).replace(/^(\.\.[/\\])+/, '');
     let filePath = join(ROOT, safe);
 
@@ -66,10 +82,22 @@ const server = createServer(async (req, res) => {
     });
     res.end(data);
   } catch (e) {
-    res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end('<!DOCTYPE html><html lang="ar" dir="rtl"><meta charset="utf-8">' +
-      '<body style="font-family:sans-serif;padding:40px;background:#0b1a3a;color:#fff">' +
-      '<h1>404 — الصفحة غير موجودة</h1><p><a style="color:#e8d089" href="/">العودة إلى الموقع</a></p></body></html>');
+    /* نفس سلوك Cloudflare Pages: صفحة 404 بهوية الشركة (404.html) وليس نصاً عارياً،
+       حتى تطابق المعاينة المحلية ما يراه الزائر على الموقع المنشور تماماً. */
+    try {
+      const page = await readFile(join(ROOT, '404.html'));
+      res.writeHead(404, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Content-Length': page.length
+      });
+      res.end(page);
+    } catch {
+      res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end('<!DOCTYPE html><html lang="ar" dir="rtl"><meta charset="utf-8">' +
+        '<body style="font-family:sans-serif;padding:40px;background:#0b1a3a;color:#fff">' +
+        '<h1>404 — الصفحة غير موجودة</h1><p><a style="color:#e8d089" href="/">العودة إلى الموقع</a></p></body></html>');
+    }
   }
 });
 

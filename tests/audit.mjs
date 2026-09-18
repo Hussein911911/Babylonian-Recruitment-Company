@@ -693,6 +693,109 @@ section('10) الاستمارة المطبوعة A4 — البنية الكام�
   else ok('كيو آر كود التحقق مرسوم داخل الاستمارة (' + svgCount + ' عنصر SVG بمصفوفة وحدات حقيقية)');
 }
 
+/* ═══ 11) التنقّل — لا رابط يوصل إلى «صفحة غير موجودة» ═══════════════════ */
+section('11) التنقّل — كل رابط في الترويسة والتذييل يصل إلى قسمه فعلاً');
+
+{
+  /* الخلفية: نقرة «الوظائف / خدماتنا / آلية العمل / اسم الشركة» كانت تُعطي
+     صفحة غير موجودة على الاستضافة لأن الروابط مكتوبة "index.html#jobs" ولا
+     يكون اسم الملف قابلاً للطلب على كل مضيف. الحل nav.js يُطبّع الروابط وقت
+     التشغيل؛ وهذه الفحوص تمنع رجوع المشكلة بصمت. */
+
+  // 11.1 nav.js محمَّل في كل صفحة منشورة
+  {
+    const pagesNeedNav = ['index.html', 'verify.html', 'dashboard.html', '404.html'];
+    const noNav = pagesNeedNav.filter((f) => !/src="\/?assets\/js\/nav\.js/.test(readFileSync(join(ROOT, f), 'utf8')));
+    if (noNav.length) bad('nav.js محمَّل في كل صفحة منشورة', 'ناقص في: ' + noNav.join(', '));
+    else ok('nav.js محمَّل في كل صفحة منشورة (' + pagesNeedNav.length + ' صفحات)');
+  }
+
+  // 11.2 كل مرساة في التنقّل لها قسم موجود فعلاً في الصفحة الرئيسية
+  {
+    const homeIds = pageIds('index.html');
+    const src = readFileSync(join(ROOT, 'index.html'), 'utf8');
+    const anchors = [...src.matchAll(/href="(?:index\.html)?#([a-zA-Z][\w-]*)"/g)].map((m) => m[1]);
+    const dangling = [...new Set(anchors)].filter((id) => !homeIds.has(id));
+    if (dangling.length) bad('كل مرساة تنقّل لها قسم في الصفحة الرئيسية', 'بلا قسم: ' + dangling.join(', '));
+    else ok('كل مراسي التنقّل لها أقسام موجودة في index.html (' + new Set(anchors).size + ' مرساة)');
+  }
+
+  // 11.3 التطبيع الفعلي: نشغّل nav.js على كل صفحة وعلى نطاقات مختلفة
+  {
+    const cases = [
+      ['index.html', 'https://brc.example.com/', (h) => h.startsWith('#')],
+      ['index.html', 'https://host.tld/sub/', (h) => h.startsWith('#')],
+      ['verify.html', 'https://brc.example.com/verify', (h) => h.startsWith('/#')],
+      ['dashboard.html', 'https://brc.example.com/dashboard', (h) => h.startsWith('/#')],
+      ['404.html', 'https://host.tld/sub/typo', (h) => h.startsWith('/sub/#')]
+    ];
+    const navSrc = readFileSync(join(ROOT, 'assets/js/nav.js'), 'utf8');
+    const failures = [];
+    for (const [file, url, want] of cases) {
+      const dom = new JSDOM(readFileSync(join(ROOT, file), 'utf8'), { url, runScripts: 'outside-only' });
+      const w = dom.window;
+      w.eval(navSrc);
+      w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
+      const links = [...w.document.querySelectorAll('.main-nav a, .brand[href], .site-footer ul a:not([target])')]
+        .map((a) => a.getAttribute('href'));
+      const leftover = w.document.querySelectorAll('a[href*="index.html"]').length;
+      const wrong = links.filter((h) => !want(h));
+      if (leftover || wrong.length) failures.push(file + ' @ ' + url + ' (بقايا: ' + leftover + ' · خاطئ: ' + wrong.slice(0, 3).join(',') + ')');
+      dom.window.close();
+    }
+    if (failures.length) bad('تطبيع الروابط يعمل على كل صفحة وكل نطاق', failures.join(' | '));
+    else ok('تطبيع الروابط يعمل على ' + cases.length + ' حالات (نطاق جذري · مسار فرعي · تحقق · لوحة · 404) بلا بقايا index.html');
+  }
+
+  // 11.4 الملف المستقل لا يتأثّر: راوتره الخاص يبقى صاحب القرار
+  {
+    const standalonePages = ['brc-standalone.html'].concat(LIGHT ? ['brc-light.html'] : []);
+    const broken = [];
+    for (const f of standalonePages) {
+      const src = readFileSync(join(ROOT, f), 'utf8');
+      if (/href="index\.html/.test(src)) broken.push(f + ': رابط index.html متبقٍّ');
+      if (!/id="route-site"/.test(src)) broken.push(f + ': حاوية الراوتر مفقودة');
+    }
+    if (broken.length) bad('الملف المستقل يحتفظ براوتره الخاص بلا تدخّل', broken.join(' | '));
+    else ok('الملف المستقل يحتفظ براوتره الخاص (nav.js يتنحّى عند وجود route-site)');
+  }
+
+  // 11.5 صفحة 404 بهوية الشركة وبمراجع مثبّتة على الجذر
+  {
+    const nf = readFileSync(join(ROOT, '404.html'), 'utf8');
+    const issues = [];
+    if (!/شركة بابل للتوظيف/.test(nf)) issues.push('بلا اسم الشركة');
+    if (!/id="notfound"/.test(nf)) issues.push('بلا قسم 404');
+    if (/(?:src|href)="assets\//.test(nf)) issues.push('مراجع نسبية تنكسر على المسارات العميقة');
+    const exits = (nf.match(/href="\/index\.html#/g) || []).length;
+    if (exits < 4) issues.push('روابط خروج قليلة: ' + exits);
+    if (issues.length) bad('صفحة 404 بهوية الشركة وتعمل على أي مسار', issues.join(' | '));
+    else ok('صفحة 404 بهوية الشركة: ترويسة وتذييل و' + exits + ' رابط خروج، ومراجعها مثبّتة على جذر الموقع');
+  }
+
+  // 11.6 المسارات النظيفة للأقسام معرّفة في _redirects (و/jobs لا يعطي 404)
+  {
+    const redirects = readFileSync(join(ROOT, '_redirects'), 'utf8');
+    const sections = ['/jobs', '/services', '/how', '/about', '/contact'];
+    const missing = sections.filter((r) => !new RegExp('^\\s*' + r + '\\s+/#' + r.slice(1) + '\\s+301\\s*$', 'm').test(redirects));
+    if (missing.length) bad('مسارات الأقسام النظيفة معرّفة في _redirects', 'ناقص: ' + missing.join(', '));
+    else ok('مسارات الأقسام النظيفة تُحوَّل إلى مراسيها: ' + sections.join(' · '));
+  }
+
+  // 11.7 عامل الخدمة: جيل جديد + احتياط تنقّل + nav.js في الكاش
+  {
+    const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
+    const issues = [];
+    const gen = (sw.match(/brc-cache-v(\d+)/) || [])[1];
+    if (!gen || Number(gen) < 5) issues.push('جيل الكاش قديم: v' + gen);
+    if (!/nav\.js/.test(sw)) issues.push('nav.js خارج الكاش');
+    if (!/404\.html/.test(sw)) issues.push('404.html خارج الكاش');
+    if (!/cache\.add\(u\)\.catch/.test(sw)) issues.push('addAll يُسقط التثبيت كلّه عند فشل ملف واحد');
+    if (issues.length) bad('عامل الخدمة لا يُبقي الزوّار على نسخة قديمة', issues.join(' | '));
+    else ok('عامل الخدمة: جيل v' + gen + ' · nav.js و404.html مخزَّنان · تثبيت لا يسقط بفشل ملف واحد');
+  }
+}
+
 /* ═══ الخلاصة ═══════════════════════════════════════════════════════════ */
 console.log('\n' + '═'.repeat(72));
 console.log('  الخلاصة:  ✅ ' + pass + ' ناجح   |   ❌ ' + fail + ' فاشل   |   ⚠️  ' + warn + ' تحذير');

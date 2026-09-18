@@ -63,10 +63,11 @@ const partials = {
   footer: read('src/partials/footer.html'),
   public: read('src/partials/public.html'),
   verify: read('src/partials/verify.html'),
+  notfound: read('src/partials/notfound.html'),
   dashboard: read('src/partials/dashboard.html')
 };
 const CSS = read('assets/css/style.css');
-const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'voucher', 'public', 'verify', 'dashboard'];
+const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'public', 'verify', 'dashboard'];
 
 /* ---------------------------------------------------------------------------
  *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
@@ -81,9 +82,9 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
    ولا اتصالاً لحظياً. قياس الحجم أظهر أن المكتبة الكاملة كانت ثلث ما ينزّله.
    اللوحة تبقى على المكتبة الكاملة لأنها تحتاج Auth و Realtime فعلاً. */
 const SCRIPTS = {
-  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'voucher', 'public'],
-  verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'voucher', 'verify'],
-  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'voucher', 'dashboard']
+  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'public'],
+  verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
+  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard']
 };
 
 /* مسار الأصل من الاسم: 'vendor/x' → assets/vendor/x.js وإلا assets/js/x.js */
@@ -149,6 +150,23 @@ writeFileSync(P('verify.html'), buildPage({
   desc: 'صفحة التحقق الرسمية لاستمارات شركة بابل للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.',
   body: partials.verify, scripts: SCRIPTS.verify
 }));
+/* صفحة 404 بهوية الشركة: يقرأها Cloudflare Pages تلقائياً من /404.html عند أي
+   مسار غير موجود، ويوجّه إليها خادم المعاينة المحلي أيضاً — فيبقى الزائر داخل
+   الموقع مع روابط الأقسام بدل صفحة بيضاء من المضيف. */
+{
+  /* ⚠️ صفحة 404 تُخدَم على **عنوان المسار الأصلي** (مثال /a/b/typo) لا على
+     /404.html — فالمسارات النسبية (assets/…) تُحسب من /a/b/ وتفشل، فيرى الزائر
+     صفحة بلا أنماط ولا أيقونات. لذلك تُثبَّت مراجعها على جذر الموقع (/assets/…)
+     وهي الصفحة الوحيدة التي تحتاج ذلك. */
+  const nf = buildPage({
+    title: 'الصفحة غير موجودة | شركة بابل للتوظيف',
+    desc: 'الرابط المطلوب غير موجود على موقع شركة بابل للتوظيف — تصفّح الوظائف المتاحة أو تواصل معنا مباشرة.',
+    body: partials.notfound, scripts: ['config', 'ui', 'nav']
+  }).replace(/(src|href)="assets\//g, '$1="/assets/')
+    .replace(/(src|href)="index\.html/g, '$1="/index.html');
+  writeFileSync(P('404.html'), nf);
+}
+
 writeFileSync(P('dashboard.html'), buildPage({
   title: 'المنظومة الداخلية | شركة بابل للتوظيف',
   desc: 'لوحة الموظفين والإدارة لشركة بابل للتوظيف: إدارة الوظائف، إصدار الاستمارات، متابعة الحجوزات، سجل التدقيق، واللوحة المالية.',
@@ -261,7 +279,7 @@ const st = buildStandalone();
 
 /* ---------------- التقرير ---------------- */
 console.log('— تم البناء —  (بصمة الأصول: ' + ASSET_VER + ')');
-[['index.html'], ['verify.html'], ['dashboard.html'], [OUT_NAME]].forEach(([n]) => {
+[['index.html'], ['verify.html'], ['dashboard.html'], ['404.html'], [OUT_NAME]].forEach(([n]) => {
   console.log('  ' + n.padEnd(22) + kb(statSync(P(n)).size));
 });
 console.log('  (المستقل: خطوط ' + kb(st.fonts) + ' + صور CSS ' + kb(st.cssImgs) + ' + صور HTML ' + kb(st.htmlImgs) + ')' +

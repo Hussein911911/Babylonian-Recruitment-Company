@@ -1,0 +1,143 @@
+/* ===========================================================================
+ *  BRC — تنقّل مُحصَّن (Resilient Navigation)
+ *  ---------------------------------------------------------------------------
+ *  المشكلة التي يعالجها هذا الملف:
+ *    روابط الترويسة والتذييل مكتوبة في القوالب بالشكل "index.html#jobs" لأن هذا
+ *    هو الشكل الوحيد الذي يعمل أيضاً عند فتح الملفات من القرص (file://) وفي
+ *    اختبارات jsdom. لكن على الاستضافة الحيّة قد يكون اسم الملف غير قابل للطلب
+ *    مباشرة (مضيف يفرض «روابط نظيفة»، أو نشر داخل مسار فرعي، أو عامل خدمة قديم
+ *    مخزَّن) فتُعطي نقرة «الوظائف / خدماتنا / آلية العمل / اسم الشركة» صفحة
+ *    «غير موجودة» رغم أن القسم موجود في نفس الصفحة.
+ *
+ *  الحل: تطبيع الروابط وقت التشغيل قبل أي نقرة:
+ *    • داخل الصفحة الرئيسية  → الرابط يصبح مرساة خالصة (#jobs) بلا اسم ملف إطلاقاً.
+ *    • من صفحة أخرى (تحقق/لوحة) → الرابط يصبح مجلد الصفحة الحالي + المرساة
+ *      (مثال: "/#jobs") فيعمل على أي نطاق ومع أي مسار فرعي.
+ *    • عند فتح الملف من القرص (file://) → يبقى "index.html#jobs" كما هو.
+ *    • في النسخة المستقلة (ملف واحد) → لا يتدخّل إطلاقاً: راوترها يتكفّل بذلك.
+ *
+ *  ويضيف أيضاً: تمرير سلس مع خصم ارتفاع الترويسة اللاصقة، تحديث شريط العنوان
+ *  بلا قفزة، وإغلاق قائمة الجوال بعد الاختيار.
+ * =========================================================================== */
+(function (root) {
+  'use strict';
+
+  var doc = root.document;
+  if (!doc) return;
+
+  /* النسخة المستقلة (brc-standalone / brc-light) لها راوتر خاص بـ #! — لا نلمسها */
+  function isStandalone() {
+    return !!(doc.getElementById('route-site') || doc.getElementById('route-dashboard') ||
+      (doc.body && doc.body.hasAttribute('data-route')));
+  }
+
+  var isFile = root.location && root.location.protocol === 'file:';
+  var FILE_NAME = 'index.html';
+
+  /* هل نحن على الصفحة العامة؟ (وجود شبكة الوظائف أو قسم البداية دليل قاطع) */
+  function onHome() {
+    return !!(doc.getElementById('jobs-grid') || doc.getElementById('home'));
+  }
+
+  /* مجلد الصفحة الحالية: "/" أو "/sub/" — يعمل مع النطاق الجذري والمسار الفرعي */
+  function homeHref() {
+    if (isFile) return FILE_NAME;
+    var p = (root.location && root.location.pathname) || '/';
+    return p.replace(/[^/]*$/, '') || '/';
+  }
+
+  /* تحويل رابط واحد */
+  function normalize(a) {
+    var href = a.getAttribute('href') || '';
+    var i = href.indexOf(FILE_NAME);
+    if (i < 0) return;
+    /* لا نلمس الروابط المطلقة إلى نطاق آخر */
+    if (/^https?:/i.test(href) && href.indexOf(root.location.host) < 0) return;
+
+    var hash = href.slice(i + FILE_NAME.length);      // "#jobs" أو ""
+    if (hash && hash.charAt(0) !== '#') return;       // ليس رابط قسم — اتركه
+
+    if (onHome()) a.setAttribute('href', hash || '#home');
+    else if (!isFile) a.setAttribute('href', homeHref() + hash);
+    /* file:// — يبقى كما هو (اسم الملف هو الطريق الصحيح على القرص) */
+  }
+
+  function normalizeAll() {
+    var list = doc.querySelectorAll('a[href*="' + FILE_NAME + '"]');
+    for (var i = 0; i < list.length; i++) normalize(list[i]);
+  }
+
+  /* ارتفاع الترويسة اللاصقة — حتى لا يختفي عنوان القسم تحتها بعد القفز */
+  function headerOffset() {
+    var h = doc.querySelector('.site-header');
+    if (!h) return 0;
+    var pos = root.getComputedStyle ? root.getComputedStyle(h).position : '';
+    if (pos !== 'sticky' && pos !== 'fixed') return 0;
+    return h.getBoundingClientRect().height + 8;
+  }
+
+  function scrollToId(id, smooth) {
+    var t = id && doc.getElementById(id);
+    if (!t) return false;
+    var y = t.getBoundingClientRect().top + (root.pageYOffset || doc.documentElement.scrollTop || 0) - headerOffset();
+    if (y < 0) y = 0;
+    try { root.scrollTo({ top: y, behavior: smooth ? 'smooth' : 'auto' }); }
+    catch (e) { root.scrollTo(0, y); }
+    /* إتاحة الوصول: ينتقل التركيز إلى القسم بلا إطار مزعج */
+    if (t.setAttribute && !t.hasAttribute('tabindex')) t.setAttribute('tabindex', '-1');
+    if (t.focus) { try { t.focus({ preventScroll: true }); } catch (e2) { /* متصفح قديم */ } }
+    return true;
+  }
+
+  /* اعتراض النقر على مراسي نفس الصفحة: تمرير سلس مع الخصم بدل قفزة المتصفح */
+  function onClick(e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+
+    var href = a.getAttribute('href') || '';
+    if (href.charAt(0) !== '#' || href === '#' || href.indexOf('#!') === 0) return;
+
+    var id = href.slice(1);
+    if (!doc.getElementById(id)) return;               // ليس قسماً في هذه الصفحة
+
+    e.preventDefault();
+    if (scrollToId(id, true) && root.history && root.history.pushState) {
+      root.history.pushState(null, '', '#' + id);
+    }
+    var nav = doc.getElementById('main-nav');
+    if (nav) nav.classList.remove('open');
+    var toggle = doc.getElementById('nav-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  }
+
+  /* الوصول إلى الصفحة برابط فيه مرساة: نصحّح الموضع بعد رسم التخطيط */
+  function onLoadHash() {
+    var h = root.location.hash || '';
+    if (!h || h.length < 2 || h.indexOf('#!') === 0) return;
+    var id = h.slice(1);
+    if (!doc.getElementById(id)) return;
+    setTimeout(function () { scrollToId(id, false); }, 60);
+  }
+
+  function boot() {
+    if (isStandalone()) return;
+    normalizeAll();
+    doc.addEventListener('click', onClick);
+    root.addEventListener('hashchange', function () {
+      var h = root.location.hash || '';
+      if (h.length > 1 && h.indexOf('#!') !== 0) scrollToId(h.slice(1), true);
+    });
+    onLoadHash();
+    /* أقسام أو بطاقات تُضاف لاحقاً (نتائج الوظائف مثلاً) تُطبَّع أيضاً */
+    if (root.MutationObserver) {
+      var mo = new root.MutationObserver(function () { normalizeAll(); });
+      if (doc.body) mo.observe(doc.body, { childList: true, subtree: true });
+    }
+  }
+
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot);
+  else boot();
+
+  root.BRCNav = { normalize: normalizeAll, scrollToId: scrollToId, homeHref: homeHref };
+})(typeof window !== 'undefined' ? window : globalThis);
