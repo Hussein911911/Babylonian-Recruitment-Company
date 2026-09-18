@@ -5767,13 +5767,18 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   /* ---------------------------------------------------------------------------
    *  روابط الصفحات المستقلة (دخول الموظفين / التحقق)
    *  ---------------------------------------------------------------------------
-   *  نفس علّة روابط الأقسام تماماً: "dashboard.html" رابط **نسبي**، فإن كانت
-   *  الصفحة الحالية على مسار فرعي أو على مسار نظيف بلا اسم ملف (/verify مثلاً)
-   *  حسبه المتصفح من المجلد الخطأ ورجع «صفحة غير موجودة» — وهذا ما كان يحدث
-   *  عند النقر على زر «تسجيل الدخول».
-   *  الحل: مسار مطلق من جذر النشر (homeHref) + اسم الملف. نُبقي امتداد .html
-   *  عمداً لأنه يعمل على كل استضافة ثابتة، بينما المسار النظيف (/dashboard)
-   *  يعتمد على قراءة المضيف لملف _redirects وليس كل مضيف يفعل ذلك.
+   *  "dashboard.html" رابط **نسبي**، فإن كانت الصفحة الحالية على مسار نظيف بلا
+   *  اسم ملف (/verify مثلاً) أو داخل مسار فرعي، حسبه المتصفح من المجلد الخطأ
+   *  ورجع «صفحة غير موجودة» — وهذا ما كان يحدث عند النقر على «تسجيل الدخول».
+   *
+   *  ونُسقط امتداد .html عمداً: Cloudflare Pages (ومعظم المضيفات الثابتة) يُحوّل
+   *  /dashboard.html → /dashboard تلقائياً، فإبقاء الامتداد يعني قفزة تحويل
+   *  زائدة في كل نقرة. والمسار النظيف يعمل بلا أي قاعدة في _redirects لأن
+   *  المضيف يخدم الملف عليه افتراضياً.
+   *
+   *  احتياط مهم: على مضيف لا يدعم المسارات النظيفة يبقى الملف متاحاً باسمه،
+   *  لذلك نتحقق وقت التشغيل — إن فشل المسار النظيف نرجع إلى اسم الملف. (انظر
+   *  verifyPageLink أدناه.)
    * ------------------------------------------------------------------------- */
   var PAGES = ['dashboard.html', 'verify.html'];
 
@@ -5784,9 +5789,43 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     for (var i = 0; i < PAGES.length; i++) {
       var name = PAGES[i];
       if (href === name || href.indexOf(name + '?') === 0 || href.indexOf(name + '#') === 0) {
-        a.setAttribute('href', homeHref() + href);
+        /* اسم الملف بلا امتداد + بقيّة الرابط (query/hash) */
+        var rest = href.slice(name.length);
+        var clean = name.replace(/\.html$/, '');
+        a.setAttribute('href', homeHref() + clean + rest);
+        a.setAttribute('data-brc-page', name);         // للاحتياط أدناه
         return;
       }
+    }
+  }
+
+  /* ---------------------------------------------------------------------------
+   *  احتياط: لو كان المضيف لا يخدم المسار النظيف (404)، نُعيد الروابط إلى اسم
+   *  الملف الكامل. نفحص مرة واحدة بطلب HEAD خفيف بدل المخاطرة بنقرة فاشلة.
+   *  الفشل هنا صامت ومقصود: إن تعذّر الفحص (بلا شبكة مثلاً) نُبقي المسار النظيف
+   *  لأنه الصحيح في الحالة الغالبة.
+   * ------------------------------------------------------------------------- */
+  function verifyPageLink() {
+    if (isFile || !root.fetch) return;
+    var probe = doc.querySelector('a[data-brc-page]');
+    if (!probe) return;
+    var url = probe.getAttribute('href').split('#')[0].split('?')[0];
+    root.fetch(url, { method: 'HEAD' }).then(function (res) {
+      if (res && res.ok) return;                       // المسار النظيف يعمل
+      revertToFileNames();
+    }).catch(function () { /* تعذّر الفحص — نُبقي الحالي */ });
+  }
+
+  function revertToFileNames() {
+    var list = doc.querySelectorAll('a[data-brc-page]');
+    for (var i = 0; i < list.length; i++) {
+      var a = list[i], name = a.getAttribute('data-brc-page');
+      var href = a.getAttribute('href') || '';
+      var clean = name.replace(/\.html$/, '');
+      /* نستبدل الاسم النظيف في **نهاية المسار** وحده (قبل ? أو #) — البحث
+         بـ indexOf يلتقط تطابقاً داخل اسم المجلد وينتج dashboard.html.html */
+      var re = new RegExp('/' + clean + '(?=$|[?#])');
+      if (re.test(href)) a.setAttribute('href', href.replace(re, '/' + name));
     }
   }
 
@@ -5862,6 +5901,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       if (h.length > 1 && h.indexOf('#!') !== 0) scrollToId(h.slice(1), true);
     });
     onLoadHash();
+    verifyPageLink();
     /* أقسام أو بطاقات تُضاف لاحقاً (نتائج الوظائف مثلاً) تُطبَّع أيضاً */
     if (root.MutationObserver) {
       var mo = new root.MutationObserver(function () { normalizeAll(); });

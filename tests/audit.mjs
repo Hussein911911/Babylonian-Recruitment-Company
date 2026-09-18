@@ -513,10 +513,15 @@ section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا ر�
   else ok('ملفّات Cloudflare Pages في الجذر: _headers (ترويسات) · _redirects (مسارات نظيفة)');
 
   const redirects = readFileSync(join(ROOT, '_redirects'), 'utf8');
-  const cleanRoutes = ['/verify', '/dashboard', '/standalone', '/light'];
+  /* ⚠️ هذا الفحص كان يشترط وجود «/verify → /verify.html» و«/dashboard → /dashboard.html»
+     — وهو بالضبط ما كان **يكسر** الصفحتين على الإنتاج: Cloudflare Pages يُحوّل
+     /dashboard.html → /dashboard تلقائياً، فتدور القاعدة حلقة لا تنتهي.
+     الصحيح: تلك المسارات تعمل من تلقائها (Pages يخدم الملف على مساره النظيف)،
+     ويُكتب هنا فقط ما اسم مساره **مختلف** عن اسم ملفه. */
+  const cleanRoutes = ['/standalone', '/light'];
   const badRoutes = cleanRoutes.filter((r) => !new RegExp('^\\s*' + r + '\\s+\\S+\\s+200\\s*$', 'm').test(redirects));
-  if (badRoutes.length) bad('المسارات النظيفة كلها معرّفة بـ 200', 'ناقص: ' + badRoutes.join(', '));
-  else ok('المسارات النظيفة معرّفة في _redirects: ' + cleanRoutes.join(' · '));
+  if (badRoutes.length) bad('مسارات الملفات ذات الاسم المختلف معرّفة بـ 200', 'ناقص: ' + badRoutes.join(', '));
+  else ok('مسارات الأسماء المختلفة معرّفة في _redirects: ' + cleanRoutes.join(' · ') + ' (و/verify و/dashboard يخدمهما Pages تلقائياً)');
 
   const headers = readFileSync(join(ROOT, '_headers'), 'utf8');
   const needHeaders = ['X-Content-Type-Options', 'Referrer-Policy', 'X-Frame-Options'];
@@ -754,15 +759,16 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
        جذر النشر. هنا نتأكد أن الزر موجود، ونصّه واضح، ووجهته صحيحة فعلاً. */
     const navSrc = readFileSync(join(ROOT, 'assets/js/nav.js'), 'utf8');
     const cases = [
-      ['index.html', 'https://brc.example.com/', '/dashboard.html'],
-      ['index.html', 'https://host.tld/sub/', '/sub/dashboard.html'],
-      ['verify.html', 'https://brc.example.com/verify', '/dashboard.html'],
-      ['404.html', 'https://host.tld/sub/typo', '/sub/dashboard.html']
+      ['index.html', 'https://brc.example.com/', '/dashboard'],
+      ['index.html', 'https://host.tld/sub/', '/sub/dashboard'],
+      ['verify.html', 'https://brc.example.com/verify', '/dashboard'],
+      ['404.html', 'https://host.tld/sub/typo', '/sub/dashboard']
     ];
     const failures = [];
     for (const [file, url, want] of cases) {
       const dom = new JSDOM(readFileSync(join(ROOT, file), 'utf8'), { url, runScripts: 'outside-only' });
       const w = dom.window;
+      w.fetch = () => Promise.resolve({ ok: true });   // مضيف يدعم المسارات النظيفة
       w.eval(navSrc);
       w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
       const btn = w.document.querySelector('.header-login');
@@ -853,6 +859,16 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
         loops.push(from + ' → ' + to + ' (الهدف = المصدر)');
       }
     }
+    /* حلقة التطبيع التلقائي: Pages يحوّل /x.html → /x تلقائياً، فأي قاعدة
+       «/x → /x.html» تدور بلا نهاية. هذا ما أسقط /dashboard و/verify فعلياً
+       على الإنتاج بينما /supabase-check و/404 يعملان (لا قاعدة لهما). */
+    for (const [from, to] of rules) {
+      const m = /^\/([A-Za-z0-9._-]+)$/.exec(from);
+      if (m && to === '/' + m[1] + '.html') {
+        loops.push(from + ' → ' + to + ' (Pages يحوّل .html إلى المسار النظيف — حلقة)');
+      }
+    }
+
     if (loops.length) bad('لا قاعدة تحويل تدور حلقة وتُسقط الصفحة الرئيسية', loops.join(' | '));
     else ok('لا حلقة تحويل في _redirects — الجذر و/index.html بلا قواعد (' + rules.length + ' قاعدة مفحوصة)');
 
