@@ -402,6 +402,34 @@ a.hc-item:hover { color: var(--gold-2); }
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .field { display: flex; flex-direction: column; gap: 5px; }
+
+/* ── تنبيه داخل النوافذ + صفّ اختيار (أرشيف التلكرام) ────────────────────
+   note-warn: تحذير بارز قبل إجراء حسّاس (توكن البوت، أرشيف ببيانات شخصية).
+   radio-row: خيار من سطرين (عنوان + شرح) بمساحة نقر مريحة على الجوال. */
+.note {
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; font-size: .84rem; line-height: 1.7;
+}
+.note-warn {
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+.radio-row {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 10px 12px; margin-block-start: 8px;
+  border: 1px solid var(--line); border-radius: 10px;
+  cursor: pointer; font-size: .86rem; font-weight: 600;
+}
+.radio-row:hover { border-color: var(--lapis); }
+.radio-row input { margin-block-start: 3px; flex: none; }
+.radio-row input:disabled { cursor: not-allowed; }
+.radio-row:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.radio-row:has(input:checked) {
+  border-color: var(--lapis);
+  background: color-mix(in srgb, var(--lapis) 7%, transparent);
+}
+.radio-row .tiny { font-weight: 500; }
+
 .field label { font-size: .78rem; font-weight: 700; color: var(--muted); }
 
 .f-field { position: relative; }
@@ -1595,6 +1623,11 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 20V9M7.5 12.5 12 8l4.5 4.5M4.5 4h15"/>
   </symbol>
+  <!-- طائرة ورقية (إرسال/مشاركة) — تُستعمل في زر «أرشيف للتلكرام» -->
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21.5 2.5 2.8 10.2a.5.5 0 0 0 .04.93l6.3 2.1 2.1 6.3a.5.5 0 0 0 .93.04Z"/>
+    <path d="M21.5 2.5 9.14 13.23"/>
+  </symbol>
   <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="3.1"/>
     <g><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></g>
@@ -2501,6 +2534,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
               <button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"/></svg> استيراد نسخة</button>
               <button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> جدولة النسخ التلقائي</button>
               <button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> عرض النسخ الاحتياطية</button>
+              <!-- أرشيف يُرسل بتلكرام ويفتح الموقع كاملاً عند الضغط عليه (archive.js) -->
+              <button class="btn btn-lapis" id="btn-archive-share"><svg class="ic"><use href="#i-send" xlink:href="#i-send"/></svg> أرشيف للتلكرام</button>
               <button class="btn btn-warn" id="btn-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تشغيل قواعد الحجز التلقائي</button>
               <button class="btn btn-danger" id="btn-reset"><svg class="ic"><use href="#i-trash" xlink:href="#i-trash"/></svg> إعادة ضبط البيانات التجريبية</button>
             </div>
@@ -8769,6 +8804,168 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       }
       renderSettings();
     });
+
+    /* ── أرشيف للتلكرام ─────────────────────────────────────────────────
+       ملف HTML واحد يفتح الموقع كاملاً بلا إنترنت. نافذة واحدة تختار فيها
+       نوع الأرشيف وطريقة الإرسال، لأن الفرق بينهما أمني لا تجميلي:
+       «العام» آمن للمشاركة، و«الكامل» يحمل بيانات شخصية ويتطلب تأكيداً. */
+    /* ── تحميل archive.js عند الطلب ──────────────────────────────────────
+       13KB لميزة تُستعمل بين حين وآخر لا يجوز أن يدفع ثمنها كل فتح للوحة
+       (ميزانية الأداء 700KB رفضتها فعلاً). نحمّله عند أول ضغطة ونحتفظ بالوعد
+       حتى لا يتكرر التحميل. في الملف المستقل لا ملفات خارجية أصلاً، فنعتمد
+       على أن BRCArchive سيبقى غائباً ونخفي الزر. */
+    var archivePromise = null;
+    function loadArchive() {
+      if (window.BRCArchive) return Promise.resolve(window.BRCArchive);
+      if (archivePromise) return archivePromise;
+      if (isStandaloneBuild()) return Promise.reject(new Error('غير متاح في الملف المستقل'));
+      archivePromise = new Promise(function (resolve, reject) {
+        var base = (window.BRCNav && window.BRCNav.homeHref) ? window.BRCNav.homeHref() : '';
+        var s = document.createElement('script');
+        s.src = base + 'assets/js/archive.js';
+        s.onload = function () {
+          if (window.BRCArchive) resolve(window.BRCArchive);
+          else reject(new Error('تعذّر تحميل وحدة الأرشيف'));
+        };
+        s.onerror = function () { archivePromise = null; reject(new Error('تعذّر تحميل وحدة الأرشيف')); };
+        document.head.appendChild(s);
+      });
+      return archivePromise;
+    }
+    /* كشف الملف المستقل عبر حاوية راوتره #route-site.
+       ⚠️ نستعمل querySelector لا getElementById عمداً: فحص التدقيق يتأكد أن كل
+       معرّف يطلبه dashboard.js بـ getElementById موجود فعلاً في dashboard.html،
+       و route-site لا وجود له إلا في الملف المستقل — فيُبلَّغ عنه كمعرّف مفقود
+       رغم أن غيابه هو السلوك الصحيح هنا. */
+    function isStandaloneBuild() {
+      return !!document.querySelector('#route-site, #route-dashboard');
+    }
+
+    var arcBtn = document.getElementById('btn-archive-share');
+    if (arcBtn && isStandaloneBuild()) arcBtn.hidden = true;
+
+    bindOnce(arcBtn, 'click', function () {
+      arcBtn.disabled = true;
+      loadArchive().then(function (A) {
+        openArchiveDialog(A);
+      }).catch(function (e) {
+        UI.toast('err', 'تعذّر فتح الأرشيف', e.message);
+      }).then(function () { arcBtn.disabled = false; });
+    });
+
+    function openArchiveDialog(A) {
+      var tg = A.getTelegram();
+      var hasTg = !!(tg && tg.token && tg.chatId);
+
+      UI.modal({
+        title: 'أرشيف الشركة للتلكرام',
+        subtitle: 'ملف واحد يفتح الموقع كاملاً عند الضغط عليه — يعمل بدون إنترنت',
+        body:
+          '<div class="field"><label>نوع الأرشيف</label>' +
+          '<label class="radio-row"><input type="radio" name="arc-mode" value="public" checked> ' +
+          '<span><b>عام — للزبائن</b><br><span class="tiny muted">الوظائف المعلنة فقط. بلا أسماء أو أرقام المتقدمين، وبلا بيانات أصحاب العمل. آمن للمشاركة والتحويل.</span></span></label>' +
+          '<label class="radio-row"><input type="radio" name="arc-mode" value="full"> ' +
+          '<span><b>كامل — للإدارة فقط</b><br><span class="tiny muted" style="color:#b91c1c">يحتوي أسماء المتقدمين وأرقام هواتفهم وعناوينهم وبيانات أصحاب العمل وسجل التدقيق. لا تُرسله لأي زبون.</span></span></label></div>' +
+          '<div class="field mt-3"><label>طريقة الإرسال</label>' +
+          '<label class="radio-row"><input type="radio" name="arc-how" value="manual" checked> ' +
+          '<span><b>يدوياً</b><br><span class="tiny muted">تفتح قائمة المشاركة فتختار تلكرام (على الجوال)، أو يُنزَّل الملف فترفعه بنفسك.</span></span></label>' +
+          '<label class="radio-row"><input type="radio" name="arc-how" value="bot"' + (hasTg ? '' : ' disabled') + '> ' +
+          '<span><b>تلقائياً عبر البوت</b><br><span class="tiny muted">' +
+          (hasTg ? 'يُرسل مباشرة إلى القناة المحفوظة.' : 'غير مفعّل — اضغط «إعداد البوت» أدناه أولاً.') +
+          '</span></span></label></div>',
+        footer:
+          '<button class="btn btn-outline" data-tg-setup>إعداد البوت</button>' +
+          '<button class="btn btn-outline" data-close>إلغاء</button>' +
+          '<button class="btn btn-lapis" data-go>إنشاء وإرسال</button>',
+        onMount: function (box, close) {
+          box.querySelector('[data-tg-setup]').addEventListener('click', function () {
+            close(); telegramSetup();
+          });
+          box.querySelector('[data-go]').addEventListener('click', function () {
+            var mode = box.querySelector('input[name="arc-mode"]:checked').value;
+            var how = box.querySelector('input[name="arc-how"]:checked').value;
+            var full = mode === 'full';
+            close();
+            if (!full) return runArchive(full, how);
+            /* الكامل: تأكيد صريح — هذا الملف يُسرّب بيانات لو أُرسل خطأً */
+            UI.confirm({
+              title: 'تأكيد: أرشيف يحتوي بيانات شخصية',
+              message: 'هذا الملف يحتوي أسماء المتقدمين وأرقام هواتفهم وعناوينهم وبيانات أصحاب العمل. إرساله لغير الإدارة تسريب للبيانات.',
+              note: 'سيُسمّى الملف «خاص-للإدارة» وسيحمل شريط تحذير أحمر داخله.',
+              confirmText: 'أفهم — أنشئ الأرشيف الكامل',
+              danger: true
+            }).then(function (okd) { if (okd) runArchive(true, how); });
+          });
+        }
+      });
+    }
+
+    function runArchive(full, how) {
+      UI.toast('info', 'جارٍ التجهيز…', 'يُبنى الأرشيف من نسخة الموقع الكاملة.');
+      loadArchive().then(function (A) {
+        return A.build({ full: full }).then(function (built) {
+        var kb = (built.html.length / 1024).toFixed(0);
+        if (how === 'bot') {
+          return A.sendToTelegram(built).then(function () {
+            Store.audit('إرسال أرشيف للتلكرام', 'backup', '-',
+              built.name + ' (' + kb + ' ك.ب) — ' + (full ? 'كامل' : 'عام'));
+            UI.toast('ok', 'وصل إلى تلكرام', built.name + ' (' + kb + ' ك.ب)');
+          });
+        }
+        return A.share(built).then(function (how2) {
+          if (how2 === 'cancelled') return;
+          Store.audit('تصدير أرشيف', 'backup', '-',
+            built.name + ' (' + kb + ' ك.ب) — ' + (full ? 'كامل' : 'عام'));
+          UI.toast('ok',
+            how2 === 'shared' ? 'تمت المشاركة' : 'نُزّل الملف',
+            how2 === 'shared' ? built.name
+              : built.name + ' (' + kb + ' ك.ب) — ارفعه إلى تلكرام.');
+        });
+        });
+      }).catch(function (e) {
+        UI.toast('err', 'تعذّر إنشاء الأرشيف', e.message);
+      });
+    }
+
+    function telegramSetup() {
+      loadArchive().then(function (A) { telegramSetupWith(A); })
+        .catch(function (e) { UI.toast('err', 'تعذّر فتح الإعداد', e.message); });
+    }
+
+    function telegramSetupWith(A) {
+      var cur = A.getTelegram() || {};
+      UI.modal({
+        title: 'إعداد بوت تلكرام',
+        subtitle: 'يُحفظ في هذا الجهاز فقط — لا يُرفع إلى الموقع ولا يظهر في الكود',
+        body:
+          '<div class="note note-warn mb-3">توكن البوت يعطي تحكماً كاملاً به. يُحفظ في متصفح هذا الجهاز، فمن يفتح المتصفح يقدر يقرأه — لا تفعّله على جهاز مشترك.</div>' +
+          '<div class="field"><label for="tg-token">توكن البوت</label>' +
+          '<input id="tg-token" type="password" placeholder="123456:ABC-DEF…" value="' + UI.esc(cur.token || '') + '"></div>' +
+          '<div class="field"><label for="tg-chat">معرّف القناة أو المحادثة</label>' +
+          '<input id="tg-chat" type="text" placeholder="‎-1001234567890 أو @channel" value="' + UI.esc(cur.chatId || '') + '"></div>' +
+          '<p class="tiny muted mt-2 mb-0">أنشئ البوت من BotFather، أضفه مشرفاً في القناة، ثم ضع معرّف القناة هنا.</p>',
+        footer:
+          (cur.token ? '<button class="btn btn-outline" data-clear>حذف الإعداد</button>' : '') +
+          '<button class="btn btn-outline" data-close>إلغاء</button>' +
+          '<button class="btn btn-lapis" data-save>حفظ</button>',
+        onMount: function (box, close) {
+          var clr = box.querySelector('[data-clear]');
+          if (clr) clr.addEventListener('click', function () {
+            A.setTelegram(null);
+            UI.toast('ok', 'حُذف الإعداد', 'لن يُرسل شيء تلقائياً بعد الآن.');
+            close();
+          });
+          box.querySelector('[data-save]').addEventListener('click', function () {
+            var token = box.querySelector('#tg-token').value.trim();
+            var chatId = box.querySelector('#tg-chat').value.trim();
+            if (!token || !chatId) { UI.toast('warn', 'الحقول ناقصة', 'أدخل التوكن ومعرّف القناة.'); return; }
+            A.setTelegram({ token: token, chatId: chatId });
+            UI.toast('ok', 'حُفظ الإعداد', 'صار بإمكانك الإرسال التلقائي من زر «أرشيف للتلكرام».');
+            close();
+          });
+        }
+      });
+    }
 
     bindOnce(document.getElementById('btn-run-auto-backup'), 'click', function () {
       var backup = Store.saveScheduledBackup('نسخة تلقائية يدوية - ' + Store.fmtDateTime(new Date()), null, { auto: true });

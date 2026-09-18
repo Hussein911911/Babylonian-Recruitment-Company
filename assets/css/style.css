@@ -385,6 +385,34 @@ a.hc-item:hover { color: var(--gold-2); }
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .field { display: flex; flex-direction: column; gap: 5px; }
+
+/* ── تنبيه داخل النوافذ + صفّ اختيار (أرشيف التلكرام) ────────────────────
+   note-warn: تحذير بارز قبل إجراء حسّاس (توكن البوت، أرشيف ببيانات شخصية).
+   radio-row: خيار من سطرين (عنوان + شرح) بمساحة نقر مريحة على الجوال. */
+.note {
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; font-size: .84rem; line-height: 1.7;
+}
+.note-warn {
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+.radio-row {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 10px 12px; margin-block-start: 8px;
+  border: 1px solid var(--line); border-radius: 10px;
+  cursor: pointer; font-size: .86rem; font-weight: 600;
+}
+.radio-row:hover { border-color: var(--lapis); }
+.radio-row input { margin-block-start: 3px; flex: none; }
+.radio-row input:disabled { cursor: not-allowed; }
+.radio-row:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.radio-row:has(input:checked) {
+  border-color: var(--lapis);
+  background: color-mix(in srgb, var(--lapis) 7%, transparent);
+}
+.radio-row .tiny { font-weight: 500; }
+
 .field label { font-size: .78rem; font-weight: 700; color: var(--muted); }
 
 .f-field { position: relative; }
