@@ -279,8 +279,15 @@ declare rules jsonb;
 begin
   select value into rules from brc.settings where key = 'rules';
 
-  if tg_table_name = 'jobs' and coalesce(new.code, '') = '' then
-    new.code := brc.next_job_code();
+  /* ⚠️ لا تدمج الشرطين بـ and في سطر واحد:
+     PL/pgSQL يقيّم طرفَي التعبير معاً، فيقرأ new.code حتى عندما يكون
+     tg_table_name = 'applicants' — وذلك الجدول بلا عمود code، فينفجر
+     الإدراج بخطأ 42703: record "new" has no field "code".
+     التعشيش يضمن ألا يُقرأ new.code إلا داخل فرع jobs. */
+  if tg_table_name = 'jobs' then
+    if coalesce(new.code, '') = '' then
+      new.code := brc.next_job_code();
+    end if;
   end if;
 
   if tg_table_name = 'applicants' then
