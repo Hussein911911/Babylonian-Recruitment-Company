@@ -45,12 +45,12 @@ check('الوحدة تُحمّل وتُصدّر BRCCloud', !!C);
  * ------------------------------------------------------------------------- */
 const JOB_ROW = {
   id: '11111111-1111-4111-8111-111111111111',
-  code: 'BRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة',
+  code: 'HRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة',
   shift: 'صباحي', salary_min: 600000, salary_max: 750000, gender: 'لا فرق',
   vacancies: 2, requirements: ['لياقة بدنية', 'خبرة سنة'], description: 'وصف',
   employer_name: 'مخازن الفرات', employer_phone: '07701234567',
   employer_address: 'الحلة - الصناعية', interview_location: 'مقر الشركة',
-  status: 'reserved', reserved_by: 'BRC-NO-000120',
+  status: 'reserved', reserved_by: 'HRC-NO-000120',
   hold_expires_at: '2026-09-16T10:00:00+00:00',
   closed_at: null, created_by: null,
   created_at: '2026-09-10T08:00:00+00:00', updated_at: '2026-09-14T08:00:00+00:00',
@@ -58,7 +58,7 @@ const JOB_ROW = {
 };
 const APP_ROW = {
   id: '22222222-2222-4222-8222-222222222222',
-  serial: 'BRC-NO-000120', full_name: 'حسين كاظم', phone: '07704445566',
+  serial: 'HRC-NO-000120', full_name: 'حسين كاظم', phone: '07704445566',
   address: 'الحلة - شارع 40', dob: '1997-11-30', gender: 'ذكر', nationality: 'عراقي',
   issue_date: '2026-09-01T00:00:00+00:00', expiry_date: '2026-10-01T00:00:00+00:00',
   attempt_limit: 5, status: 'active', fee_amount: 10000, fee_paid: true,
@@ -72,15 +72,15 @@ const STAFF_ROW = {
 };
 const ATTEMPT_ROW = {
   id: '55555555-5555-4555-8555-555555555555',
-  serial: 'BRC-NO-000120', attempt_no: 1,
-  job_id: '11111111-1111-4111-8111-111111111111', job_code: 'BRC-1042',
+  serial: 'HRC-NO-000120', attempt_no: 1,
+  job_id: '11111111-1111-4111-8111-111111111111', job_code: 'HRC-1042',
   slot_status: 'reserved', selected_at: '2026-09-13T07:00:00+00:00',
   hold_expires_at: '2026-09-16T10:00:00+00:00', closed_at: null,
   outcome_note: '', staff_id: '33333333-3333-4333-8333-333333333333'
 };
 const AUDIT_ROW = {
   id: 42, ts: '2026-09-14T22:00:00+00:00', user_id: null, username: 'admin', role: 'admin',
-  ip: '192.168.1.5', action: 'إضافة وظيفة', entity: 'job', entity_id: 'BRC-1042',
+  ip: '192.168.1.5', action: 'إضافة وظيفة', entity: 'job', entity_id: 'HRC-1042',
   details: 'تفاصيل', diff: null
 };
 const SETTINGS_ROWS = [
@@ -136,14 +136,14 @@ function mockClient(data, opts) {
 step(1, 'تحويل الوظائف: snake_case → كائن الواجهة المركّب');
 {
   const j = C.jobFromDb(JOB_ROW);
-  check('المعرّف والكود', j.id === JOB_ROW.id && j.code === 'BRC-1042');
+  check('المعرّف والكود', j.id === JOB_ROW.id && j.code === 'HRC-1042');
   check('الأجور camelCase', j.salaryMin === 600000 && j.salaryMax === 750000);
   check('المتطلبات مصفوفة كما هي', Array.isArray(j.requirements) && j.requirements.length === 2);
   check('بيانات صاحب العمل تُجمَّع في كائن employer{}',
     j.employer && j.employer.name === 'مخازن الفرات' && j.employer.phone === '07701234567' && j.employer.address === 'الحلة - الصناعية',
     JSON.stringify(j.employer));
   check('interviewLocation من interview_location', j.interviewLocation === 'مقر الشركة');
-  check('reservedBy من reserved_by', j.reservedBy === 'BRC-NO-000120');
+  check('reservedBy من reserved_by', j.reservedBy === 'HRC-NO-000120');
   check('التواريخ ISO (مع تحويل +00:00)', j.holdExpiresAt === '2026-09-16T10:00:00+00:00' && j.createdAt === '2026-09-10T08:00:00+00:00');
   check('closed_at = null يبقى null', j.closedAt === null);
   check('vacancies رقم', j.vacancies === 2);
@@ -160,7 +160,7 @@ step(2, 'تحويل الاستمارات والمحاولات والتدقيق')
   check('feePaid منطقي', a.feePaid === true);
   check('printedCount و attemptLimit', a.printedCount === 3 && a.attemptLimit === 5);
   check('dob يبقى ' + "'YYYY-MM-DD'" + ' (نوع date في SQL)', a.dob === '1997-11-30');
-  check('serial كما هو (مفتاح الربط)', a.serial === 'BRC-NO-000120');
+  check('serial كما هو (مفتاح الربط)', a.serial === 'HRC-NO-000120');
 
   const st = C.staffFromDb(STAFF_ROW);
   check('الموظف: name من full_name', st.name === 'أحمد الموسوي');
@@ -168,7 +168,7 @@ step(2, 'تحويل الاستمارات والمحاولات والتدقيق')
 
   const au = C.auditFromDb(AUDIT_ROW);
   check('التدقيق: user من username', au.user === 'admin');
-  check('التدقيق: entityId من entity_id', au.entityId === 'BRC-1042');
+  check('التدقيق: entityId من entity_id', au.entityId === 'HRC-1042');
   check('التدقيق: معرّف bigserial رقمي يبقى صالحاً', au.id === 42);
 }
 
@@ -238,7 +238,7 @@ step(6, 'fetchAll — جلب متوازٍ لكل الجداول');
   const db = await C.fetchAll(client);
   check('كل الجداول الستة طُلبت',
     C.TABLES.every((t) => client.__calls.length >= 0) && C.TABLES.length === 6, C.TABLES.join(','));
-  check('jobs وصلت ومحوّلة', db.jobs.length === 1 && db.jobs[0].code === 'BRC-1042');
+  check('jobs وصلت ومحوّلة', db.jobs.length === 1 && db.jobs[0].code === 'HRC-1042');
   check('attempts وصلت ومُسطّحة', db.attempts.length === 1 && db.attempts[0].employerName === 'مخازن الفرات');
   check('audit وصل', db.audit.length === 1 && db.audit[0].action === 'إضافة وظيفة');
   check('لا جداول فاشلة', db.meta.failedTables.length === 0, JSON.stringify(db.meta.failedTables));
@@ -256,20 +256,20 @@ step(7, 'Realtime — تطبيق التغييرات على الذاكرة');
   const db = C.buildDb(FULL);
 
   /* إضافة وظيفة جديدة */
-  const newJob = { ...JOB_ROW, id: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', code: 'BRC-2000', title: 'سائق', employer_name: 'شركة النقل', employer_phone: '0770', employer_address: 'بغداد' };
+  const newJob = { ...JOB_ROW, id: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', code: 'HRC-2000', title: 'سائق', employer_name: 'شركة النقل', employer_phone: '0770', employer_address: 'بغداد' };
   C.applyChange(db, 'jobs', { eventType: 'INSERT', new: newJob });
-  check('INSERT يضيف الوظيفة في المقدمة', db.jobs[0].code === 'BRC-2000' && db.jobs.length === 2, db.jobs.length + '');
+  check('INSERT يضيف الوظيفة في المقدمة', db.jobs[0].code === 'HRC-2000' && db.jobs.length === 2, db.jobs.length + '');
 
   /* تعديل وظيفة موجودة */
   C.applyChange(db, 'jobs', { eventType: 'UPDATE', new: { ...JOB_ROW, title: 'عامل مخزن (معدّل)' } });
-  const updated = db.jobs.find((j) => j.code === 'BRC-1042');
+  const updated = db.jobs.find((j) => j.code === 'HRC-1042');
   check('UPDATE يستبدل ولا يكرّر', db.jobs.length === 2 && updated.title === 'عامل مخزن (معدّل)', db.jobs.length + '');
   check('تعديل الوظيفة يحدّث البيانات المُسطّحة في المحاولات المرتبطة',
     db.attempts[0].jobTitle === 'عامل مخزن (معدّل)', db.attempts[0].jobTitle);
 
   /* حذف */
   C.applyChange(db, 'jobs', { eventType: 'DELETE', old: { id: newJob.id } });
-  check('DELETE يحذف الوظيفة', !db.jobs.some((j) => j.code === 'BRC-2000') && db.jobs.length === 1);
+  check('DELETE يحذف الوظيفة', !db.jobs.some((j) => j.code === 'HRC-2000') && db.jobs.length === 1);
 
   /* محاولة جديدة */
   C.applyChange(db, 'job_attempts', { eventType: 'INSERT', new: { ...ATTEMPT_ROW, id: 'bbbbbbbb-5555-4555-8555-bbbbbbbbbbbb', attempt_no: 2, slot_status: 'empty' } });
@@ -310,14 +310,14 @@ step(8, 'subscribeAll — الاشتراك على كل الجداول + إلغا
 /* ------------------------------ 9) حالات حدّية ------------------------------ */
 step(9, 'حالات حدّية — قيم ناقصة/null');
 {
-  const minimal = C.jobFromDb({ id: 'x', code: 'BRC-1', title: 't', region: 'r' });
+  const minimal = C.jobFromDb({ id: 'x', code: 'HRC-1', title: 't', region: 'r' });
   check('وظيفة بأعمدة ناقصة لا تنكسر',
     minimal.title === 't' && minimal.salaryMin === 0 && minimal.requirements.length === 0 &&
     minimal.employer.name === '' && minimal.status === 'available', JSON.stringify(minimal.employer));
   check('category الافتراضي عند غيابه', minimal.category === 'خدمات');
   check('vacancies الافتراضي 1', minimal.vacancies === 1);
 
-  const minApp = C.applicantFromDb({ id: 'y', serial: 'BRC-NO-1', full_name: 'n', phone: 'p' });
+  const minApp = C.applicantFromDb({ id: 'y', serial: 'HRC-NO-1', full_name: 'n', phone: 'p' });
   check('استمارة بأعمدة ناقصة: fee الافتراضي 10000', minApp.fee === 10000, String(minApp.fee));
   check('استمارة ناقصة: attemptLimit الافتراضي 5', minApp.attemptLimit === 5);
   check('استمارة ناقصة: feePaid false', minApp.feePaid === false);

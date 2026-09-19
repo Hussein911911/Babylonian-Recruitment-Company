@@ -37,7 +37,9 @@
   function normalizeSerial(s) {
     s = String(s || '').trim().toUpperCase();
     if (!s) return '';
-    if (s.indexOf('BRC-NO') !== 0) s = 'BRC-NO-' + s.replace(/[^0-9]/g, '').padStart(6, '0');
+    /* نقبل البادئتين: HRC (الحالية) وBRC (استمارات صدرت قبل تغيير الاسم
+       2026-09-19 وما زالت بيد الزبائن). الرقم المجرّد يُكمَّل بالبادئة الحالية. */
+    if (!/^(HRC|BRC)-NO/i.test(s)) s = 'HRC-NO-' + s.replace(/[^0-9]/g, '').padStart(6, '0');
     return s;
   }
 

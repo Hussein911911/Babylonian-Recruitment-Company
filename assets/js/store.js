@@ -374,7 +374,7 @@
 
   function nextJobCode() {
     var code;
-    do { db.counters.jobCode++; code = 'BRC-' + db.counters.jobCode; }
+    do { db.counters.jobCode++; code = 'HRC-' + db.counters.jobCode; }
     while (db.jobs.some(function (j) { return j.code === code; }));
     return code;
   }
@@ -456,7 +456,7 @@
 
   function nextSerial() {
     db.counters.formSerial++;
-    return 'BRC-NO-' + pad(db.counters.formSerial, 6);
+    return 'HRC-NO-' + pad(db.counters.formSerial, 6);
   }
 
   function createApplicant(data) {
@@ -1718,7 +1718,7 @@
     diffCloud: function () { return (cloud.sync && cloud.state === 'on') ? cloud.sync.diff(db) : []; },
     // وظائف
     listJobs: listJobs, getJob: getJob, createJob: createJob, updateJob: updateJob,
-    setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'BRC-' + (db.counters.jobCode + 1); },
+    setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'HRC-' + (db.counters.jobCode + 1); },
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,
     approveApplicant: approveApplicant, rejectApplicant: rejectApplicant,

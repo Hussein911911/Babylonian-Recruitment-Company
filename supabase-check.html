@@ -304,7 +304,7 @@
 
     /* 5) هل البصمة تعمل؟ (تكشف إن كان app.brc_secret مضبوطاً) */
     try {
-      var r = await withTimeout(sb.rpc('verify_form', { p_serial: 'BRC-NO-000120', p_token: null }), 'verify_form');
+      var r = await withTimeout(sb.rpc('verify_form', { p_serial: 'HRC-NO-000120', p_token: null }), 'verify_form');
       if (!r) throw new Error('لا استجابة');
       log('rpc verify_form -> ' + JSON.stringify(r.error || r.data).slice(0, 200));
       if (r.error) {
@@ -329,9 +329,9 @@
        أعطى 3 إخفاقات كاذبة.) نمرّر وسائط بأسمائها الصحيحة وبقيم لا توجد في
        البيانات، فيثبت وجود الدالة دون تغيير أي سجل. */
     var RPCS = [
-      ['select_attempt', { p_serial: 'BRC-NO-000000', p_job_code: 'BRC-0000' }],
-      ['set_outcome',    { p_serial: 'BRC-NO-000000', p_attempt_no: 1, p_outcome: 'rejected', p_note: '' }],
-      ['release_hold',   { p_serial: 'BRC-NO-000000', p_attempt_no: 1, p_reason: '' }]
+      ['select_attempt', { p_serial: 'HRC-NO-000000', p_job_code: 'HRC-0000' }],
+      ['set_outcome',    { p_serial: 'HRC-NO-000000', p_attempt_no: 1, p_outcome: 'rejected', p_note: '' }],
+      ['release_hold',   { p_serial: 'HRC-NO-000000', p_attempt_no: 1, p_reason: '' }]
     ];
     for (var f = 0; f < RPCS.length; f++) {
       var fn = RPCS[f][0], args = RPCS[f][1];
@@ -426,7 +426,7 @@
        لو رجعت خطأً فالمعنى أن المنح أو السكيما ناقصة، وصفحة التحقق ستُظهر
        «لا توجد استمارة» لكل رقم حتى الصحيح (عطل صامت من منظور الباحث). */
     try {
-      var vf = await withTimeout(sb.rpc('verify_form', { p_serial: 'BRC-NO-000000', p_token: null }), 'verify_form');
+      var vf = await withTimeout(sb.rpc('verify_form', { p_serial: 'HRC-NO-000000', p_token: null }), 'verify_form');
       if (!vf) chip(readyBox, 'دالة التحقق (verify_form) تعمل', 'bad', 'لا استجابة');
       else if (vf.error) chip(readyBox, 'دالة التحقق (verify_form) تعمل', 'bad', (vf.error.message || 'خطأ') + ' — راجع منح §9 في schema.sql');
       else if (vf.data && vf.data.ok === false) chip(readyBox, 'دالة التحقق (verify_form) تعمل', 'ok', 'ترجع «لا توجد استمارة» كما هو المتوقّع');

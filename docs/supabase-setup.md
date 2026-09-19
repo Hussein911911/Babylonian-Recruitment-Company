@@ -162,7 +162,7 @@ select brc.next_job_code()     as job_code,
        brc.next_form_serial()  as serial;
 
 -- 3) البصمة تعمل (يجب أن تُرجع 64 حرفاً hex — لو رجع خطأ فالمفتاح غير مضبوط)
-select brc.verify_token('BRC-NO-000120');
+select brc.verify_token('HRC-NO-000120');
 
 -- 4) الإفراج التلقائي مجدول؟
 select jobname, schedule, active from cron.job where jobname = 'brc-auto-release';

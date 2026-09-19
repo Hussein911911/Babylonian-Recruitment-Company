@@ -129,7 +129,7 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
       return json({ ok: false, error: 'لا توجد استمارة بهذا الرقم' });
     }
     if (req.url.startsWith('/rest/v1/rpc/request_form')) {
-      return json({ ok: true, serial: 'BRC-NO-900777', status: 'pending' });
+      return json({ ok: true, serial: 'HRC-NO-900777', status: 'pending' });
     }
     return json({ code: 'PGRST205', message: 'not found' }, 404);
   });
@@ -188,8 +188,8 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
 
   /* الدوال: الطلب الإلكتروني والتحقق من نفس الصفحة/الصفحة المجاورة */
   const req = await w.BRCStore.submitPublicRequest({ fullName: 'علي', phone: '07701112223', address: 'بابل', gender: 'ذكر' });
-  check('الطلب الإلكتروني يعمل بالعميل المصغّر (RPC)', req.ok && req.serial === 'BRC-NO-900777', JSON.stringify(req));
-  const vr = await w.BRCStore.verifyCloud('BRC-NO-000000', null);
+  check('الطلب الإلكتروني يعمل بالعميل المصغّر (RPC)', req.ok && req.serial === 'HRC-NO-900777', JSON.stringify(req));
+  const vr = await w.BRCStore.verifyCloud('HRC-NO-000000', null);
   check('التحقق يعمل بالعميل المصغّر ويُرجع «لا توجد استمارة»', vr.ok === false && /لا توجد استمارة/.test(vr.error), JSON.stringify(vr));
   check('لا محاولة تسجيل دخول من صفحة عامة', (await w.BRCStore.signIn('admin', 'x')).code === 'no_auth');
 

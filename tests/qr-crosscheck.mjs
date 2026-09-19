@@ -63,13 +63,13 @@ function matrixToImage(isDark, n, scale = 4, quiet = 4) {
 
 const samples = [
   'BRC-000120',
-  'BRC-1042',
+  'HRC-1042',
   'https://brc-babil.com/verify?form=BRC-000120',
-  'https://brc-babil.com/verify?form=BRC-NO-000120&t=9f2b1c3d',
+  'https://brc-babil.com/verify?form=HRC-NO-000120&t=9f2b1c3d',
   'شركة الهدف للتوظيف',
   'حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي',
-  'BRC-1042|محمد علي حسين|07760058007',
-  JSON.stringify({ s: 'BRC-NO-000120', a: ['BRC-1042', 'BRC-1043'], n: 'علي حسين محمد' }),
+  'HRC-1042|محمد علي حسين|07760058007',
+  JSON.stringify({ s: 'HRC-NO-000120', a: ['HRC-1042', 'HRC-1043'], n: 'علي حسين محمد' }),
   'A'.repeat(300),
   'x'.repeat(1200),
   '0123456789'.repeat(20),

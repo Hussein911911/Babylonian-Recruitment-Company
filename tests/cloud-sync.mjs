@@ -85,7 +85,7 @@ function mockClient(opts = {}) {
           const row = Object.assign({}, state._payload);
           if (table === 'audit_log' && row.id == null) row.id = ++auditSeq;
           if (table === 'jobs' && opts.serverGeneratesCode && !row.code) row.code = 'BRC-9999';
-          if (table === 'applicants' && opts.serverGeneratesSerial && !row.serial) row.serial = 'BRC-NO-999999';
+          if (table === 'applicants' && opts.serverGeneratesSerial && !row.serial) row.serial = 'HRC-NO-999999';
           rows[table] = rows[table] || [];
           rows[table].push(row);
           return Promise.resolve({ data: [row], error: null }).then(res, rej);
@@ -218,8 +218,8 @@ step(4, 'Sync — اشتقاق العمليات من الفرق');
   const base = () => ({
     settings: { attemptLimit: 5, validityDays: 30, holdHours: 24, formFee: 10000 },
     jobs: [{ code: 'BRC-1', title: 'وظيفة', category: 'خدمات', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0700', address: 'ع' }, interviewLocation: 'م', status: 'available', reservedBy: null, holdExpiresAt: null, closedAt: null, notes: '', imageUrl: '' }],
-    applicants: [{ serial: 'BRC-NO-1', fullName: 'باحث', phone: '0770', address: '', dob: null, gender: 'ذكر', nationality: 'عراقي', status: 'active', fee: 10000, feePaid: false, printedCount: 0, notes: '', requestedCode: null }],
-    attempts: [{ serial: 'BRC-NO-1', no: 1, jobCode: 'BRC-1', slotStatus: 'empty', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
+    applicants: [{ serial: 'HRC-NO-1', fullName: 'باحث', phone: '0770', address: '', dob: null, gender: 'ذكر', nationality: 'عراقي', status: 'active', fee: 10000, feePaid: false, printedCount: 0, notes: '', requestedCode: null }],
+    attempts: [{ serial: 'HRC-NO-1', no: 1, jobCode: 'BRC-1', slotStatus: 'empty', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
     audit: [], staff: []
   });
 
@@ -333,7 +333,7 @@ step('5ب', 'Sync — المفاتيح المركّبة والمتغيّرة');
 {
   const db = {
     settings: { attemptLimit: 5 }, jobs: [], applicants: [],
-    attempts: [{ serial: 'BRC-NO-1', no: 3, jobCode: 'BRC-1', slotStatus: 'reserved', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
+    attempts: [{ serial: 'HRC-NO-1', no: 3, jobCode: 'BRC-1', slotStatus: 'reserved', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
     audit: [], staff: []
   };
   const snap = S.snapshotOf({ settings: { attemptLimit: 5 }, jobs: [], applicants: [], attempts: [], audit: [], staff: [] });
@@ -341,7 +341,7 @@ step('5ب', 'Sync — المفاتيح المركّبة والمتغيّرة');
   const sync = S.create(client, { snapshot: snap });
   await sync.push(db);
   const ins = client.__calls.find((c) => c.op === 'insert');
-  check('محاولة تُدفع بأعمدة صحيحة', ins && ins.table === 'job_attempts' && ins.payload.serial === 'BRC-NO-1' && ins.payload.attempt_no === 3);
+  check('محاولة تُدفع بأعمدة صحيحة', ins && ins.table === 'job_attempts' && ins.payload.serial === 'HRC-NO-1' && ins.payload.attempt_no === 3);
 
   /* التحديث يستخدم مفتاحاً مركّباً */
   db.attempts[0].slotStatus = 'succeeded';
@@ -394,7 +394,7 @@ step('5ج', 'Sync — لا تنفيذ صامت: كل عملية مُعلَنة �
 step(6, 'Sync — تصادم المفاتيح (موظفان في نفس اللحظة)');
 {
   const db = {
-    settings: {}, jobs: [{ code: 'BRC-1042', title: 'وظيفة', category: 'خدمات', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: '' }, interviewLocation: '', status: 'available', notes: '', imageUrl: '' }],
+    settings: {}, jobs: [{ code: 'HRC-1042', title: 'وظيفة', category: 'خدمات', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: '' }, interviewLocation: '', status: 'available', notes: '', imageUrl: '' }],
     applicants: [], attempts: [], audit: [], staff: []
   };
   const snap = S.snapshotOf({ settings: {}, jobs: [], applicants: [], attempts: [], audit: [], staff: [] });
@@ -467,14 +467,14 @@ step('6ب', 'Sync — كل حقل مؤثّر يصل فعلاً إلى القاع
     holdExpiresAt: null, closedAt: null, createdAt: '2026-01-01T00:00:00.000Z'
   };
   const applicant = {
-    id: 'app-1', serial: 'BRC-NO-000120', fullName: 'باحث', phone: '0771', address: 'الحلة',
+    id: 'app-1', serial: 'HRC-NO-000120', fullName: 'باحث', phone: '0771', address: 'الحلة',
     dob: '1995-01-01', gender: 'ذكر', nationality: 'عراقي', status: 'active',
     issueDate: '2026-01-01T00:00:00.000Z', expiryDate: '2026-01-31T00:00:00.000Z',
     attemptLimit: 5, fee: 10000, feePaid: true, printedCount: 1, notes: '', rejectReason: '',
     requestedCode: 'BRC-1', createdAt: '2026-01-01T00:00:00.000Z'
   };
   const attempt = {
-    id: 'att-1', serial: 'BRC-NO-000120', no: 1, jobId: '11111111-1111-1111-1111-111111111111',
+    id: 'att-1', serial: 'HRC-NO-000120', no: 1, jobId: '11111111-1111-1111-1111-111111111111',
     jobCode: 'BRC-1', jobTitle: 'وظيفة', location: 'الحلة', employerName: 'شركة',
     employerPhone: '0770', slotStatus: 'reserved', selectedAt: '2026-01-02T00:00:00.000Z',
     holdExpiresAt: '2026-01-03T00:00:00.000Z', closedAt: null, note: 'ملاحظة', staff: 'admin'
@@ -551,7 +551,7 @@ step('7ب', 'Sync — الفشل الجزئي: عملية فاشلة لا توق
 {
   const db = {
     settings: {}, jobs: [{ code: 'BRC-1', title: 'أ', category: 'خدمات', region: 'ح', salaryMin: 1, salaryMax: 2, shift: 'ص', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: '' }, interviewLocation: '', status: 'available', notes: '', imageUrl: '' }],
-    applicants: [{ serial: 'BRC-NO-1', fullName: 'ب', phone: '0', gender: 'ذكر', nationality: 'عراقي', status: 'active', fee: 1, feePaid: false, printedCount: 0, notes: '' }],
+    applicants: [{ serial: 'HRC-NO-1', fullName: 'ب', phone: '0', gender: 'ذكر', nationality: 'عراقي', status: 'active', fee: 1, feePaid: false, printedCount: 0, notes: '' }],
     attempts: [], audit: [], staff: []
   };
   const snap = S.snapshotOf({ settings: {}, jobs: [], applicants: [], attempts: [], audit: [], staff: [] });
@@ -582,7 +582,7 @@ step('7ب', 'Sync — الفشل الجزئي: عملية فاشلة لا توق
   check('النتيجة تُصرّح بعدد الفاشل', r.failed === 1, JSON.stringify(r));
   check('العملية الفاشلة معلّقة (لم تُوسم كمُزامَنة)', r.pending.includes('jobs:BRC-1'), JSON.stringify(r.pending));
   check('الاستمارة الناجحة لم تُوسم كناجحة فقط — بل تقدّمت اللقطة',
-    ('BRC-NO-1' in sync.getSnapshot().applicants), JSON.stringify(Object.keys(sync.getSnapshot().applicants)));
+    ('HRC-NO-1' in sync.getSnapshot().applicants), JSON.stringify(Object.keys(sync.getSnapshot().applicants)));
 
   /* الدفع التالي: تُعاد الوظيفة وحدها، والاستمارة لا تُرسل مرتين */
   const before = client.__calls.filter((c) => c.table === 'applicants' && c.op === 'insert').length;
@@ -654,8 +654,8 @@ step(9, 'Sync — الأعمدة المُرسلة تطابق مخطط القاع
   const db = {
     settings: { attemptLimit: 5 },
     jobs: [{ code: 'BRC-1', title: 'أ', category: 'خدمات', region: 'ح', salaryMin: 1, salaryMax: 2, shift: 'ص', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: 'ع' }, interviewLocation: 'م', status: 'available', reservedBy: null, holdExpiresAt: null, closedAt: null, notes: '', imageUrl: '' }],
-    applicants: [{ serial: 'BRC-NO-1', fullName: 'ب', phone: '0', address: '', dob: null, gender: 'ذكر', nationality: 'عراقي', status: 'active', fee: 1, feePaid: false, printedCount: 0, notes: '', requestedCode: null }],
-    attempts: [{ serial: 'BRC-NO-1', no: 1, jobCode: 'BRC-1', slotStatus: 'empty', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
+    applicants: [{ serial: 'HRC-NO-1', fullName: 'ب', phone: '0', address: '', dob: null, gender: 'ذكر', nationality: 'عراقي', status: 'active', fee: 1, feePaid: false, printedCount: 0, notes: '', requestedCode: null }],
+    attempts: [{ serial: 'HRC-NO-1', no: 1, jobCode: 'BRC-1', slotStatus: 'empty', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
     audit: [], staff: []
   };
 

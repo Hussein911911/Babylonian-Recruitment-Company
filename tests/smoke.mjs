@@ -132,13 +132,13 @@ check('التصفية بالحالة تعمل', () => {
   return (n === shown && n > 0 && n < 8) || ('بطاقات ' + n + ' / عدّاد ' + shown);
 });
 const fq = site.doc.getElementById('filter-q');
-fq.value = 'BRC-1042';
+fq.value = 'HRC-1042';
 fq.dispatchEvent(new site.window.Event('input'));
 await new Promise((r) => setTimeout(r, 340));
 check('نتيجة البحث بالكود = وظيفة واحدة', () => {
   const n = site.doc.querySelectorAll('#jobs-grid .job-card').length;
   const codeEl = site.doc.querySelector('#jobs-grid .job-code');
-  return (n === 1 && codeEl.textContent.includes('BRC-1042')) || ('عدد: ' + n);
+  return (n === 1 && codeEl.textContent.includes('HRC-1042')) || ('عدد: ' + n);
 });
 check('بيانات صاحب العمل لا تظهر في بطاقة الوظيفة العامة', () => {
   const html = site.doc.getElementById('jobs-grid').innerHTML;
@@ -175,7 +175,7 @@ check('بطاقة الوظيفة تعرض «احجز» برابط واتساب �
   const a = site.doc.querySelector('#jobs-grid .job-card a[href^="https://wa.me/"]');
   if (!a) return 'لا يوجد زر حجز بالواتساب في بطاقة الوظيفة';
   const href = a.getAttribute('href');
-  const codeOk = /BRC-\d{3,}/.test(decodeURIComponent(href)) || 'الرسالة لا تحمل كود الوظيفة';
+  const codeOk = /HRC-\d{3,}/.test(decodeURIComponent(href)) || 'الرسالة لا تحمل كود الوظيفة';
   return (codeOk === true && /9647/.test(href)) || String(codeOk);
 });
 check('لا يوجد أي زر «ترشّح» في العرض العام', () => {
@@ -188,10 +188,10 @@ check('تسجيل طلب قيد المراجعة من المنظومة الدا�
   const before = site.window.BRCStore.stats().pendingForms;
   const app = site.window.BRCStore.createApplicant({
     fullName: 'اختبار آلي', phone: '07700000000', address: 'الحلة - بابل',
-    requestedCode: 'BRC-1043', pending: true
+    requestedCode: 'HRC-1043', pending: true
   });
   const after = site.window.BRCStore.stats().pendingForms;
-  const valid = app && app.status === 'pending' && !app.expiryDate && app.requestedCode === 'BRC-1043';
+  const valid = app && app.status === 'pending' && !app.expiryDate && app.requestedCode === 'HRC-1043';
   return (after === before + 1 && valid) || 'لم يُسجَّل الطلب: ' + JSON.stringify(app);
 });
 check('قبول طلب قيد المراجعة يحوّله لاستمارة سارية بخمس محاولات', () => {
@@ -214,13 +214,13 @@ check('رفض طلب قيد المراجعة يعلّم الطلب كمرفوض'
 /* ======================= 2) قالب الاستمارة المطبوعة ======================= */
 console.log('\n=== 2) قالب الاستمارة A4 + الكيو آر كود ===');
 check('قالب الاستمارة يحتوي كل الأقسام المطلوبة', () => {
-  const app = site.window.BRCStore.getApplicant('BRC-NO-000120');
+  const app = site.window.BRCStore.getApplicant('HRC-NO-000120');
   const html = site.window.BRCVoucher.buildHtml(app);
   const needed = [
     'شركة الهدف للتوظيف', 'Al-Hadaf Recruitment Company',
     '07760058007', '07715993271',
     'حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي',
-    'BRC-NO: 000120', 'الاسم الكامل', 'تاريخ الإصدار', 'تاريخ الانتهاء',
+    'HRC-NO: 000120', 'الاسم الكامل', 'تاريخ الإصدار', 'تاريخ الانتهاء',
     'جدول المحاولات', 'كود الوظيفة', 'هاتف جهة الاتصال', 'حالة المهلة',
     'خدمات الشركة تنحصر في توفير الأيادي العاملة', 'الشركة غير مسؤولة قانونياً وعشائياً',
     '<svg', 'توقيع الموظف'
@@ -229,25 +229,25 @@ check('قالب الاستمارة يحتوي كل الأقسام المطلوب
   return missing.length === 0 || 'ناقص: ' + missing.join(' , ');
 });
 check('الاستمارة تعرض 5 صفوف محاولات بالضبط', () => {
-  const app = site.window.BRCStore.getApplicant('BRC-NO-000120');
+  const app = site.window.BRCStore.getApplicant('HRC-NO-000120');
   const html = site.window.BRCVoucher.buildHtml(app);
   const rows = (html.match(/<tr>/g) || []).length - 1; // ناقص صف الترويسة
   return rows === 5 || 'عدد الصفوف: ' + rows;
 });
 check('رابط التحقق في الكيو آر كود بالصيغة المطلوبة', () => {
-  const url = site.window.BRCStore.verifyUrl('BRC-NO-000120');
+  const url = site.window.BRCStore.verifyUrl('HRC-NO-000120');
   // الرابط يتبع نطاق النشر، أو الرابط الرسمي عند العمل من ملف محلي
-  return /^https?:\/\/[^/]+\/verify\?form=BRC-NO-000120&t=[0-9a-f]{8}$/.test(url) ||
-    /^https:\/\/brc-babil\.com\/verify\?form=BRC-NO-000120&t=[0-9a-f]{8}$/.test(url) || url;
+  return /^https?:\/\/[^/]+\/verify\?form=HRC-NO-000120&t=[0-9a-f]{8}$/.test(url) ||
+    /^https:\/\/brc-babil\.com\/verify\?form=HRC-NO-000120&t=[0-9a-f]{8}$/.test(url) || url;
 });
 {
-  const app = site.window.BRCStore.getApplicant('BRC-NO-000119');
+  const app = site.window.BRCStore.getApplicant('HRC-NO-000119');
   const before = app.printedCount;
   site.window.BRCVoucher.print(app);
   await new Promise((r) => setTimeout(r, 260));
-  const after = site.window.BRCStore.getApplicant('BRC-NO-000119').printedCount;
+  const after = site.window.BRCStore.getApplicant('HRC-NO-000119').printedCount;
   const rootHtml = site.doc.getElementById('print-root').innerHTML;
-  if (after === before + 1 && site.window.__printed > 0 && rootHtml.includes('BRC-NO-000119')) {
+  if (after === before + 1 && site.window.__printed > 0 && rootHtml.includes('HRC-NO-000119')) {
     ok('الطباعة تستدعي نافذة الطباعة وتزيد عدّاد الطباعة');
   } else {
     bad('الطباعة تستدعي نافذة الطباعة وتزيد عدّاد الطباعة',
@@ -263,39 +263,39 @@ check('الاختبارات الذاتية لمولّد الكيو آر كود �
 console.log('\n=== 3) منطق المحاولات والحجز 24 ساعة ===');
 const S = site.window.BRCStore;
 check('الحجز المؤقت يضبط الوظيفة على «محجوزة» ويحدد مهلة 24 ساعة', () => {
-  const res = S.selectAttempt('BRC-NO-000118', 'BRC-1046');
+  const res = S.selectAttempt('HRC-NO-000118', 'HRC-1046');
   if (!res.ok) return res.error;
-  const job = S.getJob('BRC-1046');
+  const job = S.getJob('HRC-1046');
   const hours = S.diffHours(job.holdExpiresAt, new Date());
   return (job.status === 'reserved' && hours > 23 && hours <= 24) || ('الحالة ' + job.status + ' والمهلة ' + hours);
 });
 check('رقم هاتف صاحب العمل محفوظ داخلياً ويظهر في الاستمارة المطبوعة', () => {
-  const app = S.getApplicant('BRC-NO-000118');
+  const app = S.getApplicant('HRC-NO-000118');
   const html = site.window.BRCVoucher.buildHtml(app);
-  return html.includes(S.getJob('BRC-1046').employer.phone) || 'هاتف صاحب العمل غير ظاهر في الاستمارة';
+  return html.includes(S.getJob('HRC-1046').employer.phone) || 'هاتف صاحب العمل غير ظاهر في الاستمارة';
 });
 check('رفض المرشح يعيد الوظيفة «متاحة» ويفعّل المحاولة التالية تلقائياً', () => {
-  const pick = S.selectAttempt('BRC-NO-000119', S.listJobs({ status: 'available' })[0].code);
+  const pick = S.selectAttempt('HRC-NO-000119', S.listJobs({ status: 'available' })[0].code);
   if (!pick.ok) return 'تعذّر الترشيح: ' + pick.error;
   const usedNo = pick.attempt.no;
   const jobCode = pick.job.code;
-  const res = S.setOutcome('BRC-NO-000119', usedNo, 'rejected', 'لم يجتز المقابلة');
+  const res = S.setOutcome('HRC-NO-000119', usedNo, 'rejected', 'لم يجتز المقابلة');
   const job = S.getJob(jobCode);
-  const next = S.activeAttempt('BRC-NO-000119');
+  const next = S.activeAttempt('HRC-NO-000119');
   const nextExpected = usedNo + 1;
   return (res.ok && job.status === 'available' && next && next.no === nextExpected) ||
     ('الوظيفة: ' + job.status + ' — المحاولة المستخدمة #' + usedNo + ' — التالية: ' + (next ? next.no : 'لا يوجد'));
 });
 check('الإفراج التلقائي عند انتهاء المهلة يعيد الوظيفة ويوسم المحاولة «انتهت المهلة»', () => {
-  const r = S.selectAttempt('BRC-NO-000119', 'BRC-1047');
+  const r = S.selectAttempt('HRC-NO-000119', 'HRC-1047');
   if (!r.ok) return r.error;
   // إرجاع المهلة إلى الماضي لمحاكاة انتهاء الـ 24 ساعة
-  const job = S.getJob('BRC-1047');
+  const job = S.getJob('HRC-1047');
   job.holdExpiresAt = new Date(Date.now() - 60000).toISOString();
   S.db().attempts.filter((t) => t.jobId === job.id && t.slotStatus === 'reserved')
     .forEach((t) => { t.holdExpiresAt = job.holdExpiresAt; });
   const actions = S.runMaintenance();
-  const slot = S.getAttempts('BRC-NO-000119').find((t) => t.jobId === job.id);
+  const slot = S.getAttempts('HRC-NO-000119').find((t) => t.jobId === job.id);
   return (job.status === 'available' && slot.slotStatus === 'expired' && actions.length > 0) ||
     ('الحالة ' + job.status + ' / المحاولة ' + slot.slotStatus + ' / إجراءات ' + actions.length);
 });
@@ -304,12 +304,12 @@ check('توثيق العملية التلقائية في سجل التدقيق �
   return logs.length > 0 || 'لا سجل إفراج تلقائي';
 });
 check('الاستمارة المنتهية (30 يوماً) تتوقف عن قبول محاولات جديدة', () => {
-  const app = S.getApplicant('BRC-NO-000120');
+  const app = S.getApplicant('HRC-NO-000120');
   app.expiryDate = new Date(Date.now() - 86400000).toISOString();
   app.status = 'active';
   S.runMaintenance();
-  const st = S.formStatus(S.getApplicant('BRC-NO-000120'));
-  const res = S.selectAttempt('BRC-NO-000120', 'BRC-1048');
+  const st = S.formStatus(S.getApplicant('HRC-NO-000120'));
+  const res = S.selectAttempt('HRC-NO-000120', 'HRC-1048');
   return (st === 'expired' && res.ok === false && /صلاحية/.test(res.error)) || ('الحالة ' + st + ' / النتيجة ' + JSON.stringify(res));
 });
 check('حد المحاولات الخمس مُطبّق', () => {
@@ -328,40 +328,40 @@ check('حد المحاولات الخمس مُطبّق', () => {
 /* ======================= 4) صفحة التحقق ======================= */
 console.log('\n=== 4) صفحة التحقق (verify.html) ===');
 /* الزائر: بوابة تسدّ التحقق كلياً (بلا أي بيانات) */
-const gate = await load('verify.html', { search: '?form=BRC-NO-000120' });
+const gate = await load('verify.html', { search: '?form=HRC-NO-000120' });
 check('صفحة التحقق للزائر تعرض بوابة «للموظفين والإدارة فقط»', () => {
   const t = gate.doc.getElementById('verify-root').textContent;
   return /موظفي الشركة والإدارة|تسجيل دخول الموظفين/.test(t) || 'لا توجد بوابة للزائر';
 });
 check('الزائر لا يرى أي بيانات استمارة (لا رقم ولا اسم ولا محاولات)', () => {
   const t = gate.doc.getElementById('verify-root').textContent;
-  const leak = t.includes('BRC-NO-000120') || t.includes('حسين') || /محاولة/.test(t);
+  const leak = t.includes('HRC-NO-000120') || t.includes('حسين') || /محاولة/.test(t);
   return !leak || 'تسريب بيانات للزائر في صفحة التحقق';
 });
 check('لا يمكن للزائر تشغيل التحقق من رابط الكيو آر كود (يبقى محجوباً)', () => {
-  gate.window.BRCVerify.mount('?form=BRC-NO-000120&t=deadbeef');
+  gate.window.BRCVerify.mount('?form=HRC-NO-000120&t=deadbeef');
   const t = gate.doc.getElementById('verify-root').textContent;
-  return (/موظفي الشركة والإدارة/.test(t) && !t.includes('BRC-NO-000120')) || 'البوابة لا تحمي mount()';
+  return (/موظفي الشركة والإدارة/.test(t) && !t.includes('HRC-NO-000120')) || 'البوابة لا تحمي mount()';
 });
 
 /* الموظف: التحقق يعمل كما كان */
-const verify = await load('verify.html', { search: '?form=BRC-NO-000120', session: STAFF_SESSION });
+const verify = await load('verify.html', { search: '?form=HRC-NO-000120', session: STAFF_SESSION });
 check('بجلسة موظف: صفحة التحقق تُحمّل بدون أخطاء', () => verify.errors.length === 0 || verify.errors.join(' | '));
 check('بلا بصمة: تُظهر الرقم والحالة مع تقنيع اسم الباحث وهاتفه', () => {
   const t = verify.doc.getElementById('verify-root').textContent;
   const masked = !t.includes('حسين كاظم عبد الله');
-  return (t.includes('BRC-NO-000120') && masked &&
+  return (t.includes('HRC-NO-000120') && masked &&
     (t.includes('سارية') || t.includes('منتهية') || t.includes('استُهلكت') || t.includes('مكتملة'))) ||
     ('الاسم ظاهر بلا بصمة؟ ' + !masked);
 });
 check('بالنمط: الاسم مقنّع في الرد نفسه لا في العرض فقط', () => {
-  const r = verify.window.BRCStore.verify('BRC-NO-000120');
+  const r = verify.window.BRCStore.verify('HRC-NO-000120');
   return (r.masked === true && !r.fullName.includes('حسين') && /•/.test(r.fullName) && /•/.test(r.phone)) ||
     JSON.stringify({ masked: r.masked, fullName: r.fullName, phone: r.phone });
 });
 /* بالبصمة الصحيحة (كما في رابط الكيو آر كود) تظهر البيانات كاملة */
-const vTok = verify.window.BRCStore.token('BRC-NO-000120');
-const verifyTok = await load('verify.html', { search: '?form=BRC-NO-000120&t=' + vTok, session: STAFF_SESSION });
+const vTok = verify.window.BRCStore.token('HRC-NO-000120');
+const verifyTok = await load('verify.html', { search: '?form=HRC-NO-000120&t=' + vTok, session: STAFF_SESSION });
 check('بالبصمة الصحيحة: اسم الباحث يظهر كاملاً', () => {
   const t = verifyTok.doc.getElementById('verify-root').textContent;
   return t.includes('حسين كاظم عبد الله') || 'الاسم غير ظاهر مع بصمة صحيحة';
@@ -369,7 +369,7 @@ check('بالبصمة الصحيحة: اسم الباحث يظهر كاملاً'
 
 check('تعرض جدول المحاولات مع أكواد الوظائف', () => {
   const rows = verify.doc.querySelectorAll('#verify-root table.data tbody tr').length;
-  const hasCode = verify.doc.getElementById('verify-root').textContent.includes('BRC-1042');
+  const hasCode = verify.doc.getElementById('verify-root').textContent.includes('HRC-1042');
   return (rows === 5 && hasCode) || ('صفوف: ' + rows + ' / كود: ' + hasCode);
 });
 check('تعرض كيو آر كود التحقق (SVG)', () => {
@@ -377,11 +377,11 @@ check('تعرض كيو آر كود التحقق (SVG)', () => {
   return !!svg || 'لا يوجد SVG للكيو آر كود';
 });
 check('رقم غير موجود يعطي رسالة واضحة', () => {
-  const s2 = verify.window.BRCStore.verify('BRC-NO-999999');
+  const s2 = verify.window.BRCStore.verify('HRC-NO-999999');
   return (s2.ok === false && /لا توجد استمارة/.test(s2.error)) || JSON.stringify(s2);
 });
 check('بصمة تحقق غير مطابقة تُرفع كتحذير', () => {
-  const res = verify.window.BRCStore.verify('BRC-NO-000120', 'deadbeef');
+  const res = verify.window.BRCStore.verify('HRC-NO-000120', 'deadbeef');
   return res.tokenOk === false || 'لم يتم كشف البصمة المزيفة';
 });
 
@@ -420,7 +420,7 @@ check('اللوحة المالية وسجل التدقيق مخفيان للمو
 check('جدول الوظائف يعرض بيانات صاحب العمل (للموظف)', () => {
   dash.doc.querySelector('#side-nav button[data-view="jobs"]').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   const t = dash.doc.getElementById('jobs-table-body').textContent;
-  return (t.includes('07701234567') && t.includes('BRC-1042')) || 'البيانات الداخلية غير ظاهرة';
+  return (t.includes('07701234567') && t.includes('HRC-1042')) || 'البيانات الداخلية غير ظاهرة';
 });
 check('جدول الاستمارات يعرض المحاولات المتبقية', () => {
   dash.doc.querySelector('#side-nav button[data-view="applicants"]').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
@@ -440,7 +440,7 @@ check('إصدار استمارة من اللوحة', () => {
   const after = dash.window.BRCStore.stats().forms;
   return after === before + 1 || ('قبل ' + before + ' بعد ' + after);
 });
-check('نموذج إضافة وظيفة يُنتج كود BRC-#### جديداً', () => {
+check('نموذج إضافة وظيفة يُنتج كود HRC-#### جديداً', () => {
   closeAllModals(dash.doc);
   const before = dash.window.BRCStore.stats().totalJobs;
   dash.doc.getElementById('btn-new-job').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
@@ -454,13 +454,13 @@ check('نموذج إضافة وظيفة يُنتج كود BRC-#### جديداً'
   box.querySelector('#job-save').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   const after = dash.window.BRCStore.stats().totalJobs;
   const newJob = dash.window.BRCStore.listJobs({}).find((j) => j.title === 'فني تبريد');
-  return (after === before + 1 && newJob && /^BRC-\d{4}$/.test(newJob.code)) || ('عدد ' + after + ' / كود ' + (newJob && newJob.code));
+  return (after === before + 1 && newJob && /^HRC-\d{4}$/.test(newJob.code)) || ('عدد ' + after + ' / كود ' + (newJob && newJob.code));
 });
 check('شاشة الحجوزات تعرض الحجوزات الجارية مع العدّاد التنازلي', () => {
-  const r = dash.window.BRCStore.selectAttempt('BRC-NO-000117', 'BRC-1049') ;
-  // BRC-1049 مغلقة → نتوقع فشلاً، ثم نجرّب وظيفة متاحة
+  const r = dash.window.BRCStore.selectAttempt('HRC-NO-000117', 'HRC-1049') ;
+  // HRC-1049 مغلقة → نتوقع فشلاً، ثم نجرّب وظيفة متاحة
   const avail = dash.window.BRCStore.listJobs({ status: 'available' })[0];
-  const ok = dash.window.BRCStore.selectAttempt('BRC-NO-000117', avail.code);
+  const ok = dash.window.BRCStore.selectAttempt('HRC-NO-000117', avail.code);
   dash.doc.querySelector('#side-nav button[data-view="holds"]').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   const list = dash.doc.getElementById('holds-list').textContent;
   const timer = dash.doc.querySelector('#holds-list [data-expiry]');
@@ -484,10 +484,10 @@ check('سجل التدقيق يرصد كل العمليات بالثانية', (
 check('البحث السريع بالكود يفتح بطاقة الوظيفة', () => {
   closeAllModals(dash.doc);
   const q = dash.doc.getElementById('quick-code');
-  q.value = 'BRC-1045';
+  q.value = 'HRC-1045';
   dash.doc.getElementById('quick-code-form').dispatchEvent(new dash.window.Event('submit', { bubbles: true, cancelable: true }));
   const modal = lastModal(dash.doc);
-  return (modal && modal.textContent.includes('BRC-1045') && modal.textContent.includes('بطاقة الوظيفة الداخلية')) || 'لم تُفتح البطاقة';
+  return (modal && modal.textContent.includes('HRC-1045') && modal.textContent.includes('بطاقة الوظيفة الداخلية')) || 'لم تُفتح البطاقة';
 });
 check('صلاحية المدير تُظهر اللوحة المالية وسجل التدقيق الكامل', () => {
   closeAllModals(dash.doc);
@@ -523,25 +523,25 @@ check('لا مسارات ملفات خارجية (كل شيء مدمج)', () => 
   return bads.length === 0 || bads.join(',');
 });
 /* نسخة ثانية بجلسة موظف: التحقق يفتح داخل الملف المستقل */
-const stStaff = await load('brc-standalone.html', { hash: '#!verify?form=BRC-NO-000120', session: STAFF_SESSION });
+const stStaff = await load('brc-standalone.html', { hash: '#!verify?form=HRC-NO-000120', session: STAFF_SESSION });
 
 check('القسم العام يعرض الوظائف داخل الملف المستقل', () => {
   const n = st.doc.querySelectorAll('#jobs-grid .job-card').length;
   return n >= 8 || 'عدد البطاقات ' + n;
 });
 check('مسار التحقق بالملف المستقل محجوب عن الزائر', () => {
-  st.window.location.hash = '#!verify?form=BRC-NO-000120';
+  st.window.location.hash = '#!verify?form=HRC-NO-000120';
   st.window.dispatchEvent(new st.window.Event('hashchange'));
   const root = st.doc.getElementById('verify-root').textContent;
   const routeHidden = st.doc.getElementById('route-verify').hidden;
   const siteHidden = st.doc.getElementById('route-site').hidden;
-  const blocked = /موظفي الشركة والإدارة/.test(root) && !root.includes('BRC-NO-000120');
+  const blocked = /موظفي الشركة والإدارة/.test(root) && !root.includes('HRC-NO-000120');
   return (!routeHidden && siteHidden && blocked) ||
     ('مخفي التحقق: ' + routeHidden + ' / النص: ' + root.slice(0, 60));
 });
 check('مسار التحقق بالملف المستقل يعمل بجلسة موظف', () => {
   const root = stStaff.doc.getElementById('verify-root').textContent;
-  return root.includes('BRC-NO-000120') || ('النص: ' + root.slice(0, 90));
+  return root.includes('HRC-NO-000120') || ('النص: ' + root.slice(0, 90));
 });
 check('المسار الهاشي يعرض المنظومة الداخلية', () => {
   st.window.location.hash = '#!dashboard';
@@ -570,11 +570,11 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
 {
   const REST = 'https://vqsvztudvfukyuerzcgx.supabase.co/rest/v1/';
   const CLOUD_JOBS = [
-    { code: 'BRC-9001', title: 'فني تشغيل من القاعدة', category: 'تقني', region: 'الحلة', shift: 'صباحي',
+    { code: 'HRC-9001', title: 'فني تشغيل من القاعدة', category: 'تقني', region: 'الحلة', shift: 'صباحي',
       salary_min: 700000, salary_max: 900000, gender: 'لا فرق', vacancies: 2, requirements: ['خبرة سنتين'],
       status: 'available', is_reserved: false, hold_expires_at: null,
       created_at: '2026-09-01T00:00:00.000Z', description: 'وصف معلن', image_url: '' },
-    { code: 'BRC-9002', title: 'محاسب من القاعدة', category: 'إداري', region: 'المسيب', shift: 'دوام كامل',
+    { code: 'HRC-9002', title: 'محاسب من القاعدة', category: 'إداري', region: 'المسيب', shift: 'دوام كامل',
       salary_min: 900000, salary_max: 1200000, gender: 'لا فرق', vacancies: 1, requirements: [],
       status: 'available', is_reserved: false, hold_expires_at: null,
       created_at: '2026-09-02T00:00:00.000Z', description: '', image_url: '' }
@@ -657,13 +657,13 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
   await acheck('هيكل التحميل يظهر أثناء قراءة public_jobs (لا بيانات متصفح)', async () => {
     await pollUntil(() => okPage.doc.querySelectorAll('#jobs-grid .job-card.skeleton').length > 0, 4000, 'ظهور الهيكل');
     const grid = okPage.doc.getElementById('jobs-grid').textContent;
-    return (!grid.includes('BRC-1042') && okPage.doc.querySelectorAll('#hero-stats .hero-stat.skeleton').length === 4) ||
+    return (!grid.includes('HRC-1042') && okPage.doc.querySelectorAll('#hero-stats .hero-stat.skeleton').length === 4) ||
       'ظهرت بيانات المتصفح أثناء التحميل أو الهيكل ناقص';
   });
   await acheck('بعد الرد: الوظائف المعلنة من القاعدة (لا التجريبية)', async () => {
     await pollUntil(() => okPage.doc.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length > 0, 5000, 'وصول الوظائف');
     const grid = okPage.doc.getElementById('jobs-grid').textContent;
-    return (grid.includes('BRC-9001') && grid.includes('BRC-9002') && !grid.includes('BRC-1042')) ||
+    return (grid.includes('HRC-9001') && grid.includes('HRC-9002') && !grid.includes('HRC-1042')) ||
       'البطاقات ليست من القاعدة: ' + grid.slice(0, 80);
   });
   await acheck('إحصاءات الزائر من المعلن فقط (لا أعداد استمارات داخلية)', async () => {
@@ -678,7 +678,7 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
   });
   await acheck('بطاقة الوظيفة تعرض «احجز» بواتساب يحمل كود الوظيفة المعلنة', async () => {
     const a = okPage.doc.querySelector('#jobs-grid .job-card a[href^="https://wa.me/"]');
-    return (a && /BRC-9001|BRC-9002/.test(decodeURIComponent(a.getAttribute('href')))) || 'لا زر حجز واتساب';
+    return (a && /HRC-9001|HRC-9002/.test(decodeURIComponent(a.getAttribute('href')))) || 'لا زر حجز واتساب';
   });
   okPage.dom.window.close();
 
@@ -697,7 +697,7 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
   });
   await acheck('حالة الفراغ لا تعرض البيانات التجريبية إطلاقاً', async () => {
     const body = emptyPage.doc.getElementById('jobs-grid').textContent + emptyPage.doc.getElementById('hero-stats').textContent;
-    return !body.includes('BRC-1042') || 'ظهرت بيانات seed مع قاعدة فارغة';
+    return !body.includes('HRC-1042') || 'ظهرت بيانات seed مع قاعدة فارغة';
   });
   emptyPage.dom.window.close();
 
@@ -711,7 +711,7 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
   });
   await acheck('عند الفشل لا تُعرض وظائف المتصفح التجريبية', async () => {
     const grid = failPage.doc.getElementById('jobs-grid').textContent;
-    return (!grid.includes('BRC-1042') && !grid.includes('عامل مخزن')) || 'سقط العرض إلى بيانات seed عند الفشل';
+    return (!grid.includes('HRC-1042') && !grid.includes('عامل مخزن')) || 'سقط العرض إلى بيانات seed عند الفشل';
   });
   failPage.dom.window.close();
 }
@@ -732,7 +732,7 @@ console.log('\n=== 8) أدوات الموظف — التحقق من المنظو
   if (viewBtn) viewBtn.dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   await new Promise((r) => setTimeout(r, 120));
 
-  const verifyBtn = dash.doc.querySelector('[data-app-verify="BRC-NO-000120"]');
+  const verifyBtn = dash.doc.querySelector('[data-app-verify="HRC-NO-000120"]');
   check('زر التحقق من الاستمارة موجود في جدول الموظف',
     () => !!verifyBtn || ('الأزرار الموجودة: ' + dash.doc.querySelectorAll('[data-app-verify]').length));
 
@@ -742,12 +742,12 @@ console.log('\n=== 8) أدوات الموظف — التحقق من المنظو
     const box = lastModal(dash.doc);
     const bt = box ? box.textContent : '';
     check('نافذة التحقق تعرض الرقم ورابط التحقق المطبوع',
-      () => (/BRC-NO-000120/.test(bt) && /\/verify(\.html)?\?form=/.test(bt)) || bt.slice(0, 120));
+      () => (/HRC-NO-000120/.test(bt) && /\/verify(\.html)?\?form=/.test(bt)) || bt.slice(0, 120));
     check('كيو آر كود الاستمارة مرسوم داخل النافذة', () => !!(box && box.querySelector('svg')));
     check('زر «فتح صفحة التحقق» موجود للموظف', () => !!(box && box.querySelector('#go-verify')));
     check('رابط التحقق المحلي صالح',
-      () => /verify\.html\?form=BRC-NO-000120/.test(dash.window.BRCStore.verifyLocalUrl('BRC-NO-000120')),
-      dash.window.BRCStore.verifyLocalUrl('BRC-NO-000120'));
+      () => /verify\.html\?form=HRC-NO-000120/.test(dash.window.BRCStore.verifyLocalUrl('HRC-NO-000120')),
+      dash.window.BRCStore.verifyLocalUrl('HRC-NO-000120'));
     const close = box && box.querySelector('[data-close]');
     if (close) close.dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   }

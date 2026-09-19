@@ -240,7 +240,7 @@ step(8, 'الاكتمال — كل ما وعد به المخطط موجود فع
 
 for (const [label, re] of [
   ['تسلسل أكواد الوظائف (BRC-####)', /create\s+sequence\s+if\s+not\s+exists\s+brc\.job_code_seq/i],
-  ['تسلسل أرقام الاستمارات (BRC-NO-######)', /create\s+sequence\s+if\s+not\s+exists\s+brc\.form_serial_seq/i],
+  ['تسلسل أرقام الاستمارات (HRC-NO-######)', /create\s+sequence\s+if\s+not\s+exists\s+brc\.form_serial_seq/i],
   ['دالة ترشيح وظيفة (منع الحجز المزدوج)', /function\s+brc\.select_attempt/i],
   ['دالة تثبيت نتيجة المقابلة', /function\s+brc\.set_outcome/i],
   ['دالة إفراج يدوي عن حجز', /function\s+brc\.release_hold/i],

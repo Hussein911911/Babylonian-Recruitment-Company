@@ -1515,8 +1515,9 @@
       e.preventDefault();
       var v = (document.getElementById('quick-code').value || '').trim().toUpperCase();
       if (!v) return;
-      if (v.indexOf('BRC-NO') === 0 || /^\d{6}$/.test(v)) {
-        var serial = v.indexOf('BRC-NO') === 0 ? v : 'BRC-NO-' + v;
+      /* البادئتان مقبولتان: استمارات BRC القديمة ما زالت بيد الزبائن */
+      if (/^(HRC|BRC)-NO/i.test(v) || /^\d{6}$/.test(v)) {
+        var serial = /^(HRC|BRC)-NO/i.test(v) ? v : 'HRC-NO-' + v;
         if (Store.getApplicant(serial)) { attemptsModal(serial); return; }
       }
       var job = Store.getJob(v);
@@ -1956,7 +1957,7 @@
         Store.settings().validityDays + ' يوماً و' + Store.settings().attemptLimit + ' محاولات.</p></div></div>';
 
     UI.modal({
-      title: 'إصدار استمارة جديدة', subtitle: 'BRC-NO — تسلسل تلقائي', wide: true, body: body,
+      title: 'إصدار استمارة جديدة', subtitle: 'HRC-NO — تسلسل تلقائي', wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="n-save">' + UI.ic('check') + ' إصدار وطباعة</button>',
       onMount: function (box, close) {

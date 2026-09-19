@@ -311,7 +311,7 @@ for (const [js, page] of CONTRACT) {
      بلا قاعدة بيانات ففارغةً تصبح بلا فائدة — تُحقن وقت البناء.) */
   {
     const FAKE = ['علي حسين محمد', 'زهراء عبد الكريم', '07701112233',
-                  'مخازن الفرات', '07701234567', 'BRC-NO-000117'];
+                  'مخازن الفرات', '07701234567', 'HRC-NO-000117'];
     const dirty = [];
     for (const f of ['index.html', 'verify.html', 'dashboard.html', '404.html']) {
       const src = readFileSync(join(ROOT, f), 'utf8');
@@ -413,15 +413,15 @@ for (const [js, page] of CONTRACT) {
 
   const w = loaded['index.html'].window;
   const hrefs = [...loaded['index.html'].doc.querySelectorAll('#jobs-grid a[href^="https://wa.me/"]')];
-  const msgOk = hrefs.length > 0 && hrefs.every((a) => /BRC-\d{3,}/.test(decodeURIComponent(a.getAttribute('href'))));
+  const msgOk = hrefs.length > 0 && hrefs.every((a) => /HRC-\d{3,}/.test(decodeURIComponent(a.getAttribute('href'))));
   if (!msgOk) bad('بطاقات الوظائف — زر حجز بالواتساب يحمل كود الوظيفة', 'عدد الأزرار: ' + hrefs.length);
   else ok('بطاقات الوظائف — ' + hrefs.length + ' زر حجز بالواتساب، كلها تحمل كود الوظيفة في الرسالة');
 
-  const t = w.BRCStore.token('BRC-NO-000120');
-  const noToken = w.BRCStore.verify('BRC-NO-000120');
+  const t = w.BRCStore.token('HRC-NO-000120');
+  const noToken = w.BRCStore.verify('HRC-NO-000120');
   if (noToken.masked !== true) bad('طبقة البيانات — التحقق بلا بصمة يبقى مقنّعاً', 'masked=' + noToken.masked);
   else ok('طبقة البيانات — لا كشف بيانات بلا بصمة صحيحة (تقنيع في الرد نفسه)');
-  if (!w.BRCStore.verify('BRC-NO-000120', t).ok) bad('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل', 'فشل');
+  if (!w.BRCStore.verify('HRC-NO-000120', t).ok) bad('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل', 'فشل');
   else ok('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل للموظف');
 }
 
@@ -534,7 +534,7 @@ for (const file of PAGES.filter((f) => f.startsWith('brc-'))) {
   ok(file + ' — حجمه ' + sizeMB + ' ميجابايت ويحتوي ' + dataUris + ' أصلاً مدمجاً' + sameAsFull);
 }
 {
-  const routes = ['', '#jobs', '#!verify?form=BRC-NO-000120', '#!dashboard'];
+  const routes = ['', '#jobs', '#!verify?form=HRC-NO-000120', '#!dashboard'];
   ok('مسارات التنقل داخل الملف الواحد: ' + routes.join('  ·  '));
 }
 
@@ -575,7 +575,7 @@ section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا ر�
   else ok('ترويسات الأمان كاملة + sw.js بلا كاش (يُجبر الأجهزة على النسخة الجديدة)');
 
   /* رابط التحقق المطبوع يجب أن يبقى نظيفاً (بلا .html) لأنه يتغيّر إلى النطاق الرسمي */
-  const vurl = loaded['index.html'].window.BRCStore.verifyLocalUrl('BRC-NO-000120');
+  const vurl = loaded['index.html'].window.BRCStore.verifyLocalUrl('HRC-NO-000120');
   if (!/^verify\.html\?/.test(vurl)) bad('رابط التحقق المحلي', vurl);
   else ok('رابط التحقق المحلي نظيف ويطابق مسار /verify في _redirects');
 
@@ -649,7 +649,7 @@ section('9) سلامة البيانات — البيانات التجريبية 
   const apps = S.listApplicants();
   const rules = S.settings();
   if (jobs.length !== 8) bad('الوظائف التجريبية (8)', 'عددها ' + jobs.length); else ok('الوظائف التجريبية: ' + jobs.length + ' وظيفة (' + st.available + ' متاحة · ' + st.reserved + ' محجوزة · ' + st.closed + ' مغلقة)');
-  if (apps.length !== 4) bad('الاستمارات التجريبية (4)', 'عددها ' + apps.length); else ok('الاستمارات التجريبية: ' + apps.length + ' استمارة (' + apps.map((a) => a.serial.replace('BRC-NO-', '')).join(' · ') + ')');
+  if (apps.length !== 4) bad('الاستمارات التجريبية (4)', 'عددها ' + apps.length); else ok('الاستمارات التجريبية: ' + apps.length + ' استمارة (' + apps.map((a) => a.serial.replace('HRC-NO-', '')).join(' · ') + ')');
 
   const slotsOk = apps.every((a) => S.getAttempts(a.serial).length === rules.attemptLimit);
   if (!slotsOk) bad('كل استمارة لها ' + rules.attemptLimit + ' محاولات'); else ok('كل استمارة لها ' + rules.attemptLimit + ' خانات محاولات');
@@ -701,8 +701,8 @@ section('10) الاستمارة المطبوعة A4 — البنية الكام�
 
 {
   const w = loaded['index.html'].window;
-  const app = w.BRCStore.getApplicant('BRC-NO-000120');
-  w.BRCStore.selectAttempt(app.serial, 'BRC-1046');
+  const app = w.BRCStore.getApplicant('HRC-NO-000120');
+  w.BRCStore.selectAttempt(app.serial, 'HRC-1046');
   const fresh = w.BRCStore.getApplicant(app.serial);
   const html = w.BRCVoucher.buildHtml(fresh, w.BRCStore.getAttempts(app.serial));
 
@@ -714,8 +714,8 @@ section('10) الاستمارة المطبوعة A4 — البنية الكام�
     'الهاتف الأول': /07760058007/,
     'الهاتف الثاني': /07715993271/,
     'العنوان الكامل': /حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي/,
-    'الرقم التسلسلي': /BRC-NO:\s*000120/,
-    'اسم الباحث': /سجاد|BRC-NO-000120/,
+    'الرقم التسلسلي': /HRC-NO:\s*000120/,
+    'اسم الباحث': /سجاد|HRC-NO-000120/,
     'تاريخ الإصدار': /تاريخ الإصدار/,
     'تاريخ الانتهاء': /تاريخ الانتهاء|الانتهاء/,
     'جدول المحاولات': /كود الوظيفة/,

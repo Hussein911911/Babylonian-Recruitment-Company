@@ -70,7 +70,7 @@
 
       '<div class="v-band">' +
         '<span>استمارة ترشيح للعمل / Job Placement Voucher</span>' +
-        '<span dir="ltr">BRC-NO: ' + UI.esc(String(app.serial).replace('BRC-NO-', '')) + '</span>' +
+        '<span dir="ltr">' + UI.esc(String(app.serial).replace(/-(\d+)$/, ': $1')) + '</span>' +
       '</div>' +
 
       /* بيانات الباحث */
@@ -109,7 +109,7 @@
       '<div class="v-foot">' +
         '<div class="v-qr">' +
           qrSvg(vUrl, 132) +
-          '<div class="ser">BRC-NO: ' + UI.esc(String(app.serial).replace('BRC-NO-', '')) + '</div>' +
+          '<div class="ser">' + UI.esc(String(app.serial).replace(/-(\d+)$/, ': $1')) + '</div>' +
           '<div class="tiny" style="direction:ltr;color:#444;font-size:8.6px">' + UI.esc(vUrl.replace(/^https?:\/\//, '')) + '</div>' +
         '</div>' +
         '<div>' +

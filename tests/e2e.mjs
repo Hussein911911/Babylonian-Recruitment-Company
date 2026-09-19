@@ -107,7 +107,7 @@ const bookLink = [...site.doc.querySelectorAll('#jobs-grid .job-card a[href^="ht
 check('كل بطاقة وظيفة متاحة تحمل زر حجز بالواتساب (' + bookLink.length + ')', bookLink.length >= 1);
 check('رسالة الواتساب تحمل كود الوظيفة ورقم الشركة', (() => {
   const href = decodeURIComponent(bookLink[0].getAttribute('href'));
-  return /wa\.me\/9647/.test(href) && /BRC-\d{3,}/.test(href) || href.slice(0, 90);
+  return /wa\.me\/9647/.test(href) && /HRC-\d{3,}/.test(href) || href.slice(0, 90);
 })());
 
 /* تفاصيل الوظيفة: خاتمة حجز لا طلب استمارة */
@@ -122,7 +122,7 @@ if (detailsBtn) {
     !box.querySelector('[data-request]') && !box.querySelector('input'));
   const reserveLink = box.querySelector('a[href^="https://wa.me/"]');
   check('خاتمة النافذة فيها زر واتساب للحجز', !!reserveLink, 'لا يوجد رابط حجز');
-  if (reserveLink) check('رابط الحجز في النافذة يحمل كود الوظيفة', /BRC-\d{3,}/.test(decodeURIComponent(reserveLink.getAttribute('href'))));
+  if (reserveLink) check('رابط الحجز في النافذة يحمل كود الوظيفة', /HRC-\d{3,}/.test(decodeURIComponent(reserveLink.getAttribute('href'))));
   const close = box.querySelector('[data-close]');
   if (close) click(W, close);
   await new Promise((r) => setTimeout(r, 120));
@@ -132,7 +132,7 @@ if (detailsBtn) {
 const before = S.listApplicants().length;
 const RECORD = S.createApplicant({
   fullName: 'علي حسن كاظم الفتلاوي', phone: '07701234567', address: 'الحلة - شارع 40 - محلة الجيلاوي',
-  region: 'الحلة', requestedCode: 'BRC-1042', pending: true
+  region: 'الحلة', requestedCode: 'HRC-1042', pending: true
 });
 const SERIAL = RECORD && RECORD.serial;
 const TOKEN = SERIAL ? S.token(SERIAL) : '';
@@ -141,7 +141,7 @@ check('طلب الزائر (هاتفياً / حضورياً) سُجّل في ا�
 console.log('   ℹ  الرقم التسلسلي: ' + SERIAL + '   |   بصمة التحقق: ' + TOKEN);
 check('الطلب مرتبط باسم الباحث الصحيح', !!RECORD && RECORD.fullName === 'علي حسن كاظم الفتلاوي');
 check('الطلب سُجّل كـ «قيد المراجعة» (بدون تاريخ انتهاء)', !!RECORD && RECORD.status === 'pending' && !RECORD.expiryDate);
-check('الوظيفة المطلوبة (BRC-1042) سُجّلت مع الطلب', !!RECORD && RECORD.requestedCode === 'BRC-1042');
+check('الوظيفة المطلوبة (HRC-1042) سُجّلت مع الطلب', !!RECORD && RECORD.requestedCode === 'HRC-1042');
 
 {
   /* ═══ 2) المنظومة الداخلية: الموظف يعتمد الطلب ويحجز الوظيفة ═══════════ */
@@ -184,7 +184,7 @@ check('الوظيفة المطلوبة (BRC-1042) سُجّلت مع الطلب',
     Math.round((new Date(afterApprove.expiryDate) - new Date(afterApprove.issueDate)) / 86400000) === 30);
 
   // حجز وظيفة للاستمارة (إجراء الموظف)
-  const free = dash.w.BRCStore.listJobs({ status: 'available' }).filter((j) => j.code !== 'BRC-1042')[0];
+  const free = dash.w.BRCStore.listJobs({ status: 'available' }).filter((j) => j.code !== 'HRC-1042')[0];
   const picked = dash.w.BRCStore.selectAttempt(SERIAL, free.code);
   dash.w.BRCRefresh && dash.w.BRCRefresh();
   await new Promise((r) => setTimeout(r, 120));
@@ -223,7 +223,7 @@ check('الوظيفة المطلوبة (BRC-1042) سُجّلت مع الطلب',
   step(4, 'سياسة التحقق — الزائر لا يرى أي بيانات استمارة');
 
   const q = '?form=' + encodeURIComponent(SERIAL) + '&t=' + TOKEN;
-  const qAny = '?form=BRC-NO-000120';
+  const qAny = '?form=HRC-NO-000120';
   const visitor = await open('verify.html', q);
   visitor.w.BRCStore.importJson(DB2);
   visitor.w.BRCVerify.mount(q);            // نفس ما يفعله فتح رابط الكيو آر كود
@@ -281,7 +281,7 @@ check('الوظيفة المطلوبة (BRC-1042) سُجّلت مع الطلب',
     ['ترويسة الشركة', /شركة الهدف للتوظيف|Al-Hadaf Recruitment/],
     ['الهاتفان', /07760058007[\s\S]*07715993271/],
     ['العنوان الكامل', /حلة - شارع 60 - قرب مدينة حمورابي/],
-    ['الاسم التسلسلي للاستمارة', new RegExp('BRC-NO:?\\s*' + SERIAL.replace('BRC-NO-', ''))],
+    ['الاسم التسلسلي للاستمارة', new RegExp('HRC-NO:?\\s*' + SERIAL.replace('HRC-NO-', ''))],
     ['اسم الباحث', /علي حسن كاظم/],
     ['جدول المحاولات الخمس', /كود الوظيفة/],
     ['الكيو آر كود', /<svg[\s\S]*<path/],

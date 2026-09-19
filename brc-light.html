@@ -1915,8 +1915,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           عبر منظومة إدارية موثّقة: استمارة رسمية، محاولات منظّمة، وكيو آر كود للتحقق لحظياً.
         </p>
         <ul class="feature-list">
-          <li class="reveal" data-d="300"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>استمارة صالحة 30 يوماً</b> بمرجع تسلسلي فريد (BRC-NO) وخمس محاولات مرتّبة.</span></li>
-          <li class="reveal" data-d="360"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>كود مصغّر لكل وظيفة</b> (مثال: <span class="mono">BRC-1042</span>) يسهّل المتابعة والتوثيق.</span></li>
+          <li class="reveal" data-d="300"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>استمارة صالحة 30 يوماً</b> بمرجع تسلسلي فريد (HRC-NO) وخمس محاولات مرتّبة.</span></li>
+          <li class="reveal" data-d="360"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>كود مصغّر لكل وظيفة</b> (مثال: <span class="mono">HRC-1042</span>) يسهّل المتابعة والتوثيق.</span></li>
           <li class="reveal" data-d="420"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>إفراج تلقائي بعد 24 ساعة</b> حين لا تُثبَّت نتيجة المقابلة — لا احتكار للفرص.</span></li>
           <li class="reveal" data-d="480"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>سجل تدقيق بالثانية</b> لكل عملية في المنظومة الداخلية (مستخدم، وقت، IP، تفاصيل).</span></li>
           <li class="reveal" data-d="540"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span><b>لوحة مالية للإدارة</b> تُظهر عدد الاستمارات الصادرة والمبالغ المتوقعة لكل موظف.</span></li>
@@ -2066,7 +2066,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       <form class="toolbar" id="verify-form" autocomplete="off">
         <div class="field grow">
           <label for="v-serial">الرقم التسلسلي للاستمارة</label>
-          <input type="text" id="v-serial" placeholder="BRC-NO-000120" required>
+          <input type="text" id="v-serial" placeholder="HRC-NO-000120" required>
         </div>
         <div class="field">
           <label>&nbsp;</label>
@@ -2074,7 +2074,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         </div>
       </form>
       <p class="tiny muted mt-2 mb-0">
-        اكتب الرقم التسلسلي كما هو مطبوع على الاستمارة (مثال: <b class="mono" dir="ltr">BRC-NO-000120</b>)
+        اكتب الرقم التسلسلي كما هو مطبوع على الاستمارة (مثال: <b class="mono" dir="ltr">HRC-NO-000120</b>)
       </p>
     </div>
   </div>
@@ -2205,7 +2205,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       <div class="flex flex-wrap" style="gap:6px">
         <form class="search-wrap" id="quick-code-form" style="min-width:220px">
           <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
-          <input type="text" id="quick-code" placeholder="بحث سريع بكود الوظيفة (BRC-1042)" aria-label="بحث بكود الوظيفة">
+          <input type="text" id="quick-code" placeholder="بحث سريع بكود الوظيفة (HRC-1042)" aria-label="بحث بكود الوظيفة">
         </form>
         <button class="btn btn-lapis btn-sm" id="btn-new-app"><svg class="ic"><use href="#i-user-plus" xlink:href="#i-user-plus"/></svg> إصدار استمارة</button>
         <button class="btn btn-gold btn-sm" id="btn-new-job"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة وظيفة</button>
@@ -2259,7 +2259,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
               <label for="jq">بحث (كود / عنوان / صاحب عمل)</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="jq" placeholder="BRC-1042 أو سائق ...">
+                <input type="search" id="jq" placeholder="HRC-1042 أو سائق ...">
               </div>
             </div>
             <div class="field">
@@ -2311,7 +2311,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
               <label for="aq">بحث (رقم تسلسلي / اسم / هاتف)</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="aq" placeholder="BRC-NO-000120 أو اسم الباحث">
+                <input type="search" id="aq" placeholder="HRC-NO-000120 أو اسم الباحث">
               </div>
             </div>
             <div class="field">
@@ -2385,7 +2385,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
               <label for="log-q">بحث في التفاصيل</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="log-q" placeholder="إفراج تلقائي ، BRC-1042 ، اسم مستخدم ...">
+                <input type="search" id="log-q" placeholder="إفراج تلقائي ، HRC-1042 ، اسم مستخدم ...">
               </div>
             </div>
             <div class="field">
@@ -4097,7 +4097,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
   function nextJobCode() {
     var code;
-    do { db.counters.jobCode++; code = 'BRC-' + db.counters.jobCode; }
+    do { db.counters.jobCode++; code = 'HRC-' + db.counters.jobCode; }
     while (db.jobs.some(function (j) { return j.code === code; }));
     return code;
   }
@@ -4179,7 +4179,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
   function nextSerial() {
     db.counters.formSerial++;
-    return 'BRC-NO-' + pad(db.counters.formSerial, 6);
+    return 'HRC-NO-' + pad(db.counters.formSerial, 6);
   }
 
   function createApplicant(data) {
@@ -5441,7 +5441,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     diffCloud: function () { return (cloud.sync && cloud.state === 'on') ? cloud.sync.diff(db) : []; },
     // وظائف
     listJobs: listJobs, getJob: getJob, createJob: createJob, updateJob: updateJob,
-    setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'BRC-' + (db.counters.jobCode + 1); },
+    setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'HRC-' + (db.counters.jobCode + 1); },
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,
     approveApplicant: approveApplicant, rejectApplicant: rejectApplicant,
@@ -6093,7 +6093,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
       '<div class="v-band">' +
         '<span>استمارة ترشيح للعمل / Job Placement Voucher</span>' +
-        '<span dir="ltr">BRC-NO: ' + UI.esc(String(app.serial).replace('BRC-NO-', '')) + '</span>' +
+        '<span dir="ltr">' + UI.esc(String(app.serial).replace(/-(\d+)$/, ': $1')) + '</span>' +
       '</div>' +
 
       /* بيانات الباحث */
@@ -6132,7 +6132,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       '<div class="v-foot">' +
         '<div class="v-qr">' +
           qrSvg(vUrl, 132) +
-          '<div class="ser">BRC-NO: ' + UI.esc(String(app.serial).replace('BRC-NO-', '')) + '</div>' +
+          '<div class="ser">' + UI.esc(String(app.serial).replace(/-(\d+)$/, ': $1')) + '</div>' +
           '<div class="tiny" style="direction:ltr;color:#444;font-size:8.6px">' + UI.esc(vUrl.replace(/^https?:\/\//, '')) + '</div>' +
         '</div>' +
         '<div>' +
@@ -6482,9 +6482,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     text = String(text || '').trim();
     if (!text) { UI.toast('warn', 'كود فارغ', 'لم يُقرأ أي نص من الرمز.'); return; }
 
-    /* رمز استمارة (BRC-NO-…): التحقق محصور بالموظفين والإدارة، فلا نكشف
+    /* رمز استمارة (HRC-NO-…): التحقق محصور بالموظفين والإدارة، فلا نكشف
        هنا أي بيانات — مجرد تنبيه واضح للزائر. */
-    var serial = text.match(/BRC-NO-\d+/i);
+    var serial = text.match(/(?:HRC|BRC)-NO-\d+/i);   // البادئتان: QR قديم أو جديد
     if (serial) {
       UI.toast('info', 'هذه استمارة شركة الهدف للتوظيف',
         'التحقق من الاستمارات متاح لموظفي الشركة والإدارة فقط. للحجز أو الاستفسار خابر الشركة أو راجع المكتب.', 8000);
@@ -6785,7 +6785,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   function normalizeSerial(s) {
     s = String(s || '').trim().toUpperCase();
     if (!s) return '';
-    if (s.indexOf('BRC-NO') !== 0) s = 'BRC-NO-' + s.replace(/[^0-9]/g, '').padStart(6, '0');
+    /* نقبل البادئتين: HRC (الحالية) وBRC (استمارات صدرت قبل تغيير الاسم
+       2026-09-19 وما زالت بيد الزبائن). الرقم المجرّد يُكمَّل بالبادئة الحالية. */
+    if (!/^(HRC|BRC)-NO/i.test(s)) s = 'HRC-NO-' + s.replace(/[^0-9]/g, '').padStart(6, '0');
     return s;
   }
 
@@ -8608,8 +8610,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       e.preventDefault();
       var v = (document.getElementById('quick-code').value || '').trim().toUpperCase();
       if (!v) return;
-      if (v.indexOf('BRC-NO') === 0 || /^\d{6}$/.test(v)) {
-        var serial = v.indexOf('BRC-NO') === 0 ? v : 'BRC-NO-' + v;
+      /* البادئتان مقبولتان: استمارات BRC القديمة ما زالت بيد الزبائن */
+      if (/^(HRC|BRC)-NO/i.test(v) || /^\d{6}$/.test(v)) {
+        var serial = /^(HRC|BRC)-NO/i.test(v) ? v : 'HRC-NO-' + v;
         if (Store.getApplicant(serial)) { attemptsModal(serial); return; }
       }
       var job = Store.getJob(v);
@@ -9049,7 +9052,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         Store.settings().validityDays + ' يوماً و' + Store.settings().attemptLimit + ' محاولات.</p></div></div>';
 
     UI.modal({
-      title: 'إصدار استمارة جديدة', subtitle: 'BRC-NO — تسلسل تلقائي', wide: true, body: body,
+      title: 'إصدار استمارة جديدة', subtitle: 'HRC-NO — تسلسل تلقائي', wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="n-save">' + UI.ic('check') + ' إصدار وطباعة</button>',
       onMount: function (box, close) {
@@ -9093,30 +9096,30 @@ BRC_CONFIG.verifyLocal = '#!verify';
    الصفحات المنشورة تبقى ببذرة فارغة وتقرأ من Supabase. */
 BRC_CONFIG.seed = {
       jobs: [
-        { code: 'BRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة', salaryMin: 600000, salaryMax: 750000, shift: 'صباحي', employer: { name: 'مخازن الفرات للتبريد', phone: '07701234567', address: 'الحلة - المنطقة الصناعية - شارع المعمل' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['لياقة بدنية جيدة', 'خبرة سنة على الأقل', 'شهادة جنسية + سكن'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80' },
-        { code: 'BRC-1043', title: 'سائق حمل (فئة ثالثة)', category: 'خدمات', region: 'المحاويل', salaryMin: 750000, salaryMax: 900000, shift: 'دوام كامل', employer: { name: 'شركة آفاق النقل', phone: '07811234567', address: 'المحاويل - الطريق العام - مجمع النقل' }, interviewLocation: 'المحاويل - مقابل مديرية النقل', requirements: ['إجازة سوق فئة ثالثة', 'خبرة 3 سنوات', 'عدم وجود تسجيل جنائي' ], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=800&q=80' },
-        { code: 'BRC-1044', title: 'ممرضة/ممرض (مناوبة)', category: 'صحي', region: 'الكفل', salaryMin: 900000, salaryMax: 1200000, shift: 'نوبات', employer: { name: 'مستشفى الكفل الأهلي', phone: '07731234567', address: 'الكفل - قرب المستشفى القديم' }, interviewLocation: 'مستشفى الكفل الأهلي - الإدارة', requirements: ['شهادة تمريض معتمدة', 'خبرة سنة', 'الالتزام بالنوبات'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80' },
-        { code: 'BRC-1045', title: 'مهندس مدني (تنفيذ)', category: 'هندسي', region: 'الحلة', salaryMin: 1500000, salaryMax: 2200000, shift: 'صباحي', employer: { name: 'مجموعة بابل للإنشاءات', phone: '07741234567', address: 'الحلة - حي الحسين - الشارع الرئيسي' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['شهادة هندسة مدنية', 'خبرة 4 سنوات في المشاريع', 'إجادة AutoCAD'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80' },
-        { code: 'BRC-1046', title: 'باريستا / عامل كافيه', category: 'خدمات', region: 'الهاشمية', salaryMin: 500000, salaryMax: 650000, shift: 'مسائي', employer: { name: 'كافيه دجلة', phone: '07751234567', address: 'الهاشمية - الشارع التجاري' }, interviewLocation: 'كافيه دجلة', requirements: ['حسن المظهر والتعامل', 'خبرة مفضلة'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&q=80' },
-        { code: 'BRC-1047', title: 'أمين مخزن (إلكترونيات)', category: 'إداري', region: 'الحلة', salaryMin: 700000, salaryMax: 850000, shift: 'صباحي', employer: { name: 'شركة الرافدين للإلكترونيات', phone: '07761234567', address: 'الحلة - شارع 60 - مجمع التجارة' }, interviewLocation: 'شركة الرافدين - المكتب الرئيسي', requirements: ['إجادة إكسل', 'أمانة ودقة', 'خبرة مخازن'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=800&q=80' },
-        { code: 'BRC-1048', title: 'طباخ خطوط إنتاج', category: 'خدمات', region: 'المسيب', salaryMin: 650000, salaryMax: 800000, shift: 'نوبات', employer: { name: 'مطابخ البابلية المركزية', phone: '07771234567', address: 'المسيب - المنطقة الصناعية' }, interviewLocation: 'مطابخ البابلية - القسم الإداري', requirements: ['خبرة مطاعم/مطابخ مركزية', 'صحة جيدة'], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80' },
-        { code: 'BRC-1049', title: 'فني كهرباء صناعية', category: 'تقني', region: 'الإسكندرية', salaryMin: 800000, salaryMax: 1000000, shift: 'صباحي', employer: { name: 'معمل الإسكندرية للبلاستيك', phone: '07781234567', address: 'الإسكندرية - منطقة المعامل' }, interviewLocation: 'المعمل - مكتب الإدارة', requirements: ['خبرة لوحات كهربائية', 'شهادة مهنية'], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=80' }
+        { code: 'HRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة', salaryMin: 600000, salaryMax: 750000, shift: 'صباحي', employer: { name: 'مخازن الفرات للتبريد', phone: '07701234567', address: 'الحلة - المنطقة الصناعية - شارع المعمل' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['لياقة بدنية جيدة', 'خبرة سنة على الأقل', 'شهادة جنسية + سكن'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80' },
+        { code: 'HRC-1043', title: 'سائق حمل (فئة ثالثة)', category: 'خدمات', region: 'المحاويل', salaryMin: 750000, salaryMax: 900000, shift: 'دوام كامل', employer: { name: 'شركة آفاق النقل', phone: '07811234567', address: 'المحاويل - الطريق العام - مجمع النقل' }, interviewLocation: 'المحاويل - مقابل مديرية النقل', requirements: ['إجازة سوق فئة ثالثة', 'خبرة 3 سنوات', 'عدم وجود تسجيل جنائي' ], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=800&q=80' },
+        { code: 'HRC-1044', title: 'ممرضة/ممرض (مناوبة)', category: 'صحي', region: 'الكفل', salaryMin: 900000, salaryMax: 1200000, shift: 'نوبات', employer: { name: 'مستشفى الكفل الأهلي', phone: '07731234567', address: 'الكفل - قرب المستشفى القديم' }, interviewLocation: 'مستشفى الكفل الأهلي - الإدارة', requirements: ['شهادة تمريض معتمدة', 'خبرة سنة', 'الالتزام بالنوبات'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80' },
+        { code: 'HRC-1045', title: 'مهندس مدني (تنفيذ)', category: 'هندسي', region: 'الحلة', salaryMin: 1500000, salaryMax: 2200000, shift: 'صباحي', employer: { name: 'مجموعة بابل للإنشاءات', phone: '07741234567', address: 'الحلة - حي الحسين - الشارع الرئيسي' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['شهادة هندسة مدنية', 'خبرة 4 سنوات في المشاريع', 'إجادة AutoCAD'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80' },
+        { code: 'HRC-1046', title: 'باريستا / عامل كافيه', category: 'خدمات', region: 'الهاشمية', salaryMin: 500000, salaryMax: 650000, shift: 'مسائي', employer: { name: 'كافيه دجلة', phone: '07751234567', address: 'الهاشمية - الشارع التجاري' }, interviewLocation: 'كافيه دجلة', requirements: ['حسن المظهر والتعامل', 'خبرة مفضلة'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&q=80' },
+        { code: 'HRC-1047', title: 'أمين مخزن (إلكترونيات)', category: 'إداري', region: 'الحلة', salaryMin: 700000, salaryMax: 850000, shift: 'صباحي', employer: { name: 'شركة الرافدين للإلكترونيات', phone: '07761234567', address: 'الحلة - شارع 60 - مجمع التجارة' }, interviewLocation: 'شركة الرافدين - المكتب الرئيسي', requirements: ['إجادة إكسل', 'أمانة ودقة', 'خبرة مخازن'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=800&q=80' },
+        { code: 'HRC-1048', title: 'طباخ خطوط إنتاج', category: 'خدمات', region: 'المسيب', salaryMin: 650000, salaryMax: 800000, shift: 'نوبات', employer: { name: 'مطابخ البابلية المركزية', phone: '07771234567', address: 'المسيب - المنطقة الصناعية' }, interviewLocation: 'مطابخ البابلية - القسم الإداري', requirements: ['خبرة مطاعم/مطابخ مركزية', 'صحة جيدة'], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80' },
+        { code: 'HRC-1049', title: 'فني كهرباء صناعية', category: 'تقني', region: 'الإسكندرية', salaryMin: 800000, salaryMax: 1000000, shift: 'صباحي', employer: { name: 'معمل الإسكندرية للبلاستيك', phone: '07781234567', address: 'الإسكندرية - منطقة المعامل' }, interviewLocation: 'المعمل - مكتب الإدارة', requirements: ['خبرة لوحات كهربائية', 'شهادة مهنية'], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=80' }
       ],
       jobsExtras: {
-        'BRC-1049': { status: 'closed' }        // الباقي تُستنتج حالاته من المحاولات المُزرَعة
+        'HRC-1049': { status: 'closed' }        // الباقي تُستنتج حالاته من المحاولات المُزرَعة
       },
       applicants: [
-        { serial: 'BRC-NO-000117', fullName: 'علي حسين محمد', phone: '07701112233', address: 'الحلة - حي الجامعة', dob: '1996-04-12', createdBy: 'staff' },
-        { serial: 'BRC-NO-000118', fullName: 'زهراء عبد الكريم', phone: '07702223344', address: 'المحاويل - حي الحسين', dob: '1999-08-02', createdBy: 'staff2' },
-        { serial: 'BRC-NO-000119', fullName: 'مصطفى جبار علي', phone: '07703334455', address: 'الكفل - حي الزهراء', dob: '1994-01-25', createdBy: 'staff' },
-        { serial: 'BRC-NO-000120', fullName: 'حسين كاظم عبد الله', phone: '07704445566', address: 'الحلة - شارع 40', dob: '1997-11-30', createdBy: 'staff' }
+        { serial: 'HRC-NO-000117', fullName: 'علي حسين محمد', phone: '07701112233', address: 'الحلة - حي الجامعة', dob: '1996-04-12', createdBy: 'staff' },
+        { serial: 'HRC-NO-000118', fullName: 'زهراء عبد الكريم', phone: '07702223344', address: 'المحاويل - حي الحسين', dob: '1999-08-02', createdBy: 'staff2' },
+        { serial: 'HRC-NO-000119', fullName: 'مصطفى جبار علي', phone: '07703334455', address: 'الكفل - حي الزهراء', dob: '1994-01-25', createdBy: 'staff' },
+        { serial: 'HRC-NO-000120', fullName: 'حسين كاظم عبد الله', phone: '07704445566', address: 'الحلة - شارع 40', dob: '1997-11-30', createdBy: 'staff' }
       ],
       /* محاولات مرتبطة بالاستمارات التجريبية */
       attempts: [
-        { serial: 'BRC-NO-000120', no: 1, jobCode: 'BRC-1042', slotStatus: 'rejected', note: 'رفض صاحب العمل — عدم توفر سكن قريب' },
-        { serial: 'BRC-NO-000120', no: 2, jobCode: 'BRC-1044', slotStatus: 'reserved', note: 'بانتظار نتيجة المقابلة' },
-        { serial: 'BRC-NO-000119', no: 1, jobCode: 'BRC-1045', slotStatus: 'reserved', note: 'مقابلة مجدولة' },
-        { serial: 'BRC-NO-000118', no: 1, jobCode: 'BRC-1043', slotStatus: 'succeeded', note: 'تم التوظيف فعلياً' }
+        { serial: 'HRC-NO-000120', no: 1, jobCode: 'HRC-1042', slotStatus: 'rejected', note: 'رفض صاحب العمل — عدم توفر سكن قريب' },
+        { serial: 'HRC-NO-000120', no: 2, jobCode: 'HRC-1044', slotStatus: 'reserved', note: 'بانتظار نتيجة المقابلة' },
+        { serial: 'HRC-NO-000119', no: 1, jobCode: 'HRC-1045', slotStatus: 'reserved', note: 'مقابلة مجدولة' },
+        { serial: 'HRC-NO-000118', no: 1, jobCode: 'HRC-1043', slotStatus: 'succeeded', note: 'تم التوظيف فعلياً' }
       ]
     };
 (function(){var l=document.querySelector('link[rel="icon"]');if(l)l.href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAgMTIwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmMmUyYWMiLz48c3RvcCBvZmZzZXQ9Ii40NSIgc3RvcC1jb2xvcj0iI2M4YTI0YSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzhhNmQyYyIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0ibCIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxYjQyODciLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMwODEzMmEiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMjYiIGZpbGw9InVybCgjbCkiLz4KICA8Y2lyY2xlIGN4PSI2MCIgY3k9IjYwIiByPSI1MyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjMiLz4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2MCAzMykiIGZpbGw9InVybCgjZykiPgogICAgPHJlY3QgeD0iLTYiIHk9Ii02IiB3aWR0aD0iMTIiIGhlaWdodD0iMTIiLz4KICAgIDxyZWN0IHg9Ii02IiB5PSItNiIgd2lkdGg9IjEyIiBoZWlnaHQ9IjEyIiB0cmFuc2Zvcm09InJvdGF0ZSg0NSkiLz4KICAgIDxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSIyLjIiIGZpbGw9IiMwYjFhM2EiLz4KICA8L2c+CiAgPGcgZmlsbD0idXJsKCNnKSI+CiAgICA8cmVjdCB4PSIzMyIgeT0iNDgiIHdpZHRoPSIxMCIgaGVpZ2h0PSI0MCIgcng9IjEuNSIvPgogICAgPHJlY3QgeD0iNzciIHk9IjQ4IiB3aWR0aD0iMTAiIGhlaWdodD0iNDAiIHJ4PSIxLjUiLz4KICAgIDxyZWN0IHg9IjMzIiB5PSI0MiIgd2lkdGg9IjMiIGhlaWdodD0iNiIvPjxyZWN0IHg9IjM4LjIiIHk9IjQyIiB3aWR0aD0iMyIgaGVpZ2h0PSI2Ii8+CiAgICA8cmVjdCB4PSI3OC44IiB5PSI0MiIgd2lkdGg9IjMiIGhlaWdodD0iNiIvPjxyZWN0IHg9Ijg0IiB5PSI0MiIgd2lkdGg9IjMiIGhlaWdodD0iNiIvPgogICAgPHJlY3QgeD0iNDMiIHk9IjU0IiB3aWR0aD0iMzQiIGhlaWdodD0iNyIgcng9IjEuNSIvPgogICAgPHJlY3QgeD0iNDMiIHk9IjQyLjUiIHdpZHRoPSIzIiBoZWlnaHQ9IjYiLz48cmVjdCB4PSI1Mi40IiB5PSI0Mi41IiB3aWR0aD0iMyIgaGVpZ2h0PSI2Ii8+CiAgICA8cmVjdCB4PSI2NC42IiB5PSI0Mi41IiB3aWR0aD0iMyIgaGVpZ2h0PSI2Ii8+PHJlY3QgeD0iNzQiIHk9IjQyLjUiIHdpZHRoPSIzIiBoZWlnaHQ9IjYiLz4KICAgIDxyZWN0IHg9IjI3IiB5PSI4OCIgd2lkdGg9IjY2IiBoZWlnaHQ9IjMuNCIgcng9IjEuNyIvPgogIDwvZz4KICA8cGF0aCBkPSJNNTAuNSA4OFY2OS44YTkuNSA5LjUgMCAwIDEgMTkgMFY4OHoiIGZpbGw9IiMwODEzMmEiIHN0cm9rZT0idXJsKCNnKSIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KPC9zdmc+Cg==";})();
