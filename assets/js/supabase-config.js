@@ -17,7 +17,7 @@
   'use strict';
 
   root.BRCSupabaseConfig = {
-    /* مشروع شركة بابل للتوظيف — منطقة فرانكفورت */
+    /* مشروع شركة الهدف للتوظيف — منطقة فرانكفورت */
     url: 'https://vqsvztudvfukyuerzcgx.supabase.co',
 
     /* المفتاح العام (Publishable) — آمن للعرض في المتصفح */

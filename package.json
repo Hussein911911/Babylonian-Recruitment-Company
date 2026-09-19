@@ -2,7 +2,7 @@
   "name": "babylonian-recruitment-company",
   "version": "1.0.0",
   "private": true,
-  "description": "منصة شركة بابل للتوظيف (BRC) — استمارات ترشيح، كيو آر كود تحقق، خمس محاولات، وحجز مؤقت للوظيفة 24 ساعة. HTML/CSS/JS يعمل بلا خادم.",
+  "description": "منصة شركة الهدف للتوظيف (BRC) — استمارات ترشيح، كيو آر كود تحقق، خمس محاولات، وحجز مؤقت للوظيفة 24 ساعة. HTML/CSS/JS يعمل بلا خادم.",
   "scripts": {
     "build": "node tools/build.mjs",
     "start": "node tools/serve.mjs",

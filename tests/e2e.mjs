@@ -274,7 +274,7 @@ check('الوظيفة المطلوبة (BRC-1042) سُجّلت مع الطلب',
   const printHtml = ver2.doc.getElementById('print-root').innerHTML;
 
   const must = [
-    ['ترويسة الشركة', /شركة بابل للتوظيف|Babylonian Recruitment/],
+    ['ترويسة الشركة', /شركة الهدف للتوظيف|Al-Hadaf Recruitment/],
     ['الهاتفان', /07760058007[\s\S]*07715993271/],
     ['العنوان الكامل', /حلة - شارع 60 - قرب مدينة حمورابي/],
     ['الاسم التسلسلي للاستمارة', new RegExp('BRC-NO:?\\s*' + SERIAL.replace('BRC-NO-', ''))],

@@ -84,7 +84,7 @@ const AUDIT_ROW = {
 };
 const SETTINGS_ROWS = [
   { key: 'rules', value: { attempt_limit: 5, validity_days: 30, hold_hours: 24, form_fee: 10000, auto_release: true } },
-  { key: 'company', value: { name_ar: 'شركة بابل للتوظيف', verify_base: 'https://brc-babil.com/verify' } }
+  { key: 'company', value: { name_ar: 'شركة الهدف للتوظيف', verify_base: 'https://brc-babil.com/verify' } }
 ];
 
 const FULL = {
@@ -201,7 +201,7 @@ step(4, 'الإعدادات: صفوف key/value jsonb → كائن مسطّح');
   check('holdHours من hold_hours', s.holdHours === 24);
   check('formFee من form_fee', s.formFee === 10000);
   check('autoReleaseEnabled من auto_release', s.autoReleaseEnabled === true);
-  check('company محفوظة كما هي', !!s.company && s.company.name_ar === 'شركة بابل للتوظيف');
+  check('company محفوظة كما هي', !!s.company && s.company.name_ar === 'شركة الهدف للتوظيف');
 
   const back = C.settingsToDb({ attemptLimit: 7, holdHours: 12, formFee: 5000, autoReleaseEnabled: false });
   check('العكس: camelCase → مفاتيح SQL', back.attempt_limit === 7 && back.hold_hours === 12 && back.form_fee === 5000 && back.auto_release === false);

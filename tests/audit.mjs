@@ -87,7 +87,7 @@ const CSS_ALLOW = new Set([
 
 console.log('\n' + '═'.repeat(72));
 console.log('  BRC — التدقيق الشامل للمشروع');
-console.log('  شركة بابل للتوظيف — Babylonian Recruitment Company');
+console.log('  شركة الهدف للتوظيف — Al-Hadaf Recruitment Company');
 console.log('═'.repeat(72));
 
 const loaded = {};
@@ -680,8 +680,8 @@ section('10) الاستمارة المطبوعة A4 — البنية الكام�
 
   const must = {
     'شعار الشركة': /i-emblem|brand-mark|v-logo/,
-    'الاسم العربي': /شركة بابل للتوظيف/,
-    'الاسم الإنجليزي': /Babylonian Recruitment Company/,
+    'الاسم العربي': /شركة الهدف للتوظيف/,
+    'الاسم الإنجليزي': /Al-Hadaf Recruitment Company/,
     'تخصص الشركة': /الأيادي العاملة من الناحية الفنية والتخصصية/,
     'الهاتف الأول': /07760058007/,
     'الهاتف الثاني': /07715993271/,
@@ -872,7 +872,7 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
   {
     const nf = readFileSync(join(ROOT, '404.html'), 'utf8');
     const issues = [];
-    if (!/شركة بابل للتوظيف/.test(nf)) issues.push('بلا اسم الشركة');
+    if (!/شركة الهدف للتوظيف/.test(nf)) issues.push('بلا اسم الشركة');
     if (!/id="notfound"/.test(nf)) issues.push('بلا قسم 404');
     if (/(?:src|href)="assets\//.test(nf)) issues.push('مراجع نسبية تنكسر على المسارات العميقة');
     const exits = (nf.match(/href="\/index\.html#/g) || []).length;

@@ -99,7 +99,7 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log('— خادم معاينة شركة بابل للتوظيف يعمل —');
+  console.log('— خادم معاينة شركة الهدف للتوظيف يعمل —');
   console.log('  الموقع العام   : http://localhost:' + PORT + '/');
   console.log('  صفحة التحقق    : http://localhost:' + PORT + '/verify.html?form=BRC-NO-000120');
   /* لا نطبع بيانات دخول في الطرفية: من يرى الشاشة يرى ما لا يحق له، ونفس

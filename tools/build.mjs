@@ -104,8 +104,8 @@ const ASSET_VER = process.env.BRC_ASSET_VER || createHash('sha1')
 const verQ = (p) => `${p}?v=${ASSET_VER}`;
 
 const META = {
-  title: 'شركة بابل للتوظيف | Babylonian Recruitment Company',
-  desc: 'شركة بابل للتوظيف (BRC) في الحلة — بابل: استمارات ترشيح موثّقة بكيو آر كود، خمس محاولات، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة.',
+  title: 'شركة الهدف للتوظيف | Al-Hadaf Recruitment Company',
+  desc: 'شركة الهدف للتوظيف (BRC) في الحلة — بابل: استمارات ترشيح موثّقة بكيو آر كود، خمس محاولات، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة.',
   keywords: 'توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, استمارة توظيف, BRC, عمالة فنية'
 };
 
@@ -119,7 +119,7 @@ function docHead({ title, desc, css = null, icon = 'assets/img/favicon.svg', ext
 <meta name="description" content="${desc}">
 <meta name="keywords" content="${META.keywords}">
 <meta name="theme-color" content="#0b1a3a">
-<meta name="author" content="Babylonian Recruitment Company">
+<meta name="author" content="Al-Hadaf Recruitment Company">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="${desc}">
 <meta property="og:type" content="website">
@@ -146,8 +146,8 @@ writeFileSync(P('index.html'), buildPage({
   title: META.title, desc: META.desc, body: partials.public, scripts: SCRIPTS.public
 }));
 writeFileSync(P('verify.html'), buildPage({
-  title: 'التحقق من الاستمارة | شركة بابل للتوظيف',
-  desc: 'صفحة التحقق الرسمية لاستمارات شركة بابل للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.',
+  title: 'التحقق من الاستمارة | شركة الهدف للتوظيف',
+  desc: 'صفحة التحقق الرسمية لاستمارات شركة الهدف للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.',
   body: partials.verify, scripts: SCRIPTS.verify
 }));
 /* صفحة 404 بهوية الشركة: يقرأها Cloudflare Pages تلقائياً من /404.html عند أي
@@ -159,8 +159,8 @@ writeFileSync(P('verify.html'), buildPage({
      صفحة بلا أنماط ولا أيقونات. لذلك تُثبَّت مراجعها على جذر الموقع (/assets/…)
      وهي الصفحة الوحيدة التي تحتاج ذلك. */
   const nf = buildPage({
-    title: 'الصفحة غير موجودة | شركة بابل للتوظيف',
-    desc: 'الرابط المطلوب غير موجود على موقع شركة بابل للتوظيف — تصفّح الوظائف المتاحة أو تواصل معنا مباشرة.',
+    title: 'الصفحة غير موجودة | شركة الهدف للتوظيف',
+    desc: 'الرابط المطلوب غير موجود على موقع شركة الهدف للتوظيف — تصفّح الوظائف المتاحة أو تواصل معنا مباشرة.',
     body: partials.notfound, scripts: ['config', 'ui', 'nav']
   }).replace(/(src|href)="assets\//g, '$1="/assets/')
     .replace(/(src|href)="index\.html/g, '$1="/index.html');
@@ -168,8 +168,8 @@ writeFileSync(P('verify.html'), buildPage({
 }
 
 writeFileSync(P('dashboard.html'), buildPage({
-  title: 'المنظومة الداخلية | شركة بابل للتوظيف',
-  desc: 'لوحة الموظفين والإدارة لشركة بابل للتوظيف: إدارة الوظائف، إصدار الاستمارات، متابعة الحجوزات، سجل التدقيق، واللوحة المالية.',
+  title: 'المنظومة الداخلية | شركة الهدف للتوظيف',
+  desc: 'لوحة الموظفين والإدارة لشركة الهدف للتوظيف: إدارة الوظائف، إصدار الاستمارات، متابعة الحجوزات، سجل التدقيق، واللوحة المالية.',
   body: partials.dashboard, scripts: SCRIPTS.dashboard
 }));
 

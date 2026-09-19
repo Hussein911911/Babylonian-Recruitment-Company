@@ -213,7 +213,7 @@ check('قالب الاستمارة يحتوي كل الأقسام المطلوب
   const app = site.window.BRCStore.getApplicant('BRC-NO-000120');
   const html = site.window.BRCVoucher.buildHtml(app);
   const needed = [
-    'شركة بابل للتوظيف', 'Babylonian Recruitment Company',
+    'شركة الهدف للتوظيف', 'Al-Hadaf Recruitment Company',
     '07760058007', '07715993271',
     'حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي',
     'BRC-NO: 000120', 'الاسم الكامل', 'تاريخ الإصدار', 'تاريخ الانتهاء',
