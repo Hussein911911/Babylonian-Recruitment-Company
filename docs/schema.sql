@@ -303,10 +303,10 @@ begin
     if new.expiry_date is null then
       new.expiry_date := new.issue_date + make_interval(days => coalesce((rules->>'validity_days')::int, 30));
     end if;
-    -- إنشاء خانات المحاولات الخمس تلقائياً
-    insert into brc.job_attempts (serial, attempt_no)
-    select new.serial, gs from generate_series(1, new.attempt_limit) gs
-    on conflict (serial, attempt_no) do nothing;
+    /* ⚠️ لا تُنشأ خانات المحاولات هنا: هذا مُشغِّل BEFORE INSERT، أي أن صف
+       الاستمارة لم يُكتب في الجدول بعد. وjob_attempts.serial مفتاح أجنبي
+       يشير إلى applicants(serial)، فالإدراج يفشل بـ 23503. الإنشاء نُقل إلى
+       مُشغِّل AFTER INSERT منفصل (trg_applicants_attempts) أدناه. */
   end if;
 
   new.updated_at := now();
@@ -320,6 +320,20 @@ create trigger trg_jobs_defaults before insert or update on brc.jobs
 drop trigger if exists trg_applicants_defaults on brc.applicants;
 create trigger trg_applicants_defaults before insert on brc.applicants
   for each row execute function brc.trg_defaults();
+
+/* خانات المحاولات تُنشأ بعد كتابة الاستمارة فعلاً — انظر التحذير أعلاه. */
+create or replace function brc.trg_make_attempts() returns trigger
+language plpgsql as $$
+begin
+  insert into brc.job_attempts (serial, attempt_no)
+  select new.serial, gs from generate_series(1, new.attempt_limit) gs
+  on conflict (serial, attempt_no) do nothing;
+  return null;
+end $$;
+
+drop trigger if exists trg_applicants_attempts on brc.applicants;
+create trigger trg_applicants_attempts after insert on brc.applicants
+  for each row execute function brc.trg_make_attempts();
 
 -- 4.2 حجز الوظيفة مؤقتاً 24 ساعة عند اختيار محاولة + منع الحجز المزدوج
 create or replace function brc.trg_attempt_hold() returns trigger
