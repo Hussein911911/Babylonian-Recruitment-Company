@@ -6,23 +6,32 @@
 --
 --  ⚠️ لماذا SQL ولا تعديل config.js؟
 --     الموقع المنشور يقرأ الوظائف من brc.public_jobs في Supabase لا من بذرة
---     config.js (البذرة أُفرغت عمداً قبل التسليم). فأي بيانات تُضاف في الكود
---     لن تظهر على الموقع الحي إطلاقاً — لا بد من إدراجها في القاعدة.
+--     config.js (أُفرغت عمداً قبل التسليم). فأي بيانات تُضاف في الكود لن تظهر
+--     على الموقع الحي إطلاقاً — لا بد من إدراجها في القاعدة.
 --
---  ✅ كل صف هنا مُعلَّم بـ notes = 'DEMO' (الوظائف) أو reject_reason = 'DEMO'
---     (الاستمارات) ليكون الحذف لاحقاً دقيقاً ولا يمسّ أي بيانات حقيقية
---     يُدخلها الموظف أثناء التجربة.
+--  ⚠️ درس مهم من محاولة سابقة فشلت (خطأ 42703: record "new" has no field "code"):
+--     القاعدة تُنجز أشياء تلقائياً عبر مُشغِّلات (triggers)، ومحاولة إنجازها
+--     يدوياً تصطدم بها:
+--       • إدراج استمارة يُنشئ خانات المحاولات الخمس تلقائياً (trg_defaults)،
+--         فلا نُدرجها نحن.
+--       • تحويل خانة إلى 'reserved' يحجز الوظيفة ويضبط مهلتها تلقائياً
+--         (trg_attempt_hold)، فلا نلمس brc.jobs يدوياً لذلك.
+--       • أي UPDATE على job_attempts يمرّ بمُشغِّلات تتحقق من الاستمارة
+--         والوظيفة، فيجب أن تكون الوظيفة 'available' لحظة الحجز.
+--     هذا الملف مكتوب ليعمل **مع** المُشغِّلات لا ضدّها.
 --
---  التطبيق: Supabase ← SQL Editor ← الصق ← Run
---  ⚠️ نفّذ ترحيل HRC أولاً (20260919120000_rename_code_prefix_to_hrc.sql)
---     وإلا ولّدت القاعدة أكواداً بالرمز القديم.
+--  ✅ كل صف مُعلَّم DEMO (notes للوظائف · reject_reason للاستمارات) ليكون
+--     الحذف لاحقاً دقيقاً ولا يمسّ بيانات حقيقية يُدخلها الموظف أثناء التجربة.
+--
+--  التطبيق: Supabase ← SQL Editor ← الصق الملف كاملاً ← Run
 -- ===========================================================================
 
 begin;
 
 -- ---------------------------------------------------------------------------
---  1) خمس وظائف — أحوال مختلفة ليرى الزبون النظام كله لا حالة واحدة:
---     3 متاحة · 1 محجوزة مؤقتاً (عدّاد 24 ساعة) · 1 مغلقة (توظيف ناجح)
+--  1) خمس وظائف — أحوال مختلفة ليرى الزبون النظام كله لا حالة واحدة.
+--     نُدرجها كلها 'available' أولاً: مُشغِّل الحجز يشترط أن تكون الوظيفة
+--     متاحة لحظة ربط المحاولة بها. الإغلاق والحجز يجريان في القسم 3.
 -- ---------------------------------------------------------------------------
 insert into brc.jobs
   (code, title, category, region, shift, salary_min, salary_max, gender,
@@ -54,7 +63,7 @@ values
   ('HRC-1004', 'مهندس مدني (تنفيذ)', 'هندسي', 'الحلة', 'صباحي', 1500000, 2200000, 'لا فرق',
    1, array['شهادة هندسة مدنية','خبرة 4 سنوات في المشاريع','إجادة AutoCAD'],
    'الإشراف على تنفيذ المشاريع السكنية ومتابعة الكميات.',
-   'مجموعة بابل للإنشاءات', '07741234567', 'الحلة - حي الحسين',
+   'مجموعة الفرات للإنشاءات', '07741234567', 'الحلة - حي الحسين',
    'مقر الشركة - الحلة', 'available', 'DEMO',
    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80'),
 
@@ -62,12 +71,14 @@ values
    1, array['خبرة في اللوحات الكهربائية','شهادة مهنية','الالتزام بالسلامة'],
    'صيانة اللوحات وخطوط الإنتاج في المعمل.',
    'معمل الإسكندرية للبلاستيك', '07781234567', 'الإسكندرية - منطقة المعامل',
-   'المعمل - مكتب الإدارة', 'closed', 'DEMO',
+   'المعمل - مكتب الإدارة', 'available', 'DEMO',
    'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=80')
 on conflict (code) do nothing;
 
 -- ---------------------------------------------------------------------------
---  2) ثلاث استمارات: سارية · محجوزة جارية · مكتملة (توظيف ناجح)
+--  2) ثلاث استمارات.
+--     ⚠️ لا نُدرج خانات المحاولات هنا: مُشغِّل trg_defaults يُنشئ الخمس
+--        تلقائياً عند إدراج كل استمارة.
 --     reject_reason = 'DEMO' علامة الحذف، لا سبب رفض حقيقي.
 -- ---------------------------------------------------------------------------
 insert into brc.applicants
@@ -89,64 +100,52 @@ values
 on conflict (serial) do nothing;
 
 -- ---------------------------------------------------------------------------
---  3) المحاولات: خمس خانات لكل استمارة (هكذا يعمل النظام فعلاً)
---     المستعملة منها تُربط بوظيفة، والباقي 'empty'.
+--  3) ربط المحاولات بالوظائف.
+--     الخانات موجودة أصلاً (أنشأها المُشغِّل)، فنُحدّثها فقط.
+--     ترتيب الحالات مقصود: 'reserved' أولاً لأن مُشغِّل الحجز يشترط وظيفة
+--     متاحة، ثم النتائج النهائية التي تُغلق الوظيفة أو تُفرجها.
 -- ---------------------------------------------------------------------------
-insert into brc.job_attempts (serial, attempt_no, job_id, job_code, slot_status,
-                              selected_at, hold_expires_at, closed_at, outcome_note)
-select a.serial, n.i, null, null, 'empty', null, null, null, ''
-  from brc.applicants a
- cross join generate_series(1, a.attempt_limit) as n(i)
- where a.reject_reason = 'DEMO'
-on conflict (serial, attempt_no) do nothing;
 
---  المحاولة 1 لعلي: حجز جارٍ على المهندس المدني — يُظهر عدّاد 24 ساعة
+--  (أ) علي — حجز جارٍ على المهندس المدني: يُظهر عدّاد 24 ساعة في اللوحة.
+--      المُشغِّل سيضبط hold_expires_at ويحوّل الوظيفة إلى 'reserved' تلقائياً.
 update brc.job_attempts
-   set job_id = j.id, job_code = j.code, slot_status = 'reserved',
-       selected_at = now() - interval '3 hours',
-       hold_expires_at = now() + interval '21 hours',
+   set job_id      = (select id from brc.jobs where code = 'HRC-1004'),
+       job_code    = 'HRC-1004',
+       slot_status = 'reserved',
+       selected_at = now(),
        outcome_note = 'مقابلة مجدولة'
-  from brc.jobs j
- where j.code = 'HRC-1004'
-   and brc.job_attempts.serial = 'HRC-NO-000001'
-   and brc.job_attempts.attempt_no = 1;
+ where serial = 'HRC-NO-000001' and attempt_no = 1;
 
-update brc.jobs
-   set status = 'reserved', reserved_by = 'HRC-NO-000001',
-       hold_expires_at = now() + interval '21 hours'
- where code = 'HRC-1004';
-
---  المحاولة 1 لزهراء: رُفضت — يُظهر أن المحاولة التالية تُفعَّل تلقائياً
+--  (ب) زهراء — محاولة مرفوضة على وظيفة التمريض: تُظهر أن المحاولة التالية
+--      تبقى متاحة وأن الوظيفة عادت 'available'.
 update brc.job_attempts
-   set job_id = j.id, job_code = j.code, slot_status = 'rejected',
+   set job_id      = (select id from brc.jobs where code = 'HRC-1003'),
+       job_code    = 'HRC-1003',
+       slot_status = 'rejected',
        selected_at = now() - interval '5 days',
-       closed_at = now() - interval '4 days',
+       closed_at   = now() - interval '4 days',
        outcome_note = 'عدم توفر سكن قريب'
-  from brc.jobs j
- where j.code = 'HRC-1003'
-   and brc.job_attempts.serial = 'HRC-NO-000002'
-   and brc.job_attempts.attempt_no = 1;
+ where serial = 'HRC-NO-000002' and attempt_no = 1;
 
---  المحاولة 1 لمصطفى: توظيف ناجح — الوظيفة مغلقة
+--  (ج) مصطفى — توظيف ناجح على فني الكهرباء.
 update brc.job_attempts
-   set job_id = j.id, job_code = j.code, slot_status = 'succeeded',
+   set job_id      = (select id from brc.jobs where code = 'HRC-1005'),
+       job_code    = 'HRC-1005',
+       slot_status = 'succeeded',
        selected_at = now() - interval '12 days',
-       closed_at = now() - interval '10 days',
+       closed_at   = now() - interval '10 days',
        outcome_note = 'تم التوظيف فعلياً'
-  from brc.jobs j
- where j.code = 'HRC-1005'
-   and brc.job_attempts.serial = 'HRC-NO-000003'
-   and brc.job_attempts.attempt_no = 1;
+ where serial = 'HRC-NO-000003' and attempt_no = 1;
 
+--  إغلاق وظيفة التوظيف الناجح (إن لم يفعلها المُشغِّل).
 update brc.jobs
-   set closed_at = now() - interval '10 days'
- where code = 'HRC-1005';
+   set status = 'closed', closed_at = now() - interval '10 days'
+ where code = 'HRC-1005' and status <> 'closed';
 
 -- ---------------------------------------------------------------------------
---  4) مزامنة العدّادات: حتى لا يولّد النظام كوداً مستعمَلاً بعد الإدراج
+--  4) مزامنة العدّادات: حتى لا يولّد النظام كوداً مستعمَلاً بعد هذا الإدراج.
+--     نأخذ أكبر رقم مستعمَل فعلاً أياً كانت بادئته (HRC أو BRC).
 -- ---------------------------------------------------------------------------
---  نأخذ أكبر رقم مستعمَل فعلاً في الجدول (أياً كانت بادئته HRC أو BRC)
---  ونضبط التتابع عليه، فلا يولّد النظام كوداً مكرّراً بعد هذا الإدراج.
 select setval('brc.job_code_seq', (
   select greatest(coalesce(max((regexp_replace(code, '[^0-9]', '', 'g'))::bigint), 0), 1005)
     from brc.jobs
@@ -159,10 +158,13 @@ select setval('brc.form_serial_seq', (
 
 commit;
 
---  تحقّق سريع
-select 'وظائف'   as ما, count(*) from brc.jobs       where notes = 'DEMO'
+--  تحقّق سريع — المتوقع: 5 وظائف و3 استمارات و15 خانة محاولات
+select 'وظائف'    as البند, count(*) as العدد from brc.jobs       where notes = 'DEMO'
 union all
-select 'استمارات', count(*)      from brc.applicants where reject_reason = 'DEMO';
+select 'استمارات', count(*) from brc.applicants where reject_reason = 'DEMO'
+union all
+select 'محاولات',  count(*) from brc.job_attempts
+ where serial in (select serial from brc.applicants where reject_reason = 'DEMO');
 
 
 -- ===========================================================================
@@ -172,10 +174,15 @@ select 'استمارات', count(*)      from brc.applicants where reject_reason
 --  الموظف أثناء التجربة. أزل التعليق عن الأسطر ثم شغّلها.
 -- ===========================================================================
 -- begin;
+--   -- نُفرِج الحجوزات أولاً حتى لا يمنع قيد reserved_by حذف الاستمارات
+--   update brc.job_attempts set slot_status = 'empty', job_id = null,
+--          job_code = null, selected_at = null, hold_expires_at = null
+--    where serial in (select serial from brc.applicants where reject_reason = 'DEMO');
+--   update brc.jobs set status = 'available', reserved_by = null,
+--          hold_expires_at = null, closed_at = null
+--    where notes = 'DEMO';
 --   delete from brc.job_attempts
 --    where serial in (select serial from brc.applicants where reject_reason = 'DEMO');
 --   delete from brc.applicants where reject_reason = 'DEMO';
---   update brc.jobs set reserved_by = null, hold_expires_at = null
---    where notes = 'DEMO';
 --   delete from brc.jobs where notes = 'DEMO';
 -- commit;
