@@ -19,6 +19,7 @@
 import { JSDOM, VirtualConsole } from 'jsdom';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { DEMO_SEED } from './fixtures/demo-seed.mjs';
 
 const ROOT = resolveRoot();
 function resolveRoot() { return join(dirname(fileURLToPath(import.meta.url)), '..'); }
@@ -58,6 +59,9 @@ async function open(file, query, opts = {}) {
     url: query ? base + query : base,
     runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true, virtualConsole: vc,
     beforeParse(w) {
+      /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة
+         (انظر tests/fixtures/demo-seed.mjs). قبل تنفيذ config.js. */
+      w.__BRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
       Object.defineProperty(w, 'print', { configurable: true, writable: true, value: () => { w.__printed = (w.__printed || 0) + 1; } });
       w.__printed = 0;
       if (opts.session === 'staff') Object.defineProperty(w, 'sessionStorage', { configurable: true, value: staffStorage() });

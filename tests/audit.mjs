@@ -20,6 +20,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 import { existsSync as fileExists } from 'node:fs';
+import { DEMO_SEED } from './fixtures/demo-seed.mjs';
 const LIGHT = fileExists(join(dirname(fileURLToPath(import.meta.url)), '..', 'brc-light.html'));
 const PAGES = ['index.html', 'verify.html', 'dashboard.html', 'brc-standalone.html']
   .concat(LIGHT ? ['brc-light.html'] : []);
@@ -54,6 +55,9 @@ async function loadPage(file) {
     pretendToBeVisual: true,
     virtualConsole: vc,
     beforeParse(window) {
+      /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة (انظر
+         tests/fixtures/demo-seed.mjs). تُوضع قبل تنفيذ config.js. */
+      window.__BRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
       Object.defineProperty(window, 'print', { configurable: true, writable: true, value: () => { } });
       window.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 16);
       window.cancelAnimationFrame = (id) => clearTimeout(id);
@@ -298,6 +302,30 @@ for (const [js, page] of CONTRACT) {
   }
   if (leaked.length) bad('لا حسابات تجريبية ظاهرة على شاشة الدخول', leaked.join(' | '));
   else ok('لا حسابات تجريبية ظاهرة على شاشة الدخول (في ' + published.length + ' صفحات منشورة)');
+
+  /* ── حارس: لا بيانات وهمية في الصفحات المنشورة ───────────────────────
+     أُفرغت بذرة config.js قبل التسليم (2026-09-19) لأن أي موظف يفتح اللوحة
+     على جهاز جديد أو بلا اتصال كان يرى 8 وظائف و8 متقدمين بأسماء وأرقام
+     هواتف وهمية ويحسبها سجلات حقيقية — فيتصل بأرقام لا وجود لها. هذا الفحص
+     يمنع عودتها. (نسخة العرض brc-standalone/brc-light مستثناة عمداً: تعمل
+     بلا قاعدة بيانات ففارغةً تصبح بلا فائدة — تُحقن وقت البناء.) */
+  {
+    const FAKE = ['علي حسين محمد', 'زهراء عبد الكريم', '07701112233',
+                  'مخازن الفرات', '07701234567', 'BRC-NO-000117'];
+    const dirty = [];
+    for (const f of ['index.html', 'verify.html', 'dashboard.html', '404.html']) {
+      const src = readFileSync(join(ROOT, f), 'utf8');
+      const hits = FAKE.filter((x) => src.includes(x));
+      if (hits.length) dirty.push(f + ': ' + hits.join(' · '));
+    }
+    const cfg = readFileSync(join(ROOT, 'assets/js/config.js'), 'utf8');
+    const seedM = cfg.match(/seed:\s*\{([\s\S]*?)\n  \};/);
+    if (seedM && /\bfullName\s*:|\bemployer\s*:/.test(seedM[1])) {
+      dirty.push('assets/js/config.js: بذرة الإنتاج ليست فارغة');
+    }
+    if (dirty.length) bad('لا بيانات وهمية في الصفحات المنشورة', dirty.join(' | '));
+    else ok('الصفحات المنشورة خالية من البيانات الوهمية (بذرة الإنتاج فارغة)');
+  }
 
   /* سياسة الدخول (طلب الإدارة، 2026-09-19 — نسخت قرار 2026-09 السابق):
      **لا زر دخول ظاهر** في الموقع العام إطلاقاً. البوابة إيماءة مخفية: ضغطة

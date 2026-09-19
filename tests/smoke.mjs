@@ -19,6 +19,7 @@ import { JSDOM, VirtualConsole, ResourceLoader } from 'jsdom';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { DEMO_SEED } from './fixtures/demo-seed.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 let pass = 0, fail = 0;
@@ -66,6 +67,9 @@ async function load(file, { hash = '', search = '', waitMs = 260, session = null
     virtualConsole: vc,
     /* jsdom لا يوفّر sessionStorage لأصول file:// — نزرع جلسة الموظف عبر واجهة تخزين بديلة */
     beforeParse(window) {
+      /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة (انظر
+         tests/fixtures/demo-seed.mjs). تُوضع قبل تنفيذ config.js. */
+      window.__BRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
       if (!session) return;
       const m = new Map([['brc_session_v2', JSON.stringify(session)]]);
       Object.defineProperty(window, 'sessionStorage', {

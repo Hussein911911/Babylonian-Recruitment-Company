@@ -67,6 +67,24 @@ const partials = {
   dashboard: read('src/partials/dashboard.html')
 };
 const CSS = read('assets/css/style.css');
+/* ---------------------------------------------------------------------------
+ *  بذرة العرض للملف المستقل
+ *  ---------------------------------------------------------------------------
+ *  assets/js/config.js يخرج إلى الإنتاج **ببذرة فارغة** عمداً (2026-09-19):
+ *  الموقع المنشور يقرأ بياناته من Supabase، وأي بيانات وهمية فيه كان يراها
+ *  الموظف على جهاز جديد فيحسبها حقيقية.
+ *
+ *  لكن brc-standalone/brc-light نسخة **عرض** تُنسخ على فلاش أو تُرسل بالإيميل
+ *  وتعمل بلا إنترنت وبلا قاعدة — ففارغةً تصبح بلا فائدة. لذلك نحقن بذرة العرض
+ *  هنا، وقت البناء، في هذين الملفين وحدهما. الصفحات المنشورة لا تمسّها.
+ * ------------------------------------------------------------------------- */
+const DEMO_SEED_SRC = read('tests/fixtures/demo-seed.mjs');
+const DEMO_SEED_JSON = (() => {
+  const m = DEMO_SEED_SRC.match(/export const DEMO_SEED = ([\s\S]*?);\n\n\/\* تحقن/);
+  if (!m) throw new Error('تعذّر استخراج DEMO_SEED من tests/fixtures/demo-seed.mjs');
+  return m[1];
+})();
+
 const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'public', 'verify', 'dashboard'];
 
 /* ---------------------------------------------------------------------------
@@ -218,6 +236,9 @@ function buildStandalone() {
   const boot = `
 /* ===== ضبط النسخة المستقلة ===== */
 BRC_CONFIG.verifyLocal = '#!verify';
+/* بذرة العرض: هذه نسخة تعمل بلا قاعدة بيانات، فتحتاج بيانات لتُظهر شيئاً.
+   الصفحات المنشورة تبقى ببذرة فارغة وتقرأ من Supabase. */
+BRC_CONFIG.seed = ${DEMO_SEED_JSON};
 ${icon ? `(function(){var l=document.querySelector('link[rel="icon"]');if(l)l.href=${JSON.stringify(icon.uri)};})();` : ''}
 </body>`;
   // (نُبقي وسم الإغلاق في النهاية بعد الراوتر)

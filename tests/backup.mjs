@@ -24,6 +24,7 @@ import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DEMO_SEED } from './fixtures/demo-seed.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(join(ROOT, 'package.json'));
@@ -68,6 +69,11 @@ async function openDashboard() {
     errors.push(m.split('\n')[0]);
   });
   const dom = await JSDOM.fromURL(BASE + '/dashboard.html', {
+    beforeParse(window) {
+      /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة
+         (انظر tests/fixtures/demo-seed.mjs). قبل تنفيذ config.js. */
+      window.__BRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
+    },
     runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true, virtualConsole: vc
   });
   await new Promise((r) => { dom.window.addEventListener('load', r); setTimeout(r, 8000); });

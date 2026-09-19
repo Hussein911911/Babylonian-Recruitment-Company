@@ -2762,34 +2762,41 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
      * بيانات عرض تجريبية (تُزرع مرة واحدة عند أول تشغيل)
      * -------------------------------------------------------------- */
     seed: {
-      jobs: [
-        { code: 'BRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة', salaryMin: 600000, salaryMax: 750000, shift: 'صباحي', employer: { name: 'مخازن الفرات للتبريد', phone: '07701234567', address: 'الحلة - المنطقة الصناعية - شارع المعمل' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['لياقة بدنية جيدة', 'خبرة سنة على الأقل', 'شهادة جنسية + سكن'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80' },
-        { code: 'BRC-1043', title: 'سائق حمل (فئة ثالثة)', category: 'خدمات', region: 'المحاويل', salaryMin: 750000, salaryMax: 900000, shift: 'دوام كامل', employer: { name: 'شركة آفاق النقل', phone: '07811234567', address: 'المحاويل - الطريق العام - مجمع النقل' }, interviewLocation: 'المحاويل - مقابل مديرية النقل', requirements: ['إجازة سوق فئة ثالثة', 'خبرة 3 سنوات', 'عدم وجود تسجيل جنائي' ], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=800&q=80' },
-        { code: 'BRC-1044', title: 'ممرضة/ممرض (مناوبة)', category: 'صحي', region: 'الكفل', salaryMin: 900000, salaryMax: 1200000, shift: 'نوبات', employer: { name: 'مستشفى الكفل الأهلي', phone: '07731234567', address: 'الكفل - قرب المستشفى القديم' }, interviewLocation: 'مستشفى الكفل الأهلي - الإدارة', requirements: ['شهادة تمريض معتمدة', 'خبرة سنة', 'الالتزام بالنوبات'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80' },
-        { code: 'BRC-1045', title: 'مهندس مدني (تنفيذ)', category: 'هندسي', region: 'الحلة', salaryMin: 1500000, salaryMax: 2200000, shift: 'صباحي', employer: { name: 'مجموعة بابل للإنشاءات', phone: '07741234567', address: 'الحلة - حي الحسين - الشارع الرئيسي' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['شهادة هندسة مدنية', 'خبرة 4 سنوات في المشاريع', 'إجادة AutoCAD'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80' },
-        { code: 'BRC-1046', title: 'باريستا / عامل كافيه', category: 'خدمات', region: 'الهاشمية', salaryMin: 500000, salaryMax: 650000, shift: 'مسائي', employer: { name: 'كافيه دجلة', phone: '07751234567', address: 'الهاشمية - الشارع التجاري' }, interviewLocation: 'كافيه دجلة', requirements: ['حسن المظهر والتعامل', 'خبرة مفضلة'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&q=80' },
-        { code: 'BRC-1047', title: 'أمين مخزن (إلكترونيات)', category: 'إداري', region: 'الحلة', salaryMin: 700000, salaryMax: 850000, shift: 'صباحي', employer: { name: 'شركة الرافدين للإلكترونيات', phone: '07761234567', address: 'الحلة - شارع 60 - مجمع التجارة' }, interviewLocation: 'شركة الرافدين - المكتب الرئيسي', requirements: ['إجادة إكسل', 'أمانة ودقة', 'خبرة مخازن'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=800&q=80' },
-        { code: 'BRC-1048', title: 'طباخ خطوط إنتاج', category: 'خدمات', region: 'المسيب', salaryMin: 650000, salaryMax: 800000, shift: 'نوبات', employer: { name: 'مطابخ البابلية المركزية', phone: '07771234567', address: 'المسيب - المنطقة الصناعية' }, interviewLocation: 'مطابخ البابلية - القسم الإداري', requirements: ['خبرة مطاعم/مطابخ مركزية', 'صحة جيدة'], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80' },
-        { code: 'BRC-1049', title: 'فني كهرباء صناعية', category: 'تقني', region: 'الإسكندرية', salaryMin: 800000, salaryMax: 1000000, shift: 'صباحي', employer: { name: 'معمل الإسكندرية للبلاستيك', phone: '07781234567', address: 'الإسكندرية - منطقة المعامل' }, interviewLocation: 'المعمل - مكتب الإدارة', requirements: ['خبرة لوحات كهربائية', 'شهادة مهنية'], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=80' }
-      ],
-      jobsExtras: {
-        'BRC-1049': { status: 'closed' }        // الباقي تُستنتج حالاته من المحاولات المُزرَعة
-      },
-      applicants: [
-        { serial: 'BRC-NO-000117', fullName: 'علي حسين محمد', phone: '07701112233', address: 'الحلة - حي الجامعة', dob: '1996-04-12', createdBy: 'staff' },
-        { serial: 'BRC-NO-000118', fullName: 'زهراء عبد الكريم', phone: '07702223344', address: 'المحاويل - حي الحسين', dob: '1999-08-02', createdBy: 'staff2' },
-        { serial: 'BRC-NO-000119', fullName: 'مصطفى جبار علي', phone: '07703334455', address: 'الكفل - حي الزهراء', dob: '1994-01-25', createdBy: 'staff' },
-        { serial: 'BRC-NO-000120', fullName: 'حسين كاظم عبد الله', phone: '07704445566', address: 'الحلة - شارع 40', dob: '1997-11-30', createdBy: 'staff' }
-      ],
-      /* محاولات مرتبطة بالاستمارات التجريبية */
-      attempts: [
-        { serial: 'BRC-NO-000120', no: 1, jobCode: 'BRC-1042', slotStatus: 'rejected', note: 'رفض صاحب العمل — عدم توفر سكن قريب' },
-        { serial: 'BRC-NO-000120', no: 2, jobCode: 'BRC-1044', slotStatus: 'reserved', note: 'بانتظار نتيجة المقابلة' },
-        { serial: 'BRC-NO-000119', no: 1, jobCode: 'BRC-1045', slotStatus: 'reserved', note: 'مقابلة مجدولة' },
-        { serial: 'BRC-NO-000118', no: 1, jobCode: 'BRC-1043', slotStatus: 'succeeded', note: 'تم التوظيف فعلياً' }
-      ]
+      /* ══════════════════════════════════════════════════════════════════
+       *  فارغة عمداً — النظام في الإنتاج (2026-09-19)
+       *  ------------------------------------------------------------------
+       *  كانت هنا بيانات عرض: 8 وظائف و8 متقدمين بأسماء وأرقام هواتف
+       *  وعناوين وهمية. أُفرغت قبل التسليم لأن بقاءها خطر تشغيلي حقيقي:
+       *  الموقع العام يقرأ من Supabase فيتجاهلها، لكن أي موظف يفتح اللوحة
+       *  على جهاز جديد أو بلا اتصال كان يراها ويحسبها سجلات حقيقية —
+       *  فيتصل بأرقام لا وجود لها أو يبني قراراً على استمارة وهمية.
+       *
+       *  المصدر الوحيد للبيانات الآن هو قاعدة Supabase.
+       *  ⚠️ لا تُعِد ملء هذه المصفوفات على نظام يعمل. وإن احتجت بيانات
+       *     للتجربة، استعمل «إعادة ضبط البيانات التجريبية» في لوحة
+       *     الإعدادات على جهاز اختبار منفصل لا على قاعدة الإنتاج.
+       *
+       *  seedDb() في store.js يمرّ على هذه المصفوفات بـ forEach، فالفراغ
+       *  ينتج قاعدة نظيفة بإعداداتها الصحيحة بلا أي انهيار.
+       * ══════════════════════════════════════════════════════════════════ */
+      jobs: [],
+      jobsExtras: {},
+      applicants: [],
+      attempts: []
     }
   };
+
+  /* ── خطّاف بذرة الاختبارات ────────────────────────────────────────────
+     الإنتاج يبقى ببذرة فارغة (انظر التعليق عند seed أعلاه). لكن اختبارات
+     الواجهة تحتاج بيانات لتفحص بطاقات الوظائف والاستمارة والتصفية، فتضع
+     window.__BRC_TEST_SEED__ في beforeParse — أي قبل تنفيذ هذا الملف —
+     ونلتقطها هنا.
+
+     ⚠️ لا يُفعَّل هذا إلا بوجود المتغيّر صراحةً، وهو لا يُكتب في أي صفحة
+     منشورة (فحص التدقيق يمنع ذلك)، فلا سبيل لتسرّب بيانات وهمية للإنتاج. */
+  if (root.__BRC_TEST_SEED__) {
+    CONFIG.seed = root.__BRC_TEST_SEED__;
+  }
 
   root.BRC_CONFIG = CONFIG;
   if (typeof module === 'object' && module.exports) module.exports = CONFIG;
@@ -9082,6 +9089,36 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
 /* ===== ضبط النسخة المستقلة ===== */
 BRC_CONFIG.verifyLocal = '#!verify';
+/* بذرة العرض: هذه نسخة تعمل بلا قاعدة بيانات، فتحتاج بيانات لتُظهر شيئاً.
+   الصفحات المنشورة تبقى ببذرة فارغة وتقرأ من Supabase. */
+BRC_CONFIG.seed = {
+      jobs: [
+        { code: 'BRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة', salaryMin: 600000, salaryMax: 750000, shift: 'صباحي', employer: { name: 'مخازن الفرات للتبريد', phone: '07701234567', address: 'الحلة - المنطقة الصناعية - شارع المعمل' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['لياقة بدنية جيدة', 'خبرة سنة على الأقل', 'شهادة جنسية + سكن'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80' },
+        { code: 'BRC-1043', title: 'سائق حمل (فئة ثالثة)', category: 'خدمات', region: 'المحاويل', salaryMin: 750000, salaryMax: 900000, shift: 'دوام كامل', employer: { name: 'شركة آفاق النقل', phone: '07811234567', address: 'المحاويل - الطريق العام - مجمع النقل' }, interviewLocation: 'المحاويل - مقابل مديرية النقل', requirements: ['إجازة سوق فئة ثالثة', 'خبرة 3 سنوات', 'عدم وجود تسجيل جنائي' ], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=800&q=80' },
+        { code: 'BRC-1044', title: 'ممرضة/ممرض (مناوبة)', category: 'صحي', region: 'الكفل', salaryMin: 900000, salaryMax: 1200000, shift: 'نوبات', employer: { name: 'مستشفى الكفل الأهلي', phone: '07731234567', address: 'الكفل - قرب المستشفى القديم' }, interviewLocation: 'مستشفى الكفل الأهلي - الإدارة', requirements: ['شهادة تمريض معتمدة', 'خبرة سنة', 'الالتزام بالنوبات'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80' },
+        { code: 'BRC-1045', title: 'مهندس مدني (تنفيذ)', category: 'هندسي', region: 'الحلة', salaryMin: 1500000, salaryMax: 2200000, shift: 'صباحي', employer: { name: 'مجموعة بابل للإنشاءات', phone: '07741234567', address: 'الحلة - حي الحسين - الشارع الرئيسي' }, interviewLocation: 'مقر الشركة - الحلة', requirements: ['شهادة هندسة مدنية', 'خبرة 4 سنوات في المشاريع', 'إجادة AutoCAD'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80' },
+        { code: 'BRC-1046', title: 'باريستا / عامل كافيه', category: 'خدمات', region: 'الهاشمية', salaryMin: 500000, salaryMax: 650000, shift: 'مسائي', employer: { name: 'كافيه دجلة', phone: '07751234567', address: 'الهاشمية - الشارع التجاري' }, interviewLocation: 'كافيه دجلة', requirements: ['حسن المظهر والتعامل', 'خبرة مفضلة'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&q=80' },
+        { code: 'BRC-1047', title: 'أمين مخزن (إلكترونيات)', category: 'إداري', region: 'الحلة', salaryMin: 700000, salaryMax: 850000, shift: 'صباحي', employer: { name: 'شركة الرافدين للإلكترونيات', phone: '07761234567', address: 'الحلة - شارع 60 - مجمع التجارة' }, interviewLocation: 'شركة الرافدين - المكتب الرئيسي', requirements: ['إجادة إكسل', 'أمانة ودقة', 'خبرة مخازن'], gender: 'لا فرق', imageUrl: 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=800&q=80' },
+        { code: 'BRC-1048', title: 'طباخ خطوط إنتاج', category: 'خدمات', region: 'المسيب', salaryMin: 650000, salaryMax: 800000, shift: 'نوبات', employer: { name: 'مطابخ البابلية المركزية', phone: '07771234567', address: 'المسيب - المنطقة الصناعية' }, interviewLocation: 'مطابخ البابلية - القسم الإداري', requirements: ['خبرة مطاعم/مطابخ مركزية', 'صحة جيدة'], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80' },
+        { code: 'BRC-1049', title: 'فني كهرباء صناعية', category: 'تقني', region: 'الإسكندرية', salaryMin: 800000, salaryMax: 1000000, shift: 'صباحي', employer: { name: 'معمل الإسكندرية للبلاستيك', phone: '07781234567', address: 'الإسكندرية - منطقة المعامل' }, interviewLocation: 'المعمل - مكتب الإدارة', requirements: ['خبرة لوحات كهربائية', 'شهادة مهنية'], gender: 'ذكر', imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=80' }
+      ],
+      jobsExtras: {
+        'BRC-1049': { status: 'closed' }        // الباقي تُستنتج حالاته من المحاولات المُزرَعة
+      },
+      applicants: [
+        { serial: 'BRC-NO-000117', fullName: 'علي حسين محمد', phone: '07701112233', address: 'الحلة - حي الجامعة', dob: '1996-04-12', createdBy: 'staff' },
+        { serial: 'BRC-NO-000118', fullName: 'زهراء عبد الكريم', phone: '07702223344', address: 'المحاويل - حي الحسين', dob: '1999-08-02', createdBy: 'staff2' },
+        { serial: 'BRC-NO-000119', fullName: 'مصطفى جبار علي', phone: '07703334455', address: 'الكفل - حي الزهراء', dob: '1994-01-25', createdBy: 'staff' },
+        { serial: 'BRC-NO-000120', fullName: 'حسين كاظم عبد الله', phone: '07704445566', address: 'الحلة - شارع 40', dob: '1997-11-30', createdBy: 'staff' }
+      ],
+      /* محاولات مرتبطة بالاستمارات التجريبية */
+      attempts: [
+        { serial: 'BRC-NO-000120', no: 1, jobCode: 'BRC-1042', slotStatus: 'rejected', note: 'رفض صاحب العمل — عدم توفر سكن قريب' },
+        { serial: 'BRC-NO-000120', no: 2, jobCode: 'BRC-1044', slotStatus: 'reserved', note: 'بانتظار نتيجة المقابلة' },
+        { serial: 'BRC-NO-000119', no: 1, jobCode: 'BRC-1045', slotStatus: 'reserved', note: 'مقابلة مجدولة' },
+        { serial: 'BRC-NO-000118', no: 1, jobCode: 'BRC-1043', slotStatus: 'succeeded', note: 'تم التوظيف فعلياً' }
+      ]
+    };
 (function(){var l=document.querySelector('link[rel="icon"]');if(l)l.href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAgMTIwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmMmUyYWMiLz48c3RvcCBvZmZzZXQ9Ii40NSIgc3RvcC1jb2xvcj0iI2M4YTI0YSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzhhNmQyYyIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0ibCIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxYjQyODciLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMwODEzMmEiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMjYiIGZpbGw9InVybCgjbCkiLz4KICA8Y2lyY2xlIGN4PSI2MCIgY3k9IjYwIiByPSI1MyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjMiLz4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2MCAzMykiIGZpbGw9InVybCgjZykiPgogICAgPHJlY3QgeD0iLTYiIHk9Ii02IiB3aWR0aD0iMTIiIGhlaWdodD0iMTIiLz4KICAgIDxyZWN0IHg9Ii02IiB5PSItNiIgd2lkdGg9IjEyIiBoZWlnaHQ9IjEyIiB0cmFuc2Zvcm09InJvdGF0ZSg0NSkiLz4KICAgIDxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSIyLjIiIGZpbGw9IiMwYjFhM2EiLz4KICA8L2c+CiAgPGcgZmlsbD0idXJsKCNnKSI+CiAgICA8cmVjdCB4PSIzMyIgeT0iNDgiIHdpZHRoPSIxMCIgaGVpZ2h0PSI0MCIgcng9IjEuNSIvPgogICAgPHJlY3QgeD0iNzciIHk9IjQ4IiB3aWR0aD0iMTAiIGhlaWdodD0iNDAiIHJ4PSIxLjUiLz4KICAgIDxyZWN0IHg9IjMzIiB5PSI0MiIgd2lkdGg9IjMiIGhlaWdodD0iNiIvPjxyZWN0IHg9IjM4LjIiIHk9IjQyIiB3aWR0aD0iMyIgaGVpZ2h0PSI2Ii8+CiAgICA8cmVjdCB4PSI3OC44IiB5PSI0MiIgd2lkdGg9IjMiIGhlaWdodD0iNiIvPjxyZWN0IHg9Ijg0IiB5PSI0MiIgd2lkdGg9IjMiIGhlaWdodD0iNiIvPgogICAgPHJlY3QgeD0iNDMiIHk9IjU0IiB3aWR0aD0iMzQiIGhlaWdodD0iNyIgcng9IjEuNSIvPgogICAgPHJlY3QgeD0iNDMiIHk9IjQyLjUiIHdpZHRoPSIzIiBoZWlnaHQ9IjYiLz48cmVjdCB4PSI1Mi40IiB5PSI0Mi41IiB3aWR0aD0iMyIgaGVpZ2h0PSI2Ii8+CiAgICA8cmVjdCB4PSI2NC42IiB5PSI0Mi41IiB3aWR0aD0iMyIgaGVpZ2h0PSI2Ii8+PHJlY3QgeD0iNzQiIHk9IjQyLjUiIHdpZHRoPSIzIiBoZWlnaHQ9IjYiLz4KICAgIDxyZWN0IHg9IjI3IiB5PSI4OCIgd2lkdGg9IjY2IiBoZWlnaHQ9IjMuNCIgcng9IjEuNyIvPgogIDwvZz4KICA8cGF0aCBkPSJNNTAuNSA4OFY2OS44YTkuNSA5LjUgMCAwIDEgMTkgMFY4OHoiIGZpbGw9IiMwODEzMmEiIHN0cm9rZT0idXJsKCNnKSIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KPC9zdmc+Cg==";})();
 
 /* ===== راوتر الملف المستقل ===== */

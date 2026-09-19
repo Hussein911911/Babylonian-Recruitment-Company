@@ -16,6 +16,7 @@ import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DEMO_SEED } from './fixtures/demo-seed.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(join(ROOT, 'package.json'));
@@ -347,6 +348,11 @@ step(10, 'مطابقة الشكل مع BRCStore المحلي (الحقول ال�
 
   const vc = new VirtualConsole();
   const dom = await JSDOM.fromURL(BASE + '/dashboard.html', {
+    beforeParse(window) {
+      /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة
+         (انظر tests/fixtures/demo-seed.mjs). قبل تنفيذ config.js. */
+      window.__BRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
+    },
     runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true, virtualConsole: vc
   });
   await new Promise((r) => { dom.window.addEventListener('load', r); setTimeout(r, 8000); });
