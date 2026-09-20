@@ -21,7 +21,9 @@ from fpdf import FPDF
 from fpdf.enums import Align, XPos, YPos
 
 FONT_DIR = Path(__file__).parent / 'fonts'
-OUT = Path(__file__).parent.parent / 'docs' / 'عقد-التسليم.pdf'
+# ⚠️ اسم لاتيني عمداً: git في هذه البيئة يتجاهل المسارات العربية بصمت
+#    (git add ينجح دون إضافة شيء)، كما يسهّل التنزيل من المتصفح والهاتف.
+OUT = Path(__file__).parent.parent / 'docs' / 'CONTRACT-ar.pdf'
 
 # ── الهوية البصرية (من assets/css/style.css) ──────────────────────────
 LAPIS = (11, 26, 58)
