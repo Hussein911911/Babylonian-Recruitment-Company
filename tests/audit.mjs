@@ -303,6 +303,30 @@ for (const [js, page] of CONTRACT) {
   if (leaked.length) bad('لا حسابات تجريبية ظاهرة على شاشة الدخول', leaked.join(' | '));
   else ok('لا حسابات تجريبية ظاهرة على شاشة الدخول (في ' + published.length + ' صفحات منشورة)');
 
+  /* ── حارس: لا نطاق قديم في ما يُطبع أو يُعرض ──────────────────────────
+     رابط التحقق يُطبع داخل كيو آر كود الاستمارة. أي نطاق قديم هنا يعني
+     استمارة بيد زبون تشير إلى عنوان لا يملكه صاحب الشركة. ظهر فعلاً:
+     قالب اللوحة كان يعرض brc-babil.com نصّاً ثابتاً بعد تغيير الاسم. */
+  {
+    const STALE = ['brc-babil.com', 'babylonian-recruitment-company.pages.dev'];
+    const hits = [];
+    for (const f of ['index.html', 'verify.html', 'dashboard.html',
+                     'assets/js/config.js', 'src/partials/dashboard.html']) {
+      const src = readFileSync(join(ROOT, f), 'utf8');
+      for (const dom of STALE) {
+        /* النطاق الفعلي للمعاينة يحوي اسم المشروع كلاحقة، فنستثنيه */
+        /* البريد contact@brc-babil.com ليس رابط تحقق — بقاؤه قرار المالك
+           (يُحدَّث مع النطاق عند التسليم)، فنستثنيه ونفحص الروابط وحدها. */
+        const bad = src.split('\n').filter((l) =>
+          new RegExp('https?://[^"\'\\s]*' + dom.replace('.', '\\.')).test(l) &&
+          !l.includes('arena-01a0b563') && !l.includes('mail.google.com'));
+        if (bad.length) hits.push(`${f}: ${dom} (${bad.length})`);
+      }
+    }
+    if (hits.length) bad('لا نطاق قديم في روابط التحقق المعروضة', hits.join(' | '));
+    else ok('روابط التحقق خالية من النطاقات القديمة (لا brc-babil ولا نطاق المشروع القديم)');
+  }
+
   /* ── حارس: لا بيانات وهمية في الصفحات المنشورة ───────────────────────
      أُفرغت بذرة config.js قبل التسليم (2026-09-19) لأن أي موظف يفتح اللوحة
      على جهاز جديد أو بلا اتصال كان يرى 8 وظائف و8 متقدمين بأسماء وأرقام
