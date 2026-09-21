@@ -25,7 +25,7 @@
   var doc = root.document;
   if (!doc) return;
 
-  /* النسخة المستقلة (brc-standalone / brc-light) لها راوتر خاص بـ #! — لا نلمسها */
+  /* النسخة المستقلة (hrc-standalone / hrc-light) لها راوتر خاص بـ #! — لا نلمسها */
   function isStandalone() {
     return !!(doc.getElementById('route-site') || doc.getElementById('route-dashboard') ||
       (doc.body && doc.body.hasAttribute('data-route')));

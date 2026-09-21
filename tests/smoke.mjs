@@ -511,11 +511,11 @@ check('اللوحة المالية تحسب المتوقع تحصيله = الا
 });
 
 /* ======================= 6) النسخة المستقلة ======================= */
-console.log('\n=== 6) الملف المستقل (brc-standalone.html) ===');
-const st = await load('brc-standalone.html');
+console.log('\n=== 6) الملف المستقل (hrc-standalone.html) ===');
+const st = await load('hrc-standalone.html');
 check('الملف المستقل يُحمّل بدون أخطاء', () => st.errors.length === 0 || st.errors.join(' | '));
 check('لا مسارات ملفات خارجية (كل شيء مدمج)', () => {
-  const html = readFileSync(resolve(ROOT, 'brc-standalone.html'), 'utf8');
+  const html = readFileSync(resolve(ROOT, 'hrc-standalone.html'), 'utf8');
   const bads = [];
   if (/<link[^>]+href="assets\//.test(html)) bads.push('css');
   if (/<script[^>]+src="/.test(html)) bads.push('js');
@@ -523,7 +523,7 @@ check('لا مسارات ملفات خارجية (كل شيء مدمج)', () => 
   return bads.length === 0 || bads.join(',');
 });
 /* نسخة ثانية بجلسة موظف: التحقق يفتح داخل الملف المستقل */
-const stStaff = await load('brc-standalone.html', { hash: '#!verify?form=HRC-NO-000120', session: STAFF_SESSION });
+const stStaff = await load('hrc-standalone.html', { hash: '#!verify?form=HRC-NO-000120', session: STAFF_SESSION });
 
 check('القسم العام يعرض الوظائف داخل الملف المستقل', () => {
   const n = st.doc.querySelectorAll('#jobs-grid .job-card').length;

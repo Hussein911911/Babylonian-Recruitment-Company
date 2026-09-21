@@ -42,8 +42,8 @@ const server = createServer(async (req, res) => {
     const CLEAN_ROUTES = {
       '/verify': '/verify.html',
       '/dashboard': '/dashboard.html',
-      '/standalone': '/brc-standalone.html',
-      '/light': '/brc-light.html'
+      '/standalone': '/hrc-standalone.html',
+      '/light': '/hrc-light.html'
     };
     /* أقسام الصفحة الرئيسية: /jobs → /#jobs (تحويل 301 مطابق لـ _redirects) */
     const SECTION_ROUTES = ['home', 'jobs', 'how', 'services', 'about', 'contact'];
@@ -105,6 +105,6 @@ server.listen(PORT, HOST, () => {
   /* لا نطبع بيانات دخول في الطرفية: من يرى الشاشة يرى ما لا يحق له، ونفس
      السبب الذي أوجب حذف الحسابات التجريبية من الشاشة ينطبق على السجل. */
   console.log('  لوحة الموظفين  : http://localhost:' + PORT + '/dashboard.html');
-  console.log('  الملف المستقل  : http://localhost:' + PORT + '/brc-standalone.html');
+  console.log('  الملف المستقل  : http://localhost:' + PORT + '/hrc-standalone.html');
   console.log('  مسارات نظيفة   : /verify  ·  /dashboard  ·  /standalone  ·  /light   (مثل Render)');
 });

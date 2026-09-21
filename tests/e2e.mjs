@@ -297,7 +297,7 @@ check('الوظيفة المطلوبة (HRC-1042) سُجّلت مع الطلب',
   /* ═══ 8) الملف المستقل: مسار التحقق بجلسة الموظف ═══════════════════════ */
   step(8, 'الملف المستقل — التحقق بالمسار الهاشي والتنقل (بجلسة موظف)');
 
-  const solo = await open('brc-standalone.html', '#!verify?form=' + encodeURIComponent(SERIAL) + '&t=' + TOKEN, { session: 'staff' });
+  const solo = await open('hrc-standalone.html', '#!verify?form=' + encodeURIComponent(SERIAL) + '&t=' + TOKEN, { session: 'staff' });
   solo.w.BRCStore.importJson(DB2);
   solo.w.dispatchEvent(new solo.w.Event('hashchange'));   // محاكاة فتح الرابط من الكيو آر كود
   await new Promise((r) => setTimeout(r, 400));

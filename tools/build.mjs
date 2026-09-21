@@ -6,11 +6,11 @@
  *   1) index.html          — الموقع العام
  *   2) verify.html         — صفحة التحقق (تُفتح عبر الكيو آر كود)
  *   3) dashboard.html      — المنظومة الداخلية للموظفين
- *   4) brc-standalone.html — ملف واحد مستقل تماماً (CSS + JS + صور + خطوط مدمجة)
- *   5) brc-light.html      — نفس الملف لكن بصور مصغّرة (للعرض السريع والمشاركة)
+ *   4) hrc-standalone.html — ملف واحد مستقل تماماً (CSS + JS + صور + خطوط مدمجة)
+ *   5) hrc-light.html      — نفس الملف لكن بصور مصغّرة (للعرض السريع والمشاركة)
  *
  *  التشغيل:  node tools/build.mjs            (النسخة الكاملة)
- *            node tools/build.mjs --light    (نسخة خفيفة brc-light.html)
+ *            node tools/build.mjs --light    (نسخة خفيفة hrc-light.html)
  * =========================================================================== */
 import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -27,7 +27,7 @@ const warnings = [];
 /* النسخة الخفيفة (--light): تُصغّر الصور المدمجة لتُعرض وتُشارك بسرعة
    (مناسبة للواتساب/الإيميل والعارضات التي لا تحبّ الملفات الضخمة) */
 const LIGHT = process.argv.includes('--light');
-const OUT_NAME = LIGHT ? 'brc-light.html' : 'brc-standalone.html';
+const OUT_NAME = LIGHT ? 'hrc-light.html' : 'hrc-standalone.html';
 const LIGHT_MAX = process.env.BRC_LIGHT_MAX || '860x860>';
 const LIGHT_Q = process.env.BRC_LIGHT_Q || '56';
 
@@ -74,7 +74,7 @@ const CSS = read('assets/css/style.css');
  *  الموقع المنشور يقرأ بياناته من Supabase، وأي بيانات وهمية فيه كان يراها
  *  الموظف على جهاز جديد فيحسبها حقيقية.
  *
- *  لكن brc-standalone/brc-light نسخة **عرض** تُنسخ على فلاش أو تُرسل بالإيميل
+ *  لكن hrc-standalone/hrc-light نسخة **عرض** تُنسخ على فلاش أو تُرسل بالإيميل
  *  وتعمل بلا إنترنت وبلا قاعدة — ففارغةً تصبح بلا فائدة. لذلك نحقن بذرة العرض
  *  هنا، وقت البناء، في هذين الملفين وحدهما. الصفحات المنشورة لا تمسّها.
  * ------------------------------------------------------------------------- */
@@ -89,7 +89,7 @@ const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'p
 
 /* ---------------------------------------------------------------------------
  *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
- *  جاهزاً عند أول init()، ولا تُدمج في brc-standalone/brc-light (تلك نسخة
+ *  جاهزاً عند أول init()، ولا تُدمج في hrc-standalone/hrc-light (تلك نسخة
  *  تُشارَك كملف واحد بلا إنترنت ولا معنى لسوبابيس فيها — فتشتغل محلياً بلا
  *  أي تنبيه لأن BRCSupabaseConfig لا يكون محمّلاً أصلاً).
  *  'vendor/supabase' مسار خاص: assets/vendor/supabase.js

@@ -93,7 +93,7 @@ jobs:
           fi
 
       - name: التحقق من عدم تغيّر الملفات المبنية (البناء حتمي)
-        run: git diff --exit-code -- index.html verify.html dashboard.html brc-standalone.html brc-light.html
+        run: git diff --exit-code -- index.html verify.html dashboard.html hrc-standalone.html hrc-light.html
 
       - name: نشر على Cloudflare Pages
         if: steps.guard.outputs.ready == 'true'

@@ -21,9 +21,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 import { existsSync as fileExists } from 'node:fs';
 import { DEMO_SEED } from './fixtures/demo-seed.mjs';
-const LIGHT = fileExists(join(dirname(fileURLToPath(import.meta.url)), '..', 'brc-light.html'));
-const PAGES = ['index.html', 'verify.html', 'dashboard.html', 'brc-standalone.html']
-  .concat(LIGHT ? ['brc-light.html'] : []);
+const LIGHT = fileExists(join(dirname(fileURLToPath(import.meta.url)), '..', 'hrc-light.html'));
+const PAGES = ['index.html', 'verify.html', 'dashboard.html', 'hrc-standalone.html']
+  .concat(LIGHT ? ['hrc-light.html'] : []);
 
 let pass = 0, fail = 0, warn = 0;
 const problems = [];
@@ -214,7 +214,7 @@ section('3.c) الطباعة — مقاس A4 وطباعة الاستمارة ف�
 /* ═══ 4) الأصول على القرص ════════════════════════════════════════════════ */
 section('4) الأصول — كل صورة وملف مُشار إليه موجود على القرص');
 
-for (const file of PAGES.filter((f) => f !== 'brc-standalone.html')) {
+for (const file of PAGES.filter((f) => f !== 'hrc-standalone.html')) {
   const refs = new Set();
   loaded[file].doc.querySelectorAll('[src], [href]').forEach((el) => {
     for (const a of ['src', 'href']) {
@@ -273,15 +273,15 @@ for (const [js, page] of CONTRACT) {
 // الملف المستقل يجب أن يجمع كل المعرّفات
 {
   const union = new Set([...pageIds('index.html'), ...pageIds('verify.html'), ...pageIds('dashboard.html')]);
-  const inStandalone = pageIds('brc-standalone.html');
+  const inStandalone = pageIds('hrc-standalone.html');
   /* نفس السماح المطبّق في الفحص أعلاه: معرّف يُنشئه الكود ديناميكياً (id="…" داخل
      قالب نصي) هو موجود فعلاً في الملف المستقل ولو لم يكن في بنيته الأولية. بلا
      هذا السماح يُرفض أي عنصر يُبنى بالكود عند الشرط — وهو أسلوب مشروع ومستخدم
      في التنبيهات والنوافذ هنا. */
-  const standaloneSrc = readFileSync(join(ROOT, 'brc-standalone.html'), 'utf8');
+  const standaloneSrc = readFileSync(join(ROOT, 'hrc-standalone.html'), 'utf8');
   const missing = [...union].filter((id) => !inStandalone.has(id) && !standaloneSrc.includes('id="' + id + '"'));
-  if (missing.length) bad('brc-standalone.html — يجمع معرّفات كل الصفحات', 'ناقص: ' + missing.slice(0, 10).join(', '));
-  else ok('brc-standalone.html — يجمع ' + union.size + ' معرّفاً من الصفحات الثلاث كاملة');
+  if (missing.length) bad('hrc-standalone.html — يجمع معرّفات كل الصفحات', 'ناقص: ' + missing.slice(0, 10).join(', '));
+  else ok('hrc-standalone.html — يجمع ' + union.size + ' معرّفاً من الصفحات الثلاث كاملة');
 }
 
 // لا شيء يشير الزائر إلى الدخول أو يكشف بياناته في الصفحات المنشورة
@@ -293,7 +293,7 @@ for (const [js, page] of CONTRACT) {
    الفحص على الصفحات المنشورة نفسها لا على الأجزاء (src/partials) ليشمل أي
    بناء مستقبلي ينسى أحدها. */
 {
-  const published = ['index.html', 'verify.html', 'dashboard.html', 'brc-standalone.html', 'brc-light.html'];
+  const published = ['index.html', 'verify.html', 'dashboard.html', 'hrc-standalone.html', 'hrc-light.html'];
   const leaked = [];
   for (const f of published) {
     const src = readFileSync(join(ROOT, f), 'utf8');
@@ -331,7 +331,7 @@ for (const [js, page] of CONTRACT) {
      أُفرغت بذرة config.js قبل التسليم (2026-09-19) لأن أي موظف يفتح اللوحة
      على جهاز جديد أو بلا اتصال كان يرى 8 وظائف و8 متقدمين بأسماء وأرقام
      هواتف وهمية ويحسبها سجلات حقيقية — فيتصل بأرقام لا وجود لها. هذا الفحص
-     يمنع عودتها. (نسخة العرض brc-standalone/brc-light مستثناة عمداً: تعمل
+     يمنع عودتها. (نسخة العرض hrc-standalone/hrc-light مستثناة عمداً: تعمل
      بلا قاعدة بيانات ففارغةً تصبح بلا فائدة — تُحقن وقت البناء.) */
   {
     const FAKE = ['علي حسين محمد', 'زهراء عبد الكريم', '07701112233',
@@ -357,7 +357,7 @@ for (const [js, page] of CONTRACT) {
      واجهة للباحثين عن عمل، وزر «تسجيل الدخول» الظاهر يعرّف كل زائر بعنوان
      المنظومة الداخلية. الفحص: لا زر، ولا أي رابط للوحة في الصفحات العامة. */
   const linked = [];
-  for (const f of ['index.html', 'brc-standalone.html', 'brc-light.html']) {
+  for (const f of ['index.html', 'hrc-standalone.html', 'hrc-light.html']) {
     const src = readFileSync(join(ROOT, f), 'utf8');
     if (/header-login/.test(src)) linked.push(f + ': زر دخول ظاهر ما زال موجوداً');
     /* نفحص **عناصر DOM حقيقية** لا النص الخام: رابط «تسجيل دخول الموظفين»
@@ -384,7 +384,7 @@ for (const [js, page] of CONTRACT) {
     if (!/touchstart/.test(navSrc) || !/mousedown/.test(navSrc)) gate.push('لا يدعم اللمس والفأرة معاً');
     if (!/LONG_PRESS_MS/.test(navSrc)) gate.push('بلا مهلة ضغط');
     if (!/scroll/.test(navSrc)) gate.push('التمرير لا يُلغي الإيماءة (تفتح بالخطأ)');
-    for (const f of ['index.html', 'brc-standalone.html']) {
+    for (const f of ['index.html', 'hrc-standalone.html']) {
       if (!/data-staff-gate/.test(readFileSync(join(ROOT, f), 'utf8'))) gate.push(f + ': الاسم بلا علامة البوابة');
     }
     if (gate.length) bad('بوابة الضغطة المطوّلة موصولة وسليمة', gate.join(' | '));
@@ -404,7 +404,7 @@ for (const [js, page] of CONTRACT) {
     [/data-action="verify"/, 'إجراء التحقق اليدوي']
   ];
   const found = [];
-  for (const f of ['index.html', 'brc-standalone.html', 'brc-light.html', 'src/partials/public.html', 'src/partials/footer.html', 'src/partials/header.html']) {
+  for (const f of ['index.html', 'hrc-standalone.html', 'hrc-light.html', 'src/partials/public.html', 'src/partials/footer.html', 'src/partials/header.html']) {
     const src = readFileSync(join(ROOT, f), 'utf8');
     for (const [re, label] of visitorUi) if (re.test(src)) found.push(f + ': ' + label);
   }
@@ -412,7 +412,7 @@ for (const [js, page] of CONTRACT) {
   else ok('الموقع العام بلا أي واجهة تقديم استمارة أو تحقق منها (6 ملفات)');
 
   const navLeak = [];
-  for (const f of ['src/partials/header.html', 'src/partials/footer.html', 'index.html', 'brc-standalone.html', 'brc-light.html']) {
+  for (const f of ['src/partials/header.html', 'src/partials/footer.html', 'index.html', 'hrc-standalone.html', 'hrc-light.html']) {
     const src = readFileSync(join(ROOT, f), 'utf8');
     if (/href="verify\.html"/.test(src)) navLeak.push(f);
     if (/data-action="request-form"/.test(src)) navLeak.push(f + ' (طلب استمارة)');
@@ -554,7 +554,7 @@ for (const file of PAGES.filter((f) => f.startsWith('brc-'))) {
   const raw = readFileSync(join(ROOT, file), 'utf8');
   const dataUris = (raw.match(/data:[a-z]+\/[a-z0-9.+-]+;base64,/g) || []).length;
   const sizeMB = (Buffer.byteLength(raw) / 1048576).toFixed(2);
-  const sameAsFull = file === 'brc-standalone.html' ? '' : ' (نسخة مصغّرة للعرض السريع)';
+  const sameAsFull = file === 'hrc-standalone.html' ? '' : ' (نسخة مصغّرة للعرض السريع)';
   ok(file + ' — حجمه ' + sizeMB + ' ميجابايت ويحتوي ' + dataUris + ' أصلاً مدمجاً' + sameAsFull);
 }
 {
@@ -615,7 +615,7 @@ section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا ر�
   else {
     const dsrc = readFileSync(distScript, 'utf8');
     const needs = [['_headers', /_headers/], ['_redirects', /_redirects/], ['sw.js', /sw\.js/],
-      ['الصفحات الأساسية', /index\.html/], ['النسخة المستقلة', /brc-standalone\.html/]];
+      ['الصفحات الأساسية', /index\.html/], ['النسخة المستقلة', /hrc-standalone\.html/]];
     const gaps = needs.filter(([, re]) => !re.test(dsrc)).map(([k]) => k);
     if (gaps.length) bad('tools/dist.mjs يجمع ملفات الموقع الصحيحة', 'ناقص: ' + gaps.join(' · '));
     else ok('tools/dist.mjs — مجلد نشر نظيف يجمع الصفحات وsw.js و_headers و_redirects والأصول');
@@ -909,7 +909,7 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
 
   // 11.4 الملف المستقل لا يتأثّر: راوتره الخاص يبقى صاحب القرار
   {
-    const standalonePages = ['brc-standalone.html'].concat(LIGHT ? ['brc-light.html'] : []);
+    const standalonePages = ['hrc-standalone.html'].concat(LIGHT ? ['hrc-light.html'] : []);
     const broken = [];
     for (const f of standalonePages) {
       const src = readFileSync(join(ROOT, f), 'utf8');

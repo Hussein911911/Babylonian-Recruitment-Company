@@ -5733,7 +5733,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   var doc = root.document;
   if (!doc) return;
 
-  /* النسخة المستقلة (brc-standalone / brc-light) لها راوتر خاص بـ #! — لا نلمسها */
+  /* النسخة المستقلة (hrc-standalone / hrc-light) لها راوتر خاص بـ #! — لا نلمسها */
   function isStandalone() {
     return !!(doc.getElementById('route-site') || doc.getElementById('route-dashboard') ||
       (doc.body && doc.body.hasAttribute('data-route')));
@@ -6751,7 +6751,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
  *  تُظهر: الرقم التسلسلي، اسم الباحث، المحاولات المرتبطة وأكواد الوظائف،
  *  وحالة الاستمارة (سارية / منتهية / استُهلكت المحاولات / مكتملة).
  *  تعمل في وضعين: صفحة مستقلة (verify.html?form=...) أو ضمن الملف المستقل
- *  (brc-standalone.html#!verify?form=...).
+ *  (hrc-standalone.html#!verify?form=...).
  * =========================================================================== */
 (function (root) {
   'use strict';

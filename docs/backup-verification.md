@@ -16,7 +16,7 @@
 | `tests/smoke.mjs` | ✅ 52 / 0 |
 | `tests/e2e.mjs` | ✅ 37 / 0 |
 | `tests/audit.mjs` | ⚠️ 97 / 2 (غير متعلّق بالنسخ — انظر §6) |
-| نسخة الملف المستقل `brc-standalone.html` | ✅ 10 / 0 |
+| نسخة الملف المستقل `hrc-standalone.html` | ✅ 10 / 0 |
 
 ---
 
@@ -114,8 +114,8 @@ brc-auto-backup-last-run   → بصمة آخر خانة نُفّذت  (YYYY-MM-D
 `tests/audit.mjs` يفشل في فحصين، وليس لهما علاقة بالنسخ الاحتياطي:
 
 ```
-brc-standalone.html — لا مراجع خارجية للموارد (صور/خطوط/كود)
-brc-light.html      — لا مراجع خارجية للموارد (صور/خطوط/كود)
+hrc-standalone.html — لا مراجع خارجية للموارد (صور/خطوط/كود)
+hrc-light.html      — لا مراجع خارجية للموارد (صور/خطوط/كود)
 ```
 
 **السبب:** بيانات الوظائف التجريبية في `assets/js/config.js` تحتوي حقول `imageUrl`
@@ -128,7 +128,7 @@ brc-light.html      — لا مراجع خارجية للموارد (صور/خط
 ودمجها، أو استثناء صور البيانات التجريبية من الفحص.
 
 > ملاحظة: البناء **مطابق** للمصدر — `npm run build` لا يُنتج أي فرق عن الملفات
-> الملتزمة (`brc-standalone.html`، `brc-light.html`).
+> الملتزمة (`hrc-standalone.html`، `hrc-light.html`).
 
 ---
 
