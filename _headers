@@ -17,9 +17,9 @@
   Cache-Control: no-cache, must-revalidate
 
 # النسخة المستقلّة القابلة للتنزيل: تتغيّر مع كل بناء
-/brc-standalone.html
+/hrc-standalone.html
   Cache-Control: no-cache
-/brc-light.html
+/hrc-light.html
   Cache-Control: no-cache
 
 # الخطوط والأصول الثابتة: تخزين طويل

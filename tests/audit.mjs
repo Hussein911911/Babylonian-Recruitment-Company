@@ -303,6 +303,27 @@ for (const [js, page] of CONTRACT) {
   if (leaked.length) bad('لا حسابات تجريبية ظاهرة على شاشة الدخول', leaked.join(' | '));
   else ok('لا حسابات تجريبية ظاهرة على شاشة الدخول (في ' + published.length + ' صفحات منشورة)');
 
+  /* ── حارس: اسم كاش Service Worker يواكب الرمز الحالي ────────────────
+     المتصفح لا ينشّط جيلاً جديداً من sw.js إلا إذا تغيّر محتوى الملف، وحذف
+     الكاش القديم يقع في activate. فإبقاء CACHE_NAME ثابتاً يُبقي الزوار
+     القدامى على نسخة قديمة من index.html مهما أُعيد النشر — ظهر فعلاً:
+     زر دخول محذوف بقي ظاهراً على حاسبة زارت الموقع قبل حذفه، بينما اختفى
+     على هاتف يزوره أول مرة. */
+  {
+    const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
+    const m = sw.match(/const CACHE_NAME = '([^']+)'/);
+    const problems = [];
+    if (!m) problems.push('CACHE_NAME غير معرّف');
+    else if (/^brc-/.test(m[1])) problems.push(`ما زال بالرمز القديم: ${m[1]}`);
+    /* الملفات المخزَّنة مسبقاً يجب أن تكون موجودة فعلاً */
+    for (const f of (sw.match(/'\/([\w.-]+\.html)'/g) || [])) {
+      const name = f.replace(/'|\//g, '');
+      if (!fileExists(join(ROOT, name))) problems.push(`يخزّن ملفاً مفقوداً: ${name}`);
+    }
+    if (problems.length) bad('Service Worker: اسم الكاش وملفاته سليمة', problems.join(' | '));
+    else ok(`Service Worker يستعمل كاشاً محدَّثاً (${m[1]}) وكل ملفاته موجودة`);
+  }
+
   /* ── حارس: لا نطاق قديم في ما يُطبع أو يُعرض ──────────────────────────
      رابط التحقق يُطبع داخل كيو آر كود الاستمارة. أي نطاق قديم هنا يعني
      استمارة بيد زبون تشير إلى عنوان لا يملكه صاحب الشركة. ظهر فعلاً:
@@ -990,8 +1011,9 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
   {
     const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
     const issues = [];
-    const gen = (sw.match(/brc-cache-v(\d+)/) || [])[1];
-    if (!gen || Number(gen) < 5) issues.push('جيل الكاش قديم: v' + gen);
+    /* النمط يقبل البادئتين: hrc (الحالية) وbrc (قبل تغيير الرمز) */
+    const gen = (sw.match(/[bh]rc-cache-v(\d+)/) || [])[1];
+    if (!gen || Number(gen) < 6) issues.push('جيل الكاش قديم: v' + gen);
     if (!/nav\.js/.test(sw)) issues.push('nav.js خارج الكاش');
     if (!/404\.html/.test(sw)) issues.push('404.html خارج الكاش');
     if (!/cache\.add\(u\)\.catch/.test(sw)) issues.push('addAll يُسقط التثبيت كلّه عند فشل ملف واحد');
