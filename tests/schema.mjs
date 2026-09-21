@@ -73,7 +73,9 @@ const funcs = [];
 let f;
 while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 
-check('عدد الدوال المتوقّع (18)', funcs.length === 18, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+/* 19 بعد فصل trg_make_attempts عن trg_defaults (إصلاح 23503: إنشاء خانات
+   المحاولات نُقل إلى مُشغِّل AFTER INSERT لأن BEFORE يسبق كتابة الاستمارة) */
+check('عدد الدوال المتوقّع (19)', funcs.length === 19, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
 const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
@@ -240,7 +242,7 @@ step(8, 'الاكتمال — كل ما وعد به المخطط موجود فع
 
 for (const [label, re] of [
   ['تسلسل أكواد الوظائف (BRC-####)', /create\s+sequence\s+if\s+not\s+exists\s+brc\.job_code_seq/i],
-  ['تسلسل أرقام الاستمارات (BRC-NO-######)', /create\s+sequence\s+if\s+not\s+exists\s+brc\.form_serial_seq/i],
+  ['تسلسل أرقام الاستمارات (HRC-NO-######)', /create\s+sequence\s+if\s+not\s+exists\s+brc\.form_serial_seq/i],
   ['دالة ترشيح وظيفة (منع الحجز المزدوج)', /function\s+brc\.select_attempt/i],
   ['دالة تثبيت نتيجة المقابلة', /function\s+brc\.set_outcome/i],
   ['دالة إفراج يدوي عن حجز', /function\s+brc\.release_hold/i],
@@ -253,7 +255,7 @@ for (const [label, re] of [
 ]) check(label, re.test(RAW));
 
 const trigCount = [...stripped(RAW).matchAll(/create\s+trigger\s+\w+/gi)].length;
-check('المشغّلات السبعة موجودة (توليد الأكواد/الحجز/التدقيق)', trigCount === 7, trigCount + '');
+check('المشغّلات الثمانية موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق)', trigCount === 8, trigCount + '');
 
 /* ------------------------- 9) مزامنة ملف الـ migration ------------------------- */
 step(9, 'ملف الـ migration — متطابق مع المصدر (تكاملة GitHub في Supabase)');

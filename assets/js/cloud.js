@@ -289,12 +289,15 @@
     /* آخر أرقام التسلسل: نستنتجها من البيانات الفعلية حتى لا تتصادم الأكواد
        الجديدة مع القديمة. (المصدر الحقيقي تسلسلات PostgreSQL، وهذي للعرض فقط.) */
     var maxJob = 1041, maxSerial = 119;
+    /* نقبل البادئتين HRC (الحالية) وBRC (قبل تغيير اسم الشركة 2026-09-19):
+       القاعدة تحوي سجلات صدرت بالرمز القديم، ولو تجاهلناها لعاد العدّاد إلى
+       رقم مستعمَل فتتكرّر الأكواد على وظيفتين مختلفتين. */
     jobs.forEach(function (j) {
-      var m = /^BRC-(\d+)$/.exec(j.code || '');
+      var m = /^(?:HRC|BRC)-(\d+)$/.exec(j.code || '');
       if (m) maxJob = Math.max(maxJob, Number(m[1]));
     });
     applicants.forEach(function (a) {
-      var m = /^BRC-NO-(\d+)$/.exec(a.serial || '');
+      var m = /^(?:HRC|BRC)-NO-(\d+)$/.exec(a.serial || '');
       if (m) maxSerial = Math.max(maxSerial, Number(m[1]));
     });
 

@@ -182,14 +182,14 @@ function cloudRows() {
       created_at: '2026-01-01T00:00:00.000Z'
     }],
     applicants: [{
-      id: 'app-uuid-1', serial: 'BRC-NO-900001', full_name: 'باحث من القاعدة', phone: '07711111111',
+      id: 'app-uuid-1', serial: 'HRC-NO-900001', full_name: 'باحث من القاعدة', phone: '07711111111',
       address: 'الحلة', dob: '1990-01-01', gender: 'ذكر', nationality: 'عراقي', status: 'active',
       issue_date: iso(-1), expiry_date: iso(29),
       attempt_limit: 5, fee_amount: 10000, fee_paid: false, printed_count: 0, notes: '',
       requested_code: null, reject_reason: '', created_at: '2026-01-01T00:00:00.000Z'
     }],
     job_attempts: [{
-      id: 'att-uuid-1', serial: 'BRC-NO-900001', attempt_no: 1, job_id: 'job-uuid-1', job_code: 'BRC-5001',
+      id: 'att-uuid-1', serial: 'HRC-NO-900001', attempt_no: 1, job_id: 'job-uuid-1', job_code: 'BRC-5001',
       slot_status: 'empty', selected_at: null, hold_expires_at: null, closed_at: null,
       outcome_note: '', staff_id: null
     }],
@@ -223,8 +223,8 @@ step(1, 'الإقلاع — الواجهة تتبنّى ما في القاعدة
   check('كائن db لم يُستبدل — نفس المرجع (وإلا انكسرت مراجع الواجهة)', db === dbAfterLoad);
   check('الوظائف جاءت من القاعدة', db.jobs.length === 1 && db.jobs[0].code === 'BRC-5001',
     JSON.stringify(db.jobs.map((j) => j.code)));
-  check('لا أثر لوظائف البيانات التجريبية (BRC-1042)', !db.jobs.some((j) => j.code === 'BRC-1042'));
-  check('الاستمارة من القاعدة', db.applicants.length === 1 && db.applicants[0].serial === 'BRC-NO-900001');
+  check('لا أثر لوظائف البيانات التجريبية (HRC-1042)', !db.jobs.some((j) => j.code === 'HRC-1042'));
+  check('الاستمارة من القاعدة', db.applicants.length === 1 && db.applicants[0].serial === 'HRC-NO-900001');
   check('المحاولات مرتبطة بالوظيفة (بيانات مُسطّحة مشتقّة)',
     db.attempts.length === 1 && db.attempts[0].jobCode === 'BRC-5001',
     JSON.stringify(db.attempts));
@@ -430,7 +430,7 @@ step(5, 'الزائر — RPC للطلب والتحقق (الجدول محجوب
         attempts: [{ no: 1, jobCode: 'BRC-5001', jobTitle: 'وظيفة', location: 'بابل', slotStatus: 'reserved',
           selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }]
       }),
-      request_form: (args) => ({ ok: true, serial: 'BRC-NO-900999', status: 'pending' })
+      request_form: (args) => ({ ok: true, serial: 'HRC-NO-900999', status: 'pending' })
     }
   });
   mock.__state.public_jobs = [{
@@ -455,15 +455,15 @@ step(5, 'الزائر — RPC للطلب والتحقق (الجدول محجوب
 
   const req = await Store.submitPublicRequest({ fullName: 'علي حسن', phone: '07701234567', address: 'الحلة', gender: 'ذكر' });
   check('الطلب الإلكتروني يمرّ عبر brc.request_form', mock.__calls.some((c) => c.rpc === 'request_form'), JSON.stringify(mock.__calls.filter((c) => c.rpc)));
-  check('الطلب نجح وأعاد الرقم التسلسلي', req.ok && req.serial === 'BRC-NO-900999', JSON.stringify(req));
+  check('الطلب نجح وأعاد الرقم التسلسلي', req.ok && req.serial === 'HRC-NO-900999', JSON.stringify(req));
   check('لا إدراج مباشر في جدول الاستمارات (محجوب على anon)',
     !mock.__calls.some((c) => c.table === 'applicants' && c.op === 'insert'));
-  check('الطلب ظاهر محلياً للمتابعة', Store.getApplicant('BRC-NO-900999') !== null);
+  check('الطلب ظاهر محلياً للمتابعة', Store.getApplicant('HRC-NO-900999') !== null);
 
-  const vr = await Store.verifyCloud('BRC-NO-900001', null);
+  const vr = await Store.verifyCloud('HRC-NO-900001', null);
   check('التحقق يمرّ عبر brc.verify_form', mock.__calls.some((c) => c.rpc === 'verify_form'));
   check('بلا بصمة: الرد مقنّع', vr.ok && vr.form.masked === true && /•/.test(vr.form.fullName), JSON.stringify(vr.form && vr.form.fullName));
-  check('بالبصمة: الرد كامل', (await Store.verifyCloud('BRC-NO-900001', 'abc12345')).form.masked === false);
+  check('بالبصمة: الرد كامل', (await Store.verifyCloud('HRC-NO-900001', 'abc12345')).form.masked === false);
   check('لا قراءة مباشرة لجدول الاستمارات من الزائر',
     !mock.__calls.some((c) => c.table === 'applicants' && c.op === 'select'));
 
@@ -523,7 +523,7 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
 
   /* المسار الآخر المهم: ما تُنتجه الصيانة التلقائية يجب أن يُدفع أيضاً.
      (استمارة انتهت صلاحيتها فعلاً: تُوسم «منتهية» ويُكتب سطر تدقيق.) */
-  const app = Store.getApplicant('BRC-NO-900001');
+  const app = Store.getApplicant('HRC-NO-900001');
   app.expiryDate = new Date(Date.now() - 86400000).toISOString();
   const actions = Store.runMaintenance();
   check('الصيانة وسَمت الاستمارة المنتهية', actions.some((a) => a.type === 'formExpired') && app.status === 'expired',

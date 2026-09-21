@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 const QR = require(resolve(ROOT, 'assets/js/qr.js'));
 
 console.log('\n═'.repeat(32));
-console.log('  تقرير مولّد الكيو آر كود — شركة بابل للتوظيف (BRC)');
+console.log('  تقرير مولّد الكيو آر كود — شركة الهدف للتوظيف (BRC)');
 console.log('═'.repeat(32) + '\n');
 
 /* 1) الاختبارات الذاتية */
@@ -34,10 +34,10 @@ versions.forEach((v) => {
 /* 3) نموذج عملي: روابط التحقق وقياسات الرمز */
 console.log('\n— نماذج فعلية من روابط التحقق —');
 const samples = [
-  'BRC-NO-000120',
-  'https://brc-babil.com/verify?form=BRC-NO-000120&t=a1b2c3d4',
-  'BRC-1042|BRC-1043|BRC-1044|BRC-1045|BRC-1046|BRC-NO-000120',
-  'شركة بابل للتوظيف — حلة شارع 60'
+  'HRC-NO-000120',
+  'https://brc-babil.com/verify?form=HRC-NO-000120&t=a1b2c3d4',
+  'HRC-1042|HRC-1043|HRC-1044|HRC-1045|HRC-1046|HRC-NO-000120',
+  'شركة الهدف للتوظيف — حلة شارع 60'
 ];
 samples.forEach((s) => {
   const m = QR.encode(s, 'M');

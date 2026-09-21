@@ -25,8 +25,8 @@ const PAGES = [
   'index.html',            // الموقع العام
   'verify.html',           // أداة التحقق (للموظفين والإدارة)
   'dashboard.html',        // المنظومة الداخلية
-  'brc-standalone.html',   // النسخة المستقلة (ملف واحد)
-  'brc-light.html',        // النسخة الخفيفة
+  'hrc-standalone.html',   // النسخة المستقلة (ملف واحد)
+  'hrc-light.html',        // النسخة الخفيفة
   'supabase-check.html',   // صفحة فحص الاتصال
   'sw.js',                 // Service Worker (يجب أن يبقى في الجذر ليعمل على كل الموقع)
   '_headers',              // ترويسات Cloudflare Pages

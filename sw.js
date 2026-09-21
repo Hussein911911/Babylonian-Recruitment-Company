@@ -1,4 +1,4 @@
-// Service Worker للعمل أوفلاين — brc-cache-v4
+// Service Worker للعمل أوفلاين — hrc-cache-v6
 // ---------------------------------------------------------------------------
 // سياسة التخزين منذ v4:
 //   • HTML و JS  → network-first: الشبكة أولاً (الزائر يرى آخر نسخة)، والكاش
@@ -6,22 +6,33 @@
 //     أجهزة الموظفين على نسخ قديمة بعد كل نشر رغم تحديث الموقع.
 //   • الأصول الثابتة (CSS/صور/خطوط/أيقونات) → cache-first: لا تتغير إلا نادراً،
 //     وبصمة ?v= في روابطها تُبدّلها تلقائياً عند البناء عند أي تعديل.
+//   • v5: أُضيف nav.js و 404.html إلى الكاش، وصار فشل تحميل صفحة أثناء التصفّح
+//     يعيد الصفحة الرئيسية من الكاش بدل خطأ المتصفح — وهذا ما كان يُظهر
+//     «صفحة غير موجودة» لمن كان على نسخة قديمة مخزَّنة.
 //   • skipWaiting + clients.claim: النسخة الجديدة تتسلّم فوراً بلا انتظار إغلاق
 //     كل التبويبات — وإلا بقي موظف على سواها يوماً كاملاً.
 //
-// ⚠️ مع كل تحديث للواجهة: ارفع رقم النسخة (v4 → v5 …) — اسم الكاش هو ما يُبطل
+// ⚠️ مع كل تحديث للواجهة: ارفع رقم النسخة (v5 → v6 …) — اسم الكاش هو ما يُبطل
 //    نسخ الموظفين القديمة ويحذف مخزونها عند التنشيط.
 // ---------------------------------------------------------------------------
-const CACHE_NAME = 'brc-cache-v4';
+/* ⚠️ ارفع الرقم مع كل تغيير يمسّ ملفات مخزَّنة.
+   الكاش القديم يُحذف في حدث activate، لكن ذلك لا يقع إلا إذا تغيّر محتوى
+   sw.js نفسه — فالمتصفح يقارن الملف بايتاً ببايت ولا ينشّط جيلاً جديداً
+   إن كان مطابقاً. إبقاء الرقم ثابتاً يُبقي الزوار القدامى على نسخة قديمة
+   من index.html مهما أعدت النشر (ظهر فعلاً: زر دخول محذوف بقي على حاسبة
+   زارت الموقع قبل الحذف، بينما اختفى على هاتف لم يزره من قبل). */
+const CACHE_NAME = 'hrc-cache-v6';
 const urlsToCache = [
   '/',
   '/index.html',
   '/dashboard.html',
   '/verify.html',
+  '/404.html',
   '/assets/css/style.css',
   '/assets/js/config.js',
   '/assets/js/store.js',
   '/assets/js/ui.js',
+  '/assets/js/nav.js',
   '/assets/js/public.js',
   '/assets/js/dashboard.js',
   '/assets/js/verify.js',
@@ -39,7 +50,10 @@ function isNetworkFirst(request, url) {
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+      /* addAll يسقط كاملاً لو تعذّر ملف واحد — فيبقى المتصفح على كاش الجيل
+         السابق (وهو سبب معروف لظهور صفحات قديمة/مفقودة بعد النشر). نضيف كل
+         ملف على حدة حتى لا يُسقِط غيابُ ملفٍ واحد التثبيتَ كلّه. */
+      .then(cache => Promise.all(urlsToCache.map(u => cache.add(u).catch(() => null))))
       .then(() => self.skipWaiting())
   );
 });
@@ -77,9 +91,14 @@ self.addEventListener('fetch', event => {
         }
         return response;
       }).catch(() =>
-        caches.match(request, { ignoreSearch: true }).then(cached =>
-          cached || caches.match('/index.html').then(fallback => fallback || Response.error())
-        )
+        caches.match(request, { ignoreSearch: true }).then(cached => {
+          if (cached) return cached;
+          /* تصفّح بلا شبكة وبلا نسخة مخزَّنة: نُعيد الصفحة الرئيسية للتنقل،
+             وصفحة 404 بهوية الشركة لما سواه — لا شاشة خطأ عارية من المتصفح. */
+          const fb = request.mode === 'navigate' ? '/index.html' : '/404.html';
+          return caches.match(fb).then(page => page || caches.match('/index.html'))
+            .then(page => page || Response.error());
+        })
       )
     );
     return;

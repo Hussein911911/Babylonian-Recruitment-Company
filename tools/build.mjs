@@ -6,11 +6,11 @@
  *   1) index.html          — الموقع العام
  *   2) verify.html         — صفحة التحقق (تُفتح عبر الكيو آر كود)
  *   3) dashboard.html      — المنظومة الداخلية للموظفين
- *   4) brc-standalone.html — ملف واحد مستقل تماماً (CSS + JS + صور + خطوط مدمجة)
- *   5) brc-light.html      — نفس الملف لكن بصور مصغّرة (للعرض السريع والمشاركة)
+ *   4) hrc-standalone.html — ملف واحد مستقل تماماً (CSS + JS + صور + خطوط مدمجة)
+ *   5) hrc-light.html      — نفس الملف لكن بصور مصغّرة (للعرض السريع والمشاركة)
  *
  *  التشغيل:  node tools/build.mjs            (النسخة الكاملة)
- *            node tools/build.mjs --light    (نسخة خفيفة brc-light.html)
+ *            node tools/build.mjs --light    (نسخة خفيفة hrc-light.html)
  * =========================================================================== */
 import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -27,7 +27,7 @@ const warnings = [];
 /* النسخة الخفيفة (--light): تُصغّر الصور المدمجة لتُعرض وتُشارك بسرعة
    (مناسبة للواتساب/الإيميل والعارضات التي لا تحبّ الملفات الضخمة) */
 const LIGHT = process.argv.includes('--light');
-const OUT_NAME = LIGHT ? 'brc-light.html' : 'brc-standalone.html';
+const OUT_NAME = LIGHT ? 'hrc-light.html' : 'hrc-standalone.html';
 const LIGHT_MAX = process.env.BRC_LIGHT_MAX || '860x860>';
 const LIGHT_Q = process.env.BRC_LIGHT_Q || '56';
 
@@ -63,14 +63,33 @@ const partials = {
   footer: read('src/partials/footer.html'),
   public: read('src/partials/public.html'),
   verify: read('src/partials/verify.html'),
+  notfound: read('src/partials/notfound.html'),
   dashboard: read('src/partials/dashboard.html')
 };
 const CSS = read('assets/css/style.css');
-const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'voucher', 'public', 'verify', 'dashboard'];
+/* ---------------------------------------------------------------------------
+ *  بذرة العرض للملف المستقل
+ *  ---------------------------------------------------------------------------
+ *  assets/js/config.js يخرج إلى الإنتاج **ببذرة فارغة** عمداً (2026-09-19):
+ *  الموقع المنشور يقرأ بياناته من Supabase، وأي بيانات وهمية فيه كان يراها
+ *  الموظف على جهاز جديد فيحسبها حقيقية.
+ *
+ *  لكن hrc-standalone/hrc-light نسخة **عرض** تُنسخ على فلاش أو تُرسل بالإيميل
+ *  وتعمل بلا إنترنت وبلا قاعدة — ففارغةً تصبح بلا فائدة. لذلك نحقن بذرة العرض
+ *  هنا، وقت البناء، في هذين الملفين وحدهما. الصفحات المنشورة لا تمسّها.
+ * ------------------------------------------------------------------------- */
+const DEMO_SEED_SRC = read('tests/fixtures/demo-seed.mjs');
+const DEMO_SEED_JSON = (() => {
+  const m = DEMO_SEED_SRC.match(/export const DEMO_SEED = ([\s\S]*?);\n\n\/\* تحقن/);
+  if (!m) throw new Error('تعذّر استخراج DEMO_SEED من tests/fixtures/demo-seed.mjs');
+  return m[1];
+})();
+
+const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'public', 'verify', 'dashboard'];
 
 /* ---------------------------------------------------------------------------
  *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
- *  جاهزاً عند أول init()، ولا تُدمج في brc-standalone/brc-light (تلك نسخة
+ *  جاهزاً عند أول init()، ولا تُدمج في hrc-standalone/hrc-light (تلك نسخة
  *  تُشارَك كملف واحد بلا إنترنت ولا معنى لسوبابيس فيها — فتشتغل محلياً بلا
  *  أي تنبيه لأن BRCSupabaseConfig لا يكون محمّلاً أصلاً).
  *  'vendor/supabase' مسار خاص: assets/vendor/supabase.js
@@ -81,9 +100,9 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
    ولا اتصالاً لحظياً. قياس الحجم أظهر أن المكتبة الكاملة كانت ثلث ما ينزّله.
    اللوحة تبقى على المكتبة الكاملة لأنها تحتاج Auth و Realtime فعلاً. */
 const SCRIPTS = {
-  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'voucher', 'public'],
-  verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'voucher', 'verify'],
-  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'voucher', 'dashboard']
+  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'public'],
+  verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
+  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard']
 };
 
 /* مسار الأصل من الاسم: 'vendor/x' → assets/vendor/x.js وإلا assets/js/x.js */
@@ -103,8 +122,8 @@ const ASSET_VER = process.env.BRC_ASSET_VER || createHash('sha1')
 const verQ = (p) => `${p}?v=${ASSET_VER}`;
 
 const META = {
-  title: 'شركة بابل للتوظيف | Babylonian Recruitment Company',
-  desc: 'شركة بابل للتوظيف (BRC) في الحلة — بابل: استمارات ترشيح موثّقة بكيو آر كود، خمس محاولات، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة.',
+  title: 'شركة الهدف للتوظيف | Al-Hadaf Recruitment Company',
+  desc: 'شركة الهدف للتوظيف (BRC) في الحلة — بابل: استمارات ترشيح موثّقة بكيو آر كود، خمس محاولات، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة.',
   keywords: 'توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, استمارة توظيف, BRC, عمالة فنية'
 };
 
@@ -118,7 +137,7 @@ function docHead({ title, desc, css = null, icon = 'assets/img/favicon.svg', ext
 <meta name="description" content="${desc}">
 <meta name="keywords" content="${META.keywords}">
 <meta name="theme-color" content="#0b1a3a">
-<meta name="author" content="Babylonian Recruitment Company">
+<meta name="author" content="Al-Hadaf Recruitment Company">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="${desc}">
 <meta property="og:type" content="website">
@@ -145,13 +164,30 @@ writeFileSync(P('index.html'), buildPage({
   title: META.title, desc: META.desc, body: partials.public, scripts: SCRIPTS.public
 }));
 writeFileSync(P('verify.html'), buildPage({
-  title: 'التحقق من الاستمارة | شركة بابل للتوظيف',
-  desc: 'صفحة التحقق الرسمية لاستمارات شركة بابل للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.',
+  title: 'التحقق من الاستمارة | شركة الهدف للتوظيف',
+  desc: 'صفحة التحقق الرسمية لاستمارات شركة الهدف للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.',
   body: partials.verify, scripts: SCRIPTS.verify
 }));
+/* صفحة 404 بهوية الشركة: يقرأها Cloudflare Pages تلقائياً من /404.html عند أي
+   مسار غير موجود، ويوجّه إليها خادم المعاينة المحلي أيضاً — فيبقى الزائر داخل
+   الموقع مع روابط الأقسام بدل صفحة بيضاء من المضيف. */
+{
+  /* ⚠️ صفحة 404 تُخدَم على **عنوان المسار الأصلي** (مثال /a/b/typo) لا على
+     /404.html — فالمسارات النسبية (assets/…) تُحسب من /a/b/ وتفشل، فيرى الزائر
+     صفحة بلا أنماط ولا أيقونات. لذلك تُثبَّت مراجعها على جذر الموقع (/assets/…)
+     وهي الصفحة الوحيدة التي تحتاج ذلك. */
+  const nf = buildPage({
+    title: 'الصفحة غير موجودة | شركة الهدف للتوظيف',
+    desc: 'الرابط المطلوب غير موجود على موقع شركة الهدف للتوظيف — تصفّح الوظائف المتاحة أو تواصل معنا مباشرة.',
+    body: partials.notfound, scripts: ['config', 'ui', 'nav']
+  }).replace(/(src|href)="assets\//g, '$1="/assets/')
+    .replace(/(src|href)="index\.html/g, '$1="/index.html');
+  writeFileSync(P('404.html'), nf);
+}
+
 writeFileSync(P('dashboard.html'), buildPage({
-  title: 'المنظومة الداخلية | شركة بابل للتوظيف',
-  desc: 'لوحة الموظفين والإدارة لشركة بابل للتوظيف: إدارة الوظائف، إصدار الاستمارات، متابعة الحجوزات، سجل التدقيق، واللوحة المالية.',
+  title: 'المنظومة الداخلية | شركة الهدف للتوظيف',
+  desc: 'لوحة الموظفين والإدارة لشركة الهدف للتوظيف: إدارة الوظائف، إصدار الاستمارات، متابعة الحجوزات، سجل التدقيق، واللوحة المالية.',
   body: partials.dashboard, scripts: SCRIPTS.dashboard
 }));
 
@@ -200,6 +236,9 @@ function buildStandalone() {
   const boot = `
 /* ===== ضبط النسخة المستقلة ===== */
 BRC_CONFIG.verifyLocal = '#!verify';
+/* بذرة العرض: هذه نسخة تعمل بلا قاعدة بيانات، فتحتاج بيانات لتُظهر شيئاً.
+   الصفحات المنشورة تبقى ببذرة فارغة وتقرأ من Supabase. */
+BRC_CONFIG.seed = ${DEMO_SEED_JSON};
 ${icon ? `(function(){var l=document.querySelector('link[rel="icon"]');if(l)l.href=${JSON.stringify(icon.uri)};})();` : ''}
 </body>`;
   // (نُبقي وسم الإغلاق في النهاية بعد الراوتر)
@@ -261,7 +300,7 @@ const st = buildStandalone();
 
 /* ---------------- التقرير ---------------- */
 console.log('— تم البناء —  (بصمة الأصول: ' + ASSET_VER + ')');
-[['index.html'], ['verify.html'], ['dashboard.html'], [OUT_NAME]].forEach(([n]) => {
+[['index.html'], ['verify.html'], ['dashboard.html'], ['404.html'], [OUT_NAME]].forEach(([n]) => {
   console.log('  ' + n.padEnd(22) + kb(statSync(P(n)).size));
 });
 console.log('  (المستقل: خطوط ' + kb(st.fonts) + ' + صور CSS ' + kb(st.cssImgs) + ' + صور HTML ' + kb(st.htmlImgs) + ')' +

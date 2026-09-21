@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>التحقق من الاستمارة | شركة بابل للتوظيف</title>
-<meta name="description" content="صفحة التحقق الرسمية لاستمارات شركة بابل للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.">
+<title>التحقق من الاستمارة | شركة الهدف للتوظيف</title>
+<meta name="description" content="صفحة التحقق الرسمية لاستمارات شركة الهدف للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.">
 <meta name="keywords" content="توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, استمارة توظيف, BRC, عمالة فنية">
 <meta name="theme-color" content="#0b1a3a">
-<meta name="author" content="Babylonian Recruitment Company">
-<meta property="og:title" content="التحقق من الاستمارة | شركة بابل للتوظيف">
-<meta property="og:description" content="صفحة التحقق الرسمية لاستمارات شركة بابل للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.">
+<meta name="author" content="Al-Hadaf Recruitment Company">
+<meta property="og:title" content="التحقق من الاستمارة | شركة الهدف للتوظيف">
+<meta property="og:description" content="صفحة التحقق الرسمية لاستمارات شركة الهدف للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=0c850e3fac">
+<link rel="stylesheet" href="assets/css/style.css?v=c0a1509214">
 </head>
 <body>
 <!-- ===========================================================================
@@ -203,11 +203,13 @@
 <header class="site-header">
   <div class="container">
     <div class="header-main">
-      <a class="brand" href="index.html#home">
-        <svg class="emblem" viewBox="0 0 120 120" role="img" aria-label="شعار شركة بابل للتوظيف"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
+      <!-- اسم الشركة = بوابة الموظفين المخفية: نقرة عادية → أعلى الصفحة،
+           وضغطة مطوّلة (1.2 ثانية) → شاشة تسجيل الدخول. المنطق في nav.js. -->
+      <a class="brand" id="brand-home" href="index.html#home" data-staff-gate>
+        <svg class="emblem" viewBox="0 0 120 120" role="img" aria-label="شعار شركة الهدف للتوظيف"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
         <span class="brand-text">
-          <b>شركة بابل للتوظيف</b>
-          <span>Babylonian Recruitment Co.</span>
+          <b>شركة الهدف للتوظيف</b>
+          <span>Al-Hadaf Recruitment Co.</span>
         </span>
       </a>
 
@@ -234,13 +236,11 @@
       </div>
 
       <div class="header-actions">
-        <!-- بوابة الموظفين: زر ظاهر دائماً في ترويسة الموقع العام (طلب الإدارة:
-             الدخول طبيعي بنقرة واحدة — لا ضغط مطوّل ولا إيماءات مخفية).
-             في النسخة المستقلة يُعاد كتابته تلقائياً إلى #!dashboard عند البناء. -->
-        <a class="btn btn-gold btn-sm header-login" href="dashboard.html" title="بوابة المنظومة الداخلية — لموظفي الشركة والإدارة">
-          <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
-          دخول الموظفين
-        </a>
+        <!-- بوابة الموظفين: لا زر ظاهر (طلب الإدارة 2026-09-19).
+             الدخول يتم بـ«ضغطة مطوّلة على اسم الشركة» في الترويسة — انظر
+             assets/js/nav.js (longPress). السبب: الموقع واجهة للباحثين عن عمل،
+             ووجود زر دخول ظاهر يعرّف كل زائر بعنوان المنظومة الداخلية.
+             الوصول المباشر عبر /dashboard يبقى متاحاً لمن يعرفه من الموظفين. -->
         <button class="nav-toggle" id="nav-toggle" aria-label="إظهار القائمة" aria-expanded="false">
           <svg class="ic" style="width:20px;height:20px"><use href="#i-menu" xlink:href="#i-menu"/></svg>
         </button>
@@ -267,7 +267,7 @@
           <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
           أداة داخلية — للموظفين والإدارة
         </span>
-        <h1 style="color:#fff;font-size:clamp(1.4rem,3vw,2.1rem);margin-bottom:6px">التحقق من استمارة شركة بابل للتوظيف</h1>
+        <h1 style="color:#fff;font-size:clamp(1.4rem,3vw,2.1rem);margin-bottom:6px">التحقق من استمارة شركة الهدف للتوظيف</h1>
         <p style="color:#c3cee5;margin:0;max-width:70ch">
           صفحة داخلية تُفتح بكيو آر كود الاستمارة المطبوعة أو بالرقم التسلسلي، وتُظهر حالة الاستمارة
           والمحاولات المرتبطة بها وأكواد الوظائف. <b>الوصول مقصور على حسابات الموظفين والإدارة.</b>
@@ -293,7 +293,7 @@
       <form class="toolbar" id="verify-form" autocomplete="off">
         <div class="field grow">
           <label for="v-serial">الرقم التسلسلي للاستمارة</label>
-          <input type="text" id="v-serial" placeholder="BRC-NO-000120" required>
+          <input type="text" id="v-serial" placeholder="HRC-NO-000120" required>
         </div>
         <div class="field">
           <label>&nbsp;</label>
@@ -301,7 +301,7 @@
         </div>
       </form>
       <p class="tiny muted mt-2 mb-0">
-        اكتب الرقم التسلسلي كما هو مطبوع على الاستمارة (مثال: <b class="mono" dir="ltr">BRC-NO-000120</b>)
+        اكتب الرقم التسلسلي كما هو مطبوع على الاستمارة (مثال: <b class="mono" dir="ltr">HRC-NO-000120</b>)
       </p>
     </div>
   </div>
@@ -334,8 +334,8 @@
         <div class="brand mb-2">
           <svg class="emblem" viewBox="0 0 120 120" role="img" aria-label="شعار الشركة"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
           <span class="brand-text">
-            <b>شركة بابل للتوظيف</b>
-            <span>Babylonian Recruitment Co.</span>
+            <b>شركة الهدف للتوظيف</b>
+            <span>Al-Hadaf Recruitment Co.</span>
           </span>
         </div>
         <p style="font-size:.89rem;color:#a9b6d2">
@@ -393,7 +393,7 @@
     </div>
 
     <div class="foot-bottom">
-      <span>© <span id="year">2026</span> شركة بابل للتوظيف — جميع الحقوق محفوظة.</span>
+      <span>© <span id="year">2026</span> شركة الهدف للتوظيف — جميع الحقوق محفوظة.</span>
       <span class="mono" style="font-size:.78rem">BRC Platform · إصدار 1.0 · نظام استمارات وكيو آر كود</span>
     </div>
   </div>
@@ -404,15 +404,16 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=0c850e3fac"></script>
-<script src="assets/js/supabase-config.js?v=0c850e3fac"></script>
-<script src="assets/js/cloud-http.js?v=0c850e3fac"></script>
-<script src="assets/js/qr.js?v=0c850e3fac"></script>
-<script src="assets/js/cloud.js?v=0c850e3fac"></script>
-<script src="assets/js/cloud-sync.js?v=0c850e3fac"></script>
-<script src="assets/js/store.js?v=0c850e3fac"></script>
-<script src="assets/js/ui.js?v=0c850e3fac"></script>
-<script src="assets/js/voucher.js?v=0c850e3fac"></script>
-<script src="assets/js/verify.js?v=0c850e3fac"></script>
+<script src="assets/js/config.js?v=c0a1509214"></script>
+<script src="assets/js/supabase-config.js?v=c0a1509214"></script>
+<script src="assets/js/cloud-http.js?v=c0a1509214"></script>
+<script src="assets/js/qr.js?v=c0a1509214"></script>
+<script src="assets/js/cloud.js?v=c0a1509214"></script>
+<script src="assets/js/cloud-sync.js?v=c0a1509214"></script>
+<script src="assets/js/store.js?v=c0a1509214"></script>
+<script src="assets/js/ui.js?v=c0a1509214"></script>
+<script src="assets/js/nav.js?v=c0a1509214"></script>
+<script src="assets/js/voucher.js?v=c0a1509214"></script>
+<script src="assets/js/verify.js?v=c0a1509214"></script>
 </body>
 </html>

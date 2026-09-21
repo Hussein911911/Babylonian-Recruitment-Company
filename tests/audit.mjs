@@ -20,9 +20,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 import { existsSync as fileExists } from 'node:fs';
-const LIGHT = fileExists(join(dirname(fileURLToPath(import.meta.url)), '..', 'brc-light.html'));
-const PAGES = ['index.html', 'verify.html', 'dashboard.html', 'brc-standalone.html']
-  .concat(LIGHT ? ['brc-light.html'] : []);
+import { DEMO_SEED } from './fixtures/demo-seed.mjs';
+const LIGHT = fileExists(join(dirname(fileURLToPath(import.meta.url)), '..', 'hrc-light.html'));
+const PAGES = ['index.html', 'verify.html', 'dashboard.html', 'hrc-standalone.html']
+  .concat(LIGHT ? ['hrc-light.html'] : []);
 
 let pass = 0, fail = 0, warn = 0;
 const problems = [];
@@ -54,6 +55,9 @@ async function loadPage(file) {
     pretendToBeVisual: true,
     virtualConsole: vc,
     beforeParse(window) {
+      /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة (انظر
+         tests/fixtures/demo-seed.mjs). تُوضع قبل تنفيذ config.js. */
+      window.__BRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
       Object.defineProperty(window, 'print', { configurable: true, writable: true, value: () => { } });
       window.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 16);
       window.cancelAnimationFrame = (id) => clearTimeout(id);
@@ -87,7 +91,7 @@ const CSS_ALLOW = new Set([
 
 console.log('\n' + '═'.repeat(72));
 console.log('  BRC — التدقيق الشامل للمشروع');
-console.log('  شركة بابل للتوظيف — Babylonian Recruitment Company');
+console.log('  شركة الهدف للتوظيف — Al-Hadaf Recruitment Company');
 console.log('═'.repeat(72));
 
 const loaded = {};
@@ -210,7 +214,7 @@ section('3.c) الطباعة — مقاس A4 وطباعة الاستمارة ف�
 /* ═══ 4) الأصول على القرص ════════════════════════════════════════════════ */
 section('4) الأصول — كل صورة وملف مُشار إليه موجود على القرص');
 
-for (const file of PAGES.filter((f) => f !== 'brc-standalone.html')) {
+for (const file of PAGES.filter((f) => f !== 'hrc-standalone.html')) {
   const refs = new Set();
   loaded[file].doc.querySelectorAll('[src], [href]').forEach((el) => {
     for (const a of ['src', 'href']) {
@@ -269,15 +273,15 @@ for (const [js, page] of CONTRACT) {
 // الملف المستقل يجب أن يجمع كل المعرّفات
 {
   const union = new Set([...pageIds('index.html'), ...pageIds('verify.html'), ...pageIds('dashboard.html')]);
-  const inStandalone = pageIds('brc-standalone.html');
+  const inStandalone = pageIds('hrc-standalone.html');
   /* نفس السماح المطبّق في الفحص أعلاه: معرّف يُنشئه الكود ديناميكياً (id="…" داخل
      قالب نصي) هو موجود فعلاً في الملف المستقل ولو لم يكن في بنيته الأولية. بلا
      هذا السماح يُرفض أي عنصر يُبنى بالكود عند الشرط — وهو أسلوب مشروع ومستخدم
      في التنبيهات والنوافذ هنا. */
-  const standaloneSrc = readFileSync(join(ROOT, 'brc-standalone.html'), 'utf8');
+  const standaloneSrc = readFileSync(join(ROOT, 'hrc-standalone.html'), 'utf8');
   const missing = [...union].filter((id) => !inStandalone.has(id) && !standaloneSrc.includes('id="' + id + '"'));
-  if (missing.length) bad('brc-standalone.html — يجمع معرّفات كل الصفحات', 'ناقص: ' + missing.slice(0, 10).join(', '));
-  else ok('brc-standalone.html — يجمع ' + union.size + ' معرّفاً من الصفحات الثلاث كاملة');
+  if (missing.length) bad('hrc-standalone.html — يجمع معرّفات كل الصفحات', 'ناقص: ' + missing.slice(0, 10).join(', '));
+  else ok('hrc-standalone.html — يجمع ' + union.size + ' معرّفاً من الصفحات الثلاث كاملة');
 }
 
 // لا شيء يشير الزائر إلى الدخول أو يكشف بياناته في الصفحات المنشورة
@@ -289,7 +293,7 @@ for (const [js, page] of CONTRACT) {
    الفحص على الصفحات المنشورة نفسها لا على الأجزاء (src/partials) ليشمل أي
    بناء مستقبلي ينسى أحدها. */
 {
-  const published = ['index.html', 'verify.html', 'dashboard.html', 'brc-standalone.html', 'brc-light.html'];
+  const published = ['index.html', 'verify.html', 'dashboard.html', 'hrc-standalone.html', 'hrc-light.html'];
   const leaked = [];
   for (const f of published) {
     const src = readFileSync(join(ROOT, f), 'utf8');
@@ -299,30 +303,114 @@ for (const [js, page] of CONTRACT) {
   if (leaked.length) bad('لا حسابات تجريبية ظاهرة على شاشة الدخول', leaked.join(' | '));
   else ok('لا حسابات تجريبية ظاهرة على شاشة الدخول (في ' + published.length + ' صفحات منشورة)');
 
-  /* سياسة الدخول (طلب الإدارة، 2026-09): بوابة الموظفين **زر ظاهر** واحد في
-     ترويسة الموقع العام (دخول طبيعي بنقرة — لا ضغط مطوّل ولا روابط مخفية)،
-     وفي النسخة المستقلة يُعاد كتابته إلى #!dashboard عند البناء. المسموح:
-     رابط واحد من الترويسة بالضبط؛ أي رابط إضافي للوحة متناثر في جسم الصفحة
-     يبقى تسريباً يُرفض. */
+  /* ── حارس: اسم كاش Service Worker يواكب الرمز الحالي ────────────────
+     المتصفح لا ينشّط جيلاً جديداً من sw.js إلا إذا تغيّر محتوى الملف، وحذف
+     الكاش القديم يقع في activate. فإبقاء CACHE_NAME ثابتاً يُبقي الزوار
+     القدامى على نسخة قديمة من index.html مهما أُعيد النشر — ظهر فعلاً:
+     زر دخول محذوف بقي ظاهراً على حاسبة زارت الموقع قبل حذفه، بينما اختفى
+     على هاتف يزوره أول مرة. */
+  {
+    const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
+    const m = sw.match(/const CACHE_NAME = '([^']+)'/);
+    const problems = [];
+    if (!m) problems.push('CACHE_NAME غير معرّف');
+    else if (/^brc-/.test(m[1])) problems.push(`ما زال بالرمز القديم: ${m[1]}`);
+    /* الملفات المخزَّنة مسبقاً يجب أن تكون موجودة فعلاً */
+    for (const f of (sw.match(/'\/([\w.-]+\.html)'/g) || [])) {
+      const name = f.replace(/'|\//g, '');
+      if (!fileExists(join(ROOT, name))) problems.push(`يخزّن ملفاً مفقوداً: ${name}`);
+    }
+    if (problems.length) bad('Service Worker: اسم الكاش وملفاته سليمة', problems.join(' | '));
+    else ok(`Service Worker يستعمل كاشاً محدَّثاً (${m[1]}) وكل ملفاته موجودة`);
+  }
+
+  /* ── حارس: لا نطاق قديم في ما يُطبع أو يُعرض ──────────────────────────
+     رابط التحقق يُطبع داخل كيو آر كود الاستمارة. أي نطاق قديم هنا يعني
+     استمارة بيد زبون تشير إلى عنوان لا يملكه صاحب الشركة. ظهر فعلاً:
+     قالب اللوحة كان يعرض brc-babil.com نصّاً ثابتاً بعد تغيير الاسم. */
+  {
+    const STALE = ['brc-babil.com', 'babylonian-recruitment-company.pages.dev'];
+    const hits = [];
+    for (const f of ['index.html', 'verify.html', 'dashboard.html',
+                     'assets/js/config.js', 'src/partials/dashboard.html']) {
+      const src = readFileSync(join(ROOT, f), 'utf8');
+      for (const dom of STALE) {
+        /* النطاق الفعلي للمعاينة يحوي اسم المشروع كلاحقة، فنستثنيه */
+        /* البريد contact@brc-babil.com ليس رابط تحقق — بقاؤه قرار المالك
+           (يُحدَّث مع النطاق عند التسليم)، فنستثنيه ونفحص الروابط وحدها. */
+        const bad = src.split('\n').filter((l) =>
+          new RegExp('https?://[^"\'\\s]*' + dom.replace('.', '\\.')).test(l) &&
+          !l.includes('arena-01a0b563') && !l.includes('mail.google.com'));
+        if (bad.length) hits.push(`${f}: ${dom} (${bad.length})`);
+      }
+    }
+    if (hits.length) bad('لا نطاق قديم في روابط التحقق المعروضة', hits.join(' | '));
+    else ok('روابط التحقق خالية من النطاقات القديمة (لا brc-babil ولا نطاق المشروع القديم)');
+  }
+
+  /* ── حارس: لا بيانات وهمية في الصفحات المنشورة ───────────────────────
+     أُفرغت بذرة config.js قبل التسليم (2026-09-19) لأن أي موظف يفتح اللوحة
+     على جهاز جديد أو بلا اتصال كان يرى 8 وظائف و8 متقدمين بأسماء وأرقام
+     هواتف وهمية ويحسبها سجلات حقيقية — فيتصل بأرقام لا وجود لها. هذا الفحص
+     يمنع عودتها. (نسخة العرض hrc-standalone/hrc-light مستثناة عمداً: تعمل
+     بلا قاعدة بيانات ففارغةً تصبح بلا فائدة — تُحقن وقت البناء.) */
+  {
+    const FAKE = ['علي حسين محمد', 'زهراء عبد الكريم', '07701112233',
+                  'مخازن الفرات', '07701234567', 'HRC-NO-000117'];
+    const dirty = [];
+    for (const f of ['index.html', 'verify.html', 'dashboard.html', '404.html']) {
+      const src = readFileSync(join(ROOT, f), 'utf8');
+      const hits = FAKE.filter((x) => src.includes(x));
+      if (hits.length) dirty.push(f + ': ' + hits.join(' · '));
+    }
+    const cfg = readFileSync(join(ROOT, 'assets/js/config.js'), 'utf8');
+    const seedM = cfg.match(/seed:\s*\{([\s\S]*?)\n  \};/);
+    if (seedM && /\bfullName\s*:|\bemployer\s*:/.test(seedM[1])) {
+      dirty.push('assets/js/config.js: بذرة الإنتاج ليست فارغة');
+    }
+    if (dirty.length) bad('لا بيانات وهمية في الصفحات المنشورة', dirty.join(' | '));
+    else ok('الصفحات المنشورة خالية من البيانات الوهمية (بذرة الإنتاج فارغة)');
+  }
+
+  /* سياسة الدخول (طلب الإدارة، 2026-09-19 — نسخت قرار 2026-09 السابق):
+     **لا زر دخول ظاهر** في الموقع العام إطلاقاً. البوابة إيماءة مخفية: ضغطة
+     مطوّلة على اسم الشركة في الترويسة (nav.js → bindStaffGate). السبب: الموقع
+     واجهة للباحثين عن عمل، وزر «تسجيل الدخول» الظاهر يعرّف كل زائر بعنوان
+     المنظومة الداخلية. الفحص: لا زر، ولا أي رابط للوحة في الصفحات العامة. */
   const linked = [];
-  for (const f of ['index.html']) {
+  for (const f of ['index.html', 'hrc-standalone.html', 'hrc-light.html']) {
     const src = readFileSync(join(ROOT, f), 'utf8');
-    const inHeader = src.match(/class="btn btn-gold btn-sm header-login" href="dashboard\.html"/g) || [];
-    const all = src.match(/href="dashboard\.html"/g) || [];
-    if (inHeader.length !== 1 || all.length !== 1) {
-      linked.push(f + ' (رابط رسمي: ' + inHeader.length + ' · إجمالي: ' + all.length + ')');
-    }
+    if (/header-login/.test(src)) linked.push(f + ': زر دخول ظاهر ما زال موجوداً');
+    /* نفحص **عناصر DOM حقيقية** لا النص الخام: رابط «تسجيل دخول الموظفين»
+       داخل شيفرة verify.js يظهر على بوابة الصلاحية للموظف وحده بعد أن يُحجب
+       الزائر — وهو مشروع، وليس رابطاً ظاهراً في الموقع العام. */
+    const p = loaded[f];
+    if (!p) continue;
+    const anchors = [...p.doc.querySelectorAll('a[href]')]
+      /* نستثني ما هو داخل مسار مخفي (route-verify في الملف المستقل): ذاك رابط
+         على بوابة الصلاحية التي لا يراها إلا الموظف بعد حجب الزائر. */
+      .filter((a) => !a.closest('[hidden]'))
+      .map((a) => a.getAttribute('href'))
+      .filter((h) => /^(#!dashboard|\/?dashboard(\.html)?|\/dashboard)$/.test(h));
+    if (anchors.length) linked.push(f + ': ' + anchors.length + ' رابط ظاهر للوحة');
   }
-  for (const f of ['brc-standalone.html', 'brc-light.html']) {
-    const src = readFileSync(join(ROOT, f), 'utf8');
-    const inHeader = src.match(/class="btn btn-gold btn-sm header-login" href="#!dashboard"/g) || [];
-    const external = src.match(/href="dashboard\.html"/g) || [];
-    if (inHeader.length !== 1 || external.length !== 0) {
-      linked.push(f + ' (رابط رسمي: ' + inHeader.length + ' · خارجي: ' + external.length + ')');
+  if (linked.length) bad('لا زر ولا رابط ظاهر للوحة في الصفحات العامة', linked.join(' | '));
+  else ok('بوابة الموظفين مخفية تماماً: لا زر ولا رابط للوحة في الصفحات العامة الثلاث');
+
+  /* الإيماءة نفسها موجودة وموصولة فعلاً — وإلا صار الدخول مستحيلاً بلا أثر */
+  {
+    const navSrc = readFileSync(join(ROOT, 'assets/js/nav.js'), 'utf8');
+    const gate = [];
+    if (!/data-staff-gate/.test(navSrc)) gate.push('لا يبحث عن اسم الشركة');
+    if (!/touchstart/.test(navSrc) || !/mousedown/.test(navSrc)) gate.push('لا يدعم اللمس والفأرة معاً');
+    if (!/LONG_PRESS_MS/.test(navSrc)) gate.push('بلا مهلة ضغط');
+    if (!/scroll/.test(navSrc)) gate.push('التمرير لا يُلغي الإيماءة (تفتح بالخطأ)');
+    for (const f of ['index.html', 'hrc-standalone.html']) {
+      if (!/data-staff-gate/.test(readFileSync(join(ROOT, f), 'utf8'))) gate.push(f + ': الاسم بلا علامة البوابة');
     }
+    if (gate.length) bad('بوابة الضغطة المطوّلة موصولة وسليمة', gate.join(' | '));
+    else ok('بوابة الضغطة المطوّلة على اسم الشركة: لمس + فأرة، تُلغى بالتمرير، ومعلَّمة في الصفحات');
   }
-  if (linked.length) bad('بوابة دخول الموظفين: زر واحد في الترويسة فقط', linked.join(' | '));
-  else ok('بوابة دخول الموظفين: زر «دخول الموظفين» ظاهر في الترويسة وحدها (لا روابط متناثرة)');
 }
 
 /* ── سياسة الصلاحيات (طلب الإدارة): الزائر يتصفّح الوظائف فقط ───────────────
@@ -337,7 +425,7 @@ for (const [js, page] of CONTRACT) {
     [/data-action="verify"/, 'إجراء التحقق اليدوي']
   ];
   const found = [];
-  for (const f of ['index.html', 'brc-standalone.html', 'brc-light.html', 'src/partials/public.html', 'src/partials/footer.html', 'src/partials/header.html']) {
+  for (const f of ['index.html', 'hrc-standalone.html', 'hrc-light.html', 'src/partials/public.html', 'src/partials/footer.html', 'src/partials/header.html']) {
     const src = readFileSync(join(ROOT, f), 'utf8');
     for (const [re, label] of visitorUi) if (re.test(src)) found.push(f + ': ' + label);
   }
@@ -345,7 +433,7 @@ for (const [js, page] of CONTRACT) {
   else ok('الموقع العام بلا أي واجهة تقديم استمارة أو تحقق منها (6 ملفات)');
 
   const navLeak = [];
-  for (const f of ['src/partials/header.html', 'src/partials/footer.html', 'index.html', 'brc-standalone.html', 'brc-light.html']) {
+  for (const f of ['src/partials/header.html', 'src/partials/footer.html', 'index.html', 'hrc-standalone.html', 'hrc-light.html']) {
     const src = readFileSync(join(ROOT, f), 'utf8');
     if (/href="verify\.html"/.test(src)) navLeak.push(f);
     if (/data-action="request-form"/.test(src)) navLeak.push(f + ' (طلب استمارة)');
@@ -370,15 +458,15 @@ for (const [js, page] of CONTRACT) {
 
   const w = loaded['index.html'].window;
   const hrefs = [...loaded['index.html'].doc.querySelectorAll('#jobs-grid a[href^="https://wa.me/"]')];
-  const msgOk = hrefs.length > 0 && hrefs.every((a) => /BRC-\d{3,}/.test(decodeURIComponent(a.getAttribute('href'))));
+  const msgOk = hrefs.length > 0 && hrefs.every((a) => /HRC-\d{3,}/.test(decodeURIComponent(a.getAttribute('href'))));
   if (!msgOk) bad('بطاقات الوظائف — زر حجز بالواتساب يحمل كود الوظيفة', 'عدد الأزرار: ' + hrefs.length);
   else ok('بطاقات الوظائف — ' + hrefs.length + ' زر حجز بالواتساب، كلها تحمل كود الوظيفة في الرسالة');
 
-  const t = w.BRCStore.token('BRC-NO-000120');
-  const noToken = w.BRCStore.verify('BRC-NO-000120');
+  const t = w.BRCStore.token('HRC-NO-000120');
+  const noToken = w.BRCStore.verify('HRC-NO-000120');
   if (noToken.masked !== true) bad('طبقة البيانات — التحقق بلا بصمة يبقى مقنّعاً', 'masked=' + noToken.masked);
   else ok('طبقة البيانات — لا كشف بيانات بلا بصمة صحيحة (تقنيع في الرد نفسه)');
-  if (!w.BRCStore.verify('BRC-NO-000120', t).ok) bad('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل', 'فشل');
+  if (!w.BRCStore.verify('HRC-NO-000120', t).ok) bad('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل', 'فشل');
   else ok('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل للموظف');
 }
 
@@ -487,11 +575,11 @@ for (const file of PAGES.filter((f) => f.startsWith('brc-'))) {
   const raw = readFileSync(join(ROOT, file), 'utf8');
   const dataUris = (raw.match(/data:[a-z]+\/[a-z0-9.+-]+;base64,/g) || []).length;
   const sizeMB = (Buffer.byteLength(raw) / 1048576).toFixed(2);
-  const sameAsFull = file === 'brc-standalone.html' ? '' : ' (نسخة مصغّرة للعرض السريع)';
+  const sameAsFull = file === 'hrc-standalone.html' ? '' : ' (نسخة مصغّرة للعرض السريع)';
   ok(file + ' — حجمه ' + sizeMB + ' ميجابايت ويحتوي ' + dataUris + ' أصلاً مدمجاً' + sameAsFull);
 }
 {
-  const routes = ['', '#jobs', '#!verify?form=BRC-NO-000120', '#!dashboard'];
+  const routes = ['', '#jobs', '#!verify?form=HRC-NO-000120', '#!dashboard'];
   ok('مسارات التنقل داخل الملف الواحد: ' + routes.join('  ·  '));
 }
 
@@ -513,10 +601,15 @@ section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا ر�
   else ok('ملفّات Cloudflare Pages في الجذر: _headers (ترويسات) · _redirects (مسارات نظيفة)');
 
   const redirects = readFileSync(join(ROOT, '_redirects'), 'utf8');
-  const cleanRoutes = ['/verify', '/dashboard', '/standalone', '/light'];
+  /* ⚠️ هذا الفحص كان يشترط وجود «/verify → /verify.html» و«/dashboard → /dashboard.html»
+     — وهو بالضبط ما كان **يكسر** الصفحتين على الإنتاج: Cloudflare Pages يُحوّل
+     /dashboard.html → /dashboard تلقائياً، فتدور القاعدة حلقة لا تنتهي.
+     الصحيح: تلك المسارات تعمل من تلقائها (Pages يخدم الملف على مساره النظيف)،
+     ويُكتب هنا فقط ما اسم مساره **مختلف** عن اسم ملفه. */
+  const cleanRoutes = ['/standalone', '/light'];
   const badRoutes = cleanRoutes.filter((r) => !new RegExp('^\\s*' + r + '\\s+\\S+\\s+200\\s*$', 'm').test(redirects));
-  if (badRoutes.length) bad('المسارات النظيفة كلها معرّفة بـ 200', 'ناقص: ' + badRoutes.join(', '));
-  else ok('المسارات النظيفة معرّفة في _redirects: ' + cleanRoutes.join(' · '));
+  if (badRoutes.length) bad('مسارات الملفات ذات الاسم المختلف معرّفة بـ 200', 'ناقص: ' + badRoutes.join(', '));
+  else ok('مسارات الأسماء المختلفة معرّفة في _redirects: ' + cleanRoutes.join(' · ') + ' (و/verify و/dashboard يخدمهما Pages تلقائياً)');
 
   const headers = readFileSync(join(ROOT, '_headers'), 'utf8');
   const needHeaders = ['X-Content-Type-Options', 'Referrer-Policy', 'X-Frame-Options'];
@@ -527,7 +620,7 @@ section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا ر�
   else ok('ترويسات الأمان كاملة + sw.js بلا كاش (يُجبر الأجهزة على النسخة الجديدة)');
 
   /* رابط التحقق المطبوع يجب أن يبقى نظيفاً (بلا .html) لأنه يتغيّر إلى النطاق الرسمي */
-  const vurl = loaded['index.html'].window.BRCStore.verifyLocalUrl('BRC-NO-000120');
+  const vurl = loaded['index.html'].window.BRCStore.verifyLocalUrl('HRC-NO-000120');
   if (!/^verify\.html\?/.test(vurl)) bad('رابط التحقق المحلي', vurl);
   else ok('رابط التحقق المحلي نظيف ويطابق مسار /verify في _redirects');
 
@@ -543,7 +636,7 @@ section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا ر�
   else {
     const dsrc = readFileSync(distScript, 'utf8');
     const needs = [['_headers', /_headers/], ['_redirects', /_redirects/], ['sw.js', /sw\.js/],
-      ['الصفحات الأساسية', /index\.html/], ['النسخة المستقلة', /brc-standalone\.html/]];
+      ['الصفحات الأساسية', /index\.html/], ['النسخة المستقلة', /hrc-standalone\.html/]];
     const gaps = needs.filter(([, re]) => !re.test(dsrc)).map(([k]) => k);
     if (gaps.length) bad('tools/dist.mjs يجمع ملفات الموقع الصحيحة', 'ناقص: ' + gaps.join(' · '));
     else ok('tools/dist.mjs — مجلد نشر نظيف يجمع الصفحات وsw.js و_headers و_redirects والأصول');
@@ -601,7 +694,7 @@ section('9) سلامة البيانات — البيانات التجريبية 
   const apps = S.listApplicants();
   const rules = S.settings();
   if (jobs.length !== 8) bad('الوظائف التجريبية (8)', 'عددها ' + jobs.length); else ok('الوظائف التجريبية: ' + jobs.length + ' وظيفة (' + st.available + ' متاحة · ' + st.reserved + ' محجوزة · ' + st.closed + ' مغلقة)');
-  if (apps.length !== 4) bad('الاستمارات التجريبية (4)', 'عددها ' + apps.length); else ok('الاستمارات التجريبية: ' + apps.length + ' استمارة (' + apps.map((a) => a.serial.replace('BRC-NO-', '')).join(' · ') + ')');
+  if (apps.length !== 4) bad('الاستمارات التجريبية (4)', 'عددها ' + apps.length); else ok('الاستمارات التجريبية: ' + apps.length + ' استمارة (' + apps.map((a) => a.serial.replace('HRC-NO-', '')).join(' · ') + ')');
 
   const slotsOk = apps.every((a) => S.getAttempts(a.serial).length === rules.attemptLimit);
   if (!slotsOk) bad('كل استمارة لها ' + rules.attemptLimit + ' محاولات'); else ok('كل استمارة لها ' + rules.attemptLimit + ' خانات محاولات');
@@ -653,21 +746,21 @@ section('10) الاستمارة المطبوعة A4 — البنية الكام�
 
 {
   const w = loaded['index.html'].window;
-  const app = w.BRCStore.getApplicant('BRC-NO-000120');
-  w.BRCStore.selectAttempt(app.serial, 'BRC-1046');
+  const app = w.BRCStore.getApplicant('HRC-NO-000120');
+  w.BRCStore.selectAttempt(app.serial, 'HRC-1046');
   const fresh = w.BRCStore.getApplicant(app.serial);
   const html = w.BRCVoucher.buildHtml(fresh, w.BRCStore.getAttempts(app.serial));
 
   const must = {
     'شعار الشركة': /i-emblem|brand-mark|v-logo/,
-    'الاسم العربي': /شركة بابل للتوظيف/,
-    'الاسم الإنجليزي': /Babylonian Recruitment Company/,
+    'الاسم العربي': /شركة الهدف للتوظيف/,
+    'الاسم الإنجليزي': /Al-Hadaf Recruitment Company/,
     'تخصص الشركة': /الأيادي العاملة من الناحية الفنية والتخصصية/,
     'الهاتف الأول': /07760058007/,
     'الهاتف الثاني': /07715993271/,
     'العنوان الكامل': /حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي/,
-    'الرقم التسلسلي': /BRC-NO:\s*000120/,
-    'اسم الباحث': /سجاد|BRC-NO-000120/,
+    'الرقم التسلسلي': /HRC-NO:\s*000120/,
+    'اسم الباحث': /سجاد|HRC-NO-000120/,
     'تاريخ الإصدار': /تاريخ الإصدار/,
     'تاريخ الانتهاء': /تاريخ الانتهاء|الانتهاء/,
     'جدول المحاولات': /كود الوظيفة/,
@@ -691,6 +784,242 @@ section('10) الاستمارة المطبوعة A4 — البنية الكام�
   const hasQrPath = /<path[^>]+d="M[\d. ]/.test(html);
   if (svgCount < 1 || !hasQrPath) bad('كيو آر كود التحقق مرسوم داخل الاستمارة', 'svg=' + svgCount);
   else ok('كيو آر كود التحقق مرسوم داخل الاستمارة (' + svgCount + ' عنصر SVG بمصفوفة وحدات حقيقية)');
+}
+
+/* ═══ 11) التنقّل — لا رابط يوصل إلى «صفحة غير موجودة» ═══════════════════ */
+section('11) التنقّل — كل رابط في الترويسة والتذييل يصل إلى قسمه فعلاً');
+
+{
+  /* الخلفية: نقرة «الوظائف / خدماتنا / آلية العمل / اسم الشركة» كانت تُعطي
+     صفحة غير موجودة على الاستضافة لأن الروابط مكتوبة "index.html#jobs" ولا
+     يكون اسم الملف قابلاً للطلب على كل مضيف. الحل nav.js يُطبّع الروابط وقت
+     التشغيل؛ وهذه الفحوص تمنع رجوع المشكلة بصمت. */
+
+  // 11.1 nav.js محمَّل في كل صفحة منشورة
+  {
+    const pagesNeedNav = ['index.html', 'verify.html', 'dashboard.html', '404.html'];
+    const noNav = pagesNeedNav.filter((f) => !/src="\/?assets\/js\/nav\.js/.test(readFileSync(join(ROOT, f), 'utf8')));
+    if (noNav.length) bad('nav.js محمَّل في كل صفحة منشورة', 'ناقص في: ' + noNav.join(', '));
+    else ok('nav.js محمَّل في كل صفحة منشورة (' + pagesNeedNav.length + ' صفحات)');
+  }
+
+  // 11.2 كل مرساة في التنقّل لها قسم موجود فعلاً في الصفحة الرئيسية
+  {
+    const homeIds = pageIds('index.html');
+    const src = readFileSync(join(ROOT, 'index.html'), 'utf8');
+    const anchors = [...src.matchAll(/href="(?:index\.html)?#([a-zA-Z][\w-]*)"/g)].map((m) => m[1]);
+    const dangling = [...new Set(anchors)].filter((id) => !homeIds.has(id));
+    if (dangling.length) bad('كل مرساة تنقّل لها قسم في الصفحة الرئيسية', 'بلا قسم: ' + dangling.join(', '));
+    else ok('كل مراسي التنقّل لها أقسام موجودة في index.html (' + new Set(anchors).size + ' مرساة)');
+  }
+
+  // 11.3 التطبيع الفعلي: نشغّل nav.js على كل صفحة وعلى نطاقات مختلفة
+  {
+    const cases = [
+      ['index.html', 'https://brc.example.com/', (h) => h.startsWith('#')],
+      ['index.html', 'https://host.tld/sub/', (h) => h.startsWith('#')],
+      ['verify.html', 'https://brc.example.com/verify', (h) => h.startsWith('/#')],
+      ['dashboard.html', 'https://brc.example.com/dashboard', (h) => h.startsWith('/#')],
+      ['404.html', 'https://host.tld/sub/typo', (h) => h.startsWith('/sub/#')]
+    ];
+    const navSrc = readFileSync(join(ROOT, 'assets/js/nav.js'), 'utf8');
+    const failures = [];
+    for (const [file, url, want] of cases) {
+      const dom = new JSDOM(readFileSync(join(ROOT, file), 'utf8'), { url, runScripts: 'outside-only' });
+      const w = dom.window;
+      w.eval(navSrc);
+      w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
+      const links = [...w.document.querySelectorAll('.main-nav a, .brand[href], .site-footer ul a:not([target])')]
+        .map((a) => a.getAttribute('href'));
+      const leftover = w.document.querySelectorAll('a[href*="index.html"]').length;
+      const wrong = links.filter((h) => !want(h));
+      if (leftover || wrong.length) failures.push(file + ' @ ' + url + ' (بقايا: ' + leftover + ' · خاطئ: ' + wrong.slice(0, 3).join(',') + ')');
+      dom.window.close();
+    }
+    if (failures.length) bad('تطبيع الروابط يعمل على كل صفحة وكل نطاق', failures.join(' | '));
+    else ok('تطبيع الروابط يعمل على ' + cases.length + ' حالات (نطاق جذري · مسار فرعي · تحقق · لوحة · 404) بلا بقايا index.html');
+  }
+
+  // 11.3ب الضغطة المطوّلة على اسم الشركة تفتح شاشة الدخول فعلاً (محاكاة حقيقية)
+  {
+    /* نحاكي الإيماءة كاملة داخل jsdom: touchstart ثم انتظار المهلة، ونرصد إلى
+       أين ذهب location. ونتأكد أيضاً من الحالتين اللتين تُفسدان التجربة:
+       نقرة قصيرة يجب ألّا تفتح اللوحة، وتمرير أثناء الضغط يجب أن يُلغيها. */
+    const navSrc = readFileSync(join(ROOT, 'assets/js/nav.js'), 'utf8');
+
+    function press(file, url, { ms = 1400, move = 0, scroll = false } = {}) {
+      /* jsdom يمنع اعتراض location.href، ويرمي عند محاولة التنقّل خطأً بلا
+         تفاصيل. لذلك نرصد شيئين معاً:
+           1) **محاولة التنقّل** حدثت (jsdomError = الإيماءة اشتغلت فعلاً)
+           2) **الوجهة** من BRCNav.dashboardHref() الذي يحسبها بنفس المنطق
+         مجتمعين يثبتان أن الضغطة تفتح العنوان الصحيح، ويبقيان الفحص صادقاً في
+         الحالتين السالبتين (نقرة قصيرة/تمرير: لا محاولة تنقّل إطلاقاً). */
+      const vcon = new VirtualConsole();
+      let navigated = false;
+      vcon.on('jsdomError', (err) => {
+        if (/Not implemented: navigation/.test(String(err && err.message))) navigated = true;
+      });
+      const dom = new JSDOM(readFileSync(join(ROOT, file), 'utf8'),
+        { url, runScripts: 'outside-only', virtualConsole: vcon });
+      const w = dom.window;
+      w.fetch = () => Promise.resolve({ ok: true });
+      w.eval(navSrc);
+      w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
+      const brand = w.document.querySelector('.brand[data-staff-gate]');
+      if (!brand) return { navigated: false, missing: true };
+
+      const touch = (type, x, y) => {
+        const e = new w.Event(type, { bubbles: true });
+        e.touches = [{ clientX: x, clientY: y }];
+        brand.dispatchEvent(e);
+      };
+      touch('touchstart', 100, 100);
+      if (move) touch('touchmove', 100 + move, 100);
+      if (scroll) w.dispatchEvent(new w.Event('scroll'));
+      /* jsdom يستخدم مؤقتات حقيقية — ننتظر فعلياً */
+      return new Promise((r) => setTimeout(
+        () => r({ navigated, href: w.BRCNav && w.BRCNav.dashboardHref && w.BRCNav.dashboardHref() }), ms));
+    }
+
+    const failures = [];
+    /* الحالة الأساسية: ضغطة مكتملة من عدة صفحات ونطاقات */
+    for (const [file, url, want] of [
+      ['index.html', 'https://brc.example.com/', '/dashboard'],
+      ['index.html', 'https://host.tld/sub/', '/sub/dashboard']
+    ]) {
+      const { navigated, href, missing } = await press(file, url);
+      if (missing) failures.push(file + ': لا علامة بوابة على اسم الشركة');
+      else if (!navigated) failures.push(file + ' @ ' + url + ': الضغطة لم تفتح شيئاً');
+      else if (href !== want) failures.push(file + ' @ ' + url + ': الوجهة ' + href + ' ≠ ' + want);
+    }
+    /* نقرة قصيرة (300ms) يجب ألّا تفتح اللوحة */
+    {
+      const { navigated } = await press('index.html', 'https://brc.example.com/', { ms: 300 });
+      if (navigated) failures.push('نقرة قصيرة فتحت اللوحة');
+    }
+    /* تمرير أثناء الضغط يجب أن يُلغي الإيماءة */
+    {
+      const { navigated } = await press('index.html', 'https://brc.example.com/', { scroll: true });
+      if (navigated) failures.push('التمرير لم يُلغِ الإيماءة');
+    }
+    /* تحريك الإصبع بعيداً يُلغيها أيضاً */
+    {
+      const { navigated } = await press('index.html', 'https://brc.example.com/', { move: 60 });
+      if (navigated) failures.push('تحريك الإصبع لم يُلغِ الإيماءة');
+    }
+
+    if (failures.length) bad('الضغطة المطوّلة على اسم الشركة تفتح شاشة الدخول', failures.join(' | '));
+    else ok('الضغطة المطوّلة تفتح /dashboard (جذر · مسار فرعي)، والنقرة القصيرة والتمرير وتحريك الإصبع لا تفتحها');
+  }
+
+  // 11.3ج شاشة الدخول نفسها مكتملة العناصر
+  {
+    const dash = readFileSync(join(ROOT, 'dashboard.html'), 'utf8');
+    const need = {
+      'حاوية شاشة الدخول': /id="login-wrap"/,
+      'نموذج الدخول': /id="login-form"/,
+      'حقل المستخدم': /id="login-user"/,
+      'حقل كلمة المرور': /id="login-pass"/,
+      'زر الإرسال': /id="login-btn"/,
+      'رابط العودة للموقع': /login-back-link/
+    };
+    const missing = Object.entries(need).filter(([, re]) => !re.test(dash)).map(([k]) => k);
+    if (missing.length) bad('شاشة الدخول مكتملة العناصر', 'ناقص: ' + missing.join(' · '));
+    else ok('شاشة الدخول مكتملة: ' + Object.keys(need).length + ' عناصر (مستخدم · كلمة مرور · إرسال · عودة)');
+  }
+
+  // 11.4 الملف المستقل لا يتأثّر: راوتره الخاص يبقى صاحب القرار
+  {
+    const standalonePages = ['hrc-standalone.html'].concat(LIGHT ? ['hrc-light.html'] : []);
+    const broken = [];
+    for (const f of standalonePages) {
+      const src = readFileSync(join(ROOT, f), 'utf8');
+      if (/href="index\.html/.test(src)) broken.push(f + ': رابط index.html متبقٍّ');
+      if (!/id="route-site"/.test(src)) broken.push(f + ': حاوية الراوتر مفقودة');
+    }
+    if (broken.length) bad('الملف المستقل يحتفظ براوتره الخاص بلا تدخّل', broken.join(' | '));
+    else ok('الملف المستقل يحتفظ براوتره الخاص (nav.js يتنحّى عند وجود route-site)');
+  }
+
+  // 11.5 صفحة 404 بهوية الشركة وبمراجع مثبّتة على الجذر
+  {
+    const nf = readFileSync(join(ROOT, '404.html'), 'utf8');
+    const issues = [];
+    if (!/شركة الهدف للتوظيف/.test(nf)) issues.push('بلا اسم الشركة');
+    if (!/id="notfound"/.test(nf)) issues.push('بلا قسم 404');
+    if (/(?:src|href)="assets\//.test(nf)) issues.push('مراجع نسبية تنكسر على المسارات العميقة');
+    const exits = (nf.match(/href="\/index\.html#/g) || []).length;
+    if (exits < 4) issues.push('روابط خروج قليلة: ' + exits);
+    if (issues.length) bad('صفحة 404 بهوية الشركة وتعمل على أي مسار', issues.join(' | '));
+    else ok('صفحة 404 بهوية الشركة: ترويسة وتذييل و' + exits + ' رابط خروج، ومراجعها مثبّتة على جذر الموقع');
+  }
+
+  // 11.6 المسارات النظيفة للأقسام معرّفة في _redirects (و/jobs لا يعطي 404)
+  {
+    const redirects = readFileSync(join(ROOT, '_redirects'), 'utf8');
+    const sections = ['/jobs', '/services', '/how', '/about', '/contact'];
+    const missing = sections.filter((r) => !new RegExp('^\\s*' + r + '\\s+/#' + r.slice(1) + '\\s+301\\s*$', 'm').test(redirects));
+    if (missing.length) bad('مسارات الأقسام النظيفة معرّفة في _redirects', 'ناقص: ' + missing.join(', '));
+    else ok('مسارات الأقسام النظيفة تُحوَّل إلى مراسيها: ' + sections.join(' · '));
+  }
+
+  /* 11.6ب ⛔ لا حلقة تحويل تُسقط الصفحة الرئيسية
+     ------------------------------------------------------------------
+     حادثة حقيقية (معاينة 2026-09-18): أُضيفت قاعدة «/index.html → /» فظنناها
+     تحسين SEO بريء، لكن Cloudflare Pages يُطبّع /index.html ↔ / داخلياً،
+     فأعادت القاعدة تقييم نفسها على الهدف ودارت حلقة لا تنتهي أسقطت **الصفحة
+     الرئيسية كلها** بـ ERR_TOO_MANY_REDIRECTS — لا المسار وحده.
+     الدرس: أي قاعدة مصدرها الجذر أو /index.html، أو هدفها يساوي مصدرها، خطر
+     وجودي على الموقع. هذا الفحص يمنعها من العودة. */
+  {
+    const redirects = readFileSync(join(ROOT, '_redirects'), 'utf8');
+    const rules = redirects.split('\n')
+      .map((l) => l.replace(/#.*$/, '').trim()).filter(Boolean)
+      .map((l) => l.split(/\s+/)).filter((p) => p.length >= 2);
+
+    const loops = [];
+    for (const [from, to] of rules) {
+      const norm = (u) => u.replace(/\/index\.html$/, '/').replace(/#.*$/, '').replace(/\/+$/, '') || '/';
+      /* مصدر يُطبّعه المضيف إلى الجذر = حلقة مؤكّدة */
+      if (norm(from) === '/') loops.push(from + ' → ' + to + ' (مصدره الجذر)');
+      /* الهدف يساوي المصدر بعد التطبيع = حلقة كذلك (ما لم يكن إعادة كتابة 200) */
+      else if (norm(from) === norm(to) && !/^200$/.test(rules.find((r) => r[0] === from)?.[2] || '')) {
+        loops.push(from + ' → ' + to + ' (الهدف = المصدر)');
+      }
+    }
+    /* حلقة التطبيع التلقائي: Pages يحوّل /x.html → /x تلقائياً، فأي قاعدة
+       «/x → /x.html» تدور بلا نهاية. هذا ما أسقط /dashboard و/verify فعلياً
+       على الإنتاج بينما /supabase-check و/404 يعملان (لا قاعدة لهما). */
+    for (const [from, to] of rules) {
+      const m = /^\/([A-Za-z0-9._-]+)$/.exec(from);
+      if (m && to === '/' + m[1] + '.html') {
+        loops.push(from + ' → ' + to + ' (Pages يحوّل .html إلى المسار النظيف — حلقة)');
+      }
+    }
+
+    if (loops.length) bad('لا قاعدة تحويل تدور حلقة وتُسقط الصفحة الرئيسية', loops.join(' | '));
+    else ok('لا حلقة تحويل في _redirects — الجذر و/index.html بلا قواعد (' + rules.length + ' قاعدة مفحوصة)');
+
+    /* وخادم المعاينة يجب أن يطابق: لا تحويل للجذر فيه أيضاً */
+    const serve = readFileSync(join(ROOT, 'tools/serve.mjs'), 'utf8');
+    if (/bare === '\/index\.html'|bare === '\/index'/.test(serve)) {
+      bad('خادم المعاينة بلا تحويل للجذر (يطابق Cloudflare)', 'ما زال يحوّل /index.html');
+    } else ok('خادم المعاينة يطابق Cloudflare: لا تحويل للجذر ولا حلقة محتملة');
+  }
+
+  // 11.7 عامل الخدمة: جيل جديد + احتياط تنقّل + nav.js في الكاش
+  {
+    const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
+    const issues = [];
+    /* النمط يقبل البادئتين: hrc (الحالية) وbrc (قبل تغيير الرمز) */
+    const gen = (sw.match(/[bh]rc-cache-v(\d+)/) || [])[1];
+    if (!gen || Number(gen) < 6) issues.push('جيل الكاش قديم: v' + gen);
+    if (!/nav\.js/.test(sw)) issues.push('nav.js خارج الكاش');
+    if (!/404\.html/.test(sw)) issues.push('404.html خارج الكاش');
+    if (!/cache\.add\(u\)\.catch/.test(sw)) issues.push('addAll يُسقط التثبيت كلّه عند فشل ملف واحد');
+    if (issues.length) bad('عامل الخدمة لا يُبقي الزوّار على نسخة قديمة', issues.join(' | '));
+    else ok('عامل الخدمة: جيل v' + gen + ' · nav.js و404.html مخزَّنان · تثبيت لا يسقط بفشل ملف واحد');
+  }
 }
 
 /* ═══ الخلاصة ═══════════════════════════════════════════════════════════ */

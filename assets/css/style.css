@@ -1,5 +1,5 @@
 /* ===========================================================================
- *  BRC — شركة بابل للتوظيف | نظام التصميم
+ *  BRC — شركة الهدف للتوظيف | نظام التصميم
  *  الهوية: لازورد بابلي + ذهب + نقش بوابة عشتار + أسد بابل
  *  يشمل: الموقع العام، لوحة الموظفين، صفحة التحقق، وقالب الطباعة A4
  * =========================================================================== */
@@ -133,8 +133,15 @@ a.hc-item:hover { color: var(--gold-2); }
 .hc-phones { display: inline-flex; align-items: center; gap: 8px; }
 .hc-phones a { color: var(--gold-2); font-weight: 700; }
 .header-actions { display: flex; align-items: center; gap: 10px; flex: none; }
-/* زر «دخول الموظفين» — ظاهر دائماً في الترويسة (سطح مكتب وجوال) */
-.header-login { flex: none; text-decoration: none; }
+/* بوابة الموظفين: لا زر ظاهر. الدخول بضغطة مطوّلة على اسم الشركة (nav.js).
+   نمنع تحديد النص وقائمة اللمس على الاسم حتى لا تقطع نافذةُ «نسخ/مشاركة»
+   في أندرويد الإيماءةَ بعد نصف ثانية. */
+.brand[data-staff-gate] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
 
 .site-header {
   position: sticky; top: 0; z-index: 60; background: rgba(9, 18, 40, .92);

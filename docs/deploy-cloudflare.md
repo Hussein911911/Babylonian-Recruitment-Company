@@ -47,7 +47,7 @@
 | الحفل | القيمة |
 |---|---|
 | Production branch | `main` |
-| Build command | **(فارغ)** — الملفات المبنية (`index.html` · `brc-standalone.html` …) مودَعة في Git أصلاً |
+| Build command | **(فارغ)** — الملفات المبنية (`index.html` · `hrc-standalone.html` …) مودَعة في Git أصلاً |
 | Build output directory | `.` |
 | Preview deployments | All non-Production branches — كل PR يحصل على `<slug>.babylonian-recruitment-company.pages.dev` |
 
@@ -68,7 +68,7 @@
 
 > ⚠️ هذا الاستثناء يُنتج نشراً غير مربوط بكومِت فيظهر في اللوحة بلا رسالة — اجعله
 > لحالة الضرورة فقط، ثم عد إلى النشر من Git في أول دفعة تالية.
-> والملفات المبنية (`brc-standalone.html` و `brc-light.html`) تُبنى محلياً —
+> والملفات المبنية (`hrc-standalone.html` و `hrc-light.html`) تُبنى محلياً —
 > لا تُعدَّل يدوياً ولا تُبنى على Cloudflare.
 
 مثلها تماماً النشر المباشر بـ wrangler من جهازك (للطوارئ أيضاً):
@@ -119,7 +119,7 @@ wrangler pages deploy dist --project-name babylonian-recruitment-company
 | يُنشر | لا يُنشر |
 |---|---|
 | `index.html` · `verify.html` · `dashboard.html` | `tests/` · `src/` · `docs/` · `tools/` · `supabase/` |
-| `brc-standalone.html` · `brc-light.html` · `supabase-check.html` | `package.json` · `package-lock.json` · `README.md` |
+| `hrc-standalone.html` · `hrc-light.html` · `supabase-check.html` | `package.json` · `package-lock.json` · `README.md` |
 | `sw.js` · `_headers` · `_redirects` · `assets/**` | `node_modules/` · `dist/` نفسه |
 
 والسكربت يفحص نفسه: يفشل إن كان أي ملف يطلبه المتصفح غير موجود في `dist/`
@@ -144,7 +144,7 @@ wrangler pages deploy dist --project-name babylonian-recruitment-company
 
 ## 9) بعد كل تحديث للواجهة — لا تنسَ
 
-1. `node tools/build.mjs && node tools/build.mjs --light` (لتحديث `brc-standalone.html` و `brc-light.html`)
+1. `node tools/build.mjs && node tools/build.mjs --light` (لتحديث `hrc-standalone.html` و `hrc-light.html`)
 2. ارفع رقم الكاش في `sw.js` (`CACHE_NAME = 'brc-cache-v4'` → `v5` …)
    — بدونه تبقى أجهزة الموظفين على النسخة القديمة من الكاش
 3. دفع إلى `main` → نشر تلقائي على Cloudflare Pages

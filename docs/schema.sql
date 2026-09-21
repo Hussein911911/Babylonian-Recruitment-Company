@@ -1,10 +1,10 @@
 -- ===========================================================================
---  شركة بابل للتوظيف (BRC) — مخطط قاعدة البيانات الكامل لـ PostgreSQL / Supabase
+--  شركة الهدف للتوظيف (BRC) — مخطط قاعدة البيانات الكامل لـ PostgreSQL / Supabase
 --  ---------------------------------------------------------------------------
 --  يتضمّن:
 --   • الجداول والقيود والفهارس (وظائف، باحثون/استمارات، محاولات، تدقيق، إعدادات)
 --   • مشغّلات (Triggers) للحجز المؤقت 24 ساعة، الإفراج التلقائي، وإعادة التفعيل
---   • توليد الأكواد: BRC-1042 للوظائف و BRC-NO-000120 للاستمارات
+--   • توليد الأكواد: HRC-1042 للوظائف و HRC-NO-000120 للاستمارات
 --   • سجل تدقيق لحظي (بالثانية + المستخدم + IP + التفاصيل)
 --   • سياسات RLS: الزائر يرى البيانات العامة فقط، الموظف يدير، المدير يرى المالية
 --   • دوال RPC للتحقق بالكيو آر كود وللترشيح وتثبيت النتائج
@@ -87,7 +87,7 @@ create table if not exists brc.staff (
 -- 2.3 الاستمارات (الباحثون عن عمل) — صالحة 30 يوماً، 5 محاولات
 create table if not exists brc.applicants (
   id            uuid primary key default gen_random_uuid(),
-  serial        text not null unique,                            -- BRC-NO-000120
+  serial        text not null unique,                            -- HRC-NO-000120
   full_name     text not null,
   phone         text not null,
   address       text default '',
@@ -115,7 +115,7 @@ create index if not exists applicants_created_by_idx on brc.applicants (created_
 -- 2.2 الوظائف (بيانات صاحب العمل داخلية ولا تُعرض للعامة)
 create table if not exists brc.jobs (
   id                  uuid primary key default gen_random_uuid(),
-  code                text not null unique,                      -- BRC-1042
+  code                text not null unique,                      -- HRC-1042
   title               text not null,
   category            text not null default 'خدمات',
   region              text not null,                             -- منطقة بابل
@@ -201,9 +201,9 @@ insert into brc.settings (key, value) values
       'form_fee', 10000,
       'auto_release', true)),
   ('company', jsonb_build_object(
-      'nameAr',      'شركة بابل للتوظيف',
-      'nameEn',      'Babylonian Recruitment Company',
-      'legalName',   'شركة بابل للتوظيف',
+      'nameAr',      'شركة الهدف للتوظيف',
+      'nameEn',      'Al-Hadaf Recruitment Company',
+      'legalName',   'شركة الهدف للتوظيف',
       'slogan',      'نوفّر الأيادي العاملة الفنية والتخصصية في بابل والفرات الأوسط',
       'phones',      jsonb_build_array('07760058007', '07715993271'),
       'address',     'حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي',
@@ -228,7 +228,7 @@ language plpgsql as $$
 declare v text;
 begin
   loop
-    v := 'BRC-' || nextval('brc.job_code_seq')::text;
+    v := 'HRC-' || nextval('brc.job_code_seq')::text;
     exit when not exists (select 1 from brc.jobs where code = v);
   end loop;
   return v;
@@ -239,7 +239,7 @@ language plpgsql as $$
 declare v text;
 begin
   loop
-    v := 'BRC-NO-' || lpad(nextval('brc.form_serial_seq')::text, 6, '0');
+    v := 'HRC-NO-' || lpad(nextval('brc.form_serial_seq')::text, 6, '0');
     exit when not exists (select 1 from brc.applicants where serial = v);
   end loop;
   return v;
@@ -279,8 +279,15 @@ declare rules jsonb;
 begin
   select value into rules from brc.settings where key = 'rules';
 
-  if tg_table_name = 'jobs' and coalesce(new.code, '') = '' then
-    new.code := brc.next_job_code();
+  /* ⚠️ لا تدمج الشرطين بـ and في سطر واحد:
+     PL/pgSQL يقيّم طرفَي التعبير معاً، فيقرأ new.code حتى عندما يكون
+     tg_table_name = 'applicants' — وذلك الجدول بلا عمود code، فينفجر
+     الإدراج بخطأ 42703: record "new" has no field "code".
+     التعشيش يضمن ألا يُقرأ new.code إلا داخل فرع jobs. */
+  if tg_table_name = 'jobs' then
+    if coalesce(new.code, '') = '' then
+      new.code := brc.next_job_code();
+    end if;
   end if;
 
   if tg_table_name = 'applicants' then
@@ -296,10 +303,10 @@ begin
     if new.expiry_date is null then
       new.expiry_date := new.issue_date + make_interval(days => coalesce((rules->>'validity_days')::int, 30));
     end if;
-    -- إنشاء خانات المحاولات الخمس تلقائياً
-    insert into brc.job_attempts (serial, attempt_no)
-    select new.serial, gs from generate_series(1, new.attempt_limit) gs
-    on conflict (serial, attempt_no) do nothing;
+    /* ⚠️ لا تُنشأ خانات المحاولات هنا: هذا مُشغِّل BEFORE INSERT، أي أن صف
+       الاستمارة لم يُكتب في الجدول بعد. وjob_attempts.serial مفتاح أجنبي
+       يشير إلى applicants(serial)، فالإدراج يفشل بـ 23503. الإنشاء نُقل إلى
+       مُشغِّل AFTER INSERT منفصل (trg_applicants_attempts) أدناه. */
   end if;
 
   new.updated_at := now();
@@ -313,6 +320,20 @@ create trigger trg_jobs_defaults before insert or update on brc.jobs
 drop trigger if exists trg_applicants_defaults on brc.applicants;
 create trigger trg_applicants_defaults before insert on brc.applicants
   for each row execute function brc.trg_defaults();
+
+/* خانات المحاولات تُنشأ بعد كتابة الاستمارة فعلاً — انظر التحذير أعلاه. */
+create or replace function brc.trg_make_attempts() returns trigger
+language plpgsql as $$
+begin
+  insert into brc.job_attempts (serial, attempt_no)
+  select new.serial, gs from generate_series(1, new.attempt_limit) gs
+  on conflict (serial, attempt_no) do nothing;
+  return null;
+end $$;
+
+drop trigger if exists trg_applicants_attempts on brc.applicants;
+create trigger trg_applicants_attempts after insert on brc.applicants
+  for each row execute function brc.trg_make_attempts();
 
 -- 4.2 حجز الوظيفة مؤقتاً 24 ساعة عند اختيار محاولة + منع الحجز المزدوج
 create or replace function brc.trg_attempt_hold() returns trigger
@@ -646,7 +667,7 @@ begin
     'attemptsLeft', (select count(*) from brc.job_attempts a where a.serial = f.serial and a.slot_status = 'empty'),
     'tokenOk', v_ok,
     /* ⚠️ خصوصية: بلا بصمة مطابقة تُقنَّع بيانات الباحث (الاسم والهاتف).
-       السبب: الأرقام التسلسلية تُطلق تتابعاً (BRC-NO-000120, 121, …) فيستطيع
+       السبب: الأرقام التسلسلية تُطلق تتابعاً (HRC-NO-000120, 121, …) فيستطيع
        أي زائر سحب أسماء وهواتف كل الباحثين بنداءات متتابعة — وهي بيانات أشخاص
        حقيقيين. البصمة المطبوعة في الكيو آر كود هي المفتاح، ومن يُدخل الرقم
        يدوياً يحصل على تأكيد صحة الاستمارة وحالتها بلا بيانات شخصية. */
@@ -967,7 +988,7 @@ grant usage on schema brc to anon, authenticated;
 --     قادراً. الإبطال الصحيح يكون **من public**، ثم نُعيد المنح لمن يحتاجه.
 --
 --  أخطرها brc.verify_token: تُرجع توقيع HMAC لأي رقم تسلسلي، والأرقام متسلسلة
---  ومطبوعة على الاستمارات (BRC-NO-000120، 121، …). فمن يناديها يحسب البصمة
+--  ومطبوعة على الاستمارات (HRC-NO-000120، 121، …). فمن يناديها يحسب البصمة
 --  الصحيحة لأي استمارة ويصوغ رابط كيو آر كود مزيّفاً — فتفقد البصمة المطبوعة
 --  قيمتها الأمنية بالكامل.
 --
@@ -1060,18 +1081,18 @@ end $$;
 -- values ('عامل مخزن', 'الحلة', 600000, 750000, 'صباحي',
 --         'مخازن الفرات للتبريد', '07701234567', 'الحلة - المنطقة الصناعية');
 --
--- إصدار استمارة (يُولَّد الرقم BRC-NO-000121 وتُنشأ 5 محاولات)
+-- إصدار استمارة (يُولَّد الرقم HRC-NO-000121 وتُنشأ 5 محاولات)
 -- insert into brc.applicants (full_name, phone, address, dob)
 -- values ('حسين كاظم عبد الله', '07704445566', 'الحلة - شارع 40', '1997-11-30');
 --
 -- ترشيح وظيفة لمحاولة (يحجز الوظيفة 24 ساعة تلقائياً)
--- select brc.select_attempt('BRC-NO-000121', 'BRC-1042');
+-- select brc.select_attempt('HRC-NO-000121', 'HRC-1042');
 --
 -- تثبيت نتيجة المقابلة
--- select brc.set_outcome('BRC-NO-000121', 1, 'rejected', 'عدم توفر سكن قريب');
+-- select brc.set_outcome('HRC-NO-000121', 1, 'rejected', 'عدم توفر سكن قريب');
 --
 -- التحقق عبر الكيو آر كود
--- select brc.verify_form('BRC-NO-000120', left(brc.verify_token('BRC-NO-000120'), 8));
+-- select brc.verify_form('HRC-NO-000120', left(brc.verify_token('HRC-NO-000120'), 8));
 --
 -- تشغيل الإفراج التلقائي يدوياً (يعمل تلقائياً كل دقيقة عبر pg_cron)
 -- select * from brc.run_auto_release();

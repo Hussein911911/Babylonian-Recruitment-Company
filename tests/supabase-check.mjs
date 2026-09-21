@@ -309,7 +309,7 @@ console.log('\n▌ فحص الجاهزية — مشروع مُعدّ بالكا�
     reachable: true,
     /* حساب موظف مُعدّ بالكامل: كل شيء يُقرأ (لا RLS مانعة) */
     tableState: () => 'ok',
-    rows: (t) => (t === 'public_jobs' ? [{ code: 'BRC-1042' }] : (t === 'staff' ? [{ id: 's1', username: 'admin', role: 'admin' }] : [])),
+    rows: (t) => (t === 'public_jobs' ? [{ code: 'HRC-1042' }] : (t === 'staff' ? [{ id: 's1', username: 'admin', role: 'admin' }] : [])),
     rpc: (name) => (name === 'verify_form'
       ? { data: { ok: false, error: 'لا توجد استمارة بهذا الرقم' }, error: null }
       : (name === 'request_form' ? { data: { ok: false, error: 'الاسم غير صالح' }, error: null } : null))
@@ -341,7 +341,7 @@ console.log('\n▌ فحص الجاهزية — حساب موجود لكن غير
   const { w, doc } = await loadPage({
     reachable: true,
     tableState: () => 'ok',
-    rows: (t) => (t === 'public_jobs' ? [{ code: 'BRC-1042' }] : []),
+    rows: (t) => (t === 'public_jobs' ? [{ code: 'HRC-1042' }] : []),
     rpc: (name) => ({ data: { ok: false }, error: null })
   });
   await runStaffCheck(w, doc);
