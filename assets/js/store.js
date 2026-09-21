@@ -795,6 +795,9 @@
   function financials(from, to) {
     var rows = {};
     db.applicants.forEach(function (a) {
+      /* استمارة قيد الطلب (issueDate = null) لا تنتمي لأي يوم: كانت تُقارَن
+         بـ null فتمرّ في كل نطاق — وهذا يُفسد فلتر «اليوم/أمس». */
+      if ((from || to) && !a.issueDate) return;
       if (from && a.issueDate < from) return;
       if (to && a.issueDate > to + 'T23:59:59') return;
       var key = a.createdBy || 'system';

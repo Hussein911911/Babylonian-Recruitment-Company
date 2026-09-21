@@ -379,6 +379,171 @@ try {
   }
   check('لا أخطاء JavaScript في كل خطوات الأزرار المكمّلة', errors.length === 0, errors.join(' | '));
 
+  /* ======================================================================
+   *  الخطوة 9 — النسخة المشفّرة: تصدير ← استرداد (دورة كاملة)
+   *  ----------------------------------------------------------------------
+   *  هذا هو الاختبار الذي كان غائباً: الكود كان يُشفّر بلا أي طريق للعودة.
+   *  نتحقق أن الملف المُنتَج على الهاتف/اللابتوب يُفكّ فعلاً بكلمة المرور
+   *  الصحيحة، ويُرفض بالخاطئة، ويعتمده النظام بعد التأكيد.
+   * ====================================================================== */
+  step(9, 'النسخة المشفّرة — تصدير ثم استرداد واعتماد');
+
+  /* jsdom لا يُعرّض WebCrypto على window: نجسره من Node (نفس الواجهة). */
+  if (!w.crypto || !w.crypto.subtle) {
+    const { webcrypto } = await import('node:crypto');
+    Object.defineProperty(w, 'crypto', { value: webcrypto, configurable: true });
+  }
+  /* jsdom لا يُعرّض TextEncoder/TextDecoder على window رغم توفّرهما في كل
+     متصفح حديث — بدون الجسر يفشل التشفير باستثناء وهمي لا وجود له إنتاجاً. */
+  if (typeof w.TextEncoder === 'undefined') {
+    Object.defineProperty(w, 'TextEncoder', { value: TextEncoder, configurable: true });
+    Object.defineProperty(w, 'TextDecoder', { value: TextDecoder, configurable: true });
+  }
+  check('WebCrypto متاح للصفحة (شرط التشفير وفكّه)', !!(w.crypto && w.crypto.subtle));
+  check('TextEncoder/TextDecoder متاحان للصفحة', typeof w.TextEncoder === 'function' && typeof w.TextDecoder === 'function');
+
+  /* جسر prompt: jsdom يرمي «Not implemented» فتفشل كلمة المرور بصمت */
+  const prompts = [];
+  let promptQueue = [];
+  w.prompt = function (msg) { prompts.push(msg); return promptQueue.length ? promptQueue.shift() : null; };
+
+  const encBtn = doc.getElementById('btn-export-encrypted');
+  const encImpBtn = doc.getElementById('btn-import-encrypted');
+  const encImpFile = doc.getElementById('import-enc-file');
+  check('زر «نسخة مشفّرة للابتوب» موجود', !!encBtn);
+  check('زر «استرداد نسخة مشفّرة» موجود', !!encImpBtn);
+  check('حقل ملف الاسترداد المشفّر موجود', !!encImpFile);
+
+  const PW = 'كلمة-مرور-قوية-2026';
+  if (encBtn && encImpBtn && encImpFile) {
+    // (أ) التصدير المشفّر يُنتج ملفاً فعلاً
+    downloads.length = 0;
+    promptQueue = [PW, PW];
+    click(encBtn);
+    await wait(1500);
+    check('زر التصدير المشفّر طلب كلمة المرور مرتين (تأكيد)', prompts.length === 2, prompts.length + '');
+    check('التصدير المشفّر أنتج ملف تنزيل', downloads.length === 1, JSON.stringify(downloads));
+    check('اسم الملف المشفّر بالصيغة BRC-backup-YYYY-MM-DD.brc.enc.json',
+      /^BRC-backup-\d{4}-\d{2}-\d{2}\.brc\.enc\.json$/.test((downloads[0] || {}).name || ''), (downloads[0] || {}).name);
+
+    // (ب) نُنتج نفس الحزمة عبر WebCrypto لنملك محتواها نصّاً (الـ blob غير مقروء في jsdom)
+    const plain = S.exportJson();
+    const encPkg = await (async () => {
+      const enc = new TextEncoder();
+      const salt = w.crypto.getRandomValues(new Uint8Array(16));
+      const iv = w.crypto.getRandomValues(new Uint8Array(12));
+      const base = await w.crypto.subtle.importKey('raw', enc.encode(PW), 'PBKDF2', false, ['deriveKey']);
+      const key = await w.crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' },
+        base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+      const buf = await w.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plain));
+      const b64 = (x) => Buffer.from(new Uint8Array(x)).toString('base64');
+      return JSON.stringify({ format: 'BRC-ENCRYPTED-BACKUP-v1', algorithm: 'AES-256-GCM',
+        kdf: 'PBKDF2-SHA-256', iterations: 250000, salt: b64(salt), iv: b64(iv), data: b64(buf) });
+    })();
+    const pkgObj = JSON.parse(encPkg);
+    check('الحزمة المشفّرة تحمل ترويسة BRC-ENCRYPTED-BACKUP-v1', pkgObj.format === 'BRC-ENCRYPTED-BACKUP-v1');
+    check('الحزمة لا تحتوي كلمة المرور نصّاً', encPkg.indexOf(PW) < 0);
+    check('الحزمة لا تكشف بيانات النظام نصّاً', !/HRC-NO|applicants/.test(encPkg));
+
+    // (ج) كلمة مرور خاطئة تُرفض ولا تمس البيانات
+    const beforeWrong = JSON.stringify(S.db());
+    promptQueue = ['كلمة-مرور-خاطئة-تماماً'];
+    setFile(encImpFile, 'BRC-backup.brc.enc.json', encPkg);
+    await wait(2000);
+    check('كلمة المرور الخاطئة لا تُغيّر البيانات', JSON.stringify(S.db()) === beforeWrong);
+    check('كلمة المرور الخاطئة لم تفتح نافذة اعتماد', !modalOpen());
+
+    // (د) إلغاء كلمة المرور لا يفعل شيئاً
+    promptQueue = [];
+    setFile(encImpFile, 'BRC-backup.brc.enc.json', encPkg);
+    await wait(800);
+    check('إلغاء إدخال كلمة المرور لا يغيّر البيانات', JSON.stringify(S.db()) === beforeWrong);
+
+    // (هـ) ملف مشفّر في زر الاستيراد العادي: يُوجَّه ولا يُفسد البيانات
+    setFile(imf, 'BRC-backup.brc.enc.json', encPkg);
+    await wait(600);
+    check('الملف المشفّر في زر الاستيراد العادي لا يمسح البيانات', JSON.stringify(S.db()) === beforeWrong);
+
+    // (و) كلمة المرور الصحيحة: فكّ + نافذة تأكيد + اعتماد فعلي
+    S.createJob({ title: 'وظيفة تُمحى بالاسترداد', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي' });
+    await wait(200);
+    const jobsBeforeRestore = JSON.parse(plain).jobs.length;
+    check('أُضيفت وظيفة ليست في النسخة المشفّرة', S.db().jobs.length === jobsBeforeRestore + 1, S.db().jobs.length + '');
+
+    const backupsBefore = S.listBackupMeta().length;
+    promptQueue = [PW];
+    setFile(encImpFile, 'BRC-backup.brc.enc.json', encPkg);
+    await wait(2500);
+    const okEnc = lastModal() && lastModal().querySelector('[data-ok]');
+    check('فكّ التشفير نجح وظهرت نافذة الاعتماد', !!okEnc);
+    if (okEnc) {
+      const msg = lastModal().textContent || '';
+      check('نافذة الاعتماد تعرض عدد الوظائف والاستمارات', /\d+\s*وظيفة/.test(msg) && /\d+\s*استمارة/.test(msg));
+      click(okEnc);
+      await wait(1200);
+      check('النظام اعتمد النسخة المشفّرة (الوظيفة الزائدة اختفت)',
+        S.db().jobs.length === jobsBeforeRestore, S.db().jobs.length + ' مقابل ' + jobsBeforeRestore);
+      check('حُفظت نسخة أمان قبل الاسترداد', S.listBackupMeta().length > backupsBefore &&
+        S.listBackupMeta().some((b) => /قبل استرداد نسخة مشفّرة/.test(b.name)));
+      check('الاسترداد سُجّل في سجل التدقيق', S.listAudit({}).some((l) => /استيراد/.test(l.action)));
+      check('النافذة أُغلقت بعد الاعتماد', !modalOpen());
+    }
+    check('لا أخطاء JavaScript في دورة النسخة المشفّرة', errors.length === 0, errors.join(' | '));
+  }
+
+  /* ======================================================================
+   *  الخطوة 10 — فلاتر اللوحة المالية: اليوم / أمس / الكل
+   * ====================================================================== */
+  step(10, 'اللوحة المالية — فلتر «اليوم» و«أمس»');
+  click(doc.querySelector('#side-nav button[data-view="finance"]'));
+  await wait(400);
+  const btnToday = doc.getElementById('btn-fin-today');
+  const btnYest = doc.getElementById('btn-fin-yesterday');
+  const btnAll = doc.getElementById('btn-fin-reset');
+  const fFrom = doc.getElementById('fin-from');
+  const fTo = doc.getElementById('fin-to');
+  check('زر «اليوم» موجود في اللوحة المالية', !!btnToday);
+  check('زر «أمس» موجود في اللوحة المالية', !!btnYest);
+  check('زر «الكل» ما زال موجوداً', !!btnAll);
+
+  if (btnToday && btnYest && btnAll && fFrom && fTo) {
+    const d = new Date();
+    const p2 = (n) => String(n).padStart(2, '0');
+    const ymd = (x) => x.getFullYear() + '-' + p2(x.getMonth() + 1) + '-' + p2(x.getDate());
+    const today = ymd(d);
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const yesterday = ymd(y);
+
+    click(btnToday); await wait(400);
+    check('«اليوم» يملأ الحقلين بتاريخ اليوم', fFrom.value === today && fTo.value === today, fFrom.value + ' → ' + fTo.value);
+    const todayRows = S.financials(today, today);
+    const shownToday = S.financialTotals(today, today);
+    check('نطاق «اليوم» يساوي مجموع صفوفه',
+      shownToday.forms === todayRows.reduce((t, r) => t + r.forms, 0));
+
+    click(btnYest); await wait(400);
+    check('«أمس» يملأ الحقلين بتاريخ الأمس', fFrom.value === yesterday && fTo.value === yesterday, fFrom.value + ' → ' + fTo.value);
+    check('«أمس» تاريخ سابق فعلاً لليوم', yesterday < today, yesterday + ' مقابل ' + today);
+
+    click(btnAll); await wait(400);
+    check('«الكل» يُفرغ الحقلين', fFrom.value === '' && fTo.value === '');
+    const all = S.financialTotals('', '');
+    const tot = S.financialTotals(today, today);
+    check('مجموع «الكل» ≥ مجموع «اليوم» (الفلتر يُضيّق فعلاً)', all.forms >= tot.forms, all.forms + ' مقابل ' + tot.forms);
+
+    /* الاستمارات قيد الطلب (بلا تاريخ إصدار) يجب ألا تُحتسب في يوم محدّد */
+    const pendingCount = S.db().applicants.filter((a) => !a.issueDate).length;
+    if (pendingCount > 0) {
+      const wide = S.financialTotals('2000-01-01', '2999-12-31');
+      check('الاستمارات بلا تاريخ إصدار لا تتسرّب إلى نطاق مؤرَّخ',
+        wide.forms === S.db().applicants.filter((a) => !!a.issueDate).length,
+        wide.forms + ' مقابل ' + S.db().applicants.filter((a) => !!a.issueDate).length);
+    } else {
+      ok('لا استمارات بلا تاريخ إصدار في البذرة (الفحص غير منطبق)');
+    }
+    check('لا أخطاء JavaScript في فلاتر اللوحة المالية', errors.length === 0, errors.join(' | '));
+  }
+
   w.close && w.close();
 } catch (e) {
   bad('خطأ غير متوقع في الاختبار', e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : String(e));

@@ -29,6 +29,45 @@
       });
   }
 
+  /* ---------------------------------------------------------------------------
+   *  فك تشفير النسخة الخارجية — الوجه المقابل لـ encryptedBackup().
+   *  الملف يُنتَج على أي جهاز (لابتوب أو هاتف) ويُسترد هنا: لا شيء يُرسل لخادم،
+   *  وكلمة المرور لا تُخزَّن. عدد الدورات يُقرأ من الملف نفسه حتى تبقى النسخ
+   *  القديمة قابلة للاسترداد لو تغيّر الرقم مستقبلاً.
+   * ------------------------------------------------------------------------- */
+  function ub64(s) {
+    var bin = atob(String(s || '')), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function isEncryptedBackup(text) {
+    try {
+      var o = JSON.parse(text);
+      return !!(o && o.format === 'BRC-ENCRYPTED-BACKUP-v1' && o.salt && o.iv && o.data);
+    } catch (e) { return false; }
+  }
+
+  function decryptBackup(text, password) {
+    if (!root.crypto || !root.crypto.subtle) return Promise.reject(new Error('المتصفح لا يدعم التشفير الآمن'));
+    var pkg;
+    try { pkg = JSON.parse(text); } catch (e) { return Promise.reject(new Error('الملف ليس بصيغة JSON صالحة')); }
+    if (!pkg || pkg.format !== 'BRC-ENCRYPTED-BACKUP-v1') return Promise.reject(new Error('هذا ليس ملف نسخة مشفّرة من النظام'));
+    if (!pkg.salt || !pkg.iv || !pkg.data) return Promise.reject(new Error('ملف النسخة المشفّرة ناقص أو تالف'));
+    var salt, iv, data;
+    try { salt = ub64(pkg.salt); iv = ub64(pkg.iv); data = ub64(pkg.data); }
+    catch (e) { return Promise.reject(new Error('ملف النسخة المشفّرة تالف')); }
+    var iters = Number(pkg.iterations) > 0 ? Number(pkg.iterations) : 250000;
+    var enc = new TextEncoder();
+    return crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey'])
+      .then(function (base) { return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: salt, iterations: iters, hash: 'SHA-256' },
+        base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']); })
+      .then(function (key) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data); })
+      .catch(function () { throw new Error('كلمة المرور غير صحيحة أو الملف معدَّل'); })
+      .then(function (buf) { return new TextDecoder().decode(buf); });
+  }
+
   /* مفتاح الجلسة: يُستخدم لرصد الدخول/الخروج وإعادة ضبط الواجهة والصلاحيات */
   function sessionKey() {
     var u = Store.currentUser();
@@ -1501,12 +1540,33 @@
     bindInput('fin-from', state.fin, 'from', renderFinance);
     bindInput('fin-to', state.fin, 'to', renderFinance);
 
+    /* فلاتر سريعة للّوحة المالية: اليوم / أمس / الكل.
+       نضبط الحقلين معاً حتى تبقى الواجهة صادقة مع الحالة المعروضة. */
+    function setFinRange(from, to) {
+      state.fin = { from: from, to: to };
+      var a = document.getElementById('fin-from'), b = document.getElementById('fin-to');
+      if (a) a.value = from; if (b) b.value = to;
+      renderFinance();
+    }
+    function dayOffset(n) {
+      var d = new Date();
+      d.setDate(d.getDate() + n);
+      return Store.fmtDate(d);       // YYYY-MM-DD بالتوقيت المحلي
+    }
+
+    var finToday = document.getElementById('btn-fin-today');
+    if (finToday) finToday.addEventListener('click', function () {
+      var t = dayOffset(0); setFinRange(t, t);
+    });
+
+    var finYesterday = document.getElementById('btn-fin-yesterday');
+    if (finYesterday) finYesterday.addEventListener('click', function () {
+      var y = dayOffset(-1); setFinRange(y, y);
+    });
+
     var finReset = document.getElementById('btn-fin-reset');
     if (finReset) finReset.addEventListener('click', function () {
-      state.fin = { from: '', to: '' };
-      var a = document.getElementById('fin-from'), b = document.getElementById('fin-to');
-      if (a) a.value = ''; if (b) b.value = '';
-      renderFinance();
+      setFinRange('', '');
     });
 
     // البحث السريع بالكود (وظيفة أو استمارة)
@@ -1633,8 +1693,66 @@
         var f = imf.files[0]; if (!f) return;
         var r = new FileReader();
         r.onload = function () {
-          try { Store.importJson(String(r.result)); UI.toast('ok', 'تم الاستيراد', 'استُعيدت البيانات من النسخة الاحتياطية.'); renderCurrent(); }
+          var text = String(r.result);
+          /* ملف مشفّر أُدخل من الزر الخطأ: نوجّه المستخدم بدل رسالة «غير صالح» المضلّلة */
+          if (isEncryptedBackup(text)) {
+            UI.toast('warn', 'هذه نسخة مشفّرة', 'استخدم زر «استرداد نسخة مشفّرة» وأدخل كلمة المرور.');
+            imf.value = ''; return;
+          }
+          try { Store.importJson(text); UI.toast('ok', 'تم الاستيراد', 'استُعيدت البيانات من النسخة الاحتياطية.'); renderCurrent(); }
           catch (e) { UI.toast('err', 'فشل الاستيراد', 'الملف غير صالح: ' + e.message); }
+          imf.value = '';
+        };
+        r.readAsText(f);
+      });
+    }
+
+    /* ------------- استرداد النسخة المشفّرة (من الهاتف أو اللابتوب) -------------
+     *  الملف يُقرأ محلياً، تُطلب كلمة المرور، يُفكّ التشفير في المتصفح، ثم
+     *  تُحفظ نسخة أمان من الحالة الراهنة قبل الاعتماد — فلا يمكن خسارة البيانات
+     *  الحالية حتى لو كانت النسخة المستردة ناقصة. */
+    var ime = document.getElementById('btn-import-encrypted');
+    var imef = document.getElementById('import-enc-file');
+    if (ime && imef) {
+      ime.addEventListener('click', function () { imef.click(); });
+      imef.addEventListener('change', function () {
+        var f = imef.files[0]; if (!f) return;
+        var r = new FileReader();
+        r.onload = function () {
+          var text = String(r.result);
+          imef.value = '';
+          if (!isEncryptedBackup(text)) {
+            /* ملف عادي غير مشفّر: نقبله عبر المسار العادي بدل رفضه */
+            try {
+              Store.saveScheduledBackup('قبل استرداد نسخة خارجية - ' + Store.fmtDateTime(new Date()), null);
+              Store.importJson(text);
+              UI.toast('ok', 'تم الاسترداد', 'الملف غير مشفّر — استُورد مباشرةً واعتمده النظام.');
+              renderCurrent();
+            } catch (e) { UI.toast('err', 'فشل الاسترداد', 'الملف غير صالح: ' + e.message); }
+            return;
+          }
+          var pw = window.prompt('أدخل كلمة مرور النسخة المشفّرة:');
+          if (!pw) { UI.toast('info', 'أُلغي الاسترداد', 'لم تُدخل كلمة المرور.'); return; }
+          ime.disabled = true;
+          decryptBackup(text, pw).then(function (json) {
+            var parsed = JSON.parse(json);
+            if (!parsed || !parsed.jobs || !parsed.applicants) throw new Error('النسخة المفكوكة لا تحتوي بيانات النظام');
+            var jobs = parsed.jobs.length, apps = parsed.applicants.length;
+            return UI.confirm({
+              title: 'اعتماد النسخة المشفّرة',
+              confirmText: 'اعتماد النسخة',
+              message: 'فُكّ التشفير بنجاح: ' + jobs + ' وظيفة و' + apps + ' استمارة. ' +
+                'سيستبدل النظام بياناته الحالية بهذه النسخة (تُحفظ نسخة أمان قبلها). هل تعتمدها؟'
+            }).then(function (ok) {
+              if (!ok) { UI.toast('info', 'أُلغي الاعتماد', 'البيانات الحالية لم تتغيّر.'); return; }
+              Store.saveScheduledBackup('قبل استرداد نسخة مشفّرة - ' + Store.fmtDateTime(new Date()), null);
+              Store.importJson(json);
+              UI.toast('ok', 'اعتُمدت النسخة المشفّرة', 'استُردت ' + apps + ' استمارة و' + jobs + ' وظيفة، والنظام يعمل عليها الآن.');
+              renderCurrent();
+            });
+          }).catch(function (e) {
+            UI.toast('err', 'فشل الاسترداد', e.message || 'تعذّر فك التشفير');
+          }).then(function () { ime.disabled = false; });
         };
         r.readAsText(f);
       });
