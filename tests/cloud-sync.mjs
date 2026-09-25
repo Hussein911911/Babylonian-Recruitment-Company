@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — اختبار الدخول والمزامنة (cloud-auth.js + cloud-sync.js)
+ *  HRC — اختبار الدخول والمزامنة (cloud-auth.js + cloud-sync.js)
  *  ---------------------------------------------------------------------------
  *  هذه أخطر طبقة في المشروع: هي التي تكتب في قاعدة بيانات فيها بيانات بشر
  *  حقيقيين. خطأ في اشتقاق العمليات (diff) قد يعني:
@@ -41,10 +41,10 @@ sandbox.localStorage = (() => {
 new Function('window', readFileSync(join(ROOT, 'assets/js/cloud.js'), 'utf8'))(sandbox);
 new Function('window', readFileSync(join(ROOT, 'assets/js/cloud-auth.js'), 'utf8'))(sandbox);
 new Function('window', readFileSync(join(ROOT, 'assets/js/cloud-sync.js'), 'utf8'))(sandbox);
-const C = sandbox.BRCCloud, A = sandbox.BRCCloudAuth, S = sandbox.BRCSync;
+const C = sandbox.HRCCloud, A = sandbox.HRCCloudAuth, S = sandbox.HRCSync;
 
 console.log('\n' + '═'.repeat(74));
-console.log('  BRC — اختبار الدخول (Auth) والمزامنة (Sync)');
+console.log('  HRC — اختبار الدخول (Auth) والمزامنة (Sync)');
 console.log('═'.repeat(74));
 
 check('الوحدات الثلاث تُحمّل', !!C && !!A && !!S);
@@ -84,7 +84,7 @@ function mockClient(opts = {}) {
         if (state._op === 'insert') {
           const row = Object.assign({}, state._payload);
           if (table === 'audit_log' && row.id == null) row.id = ++auditSeq;
-          if (table === 'jobs' && opts.serverGeneratesCode && !row.code) row.code = 'BRC-9999';
+          if (table === 'jobs' && opts.serverGeneratesCode && !row.code) row.code = 'HRC-9999';
           if (table === 'applicants' && opts.serverGeneratesSerial && !row.serial) row.serial = 'HRC-NO-999999';
           rows[table] = rows[table] || [];
           rows[table].push(row);
@@ -126,11 +126,11 @@ function mockClient(opts = {}) {
  * =========================================================================== */
 step(1, 'Auth — اشتقاق البريد وفحص المدخل');
 {
-  check('اسم مستخدم بسيط → بريد بالنطاق المضبوط', A.toEmail('admin') === 'admin@brc-babil.com', A.toEmail('admin'));
+  check('اسم مستخدم بسيط → بريد بالنطاق المضبوط', A.toEmail('admin') === 'admin@hrc-babil.com', A.toEmail('admin'));
   check('بريد كامل يُستخدم كما هو', A.toEmail('staff@example.com') === 'staff@example.com');
   check('يُقبل أي نطاق (بريد موظف شخصي)', A.toEmail('ali@gmail.com') === 'ali@gmail.com');
-  check('يُوحَّد لحروف صغيرة', A.toEmail('Admin') === 'admin@brc-babil.com');
-  check('فراغات تُشذَّب', A.toEmail('  admin  ') === 'admin@brc-babil.com');
+  check('يُوحَّد لحروف صغيرة', A.toEmail('Admin') === 'admin@hrc-babil.com');
+  check('فراغات تُشذَّب', A.toEmail('  admin  ') === 'admin@hrc-babil.com');
   check('فراغ يُرجع فراغاً (لا بريد وهمي)', A.toEmail('') === '' && A.toEmail(null) === '');
   check('نطاق مخصّص يُحترم', A.toEmail('x', 'company.iq') === 'x@company.iq');
 
@@ -149,7 +149,7 @@ step(2, 'Auth — الدخول وقراءة الدور');
   const auth = A.create(client);
   const r = await auth.login('admin', 'secret123');
   check('الدخول نجح', r.ok === true, JSON.stringify(r));
-  check('البريد المُرسَل مشتقّ صحيحاً', client.__calls.some((c) => c.email === 'admin@brc-babil.com'));
+  check('البريد المُرسَل مشتقّ صحيحاً', client.__calls.some((c) => c.email === 'admin@hrc-babil.com'));
   check('الدور قُرئ من brc.staff', r.profile && r.profile.role === 'admin');
   check('الاسم والصلاحية', r.profile.name === 'المدير العام' && r.profile.title === 'الإدارة');
   check('كلمة المرور لم تُخزَّن في النتيجة', JSON.stringify(r).indexOf('secret123') === -1);
@@ -217,9 +217,9 @@ step(4, 'Sync — اشتقاق العمليات من الفرق');
 {
   const base = () => ({
     settings: { attemptLimit: 5, validityDays: 30, holdHours: 24, formFee: 10000 },
-    jobs: [{ code: 'BRC-1', title: 'وظيفة', category: 'خدمات', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0700', address: 'ع' }, interviewLocation: 'م', status: 'available', reservedBy: null, holdExpiresAt: null, closedAt: null, notes: '', imageUrl: '' }],
+    jobs: [{ code: 'HRC-1', title: 'وظيفة', category: 'خدمات', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0700', address: 'ع' }, interviewLocation: 'م', status: 'available', reservedBy: null, holdExpiresAt: null, closedAt: null, notes: '', imageUrl: '' }],
     applicants: [{ serial: 'HRC-NO-1', fullName: 'باحث', phone: '0770', address: '', dob: null, gender: 'ذكر', nationality: 'عراقي', status: 'active', fee: 10000, feePaid: false, printedCount: 0, notes: '', requestedCode: null }],
-    attempts: [{ serial: 'HRC-NO-1', no: 1, jobCode: 'BRC-1', slotStatus: 'empty', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
+    attempts: [{ serial: 'HRC-NO-1', no: 1, jobCode: 'HRC-1', slotStatus: 'empty', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
     audit: [], staff: []
   });
 
@@ -229,7 +229,7 @@ step(4, 'Sync — اشتقاق العمليات من الفرق');
 
   /* إضافة وظيفة */
   const d1 = base();
-  d1.jobs.push({ ...d0.jobs[0], code: 'BRC-2', title: 'جديدة' });
+  d1.jobs.push({ ...d0.jobs[0], code: 'HRC-2', title: 'جديدة' });
   const ops1 = S.diff(snap0, d1);
   check('إضافة وظيفة → عملية insert واحدة', ops1.length === 1 && ops1[0].op === 'insert' && ops1[0].table === 'jobs', JSON.stringify(ops1.map((o) => o.op + ':' + o.table)));
 
@@ -255,7 +255,7 @@ step(4, 'Sync — اشتقاق العمليات من الفرق');
 
   /* ترتيب: الإدراج والتعديل قبل الحذف */
   const d5 = base();
-  d5.jobs.push({ ...d0.jobs[0], code: 'BRC-9' });
+  d5.jobs.push({ ...d0.jobs[0], code: 'HRC-9' });
   d5.applicants = [];
   const ops5 = S.diff(snap0, d5);
   const lastOp = ops5[ops5.length - 1];
@@ -263,12 +263,12 @@ step(4, 'Sync — اشتقاق العمليات من الفرق');
 
   /* سجل التدقيق: إضافة فقط */
   const d6 = base();
-  d6.audit.push({ id: 7, user: 'admin', role: 'admin', ip: '1.1.1.1', action: 'إضافة وظيفة', entity: 'job', entityId: 'BRC-1', details: 'x' });
+  d6.audit.push({ id: 7, user: 'admin', role: 'admin', ip: '1.1.1.1', action: 'إضافة وظيفة', entity: 'job', entityId: 'HRC-1', details: 'x' });
   const ops6 = S.diff(snap0, d6);
   check('سطر تدقيق جديد → insert فقط', ops6.length === 1 && ops6[0].table === 'audit_log' && ops6[0].op === 'insert');
   const snap6 = S.snapshotOf(d6);
   const d6b = base();
-  d6b.audit.push({ id: 7, user: 'admin', role: 'admin', ip: '1.1.1.1', action: 'مُعدَّل', entity: 'job', entityId: 'BRC-1', details: 'x' });
+  d6b.audit.push({ id: 7, user: 'admin', role: 'admin', ip: '1.1.1.1', action: 'مُعدَّل', entity: 'job', entityId: 'HRC-1', details: 'x' });
   check('تعديل سطر تدقيق لا يُنتج عملية (القاعدة ترفضها)', S.diff(snap6, d6b).length === 0);
 
   /* الإعدادات */
@@ -295,7 +295,7 @@ step(5, 'Sync — تنفيذ العمليات (insert/update/delete)');
 {
   const db = {
     settings: { attemptLimit: 5, validityDays: 30, holdHours: 24, formFee: 10000 },
-    jobs: [{ code: 'BRC-1', title: 'وظيفة', category: 'خدمات', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0700', address: 'ع' }, interviewLocation: 'م', status: 'available', notes: '', imageUrl: '' }],
+    jobs: [{ code: 'HRC-1', title: 'وظيفة', category: 'خدمات', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0700', address: 'ع' }, interviewLocation: 'م', status: 'available', notes: '', imageUrl: '' }],
     applicants: [], attempts: [], audit: [], staff: []
   };
   const snap = S.snapshotOf({ settings: db.settings, jobs: [], applicants: [], attempts: [], audit: [], staff: [] });
@@ -318,7 +318,7 @@ step(5, 'Sync — تنفيذ العمليات (insert/update/delete)');
   db.jobs[0].title = 'معدّل';
   await sync.push(db);
   const upd = client.__calls.filter((c) => c.op === 'update').pop();
-  check('UPDATE استُدعي مع مرشّح المفتاح الصحيح', upd && upd.table === 'jobs' && upd.filters.some((f) => f[0] === 'code' && f[1] === 'BRC-1'),
+  check('UPDATE استُدعي مع مرشّح المفتاح الصحيح', upd && upd.table === 'jobs' && upd.filters.some((f) => f[0] === 'code' && f[1] === 'HRC-1'),
     JSON.stringify(upd && upd.filters));
   check('التحديث لا يُرسل المفتاح الطبيعي (لا يُعدَّل)', upd.payload.code === undefined && upd.payload.title === 'معدّل');
 
@@ -333,7 +333,7 @@ step('5ب', 'Sync — المفاتيح المركّبة والمتغيّرة');
 {
   const db = {
     settings: { attemptLimit: 5 }, jobs: [], applicants: [],
-    attempts: [{ serial: 'HRC-NO-1', no: 3, jobCode: 'BRC-1', slotStatus: 'reserved', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
+    attempts: [{ serial: 'HRC-NO-1', no: 3, jobCode: 'HRC-1', slotStatus: 'reserved', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
     audit: [], staff: []
   };
   const snap = S.snapshotOf({ settings: { attemptLimit: 5 }, jobs: [], applicants: [], attempts: [], audit: [], staff: [] });
@@ -363,11 +363,11 @@ step('5ج', 'Sync — لا تنفيذ صامت: كل عملية مُعلَنة �
      القاعدة الفعلية. */
   const job = (code) => ({ code, title: 'و', category: 'خدمات', region: 'ح', salaryMin: 1, salaryMax: 2, shift: 'ص', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: 'ع' }, interviewLocation: 'م', status: 'available', notes: '', imageUrl: '' });
 
-  const snapBase = { settings: {}, jobs: [job('BRC-1')], applicants: [], attempts: [], audit: [], staff: [] };
+  const snapBase = { settings: {}, jobs: [job('HRC-1')], applicants: [], attempts: [], audit: [], staff: [] };
   const scenarios = [
     { name: 'حذف', snap: snapBase, next: { settings: {}, jobs: [], applicants: [], attempts: [], audit: [], staff: [] }, expectOp: 'delete' },
-    { name: 'إدراج', snap: { settings: {}, jobs: [], applicants: [], attempts: [], audit: [], staff: [] }, next: { settings: {}, jobs: [job('BRC-2')], applicants: [], attempts: [], audit: [], staff: [] }, expectOp: 'insert' },
-    { name: 'تعديل', snap: snapBase, next: { settings: {}, jobs: [{ ...job('BRC-1'), title: 'م' }], applicants: [], attempts: [], audit: [], staff: [] }, expectOp: 'update' }
+    { name: 'إدراج', snap: { settings: {}, jobs: [], applicants: [], attempts: [], audit: [], staff: [] }, next: { settings: {}, jobs: [job('HRC-2')], applicants: [], attempts: [], audit: [], staff: [] }, expectOp: 'insert' },
+    { name: 'تعديل', snap: snapBase, next: { settings: {}, jobs: [{ ...job('HRC-1'), title: 'م' }], applicants: [], attempts: [], audit: [], staff: [] }, expectOp: 'update' }
   ];
 
   for (const sc of scenarios) {
@@ -388,7 +388,7 @@ step('5ج', 'Sync — لا تنفيذ صامت: كل عملية مُعلَنة �
   /* الصف الناقص في عملية إدراج خطأ صريح لا صمت */
   let threw = null;
   try { S.toRow({ table: 'jobs', op: 'insert', key: 'x' }); } catch (e) { threw = e; }
-  check('عملية إدراج بلا صف → خطأ صريح', !!threw && threw.__brc.code === 'BRC_NO_ROW', String(threw && threw.message));
+  check('عملية إدراج بلا صف → خطأ صريح', !!threw && threw.__brc.code === 'HRC_NO_ROW', String(threw && threw.message));
 }
 
 step(6, 'Sync — تصادم المفاتيح (موظفان في نفس اللحظة)');
@@ -407,7 +407,7 @@ step(6, 'Sync — تصادم المفاتيح (موظفان في نفس اللح
       if (c.op === 'insert' && c.table === 'jobs') {
         n++;
         if (n === 1) return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint "jobs_code_key"' } };
-        return { data: [{ ...c.payload, code: 'BRC-9999' }], error: null };
+        return { data: [{ ...c.payload, code: 'HRC-9999' }], error: null };
       }
       return null;
     }
@@ -423,7 +423,7 @@ step(6, 'Sync — تصادم المفاتيح (موظفان في نفس اللح
     onCall(c) {
       if (c.op === 'insert' && c.table === 'jobs') {
         if (c.payload.code) return { data: null, error: { code: '23505', message: 'duplicate key' } };
-        return { data: [{ ...c.payload, code: 'BRC-9999' }], error: null };
+        return { data: [{ ...c.payload, code: 'HRC-9999' }], error: null };
       }
       return null;
     }
@@ -459,7 +459,7 @@ step(6, 'Sync — تصادم المفاتيح (موظفان في نفس اللح
 step('6ب', 'Sync — كل حقل مؤثّر يصل فعلاً إلى القاعدة (لا كتابة بلا أثر)');
 {
   const job = {
-    id: 'job-1', code: 'BRC-1', title: 'وظيفة', category: 'خدمات', region: 'الحلة',
+    id: 'job-1', code: 'HRC-1', title: 'وظيفة', category: 'خدمات', region: 'الحلة',
     salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1,
     requirements: ['شهادة'], description: 'وصف', imageUrl: 'x.png', notes: 'ملاحظة',
     employer: { name: 'شركة', phone: '0770', address: 'بابل' },
@@ -471,11 +471,11 @@ step('6ب', 'Sync — كل حقل مؤثّر يصل فعلاً إلى القاع
     dob: '1995-01-01', gender: 'ذكر', nationality: 'عراقي', status: 'active',
     issueDate: '2026-01-01T00:00:00.000Z', expiryDate: '2026-01-31T00:00:00.000Z',
     attemptLimit: 5, fee: 10000, feePaid: true, printedCount: 1, notes: '', rejectReason: '',
-    requestedCode: 'BRC-1', createdAt: '2026-01-01T00:00:00.000Z'
+    requestedCode: 'HRC-1', createdAt: '2026-01-01T00:00:00.000Z'
   };
   const attempt = {
     id: 'att-1', serial: 'HRC-NO-000120', no: 1, jobId: '11111111-1111-1111-1111-111111111111',
-    jobCode: 'BRC-1', jobTitle: 'وظيفة', location: 'الحلة', employerName: 'شركة',
+    jobCode: 'HRC-1', jobTitle: 'وظيفة', location: 'الحلة', employerName: 'شركة',
     employerPhone: '0770', slotStatus: 'reserved', selectedAt: '2026-01-02T00:00:00.000Z',
     holdExpiresAt: '2026-01-03T00:00:00.000Z', closedAt: null, note: 'ملاحظة', staff: 'admin'
   };
@@ -526,7 +526,7 @@ step(7, 'Sync — انقطاع الشبكة لا يُسقط العمل');
 {
   sandbox.localStorage.clear();
   const db = {
-    settings: {}, jobs: [{ code: 'BRC-1', title: 'وظيفة', category: 'خدمات', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: '' }, interviewLocation: '', status: 'available', notes: '', imageUrl: '' }],
+    settings: {}, jobs: [{ code: 'HRC-1', title: 'وظيفة', category: 'خدمات', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: '' }, interviewLocation: '', status: 'available', notes: '', imageUrl: '' }],
     applicants: [], attempts: [], audit: [], staff: []
   };
   const snap = S.snapshotOf({ settings: {}, jobs: [], applicants: [], attempts: [], audit: [], staff: [] });
@@ -550,7 +550,7 @@ step(7, 'Sync — انقطاع الشبكة لا يُسقط العمل');
 step('7ب', 'Sync — الفشل الجزئي: عملية فاشلة لا توقف البقية');
 {
   const db = {
-    settings: {}, jobs: [{ code: 'BRC-1', title: 'أ', category: 'خدمات', region: 'ح', salaryMin: 1, salaryMax: 2, shift: 'ص', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: '' }, interviewLocation: '', status: 'available', notes: '', imageUrl: '' }],
+    settings: {}, jobs: [{ code: 'HRC-1', title: 'أ', category: 'خدمات', region: 'ح', salaryMin: 1, salaryMax: 2, shift: 'ص', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: '' }, interviewLocation: '', status: 'available', notes: '', imageUrl: '' }],
     applicants: [{ serial: 'HRC-NO-1', fullName: 'ب', phone: '0', gender: 'ذكر', nationality: 'عراقي', status: 'active', fee: 1, feePaid: false, printedCount: 0, notes: '' }],
     attempts: [], audit: [], staff: []
   };
@@ -580,7 +580,7 @@ step('7ب', 'Sync — الفشل الجزئي: عملية فاشلة لا توق
    * للعمليات التي نجحت فقط.
    * ======================================================================== */
   check('النتيجة تُصرّح بعدد الفاشل', r.failed === 1, JSON.stringify(r));
-  check('العملية الفاشلة معلّقة (لم تُوسم كمُزامَنة)', r.pending.includes('jobs:BRC-1'), JSON.stringify(r.pending));
+  check('العملية الفاشلة معلّقة (لم تُوسم كمُزامَنة)', r.pending.includes('jobs:HRC-1'), JSON.stringify(r.pending));
   check('الاستمارة الناجحة لم تُوسم كناجحة فقط — بل تقدّمت اللقطة',
     ('HRC-NO-1' in sync.getSnapshot().applicants), JSON.stringify(Object.keys(sync.getSnapshot().applicants)));
 
@@ -653,9 +653,9 @@ step(9, 'Sync — الأعمدة المُرسلة تطابق مخطط القاع
 
   const db = {
     settings: { attemptLimit: 5 },
-    jobs: [{ code: 'BRC-1', title: 'أ', category: 'خدمات', region: 'ح', salaryMin: 1, salaryMax: 2, shift: 'ص', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: 'ع' }, interviewLocation: 'م', status: 'available', reservedBy: null, holdExpiresAt: null, closedAt: null, notes: '', imageUrl: '' }],
+    jobs: [{ code: 'HRC-1', title: 'أ', category: 'خدمات', region: 'ح', salaryMin: 1, salaryMax: 2, shift: 'ص', gender: 'لا فرق', vacancies: 1, requirements: [], description: '', employer: { name: 'ج', phone: '0', address: 'ع' }, interviewLocation: 'م', status: 'available', reservedBy: null, holdExpiresAt: null, closedAt: null, notes: '', imageUrl: '' }],
     applicants: [{ serial: 'HRC-NO-1', fullName: 'ب', phone: '0', address: '', dob: null, gender: 'ذكر', nationality: 'عراقي', status: 'active', fee: 1, feePaid: false, printedCount: 0, notes: '', requestedCode: null }],
-    attempts: [{ serial: 'HRC-NO-1', no: 1, jobCode: 'BRC-1', slotStatus: 'empty', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
+    attempts: [{ serial: 'HRC-NO-1', no: 1, jobCode: 'HRC-1', slotStatus: 'empty', selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }],
     audit: [], staff: []
   };
 
@@ -671,7 +671,7 @@ step(9, 'Sync — الأعمدة المُرسلة تطابق مخطط القاع
       'مجهولة: ' + unknown.join(', ') + ' — ستُرفض من PostgREST');
   }
 
-  const auditRow = C.auditToDb({ user: 'a', role: 'admin', ip: '1', action: 'x', entity: 'job', entityId: 'BRC-1', details: 'd' });
+  const auditRow = C.auditToDb({ user: 'a', role: 'admin', ip: '1', action: 'x', entity: 'job', entityId: 'HRC-1', details: 'd' });
   check('أعمدة audit_log المُرسلة صحيحة', Object.keys(auditRow).every((k) => colsOf('audit_log').has(k)),
     Object.keys(auditRow).join(', '));
 }

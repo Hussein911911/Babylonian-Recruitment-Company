@@ -1,5 +1,5 @@
 /* ===========================================================================
- *  BRC — شركة الهدف للتوظيف | نظام التصميم
+ *  HRC — شركة الهدف للتوظيف | نظام التصميم
  *  الهوية: لازورد بابلي + ذهب + نقش بوابة عشتار + أسد بابل
  *  يشمل: الموقع العام، لوحة الموظفين، صفحة التحقق، وقالب الطباعة A4
  * =========================================================================== */
@@ -1411,8 +1411,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .table-wrap { border-radius: 12px; }
 
   /* --- شريط حالة الاتصال: مضغوط --- */
-  #brc-cloud-banner { padding: 6px 10px !important; font-size: .76rem !important; gap: 6px !important; }
-  #brc-cloud-banner b { white-space: normal !important; }
+  #hrc-cloud-banner { padding: 6px 10px !important; font-size: .76rem !important; gap: 6px !important; }
+  #hrc-cloud-banner b { white-space: normal !important; }
 
   /* --- اللوحات والنوافذ على الموبايل --- */
   .modal { width: 100%; max-height: 94vh; border-radius: 14px; }

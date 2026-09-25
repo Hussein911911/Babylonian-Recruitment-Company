@@ -1,5 +1,5 @@
 /* ===========================================================================
- *  BRC — المنظومة الداخلية (لوحة الموظفين والإدارة)
+ *  HRC — المنظومة الداخلية (لوحة الموظفين والإدارة)
  *  ---------------------------------------------------------------------------
  *  • الموظف: بحث سريع بالكود، إدارة الوظائف والباحثين، إصدار الاستمارات،
  *    إدارة المحاولات الخمس، الحجز المؤقت 24 ساعة، طباعة الاستمارة.
@@ -7,7 +7,7 @@
  * =========================================================================== */
 (function (root) {
   'use strict';
-  var CFG = root.BRC_CONFIG, Store = root.BRCStore, UI = root.BRCUI, V = root.BRCVoucher;
+  var CFG = root.HRC_CONFIG, Store = root.HRCStore, UI = root.HRCUI, V = root.HRCVoucher;
   if (!document.getElementById('app-shell')) return;
 
   var lastSessionKey = null;
@@ -25,7 +25,7 @@
       .then(function (key) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, enc.encode(text)); })
       .then(function (buf) {
         function b64(x) { var a = new Uint8Array(x), out = ''; for (var i = 0; i < a.length; i += 0x8000) out += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(out); }
-        return JSON.stringify({ format: 'BRC-ENCRYPTED-BACKUP-v1', algorithm: 'AES-256-GCM', kdf: 'PBKDF2-SHA-256', iterations: 250000, salt: b64(salt), iv: b64(iv), data: b64(buf) });
+        return JSON.stringify({ format: 'HRC-ENCRYPTED-BACKUP-v1', algorithm: 'AES-256-GCM', kdf: 'PBKDF2-SHA-256', iterations: 250000, salt: b64(salt), iv: b64(iv), data: b64(buf) });
       });
   }
 
@@ -44,7 +44,7 @@
   function isEncryptedBackup(text) {
     try {
       var o = JSON.parse(text);
-      return !!(o && o.format === 'BRC-ENCRYPTED-BACKUP-v1' && o.salt && o.iv && o.data);
+      return !!(o && o.format === 'HRC-ENCRYPTED-BACKUP-v1' && o.salt && o.iv && o.data);
     } catch (e) { return false; }
   }
 
@@ -52,7 +52,7 @@
     if (!root.crypto || !root.crypto.subtle) return Promise.reject(new Error('المتصفح لا يدعم التشفير الآمن'));
     var pkg;
     try { pkg = JSON.parse(text); } catch (e) { return Promise.reject(new Error('الملف ليس بصيغة JSON صالحة')); }
-    if (!pkg || pkg.format !== 'BRC-ENCRYPTED-BACKUP-v1') return Promise.reject(new Error('هذا ليس ملف نسخة مشفّرة من النظام'));
+    if (!pkg || pkg.format !== 'HRC-ENCRYPTED-BACKUP-v1') return Promise.reject(new Error('هذا ليس ملف نسخة مشفّرة من النظام'));
     if (!pkg.salt || !pkg.iv || !pkg.data) return Promise.reject(new Error('ملف النسخة المشفّرة ناقص أو تالف'));
     var salt, iv, data;
     try { salt = ub64(pkg.salt); iv = ub64(pkg.iv); data = ub64(pkg.data); }
@@ -287,7 +287,7 @@
    *  وراء «يعمل بلا أخطاء» أخطر من إظهاره.
    * ========================================================================== */
   function cloudBanner(st) {
-    var el = document.getElementById('brc-cloud-banner');
+    var el = document.getElementById('hrc-cloud-banner');
     if (!st || !st.configured) { if (el) el.remove(); return; }
 
     var tone = null, title = '', body = '';
@@ -335,7 +335,7 @@
 
     if (!el) {
       var box = document.createElement('div');
-      box.innerHTML = '<div id="brc-cloud-banner" role="status"></div>';
+      box.innerHTML = '<div id="hrc-cloud-banner" role="status"></div>';
       el = box.firstChild;
       document.body.insertBefore(el, document.body.firstChild);
     }
@@ -345,7 +345,7 @@
       ';background:' + colors[1] + ';color:' + colors[0] + ';display:flex;gap:8px;align-items:center;flex-wrap:wrap';
     var isOpen = (function () { try { return sessionStorage.getItem('brc_banner_open') === '1'; } catch (e) { return false; } })();
     el.innerHTML = '<b style="white-space:nowrap">' + UI.esc(title) + '</b>' +
-      '<span id="brc-cloud-more" style="display:' + (isOpen ? 'inline' : 'none') + '">' + UI.esc(body) + '</span>' +
+      '<span id="hrc-cloud-more" style="display:' + (isOpen ? 'inline' : 'none') + '">' + UI.esc(body) + '</span>' +
       '<button type="button" data-banner-toggle aria-expanded="' + (isOpen ? 'true' : 'false') + '" ' +
         'style="background:transparent;border:1px solid ' + colors[2] + ';color:' + colors[0] +
         ';font:inherit;font-weight:700;cursor:pointer;border-radius:8px;padding:1px 9px">' +
@@ -354,7 +354,7 @@
         ';font-weight:700;text-decoration:underline;white-space:nowrap">فحص الاتصال</a>' : '');
     var tgl = el.querySelector('[data-banner-toggle]');
     if (tgl) tgl.addEventListener('click', function () {
-      var more = el.querySelector('#brc-cloud-more');
+      var more = el.querySelector('#hrc-cloud-more');
       var open = more.style.display !== 'none';
       more.style.display = open ? 'none' : 'inline';
       tgl.textContent = open ? 'التفاصيل' : 'إخفاء';
@@ -368,11 +368,11 @@
   function cloudLoginNote(st) {
     var host = document.querySelector('#login-wrap .login-container');
     if (!host) return;
-    var el = document.getElementById('brc-cloud-note');
+    var el = document.getElementById('hrc-cloud-note');
     if (!st || !st.configured || st.state === 'off') { if (el) el.remove(); return; }
     if (!el) {
       var wrap = document.createElement('div');
-      wrap.innerHTML = '<div id="brc-cloud-note" style="margin-top:14px;padding:10px 12px;border-radius:10px;font-size:.78rem;line-height:1.8"></div>';
+      wrap.innerHTML = '<div id="hrc-cloud-note" style="margin-top:14px;padding:10px 12px;border-radius:10px;font-size:.78rem;line-height:1.8"></div>';
       el = wrap.firstChild;
       host.appendChild(el);
     }
@@ -380,10 +380,10 @@
        لا يُعرض أي منها هنا — التذكير يذكّر بالحذف لا بالبيانات. ويختفي وحده
        بمجرد إغلاق الباب (enforceAuth: true). */
     if (st.devAccountsActive) {
-      var warn = document.getElementById('brc-dev-accounts');
+      var warn = document.getElementById('hrc-dev-accounts');
       if (!warn) {
         var wrap = document.createElement('div');
-        wrap.innerHTML = '<div id="brc-dev-accounts" style="margin-top:12px;padding:10px 12px;border-radius:10px;' +
+        wrap.innerHTML = '<div id="hrc-dev-accounts" style="margin-top:12px;padding:10px 12px;border-radius:10px;' +
           'font-size:.78rem;line-height:1.8;background:#fffbeb;border:1px solid #fde68a;color:#78350f"></div>';
         warn = wrap.firstChild;
         el.parentNode.insertBefore(warn, el.nextSibling);
@@ -392,7 +392,7 @@
         '<code>assets/js/config.js</code> ما زالت فعّالة. تُحذف قبل التسليم — ' +
         'هذه آخر خطوة في <b>docs/pre-delivery-checklist.md</b>.';
     } else {
-      var old = document.getElementById('brc-dev-accounts');
+      var old = document.getElementById('hrc-dev-accounts');
       if (old) old.remove();
     }
 
@@ -487,7 +487,7 @@
     if (state.view === 'settings') renderSettings();
     renderNavCounts();
   }
-  root.BRCRefresh = function () { renderCurrent(); };
+  root.HRCRefresh = function () { renderCurrent(); };
 
   function renderNavCounts() {
     var pa = Store.pendingActions();
@@ -729,7 +729,7 @@
 
     UI.modal({
       title: j ? ('تعديل الوظيفة ' + j.code) : 'إضافة وظيفة جديدة',
-      subtitle: j ? null : 'سيُولَّد كود مصغّر تلقائياً بصيغة BRC-####',
+      subtitle: j ? null : 'سيُولَّد كود مصغّر تلقائياً بصيغة HRC-####',
       wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="job-save">' + UI.ic('check') + (j ? ' حفظ التعديلات' : ' إضافة الوظيفة') + '</button>',
@@ -1575,9 +1575,9 @@
       e.preventDefault();
       var v = (document.getElementById('quick-code').value || '').trim().toUpperCase();
       if (!v) return;
-      /* البادئتان مقبولتان: استمارات BRC القديمة ما زالت بيد الزبائن */
-      if (/^(HRC|BRC)-NO/i.test(v) || /^\d{6}$/.test(v)) {
-        var serial = /^(HRC|BRC)-NO/i.test(v) ? v : 'HRC-NO-' + v;
+      /* بادئة واحدة HRC، والرقم المجرّد (6 خانات) يُكمَّل بها */
+      if (/^HRC-NO/i.test(v) || /^\d{6}$/.test(v)) {
+        var serial = /^HRC-NO/i.test(v) ? v : 'HRC-NO-' + v;
         if (Store.getApplicant(serial)) { attemptsModal(serial); return; }
       }
       var job = Store.getJob(v);
@@ -1669,7 +1669,7 @@
 
     var ex = document.getElementById('btn-export');
     if (ex) ex.addEventListener('click', function () {
-      UI.download('brc-backup-' + Store.fmtDate(new Date()) + '.json', Store.exportJson(), 'application/json');
+      UI.download('hrc-backup-' + Store.fmtDate(new Date()) + '.json', Store.exportJson(), 'application/json');
       UI.toast('ok', 'تصدير النسخة', 'حُفظ ملف JSON يحتوي كل البيانات والسجلات.');
     });
     var exEncrypted = document.getElementById('btn-export-encrypted');
@@ -1680,7 +1680,7 @@
       if (p1 !== p2) { UI.toast('err', 'لم تتطابق كلمتا المرور', 'لم يتم إنشاء النسخة.'); return; }
       exEncrypted.disabled = true;
       encryptedBackup(Store.exportJson(), p1).then(function (data) {
-        UI.download('BRC-backup-' + Store.fmtDate(new Date()) + '.brc.enc.json', data, 'application/json');
+        UI.download('HRC-backup-' + Store.fmtDate(new Date()) + '.brc.enc.json', data, 'application/json');
         UI.toast('ok', 'تم إنشاء النسخة المشفّرة', 'احفظ الملف وكلمة المرور في مكانين آمنين.');
       }).catch(function (e) { UI.toast('err', 'فشل التشفير', e.message); }).then(function () { exEncrypted.disabled = false; });
     });
@@ -1776,7 +1776,7 @@
         return [Store.fmtDateTime(l.ts), l.user, l.name, l.role, l.ip, l.action, l.entity, l.entityId, (l.details || '').replace(/"/g, '""')]
           .map(function (x) { return '"' + String(x == null ? '' : x) + '"'; }).join(',');
       }).join('\n');
-      UI.download('brc-audit-' + Store.fmtDate(new Date()) + '.csv', '\ufeff' + csv, 'text/csv;charset=utf-8');
+      UI.download('hrc-audit-' + Store.fmtDate(new Date()) + '.csv', '\ufeff' + csv, 'text/csv;charset=utf-8');
       UI.toast('ok', 'تصدير السجل', rows.length + ' سجل بصيغة CSV.');
     });
 
@@ -1997,7 +1997,7 @@
             var id = btn.getAttribute('data-backup-export');
             var data = Store.exportScheduledBackup(id);
             if (data) {
-              UI.download('brc-backup-' + Store.fmtDate(new Date()) + '.json', data, 'application/json');
+              UI.download('hrc-backup-' + Store.fmtDate(new Date()) + '.json', data, 'application/json');
               UI.toast('ok', 'تم التصدير', 'حُفظ ملف النسخة الاحتياطية');
             } else {
               UI.toast('err', 'فشل التصدير', 'النسخة غير موجودة أو لا تحتوي بيانات');

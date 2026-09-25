@@ -1,5 +1,5 @@
 /*!
- * BRC QR — مولّد رموز QR مستقل (بدون أي مكتبات خارجية)
+ * HRC QR — مولّد رموز QR مستقل (بدون أي مكتبات خارجية)
  * ---------------------------------------------------------------------------
  * تنفيذ خاص بمشروع شركة الهدف للتوظيف، يعمل بالكامل داخل المتصفح (offline).
  * الخوارزمية والجداول مطابقة للمعيار ISO/IEC 18004 (QR Code Model 2)،
@@ -8,16 +8,16 @@
  * الترخيص: كود المشروع الداخلي.
  *
  * الاستخدام:
- *   const qr = BRCQR.encode('https://example.com', 'M');   // L | M | Q | H
- *   BRCQR.renderSVG(qr, { margin: 2 })                     // -> نص SVG
- *   BRCQR.renderCanvas(canvasEl, qr, { size: 320 })        // -> يرسم على Canvas
- *   BRCQR.selfTest()                                       // -> اختبارات ذاتية
+ *   const qr = HRCQR.encode('https://example.com', 'M');   // L | M | Q | H
+ *   HRCQR.renderSVG(qr, { margin: 2 })                     // -> نص SVG
+ *   HRCQR.renderCanvas(canvasEl, qr, { size: 320 })        // -> يرسم على Canvas
+ *   HRCQR.selfTest()                                       // -> اختبارات ذاتية
  * ---------------------------------------------------------------------------
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else if (typeof define === 'function' && define.amd) define([], factory);
-  else root.BRCQR = factory();
+  else root.HRCQR = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
@@ -510,7 +510,7 @@
 
   QRModel.prototype.make = function (codewords) {
     var data = codewords || this._codewords;
-    if (!data) throw new Error('BRCQR: لم يتم تزويد بيانات');
+    if (!data) throw new Error('HRCQR: لم يتم تزويد بيانات');
     var bestMask = 0, minLost = Infinity;
     for (var mask = 0; mask < 8; mask++) {
       this.build(mask, data);
@@ -547,7 +547,7 @@
       var probeModel = new QRModel(v, ecLevel);
       if (bytes.length <= probeModel.byteCapacity()) { version = v; break; }
     }
-    if (version === -1) throw new Error('BRCQR: النص أطول من الحد الأقصى (' + bytes.length + ' بايت)');
+    if (version === -1) throw new Error('HRCQR: النص أطول من الحد الأقصى (' + bytes.length + ' بايت)');
     var model = new QRModel(version, ecLevel);
     var codewords = model.buildCodewords(bytes);
     model._codewords = codewords;
@@ -778,7 +778,7 @@
 
     // 4) الذهاب والعودة: كتابة البيانات ثم قراءتها + التحقق من بايتات التصحيح
     check('ذهاب وعودة للبيانات وفحص بايتات التصحيح', function () {
-      var words = ['BRC-000120', 'https://brc-babil.com/verify?form=BRC-000120&t=ab12', 'شركة الهدف للتوظيف'];
+      var words = ['HRC-000120', 'https://hrc-babil.com/verify?form=HRC-000120&t=ab12', 'شركة الهدف للتوظيف'];
       words.forEach(function (w) {
         ['L', 'M', 'Q', 'H'].forEach(function (lv) {
           var model = encode(w, lv);

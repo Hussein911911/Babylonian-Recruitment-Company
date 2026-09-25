@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — سكربت البناء
+ *  HRC — سكربت البناء
  *  ---------------------------------------------------------------------------
  *  يُنتج من مجلد src/partials :
  *   1) index.html          — الموقع العام
@@ -28,8 +28,8 @@ const warnings = [];
    (مناسبة للواتساب/الإيميل والعارضات التي لا تحبّ الملفات الضخمة) */
 const LIGHT = process.argv.includes('--light');
 const OUT_NAME = LIGHT ? 'hrc-light.html' : 'hrc-standalone.html';
-const LIGHT_MAX = process.env.BRC_LIGHT_MAX || '860x860>';
-const LIGHT_Q = process.env.BRC_LIGHT_Q || '56';
+const LIGHT_MAX = process.env.HRC_LIGHT_MAX || '860x860>';
+const LIGHT_Q = process.env.HRC_LIGHT_Q || '56';
 
 function readAsset(abs) {
   if (!LIGHT || !/\.jpe?g$/i.test(abs)) return readFileSync(abs);
@@ -91,7 +91,7 @@ const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'p
  *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
  *  جاهزاً عند أول init()، ولا تُدمج في hrc-standalone/hrc-light (تلك نسخة
  *  تُشارَك كملف واحد بلا إنترنت ولا معنى لسوبابيس فيها — فتشتغل محلياً بلا
- *  أي تنبيه لأن BRCSupabaseConfig لا يكون محمّلاً أصلاً).
+ *  أي تنبيه لأن HRCSupabaseConfig لا يكون محمّلاً أصلاً).
  *  'vendor/supabase' مسار خاص: assets/vendor/supabase.js
  * ------------------------------------------------------------------------- */
 const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth', 'cloud-sync', 'cloud-http'];
@@ -115,7 +115,7 @@ const scriptPath = (n) => n.startsWith('vendor/')
    ⚠️ تشمل طبقة السحابة أيضاً: لو حسبناها من JS_ORDER وحده لما تغيّر الرقم عند
    تعديل cloud-sync.js — فيبقى المتصفح على نسخة قديمة **بصمت**، وهو أسوأ أنواع
    الأخطاء لأن الكود الجديد لا يصل أصلاً. */
-const ASSET_VER = process.env.BRC_ASSET_VER || createHash('sha1')
+const ASSET_VER = process.env.HRC_ASSET_VER || createHash('sha1')
   .update([CSS, ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
            ...CLOUD_ORDER.map((n) => read(scriptPath(n)))].join('\u0000'))
   .digest('hex').slice(0, 10);
@@ -123,8 +123,8 @@ const verQ = (p) => `${p}?v=${ASSET_VER}`;
 
 const META = {
   title: 'شركة الهدف للتوظيف | Al-Hadaf Recruitment Company',
-  desc: 'شركة الهدف للتوظيف (BRC) في الحلة — بابل: استمارات ترشيح موثّقة بكيو آر كود، خمس محاولات، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة.',
-  keywords: 'توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, استمارة توظيف, BRC, عمالة فنية'
+  desc: 'شركة الهدف للتوظيف (HRC) في الحلة — بابل: استمارات ترشيح موثّقة بكيو آر كود، خمس محاولات، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة.',
+  keywords: 'توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, استمارة توظيف, HRC, عمالة فنية'
 };
 
 function docHead({ title, desc, css = null, icon = 'assets/img/favicon.svg', extra = '' }) {
@@ -235,10 +235,10 @@ function buildStandalone() {
 
   const boot = `
 /* ===== ضبط النسخة المستقلة ===== */
-BRC_CONFIG.verifyLocal = '#!verify';
+HRC_CONFIG.verifyLocal = '#!verify';
 /* بذرة العرض: هذه نسخة تعمل بلا قاعدة بيانات، فتحتاج بيانات لتُظهر شيئاً.
    الصفحات المنشورة تبقى ببذرة فارغة وتقرأ من Supabase. */
-BRC_CONFIG.seed = ${DEMO_SEED_JSON};
+HRC_CONFIG.seed = ${DEMO_SEED_JSON};
 ${icon ? `(function(){var l=document.querySelector('link[rel="icon"]');if(l)l.href=${JSON.stringify(icon.uri)};})();` : ''}
 </body>`;
   // (نُبقي وسم الإغلاق في النهاية بعد الراوتر)
@@ -261,7 +261,7 @@ ${icon ? `(function(){var l=document.querySelector('link[rel="icon"]');if(l)l.hr
       if (el) el.hidden = (n !== r.name);
     });
     document.body.setAttribute('data-route', r.name);
-    if (r.name === 'verify' && window.BRCVerify) window.BRCVerify.mount(r.query);
+    if (r.name === 'verify' && window.HRCVerify) window.HRCVerify.mount(r.query);
     if (r.name === 'dashboard') window.scrollTo(0, 0);
     if (r.name === 'site') {
       var h = location.hash || '';

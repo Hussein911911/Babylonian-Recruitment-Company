@@ -1,5 +1,5 @@
 /* ===========================================================================
- *  BRC — تنقّل مُحصَّن (Resilient Navigation)
+ *  HRC — تنقّل مُحصَّن (Resilient Navigation)
  *  ---------------------------------------------------------------------------
  *  المشكلة التي يعالجها هذا الملف:
  *    روابط الترويسة والتذييل مكتوبة في القوالب بالشكل "index.html#jobs" لأن هذا
@@ -91,7 +91,7 @@
         var rest = href.slice(name.length);
         var clean = name.replace(/\.html$/, '');
         a.setAttribute('href', homeHref() + clean + rest);
-        a.setAttribute('data-brc-page', name);         // للاحتياط أدناه
+        a.setAttribute('data-hrc-page', name);         // للاحتياط أدناه
         return;
       }
     }
@@ -105,7 +105,7 @@
    * ------------------------------------------------------------------------- */
   function verifyPageLink() {
     if (isFile || !root.fetch) return;
-    var probe = doc.querySelector('a[data-brc-page]');
+    var probe = doc.querySelector('a[data-hrc-page]');
     if (!probe) return;
     var url = probe.getAttribute('href').split('#')[0].split('?')[0];
     root.fetch(url, { method: 'HEAD' }).then(function (res) {
@@ -115,9 +115,9 @@
   }
 
   function revertToFileNames() {
-    var list = doc.querySelectorAll('a[data-brc-page]');
+    var list = doc.querySelectorAll('a[data-hrc-page]');
     for (var i = 0; i < list.length; i++) {
-      var a = list[i], name = a.getAttribute('data-brc-page');
+      var a = list[i], name = a.getAttribute('data-hrc-page');
       var href = a.getAttribute('href') || '';
       var clean = name.replace(/\.html$/, '');
       /* نستبدل الاسم النظيف في **نهاية المسار** وحده (قبل ? أو #) — البحث
@@ -216,7 +216,7 @@
     if (isFile) return 'dashboard.html';
     /* نفس منطق normalizePage: المسار النظيف من جذر النشر. لو كان المضيف لا
        يدعمه فقد بدّلت verifyPageLink الروابط الظاهرة، ونتبع قرارها نفسه. */
-    var probe = doc.querySelector('a[data-brc-page="dashboard.html"]');
+    var probe = doc.querySelector('a[data-hrc-page="dashboard.html"]');
     if (probe) return probe.getAttribute('href');
     return homeHref() + 'dashboard';
   }
@@ -305,7 +305,7 @@
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  root.BRCNav = {
+  root.HRCNav = {
     normalize: normalizeAll, scrollToId: scrollToId, homeHref: homeHref,
     dashboardHref: dashboardHref        // تُستعمل في فحص التدقيق أيضاً
   };

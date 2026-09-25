@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — التدقيق الشامل للمشروع (فحص جودة متكامل)
+ *  HRC — التدقيق الشامل للمشروع (فحص جودة متكامل)
  *  ---------------------------------------------------------------------------
  *  يفحص كل شيء آلياً ويطبع تقريراً عربياً واضحاً:
  *    1) وقت التشغيل: تحميل كل صفحة بلا أي خطأ في الكونسول
@@ -57,7 +57,7 @@ async function loadPage(file) {
     beforeParse(window) {
       /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة (انظر
          tests/fixtures/demo-seed.mjs). تُوضع قبل تنفيذ config.js. */
-      window.__BRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
+      window.__HRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
       Object.defineProperty(window, 'print', { configurable: true, writable: true, value: () => { } });
       window.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 16);
       window.cancelAnimationFrame = (id) => clearTimeout(id);
@@ -90,7 +90,7 @@ const CSS_ALLOW = new Set([
 ]);
 
 console.log('\n' + '═'.repeat(72));
-console.log('  BRC — التدقيق الشامل للمشروع');
+console.log('  HRC — التدقيق الشامل للمشروع');
 console.log('  شركة الهدف للتوظيف — Al-Hadaf Recruitment Company');
 console.log('═'.repeat(72));
 
@@ -102,7 +102,7 @@ section('1) تحميل الصفحات في متصفح افتراضي — يجب 
 for (const file of PAGES) {
   const p = await loadPage(file);
   loaded[file] = p;
-  const mods = ['BRC_CONFIG', 'BRCQR', 'BRCStore', 'BRCUI', 'BRCVoucher'];
+  const mods = ['HRC_CONFIG', 'HRCQR', 'HRCStore', 'HRCUI', 'HRCVoucher'];
   const missing = mods.filter((m) => !p.window[m]);
   if (p.errors.length) bad(file + ' — تحميل بدون أخطاء', p.errors.slice(0, 3).join(' | '));
   else if (missing.length) bad(file + ' — كل الوحدات محمّلة', 'ناقص: ' + missing.join(', '));
@@ -134,7 +134,7 @@ for (const file of PAGES) {
   const dup = [...spriteIds].filter((id) => (sprite.match(new RegExp('id="' + id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '"', 'g')) || []).length > 1);
   if (dup.length) bad('مكتبة الأيقونات — لا معرّفات مكرّرة', dup.join(', '));
   else ok('مكتبة الأيقونات — ' + spriteIds.size + ' معرّفاً بلا تكرار');
-  // الأيقونة مستخدمة إن وردت في HTML الصفحات أو نُودي بها من الكود BRCUI.ic('name')
+  // الأيقونة مستخدمة إن وردت في HTML الصفحات أو نُودي بها من الكود HRCUI.ic('name')
   const iconCalls = new Set([...jsSrcAll.matchAll(/ic\(\s*'([a-z0-9-]+)'/g)].map((m) => 'i-' + m[1]));
   const inPages = (id) => PAGES.some((f) => loaded[f] && loaded[f].doc.documentElement.outerHTML.includes('#' + id));
   const unused = [...spriteIds].filter((id) => !id.startsWith('g-') && id !== 'i-emblem' && !iconCalls.has(id) && !inPages(id));
@@ -314,7 +314,8 @@ for (const [js, page] of CONTRACT) {
     const m = sw.match(/const CACHE_NAME = '([^']+)'/);
     const problems = [];
     if (!m) problems.push('CACHE_NAME غير معرّف');
-    else if (/^brc-/.test(m[1])) problems.push(`ما زال بالرمز القديم: ${m[1]}`);
+    else if (/^brc-/.test(m[1])) problems.push(`ما زال بالرمز القديم brc: ${m[1]}`);
+    else if (!/^hrc-/.test(m[1])) problems.push(`لا يتبع الرمز الحالي hrc: ${m[1]}`);
     /* الملفات المخزَّنة مسبقاً يجب أن تكون موجودة فعلاً */
     for (const f of (sw.match(/'\/([\w.-]+\.html)'/g) || [])) {
       const name = f.replace(/'|\//g, '');
@@ -327,16 +328,16 @@ for (const [js, page] of CONTRACT) {
   /* ── حارس: لا نطاق قديم في ما يُطبع أو يُعرض ──────────────────────────
      رابط التحقق يُطبع داخل كيو آر كود الاستمارة. أي نطاق قديم هنا يعني
      استمارة بيد زبون تشير إلى عنوان لا يملكه صاحب الشركة. ظهر فعلاً:
-     قالب اللوحة كان يعرض brc-babil.com نصّاً ثابتاً بعد تغيير الاسم. */
+     قالب اللوحة كان يعرض hrc-babil.com نصّاً ثابتاً بعد تغيير الاسم. */
   {
-    const STALE = ['brc-babil.com', 'babylonian-recruitment-company.pages.dev'];
+    const STALE = ['hrc-babil.com', 'babylonian-recruitment-company.pages.dev'];
     const hits = [];
     for (const f of ['index.html', 'verify.html', 'dashboard.html',
                      'assets/js/config.js', 'src/partials/dashboard.html']) {
       const src = readFileSync(join(ROOT, f), 'utf8');
       for (const dom of STALE) {
         /* النطاق الفعلي للمعاينة يحوي اسم المشروع كلاحقة، فنستثنيه */
-        /* البريد contact@brc-babil.com ليس رابط تحقق — بقاؤه قرار المالك
+        /* البريد contact@hrc-babil.com ليس رابط تحقق — بقاؤه قرار المالك
            (يُحدَّث مع النطاق عند التسليم)، فنستثنيه ونفحص الروابط وحدها. */
         const bad = src.split('\n').filter((l) =>
           new RegExp('https?://[^"\'\\s]*' + dom.replace('.', '\\.')).test(l) &&
@@ -345,7 +346,7 @@ for (const [js, page] of CONTRACT) {
       }
     }
     if (hits.length) bad('لا نطاق قديم في روابط التحقق المعروضة', hits.join(' | '));
-    else ok('روابط التحقق خالية من النطاقات القديمة (لا brc-babil ولا نطاق المشروع القديم)');
+    else ok('روابط التحقق خالية من النطاقات القديمة (لا hrc-babil ولا نطاق المشروع القديم)');
   }
 
   /* ── حارس: لا بيانات وهمية في الصفحات المنشورة ───────────────────────
@@ -462,11 +463,11 @@ for (const [js, page] of CONTRACT) {
   if (!msgOk) bad('بطاقات الوظائف — زر حجز بالواتساب يحمل كود الوظيفة', 'عدد الأزرار: ' + hrefs.length);
   else ok('بطاقات الوظائف — ' + hrefs.length + ' زر حجز بالواتساب، كلها تحمل كود الوظيفة في الرسالة');
 
-  const t = w.BRCStore.token('HRC-NO-000120');
-  const noToken = w.BRCStore.verify('HRC-NO-000120');
+  const t = w.HRCStore.token('HRC-NO-000120');
+  const noToken = w.HRCStore.verify('HRC-NO-000120');
   if (noToken.masked !== true) bad('طبقة البيانات — التحقق بلا بصمة يبقى مقنّعاً', 'masked=' + noToken.masked);
   else ok('طبقة البيانات — لا كشف بيانات بلا بصمة صحيحة (تقنيع في الرد نفسه)');
-  if (!w.BRCStore.verify('HRC-NO-000120', t).ok) bad('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل', 'فشل');
+  if (!w.HRCStore.verify('HRC-NO-000120', t).ok) bad('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل', 'فشل');
   else ok('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل للموظف');
 }
 
@@ -544,7 +545,7 @@ for (const file of PAGES) {
 /* ═══ 8) الاستقلال التام للملف الواحد ════════════════════════════════════ */
 section('8) الملف المستقل — يعمل بلا إنترنت وبلا أي مجلد مساعد');
 
-for (const file of PAGES.filter((f) => f.startsWith('brc-'))) {
+for (const file of PAGES.filter((f) => f.startsWith('hrc-'))) {
   const s = loaded[file];
   /* نفحص الموارد المطلوبة للتشغيل فقط (صور/خطوط/سكربتات/ستايلات) —
      أما روابط التنقل الخارجية (واتساب، خرائط جوجل، بريد) فهي مقصودة
@@ -561,7 +562,7 @@ for (const file of PAGES.filter((f) => f.startsWith('brc-'))) {
   s.doc.querySelectorAll('[src], link[rel="stylesheet"], link[rel="icon"], source[srcset], script[src], img[src]').forEach((el) => {
     for (const a of ['src', 'href', 'srcset']) {
       const v = el.getAttribute(a);
-      if (!v || !/^(https?:)?\/\//.test(v) || v.includes('brc-babil.com')) continue;
+      if (!v || !/^(https?:)?\/\//.test(v) || v.includes('hrc-babil.com')) continue;
       const inJobCard = el.tagName === 'IMG' && !!(el.closest('.job-card') || el.closest('#jobs-grid'));
       (inJobCard ? photos : blocking).push(v);
     }
@@ -620,7 +621,7 @@ section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا ر�
   else ok('ترويسات الأمان كاملة + sw.js بلا كاش (يُجبر الأجهزة على النسخة الجديدة)');
 
   /* رابط التحقق المطبوع يجب أن يبقى نظيفاً (بلا .html) لأنه يتغيّر إلى النطاق الرسمي */
-  const vurl = loaded['index.html'].window.BRCStore.verifyLocalUrl('HRC-NO-000120');
+  const vurl = loaded['index.html'].window.HRCStore.verifyLocalUrl('HRC-NO-000120');
   if (!/^verify\.html\?/.test(vurl)) bad('رابط التحقق المحلي', vurl);
   else ok('رابط التحقق المحلي نظيف ويطابق مسار /verify في _redirects');
 
@@ -688,7 +689,7 @@ section('9) سلامة البيانات — البيانات التجريبية 
 
 {
   const w = loaded['index.html'].window;
-  const S = w.BRCStore;
+  const S = w.HRCStore;
   const st = S.stats();
   const jobs = S.listJobs();
   const apps = S.listApplicants();
@@ -733,7 +734,7 @@ section('9) سلامة البيانات — البيانات التجريبية 
   const shown = logs.map((l) => S.fmtDateTime(l.ts));
   const badTime = shown.filter((t) => !stamp.test(t));
   const nowShown = S.fmtDateTime(new Date());
-  const localOk = nowShown === w.BRCStore.fmtDateTime(new Date()) && stamp.test(nowShown);
+  const localOk = nowShown === w.HRCStore.fmtDateTime(new Date()) && stamp.test(nowShown);
   if (!logs.length) bad('سجل التدقيق يعمل');
   else if (badTime.length) bad('صيغة وقت التدقيق (YYYY-MM-DD HH:mm:ss)', badTime[0]);
   else if (!localOk) bad('التوقيت المعروض محلي لا UTC', nowShown);
@@ -746,10 +747,10 @@ section('10) الاستمارة المطبوعة A4 — البنية الكام�
 
 {
   const w = loaded['index.html'].window;
-  const app = w.BRCStore.getApplicant('HRC-NO-000120');
-  w.BRCStore.selectAttempt(app.serial, 'HRC-1046');
-  const fresh = w.BRCStore.getApplicant(app.serial);
-  const html = w.BRCVoucher.buildHtml(fresh, w.BRCStore.getAttempts(app.serial));
+  const app = w.HRCStore.getApplicant('HRC-NO-000120');
+  w.HRCStore.selectAttempt(app.serial, 'HRC-1046');
+  const fresh = w.HRCStore.getApplicant(app.serial);
+  const html = w.HRCVoucher.buildHtml(fresh, w.HRCStore.getAttempts(app.serial));
 
   const must = {
     'شعار الشركة': /i-emblem|brand-mark|v-logo/,
@@ -851,7 +852,7 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
       /* jsdom يمنع اعتراض location.href، ويرمي عند محاولة التنقّل خطأً بلا
          تفاصيل. لذلك نرصد شيئين معاً:
            1) **محاولة التنقّل** حدثت (jsdomError = الإيماءة اشتغلت فعلاً)
-           2) **الوجهة** من BRCNav.dashboardHref() الذي يحسبها بنفس المنطق
+           2) **الوجهة** من HRCNav.dashboardHref() الذي يحسبها بنفس المنطق
          مجتمعين يثبتان أن الضغطة تفتح العنوان الصحيح، ويبقيان الفحص صادقاً في
          الحالتين السالبتين (نقرة قصيرة/تمرير: لا محاولة تنقّل إطلاقاً). */
       const vcon = new VirtualConsole();
@@ -878,7 +879,7 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
       if (scroll) w.dispatchEvent(new w.Event('scroll'));
       /* jsdom يستخدم مؤقتات حقيقية — ننتظر فعلياً */
       return new Promise((r) => setTimeout(
-        () => r({ navigated, href: w.BRCNav && w.BRCNav.dashboardHref && w.BRCNav.dashboardHref() }), ms));
+        () => r({ navigated, href: w.HRCNav && w.HRCNav.dashboardHref && w.HRCNav.dashboardHref() }), ms));
     }
 
     const failures = [];
@@ -1011,8 +1012,8 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
   {
     const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
     const issues = [];
-    /* النمط يقبل البادئتين: hrc (الحالية) وbrc (قبل تغيير الرمز) */
-    const gen = (sw.match(/[bh]rc-cache-v(\d+)/) || [])[1];
+    /* بادئة واحدة موحّدة hrc */
+    const gen = (sw.match(/hrc-cache-v(\d+)/) || [])[1];
     if (!gen || Number(gen) < 6) issues.push('جيل الكاش قديم: v' + gen);
     if (!/nav\.js/.test(sw)) issues.push('nav.js خارج الكاش');
     if (!/404\.html/.test(sw)) issues.push('404.html خارج الكاش');

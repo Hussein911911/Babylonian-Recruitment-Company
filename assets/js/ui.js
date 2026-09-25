@@ -1,10 +1,10 @@
 /* ===========================================================================
- *  BRC — أدوات واجهة مشتركة (UI Kit)
+ *  HRC — أدوات واجهة مشتركة (UI Kit)
  *  عناصر مساعدة: تنبيهات، نوافذ، شارات، عدّادات زمنية، تنزيل ملفات.
  * =========================================================================== */
 (function (root) {
   'use strict';
-  var CFG = root.BRC_CONFIG;
+  var CFG = root.HRC_CONFIG;
 
   function esc(s) {
     if (s == null) return '';
@@ -23,9 +23,9 @@
     return t.content.firstElementChild;
   }
 
-  function money(n) { return root.BRCStore.money(n); }
-  function fmtDate(d) { return root.BRCStore.fmtDate(d); }
-  function fmtDateTime(d) { return root.BRCStore.fmtDateTime(d); }
+  function money(n) { return root.HRCStore.money(n); }
+  function fmtDate(d) { return root.HRCStore.fmtDate(d); }
+  function fmtDateTime(d) { return root.HRCStore.fmtDateTime(d); }
 
   /* شارة حالة من خرائط الإعدادات */
   function badge(map, key) {
@@ -142,7 +142,7 @@
             label.textContent = 'انتهت المهلة';
             node.classList.add('urgent');
             // إعادة رسم عامة لتحديث الجداول بعد الإفراج
-            if (root.BRCRefresh) root.BRCRefresh();
+            if (root.HRCRefresh) root.HRCRefresh();
           }
           return;
         }
@@ -177,7 +177,7 @@
   }
 
   function relativeDays(iso) {
-    var d = root.BRCStore.diffDays(iso, new Date());
+    var d = root.HRCStore.diffDays(iso, new Date());
     if (d < 0) return 'منتهية';
     if (d === 0) return 'تنتهي اليوم';
     return d + ' يوم';
@@ -191,12 +191,12 @@
     /* ملاحظة: لا نسمّي المتغيّر el — فهو اسم الدالة المساعدة لبناء العناصر هنا */
     var hostEl = typeof host === 'string' ? document.querySelector(host) : host;
     if (!hostEl) return false;
-    var old = document.getElementById('brc-sync-notice');
+    var old = document.getElementById('hrc-sync-notice');
     if (old) old.remove();
-    var st = root.BRCStore && root.BRCStore.cloudStatus ? root.BRCStore.cloudStatus() : null;
+    var st = root.HRCStore && root.HRCStore.cloudStatus ? root.HRCStore.cloudStatus() : null;
     if (!st || !st.configured || st.state !== 'degraded') return false;
 
-    var node = el('<div id="brc-sync-notice" role="status"></div>');
+    var node = el('<div id="hrc-sync-notice" role="status"></div>');
     if (!node) return false;
     node.style.cssText = 'margin:14px auto 0;padding:10px 14px;border-radius:12px;font-size:.82rem;' +
       'line-height:1.8;background:#fffbeb;border:1px solid #fde68a;color:#78350f;text-align:center';
@@ -207,7 +207,7 @@
     return true;
   }
 
-  root.BRCUI = {
+  root.HRCUI = {
     esc: esc, ic: ic, el: el, money: money, fmtDate: fmtDate, fmtDateTime: fmtDateTime,
     badge: badge, jobBadge: jobBadge, slotBadge: slotBadge, formBadge: formBadge,
     toast: toast, modal: modal, confirm: confirm, holdHtml: holdHtml, humanDuration: humanDuration,
@@ -215,5 +215,5 @@
     startCountdowns: startCountdowns, debounce: debounce, download: download,
     fillSelect: fillSelect, relativeDays: relativeDays
   };
-  if (typeof module === 'object' && module.exports) module.exports = root.BRCUI;
+  if (typeof module === 'object' && module.exports) module.exports = root.HRCUI;
 })(typeof window !== 'undefined' ? window : globalThis);

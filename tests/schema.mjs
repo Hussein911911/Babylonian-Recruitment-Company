@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — فحص سلامة مخطط قاعدة البيانات (docs/schema.sql)
+ *  HRC — فحص سلامة مخطط قاعدة البيانات (docs/schema.sql)
  *  ---------------------------------------------------------------------------
  *  لماذا هذا الملف؟ لأن أخطاء المخطط لا تظهر في أي اختبار آخر:
  *  الملف لم يكن يُنفَّذ قطّ في CI، فبقيت أخطاء تمنع تشغيله على Supabase دون
@@ -35,7 +35,7 @@ const ALL_BODIES = BODIES.join('\n');
 const stripped = (s) => s.replace(/--[^\n]*/g, '');
 
 console.log('\n' + '═'.repeat(74));
-console.log('  BRC — فحص سلامة مخطط قاعدة البيانات (docs/schema.sql)');
+console.log('  HRC — فحص سلامة مخطط قاعدة البيانات (docs/schema.sql)');
 console.log('═'.repeat(74));
 
 /* ------------------------- 1) ترتيب الجداول والمراجع الأمامية ------------------------- */
@@ -241,7 +241,7 @@ check('جدولة cron.schedule محمية بـ exception', /cron\.schedule[\s\S
 step(8, 'الاكتمال — كل ما وعد به المخطط موجود فعلاً');
 
 for (const [label, re] of [
-  ['تسلسل أكواد الوظائف (BRC-####)', /create\s+sequence\s+if\s+not\s+exists\s+brc\.job_code_seq/i],
+  ['تسلسل أكواد الوظائف (HRC-####)', /create\s+sequence\s+if\s+not\s+exists\s+brc\.job_code_seq/i],
   ['تسلسل أرقام الاستمارات (HRC-NO-######)', /create\s+sequence\s+if\s+not\s+exists\s+brc\.form_serial_seq/i],
   ['دالة ترشيح وظيفة (منع الحجز المزدوج)', /function\s+brc\.select_attempt/i],
   ['دالة تثبيت نتيجة المقابلة', /function\s+brc\.set_outcome/i],

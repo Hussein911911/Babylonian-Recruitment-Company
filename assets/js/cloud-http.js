@@ -1,5 +1,5 @@
 /* ===========================================================================
- *  BRC — عميل HTTP مصغّر للصفحات العامة (BRCHttp)
+ *  HRC — عميل HTTP مصغّر للصفحات العامة (HRCHttp)
  *  ---------------------------------------------------------------------------
  *  لماذا هذا الملف موجود؟ قياس الحجم كشف أن **كل زائر** للموقع العام ينزّل
  *  assets/vendor/supabase.js (213KB خام · 54KB مضغوط) — أي ثلث ما ينزّله الزائر
@@ -109,5 +109,5 @@
     };
   }
 
-  root.BRCHttp = { createClient: createClient };
+  root.HRCHttp = { createClient: createClient };
 })(typeof window !== 'undefined' ? window : globalThis);

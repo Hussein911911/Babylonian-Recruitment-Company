@@ -119,7 +119,7 @@
 <script>
 (function () {
   'use strict';
-  var CFG = window.BRCSupabaseConfig || {};
+  var CFG = window.HRCSupabaseConfig || {};
   var rows = document.getElementById('rows');
   var logEl = document.getElementById('log');
   var results = [];
@@ -457,7 +457,7 @@
     var v = String(username || '').trim().toLowerCase();
     if (!v) return '';
     if (v.indexOf('@') > 0) return v;
-    return v + '@' + ((window.BRCSupabaseConfig && window.BRCSupabaseConfig.authEmailDomain) || 'brc-babil.com');
+    return v + '@' + ((window.HRCSupabaseConfig && window.HRCSupabaseConfig.authEmailDomain) || 'hrc-babil.com');
   }
 
   async function staffReadiness() {
@@ -524,7 +524,7 @@
     /* 4) الكتابة الفعلية: إدراج وظيفة اختبارية ثم حذفها.
        هذا الفحص وحده هو ما يثبت أن المنح والسياسات تسمح بالكتابة — وهو ما
        فشل سابقاً بـ 42501 لأن RLS وحدها لا تمنح صلاحية. */
-    var testCode = 'BRC-TEST-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+    var testCode = 'HRC-TEST-' + Math.random().toString(36).slice(2, 6).toUpperCase();
     var inserted = false;
     try {
       var ins = await withTimeout(staffSb.from('jobs').insert({

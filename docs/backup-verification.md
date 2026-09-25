@@ -30,8 +30,8 @@
 | **مجدولة** | نافذة «جدولة النسخ التلقائي» | كاملة أو بنطاق تاريخي (`partial`) |
 | **تلقائية** | محرّك `checkAutoBackup` عند فتح اللوحة | تُنشأ مرة واحدة لكل (يوم + وقت) |
 | **أمان** | تلقائياً **قبل كل استعادة** باسم «قبل الاستعادة» | كاملة |
-| **ملف خارجي** | «تصدير JSON» | `brc-backup-YYYY-MM-DD.json` |
-| **ملف خارجي مشفّر** | «نسخة مشفّرة للابتوب» | `BRC-backup-YYYY-MM-DD.brc.enc.json` |
+| **ملف خارجي** | «تصدير JSON» | `hrc-backup-YYYY-MM-DD.json` |
+| **ملف خارجي مشفّر** | «نسخة مشفّرة للابتوب» | `HRC-backup-YYYY-MM-DD.brc.enc.json` |
 
 ### استرداد النسخة المشفّرة (مضاف 2026-09-22)
 
@@ -51,9 +51,9 @@
 ### مفاتيح التخزين في المتصفح
 
 ```
-brc-scheduled-backups      → قائمة النسخ (الحد الأقصى 20 نسخة)
-brc-auto-backup-schedule   → أيام الجدولة + الوقت
-brc-auto-backup-last-run   → بصمة آخر خانة نُفّذت  (YYYY-MM-DDTHH:mm)
+hrc-scheduled-backups      → قائمة النسخ (الحد الأقصى 20 نسخة)
+hrc-auto-backup-schedule   → أيام الجدولة + الوقت
+hrc-auto-backup-last-run   → بصمة آخر خانة نُفّذت  (YYYY-MM-DDTHH:mm)
 ```
 
 ### أين ومتى تُنفَّذ الجدولة
@@ -84,7 +84,7 @@ brc-auto-backup-last-run   → بصمة آخر خانة نُفّذت  (YYYY-MM-D
 | الزر | المعرّف | النتيجة |
 |---|---|---|
 | نسخة احتياطية سريعة | `btn-quick-backup` | ✅ يحفظ نسخة + يحدّث العدّاد |
-| تصدير JSON | `btn-export` | ✅ يُنزّل `brc-backup-YYYY-MM-DD.json` |
+| تصدير JSON | `btn-export` | ✅ يُنزّل `hrc-backup-YYYY-MM-DD.json` |
 | استيراد نسخة | `btn-import` | ✅ يستورد / يرفض ملفاً تالفاً بأمان |
 | جدولة النسخ التلقائي | `btn-schedule-backup` | ✅ نموذج 7 أيام + وقت |
 | عرض النسخ الاحتياطية | `btn-view-backups` | ✅ قائمة + تصدير/استعادة/حذف |

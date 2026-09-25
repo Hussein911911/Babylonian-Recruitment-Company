@@ -467,19 +467,19 @@
     isOnline = true;
     offlineIndicator.style.display = 'none';
     // مزامنة البيانات عند العودة
-    if (window.BRCStore && typeof window.BRCStore.syncOfflineChanges === 'function') {
-      window.BRCStore.syncOfflineChanges();
+    if (window.HRCStore && typeof window.HRCStore.syncOfflineChanges === 'function') {
+      window.HRCStore.syncOfflineChanges();
     }
-    if (window.BRCUI) {
-      window.BRCUI.toast('ok', 'تم الاتصال', 'تم استعادة الاتصال بنجاح — البيانات محدثة');
+    if (window.HRCUI) {
+      window.HRCUI.toast('ok', 'تم الاتصال', 'تم استعادة الاتصال بنجاح — البيانات محدثة');
     }
   });
 
   window.addEventListener('offline', () => {
     isOnline = false;
     offlineIndicator.style.display = 'block';
-    if (window.BRCUI) {
-      window.BRCUI.toast('warn', 'انقطع الاتصال', 'أنت تعمل بدون اتصال — التغييرات تُحفظ محلياً');
+    if (window.HRCUI) {
+      window.HRCUI.toast('warn', 'انقطع الاتصال', 'أنت تعمل بدون اتصال — التغييرات تُحفظ محلياً');
     }
   });
 </script>

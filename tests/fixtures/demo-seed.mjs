@@ -43,7 +43,7 @@ export const DEMO_SEED = {
 
 /* تحقن البذرة في نافذة jsdom بعد تحميل config.js وقبل استعمال store.js */
 export function applyDemoSeed(win) {
-  if (!win || !win.BRC_CONFIG) throw new Error('BRC_CONFIG غير محمّل بعد');
-  win.BRC_CONFIG.seed = JSON.parse(JSON.stringify(DEMO_SEED));
-  return win.BRC_CONFIG.seed;
+  if (!win || !win.HRC_CONFIG) throw new Error('HRC_CONFIG غير محمّل بعد');
+  win.HRC_CONFIG.seed = JSON.parse(JSON.stringify(DEMO_SEED));
+  return win.HRC_CONFIG.seed;
 }

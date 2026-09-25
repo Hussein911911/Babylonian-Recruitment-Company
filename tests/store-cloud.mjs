@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — اختبار الربط الفعلي: store.js ↔ Supabase
+ *  HRC — اختبار الربط الفعلي: store.js ↔ Supabase
  *  ---------------------------------------------------------------------------
  *  هذا الملف يجيب على السؤال الوحيد المهم: **هل الواجهة تتكلم فعلاً مع القاعدة؟**
  *  نُحمّل store.js في سياق Node مع localStorage وهمي، ونُعطيه عميل سوبابيس وهمياً
@@ -147,7 +147,7 @@ function bootStore(mock, extra = {}) {
   sandbox.setTimeout = setTimeout; sandbox.clearTimeout = clearTimeout;
   sandbox.setInterval = () => 0; sandbox.clearInterval = () => { };
   sandbox.location = { origin: 'http://localhost', protocol: 'http:' };
-  sandbox.BRCSupabaseConfig = {
+  sandbox.HRCSupabaseConfig = {
     url: 'https://x.supabase.co', publishableKey: 'sb_publishable_test', schema: 'brc',
     enabled: true, enforceAuth: extra.enforceAuth === true
   };
@@ -162,7 +162,7 @@ function bootStore(mock, extra = {}) {
   load('cloud-auth.js');
   load('cloud-sync.js');
   load('store.js');
-  return { sandbox, Store: sandbox.BRCStore, localStorage: stores.local };
+  return { sandbox, Store: sandbox.HRCStore, localStorage: stores.local };
 }
 
 /* إنزال القاعدة الوهمية ببيانات «سحابية» مختلفة تماماً عن البيانات التجريبية:
@@ -174,7 +174,7 @@ function cloudRows() {
   const iso = (days) => new Date(Date.now() + days * 86400000).toISOString();
   return {
     jobs: [{
-      id: 'job-uuid-1', code: 'BRC-5001', title: 'وظيفة من القاعدة', category: 'صناعة', region: 'بابل',
+      id: 'job-uuid-1', code: 'HRC-5001', title: 'وظيفة من القاعدة', category: 'صناعة', region: 'بابل',
       salary_min: 700000, salary_max: 900000, shift: 'صباحي', gender: 'لا فرق', vacancies: 3,
       requirements: ['خبرة'], description: 'وصف', status: 'available', notes: '', image_url: '',
       employer_name: 'معمل', employer_phone: '07700000000', employer_address: 'الحلة',
@@ -189,7 +189,7 @@ function cloudRows() {
       requested_code: null, reject_reason: '', created_at: '2026-01-01T00:00:00.000Z'
     }],
     job_attempts: [{
-      id: 'att-uuid-1', serial: 'HRC-NO-900001', attempt_no: 1, job_id: 'job-uuid-1', job_code: 'BRC-5001',
+      id: 'att-uuid-1', serial: 'HRC-NO-900001', attempt_no: 1, job_id: 'job-uuid-1', job_code: 'HRC-5001',
       slot_status: 'empty', selected_at: null, hold_expires_at: null, closed_at: null,
       outcome_note: '', staff_id: null
     }],
@@ -200,7 +200,7 @@ function cloudRows() {
 }
 
 console.log('\n' + '═'.repeat(74));
-console.log('  BRC — الربط الفعلي (store.js ↔ Supabase)');
+console.log('  HRC — الربط الفعلي (store.js ↔ Supabase)');
 console.log('═'.repeat(74));
 
 /* ===========================================================================
@@ -221,12 +221,12 @@ step(1, 'الإقلاع — الواجهة تتبنّى ما في القاعدة
   check('الدور: موظف (لا زائر)', st.role === 'staff', st.role);
   const db = Store.db();
   check('كائن db لم يُستبدل — نفس المرجع (وإلا انكسرت مراجع الواجهة)', db === dbAfterLoad);
-  check('الوظائف جاءت من القاعدة', db.jobs.length === 1 && db.jobs[0].code === 'BRC-5001',
+  check('الوظائف جاءت من القاعدة', db.jobs.length === 1 && db.jobs[0].code === 'HRC-5001',
     JSON.stringify(db.jobs.map((j) => j.code)));
   check('لا أثر لوظائف البيانات التجريبية (HRC-1042)', !db.jobs.some((j) => j.code === 'HRC-1042'));
   check('الاستمارة من القاعدة', db.applicants.length === 1 && db.applicants[0].serial === 'HRC-NO-900001');
   check('المحاولات مرتبطة بالوظيفة (بيانات مُسطّحة مشتقّة)',
-    db.attempts.length === 1 && db.attempts[0].jobCode === 'BRC-5001',
+    db.attempts.length === 1 && db.attempts[0].jobCode === 'HRC-5001',
     JSON.stringify(db.attempts));
   check('قواعد العمل من صف الإعدادات في القاعدة', db.settings.attemptLimit === 7 && db.settings.holdHours === 12,
     JSON.stringify({ a: db.settings.attemptLimit, h: db.settings.holdHours }));
@@ -301,7 +301,7 @@ step(3, 'الجلسة — الدخول من القاعدة لا من config.js')
   const r = await Store.signIn('hussein', 'correct-password');
   check('الدخول ناجح عبر Supabase Auth', r.ok, JSON.stringify(r));
   check('البريد المُشتق من اسم المستخدم (لا كشف لبريد الموظف)',
-    mock.__calls.some((c) => c.auth === 'signIn' && c.email === 'hussein@brc-babil.com'),
+    mock.__calls.some((c) => c.auth === 'signIn' && c.email === 'hussein@hrc-babil.com'),
     JSON.stringify(mock.__calls.filter((c) => c.auth === 'signIn')));
   const s = Store.currentUser();
   check('الدور والاسم من brc.staff لا من الواجهة', s && s.role === 'admin' && s.name === 'حسين', JSON.stringify(s));
@@ -326,7 +326,7 @@ step('3أ', 'الوضع الانتقالي — allow محلي معلَن، وب�
   /* (أ) زائر/موظف بلا جلسة سحابية: الوضع الانتقالي المعتاد */
   const mock = makeMock({ rows: cloudRows(), session: null });
   const { Store, sandbox } = bootStore(mock, { enforceAuth: false });
-  sandbox.BRC_CONFIG.users = TRANSITIONAL_USERS;
+  sandbox.HRC_CONFIG.users = TRANSITIONAL_USERS;
   Store.init();
   await sleep(120);
   check('الوضع الانتقالي مُعلن في الحالة', Store.cloudStatus().enforceAuth === false);
@@ -344,7 +344,7 @@ step('3أ', 'الوضع الانتقالي — allow محلي معلَن، وب�
      أخطر حالة — لولا الفصل لصارت الكتابات باسم صاحب الجلسة. */
   const mock2 = makeMock({ rows: cloudRows() });
   const b = bootStore(mock2, { enforceAuth: false });
-  b.sandbox.BRC_CONFIG.users = TRANSITIONAL_USERS;
+  b.sandbox.HRC_CONFIG.users = TRANSITIONAL_USERS;
   b.Store.init();
   await sleep(120);
   check('قبل الدخول المحلي: جلسة سحابية لموظف (صلاحية كتابة)', b.Store.cloudStatus().role === 'staff');
@@ -379,7 +379,7 @@ step('3ب', 'الجلسة — حالات الحدود (حساب بلا سطر م
   /* بلا مكتبة سوبابيس محمّلة: وضع محلي مع تنبيه صريح، والدخول المحلي متاح
      (حساب fixture محلي — في الإنتاج users=[] ولا دخول محلي مع enforceAuth=true) */
   const c = bootStore(makeMock({ rows: cloudRows() }), { noVendor: true });
-  c.sandbox.BRC_CONFIG.users = [
+  c.sandbox.HRC_CONFIG.users = [
     { username: 'admin', password: 'admin123', name: 'مدير محلي (اختبار)', role: 'admin', title: 'مدير عام' }
   ];
   c.Store.init();
@@ -427,14 +427,14 @@ step(5, 'الزائر — RPC للطلب والتحقق (الجدول محجوب
         issueDate: '2026-01-01T00:00:00.000Z', expiryDate: '2026-02-01T00:00:00.000Z',
         status: 'active', daysLeft: 12, attemptLimit: 5, attemptsUsed: 1, attemptsLeft: 4,
         requestedCode: null, rejectReason: '', createdAt: '2026-01-01T00:00:00.000Z',
-        attempts: [{ no: 1, jobCode: 'BRC-5001', jobTitle: 'وظيفة', location: 'بابل', slotStatus: 'reserved',
+        attempts: [{ no: 1, jobCode: 'HRC-5001', jobTitle: 'وظيفة', location: 'بابل', slotStatus: 'reserved',
           selectedAt: null, holdExpiresAt: null, closedAt: null, note: '' }]
       }),
       request_form: (args) => ({ ok: true, serial: 'HRC-NO-900999', status: 'pending' })
     }
   });
   mock.__state.public_jobs = [{
-    code: 'BRC-5001', title: 'وظيفة عامة', category: 'صناعة', region: 'بابل', salary_min: 1, salary_max: 2,
+    code: 'HRC-5001', title: 'وظيفة عامة', category: 'صناعة', region: 'بابل', salary_min: 1, salary_max: 2,
     shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [], status: 'available',
     is_reserved: false, hold_expires_at: null, created_at: '2026-01-01T00:00:00.000Z',
     description: 'وصف', image_url: ''
@@ -447,7 +447,7 @@ step(5, 'الزائر — RPC للطلب والتحقق (الجدول محجوب
   check('الزائر (anon): الجداول محجوبة فانتقل للواجهة العامة', st.state === 'on' && st.role === 'public', JSON.stringify(st));
   check('واجهة القراءة العامة هي public_jobs (لا جدول jobs المحجوب)',
     mock.__calls.some((c) => c.table === 'public_jobs' && c.op === 'select'));
-  check('الزائر يرى الوظائف المعلنة', Store.listJobs({}).length === 1 && Store.listJobs({})[0].code === 'BRC-5001');
+  check('الزائر يرى الوظائف المعلنة', Store.listJobs({}).length === 1 && Store.listJobs({})[0].code === 'HRC-5001');
   check('لا صلاحية كتابة للزائر (readOnly)', st.readOnly === true);
   check('الصيانة لا تعمل للزائر (لا كتابة مرفوضة)', Store.runMaintenance().length === 0);
   check('pushCloud لا يُرسل شيئاً للزائر', (await Store.pushCloud()).skipped === true ||
@@ -492,7 +492,7 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
 
   /* موظف آخر أدرج وظيفة: نصلها من القاعدة */
   const row = {
-    id: 'job-uuid-2', code: 'BRC-5002', title: 'وظيفة موظف آخر', category: 'خدمات', region: 'بابل',
+    id: 'job-uuid-2', code: 'HRC-5002', title: 'وظيفة موظف آخر', category: 'خدمات', region: 'بابل',
     salary_min: 1, salary_max: 2, shift: 'صباحي', gender: 'لا فرق', vacancies: 1, requirements: [],
     description: '', employer_name: 'ج', employer_phone: '0', employer_address: '', interview_location: '',
     status: 'available', notes: '', image_url: '', reserved_by: null, hold_expires_at: null,
@@ -500,18 +500,18 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
   };
   check('كل جدول له مستدعٍ مستقل في الاشتراك', ch.__all.length === 6, String(ch.__all.length));
   ch.fire('jobs', { eventType: 'INSERT', schema: 'brc', table: 'jobs', new: row });
-  check('الوظيفة ظهرت فوراً في الواجهة', Store.getJob('BRC-5002') !== null);
+  check('الوظيفة ظهرت فوراً في الواجهة', Store.getJob('HRC-5002') !== null);
 
   const res = await Store.pushCloud();
   const ins = mock.__calls.filter((c) => c.op === 'insert' && c.table === 'jobs' &&
-    c.payload && c.payload.code === 'BRC-5002');
+    c.payload && c.payload.code === 'HRC-5002');
   check('لا إدراج مكرر للوظيفة القادمة من موظف آخر (تصادم مفتاح كان سيولّد نسخة ثانية)',
     ins.length === 0 && (!res || res.ops === 0),
     JSON.stringify({ ins: ins.length, res, pending: Store.diffCloud().map((o) => o.table + ':' + o.op + ':' + o.key) }));
 
   /* حذف من موظف آخر: لا نُرسل حذفاً لسطر محذوف أصلاً */
-  ch.fire('jobs', { eventType: 'DELETE', schema: 'brc', table: 'jobs', old: { id: 'job-uuid-2', code: 'BRC-5002' } });
-  check('السطر المحذوف اختفى من الواجهة', Store.getJob('BRC-5002') === null);
+  ch.fire('jobs', { eventType: 'DELETE', schema: 'brc', table: 'jobs', old: { id: 'job-uuid-2', code: 'HRC-5002' } });
+  check('السطر المحذوف اختفى من الواجهة', Store.getJob('HRC-5002') === null);
   const res2 = await Store.pushCloud();
   check('لا حذف مكرر لسطر حُذف مسبقاً', (!res2 || res2.ops === 0), JSON.stringify(res2));
 

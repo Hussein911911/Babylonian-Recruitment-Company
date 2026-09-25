@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — اختبار طبقة الربط بـ Supabase (assets/js/cloud.js)
+ *  HRC — اختبار طبقة الربط بـ Supabase (assets/js/cloud.js)
  *  ---------------------------------------------------------------------------
  *  لماذا بمحاكٍ؟ الساندبوكس لا يصل إلى *.supabase.co، فلا يمكن الاختبار على
  *  المشروع الحقيقي. لكن أخطر ما في هذه الطبقة هو **التحويل** (أسماء الأعمدة
@@ -32,13 +32,13 @@ const step = (n, t) => console.log('\n▌ ' + n + ' — ' + t);
 const src = readFileSync(join(ROOT, 'assets', 'js', 'cloud.js'), 'utf8');
 const sandbox = {};
 new Function('window', src)(sandbox);
-const C = sandbox.BRCCloud;
+const C = sandbox.HRCCloud;
 
 console.log('\n' + '═'.repeat(74));
-console.log('  BRC — اختبار طبقة الربط بـ Supabase (التحويل + التحميل + Realtime)');
+console.log('  HRC — اختبار طبقة الربط بـ Supabase (التحويل + التحميل + Realtime)');
 console.log('═'.repeat(74));
 
-check('الوحدة تُحمّل وتُصدّر BRCCloud', !!C);
+check('الوحدة تُحمّل وتُصدّر HRCCloud', !!C);
 
 /* ---------------------------------------------------------------------------
  *  أعمدة مطابقة لما تُرجعه PostgREST فعلاً (snake_case، تواريخ ISO، jsonb)
@@ -85,7 +85,7 @@ const AUDIT_ROW = {
 };
 const SETTINGS_ROWS = [
   { key: 'rules', value: { attempt_limit: 5, validity_days: 30, hold_hours: 24, form_fee: 10000, auto_release: true } },
-  { key: 'company', value: { name_ar: 'شركة الهدف للتوظيف', verify_base: 'https://brc-babil.com/verify' } }
+  { key: 'company', value: { name_ar: 'شركة الهدف للتوظيف', verify_base: 'https://hrc-babil.com/verify' } }
 ];
 
 const FULL = {
@@ -214,7 +214,7 @@ step(4, 'الإعدادات: صفوف key/value jsonb → كائن مسطّح');
 }
 
 /* ----------------------------- 5) بناء db كامل ----------------------------- */
-step(5, 'بناء كائن db الكامل (نفس شكل BRCStore المحلي)');
+step(5, 'بناء كائن db الكامل (نفس شكل HRCStore المحلي)');
 {
   const db = C.buildDb(FULL);
   check('المفاتيح كلها موجودة (jobs/applicants/attempts/audit/settings/counters/meta)',
@@ -331,11 +331,11 @@ step(9, 'حالات حدّية — قيم ناقصة/null');
 
 /* ===========================================================================
  *  10) المطابقة مع الشكل المحلي الفعلي — الأهم
- *  الشكل الذي يُنتجه BRCStore المحلي هو "العقد" الذي تفترضه الواجهة.
+ *  الشكل الذي يُنتجه HRCStore المحلي هو "العقد" الذي تفترضه الواجهة.
  *  أي حقل في الشكل المحلي وغير موجود في الشكل السحابي = واجهة تعرض فراغاً
  *  أو صفراً بصمت (بلا أي رسالة خطأ). نستخرج الشكل المحلي فعلياً من المتصفح.
  * =========================================================================== */
-step(10, 'مطابقة الشكل مع BRCStore المحلي (الحقول المفقودة = واجهة صامتة)');
+step(10, 'مطابقة الشكل مع HRCStore المحلي (الحقول المفقودة = واجهة صامتة)');
 {
   const { spawn } = await import('node:child_process');
   const { JSDOM, VirtualConsole } = require('jsdom');
@@ -351,14 +351,14 @@ step(10, 'مطابقة الشكل مع BRCStore المحلي (الحقول ال�
     beforeParse(window) {
       /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة
          (انظر tests/fixtures/demo-seed.mjs). قبل تنفيذ config.js. */
-      window.__BRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
+      window.__HRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
     },
     runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true, virtualConsole: vc
   });
   await new Promise((r) => { dom.window.addEventListener('load', r); setTimeout(r, 8000); });
   await wait(400);
 
-  const localDb = dom.window.BRCStore.db();
+  const localDb = dom.window.HRCStore.db();
   check('الشكل المحلي متاح (jobs/applicants/attempts/audit)', !!(localDb.jobs && localDb.applicants && localDb.attempts));
 
   const fields = (o) => Object.keys(o || {}).sort();

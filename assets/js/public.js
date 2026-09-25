@@ -1,12 +1,12 @@
 /* ===========================================================================
- *  BRC — منطق الموقع العام
+ *  HRC — منطق الموقع العام
  *  لوحة الوظائف، البحث الفوري، صفحة الوظيفة، ودعوة الزائر للتواصل مع الشركة.
  *  ⚠️ سياسة الشركة: الزائر يتصفّح فقط — لا تقديم استمارة ولا تحقق منها.
  *     إصدار الاستمارات والتحقق منها محصور بالموظفين والإدارة في المنظومة الداخلية.
  * =========================================================================== */
 (function (root) {
   'use strict';
-  var CFG = root.BRC_CONFIG, Store = root.BRCStore, UI = root.BRCUI;
+  var CFG = root.HRC_CONFIG, Store = root.HRCStore, UI = root.HRCUI;
   if (!document.getElementById('jobs-grid')) return;
 
   var filters = { q: '', region: 'all', shift: 'all', status: 'all' };
@@ -206,7 +206,7 @@
   }
 
   function openQRScanner() {
-    if (!root.BRCQRScan || !root.BRCQRScan.supported()) {
+    if (!root.HRCQRScan || !root.HRCQRScan.supported()) {
       UI.toast('warn', 'متصفح غير مدعوم', 'متصفحك لا يدعم مسح الكيو آر كود. اكتب الكود يدوياً أو استخدم متصفح كروم على الجوال/الكمبيوتر.');
       return;
     }
@@ -250,7 +250,7 @@
           if (!f) return;
           setStatus('جارٍ قراءة الصورة...');
           Promise.resolve(typeof createImageBitmap === 'function' ? createImageBitmap(f) : f)
-            .then(function (bmp) { return root.BRCQRScan.detectImage(bmp); })
+            .then(function (bmp) { return root.HRCQRScan.detectImage(bmp); })
             .then(function (vals) {
               if (vals && vals.length) { stop(); close(); applyScannedText(vals[0]); }
               else setStatus('لم يُعثر على رمز QR في الصورة — جرّب صورة أوضح.', 'error');
@@ -280,7 +280,7 @@
 
     function tick(video, close) {
       if (stopped) return;
-      root.BRCQRScan.detectVideoFrame(video).then(function (vals) {
+      root.HRCQRScan.detectVideoFrame(video).then(function (vals) {
         if (stopped) return;
         if (vals && vals.length) { stop(); close(); applyScannedText(vals[0]); return; }
         raf = requestAnimationFrame(function () { tick(video, close); });
@@ -295,14 +295,14 @@
 
     /* رمز استمارة (HRC-NO-…): التحقق محصور بالموظفين والإدارة، فلا نكشف
        هنا أي بيانات — مجرد تنبيه واضح للزائر. */
-    var serial = text.match(/(?:HRC|BRC)-NO-\d+/i);   // البادئتان: QR قديم أو جديد
+    var serial = text.match(/HRC-NO-\d+/i);   // بادئة واحدة موحّدة
     if (serial) {
       UI.toast('info', 'هذه استمارة شركة الهدف للتوظيف',
         'التحقق من الاستمارات متاح لموظفي الشركة والإدارة فقط. للحجز أو الاستفسار خابر الشركة أو راجع المكتب.', 8000);
       return;
     }
 
-    var job = text.match(/BRC-\d{3,}/i);
+    var job = text.match(/HRC-\d{3,}/i);
     if (job) {
       var code = job[0].toUpperCase();
       var input = document.getElementById('qs-code');
@@ -319,7 +319,7 @@
   /* ---------------- العرض ---------------- */
   function renderAll() { renderHeroStats(); renderJobs(); }
 
-  root.BRCRefresh = function () {
+  root.HRCRefresh = function () {
     if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }
     renderAll();
   };

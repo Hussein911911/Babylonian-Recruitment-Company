@@ -1,12 +1,12 @@
 /* ===========================================================================
- *  BRC — الدخول عبر Supabase Auth (BRCCloudAuth)
+ *  HRC — الدخول عبر Supabase Auth (HRCCloudAuth)
  *  ---------------------------------------------------------------------------
  *  المشكلة: النظام المحلي يدخل بـ username + كلمة مرور مخزّنة في config.js
  *  (مكشوفة للجميع). Supabase Auth يعمل بالبريد الإلكتروني.
  *
  *  الحل: mapping شفّاف بلا أي كشف بيانات:
  *    • إن أدخل الموظف بريداً كاملاً (فيه @) → يُستخدم كما هو
- *    • وإلا → username@<النطاق المضبوط>   (مثال: admin → admin@brc-babil.com)
+ *    • وإلا → username@<النطاق المضبوط>   (مثال: admin → admin@hrc-babil.com)
  *  هكذا تبقى واجهة الدخول كما هي (حقل «اسم المستخدم») بلا أي تغيير،
  *  ولا نحتاج دالة عامة تكشف بريد موظف — وهو ما كان سيسرّب البيانات.
  *
@@ -20,11 +20,11 @@
   'use strict';
 
   function cfg() {
-    var c = root.BRCSupabaseConfig || {};
+    var c = root.HRCSupabaseConfig || {};
     return {
       /* نطاق البريد المُشتقّ من اسم المستخدم — يجب أن يطابق ما أُنشئت به
          حسابات Auth في Supabase. إن تركه فارغاً فلن يُقبل إلا بريد كامل. */
-      domain: c.authEmailDomain || 'brc-babil.com'
+      domain: c.authEmailDomain || 'hrc-babil.com'
     };
   }
 
@@ -47,7 +47,7 @@
   }
 
   function create(client) {
-    if (!client || !client.auth) throw new Error('BRCCloudAuth: عميل سوبابيس مطلوب');
+    if (!client || !client.auth) throw new Error('HRCCloudAuth: عميل سوبابيس مطلوب');
 
     /* ------------------------------ الدخول ------------------------------ */
     function login(usernameOrEmail, password) {
@@ -161,7 +161,7 @@
     };
   }
 
-  root.BRCCloudAuth = {
+  root.HRCCloudAuth = {
     create: create,
     toEmail: toEmail,
     looksUsable: looksUsable

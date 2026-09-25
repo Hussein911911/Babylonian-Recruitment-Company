@@ -1,10 +1,10 @@
 /* ===========================================================================
- *  BRC — طبقة الربط بـ Supabase (BRCCloud)
+ *  HRC — طبقة الربط بـ Supabase (HRCCloud)
  *  ---------------------------------------------------------------------------
  *  الفكرة المعمارية:
- *    الواجهة تنادي BRCStore بشكل **متزامن** (222 نقطة استدعاء)، وسوبابيس
+ *    الواجهة تنادي HRCStore بشكل **متزامن** (222 نقطة استدعاء)، وسوبابيس
  *    **غير متزامنة**. الحل: نحتفظ بنسخة كاملة من البيانات في الذاكرة بنفس شكل
- *    BRCStore المحلي (كائن db)، ونملؤها من سوبابيس عند الإقلاع، ثم:
+ *    HRCStore المحلي (كائن db)، ونملؤها من سوبابيس عند الإقلاع، ثم:
  *      • القراءة  → من الذاكرة فوراً (بلا تغيير في أي نقطة استدعاء)
  *      • الكتابة  → تحديث الذاكرة فوراً + دفع لسوبابيس في الخلفية + emit()
  *      • التغيير  → Realtime يحدّث الذاكرة ويستدعي emit() لباقي المستخدمين
@@ -289,15 +289,15 @@
     /* آخر أرقام التسلسل: نستنتجها من البيانات الفعلية حتى لا تتصادم الأكواد
        الجديدة مع القديمة. (المصدر الحقيقي تسلسلات PostgreSQL، وهذي للعرض فقط.) */
     var maxJob = 1041, maxSerial = 119;
-    /* نقبل البادئتين HRC (الحالية) وBRC (قبل تغيير اسم الشركة 2026-09-19):
+    /* بادئة واحدة موحّدة HRC — لا صيغة ثانية في المنظومة:
        القاعدة تحوي سجلات صدرت بالرمز القديم، ولو تجاهلناها لعاد العدّاد إلى
        رقم مستعمَل فتتكرّر الأكواد على وظيفتين مختلفتين. */
     jobs.forEach(function (j) {
-      var m = /^(?:HRC|BRC)-(\d+)$/.exec(j.code || '');
+      var m = /^HRC-(\d+)$/.exec(j.code || '');
       if (m) maxJob = Math.max(maxJob, Number(m[1]));
     });
     applicants.forEach(function (a) {
-      var m = /^(?:HRC|BRC)-NO-(\d+)$/.exec(a.serial || '');
+      var m = /^HRC-NO-(\d+)$/.exec(a.serial || '');
       if (m) maxSerial = Math.max(maxSerial, Number(m[1]));
     });
 
@@ -525,7 +525,7 @@
    *  يُرجع دالة إلغاء الاشتراك.
    * ========================================================================== */
   function subscribeAll(client, db, onChange, onError) {
-    var chan = client.channel('brc-realtime');
+    var chan = client.channel('hrc-realtime');
     TABLES.forEach(function (t) {
       chan = chan.on('postgres_changes',
         { event: '*', schema: client.__schema || 'brc', table: t },
@@ -538,7 +538,7 @@
     return function () { try { client.removeChannel(chan); } catch (e) { /* تجاهل */ } };
   }
 
-  root.BRCCloud = {
+  root.HRCCloud = {
     /* تحويل */
     jobFromDb: jobFromDb, jobToDb: jobToDb,
     applicantFromDb: applicantFromDb, applicantToDb: applicantToDb,

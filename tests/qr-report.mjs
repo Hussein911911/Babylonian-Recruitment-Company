@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — تقرير مولّد الكيو آر كود (بدون أي حزم خارجية)
+ *  HRC — تقرير مولّد الكيو آر كود (بدون أي حزم خارجية)
  *  يشغّل الاختبارات الذاتية ويعرض جدول السعات ونماذج من رموز الاستمارات.
  *  التشغيل:  node tests/qr-report.mjs
  * =========================================================================== */
@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 const QR = require(resolve(ROOT, 'assets/js/qr.js'));
 
 console.log('\n═'.repeat(32));
-console.log('  تقرير مولّد الكيو آر كود — شركة الهدف للتوظيف (BRC)');
+console.log('  تقرير مولّد الكيو آر كود — شركة الهدف للتوظيف (HRC)');
 console.log('═'.repeat(32) + '\n');
 
 /* 1) الاختبارات الذاتية */
@@ -35,7 +35,7 @@ versions.forEach((v) => {
 console.log('\n— نماذج فعلية من روابط التحقق —');
 const samples = [
   'HRC-NO-000120',
-  'https://brc-babil.com/verify?form=HRC-NO-000120&t=a1b2c3d4',
+  'https://hrc-babil.com/verify?form=HRC-NO-000120&t=a1b2c3d4',
   'HRC-1042|HRC-1043|HRC-1044|HRC-1045|HRC-1046|HRC-NO-000120',
   'شركة الهدف للتوظيف — حلة شارع 60'
 ];
