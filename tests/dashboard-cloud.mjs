@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — لوحة التحكم في الوضع السحابي (صفحة حقيقية + عميل وهمي)
+ *  HRC — لوحة التحكم في الوضع السحابي (صفحة حقيقية + عميل وهمي)
  *  ---------------------------------------------------------------------------
  *  الاختبارات الأخرى تفحص الطبقات منفصلة. هذا الملف يشغّل **dashboard.html
  *  الفعلية** بكل سكربتاتها (بما فيها store.js وdashboard.js)، مع استبدال ملف
@@ -30,7 +30,7 @@ window.__brcMock = (function () {
   var calls = [];
   var denied = { code: '42501', message: 'permission denied' };
   var rows = {
-    public_jobs: [{ code: 'BRC-7777', title: 'وظيفة معلنة', category: 'خدمات', region: 'بابل',
+    public_jobs: [{ code: 'HRC-7777', title: 'وظيفة معلنة', category: 'خدمات', region: 'بابل',
       salary_min: 500000, salary_max: 700000, shift: 'صباحي', gender: 'لا فرق', vacancies: 2,
       requirements: [], status: 'available', hold_expires_at: null, created_at: '2026-01-01T00:00:00.000Z',
       description: 'وصف', image_url: '' }]
@@ -62,7 +62,7 @@ window.__brcMock = (function () {
       signInWithPassword: function (p) {
         calls.push({ auth: 'signIn', email: p.email });
         /* حساب واحد فقط موجود — وليس له سطر في brc.staff بعد */
-        if (p.email === 'hussein@brc-babil.com' && p.password === 'right-pass') {
+        if (p.email === 'hussein@hrc-babil.com' && p.password === 'right-pass') {
           return Promise.resolve({ data: { user: { id: 'auth-1', email: p.email }, session: {} }, error: null });
         }
         return Promise.resolve({ data: null, error: { message: 'Invalid login credentials' } });
@@ -98,7 +98,7 @@ class Loader extends ResourceLoader {
            حتى يراها الإقلاع — كما كانت config.js تحملها آنذاك. الإنتاج: users=[]. */
         if (this.opts.users) {
           src += '\n/* fixtures اختبارية للوضع الانتقالي — لا وجود لها في الإنتاج */\n' +
-            'window.BRC_CONFIG.users = ' + JSON.stringify(this.opts.users) + ';\n';
+            'window.HRC_CONFIG.users = ' + JSON.stringify(this.opts.users) + ';\n';
         }
         return Buffer.from(src, 'utf8');
       });
@@ -131,7 +131,7 @@ function login(window, doc, user, pass) {
 const shellHidden = (doc) => doc.getElementById('app-shell').classList.contains('hidden');
 
 console.log('\n' + '═'.repeat(74));
-console.log('  BRC — لوحة التحكم في الوضع السحابي');
+console.log('  HRC — لوحة التحكم في الوضع السحابي');
 console.log('═'.repeat(74));
 
 /* ===========================================================================
@@ -147,16 +147,16 @@ const t1 = await open({
   users: [{ username: 'staff', password: 'staff123', name: 'موظف انتقالي (اختبار)', role: 'staff', title: 'موظف توظيف' }]
 });
 check('لا أخطاء JavaScript في الصفحة', t1.errors.length === 0 || t1.errors.join(' | '));
-const st = t1.window.BRCStore.cloudStatus();
+const st = t1.window.HRCStore.cloudStatus();
 check('الإقلاع: متصل بالقاعدة (وضع عام بلا جلسة)', st.state === 'on' && st.role === 'public', JSON.stringify(st));
 check('مفتاح enforceAuth يُقرأ من الإعداد', st.enforceAuth === false);
-check('الوظيفة المعلنة وصلت من الواجهة العامة', t1.window.BRCStore.listJobs({}).some((j) => j.code === 'BRC-7777'),
-  JSON.stringify(t1.window.BRCStore.listJobs({}).map((j) => j.code)));
+check('الوظيفة المعلنة وصلت من الواجهة العامة', t1.window.HRCStore.listJobs({}).some((j) => j.code === 'HRC-7777'),
+  JSON.stringify(t1.window.HRCStore.listJobs({}).map((j) => j.code)));
 
-const note = t1.doc.getElementById('brc-cloud-note');
-const banner = t1.doc.getElementById('brc-cloud-banner');
+const note = t1.doc.getElementById('hrc-cloud-note');
+const banner = t1.doc.getElementById('hrc-cloud-banner');
 check('شاشة الدخول تُعلن الحالة (ملاحظة ظاهرة)', !!note && /متصل|انتقالي|محلي/.test(note.textContent), note && note.textContent.slice(0, 60));
-const devWarn = t1.doc.getElementById('brc-dev-accounts');
+const devWarn = t1.doc.getElementById('hrc-dev-accounts');
 check('تذكير الفريق بحذف حسابات الكود ظاهر (قبل التسليم)', !!devWarn && /تُحذف قبل التسليم/.test(devWarn.textContent),
   devWarn && devWarn.textContent.slice(0, 80));
 check('التذكير لا يعرض أي كلمة مرور', !!devWarn && !/admin123|staff123/.test(devWarn.textContent));
@@ -172,7 +172,7 @@ check('الدخول نجح محلياً (حتى لا تتوقف المنظومة
 check('تنبيه واضح بأن البيانات غير مشتركة',
   [...t1.doc.querySelectorAll('#toast-root .toast')].some((x) => /محلي|غير مشتركة|موظف/.test(x.textContent)),
   JSON.stringify([...t1.doc.querySelectorAll('#toast-root .toast')].map((x) => x.textContent.slice(0, 40))));
-check('الجلسة محلية (لا جلسة سحابية)', t1.window.BRCStore.currentUser() && !t1.window.BRCStore.currentUser().cloud);
+check('الجلسة محلية (لا جلسة سحابية)', t1.window.HRCStore.currentUser() && !t1.window.HRCStore.currentUser().cloud);
 check('لا شيء يُدفع للقاعدة في الوضع الانتقالي (لا صلاحية كتابة)',
   !t1.window.__brcMock.__calls.some((c) => ['insert', 'update', 'delete'].includes(c.op)));
 
@@ -181,19 +181,19 @@ check('لا شيء يُدفع للقاعدة في الوضع الانتقالي 
  * =========================================================================== */
 step(2, 'الوضع النهائي — enforceAuth=true يمنع الدخول المحلي تماماً');
 const t2 = await open({ enforceAuth: true });
-t2.window.BRCStore.logout();
+t2.window.HRCStore.logout();
 await new Promise((r) => setTimeout(r, 120));
-check('مفتاح enforceAuth مفعّل كما ضبطه المسؤول', t2.window.BRCStore.cloudStatus().enforceAuth === true);
-check('بعد إغلاق الباب: تذكير الفريق يختفي تلقائياً', !t2.doc.getElementById('brc-dev-accounts'),
+check('مفتاح enforceAuth مفعّل كما ضبطه المسؤول', t2.window.HRCStore.cloudStatus().enforceAuth === true);
+check('بعد إغلاق الباب: تذكير الفريق يختفي تلقائياً', !t2.doc.getElementById('hrc-dev-accounts'),
   'التذكير ما زال ظاهراً');
 login(t2.window, t2.doc, 'admin', 'admin123');
 await new Promise((r) => setTimeout(r, 300));
 check('كلمة مرور config.js لم تُدخل أحداً', shellHidden(t2.doc), 'دخل بالباب الخلفي!');
-check('لا جلسة بعد المحاولة المرفوضة', !t2.window.BRCStore.currentUser());
+check('لا جلسة بعد المحاولة المرفوضة', !t2.window.HRCStore.currentUser());
 check('رسالة الفشل واضحة', [...t2.doc.querySelectorAll('#toast-root .toast')].some((x) => /فشل الدخول|غير صحيحة/.test(x.textContent)),
   JSON.stringify([...t2.doc.querySelectorAll('#toast-root .toast')].map((x) => x.textContent.slice(0, 40))));
 check('حتى الدالة نفسها ترفض (حماية مزدوجة في طبقة البيانات)',
-  t2.window.BRCStore.login('admin', 'admin123') === null);
+  t2.window.HRCStore.login('admin', 'admin123') === null);
 
 /* ===========================================================================
  *  3) موظف بحساب رسمي لكن بلا سطر في brc.staff
@@ -201,7 +201,7 @@ check('حتى الدالة نفسها ترفض (حماية مزدوجة في ط�
 step(3, 'حساب Auth بلا سطر في brc.staff — يُرفض برسالة مفهومة');
 login(t2.window, t2.doc, 'hussein', 'right-pass');
 await new Promise((r) => setTimeout(r, 300));
-check('لم يُدخَل (الحساب غير مربوط بأي سطر موظف)', shellHidden(t2.doc) || !t2.window.BRCStore.currentUser(), 'دخل بلا صلاحية');
+check('لم يُدخَل (الحساب غير مربوط بأي سطر موظف)', shellHidden(t2.doc) || !t2.window.HRCStore.currentUser(), 'دخل بلا صلاحية');
 /* في enforceAuth=true الرسالة الصريحة تظهر؛ ولا يوجد أي مسار يمنحه صلاحية */
 
 console.log('\n' + '═'.repeat(74));

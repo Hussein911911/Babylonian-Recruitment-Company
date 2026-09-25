@@ -1,5 +1,5 @@
 /* ===========================================================================
- *  BRC — صفحة التحقق من الاستمارة (تُفتح عبر كيو آر كود الاستمارة)
+ *  HRC — صفحة التحقق من الاستمارة (تُفتح عبر كيو آر كود الاستمارة)
  *  تُظهر: الرقم التسلسلي، اسم الباحث، المحاولات المرتبطة وأكواد الوظائف،
  *  وحالة الاستمارة (سارية / منتهية / استُهلكت المحاولات / مكتملة).
  *  تعمل في وضعين: صفحة مستقلة (verify.html?form=...) أو ضمن الملف المستقل
@@ -7,7 +7,7 @@
  * =========================================================================== */
 (function (root) {
   'use strict';
-  var CFG = root.BRC_CONFIG, Store = root.BRCStore, UI = root.BRCUI;
+  var CFG = root.HRC_CONFIG, Store = root.HRCStore, UI = root.HRCUI;
   if (!document.getElementById('verify-root')) return;
 
   var booted = false;
@@ -37,9 +37,8 @@
   function normalizeSerial(s) {
     s = String(s || '').trim().toUpperCase();
     if (!s) return '';
-    /* نقبل البادئتين: HRC (الحالية) وBRC (استمارات صدرت قبل تغيير الاسم
-       2026-09-19 وما زالت بيد الزبائن). الرقم المجرّد يُكمَّل بالبادئة الحالية. */
-    if (!/^(HRC|BRC)-NO/i.test(s)) s = 'HRC-NO-' + s.replace(/[^0-9]/g, '').padStart(6, '0');
+    /* بادئة واحدة موحّدة HRC. الرقم المجرّد (6 خانات) يُكمَّل بها. */
+    if (!/^HRC-NO/i.test(s)) s = 'HRC-NO-' + s.replace(/[^0-9]/g, '').padStart(6, '0');
     return s;
   }
 
@@ -300,7 +299,7 @@
             '<div class="data-item"><div class="k">المحاولات المتاحة</div><div class="v">' + r.attemptsLeft + '</div></div>' +
             '<div class="data-item"><div class="k">المُصدر</div><div class="v">' + UI.esc(r.createdBy) + '</div></div>' +
           '</div></div>' +
-          '<div class="verify-qr">' + root.BRCVoucher.qrSvg(Store.verifyUrl(r.serial), 170) +
+          '<div class="verify-qr">' + root.HRCVoucher.qrSvg(Store.verifyUrl(r.serial), 170) +
             '<span class="tiny muted center">كيو آر كود التحقق الرسمي</span></div>' +
         '</div>' +
 
@@ -313,7 +312,7 @@
           '</table></div></div>') +
 
         '<div class="panel mt-3" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:14px 16px">' +
-          '<p class="mb-0 small">' + UI.ic('shield') + ' <b>ملاحظة قانونية:</b> ' + UI.esc(root.BRCVoucher.DISCLAIMER) + '</p>' +
+          '<p class="mb-0 small">' + UI.ic('shield') + ' <b>ملاحظة قانونية:</b> ' + UI.esc(root.HRCVoucher.DISCLAIMER) + '</p>' +
         '</div></div>' +
         '<div class="flex flex-wrap mt-3">' +
           (isRequest ? '' : '<button class="btn btn-lapis" id="verify-print">' + UI.ic('print') + ' طباعة نسخة الاستمارة</button>') +
@@ -324,7 +323,7 @@
     var printBtn = document.getElementById('verify-print');
     if (printBtn) printBtn.addEventListener('click', function () {
       var app = Store.getApplicant(r.serial);
-      if (app) root.BRCVoucher.print(app);
+      if (app) root.HRCVoucher.print(app);
     });
     var copyBtn = document.getElementById('verify-copy');
     if (copyBtn) copyBtn.addEventListener('click', function () {
@@ -337,7 +336,7 @@
     });
   }
 
-  root.BRCVerify = { init: init, mount: mount, render: renderResult };
+  root.HRCVerify = { init: init, mount: mount, render: renderResult };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

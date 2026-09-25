@@ -324,6 +324,8 @@
           <div class="toolbar">
             <div class="field"><label for="fin-from">من</label><input type="date" id="fin-from"></div>
             <div class="field"><label for="fin-to">إلى</label><input type="date" id="fin-to"></div>
+            <button class="btn btn-lapis btn-sm" id="btn-fin-today"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> اليوم</button>
+            <button class="btn btn-outline btn-sm" id="btn-fin-yesterday"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg> أمس</button>
             <button class="btn btn-outline btn-sm" id="btn-fin-reset"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> الكل</button>
           </div>
         </div>
@@ -397,12 +399,14 @@
               <button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير JSON</button>
               <button class="btn btn-outline" id="btn-export-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg> نسخة مشفّرة للابتوب</button>
               <button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"/></svg> استيراد نسخة</button>
+              <button class="btn btn-ok" id="btn-import-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg> استرداد نسخة مشفّرة</button>
               <button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> جدولة النسخ التلقائي</button>
               <button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> عرض النسخ الاحتياطية</button>
               <button class="btn btn-warn" id="btn-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تشغيل قواعد الحجز التلقائي</button>
               <button class="btn btn-danger" id="btn-reset"><svg class="ic"><use href="#i-trash" xlink:href="#i-trash"/></svg> إعادة ضبط البيانات التجريبية</button>
             </div>
             <input type="file" id="import-file" accept="application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية للاستيراد">
+            <input type="file" id="import-enc-file" accept=".json,.enc,application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية المشفّرة للاسترداد">
             
             <div class="panel mt-3" style="background:#f9f6ef;border:1px solid var(--line)">
               <div class="panel-body">
@@ -463,19 +467,19 @@
     isOnline = true;
     offlineIndicator.style.display = 'none';
     // مزامنة البيانات عند العودة
-    if (window.BRCStore && typeof window.BRCStore.syncOfflineChanges === 'function') {
-      window.BRCStore.syncOfflineChanges();
+    if (window.HRCStore && typeof window.HRCStore.syncOfflineChanges === 'function') {
+      window.HRCStore.syncOfflineChanges();
     }
-    if (window.BRCUI) {
-      window.BRCUI.toast('ok', 'تم الاتصال', 'تم استعادة الاتصال بنجاح — البيانات محدثة');
+    if (window.HRCUI) {
+      window.HRCUI.toast('ok', 'تم الاتصال', 'تم استعادة الاتصال بنجاح — البيانات محدثة');
     }
   });
 
   window.addEventListener('offline', () => {
     isOnline = false;
     offlineIndicator.style.display = 'block';
-    if (window.BRCUI) {
-      window.BRCUI.toast('warn', 'انقطع الاتصال', 'أنت تعمل بدون اتصال — التغييرات تُحفظ محلياً');
+    if (window.HRCUI) {
+      window.HRCUI.toast('warn', 'انقطع الاتصال', 'أنت تعمل بدون اتصال — التغييرات تُحفظ محلياً');
     }
   });
 </script>

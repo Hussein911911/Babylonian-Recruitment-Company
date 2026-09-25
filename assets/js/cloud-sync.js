@@ -1,5 +1,5 @@
 /* ===========================================================================
- *  BRC — طبقة الكتابة والمزامنة مع Supabase (BRCSync)
+ *  HRC — طبقة الكتابة والمزامنة مع Supabase (HRCSync)
  *  ---------------------------------------------------------------------------
  *  لماذا «فرق» (diff) بدل تعديل كل دالة كتابة؟
  *    في store.js أكثر من 15 عملية كتابة (وظائف، استمارات، محاولات، إعدادات،
@@ -18,7 +18,7 @@
 (function (root) {
   'use strict';
 
-  var QUEUE_KEY = 'brc-cloud-queue';
+  var QUEUE_KEY = 'hrc-cloud-queue';
 
   /* المفتاح الطبيعي لكل جدول — عليه تُبنى المقارنة */
   var KEYS = {
@@ -77,7 +77,7 @@
     /* الإعدادات: نفس تمثيل صفوف key/value في القاعدة */
     /* نستخدم نفس تحويل الكتابة حتى تكون المقارنة على نفس التمثيل تماماً —
        أي اختلاف في التحويل هنا يعني «فرقاً وهمياً» يُطلق عملية على كل حفظ. */
-    var rules = root.BRCCloud.settingsToDb((db.settings || {}));
+    var rules = root.HRCCloud.settingsToDb((db.settings || {}));
     snap.settings.rules = normSettings('rules', rules);
     if (db.settings && db.settings.company) snap.settings.company = normSettings('company', db.settings.company);
 
@@ -95,9 +95,9 @@
 
     /* الجداول المعتادة: المفتاح الطبيعي يحدّد الإدراج/التعديل/الحذف */
     [
-      { table: 'jobs', key: function (x) { return x.code; }, conv: function (x) { return root.BRCCloud.jobToDb(x); } },
-      { table: 'applicants', key: function (x) { return x.serial; }, conv: function (x) { return root.BRCCloud.applicantToDb(x); } },
-      { table: 'job_attempts', key: function (x) { return x.serial + ':' + x.no; }, conv: function (x) { return root.BRCCloud.attemptToDb(x); } }
+      { table: 'jobs', key: function (x) { return x.code; }, conv: function (x) { return root.HRCCloud.jobToDb(x); } },
+      { table: 'applicants', key: function (x) { return x.serial; }, conv: function (x) { return root.HRCCloud.applicantToDb(x); } },
+      { table: 'job_attempts', key: function (x) { return x.serial + ':' + x.no; }, conv: function (x) { return root.HRCCloud.attemptToDb(x); } }
     ].forEach(function (spec) {
       var list = spec.table === 'jobs' ? (db.jobs || [])
         : spec.table === 'applicants' ? (db.applicants || []) : (db.attempts || []);
@@ -129,7 +129,7 @@
        إرسالها camelCase كان يكتب jsonb بشكل لا تقرأه settingsFromDb، فتُفقد
        قواعد العمل بصمت (تُحفظ لكن لا تُقرأ أبداً). */
     if (db.settings) {
-      var rules = root.BRCCloud.settingsToDb(db.settings);
+      var rules = root.HRCCloud.settingsToDb(db.settings);
       if (Object.keys(rules).length && current.settings.rules !== snapshot.settings.rules) {
         ops.push({ table: 'settings', op: 'update', key: 'rules', local: { key: 'rules', value: rules } });
       }
@@ -175,8 +175,8 @@
     if (table === 'settings') {
       /* rules تُخزَّن بمفاتيح SQL: نُمرّها على نفس التحويل المستخدم في snapshotOf */
       if (local.key === 'rules') {
-        var back = root.BRCCloud.settingsFromDb([{ key: 'rules', value: local.value }]);
-        return normSettings('rules', root.BRCCloud.settingsToDb(back));
+        var back = root.HRCCloud.settingsFromDb([{ key: 'rules', value: local.value }]);
+        return normSettings('rules', root.HRCCloud.settingsToDb(back));
       }
       return normSettings(local.key, local.value);
     }
@@ -185,12 +185,12 @@
 
   /* ------------------- تحويل عملية إلى صف قاعدة البيانات ------------------- */
   function toRow(op) {
-    var C = root.BRCCloud;
+    var C = root.HRCCloud;
     /* حصانة: الحذف لا يحمل صفاً، وأي عملية بلا local خطأ برمجي — نُبلّغ عنه
        بخطأ صريح بدل انهيار يُبتلع في مسار الخطأ فيبدو التنفيذ ناجحاً. */
     if (op.op !== 'delete' && !op.local) {
       throw Object.assign(new Error('عملية ' + op.op + ' على ' + op.table + ' بلا صف'),
-        { __brc: { op: op.op, table: op.table, code: 'BRC_NO_ROW' } });
+        { __brc: { op: op.op, table: op.table, code: 'HRC_NO_ROW' } });
     }
     if (op.table === 'jobs') return C.jobToDb(op.local);
     if (op.table === 'applicants') return C.applicantToDb(op.local);
@@ -402,7 +402,7 @@
     };
   }
 
-  root.BRCSync = {
+  root.HRCSync = {
     create: create,
     diff: diff,
     snapshotOf: snapshotOf,

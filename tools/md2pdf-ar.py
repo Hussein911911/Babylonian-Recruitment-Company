@@ -55,7 +55,7 @@ def strip_md(s: str) -> str:
 
 
 class Contract(FPDF):
-    def __init__(self):
+    def __init__(self, title_ar='عقد تصميم وتسليم نظام إلكتروني'):
         super().__init__(orientation='P', unit='mm', format='A4')
         self.set_margins(MARGIN, 16, MARGIN)
         self.set_auto_page_break(True, margin=18)
@@ -65,7 +65,9 @@ class Contract(FPDF):
         # تشكيل عربي صحيح + ترتيب ثنائي الاتجاه (يتطلب uharfbuzz)
         self.set_text_shaping(True, direction='rtl', script='Arab',
                               language='ar')
-        self.title_ar = 'عقد تصميم وتسليم نظام إلكتروني'
+        # ترويسة الصفحات الداخلية — تُمرَّر من build() لأن الأداة تُستخدم
+        # لأكثر من مستند (عقد التسليم · أوراق العرض للإدارة).
+        self.title_ar = title_ar
 
     def header(self):
         if self.page_no() == 1:
@@ -191,11 +193,41 @@ class Contract(FPDF):
                 h = max(h, n * line_h)
             return h + 1.6
 
+        # لا نبدأ جدولاً في ذيل الصفحة: الرأس وحده (أو مع صف واحد) في أسفل
+        # الورقة يُنتج جدولاً مقطوعاً يصعب قراءته على من يستلم المستند.
+        head_h = row_height(rows[0])
+        first_h = row_height(rows[1]) if len(rows) > 1 else 0
+        # جدول صغير يسع صفحة كاملة يُنقل بأكمله بدل أن يُقسَم — مهم في
+        # المستندات التعاقدية حيث الجدول وحدة معنى واحدة (مراحل، دفعات، مهل).
+        total_h = sum(row_height(r) for r in rows)
+        usable = 272 - MARGIN
+        keep_together = total_h <= usable and self.get_y() + total_h > 272
+        if keep_together or self.get_y() + head_h + first_h > 272:
+            self.add_page()
+
         for ri, cells in enumerate(rows):
             head = ri == 0
             h = row_height(cells)
             if self.get_y() + h > 272:
                 self.add_page()
+                # تكرار رأس الجدول عند الامتداد لصفحة جديدة حتى تبقى
+                # الأعمدة مفهومة بلا رجوع للصفحة السابقة.
+                if not head:
+                    hy = self.get_y()
+                    hx = PAGE_W - MARGIN
+                    self.set_font('Cairo', 'B', 9.2)
+                    self.set_fill_color(*BAND)
+                    self.set_text_color(*ACCENT)
+                    self.set_draw_color(*LINE)
+                    self.set_line_width(0.2)
+                    for i, hc in enumerate(rows[0]):
+                        hx -= widths[i]
+                        self.set_xy(hx, hy)
+                        self.multi_cell(widths[i], head_h, '', border=1, fill=True)
+                        self.set_xy(hx, hy + 0.8)
+                        self.multi_cell(widths[i], line_h, ar(strip_md(hc)),
+                                        align=Align.R)
+                    self.set_y(hy + head_h)
             y = self.get_y()
             # الرسم من اليمين لليسار
             x = PAGE_W - MARGIN
@@ -283,8 +315,14 @@ def parse(md: str):
     return out
 
 
-def render(md: str, total=None) -> Contract:
-    doc = Contract()
+def first_title(md: str, fallback: str) -> str:
+    """عنوان الترويسة = أول عنوان H1 في الملف، وإلا القيمة الافتراضية."""
+    m = re.search(r'^#\s+(.+)$', md, re.M)
+    return strip_md(m.group(1)) if m else fallback
+
+
+def render(md: str, total=None, title_ar=None) -> Contract:
+    doc = Contract(title_ar) if title_ar else Contract()
     doc.total_pages = total
     doc.add_page()
     first_h1 = True
@@ -320,15 +358,17 @@ def build(md_path: Path, pdf_path: Path):
     (alias_nb_pages لا يصلح هنا: تشكيل HarfBuzz يحوّل {nb} إلى مسارات
     فلا يبقى نصاً قابلاً للاستبدال لاحقاً.)"""
     md = md_path.read_text(encoding='utf-8')
-    n = render(md).page_no()
-    doc = render(md, total=n)
+    title = first_title(md, 'عقد تصميم وتسليم نظام إلكتروني')
+    n = render(md, title_ar=title).page_no()
+    doc = render(md, total=n, title_ar=title)
     doc.output(str(pdf_path))
     return pdf_path
 
 
 if __name__ == '__main__':
-    src = Path(sys.argv[1] if len(sys.argv) > 1
-               else 'docs/عقد-التسليم.md')
+    if len(sys.argv) < 2:
+        sys.exit('الاستعمال: md2pdf-ar.py <مصدر.md> [ناتج.pdf]')
+    src = Path(sys.argv[1])
     dst = Path(sys.argv[2] if len(sys.argv) > 2
                else src.with_suffix('.pdf'))
     p = build(src, dst)

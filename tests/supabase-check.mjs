@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — اختبار صفحة تشخيص Supabase (supabase-check.html)
+ *  HRC — اختبار صفحة تشخيص Supabase (supabase-check.html)
  *  ---------------------------------------------------------------------------
  *  لماذا بمحاكاة؟ لأن الساندبوكس لا يستطيع الوصول إلى *.supabase.co
  *  (قائمة نطاقات مسموحة)، فلا يمكن اختبار الصفحة على المشروع الحقيقي.
@@ -23,7 +23,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(join(ROOT, 'package.json'));
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const PORT = Number(process.env.BRC_TEST_PORT || 4327);
+const PORT = Number(process.env.HRC_TEST_PORT || 4327);
 const BASE = 'http://localhost:' + PORT;
 
 let pass = 0, fail = 0;
@@ -175,7 +175,7 @@ const rowsOf = (doc) => [...doc.querySelectorAll('#rows tr')].map((tr) => {
 const count = (doc, id) => Number(doc.getElementById(id).textContent);
 
 console.log('\n' + '═'.repeat(74));
-console.log('  BRC — اختبار صفحة تشخيص Supabase (بمحاكاة PostgREST)');
+console.log('  HRC — اختبار صفحة تشخيص Supabase (بمحاكاة PostgREST)');
 console.log('═'.repeat(74));
 
 try {
@@ -324,7 +324,7 @@ console.log('\n▌ فحص الجاهزية — مشروع مُعدّ بالكا�
   await runStaffCheck(w, doc);
   const stf = chipsOf(doc, 'ready-staff').join(' | ');
   check('حساب الموظف: الدخول نجح', /الدخول بحساب الموظف/.test(stf), stf.slice(0, 120));
-  check('حساب الموظف: البريد المُشتق صحيح', /admin@brc-babil\.com/.test(stf), stf.slice(0, 160));
+  check('حساب الموظف: البريد المُشتق صحيح', /admin@hrc-babil\.com/.test(stf), stf.slice(0, 160));
   check('حساب الموظف: السطر في brc.staff موجود والدور مقروء', /مرتبط بسطر في brc\.staff/.test(stf) && /admin/.test(stf), stf.slice(0, 200));
   check('حساب الموظف: الإدراج نجح', /الكتابة: إدراج وظيفة/.test(stf) && !/إدراج وظيفة[^|]*✗/.test(stf), stf.slice(0, 260));
   check('حساب الموظف: الحذف نجح (لا يبقى أثر للفحص)', /حذف الوظيفة الاختبارية/.test(stf) && /حُذفت/.test(stf), stf.slice(0, 320));

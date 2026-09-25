@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — اختبارات دخانية وظيفية (jsdom)
+ *  HRC — اختبارات دخانية وظيفية (jsdom)
  *  ---------------------------------------------------------------------------
  *  تُشغّل الصفحات فعلياً في DOM حقيقي وتتحقق من:
  *   • عدم وجود أخطاء JavaScript
@@ -69,9 +69,9 @@ async function load(file, { hash = '', search = '', waitMs = 260, session = null
     beforeParse(window) {
       /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة (انظر
          tests/fixtures/demo-seed.mjs). تُوضع قبل تنفيذ config.js. */
-      window.__BRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
+      window.__HRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
       if (!session) return;
-      const m = new Map([['brc_session_v2', JSON.stringify(session)]]);
+      const m = new Map([['hrc_session_v2', JSON.stringify(session)]]);
       Object.defineProperty(window, 'sessionStorage', {
         configurable: true,
         value: {
@@ -105,7 +105,7 @@ console.log('\n=== 1) الموقع العام (index.html) ===');
 const site = await load('index.html');
 check('لا أخطاء JavaScript في الصفحة العامة', () => site.errors.length === 0 || site.errors.join(' | '));
 check('تم تحميل مكتبة الكيو آر كود والإعدادات والمخزن', () =>
-  Boolean(site.window.BRCQR && site.window.BRC_CONFIG && site.window.BRCStore && site.window.BRCVoucher) ||
+  Boolean(site.window.HRCQR && site.window.HRC_CONFIG && site.window.HRCStore && site.window.HRCVoucher) ||
   'بعض الوحدات لم تُحمّل');
 check('الوظائف التجريبية ظهرت كبطاقات', () => {
   const cards = site.doc.querySelectorAll('#jobs-grid .job-card').length;
@@ -185,28 +185,28 @@ check('لا يوجد أي زر «ترشّح» في العرض العام', () =>
 
 /* مسار الطلب يبقى داخلياً: الموظف يسجّل الطلب (كما لو استقبله المكتب) ثم يعتمده */
 check('تسجيل طلب قيد المراجعة من المنظومة الداخلية', () => {
-  const before = site.window.BRCStore.stats().pendingForms;
-  const app = site.window.BRCStore.createApplicant({
+  const before = site.window.HRCStore.stats().pendingForms;
+  const app = site.window.HRCStore.createApplicant({
     fullName: 'اختبار آلي', phone: '07700000000', address: 'الحلة - بابل',
     requestedCode: 'HRC-1043', pending: true
   });
-  const after = site.window.BRCStore.stats().pendingForms;
+  const after = site.window.HRCStore.stats().pendingForms;
   const valid = app && app.status === 'pending' && !app.expiryDate && app.requestedCode === 'HRC-1043';
   return (after === before + 1 && valid) || 'لم يُسجَّل الطلب: ' + JSON.stringify(app);
 });
 check('قبول طلب قيد المراجعة يحوّله لاستمارة سارية بخمس محاولات', () => {
-  const apps = site.window.BRCStore.listApplicants({ q: 'اختبار آلي' });
+  const apps = site.window.HRCStore.listApplicants({ q: 'اختبار آلي' });
   if (!apps.length) return 'لا يوجد طلب للاختبار';
   const serial = apps[0].serial;
-  const res = site.window.BRCStore.approveApplicant(serial);
-  const app = site.window.BRCStore.getApplicant(serial);
-  const valid = res.ok === true && app.status === 'active' && !!app.expiryDate && site.window.BRCStore.attemptsLeft(serial) === 5;
+  const res = site.window.HRCStore.approveApplicant(serial);
+  const app = site.window.HRCStore.getApplicant(serial);
+  const valid = res.ok === true && app.status === 'active' && !!app.expiryDate && site.window.HRCStore.attemptsLeft(serial) === 5;
   return valid || 'فشل القبول: ' + JSON.stringify({ res: res, app: app && { status: app.status, expiry: app.expiryDate } });
 });
 check('رفض طلب قيد المراجعة يعلّم الطلب كمرفوض', () => {
-  const r = site.window.BRCStore.createApplicant({ fullName: 'رفض آلي', phone: '07700000009', pending: true });
-  const res = site.window.BRCStore.rejectApplicant(r.serial, 'بيانات ناقصة');
-  const app = site.window.BRCStore.getApplicant(r.serial);
+  const r = site.window.HRCStore.createApplicant({ fullName: 'رفض آلي', phone: '07700000009', pending: true });
+  const res = site.window.HRCStore.rejectApplicant(r.serial, 'بيانات ناقصة');
+  const app = site.window.HRCStore.getApplicant(r.serial);
   const valid = res.ok === true && app.status === 'rejected' && app.rejectReason === 'بيانات ناقصة';
   return valid || 'فشل الرفض: ' + JSON.stringify({ res: res, app: app && app.status });
 });
@@ -214,8 +214,8 @@ check('رفض طلب قيد المراجعة يعلّم الطلب كمرفوض'
 /* ======================= 2) قالب الاستمارة المطبوعة ======================= */
 console.log('\n=== 2) قالب الاستمارة A4 + الكيو آر كود ===');
 check('قالب الاستمارة يحتوي كل الأقسام المطلوبة', () => {
-  const app = site.window.BRCStore.getApplicant('HRC-NO-000120');
-  const html = site.window.BRCVoucher.buildHtml(app);
+  const app = site.window.HRCStore.getApplicant('HRC-NO-000120');
+  const html = site.window.HRCVoucher.buildHtml(app);
   const needed = [
     'شركة الهدف للتوظيف', 'Al-Hadaf Recruitment Company',
     '07760058007', '07715993271',
@@ -229,23 +229,23 @@ check('قالب الاستمارة يحتوي كل الأقسام المطلوب
   return missing.length === 0 || 'ناقص: ' + missing.join(' , ');
 });
 check('الاستمارة تعرض 5 صفوف محاولات بالضبط', () => {
-  const app = site.window.BRCStore.getApplicant('HRC-NO-000120');
-  const html = site.window.BRCVoucher.buildHtml(app);
+  const app = site.window.HRCStore.getApplicant('HRC-NO-000120');
+  const html = site.window.HRCVoucher.buildHtml(app);
   const rows = (html.match(/<tr>/g) || []).length - 1; // ناقص صف الترويسة
   return rows === 5 || 'عدد الصفوف: ' + rows;
 });
 check('رابط التحقق في الكيو آر كود بالصيغة المطلوبة', () => {
-  const url = site.window.BRCStore.verifyUrl('HRC-NO-000120');
+  const url = site.window.HRCStore.verifyUrl('HRC-NO-000120');
   // الرابط يتبع نطاق النشر، أو الرابط الرسمي عند العمل من ملف محلي
   return /^https?:\/\/[^/]+\/verify\?form=HRC-NO-000120&t=[0-9a-f]{8}$/.test(url) ||
-    /^https:\/\/brc-babil\.com\/verify\?form=HRC-NO-000120&t=[0-9a-f]{8}$/.test(url) || url;
+    /^https:\/\/hrc-babil\.com\/verify\?form=HRC-NO-000120&t=[0-9a-f]{8}$/.test(url) || url;
 });
 {
-  const app = site.window.BRCStore.getApplicant('HRC-NO-000119');
+  const app = site.window.HRCStore.getApplicant('HRC-NO-000119');
   const before = app.printedCount;
-  site.window.BRCVoucher.print(app);
+  site.window.HRCVoucher.print(app);
   await new Promise((r) => setTimeout(r, 260));
-  const after = site.window.BRCStore.getApplicant('HRC-NO-000119').printedCount;
+  const after = site.window.HRCStore.getApplicant('HRC-NO-000119').printedCount;
   const rootHtml = site.doc.getElementById('print-root').innerHTML;
   if (after === before + 1 && site.window.__printed > 0 && rootHtml.includes('HRC-NO-000119')) {
     ok('الطباعة تستدعي نافذة الطباعة وتزيد عدّاد الطباعة');
@@ -255,13 +255,13 @@ check('رابط التحقق في الكيو آر كود بالصيغة المط
   }
 }
 check('الاختبارات الذاتية لمولّد الكيو آر كود تنجح بالكامل', () => {
-  const r = site.window.BRCQR.selfTest();
+  const r = site.window.HRCQR.selfTest();
   return r.failed === 0 || (r.failed + ' اختبار فاشل: ' + JSON.stringify(r.results.filter((x) => !x.pass)));
 });
 
 /* ======================= 3) منطق العمل ======================= */
 console.log('\n=== 3) منطق المحاولات والحجز 24 ساعة ===');
-const S = site.window.BRCStore;
+const S = site.window.HRCStore;
 check('الحجز المؤقت يضبط الوظيفة على «محجوزة» ويحدد مهلة 24 ساعة', () => {
   const res = S.selectAttempt('HRC-NO-000118', 'HRC-1046');
   if (!res.ok) return res.error;
@@ -271,7 +271,7 @@ check('الحجز المؤقت يضبط الوظيفة على «محجوزة» �
 });
 check('رقم هاتف صاحب العمل محفوظ داخلياً ويظهر في الاستمارة المطبوعة', () => {
   const app = S.getApplicant('HRC-NO-000118');
-  const html = site.window.BRCVoucher.buildHtml(app);
+  const html = site.window.HRCVoucher.buildHtml(app);
   return html.includes(S.getJob('HRC-1046').employer.phone) || 'هاتف صاحب العمل غير ظاهر في الاستمارة';
 });
 check('رفض المرشح يعيد الوظيفة «متاحة» ويفعّل المحاولة التالية تلقائياً', () => {
@@ -339,7 +339,7 @@ check('الزائر لا يرى أي بيانات استمارة (لا رقم و
   return !leak || 'تسريب بيانات للزائر في صفحة التحقق';
 });
 check('لا يمكن للزائر تشغيل التحقق من رابط الكيو آر كود (يبقى محجوباً)', () => {
-  gate.window.BRCVerify.mount('?form=HRC-NO-000120&t=deadbeef');
+  gate.window.HRCVerify.mount('?form=HRC-NO-000120&t=deadbeef');
   const t = gate.doc.getElementById('verify-root').textContent;
   return (/موظفي الشركة والإدارة/.test(t) && !t.includes('HRC-NO-000120')) || 'البوابة لا تحمي mount()';
 });
@@ -355,12 +355,12 @@ check('بلا بصمة: تُظهر الرقم والحالة مع تقنيع ا�
     ('الاسم ظاهر بلا بصمة؟ ' + !masked);
 });
 check('بالنمط: الاسم مقنّع في الرد نفسه لا في العرض فقط', () => {
-  const r = verify.window.BRCStore.verify('HRC-NO-000120');
+  const r = verify.window.HRCStore.verify('HRC-NO-000120');
   return (r.masked === true && !r.fullName.includes('حسين') && /•/.test(r.fullName) && /•/.test(r.phone)) ||
     JSON.stringify({ masked: r.masked, fullName: r.fullName, phone: r.phone });
 });
 /* بالبصمة الصحيحة (كما في رابط الكيو آر كود) تظهر البيانات كاملة */
-const vTok = verify.window.BRCStore.token('HRC-NO-000120');
+const vTok = verify.window.HRCStore.token('HRC-NO-000120');
 const verifyTok = await load('verify.html', { search: '?form=HRC-NO-000120&t=' + vTok, session: STAFF_SESSION });
 check('بالبصمة الصحيحة: اسم الباحث يظهر كاملاً', () => {
   const t = verifyTok.doc.getElementById('verify-root').textContent;
@@ -377,11 +377,11 @@ check('تعرض كيو آر كود التحقق (SVG)', () => {
   return !!svg || 'لا يوجد SVG للكيو آر كود';
 });
 check('رقم غير موجود يعطي رسالة واضحة', () => {
-  const s2 = verify.window.BRCStore.verify('HRC-NO-999999');
+  const s2 = verify.window.HRCStore.verify('HRC-NO-999999');
   return (s2.ok === false && /لا توجد استمارة/.test(s2.error)) || JSON.stringify(s2);
 });
 check('بصمة تحقق غير مطابقة تُرفع كتحذير', () => {
-  const res = verify.window.BRCStore.verify('HRC-NO-000120', 'deadbeef');
+  const res = verify.window.HRCStore.verify('HRC-NO-000120', 'deadbeef');
   return res.tokenOk === false || 'لم يتم كشف البصمة المزيفة';
 });
 
@@ -393,7 +393,7 @@ const dash = await load('dashboard.html');
    أمنياً ولا يُخفض للاختبارات. فاختبارات الواجهة الداخلية تزرع حساباتها في
    هذا المتصفح الافتراضي وحده (كما تُزرع جلسة الموظف أعلاه)، والدخول هنا
    محلي بحت لأن jsdom بلا fetch فلا سحابة أصلاً. */
-dash.window.BRC_CONFIG.users = [
+dash.window.HRC_CONFIG.users = [
   { username: 'admin', password: 'admin123', name: 'مدير الفحص', role: 'admin', title: 'مدير عام' },
   { username: 'staff', password: 'staff123', name: 'موظف فحص', role: 'staff', title: 'موظف توظيف' }
 ];
@@ -405,12 +405,12 @@ check('دخول موظف ببيانات صحيحة', () => {
   dash.doc.getElementById('login-pass').value = 'staff123';
   dash.doc.getElementById('login-form').dispatchEvent(new dash.window.Event('submit', { bubbles: true, cancelable: true }));
   const hidden = dash.doc.getElementById('app-shell').classList.contains('hidden');
-  const user = dash.window.BRCStore.currentUser();
+  const user = dash.window.HRCStore.currentUser();
   return (!hidden && user && user.role === 'staff') || 'لم يتم الدخول';
 });
 check('كلمة مرور خاطئة تُرفض', () => {
-  const s = dash.window.BRCStore.login('staff', 'wrong');
-  dash.window.BRCStore.logout && dash.window.BRCStore.login('staff', 'staff123');
+  const s = dash.window.HRCStore.login('staff', 'wrong');
+  dash.window.HRCStore.logout && dash.window.HRCStore.login('staff', 'staff123');
   return s === null || 'قبل كلمة مرور خاطئة';
 });
 check('اللوحة المالية وسجل التدقيق مخفيان للموظف', () => {
@@ -429,7 +429,7 @@ check('جدول الاستمارات يعرض المحاولات المتبقي�
 });
 check('إصدار استمارة من اللوحة', () => {
   closeAllModals(dash.doc);
-  const before = dash.window.BRCStore.stats().forms;
+  const before = dash.window.HRCStore.stats().forms;
   dash.doc.getElementById('btn-new-app').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   const box = lastModal(dash.doc);
   if (!box) return 'لم تُفتح النافذة';
@@ -437,12 +437,12 @@ check('إصدار استمارة من اللوحة', () => {
   box.querySelector('#n-phone').value = '07722222222';
   box.querySelector('#n-address').value = 'المحاويل';
   box.querySelector('#n-save').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
-  const after = dash.window.BRCStore.stats().forms;
+  const after = dash.window.HRCStore.stats().forms;
   return after === before + 1 || ('قبل ' + before + ' بعد ' + after);
 });
 check('نموذج إضافة وظيفة يُنتج كود HRC-#### جديداً', () => {
   closeAllModals(dash.doc);
-  const before = dash.window.BRCStore.stats().totalJobs;
+  const before = dash.window.HRCStore.stats().totalJobs;
   dash.doc.getElementById('btn-new-job').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   const box = lastModal(dash.doc);
   box.querySelector('#f-title').value = 'فني تبريد';
@@ -452,32 +452,32 @@ check('نموذج إضافة وظيفة يُنتج كود HRC-#### جديداً'
   box.querySelector('#f-min').value = '600000';
   box.querySelector('#f-max').value = '800000';
   box.querySelector('#job-save').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
-  const after = dash.window.BRCStore.stats().totalJobs;
-  const newJob = dash.window.BRCStore.listJobs({}).find((j) => j.title === 'فني تبريد');
+  const after = dash.window.HRCStore.stats().totalJobs;
+  const newJob = dash.window.HRCStore.listJobs({}).find((j) => j.title === 'فني تبريد');
   return (after === before + 1 && newJob && /^HRC-\d{4}$/.test(newJob.code)) || ('عدد ' + after + ' / كود ' + (newJob && newJob.code));
 });
 check('شاشة الحجوزات تعرض الحجوزات الجارية مع العدّاد التنازلي', () => {
-  const r = dash.window.BRCStore.selectAttempt('HRC-NO-000117', 'HRC-1049') ;
+  const r = dash.window.HRCStore.selectAttempt('HRC-NO-000117', 'HRC-1049') ;
   // HRC-1049 مغلقة → نتوقع فشلاً، ثم نجرّب وظيفة متاحة
-  const avail = dash.window.BRCStore.listJobs({ status: 'available' })[0];
-  const ok = dash.window.BRCStore.selectAttempt('HRC-NO-000117', avail.code);
+  const avail = dash.window.HRCStore.listJobs({ status: 'available' })[0];
+  const ok = dash.window.HRCStore.selectAttempt('HRC-NO-000117', avail.code);
   dash.doc.querySelector('#side-nav button[data-view="holds"]').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   const list = dash.doc.getElementById('holds-list').textContent;
   const timer = dash.doc.querySelector('#holds-list [data-expiry]');
   return (ok.ok && list.includes(avail.code) && !!timer) || ('نتيجة الحجز ' + JSON.stringify(ok.error || 'ok') + ' / عدّاد ' + !!timer);
 });
 check('تثبيت نتيجة المقابلة (نجاح) يغلق الوظيفة', () => {
-  const holds = dash.window.BRCStore.pendingActions().holds;
+  const holds = dash.window.HRCStore.pendingActions().holds;
   if (!holds.length) return 'لا حجوزات لاختبارها';
   const h = holds[holds.length - 1];
-  const before = dash.window.BRCStore.getJob(h.job.code).status;
+  const before = dash.window.HRCStore.getJob(h.job.code).status;
   dash.doc.querySelector('#side-nav button[data-view="overview"]').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
-  const res = dash.window.BRCStore.setOutcome(h.serial, dash.window.BRCStore.getAttempts(h.serial).find((t) => t.jobId === h.job.id).no, 'succeeded', 'اختبار آلي');
-  const after = dash.window.BRCStore.getJob(h.job.code).status;
+  const res = dash.window.HRCStore.setOutcome(h.serial, dash.window.HRCStore.getAttempts(h.serial).find((t) => t.jobId === h.job.id).no, 'succeeded', 'اختبار آلي');
+  const after = dash.window.HRCStore.getJob(h.job.code).status;
   return (before === 'reserved' && res.ok && after === 'closed') || ('قبل ' + before + ' بعد ' + after);
 });
 check('سجل التدقيق يرصد كل العمليات بالثانية', () => {
-  const logs = dash.window.BRCStore.listAudit({});
+  const logs = dash.window.HRCStore.listAudit({});
   const shaped = logs.filter((l) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(l.ts) && l.user && l.ip && l.action);
   return (logs.length >= 5 && shaped.length === logs.length) || ('عدد السجلات ' + logs.length + ' / مطابقة ' + shaped.length);
 });
@@ -491,9 +491,9 @@ check('البحث السريع بالكود يفتح بطاقة الوظيفة',
 });
 check('صلاحية المدير تُظهر اللوحة المالية وسجل التدقيق الكامل', () => {
   closeAllModals(dash.doc);
-  dash.window.BRCStore.logout();
-  dash.window.BRCStore.login('admin', 'admin123');
-  dash.window.BRCRefresh();
+  dash.window.HRCStore.logout();
+  dash.window.HRCStore.login('admin', 'admin123');
+  dash.window.HRCRefresh();
   const fin = dash.doc.querySelector('[data-view="finance"]');
   const navVisible = !fin.classList.contains('hidden');
   fin.dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
@@ -505,8 +505,8 @@ check('صلاحية المدير تُظهر اللوحة المالية وسجل
     ('ظاهر: ' + navVisible + ' / نشط: ' + view.classList.contains('active') + ' / أعمدة: ' + bars + ' / بطاقات: ' + stats + ' / سجل: ' + auditRows);
 });
 check('اللوحة المالية تحسب المتوقع تحصيله = الاستمارات × الرسم', () => {
-  const fee = dash.window.BRCStore.settings().formFee;
-  const rows = dash.window.BRCStore.financials('', '');
+  const fee = dash.window.HRCStore.settings().formFee;
+  const rows = dash.window.HRCStore.financials('', '');
   return rows.every((r) => r.expected === r.forms * fee) || JSON.stringify(rows.map((r) => [r.forms, r.expected, fee]));
 });
 
@@ -672,7 +672,7 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
       'الإحصاءات: ' + JSON.stringify(stats);
   });
   await acheck('الزائر = طلب واحد فقط (public_jobs) ولا صلاحية كتابة', async () => {
-    const st = okPage.window.BRCStore.cloudStatus();
+    const st = okPage.window.HRCStore.cloudStatus();
     return (okPage.window.__brcMockFetchCalls === 1 && st.state === 'on' && st.role === 'public' && st.readOnly === true) ||
       JSON.stringify({ calls: okPage.window.__brcMockFetchCalls, state: st.state, role: st.role });
   });
@@ -706,7 +706,7 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
   await acheck('فشل الاتصال: «تعذّر الاتصال بقاعدة الشركة» + زر إعادة المحاولة', async () => {
     await pollUntil(() => /تعذّر الاتصال بقاعدة الشركة/.test(failPage.doc.getElementById('jobs-grid').textContent), 5000, 'رسالة الفشل');
     const retry = failPage.doc.querySelector('#jobs-grid [data-action="retry-cloud"]');
-    const st = failPage.window.BRCStore.cloudStatus();
+    const st = failPage.window.HRCStore.cloudStatus();
     return (!!retry && st.state === 'degraded') || JSON.stringify({ retry: !!retry, state: st.state });
   });
   await acheck('عند الفشل لا تُعرض وظائف المتصفح التجريبية', async () => {
@@ -720,10 +720,10 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
 console.log('\n=== 8) أدوات الموظف — التحقق من المنظومة الداخلية (بجلسة موظف) ===');
 {
   const dash = await load('dashboard.html', { session: STAFF_SESSION });
-  const DB = site.window.BRCStore.exportJson();
-  dash.window.BRCStore.importJson(DB);
-  dash.window.BRCStore.emit && dash.window.BRCStore.emit();
-  dash.window.BRCRefresh && dash.window.BRCRefresh();
+  const DB = site.window.HRCStore.exportJson();
+  dash.window.HRCStore.importJson(DB);
+  dash.window.HRCStore.emit && dash.window.HRCStore.emit();
+  dash.window.HRCRefresh && dash.window.HRCRefresh();
   await new Promise((r) => setTimeout(r, 200));
 
   check('المنظومة تُفتح بجلسة الموظف مباشرة', () => !dash.doc.getElementById('app-shell').classList.contains('hidden'));
@@ -746,23 +746,23 @@ console.log('\n=== 8) أدوات الموظف — التحقق من المنظو
     check('كيو آر كود الاستمارة مرسوم داخل النافذة', () => !!(box && box.querySelector('svg')));
     check('زر «فتح صفحة التحقق» موجود للموظف', () => !!(box && box.querySelector('#go-verify')));
     check('رابط التحقق المحلي صالح',
-      () => /verify\.html\?form=HRC-NO-000120/.test(dash.window.BRCStore.verifyLocalUrl('HRC-NO-000120')),
-      dash.window.BRCStore.verifyLocalUrl('HRC-NO-000120'));
+      () => /verify\.html\?form=HRC-NO-000120/.test(dash.window.HRCStore.verifyLocalUrl('HRC-NO-000120')),
+      dash.window.HRCStore.verifyLocalUrl('HRC-NO-000120'));
     const close = box && box.querySelector('[data-close]');
     if (close) close.dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   }
 
   /* المدير: نفس الأدوات + الصلاحيات الإدارية قائمة */
   const admin = await load('dashboard.html', { session: { username: 'admin', name: 'مدير فحص', role: 'admin', title: 'مدير عام', at: new Date().toISOString() } });
-  admin.window.BRCStore.importJson(DB);
-  admin.window.BRCStore.emit && admin.window.BRCStore.emit();
+  admin.window.HRCStore.importJson(DB);
+  admin.window.HRCStore.emit && admin.window.HRCStore.emit();
   await new Promise((r) => setTimeout(r, 150));
   check('لوحة المدير تفتح وتُظهر أدوات الإدارة (اللوحة المالية)', () => {
     const fin = admin.doc.querySelector('[data-view="finance"]');
     return (!!fin && !fin.classList.contains('hidden')) || 'زر اللوحة المالية غير ظاهر للمدير';
   });
   check('المدير يرى صفحة التحقق كموظف (نفس البوابة تُجيزه)', () => {
-    const u = admin.window.BRCStore.currentUser();
+    const u = admin.window.HRCStore.currentUser();
     return !!u && (u.role === 'admin' || u.role === 'staff');
   });
 }

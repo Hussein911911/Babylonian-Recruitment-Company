@@ -82,7 +82,7 @@ wrangler pages deploy dist --project-name babylonian-recruitment-company
 
 ---
 
-## 5) النطاق الرسمي — `brc-babil.com` غير مسجَّل بعد ⚠️
+## 5) النطاق الرسمي — `hrc-babil.com` غير مسجَّل بعد ⚠️
 
 استعلام DNS للنطاق يرجع **NXDOMAIN** (لا سجل A ولا NS — النطاق غير مسجَّل أصلاً)،
 فلا تضفه في Custom domains ولن يعمل قبل تسجيله وامتلاكه.
@@ -91,7 +91,7 @@ wrangler pages deploy dist --project-name babylonian-recruitment-company
   في `assets/js/config.js` (`verifyBase`) — فاستمارات اليوم المطبوعة تفتح دائماً.
 - `autoVerifyBase: true` يجعل الرابط المطبوع يتبع نطاق النشر تلقائياً؛ فمتى سجّلت
   النطاق وربطته في **Custom domains → Set up a custom domain**
-  (`brc-babil.com` + `www.brc-babil.com`) انتقلت الاستمارات الجديدة إليه بلا أي
+  (`hrc-babil.com` + `www.hrc-babil.com`) انتقلت الاستمارات الجديدة إليه بلا أي
   تعديل في الكود.
 - **لا تطبع استمارات على النطاق قبل تسجيله وربطه فعلاً** — وإلا صار كيو آر الورقة
   رابطاً ميتاً. والاستمارات المطبوعة على نطاق قديم تعمل ما دام النطاق يعمل؛ لا تُغلق
@@ -145,7 +145,7 @@ wrangler pages deploy dist --project-name babylonian-recruitment-company
 ## 9) بعد كل تحديث للواجهة — لا تنسَ
 
 1. `node tools/build.mjs && node tools/build.mjs --light` (لتحديث `hrc-standalone.html` و `hrc-light.html`)
-2. ارفع رقم الكاش في `sw.js` (`CACHE_NAME = 'brc-cache-v4'` → `v5` …)
+2. ارفع رقم الكاش في `sw.js` (`CACHE_NAME = 'hrc-cache-v4'` → `v5` …)
    — بدونه تبقى أجهزة الموظفين على النسخة القديمة من الكاش
 3. دفع إلى `main` → نشر تلقائي على Cloudflare Pages
 4. إن ظهرت نسخة قديمة للزائر: **Caching → Configuration → Purge Everything**
@@ -162,6 +162,6 @@ wrangler pages deploy dist --project-name babylonian-recruitment-company
 - [ ] `/dashboard` تعرض شاشة الدخول (وبجلسة موظف تفتح المنظومة)
 - [ ] `/standalone` و `/light` يفتحان الملفّين المستقلَّين
 - [ ] DevTools → Network → Header للاستجابة الأولى يحوي `x-content-type-options: nosniff`
-- [ ] الـ Service Worker عندك صار `brc-cache-v4` (DevTools → Application → Cache Storage)
+- [ ] الـ Service Worker عندك صار `hrc-cache-v4` (DevTools → Application → Cache Storage)
 - [ ] إن كانت القاعدة بلا وظائف معلنة تظهر «لا توجد وظائف معروضة حالياً» — أضِف
       الوظائف من المنظومة الداخلية (`إضافة وظيفة`) أو من SQL Editor

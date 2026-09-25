@@ -208,12 +208,12 @@ insert into brc.settings (key, value) values
       'phones',      jsonb_build_array('07760058007', '07715993271'),
       'address',     'حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي',
       'addressShort','الحلة – بابل، العراق',
-      'email',       'contact@brc-babil.com',
+      'email',       'contact@hrc-babil.com',
       'hours',       'السبت – الخميس: 9:00 صباحاً – 5:00 مساءً',
       'holiday',     'الجمعة: عطلة رسمية',
       'license',     'إجازة عمل رسمية / وزارة العمل والشؤون الاجتماعية',
       'branch',      'بابل – الحلة',
-      'verify_base', 'https://brc-babil.com/verify',
+      'verify_base', 'https://hrc-babil.com/verify',
       'disclaimer',  'ملاحظات مهمة: خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية. الشركة غير مسؤولة قانونياً وعشائياً عن الشخص المرسل وصاحب العمل.'))
 on conflict (key) do nothing;
 

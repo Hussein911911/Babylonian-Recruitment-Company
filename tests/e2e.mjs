@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — اختبار المسار الكامل بين الصفحات (End-to-End)
+ *  HRC — اختبار المسار الكامل بين الصفحات (End-to-End)
  *  ---------------------------------------------------------------------------
  *  يحاكي رحلة حقيقية كاملة ببيانات واحدة تنتقل بين الصفحات:
  *
@@ -34,7 +34,7 @@ const check = (t, cond, detail) => (cond ? ok(t) : bad(t, detail));
 /* jsdom لا يوفّر sessionStorage لأصول file:// — نزرع جلسة الموظف عبر واجهة تخزين بديلة */
 const STAFF_SESSION = { username: 'staff', name: 'موظف فحص', role: 'staff', title: 'موظف توظيف', at: new Date().toISOString() };
 function staffStorage() {
-  const m = new Map([['brc_session_v2', JSON.stringify(STAFF_SESSION)]]);
+  const m = new Map([['hrc_session_v2', JSON.stringify(STAFF_SESSION)]]);
   return {
     getItem: (k) => (m.has(String(k)) ? m.get(String(k)) : null),
     setItem: (k, v) => m.set(String(k), String(v)),
@@ -61,7 +61,7 @@ async function open(file, query, opts = {}) {
     beforeParse(w) {
       /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة
          (انظر tests/fixtures/demo-seed.mjs). قبل تنفيذ config.js. */
-      w.__BRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
+      w.__HRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
       Object.defineProperty(w, 'print', { configurable: true, writable: true, value: () => { w.__printed = (w.__printed || 0) + 1; } });
       w.__printed = 0;
       if (opts.session === 'staff') Object.defineProperty(w, 'sessionStorage', { configurable: true, value: staffStorage() });
@@ -80,7 +80,7 @@ const setVal = (w, el, v) => {
 };
 
 console.log('\n' + '═'.repeat(72));
-console.log('  BRC — اختبار المسار الكامل (من الزائر إلى التحقق والطباعة)');
+console.log('  HRC — اختبار المسار الكامل (من الزائر إلى التحقق والطباعة)');
 console.log('═'.repeat(72));
 
 /* ═══ 1) الموقع العام: الزائر يتصفّح ويحجز — بلا تقديم ولا تحقق ════════════ */
@@ -88,7 +88,7 @@ step(1, 'الموقع العام — زائر يتصفّح الوظائف ويح
 
 const site = await open('index.html');
 const W = site.w;
-const S = W.BRCStore;
+const S = W.HRCStore;
 
 const cards = site.doc.querySelectorAll('#jobs-grid .job-card').length;
 check('الوظائف المتاحة معروضة للزائر (' + cards + ' بطاقة)', cards >= 8);
@@ -157,12 +157,12 @@ check('الوظيفة المطلوبة (HRC-1042) سُجّلت مع الطلب',
 
   /* بجلسة موظف (كأنه سجّل الدخول في نفس المتصفح) */
   const dash = await open('dashboard.html', undefined, { session: 'staff' });
-  dash.w.BRCStore.importJson(DB);
-  dash.w.BRCStore.emit && dash.w.BRCStore.emit();
-  dash.w.BRCRefresh && dash.w.BRCRefresh();
+  dash.w.HRCStore.importJson(DB);
+  dash.w.HRCStore.emit && dash.w.HRCStore.emit();
+  dash.w.HRCRefresh && dash.w.HRCRefresh();
   await new Promise((r) => setTimeout(r, 200));
 
-  const logged = dash.w.BRCStore.currentUser();
+  const logged = dash.w.HRCStore.currentUser();
   check('الموظف داخل المنظومة (' + (logged ? logged.name + ' — ' + logged.role : 'فشل') + ')',
     !!logged && logged.role === 'staff' && !dash.doc.getElementById('app-shell').classList.contains('hidden'));
 
@@ -177,20 +177,20 @@ check('الوظيفة المطلوبة (HRC-1042) سُجّلت مع الطلب',
   check('زر اعتماد الطلب ظاهر للموظف', !!approveBtn);
   if (approveBtn) click(dash.w, approveBtn);
   await new Promise((r) => setTimeout(r, 180));
-  const afterApprove = dash.w.BRCStore.getApplicant(SERIAL);
+  const afterApprove = dash.w.HRCStore.getApplicant(SERIAL);
   check('بعد الاعتماد: الاستمارة صارت سارية بخمس محاولات', !!afterApprove && afterApprove.status === 'active' &&
-    dash.w.BRCStore.attemptsLeft(SERIAL) === 5, afterApprove && afterApprove.status);
+    dash.w.HRCStore.attemptsLeft(SERIAL) === 5, afterApprove && afterApprove.status);
   check('الاستمارة صالحة 30 يوماً من تاريخ الاعتماد', !!afterApprove &&
     Math.round((new Date(afterApprove.expiryDate) - new Date(afterApprove.issueDate)) / 86400000) === 30);
 
   // حجز وظيفة للاستمارة (إجراء الموظف)
-  const free = dash.w.BRCStore.listJobs({ status: 'available' }).filter((j) => j.code !== 'HRC-1042')[0];
-  const picked = dash.w.BRCStore.selectAttempt(SERIAL, free.code);
-  dash.w.BRCRefresh && dash.w.BRCRefresh();
+  const free = dash.w.HRCStore.listJobs({ status: 'available' }).filter((j) => j.code !== 'HRC-1042')[0];
+  const picked = dash.w.HRCStore.selectAttempt(SERIAL, free.code);
+  dash.w.HRCRefresh && dash.w.HRCRefresh();
   await new Promise((r) => setTimeout(r, 120));
 
   check('الحجز نجح وخصّص المحاولة #' + (picked.ok ? picked.attempt.no : '?') + ' على ' + free.code, picked.ok === true, picked.error);
-  const jobAfterPick = dash.w.BRCStore.getJob(free.code);
+  const jobAfterPick = dash.w.HRCStore.getJob(free.code);
   check('الوظيفة رُصدت «محجوزة مؤقتاً» بمهلة 24 ساعة', jobAfterPick.status === 'reserved' &&
     Math.round((new Date(jobAfterPick.holdExpiresAt) - Date.now()) / 3600000) === 24,
     jobAfterPick.status + ' / ' + jobAfterPick.holdExpiresAt);
@@ -202,22 +202,22 @@ check('الوظيفة المطلوبة (HRC-1042) سُجّلت مع الطلب',
   /* ═══ 3) رفض المرشح: الوظيفة ترجع متاحة + المحاولة التالية ═════════════ */
   step(3, 'رفض المرشح — الوظيفة ترجع «متاحة» والمحاولة التالية تُفعَّل');
 
-  const rej = dash.w.BRCStore.setOutcome(SERIAL, picked.attempt.no, 'rejected', 'لم يوافق على الدوام المسائي');
-  dash.w.BRCRefresh && dash.w.BRCRefresh();
+  const rej = dash.w.HRCStore.setOutcome(SERIAL, picked.attempt.no, 'rejected', 'لم يوافق على الدوام المسائي');
+  dash.w.HRCRefresh && dash.w.HRCRefresh();
   await new Promise((r) => setTimeout(r, 100));
 
-  const jobAfterReject = dash.w.BRCStore.getJob(free.code);
-  const nextSlot = dash.w.BRCStore.activeAttempt(SERIAL);
+  const jobAfterReject = dash.w.HRCStore.getJob(free.code);
+  const nextSlot = dash.w.HRCStore.activeAttempt(SERIAL);
   check('النتيجة سُجّلت (رفض)', rej.ok === true, rej.error);
   check('الوظيفة رجعت «متاحة» فوراً', jobAfterReject.status === 'available', jobAfterReject.status);
   check('المحاولة التالية #' + (nextSlot ? nextSlot.no : '?') + ' أصبحت الفعّالة', !!nextSlot && nextSlot.no === picked.attempt.no + 1);
-  check('الخانة المرفوضة بقيت في تاريخ الاستمارة (لا تُعاد)', dash.w.BRCStore.getAttempts(SERIAL)
+  check('الخانة المرفوضة بقيت في تاريخ الاستمارة (لا تُعاد)', dash.w.HRCStore.getAttempts(SERIAL)
     .some((t) => t.no === picked.attempt.no && t.slotStatus === 'rejected'));
-  const audit = dash.w.BRCStore.listAudit();
+  const audit = dash.w.HRCStore.listAudit();
   check('كل العمليات موثقة في سجل التدقيق (' + audit.length + ' قيداً)', audit.length >= 3 &&
     audit.some((l) => l.action.includes('رفض')));
 
-  const DB2 = dash.w.BRCStore.exportJson();
+  const DB2 = dash.w.HRCStore.exportJson();
 
   /* ═══ 4) الزائر يحاول التحقق ⇒ بوابة تمنعه ════════════════════════════ */
   step(4, 'سياسة التحقق — الزائر لا يرى أي بيانات استمارة');
@@ -225,8 +225,8 @@ check('الوظيفة المطلوبة (HRC-1042) سُجّلت مع الطلب',
   const q = '?form=' + encodeURIComponent(SERIAL) + '&t=' + TOKEN;
   const qAny = '?form=HRC-NO-000120';
   const visitor = await open('verify.html', q);
-  visitor.w.BRCStore.importJson(DB2);
-  visitor.w.BRCVerify.mount(q);            // نفس ما يفعله فتح رابط الكيو آر كود
+  visitor.w.HRCStore.importJson(DB2);
+  visitor.w.HRCVerify.mount(q);            // نفس ما يفعله فتح رابط الكيو آر كود
   await new Promise((r) => setTimeout(r, 150));
   const vGate = visitor.doc.getElementById('verify-root').textContent;
   check('الزائر يرى بوابة «خاص بموظفي الشركة والإدارة»', /موظفي الشركة والإدارة/.test(vGate));
@@ -241,8 +241,8 @@ check('الوظيفة المطلوبة (HRC-1042) سُجّلت مع الطلب',
   step(5, 'صفحة التحقق — الموظف يفحص الاستمارة من رابط الكيو آر كود');
 
   const ver = await open('verify.html', q, { session: 'staff' });
-  ver.w.BRCStore.importJson(DB2);          // نفس قاعدة البيانات (محاكاة نفس المتصفح)
-  ver.w.BRCVerify.mount(q);                // إعادة العرض من رابط الكيو آر كود
+  ver.w.HRCStore.importJson(DB2);          // نفس قاعدة البيانات (محاكاة نفس المتصفح)
+  ver.w.HRCVerify.mount(q);                // إعادة العرض من رابط الكيو آر كود
   await new Promise((r) => setTimeout(r, 150));
   const vtext = ver.doc.body.textContent;
   check('الاسم والبصمة يظهران في صفحة التحقق', vtext.includes('علي حسن كاظم الفتلاوي'));
@@ -258,8 +258,8 @@ check('الوظيفة المطلوبة (HRC-1042) سُجّلت مع الطلب',
 
   const qf = '?form=' + encodeURIComponent(SERIAL) + '&t=deadbeef';
   const fake = await open('verify.html', qf, { session: 'staff' });
-  fake.w.BRCStore.importJson(DB2);
-  fake.w.BRCVerify.mount(qf);              // رابط ببصمة مزيفة
+  fake.w.HRCStore.importJson(DB2);
+  fake.w.HRCVerify.mount(qf);              // رابط ببصمة مزيفة
   await new Promise((r) => setTimeout(r, 150));
   const ftext = fake.doc.body.textContent;
   check('تحذير التلاعب ظاهر للبصمة المزيفة', /تحذير|غير مطابق|تلاعب|مزيفة/.test(ftext));
@@ -269,11 +269,11 @@ check('الوظيفة المطلوبة (HRC-1042) سُجّلت مع الطلب',
   step(7, 'الطباعة — استمارة A4 كاملة بالكيو آر كود (من المنظومة)');
 
   const ver2 = await open('verify.html', q, { session: 'staff' });
-  ver2.w.BRCStore.importJson(DB2);
-  ver2.w.BRCVerify.mount(q);
+  ver2.w.HRCStore.importJson(DB2);
+  ver2.w.HRCVerify.mount(q);
   await new Promise((r) => setTimeout(r, 120));
-  const appForPrint = ver2.w.BRCStore.getApplicant(SERIAL);
-  ver2.w.BRCVoucher.print(appForPrint, ver2.w.BRCStore.getAttempts(SERIAL));
+  const appForPrint = ver2.w.HRCStore.getApplicant(SERIAL);
+  ver2.w.HRCVoucher.print(appForPrint, ver2.w.HRCStore.getAttempts(SERIAL));
   await new Promise((r) => setTimeout(r, 260));
   const printHtml = ver2.doc.getElementById('print-root').innerHTML;
 
@@ -292,13 +292,13 @@ check('الوظيفة المطلوبة (HRC-1042) سُجّلت مع الطلب',
   check('الاستمارة المطبوعة تحوي كل عناصر A4 (' + (must.length - missing.length) + '/' + must.length + ')', missing.length === 0, missing.join(' · '));
   check('الورقة المطبوعة نظيفة بلا علامة مائية', !/v-watermark|brick-pattern/.test(printHtml), 'ما زالت العلامة المائية تُدرج في الطباعة');
   check('نافذة الطباعة استُدعيت فعلاً', ver2.w.__printed > 0, 'عدد الاستدعاءات ' + ver2.w.__printed);
-  check('الطباعة سُجّلت في عدّاد الاستمارة', ver2.w.BRCStore.getApplicant(SERIAL).printedCount > 0);
+  check('الطباعة سُجّلت في عدّاد الاستمارة', ver2.w.HRCStore.getApplicant(SERIAL).printedCount > 0);
 
   /* ═══ 8) الملف المستقل: مسار التحقق بجلسة الموظف ═══════════════════════ */
   step(8, 'الملف المستقل — التحقق بالمسار الهاشي والتنقل (بجلسة موظف)');
 
   const solo = await open('hrc-standalone.html', '#!verify?form=' + encodeURIComponent(SERIAL) + '&t=' + TOKEN, { session: 'staff' });
-  solo.w.BRCStore.importJson(DB2);
+  solo.w.HRCStore.importJson(DB2);
   solo.w.dispatchEvent(new solo.w.Event('hashchange'));   // محاكاة فتح الرابط من الكيو آر كود
   await new Promise((r) => setTimeout(r, 400));
   const stext = solo.doc.body.textContent;

@@ -57,19 +57,19 @@ users: []              // ← config.js: لا حسابات في الكود إط�
 ```sql
 insert into brc.staff (auth_id, username, full_name, role, job_title, phone)
 select id, 'admin', 'المدير العام', 'admin', 'الإدارة العامة', '07760058007'
-  from auth.users where email = 'admin@brc-babil.com'
+  from auth.users where email = 'admin@hrc-babil.com'
 on conflict (username) do update set auth_id = excluded.auth_id;
 ```
 
 اسم المستخدم في الدخول هو ما تكتبه في عمود `username` — والبريد داخل القاعدة
-يُشتقّ منه تلقائياً (`admin` → `admin@brc-babil.com`)، فلا تظهر بريد أي موظف في الكود.
+يُشتقّ منه تلقائياً (`admin` → `admin@hrc-babil.com`)، فلا تظهر بريد أي موظف في الكود.
 
 ### ب) إدخال الوظائف الحقيقية
 إن ظهرت في الموقع العام «لا توجد وظائف معروضة حالياً» فالقاعدة بلا وظائف معلنة
 بعد — أضِفها من المنظومة الداخلية (`إضافة وظيفة`) أو من SQL Editor.
 
 ### ج) تسجيل النطاق الرسمي
-`brc-babil.com` غير مسجَّل (DNS يرجع NXDOMAIN) — سجّله واربطه في Cloudflare Pages
+`hrc-babil.com` غير مسجَّل (DNS يرجع NXDOMAIN) — سجّله واربطه في Cloudflare Pages
 (Custom domains) قبل طباعة أي استمارة عليه. رابط الكيو آر الاحتياطي حالياً هو نطاق
 Pages الفعلي (`verifyBase` في `config.js`).
 
@@ -90,7 +90,7 @@ Pages الفعلي (`verifyBase` في `config.js`).
 1. الدخول بحسابك الرسمي.
 2. سطرك في `brc.staff` موجود والدور مقروء.
 3. قراءة قواعد العمل والوظائف وسجل التدقيق.
-4. **كتابة فعلية:** إنشاء وظيفة اختبارية (`BRC-TEST-…`) ثم قراءتها ثم **حذفها فوراً**.
+4. **كتابة فعلية:** إنشاء وظيفة اختبارية (`HRC-TEST-…`) ثم قراءتها ثم **حذفها فوراً**.
 
 لو ظهرت كلها ✓ سترى حرفياً: **«جاهز للتسليم ✓»**.
 ولو فشل شيء، تخبرك الصفحة بالسبب ورمز الخطأ (مثل `42501`) والملف الذي فيه الحل.

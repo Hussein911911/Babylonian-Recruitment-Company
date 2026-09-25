@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — اختبار النسخ الاحتياطي المجدول وأزراره (End-to-End عبر HTTP)
+ *  HRC — اختبار النسخ الاحتياطي المجدول وأزراره (End-to-End عبر HTTP)
  *  ---------------------------------------------------------------------------
  *  لماذا عبر خادم HTTP وليس fromFile؟
  *    النسخ الاحتياطي يعتمد على localStorage، والمتصفح (و jsdom) لا يوفّران
@@ -30,7 +30,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(join(ROOT, 'package.json'));
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const PORT = Number(process.env.BRC_TEST_PORT || 4319);
+const PORT = Number(process.env.HRC_TEST_PORT || 4319);
 const BASE = 'http://localhost:' + PORT;
 
 let pass = 0, fail = 0;
@@ -72,7 +72,7 @@ async function openDashboard() {
     beforeParse(window) {
       /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة
          (انظر tests/fixtures/demo-seed.mjs). قبل تنفيذ config.js. */
-      window.__BRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
+      window.__HRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
     },
     runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true, virtualConsole: vc
   });
@@ -83,18 +83,18 @@ async function openDashboard() {
 }
 
 console.log('\n' + '═'.repeat(74));
-console.log('  BRC — اختبار النسخ الاحتياطي المجدول (المتجر + الواجهة + الجدولة)');
+console.log('  HRC — اختبار النسخ الاحتياطي المجدول (المتجر + الواجهة + الجدولة)');
 console.log('═'.repeat(74));
 
 try {
   await waitForServer();
   const { w, doc, errors, click } = await openDashboard();
-  const S = w.BRCStore;
-  const UI = w.BRCUI;
+  const S = w.HRCStore;
+  const UI = w.HRCUI;
   /* حساب مدير fixture محلي: الإنتاج أغلق الدخول المحلي نهائياً (users: [] و
      enforceAuth: true — وهذا صحيح ولا يُخفض). jsdom بلا fetch فالوضع هنا محلي
      بحت، والاختبار يختبر النسخ الاحتياطي لا المصادقة — فنزرع حسابه الخاص. */
-  w.BRC_CONFIG.users = [
+  w.HRC_CONFIG.users = [
     { username: 'admin', password: 'admin123', name: 'مدير الفحص', role: 'admin', title: 'مدير عام' }
   ];
   const modalOpen = () => !!doc.querySelector('#modal-root .modal');
@@ -130,7 +130,7 @@ try {
 
   step(1, 'سلامة التحميل والدخول بصلاحية المدير');
   check('لا أخطاء JavaScript عند تحميل dashboard.html', errors.length === 0, errors.join(' | '));
-  check('BRCStore يوفّر دوال النسخ الاحتياطي', ['getScheduledBackups', 'saveScheduledBackup', 'deleteScheduledBackup',
+  check('HRCStore يوفّر دوال النسخ الاحتياطي', ['getScheduledBackups', 'saveScheduledBackup', 'deleteScheduledBackup',
     'restoreScheduledBackup', 'exportScheduledBackup', 'getAutoSchedule', 'saveAutoSchedule',
     'clearAutoSchedule', 'checkAutoBackup'].every((k) => typeof S[k] === 'function'));
   check('localStorage متاح (أصل http حقيقي — شرط عمل النسخ الاحتياطي)', !!w.localStorage);
@@ -145,7 +145,7 @@ try {
   check('عرض «الإعدادات والنسخ» نشِط', doc.getElementById('view-settings').classList.contains('active'));
 
   step(2, 'مستوى المتجر — الحفظ والقراءة والحذف والتصدير والاستعادة');
-  w.localStorage.removeItem('brc-scheduled-backups');
+  w.localStorage.removeItem('hrc-scheduled-backups');
   const b1 = S.saveScheduledBackup('نسخة الفحص الأولى', null);
   check('saveScheduledBackup يُرجع نسخة بمعرّف وبيانات', !!b1 && !!b1.id && !!b1.data && b1.data.jobs.length > 0, JSON.stringify(b1 && Object.keys(b1)));
   check('النسخة حُفظت في localStorage فعلاً', S.getScheduledBackups().length === 1);
@@ -191,7 +191,7 @@ try {
   check('الاستعادة الجزئية لا تكرّر المحاولات', new Set(attemptKeys).size === attemptKeys.length);
 
   step(3, 'أمان مساحة التخزين — الحد الأقصى 20 نسخة');
-  w.localStorage.removeItem('brc-scheduled-backups');
+  w.localStorage.removeItem('hrc-scheduled-backups');
   for (let i = 0; i < 25; i++) S.saveScheduledBackup('نسخة ' + i, null);
   const kept = S.getScheduledBackups();
   check('لا يُحتفظ بأكثر من 20 نسخة (حماية localStorage)', kept.length === 20, kept.length + ' نسخة');
@@ -199,9 +199,9 @@ try {
   check('listBackupMeta تُرجع بيانات وصفية بلا حمولة ثقيلة', S.listBackupMeta().every((m) => m.data === undefined && m.size > 0));
 
   step(4, 'محرّك الجدولة التلقائية — نسخة واحدة لكل (يوم + وقت)');
-  w.localStorage.removeItem('brc-scheduled-backups');
-  w.localStorage.removeItem('brc-auto-backup-schedule');
-  w.localStorage.removeItem('brc-auto-backup-last-run');
+  w.localStorage.removeItem('hrc-scheduled-backups');
+  w.localStorage.removeItem('hrc-auto-backup-schedule');
+  w.localStorage.removeItem('hrc-auto-backup-last-run');
   check('checkAutoBackup بلا جدولة = null', S.checkAutoBackup() === null);
   const now = new Date();
   /* وقت ثابت (12:30) حتى تكون النتيجة مستقلة عن ساعة تشغيل الاختبار */
@@ -219,8 +219,8 @@ try {
   /* سيناريو الالتقاط الفائت الحقيقي: جدولة جديدة لم تُنفَّذ قط (08:00)
      ثم تُفتح اللوحة متأخرة (23:59) — يجب أن تُنشأ النسخة الفائتة مرة واحدة.
      (الفحص السابق كان يتحقق فقط من «عدم التكرار» ولا يثبت الالتقاط.) */
-  w.localStorage.removeItem('brc-scheduled-backups');
-  w.localStorage.removeItem('brc-auto-backup-last-run');
+  w.localStorage.removeItem('hrc-scheduled-backups');
+  w.localStorage.removeItem('hrc-auto-backup-last-run');
   S.saveAutoSchedule([now.getDay()], '08:00');
   check('قبل وقت الجدولة (07:59) لا نسخة', S.checkAutoBackup(at(0, 7, 59)) === null);
   const late = S.checkAutoBackup(at(0, 23, 59));
@@ -235,9 +235,9 @@ try {
   check('clearAutoSchedule يمسح الجدولة وآخر تنفيذ', S.clearAutoSchedule() === true && !S.getAutoSchedule() && !S.lastAutoRun());
 
   step(5, 'الواجهة — كل أزرار النسخ الاحتياطي تعمل بالنقر');
-  w.localStorage.removeItem('brc-scheduled-backups');
-  w.localStorage.removeItem('brc-auto-backup-schedule');
-  w.localStorage.removeItem('brc-auto-backup-last-run');
+  w.localStorage.removeItem('hrc-scheduled-backups');
+  w.localStorage.removeItem('hrc-auto-backup-schedule');
+  w.localStorage.removeItem('hrc-auto-backup-last-run');
   S.emit(); await wait(200);
 
   click(doc.getElementById('btn-quick-backup')); await wait(300);
@@ -286,7 +286,7 @@ try {
 
   click(doc.getElementById('btn-disable-schedule')); await wait(250);
   click(lastModal().querySelector('[data-ok]')); await wait(350);
-  check('زر «إيقاف الجدولة» أوقف الجدولة', !S.getAutoSchedule() && !w.localStorage.getItem('brc-auto-backup-schedule'));
+  check('زر «إيقاف الجدولة» أوقف الجدولة', !S.getAutoSchedule() && !w.localStorage.getItem('hrc-auto-backup-schedule'));
   check('حالة اللوحة رجعت «لم يتم تفعيل الجدولة بعد»', /لم يتم تفعيل/.test(txt('schedule-status')), txt('schedule-status'));
 
   step(6, 'ثبات الربط — الأزرار تعمل بعد إعادة الرسم والتنقل');
@@ -319,15 +319,15 @@ try {
   // (أ) تصدير JSON الكامل
   click(doc.getElementById('btn-export')); await wait(300);
   check('زر «تصدير JSON» أنتج ملف تنزيل فعلاً', downloads.length === 1, downloads.length + ' تنزيل');
-  check('اسم ملف التصدير بالصيغة brc-backup-YYYY-MM-DD.json',
-    /^brc-backup-\d{4}-\d{2}-\d{2}\.json$/.test(downloads[0] ? downloads[0].name : ''), downloads[0] && downloads[0].name);
+  check('اسم ملف التصدير بالصيغة hrc-backup-YYYY-MM-DD.json',
+    /^hrc-backup-\d{4}-\d{2}-\d{2}\.json$/.test(downloads[0] ? downloads[0].name : ''), downloads[0] && downloads[0].name);
 
   // (ب) استيراد نسخة صالحة
   const imf = doc.getElementById('import-file');
   check('عنصر اختيار ملف الاستيراد موجود', !!imf);
   const snapshot = S.exportJson();
   const trimmed = JSON.parse(snapshot); trimmed.jobs = trimmed.jobs.slice(0, 2);
-  setFile(imf, 'brc-backup.json', JSON.stringify(trimmed)); await wait(600);
+  setFile(imf, 'hrc-backup.json', JSON.stringify(trimmed)); await wait(600);
   check('زر «استيراد نسخة» استورد البيانات فعلاً', S.db().jobs.length === 2, S.db().jobs.length + ' مقابل 2');
   check('الاستيراد سُجّل في سجل التدقيق', S.listAudit({}).some((l) => /استيراد/.test(l.action)));
 
@@ -337,7 +337,7 @@ try {
   check('ملف غير صالح لا يمسح البيانات (فشل آمن)', JSON.stringify(S.db()) === beforeBad);
 
   // (د) استعادة البيانات الأصلية عبر الاستيراد
-  setFile(imf, 'brc-backup.json', snapshot); await wait(600);
+  setFile(imf, 'hrc-backup.json', snapshot); await wait(600);
   check('استعادة البيانات الأصلية عبر الاستيراد نجحت', S.db().jobs.length === jobsNow, S.db().jobs.length + ' مقابل ' + jobsNow);
 
   // (هـ) تشغيل قواعد الحجز التلقائي
@@ -378,6 +378,171 @@ try {
     check('النافذة أُغلقت بعد التأكيد', !modalOpen());
   }
   check('لا أخطاء JavaScript في كل خطوات الأزرار المكمّلة', errors.length === 0, errors.join(' | '));
+
+  /* ======================================================================
+   *  الخطوة 9 — النسخة المشفّرة: تصدير ← استرداد (دورة كاملة)
+   *  ----------------------------------------------------------------------
+   *  هذا هو الاختبار الذي كان غائباً: الكود كان يُشفّر بلا أي طريق للعودة.
+   *  نتحقق أن الملف المُنتَج على الهاتف/اللابتوب يُفكّ فعلاً بكلمة المرور
+   *  الصحيحة، ويُرفض بالخاطئة، ويعتمده النظام بعد التأكيد.
+   * ====================================================================== */
+  step(9, 'النسخة المشفّرة — تصدير ثم استرداد واعتماد');
+
+  /* jsdom لا يُعرّض WebCrypto على window: نجسره من Node (نفس الواجهة). */
+  if (!w.crypto || !w.crypto.subtle) {
+    const { webcrypto } = await import('node:crypto');
+    Object.defineProperty(w, 'crypto', { value: webcrypto, configurable: true });
+  }
+  /* jsdom لا يُعرّض TextEncoder/TextDecoder على window رغم توفّرهما في كل
+     متصفح حديث — بدون الجسر يفشل التشفير باستثناء وهمي لا وجود له إنتاجاً. */
+  if (typeof w.TextEncoder === 'undefined') {
+    Object.defineProperty(w, 'TextEncoder', { value: TextEncoder, configurable: true });
+    Object.defineProperty(w, 'TextDecoder', { value: TextDecoder, configurable: true });
+  }
+  check('WebCrypto متاح للصفحة (شرط التشفير وفكّه)', !!(w.crypto && w.crypto.subtle));
+  check('TextEncoder/TextDecoder متاحان للصفحة', typeof w.TextEncoder === 'function' && typeof w.TextDecoder === 'function');
+
+  /* جسر prompt: jsdom يرمي «Not implemented» فتفشل كلمة المرور بصمت */
+  const prompts = [];
+  let promptQueue = [];
+  w.prompt = function (msg) { prompts.push(msg); return promptQueue.length ? promptQueue.shift() : null; };
+
+  const encBtn = doc.getElementById('btn-export-encrypted');
+  const encImpBtn = doc.getElementById('btn-import-encrypted');
+  const encImpFile = doc.getElementById('import-enc-file');
+  check('زر «نسخة مشفّرة للابتوب» موجود', !!encBtn);
+  check('زر «استرداد نسخة مشفّرة» موجود', !!encImpBtn);
+  check('حقل ملف الاسترداد المشفّر موجود', !!encImpFile);
+
+  const PW = 'كلمة-مرور-قوية-2026';
+  if (encBtn && encImpBtn && encImpFile) {
+    // (أ) التصدير المشفّر يُنتج ملفاً فعلاً
+    downloads.length = 0;
+    promptQueue = [PW, PW];
+    click(encBtn);
+    await wait(1500);
+    check('زر التصدير المشفّر طلب كلمة المرور مرتين (تأكيد)', prompts.length === 2, prompts.length + '');
+    check('التصدير المشفّر أنتج ملف تنزيل', downloads.length === 1, JSON.stringify(downloads));
+    check('اسم الملف المشفّر بالصيغة HRC-backup-YYYY-MM-DD.brc.enc.json',
+      /^HRC-backup-\d{4}-\d{2}-\d{2}\.brc\.enc\.json$/.test((downloads[0] || {}).name || ''), (downloads[0] || {}).name);
+
+    // (ب) نُنتج نفس الحزمة عبر WebCrypto لنملك محتواها نصّاً (الـ blob غير مقروء في jsdom)
+    const plain = S.exportJson();
+    const encPkg = await (async () => {
+      const enc = new TextEncoder();
+      const salt = w.crypto.getRandomValues(new Uint8Array(16));
+      const iv = w.crypto.getRandomValues(new Uint8Array(12));
+      const base = await w.crypto.subtle.importKey('raw', enc.encode(PW), 'PBKDF2', false, ['deriveKey']);
+      const key = await w.crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' },
+        base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+      const buf = await w.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plain));
+      const b64 = (x) => Buffer.from(new Uint8Array(x)).toString('base64');
+      return JSON.stringify({ format: 'HRC-ENCRYPTED-BACKUP-v1', algorithm: 'AES-256-GCM',
+        kdf: 'PBKDF2-SHA-256', iterations: 250000, salt: b64(salt), iv: b64(iv), data: b64(buf) });
+    })();
+    const pkgObj = JSON.parse(encPkg);
+    check('الحزمة المشفّرة تحمل ترويسة HRC-ENCRYPTED-BACKUP-v1', pkgObj.format === 'HRC-ENCRYPTED-BACKUP-v1');
+    check('الحزمة لا تحتوي كلمة المرور نصّاً', encPkg.indexOf(PW) < 0);
+    check('الحزمة لا تكشف بيانات النظام نصّاً', !/HRC-NO|applicants/.test(encPkg));
+
+    // (ج) كلمة مرور خاطئة تُرفض ولا تمس البيانات
+    const beforeWrong = JSON.stringify(S.db());
+    promptQueue = ['كلمة-مرور-خاطئة-تماماً'];
+    setFile(encImpFile, 'HRC-backup.brc.enc.json', encPkg);
+    await wait(2000);
+    check('كلمة المرور الخاطئة لا تُغيّر البيانات', JSON.stringify(S.db()) === beforeWrong);
+    check('كلمة المرور الخاطئة لم تفتح نافذة اعتماد', !modalOpen());
+
+    // (د) إلغاء كلمة المرور لا يفعل شيئاً
+    promptQueue = [];
+    setFile(encImpFile, 'HRC-backup.brc.enc.json', encPkg);
+    await wait(800);
+    check('إلغاء إدخال كلمة المرور لا يغيّر البيانات', JSON.stringify(S.db()) === beforeWrong);
+
+    // (هـ) ملف مشفّر في زر الاستيراد العادي: يُوجَّه ولا يُفسد البيانات
+    setFile(imf, 'HRC-backup.brc.enc.json', encPkg);
+    await wait(600);
+    check('الملف المشفّر في زر الاستيراد العادي لا يمسح البيانات', JSON.stringify(S.db()) === beforeWrong);
+
+    // (و) كلمة المرور الصحيحة: فكّ + نافذة تأكيد + اعتماد فعلي
+    S.createJob({ title: 'وظيفة تُمحى بالاسترداد', region: 'الحلة', salaryMin: 1, salaryMax: 2, shift: 'صباحي' });
+    await wait(200);
+    const jobsBeforeRestore = JSON.parse(plain).jobs.length;
+    check('أُضيفت وظيفة ليست في النسخة المشفّرة', S.db().jobs.length === jobsBeforeRestore + 1, S.db().jobs.length + '');
+
+    const backupsBefore = S.listBackupMeta().length;
+    promptQueue = [PW];
+    setFile(encImpFile, 'HRC-backup.brc.enc.json', encPkg);
+    await wait(2500);
+    const okEnc = lastModal() && lastModal().querySelector('[data-ok]');
+    check('فكّ التشفير نجح وظهرت نافذة الاعتماد', !!okEnc);
+    if (okEnc) {
+      const msg = lastModal().textContent || '';
+      check('نافذة الاعتماد تعرض عدد الوظائف والاستمارات', /\d+\s*وظيفة/.test(msg) && /\d+\s*استمارة/.test(msg));
+      click(okEnc);
+      await wait(1200);
+      check('النظام اعتمد النسخة المشفّرة (الوظيفة الزائدة اختفت)',
+        S.db().jobs.length === jobsBeforeRestore, S.db().jobs.length + ' مقابل ' + jobsBeforeRestore);
+      check('حُفظت نسخة أمان قبل الاسترداد', S.listBackupMeta().length > backupsBefore &&
+        S.listBackupMeta().some((b) => /قبل استرداد نسخة مشفّرة/.test(b.name)));
+      check('الاسترداد سُجّل في سجل التدقيق', S.listAudit({}).some((l) => /استيراد/.test(l.action)));
+      check('النافذة أُغلقت بعد الاعتماد', !modalOpen());
+    }
+    check('لا أخطاء JavaScript في دورة النسخة المشفّرة', errors.length === 0, errors.join(' | '));
+  }
+
+  /* ======================================================================
+   *  الخطوة 10 — فلاتر اللوحة المالية: اليوم / أمس / الكل
+   * ====================================================================== */
+  step(10, 'اللوحة المالية — فلتر «اليوم» و«أمس»');
+  click(doc.querySelector('#side-nav button[data-view="finance"]'));
+  await wait(400);
+  const btnToday = doc.getElementById('btn-fin-today');
+  const btnYest = doc.getElementById('btn-fin-yesterday');
+  const btnAll = doc.getElementById('btn-fin-reset');
+  const fFrom = doc.getElementById('fin-from');
+  const fTo = doc.getElementById('fin-to');
+  check('زر «اليوم» موجود في اللوحة المالية', !!btnToday);
+  check('زر «أمس» موجود في اللوحة المالية', !!btnYest);
+  check('زر «الكل» ما زال موجوداً', !!btnAll);
+
+  if (btnToday && btnYest && btnAll && fFrom && fTo) {
+    const d = new Date();
+    const p2 = (n) => String(n).padStart(2, '0');
+    const ymd = (x) => x.getFullYear() + '-' + p2(x.getMonth() + 1) + '-' + p2(x.getDate());
+    const today = ymd(d);
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const yesterday = ymd(y);
+
+    click(btnToday); await wait(400);
+    check('«اليوم» يملأ الحقلين بتاريخ اليوم', fFrom.value === today && fTo.value === today, fFrom.value + ' → ' + fTo.value);
+    const todayRows = S.financials(today, today);
+    const shownToday = S.financialTotals(today, today);
+    check('نطاق «اليوم» يساوي مجموع صفوفه',
+      shownToday.forms === todayRows.reduce((t, r) => t + r.forms, 0));
+
+    click(btnYest); await wait(400);
+    check('«أمس» يملأ الحقلين بتاريخ الأمس', fFrom.value === yesterday && fTo.value === yesterday, fFrom.value + ' → ' + fTo.value);
+    check('«أمس» تاريخ سابق فعلاً لليوم', yesterday < today, yesterday + ' مقابل ' + today);
+
+    click(btnAll); await wait(400);
+    check('«الكل» يُفرغ الحقلين', fFrom.value === '' && fTo.value === '');
+    const all = S.financialTotals('', '');
+    const tot = S.financialTotals(today, today);
+    check('مجموع «الكل» ≥ مجموع «اليوم» (الفلتر يُضيّق فعلاً)', all.forms >= tot.forms, all.forms + ' مقابل ' + tot.forms);
+
+    /* الاستمارات قيد الطلب (بلا تاريخ إصدار) يجب ألا تُحتسب في يوم محدّد */
+    const pendingCount = S.db().applicants.filter((a) => !a.issueDate).length;
+    if (pendingCount > 0) {
+      const wide = S.financialTotals('2000-01-01', '2999-12-31');
+      check('الاستمارات بلا تاريخ إصدار لا تتسرّب إلى نطاق مؤرَّخ',
+        wide.forms === S.db().applicants.filter((a) => !!a.issueDate).length,
+        wide.forms + ' مقابل ' + S.db().applicants.filter((a) => !!a.issueDate).length);
+    } else {
+      ok('لا استمارات بلا تاريخ إصدار في البذرة (الفحص غير منطبق)');
+    }
+    check('لا أخطاء JavaScript في فلاتر اللوحة المالية', errors.length === 0, errors.join(' | '));
+  }
 
   w.close && w.close();
 } catch (e) {

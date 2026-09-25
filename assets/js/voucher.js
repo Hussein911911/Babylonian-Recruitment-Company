@@ -1,14 +1,14 @@
 /* ===========================================================================
- *  BRC — قالب الاستمارة المطبوعة (A4) مع كيو آر كود التحقق
+ *  HRC — قالب الاستمارة المطبوعة (A4) مع كيو آر كود التحقق
  *  ---------------------------------------------------------------------------
  *  تُبنى الاستمارة ديناميكياً من بيانات الباحث والمحاولات الخمس، ويُولَّد
  *  الكيو آر كود محلياً (بدون إنترنت) لرابط التحقق الرسمي.
  * =========================================================================== */
 (function (root) {
   'use strict';
-  var CFG = root.BRC_CONFIG;
-  var UI = root.BRCUI;
-  var Store = root.BRCStore;
+  var CFG = root.HRC_CONFIG;
+  var UI = root.HRCUI;
+  var Store = root.HRCStore;
 
   var DISCLAIMER = 'ملاحظات مهمة: خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية. ' +
     'الشركة غير مسؤولة قانونياً وعشائياً عن الشخص المرسل وصاحب العمل.';
@@ -21,8 +21,8 @@
 
   function qrSvg(text, size) {
     try {
-      var model = root.BRCQR.encode(text, 'M');
-      return root.BRCQR.renderSVG(model, { margin: 1, size: size || 132, dark: '#000000', light: '#ffffff' });
+      var model = root.HRCQR.encode(text, 'M');
+      return root.HRCQR.renderSVG(model, { margin: 1, size: size || 132, dark: '#000000', light: '#ffffff' });
     } catch (e) {
       return '<div class="tiny">تعذّر توليد الكيو آر كود</div>';
     }
@@ -58,7 +58,7 @@
         '<svg class="v-logo" viewBox="0 0 120 120" role="img" aria-label="شعار الشركة"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>' +
         '<div class="v-titles">' +
           '<h1>' + UI.esc(CFG.company.nameAr) + '</h1>' +
-          '<div class="en">' + UI.esc(CFG.company.nameEn) + ' — BRC</div>' +
+          '<div class="en">' + UI.esc(CFG.company.nameEn) + ' — HRC</div>' +
           '<div class="meta">' + UI.esc(CFG.company.legalName) + ' · ' + UI.esc(CFG.company.address) + '</div>' +
         '</div>' +
         '<div class="v-phone-box">' +
@@ -155,9 +155,9 @@
       body + '</div>';
   }
 
-  root.BRCVoucher = {
+  root.HRCVoucher = {
     buildHtml: buildHtml, print: print, preview: preview,
     DISCLAIMER: DISCLAIMER, qrSvg: qrSvg, verifyUrl: function (s) { return Store.verifyUrl(s); }
   };
-  if (typeof module === 'object' && module.exports) module.exports = root.BRCVoucher;
+  if (typeof module === 'object' && module.exports) module.exports = root.HRCVoucher;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1,5 +1,5 @@
 /* ===========================================================================
- *  BRC — محرّك البيانات ومنطق العمل
+ *  HRC — محرّك البيانات ومنطق العمل
  *  ---------------------------------------------------------------------------
  *  نسختان في ملف واحد — والفرق بينهما فرق ثقة لا فرق شيفرة:
  *
@@ -29,9 +29,9 @@
 (function (root) {
   'use strict';
 
-  var CFG = root.BRC_CONFIG;
-  var STORAGE_KEY = 'brc_db_v2';
-  var SESSION_KEY = 'brc_session_v2';
+  var CFG = root.HRC_CONFIG;
+  var STORAGE_KEY = 'hrc_db_v2';
+  var SESSION_KEY = 'hrc_session_v2';
   var sub = { listeners: [], version: 0 };
 
   /* ======================= أدوات عامة ======================= */
@@ -180,20 +180,54 @@
   }
 
   /* تنظيف مخلفات المؤقّت القديم للنسخ التلقائي (مفاتيح يومية كانت تتراكم
-     بلا نهاية: brc-last-auto-backup-YYYY-MM-DD) — المحرّك الجديد يستخدم
+     بلا نهاية: hrc-last-auto-backup-YYYY-MM-DD) — المحرّك الجديد يستخدم
      مفتاحاً واحداً AUTO_RUN_KEY. */
   function cleanupLegacyKeys() {
     try {
       var drop = [];
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (k && k.indexOf('brc-last-auto-backup-') === 0) drop.push(k);
+        if (k && k.indexOf('hrc-last-auto-backup-') === 0) drop.push(k);
       }
       drop.forEach(function (k) { localStorage.removeItem(k); });
     } catch (e) { /* لا تخزين متاح */ }
   }
 
+  /* ---------------------------------------------------------------------------
+   *  ترحيل مفاتيح التخزين من البادئة القديمة brc إلى hrc — مرة واحدة.
+   *  ---------------------------------------------------------------------------
+   *  توحيد الرمز (2026-09-26) غيّر أسماء مفاتيح localStorage، وبدون هذا الترحيل
+   *  تختفي بيانات الأجهزة التي كانت تعمل قبل التحديث (ومعها النسخ الاحتياطية
+   *  المحفوظة) بلا أي رسالة — تبدو كأن النظام مسح كل شيء.
+   *
+   *  ينسخ القديم إلى الجديد **فقط** إذا لم يكن الجديد موجوداً، ثم يحذف القديم.
+   *  هذه ليست «توافقية دائمة»: بعد أن تُحدَّث أجهزة الموظفين يمكن حذف الدالة
+   *  واستدعاءها بأمان.
+   * ------------------------------------------------------------------------- */
+  function migrateLegacyPrefix() {
+    try {
+      if (localStorage.getItem('hrc-prefix-migrated')) return;
+      var moved = 0;
+      for (var i = localStorage.length - 1; i >= 0; i--) {
+        var k = localStorage.key(i);
+        if (!k) continue;
+        var nk = null;
+        if (k.indexOf('brc-') === 0) nk = 'hrc-' + k.slice(4);
+        else if (k === 'brc_db_v2') nk = 'hrc_db_v2';
+        else if (k === 'brc_session_v2') nk = 'hrc_session_v2';
+        if (!nk) continue;
+        if (localStorage.getItem(nk) === null) {
+          localStorage.setItem(nk, localStorage.getItem(k));
+          moved++;
+        }
+        localStorage.removeItem(k);
+      }
+      localStorage.setItem('hrc-prefix-migrated', String(moved));
+    } catch (e) { /* لا تخزين متاح — لا شيء يُرحَّل */ }
+  }
+
   function load() {
+    migrateLegacyPrefix();
     cleanupLegacyKeys();
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -215,13 +249,13 @@
           if (seedJob && seedJob.imageUrl) {
             job.imageUrl = seedJob.imageUrl;
             needsMigration = true;
-            console.log('[BRC] ✓ تم إضافة صورة للوظيفة ' + job.code);
+            console.log('[HRC] ✓ تم إضافة صورة للوظيفة ' + job.code);
           }
         }
       });
       if (needsMigration) {
         save();
-        console.log('[BRC] ✓ تم تحديث الصور لجميع الوظائف القديمة');
+        console.log('[HRC] ✓ تم تحديث الصور لجميع الوظائف القديمة');
         // Trigger re-render for all subscribers
         setTimeout(function() { emit(); }, 100);
       }
@@ -235,11 +269,11 @@
       // حفظ في قائمة التغييرات الأوفلاين
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         var queue = [];
-        try { queue = JSON.parse(localStorage.getItem('brc-offline-queue') || '[]'); } catch(e) {}
+        try { queue = JSON.parse(localStorage.getItem('hrc-offline-queue') || '[]'); } catch(e) {}
         queue.push({ ts: nowISO(), data: JSON.parse(JSON.stringify(db)) });
         // احتفظ بآخر 50 نسخة فقط
         if (queue.length > 50) queue = queue.slice(-50);
-        try { localStorage.setItem('brc-offline-queue', JSON.stringify(queue)); } catch(e) {}
+        try { localStorage.setItem('hrc-offline-queue', JSON.stringify(queue)); } catch(e) {}
       }
     } catch (e) { /* لا تخزين متاح أو المساحة ممتلئة — البيانات تبقى في الذاكرة */ }
   }
@@ -255,19 +289,19 @@
   function syncOfflineChanges() {
     // مزامنة التغييرات عند العودة للاتصال
     var queue = [];
-    try { queue = JSON.parse(localStorage.getItem('brc-offline-queue') || '[]'); } catch(e) {}
+    try { queue = JSON.parse(localStorage.getItem('hrc-offline-queue') || '[]'); } catch(e) {}
     if (queue.length > 0) {
       audit('مزامنة أوفلاين', 'system', '—', 'تم استعادة الاتصال — تم حفظ ' + queue.length + ' نسخة من التغييرات');
       // حفظ آخر نسخة كاحتياط
       try {
         var lastSync = queue[queue.length - 1];
-        localStorage.setItem('brc-last-offline-sync', JSON.stringify({
+        localStorage.setItem('hrc-last-offline-sync', JSON.stringify({
           ts: nowISO(),
           data: lastSync.data
         }));
       } catch(e) {}
       // مسح قائمة الانتظار
-      try { localStorage.removeItem('brc-offline-queue'); } catch(e) {}
+      try { localStorage.removeItem('hrc-offline-queue'); } catch(e) {}
       save();
     }
     return queue.length;
@@ -309,7 +343,7 @@
        صريحة: إمّا أنت المستخدم السحابي، وإمّا وضع محلي بلا أي كتابة سحابية —
        لذلك نفصل الجلسة السحابية عند الدخول المحلي. */
     if (cloud.state === 'on' && cloud.role === 'staff') {
-      console.warn('[BRC] دخول محلي مع جلسة سحابية قائمة — تُفصل الجلسة السحابية حتى لا تُنسب الكتابات لصاحبها');
+      console.warn('[HRC] دخول محلي مع جلسة سحابية قائمة — تُفصل الجلسة السحابية حتى لا تُنسب الكتابات لصاحبها');
       saveLocal(); emit();
       signOutCloud();
       return session;
@@ -795,6 +829,9 @@
   function financials(from, to) {
     var rows = {};
     db.applicants.forEach(function (a) {
+      /* استمارة قيد الطلب (issueDate = null) لا تنتمي لأي يوم: كانت تُقارَن
+         بـ null فتمرّ في كل نطاق — وهذا يُفسد فلتر «اليوم/أمس». */
+      if ((from || to) && !a.issueDate) return;
       if (from && a.issueDate < from) return;
       if (to && a.issueDate > to + 'T23:59:59') return;
       var key = a.createdBy || 'system';
@@ -899,7 +936,7 @@
        وإدراج البيانات التجريبية مكانها — عملية تدميرية للمشروع كله. ممنوعة هنا
        بحسم؛ من يحتاجها فعلاً يُفرغ الجداول من Supabase مباشرةً. */
     if (cloud.state === 'on' && cloud.role === 'staff') {
-      console.warn('[BRC] إعادة الضبط مرفوضة في الوضع السحابي');
+      console.warn('[HRC] إعادة الضبط مرفوضة في الوضع السحابي');
       return false;
     }
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
@@ -930,9 +967,9 @@
    *    (ReferenceError: nowISO is not defined) — وهذا ما حدث سابقاً.
    * ===================================================================== */
 
-  var BACKUP_KEY = 'brc-scheduled-backups';
-  var SCHEDULE_KEY = 'brc-auto-backup-schedule';
-  var AUTO_RUN_KEY = 'brc-auto-backup-last-run';
+  var BACKUP_KEY = 'hrc-scheduled-backups';
+  var SCHEDULE_KEY = 'hrc-auto-backup-schedule';
+  var AUTO_RUN_KEY = 'hrc-auto-backup-last-run';
   var MAX_BACKUPS = 20;              // نحتفظ بآخر 20 نسخة حمايةً لمساحة المتصفح
   var lastBackupError = null;
 
@@ -1133,7 +1170,7 @@
    *       نفسه (لا نُعيد إسناده) فتبقى كل المراجع في الواجهة صالحة، ثم emit()
    *       ليُعاد الرسم. القراءة بعدها كلها من الذاكرة وبلا انتظار.
    *    2) الدفع: كل save() تُجدول دفعة واحدة مؤجَّلة (debounce) تستدعي
-   *       BRCSync.push(db) الذي يشتقّ الفرق المركزي ويرسله.
+   *       HRCSync.push(db) الذي يشتقّ الفرق المركزي ويرسله.
    *    3) الجلسة: الدخول عبر Supabase Auth والدور من brc.staff، مع استعادة
    *       الجلسة عند تحديث الصفحة.
    *
@@ -1157,7 +1194,7 @@
     unsubscribe: null, bootPromise: null, listeners: []
   };
 
-  function cloudCfg() { return root.BRCSupabaseConfig || null; }
+  function cloudCfg() { return root.HRCSupabaseConfig || null; }
 
   function cloudConfigured() {
     var c = cloudCfg();
@@ -1174,19 +1211,19 @@
      المصغّر (الصفحات العامة: قراءة الواجهة العامة ودالتان). */
   function cloudLib() {
     if (root.supabase && root.supabase.createClient) return 'supabase';
-    if (root.BRCHttp && root.BRCHttp.createClient) return 'mini';
+    if (root.HRCHttp && root.HRCHttp.createClient) return 'mini';
     return null;
   }
 
   function cloudWillBoot(opts) {
     if (opts && opts.cloud === false) return false;
     if (!cloudConfigured() || !hasFetch()) return false;
-    return !!(cloudLib() && root.BRCCloud && root.BRCSync);
+    return !!(cloudLib() && root.HRCCloud && root.HRCSync);
   }
 
   function pendingQueueLength() {
     if (cloud.sync) return cloud.sync.queueLength();
-    try { return (JSON.parse(localStorage.getItem('brc-cloud-queue') || '[]') || []).length; } catch (e) { return 0; }
+    try { return (JSON.parse(localStorage.getItem('hrc-cloud-queue') || '[]') || []).length; } catch (e) { return 0; }
   }
 
   /* هل الدخول من القاعدة حصراً؟ مفتاح صريح في supabase-config.js يملكه المسؤول،
@@ -1265,12 +1302,12 @@
     var c = cloudCfg();
     if (cloudLib() === 'mini') {
       /* صفحات الزوار: عميل بلا مصادقة ولا اتصال لحظي — وهذا حدّها الصحيح */
-      return root.BRCHttp.createClient(c.url, c.publishableKey, { schema: c.schema || 'brc' });
+      return root.HRCHttp.createClient(c.url, c.publishableKey, { schema: c.schema || 'brc' });
     }
     return root.supabase.createClient(c.url, c.publishableKey, {
       /* ⚠️ السكيما تُوضع تحت db لا في الجذر: supabase-js يتجاهل الجذر ويحذّر */
       db: { schema: c.schema || 'brc' },
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'brc-auth' }
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'hrc-auth' }
     });
   }
 
@@ -1295,7 +1332,7 @@
     try { cloud.client = createCloudClient(); }
     catch (e) { cloud.state = 'degraded'; cloud.role = 'guest'; setCloudError(e); notifyCloudStatus(); return Promise.resolve(cloudStatus()); }
 
-    if (root.BRCCloudAuth) { try { cloud.auth = root.BRCCloudAuth.create(cloud.client); } catch (e) { cloud.auth = null; } }
+    if (root.HRCCloudAuth) { try { cloud.auth = root.HRCCloudAuth.create(cloud.client); } catch (e) { cloud.auth = null; } }
 
     cloud.bootPromise = restoreThenLoad()
       .catch(function (e) { cloud.state = 'degraded'; cloud.role = 'guest'; setCloudError(e); return cloudStatus(); })
@@ -1311,7 +1348,7 @@
      العامة نتجه لمسار الزائر مباشرة. بلا هذا يطلب كل زائر ستة جداول مرفوضة
      (ضجيج في الشبكة وسجل المشروع، وبطء في أول رسم بلا أي فائدة). */
   function canReadStaffTables() {
-    return cloudLib() === 'supabase' && !!root.BRCCloudAuth;
+    return cloudLib() === 'supabase' && !!root.HRCCloudAuth;
   }
 
   function restoreThenLoad() {
@@ -1330,7 +1367,7 @@
   }
 
   function loadFromCloud() {
-    return root.BRCCloud.fetchAll(cloud.client).then(function (cdb) {
+    return root.HRCCloud.fetchAll(cloud.client).then(function (cdb) {
       var failed = (cdb.meta && cdb.meta.failedTables) || [];
       cloud.failedTables = failed;
       var coreFailed = failed.filter(function (t) { return CORE_TABLES.indexOf(t) >= 0; });
@@ -1354,8 +1391,8 @@
   }
 
   function publicBoot(coreError) {
-    if (!root.BRCCloud.fetchPublicJobs) { cloud.state = 'degraded'; setCloudError(coreError); return cloudStatus(); }
-    return root.BRCCloud.fetchPublicJobs(cloud.client).then(function (res) {
+    if (!root.HRCCloud.fetchPublicJobs) { cloud.state = 'degraded'; setCloudError(coreError); return cloudStatus(); }
+    return root.HRCCloud.fetchPublicJobs(cloud.client).then(function (res) {
       if (!res || !res.ok) {
         cloud.state = 'degraded'; cloud.role = 'guest';
         setCloudError((res && res.error) || coreError);
@@ -1398,7 +1435,7 @@
       db.jobs = jobs || [];
       var maxJob = db.counters && db.counters.jobCode ? db.counters.jobCode : 1041;
       (jobs || []).forEach(function (j) {
-        var m = /^BRC-(\d+)$/.exec(j.code || '');
+        var m = /^HRC-(\d+)$/.exec(j.code || '');
         if (m) maxJob = Math.max(maxJob, Number(m[1]));
       });
       if (!db.counters) db.counters = { jobCode: maxJob, formSerial: 119 };
@@ -1410,27 +1447,27 @@
 
   /* ---------------------------- الدفع ---------------------------- */
   function startSync() {
-    cloud.sync = root.BRCSync.create(cloud.client, {
-      snapshot: root.BRCSync.snapshotOf(db),
-      log: function (m) { console.log('[BRC/sync] ' + m); },
+    cloud.sync = root.HRCSync.create(cloud.client, {
+      snapshot: root.HRCSync.snapshotOf(db),
+      log: function (m) { console.log('[HRC/sync] ' + m); },
       hooks: {
         onKeyRegenerated: function (op, res) {
           /* القاعدة ولّدت مفتاحاً بديلاً (تصادم من موظف آخر في نفس اللحظة).
              لا نُصلح المفتاح محلياً: تغيير كود وظيفة أو رقم استمارة يستوجب
              تحديث كل المحاولات المرتبطة — والقاعدة هي المرجع. نُعيد القراءة. */
-          console.warn('[BRC/sync] أُعيد توليد المفتاح في القاعدة — نُعيد القراءة لتصحيح الأرقام');
+          console.warn('[HRC/sync] أُعيد توليد المفتاح في القاعدة — نُعيد القراءة لتصحيح الأرقام');
           cloud.needsReload = true;
         }
       },
       onError: function (err, op) {
         var d = describeError(err);
         cloud.lastError = d.text + ' — ' + op.op + ' ' + op.table + ' (' + op.key + ')';
-        console.warn('[BRC/sync] فشلت ' + op.op + ' ' + op.table + ': ' + cloud.lastError);
+        console.warn('[HRC/sync] فشلت ' + op.op + ' ' + op.table + ': ' + cloud.lastError);
       },
       onFatal: function (err) {
         setCloudError(err);
         cloud.lastError = cloud.error;
-        console.error('[BRC/sync] توقف الدفع: ' + cloud.error);
+        console.error('[HRC/sync] توقف الدفع: ' + cloud.error);
         notifyCloudStatus();
       }
     });
@@ -1455,7 +1492,7 @@
         /* العملية الفاشلة تبقى معلّقة (لا تُوسم كمُزامَنة) وتُعاد في الدفعة
            التالية — انظر advanceSnapshot في cloud-sync.js. */
         cloud.lastError = 'تعذّر دفع ' + res.failed + ' عملية — ستُعاد تلقائياً';
-        console.warn('[BRC/sync] ' + cloud.lastError + ': ' + (res.pending || []).join(', '));
+        console.warn('[HRC/sync] ' + cloud.lastError + ': ' + (res.pending || []).join(', '));
       }
       if (cloud.needsReload) { cloud.needsReload = false; return reloadFromCloud(); }
       return res;
@@ -1470,7 +1507,7 @@
   /* إعادة قراءة كاملة — بعد تغيير من موظف آخر أو بعد استعادة الاتصال */
   function reloadFromCloud() {
     if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client) return Promise.resolve(cloudStatus());
-    return root.BRCCloud.fetchAll(cloud.client).then(function (cdb) {
+    return root.HRCCloud.fetchAll(cloud.client).then(function (cdb) {
       if (((cdb.meta && cdb.meta.failedTables) || []).length) return cloudStatus();
       adoptCloudDb(cdb);
       if (cloud.sync) cloud.sync.setSnapshot(db);
@@ -1507,16 +1544,16 @@
       op.key = (row && row.id) || (old && old.id);
       op.local = findLocal(db.audit, function (x) { return String(x.id) === String(op.key); });
     } else if (table === 'settings') {
-      if (row) root.BRCSync.advanceSnapshot(snap, { table: 'settings', op: 'update', key: row.key, local: { key: row.key, value: row.value } });
+      if (row) root.HRCSync.advanceSnapshot(snap, { table: 'settings', op: 'update', key: row.key, local: { key: row.key, value: row.value } });
       return;
     } else if (table === 'staff') {
       return;   // الموظفون لا يُدفعون من الواجهة
     } else { return; }
 
     if (op.key == null) return;
-    if (op.op === 'delete') { root.BRCSync.advanceSnapshot(snap, { table: table, op: 'delete', key: op.key, local: null }); return; }
+    if (op.op === 'delete') { root.HRCSync.advanceSnapshot(snap, { table: table, op: 'delete', key: op.key, local: null }); return; }
     if (!op.local) return;   // لم يصلنا السطر بعد (ترتيب الأحداث) — لا نُقدّم شيئاً
-    root.BRCSync.advanceSnapshot(snap, op);
+    root.HRCSync.advanceSnapshot(snap, op);
   }
 
   function findLocal(list, pred) {
@@ -1526,13 +1563,13 @@
   }
 
   function startRealtime() {
-    if (cloud.unsubscribe || !root.BRCCloud.subscribeAll) return;
-    cloud.unsubscribe = root.BRCCloud.subscribeAll(cloud.client, db, function (table, payload) {
-      try { absorbRealtime(table, payload); } catch (e) { console.warn('[BRC/realtime] ' + (e && e.message || e)); }
+    if (cloud.unsubscribe || !root.HRCCloud.subscribeAll) return;
+    cloud.unsubscribe = root.HRCCloud.subscribeAll(cloud.client, db, function (table, payload) {
+      try { absorbRealtime(table, payload); } catch (e) { console.warn('[HRC/realtime] ' + (e && e.message || e)); }
       saveLocal();   // الكاش المحلي يبقى مطابقاً لما نعرضه
       emit();
     }, function (e) {
-      console.warn('[BRC/realtime] ' + ((e && e.message) || e));
+      console.warn('[HRC/realtime] ' + ((e && e.message) || e));
     });
   }
 
@@ -1562,10 +1599,10 @@
     if (cloud.state === 'connecting') {
       return (cloud.bootPromise || Promise.resolve()).then(function () { return signIn(username, password); });
     }
-    if (!cloud.client || !root.BRCCloudAuth) {
+    if (!cloud.client || !root.HRCCloudAuth) {
       return Promise.resolve({ ok: false, code: 'offline', error: 'مكتبة الدخول غير محمّلة' });
     }
-    var auth = cloud.auth || (cloud.auth = root.BRCCloudAuth.create(cloud.client));
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
     return auth.login(username, password).then(function (r) {
       if (!r || !r.ok) return r || { ok: false, code: 'auth_failed', error: 'فشل الدخول' };
       applyStaffSession(r.profile);
@@ -1607,8 +1644,8 @@
   }
 
   function changeCloudPassword(newPassword) {
-    if (!cloud.client || !root.BRCCloudAuth) return Promise.resolve({ ok: false, error: 'غير متاح في الوضع المحلي' });
-    var auth = cloud.auth || root.BRCCloudAuth.create(cloud.client);
+    if (!cloud.client || !root.HRCCloudAuth) return Promise.resolve({ ok: false, error: 'غير متاح في الوضع المحلي' });
+    var auth = cloud.auth || root.HRCCloudAuth.create(cloud.client);
     return auth.changePassword(newPassword);
   }
 
@@ -1630,7 +1667,7 @@
   function submitPublicRequest(data) {
     var st = cloudStatus();
     var viaCloud = st.configured && st.state === 'on' && st.role !== 'staff' &&
-      root.BRCCloud && root.BRCCloud.requestForm && cloud.client;
+      root.HRCCloud && root.HRCCloud.requestForm && cloud.client;
 
     if (!viaCloud) {
       var appLocal = createApplicant({
@@ -1641,7 +1678,7 @@
       return Promise.resolve({ ok: true, serial: appLocal.serial, app: appLocal, mode: 'local' });
     }
 
-    return root.BRCCloud.requestForm(cloud.client, data).then(function (r) {
+    return root.HRCCloud.requestForm(cloud.client, data).then(function (r) {
       if (!r || !r.ok) return r || { ok: false, error: 'تعذّر إرسال الطلب' };
       /* نضيف الطلب إلى الذاكرة للعرض (وإلى الكاش). لا دفع: لا جلسة موظف،
          وصفّ القاعدة هو المرجع — وعند الدخول لاحقاً تُتبنّى بيانات القاعدة. */
@@ -1665,10 +1702,10 @@
   /* التحقق السحابي (صفحة التحقق للزائر): دالة القاعدة تتحقق من البصمة
      وتُرجع استمارة واحدة — بخلاف قراءة الجدول الذي يسحب بيانات الجميع. */
   function verifyCloud(serial, t) {
-    if (cloud.state !== 'on' || !cloud.client || !root.BRCCloud.verifyForm) {
+    if (cloud.state !== 'on' || !cloud.client || !root.HRCCloud.verifyForm) {
       return Promise.resolve({ ok: false, code: 'offline', error: cloud.error || 'لا اتصال بالسحابة' });
     }
-    return root.BRCCloud.verifyForm(cloud.client, serial, t);
+    return root.HRCCloud.verifyForm(cloud.client, serial, t);
   }
 
   /* استعادة الاتصال: إقلاع كامل إن كنا في الوضع المحلي، وإلا دفع ما تبقّى */
@@ -1755,6 +1792,6 @@
     ticker = setInterval(function () { runMaintenance(); }, 30000);
   }
 
-  root.BRCStore = API;
+  root.HRCStore = API;
   if (typeof module === 'object' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

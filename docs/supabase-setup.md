@@ -104,7 +104,7 @@ npm run test:schema     # يفشل إذا انحرفا
 ## 3) توليد مفتاح البصمة — ⚠️ إلزامي
 
 البصمة (`t=`) المطبوعة في الكيو آر كود تُوقَّع بمفتاح سرّي. **لا يوجد مفتاح افتراضي في الملف**
-(كان سابقاً `BRC-BABIL-2026` مكتوباً في المستودع = أي شخص يقدر يزوّر البصمة).
+(كان سابقاً `HRC-BABIL-2026` مكتوباً في المستودع = أي شخص يقدر يزوّر البصمة).
 
 **ولّد مفتاحاً قوياً** — من جهازك:
 ```bash
@@ -165,7 +165,7 @@ select brc.next_job_code()     as job_code,
 select brc.verify_token('HRC-NO-000120');
 
 -- 4) الإفراج التلقائي مجدول؟
-select jobname, schedule, active from cron.job where jobname = 'brc-auto-release';
+select jobname, schedule, active from cron.job where jobname = 'hrc-auto-release';
 ```
 
 ---
@@ -173,7 +173,7 @@ select jobname, schedule, active from cron.job where jobname = 'brc-auto-release
 ## 6) إنشاء مستخدَمي الدخول
 
 `Authentication` → `Users` → **Add user** — أنشئ حساب المدير:
-- بريد المدير (مثال: `admin@brc-babil.com`) + كلمة مرور قوية
+- بريد المدير (مثال: `admin@hrc-babil.com`) + كلمة مرور قوية
 - ✅ علّم **Auto Confirm User**
 
 كرّر للباقي. **كل موظف بمستخدم خاص** — لأن سجل التدقيق يسجّل الفاعل، والمستخدم المشترك
@@ -186,7 +186,7 @@ select jobname, schedule, active from cron.job where jobname = 'brc-auto-release
 ```sql
 insert into brc.staff (auth_id, username, full_name, role, job_title, phone)
 select id, 'admin', 'المدير العام', 'admin', 'الإدارة العامة', '07760058007'
-  from auth.users where email = 'admin@brc-babil.com'
+  from auth.users where email = 'admin@hrc-babil.com'
 on conflict (username) do update set auth_id = excluded.auth_id;
 
 -- كرّر لكل موظف مع role = 'staff'

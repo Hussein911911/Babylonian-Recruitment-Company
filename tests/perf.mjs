@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  BRC — ميزانية الأداء ومسارات الزوار
+ *  HRC — ميزانية الأداء ومسارات الزوار
  *  ---------------------------------------------------------------------------
  *  لماذا اختبار للأداء؟ لأن الوزن يزيد بصمت: كل ملف يُضاف إلى صفحة يُنزّله كل
  *  زائر إلى الأبد، ولا أحد يلاحظ. هنا نُثبّت سقفاً لكل صفحة، ونمنع تحديداً:
@@ -60,7 +60,7 @@ function payloadOf(page) {
 }
 
 console.log('\n' + '═'.repeat(74));
-console.log('  BRC — ميزانية الأداء ومسار الزائر');
+console.log('  HRC — ميزانية الأداء ومسار الزائر');
 console.log('═'.repeat(74));
 
 step(1, 'ميزانية الوزن — لا صفحة تتجاوز سقفها');
@@ -120,7 +120,7 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
     const json = (o, code = 200) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
     if (req.url.startsWith('/rest/v1/public_jobs')) {
       if (req.headers['accept-profile'] !== 'brc') return json({ code: 'PGRST205', message: "Could not find the table 'public.public_jobs'" }, 404);
-      return json([{ code: 'BRC-7777', title: 'وظيفة من الخادم الوهمي', category: 'خدمات', region: 'بابل',
+      return json([{ code: 'HRC-7777', title: 'وظيفة من الخادم الوهمي', category: 'خدمات', region: 'بابل',
         salary_min: 600000, salary_max: 800000, shift: 'صباحي', gender: 'لا فرق', vacancies: 2,
         requirements: ['خبرة'], status: 'available', description: 'وصف', image_url: '', created_at: '2026-01-01T00:00:00.000Z' }]);
     }
@@ -137,7 +137,7 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
   const apiPort = api.address().port;
 
   /* خادم ملفات الصفحة نفسها */
-  const PORT = Number(process.env.BRC_PERF_PORT || 4331);
+  const PORT = Number(process.env.HRC_PERF_PORT || 4331);
   const fileServer = spawn(process.execPath, [join(ROOT, 'tools/serve.mjs'), String(PORT)], { cwd: ROOT, stdio: 'ignore' });
   for (let i = 0; i < 60; i++) { try { const r = await fetch('http://localhost:' + PORT + '/'); if (r.ok) break; } catch {} await wait(150); }
 
@@ -146,7 +146,7 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
       /* نُعيد توجيه ملف الإعداد إلى نسخة تشير للخادم الوهمي */
       if (url.includes('/assets/js/supabase-config.js')) {
         return Promise.resolve(Buffer.from(
-          "window.BRCSupabaseConfig = { url: 'http://127.0.0.1:" + apiPort + "', publishableKey: 'sb_publishable_test', schema: 'brc', enabled: true, enforceAuth: false };",
+          "window.HRCSupabaseConfig = { url: 'http://127.0.0.1:" + apiPort + "', publishableKey: 'sb_publishable_test', schema: 'brc', enabled: true, enforceAuth: false };",
           'utf8'));
       }
       return super.fetch(url, options);
@@ -172,11 +172,11 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
   await wait(600);
 
   const w = dom.window, doc = w.document;
-  const st = w.BRCStore.cloudStatus();
+  const st = w.HRCStore.cloudStatus();
   check('لا أخطاء JS في الموقع العام', errors.length === 0, errors.join(' | '));
   check('الزائر متصل بالقاعدة (عميل مصغّر)', st.state === 'on' && st.role === 'public', JSON.stringify(st));
   check('الوظيفة القادمة من القاعدة ظاهرة في الصفحة',
-    /BRC-7777/.test(doc.getElementById('jobs-grid').textContent), doc.getElementById('jobs-grid').textContent.slice(0, 80));
+    /HRC-7777/.test(doc.getElementById('jobs-grid').textContent), doc.getElementById('jobs-grid').textContent.slice(0, 80));
   const reads = seen.filter((s) => s.method === 'GET' && s.url.startsWith('/rest/v1/'));
   check('قراءة واحدة فقط لكل زيارة عامة', reads.length === 1, JSON.stringify(seen.map((s) => s.method + ' ' + s.url)));
   check('السكيما تُعلَن في الترويسة (Accept-Profile: brc)', reads.every((s) => s.profile === 'brc'),
@@ -187,11 +187,11 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
     JSON.stringify(seen.map((s) => s.url)));
 
   /* الدوال: الطلب الإلكتروني والتحقق من نفس الصفحة/الصفحة المجاورة */
-  const req = await w.BRCStore.submitPublicRequest({ fullName: 'علي', phone: '07701112223', address: 'بابل', gender: 'ذكر' });
+  const req = await w.HRCStore.submitPublicRequest({ fullName: 'علي', phone: '07701112223', address: 'بابل', gender: 'ذكر' });
   check('الطلب الإلكتروني يعمل بالعميل المصغّر (RPC)', req.ok && req.serial === 'HRC-NO-900777', JSON.stringify(req));
-  const vr = await w.BRCStore.verifyCloud('HRC-NO-000000', null);
+  const vr = await w.HRCStore.verifyCloud('HRC-NO-000000', null);
   check('التحقق يعمل بالعميل المصغّر ويُرجع «لا توجد استمارة»', vr.ok === false && /لا توجد استمارة/.test(vr.error), JSON.stringify(vr));
-  check('لا محاولة تسجيل دخول من صفحة عامة', (await w.BRCStore.signIn('admin', 'x')).code === 'no_auth');
+  check('لا محاولة تسجيل دخول من صفحة عامة', (await w.HRCStore.signIn('admin', 'x')).code === 'no_auth');
 
   api.close();
   fileServer.kill('SIGTERM');
