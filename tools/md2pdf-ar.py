@@ -197,7 +197,12 @@ class Contract(FPDF):
         # الورقة يُنتج جدولاً مقطوعاً يصعب قراءته على من يستلم المستند.
         head_h = row_height(rows[0])
         first_h = row_height(rows[1]) if len(rows) > 1 else 0
-        if self.get_y() + head_h + first_h > 272:
+        # جدول صغير يسع صفحة كاملة يُنقل بأكمله بدل أن يُقسَم — مهم في
+        # المستندات التعاقدية حيث الجدول وحدة معنى واحدة (مراحل، دفعات، مهل).
+        total_h = sum(row_height(r) for r in rows)
+        usable = 272 - MARGIN
+        keep_together = total_h <= usable and self.get_y() + total_h > 272
+        if keep_together or self.get_y() + head_h + first_h > 272:
             self.add_page()
 
         for ri, cells in enumerate(rows):
