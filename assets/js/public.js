@@ -1,8 +1,10 @@
 /* ===========================================================================
  *  HRC — منطق الموقع العام
- *  لوحة الوظائف، البحث الفوري، صفحة الوظيفة، ودعوة الزائر للتواصل مع الشركة.
- *  ⚠️ سياسة الشركة: الزائر يتصفّح فقط — لا تقديم استمارة ولا تحقق منها.
- *     إصدار الاستمارات والتحقق منها محصور بالموظفين والإدارة في المنظومة الداخلية.
+ *  لوحة الوظائف، البحث الفوري، صفحة الوظيفة، ونافذة الحجز الإلكتروني.
+ *  الحجز (منذ 2026-09-27): زر «احجز» في كل بطاقة وظيفة متاحة يفتح نافذة
+ *  الخطوات الموجّهة في booking.js (الاسم ← المعلومات كاملة ← رسم الاستمارة
+ *  بالبطاقة المصرفية) — وواتساب يبقى قناة تواصل موازية.
+ *  ⚠️ سياسة الشركة الباقية: التحقق من الاستمارات خاص بالموظفين والإدارة فقط.
  * =========================================================================== */
 (function (root) {
   'use strict';
@@ -146,9 +148,10 @@
     var qsScan = document.getElementById('qs-scan');
     if (qsScan) qsScan.addEventListener('click', function () { openQRScanner(); });
 
-    /* ⚠️ سياسة الشركة: الزائر لا يقدّم طلب استمارة ولا يتحقق من أي استمارة.
-       كل ما يفعله هنا: يتصفّح الوظائف ثم يخابر الشركة أو يراجع المكتب للحجز.
-       أدوات الإصدار والتحقق محصورة بالموظفين والإدارة في المنظومة الداخلية. */
+    /* سياسة الحجز (2026-09-27): زر «احجز» يفتح نافذة الحجز الإلكتروني في
+       booking.js (هذه الوحدة تلتقط [data-action="open-booking"] بنفسها على
+       مستوى المستند فتعمل مع البطاقات المعاد رسمها لحظياً). التحقق من
+       الاستمارات يبقى محصوراً بالموظفين والإدارة في المنظومة الداخلية. */
     document.addEventListener('click', function (e) {
       var v = e.target.closest && e.target.closest('[data-action="job-details"]');
       if (v) { e.preventDefault(); openJob(v.getAttribute('data-code')); }
@@ -495,7 +498,7 @@
             hold +
             '<button class="btn btn-outline btn-sm" data-action="job-details" data-code="' + UI.esc(j.code) + '">التفاصيل</button>' +
             (j.status === 'available'
-              ? '<a class="btn btn-gold btn-sm" href="' + bookUrl(j.code) + '" target="_blank" rel="noopener">' + UI.ic('whatsapp') + ' احجز</a>'
+              ? '<button class="btn btn-gold btn-sm" data-action="open-booking" data-code="' + UI.esc(j.code) + '">' + UI.ic('calendar') + ' احجز</button>'
               : '<button class="btn btn-outline btn-sm" disabled>' + st.ar + '</button>') +
           '</div>' +
         '</div>' +
@@ -537,15 +540,18 @@
       (j.description ? '<p class="muted mt-2">' + UI.esc(j.description) + '</p>' : '') +
       '<div class="panel mt-3"><div class="panel-body" style="padding:14px 16px">' +
         '<p class="mb-0 small">' + UI.ic('hourglass') +
-        ' <b>آلية الحجز:</b> الحجز يتم من مكتب الشركة — خابرنا أو راجع المكتب، فتُسجَّل الوظيفة كمحاولة على استمارتك ' +
-        'وتُحجز مؤقتاً <b>24 ساعة</b> بانتظار نتيجة المقابلة، وإن لم تُثبَّت النتيجة تُعاد الوظيفة تلقائياً إلى «متاحة».</p>' +
+        ' <b>آلية الحجز:</b> احجز إلكترونياً من هنا بنافذة خطوات موجّهة (بياناتك كاملة ورسم الاستمارة بالبطاقة المصرفية)، ' +
+        'أو خابرنا وراجع المكتب. تُسجَّل الوظيفة كمحاولة على استمارتك وتُحجز مؤقتاً <b>24 ساعة</b> بانتظار نتيجة المقابلة، ' +
+        'وإن لم تُثبَّت النتيجة تُعاد الوظيفة تلقائياً إلى «متاحة».</p>' +
       '</div></div>';
 
     UI.modal({
       title: j.title, subtitle: 'تفاصيل الوظيفة — ' + j.region, body: body, wide: true,
       footer: (j.status === 'available'
-        ? '<a class="btn btn-gold" href="' + bookUrl(j.code, j.title) + '" target="_blank" rel="noopener">' +
-          UI.ic('whatsapp') + ' خابر الشركة للحجز على هذه الوظيفة</a>'
+        ? '<button class="btn btn-gold" data-action="open-booking" data-code="' + UI.esc(j.code) + '">' +
+          UI.ic('calendar') + ' احجز هذه الوظيفة إلكترونياً</button>' +
+          '<a class="btn btn-outline" href="' + bookUrl(j.code, j.title) + '" target="_blank" rel="noopener">' +
+          UI.ic('whatsapp') + ' أو خابرنا واتساب</a>'
         : '<button class="btn btn-outline" disabled>الوظيفة ' + CFG.jobStatus[j.status].ar + '</button>') +
         '<button class="btn btn-outline" data-close>إغلاق</button>'
     });

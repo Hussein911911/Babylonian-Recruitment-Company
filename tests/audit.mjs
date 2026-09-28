@@ -76,7 +76,7 @@ async function loadPage(file) {
 
 /* ── مصادر ثابتة للمقارنة ────────────────────────────────────────────────── */
 const css = readFileSync(join(ROOT, 'assets/css/style.css'), 'utf8');
-const jsSrcAll = ['config', 'qr', 'store', 'ui', 'voucher', 'public', 'verify', 'dashboard']
+const jsSrcAll = ['config', 'qr', 'store', 'ui', 'voucher', 'booking', 'public', 'verify', 'dashboard']
   .map((n) => readFileSync(join(ROOT, 'assets/js/' + n + '.js'), 'utf8')).join('\n');
 const cssClasses = new Set([...css.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map((m) => m[1]));
 const sprite = readFileSync(join(ROOT, 'src/partials/sprite.html'), 'utf8');
@@ -182,7 +182,7 @@ section('3.b) سلامة style.css — المتغيرات المعرّفة، ا�
   else ok('قاعدة حجم أساسية للأيقونات موجودة — تحمي ' + iconCount + ' أيقونة في الصفحات');
 
   // (د) كل ملفات JS تُحلَّل بلا خطأ نحوي
-  const jsFiles = ['config', 'qr', 'store', 'ui', 'voucher', 'public', 'verify', 'dashboard'];
+  const jsFiles = ['config', 'qr', 'store', 'ui', 'voucher', 'booking', 'public', 'verify', 'dashboard'];
   let syntaxBad = [];
   for (const f of jsFiles) {
     try { new Function(readFileSync(join(ROOT, 'assets/js/' + f + '.js'), 'utf8')); }
@@ -253,6 +253,7 @@ function pageIds(file) {
 const ALL_IDS = new Set([...PAGES].flatMap((f) => [...pageIds(f)]));
 const CONTRACT = [
   ['assets/js/public.js', 'index.html'],
+  ['assets/js/booking.js', 'index.html'],
   ['assets/js/verify.js', 'verify.html'],
   ['assets/js/dashboard.js', 'dashboard.html'],
   ['assets/js/ui.js', null],
@@ -455,13 +456,22 @@ for (const [js, page] of CONTRACT) {
   if (/verifySerial|verify-quick|verify-serial/.test(pjs)) rogue.push('التحقق من الموقع العام');
   if (/data-action="request-form"|data-action="verify"/.test(pjs)) rogue.push('إجراءات الزائر');
   if (rogue.length) bad('public.js — خالٍ من منطق الطلب والتحقق', rogue.join(' | '));
-  else ok('public.js — خالٍ تماماً من منطق تقديم الطلب والتحقق (عرض وتواصل فقط)');
+  else ok('public.js — خالٍ من منطق الطلب القديم والتحقق (لوحة الوظائف + فتح الحجز فقط)');
+
+  /* نافذة الحجز الإلكتروني (booking.js): منطق الحجز فقط — لا تحقق من الاستمارات
+     ولا تخزين لرقم البطاقة الكامل أو CVV (سياسة التقنيع في رأس الملف) */
+  const bjs = readFileSync(join(ROOT, 'assets/js/booking.js'), 'utf8');
+  const brogue = [];
+  if (/verifySerial|verify-quick|verify-serial/.test(bjs)) brogue.push('التحقق من الاستمارات');
+  if (/cvv.*storage|storage.*cvv/i.test(bjs)) brogue.push('تخزين CVV');
+  if (brogue.length) bad('booking.js — منطق الحجز فقط بلا تحقق ولا تخزين بطاقة كامل', brogue.join(' | '));
+  else ok('booking.js — معالج حجز فقط: بلا تحقق استمارات، والبطاقة تُحفظ مقنّعة (النوع وآخر 4)');
 
   const w = loaded['index.html'].window;
-  const hrefs = [...loaded['index.html'].doc.querySelectorAll('#jobs-grid a[href^="https://wa.me/"]')];
-  const msgOk = hrefs.length > 0 && hrefs.every((a) => /HRC-\d{3,}/.test(decodeURIComponent(a.getAttribute('href'))));
-  if (!msgOk) bad('بطاقات الوظائف — زر حجز بالواتساب يحمل كود الوظيفة', 'عدد الأزرار: ' + hrefs.length);
-  else ok('بطاقات الوظائف — ' + hrefs.length + ' زر حجز بالواتساب، كلها تحمل كود الوظيفة في الرسالة');
+  const bookBtns = [...loaded['index.html'].doc.querySelectorAll('#jobs-grid [data-action="open-booking"]')];
+  const bookOk = bookBtns.length > 0 && bookBtns.every((b) => /^HRC-\d{3,}$/.test(b.getAttribute('data-code') || ''));
+  if (!bookOk) bad('بطاقات الوظائف — زر «احجز» يحمل كود الوظيفة', 'عدد الأزرار: ' + bookBtns.length);
+  else ok('بطاقات الوظائف — ' + bookBtns.length + ' زر حجز إلكتروني، كلها تحمل كود الوظيفة');
 
   const t = w.HRCStore.token('HRC-NO-000120');
   const noToken = w.HRCStore.verify('HRC-NO-000120');

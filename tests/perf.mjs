@@ -39,9 +39,12 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
  *  الكبيرة (مثل إعادة مكتبة 213KB إلى صفحة عامة).
  * ------------------------------------------------------------------------- */
 const BUDGET = {
-  'index.html': { raw: 400, requests: 20 },
+  /* رُفعت السقوف 2026-09-27 مع إضافة نافذة الحجز الإلكتروني (booking.js ≈ 22KB
+     + أنماطها في style.css) — بقي الغرض الأصلي قائماً: التقاط القفزات الكبيرة
+     (مثل إعادة مكتبة سوبابيس 213KB إلى صفحة زائر)، لا معاقبة إضافة ميزة موثّقة. */
+  'index.html': { raw: 430, requests: 20 },
   'verify.html': { raw: 380, requests: 20 },
-  'dashboard.html': { raw: 700, requests: 20 }
+  'dashboard.html': { raw: 710, requests: 20 }
 };
 
 function payloadOf(page) {

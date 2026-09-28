@@ -102,15 +102,34 @@ const badVerify = site.doc.getElementById('verify-quick') || site.doc.getElement
 check('لا توجد واجهة تحقق من الاستمارة في الموقع العام', !badVerify, badVerify && badVerify.outerHTML.slice(0, 60));
 check('لا نص «ترشّح» في العرض العام', !/ترشّح/.test(site.doc.getElementById('jobs-grid').textContent));
 
-/* الحجز: رابط واتساب يحمل كود الوظيفة */
-const bookLink = [...site.doc.querySelectorAll('#jobs-grid .job-card a[href^="https://wa.me/"]')];
-check('كل بطاقة وظيفة متاحة تحمل زر حجز بالواتساب (' + bookLink.length + ')', bookLink.length >= 1);
-check('رسالة الواتساب تحمل كود الوظيفة ورقم الشركة', (() => {
-  const href = decodeURIComponent(bookLink[0].getAttribute('href'));
-  return /wa\.me\/9647/.test(href) && /HRC-\d{3,}/.test(href) || href.slice(0, 90);
+/* الحجز الإلكتروني: زر في كل بطاقة وظيفة متاحة يفتح نافذة الخطوات */
+const bookBtns = [...site.doc.querySelectorAll('#jobs-grid .job-card [data-action="open-booking"]')];
+check('كل بطاقة وظيفة متاحة تحمل زر «احجز» الإلكتروني (' + bookBtns.length + ')', bookBtns.length >= 1);
+check('زر الحجز يحمل كود وظيفته', (() => {
+  const bad = bookBtns.filter((b) => !/^HRC-\d{3,}$/.test(b.getAttribute('data-code') || ''));
+  return !bad.length || 'أزرار بلا كود: ' + bad.length;
+})());
+check('أزرار الحجز تفتح نافذة المعالج على خطوة الاسم مع شريط الوظيفة', (() => {
+  click(W, bookBtns[0]);
+  const box = [...site.doc.querySelectorAll('.modal-backdrop .modal')].pop();
+  const strip = box && box.querySelector('.bk-jobstrip');
+  const okStep = box && box.querySelector('#bk-fullname') && box.querySelector('.bk-progress');
+  const code = bookBtns[0].getAttribute('data-code');
+  return (okStep && strip && strip.textContent.includes(code)) || 'النافذة لم تُفتح كما يجب';
+})());
+{
+  const boxes = site.doc.querySelectorAll('.modal-backdrop');
+  const closeB = [...boxes].pop().querySelector('[data-close]');
+  if (closeB) click(W, closeB);
+  await new Promise((r) => setTimeout(r, 120));
+}
+check('قناتا الحجز موجودتان: معالج إلكتروني + زر واتساب ثانوي في الأقسام', (() => {
+  const hero = site.doc.querySelector('.hero-cta [data-action="open-booking"]');
+  const wa = site.doc.querySelector('#verify a[href^="https://wa.me/"], #contact a[href^="https://wa.me/"]');
+  return (hero && wa) || 'Missing ' + (hero ? 'واتساب' : 'زر الحجز');
 })());
 
-/* تفاصيل الوظيفة: خاتمة حجز لا طلب استمارة */
+/* تفاصيل الوظيفة: دعوة للحجز الإلكتروني مع قناة واتساب موازية */
 const detailsBtn = site.doc.querySelector('#jobs-grid [data-action="job-details"]');
 if (detailsBtn) {
   click(W, detailsBtn);
@@ -118,11 +137,14 @@ if (detailsBtn) {
   const box = site.doc.querySelector('.modal-backdrop .modal');
   const mtext = box ? box.textContent : '';
   check('نافذة التفاصيل تعرض تحذير خصوصية صاحب العمل', /خصوصية صاحب العمل/.test(mtext));
-  check('نافذة التفاصيل تدعو للحجز بالتواصل (بلا نموذج تقديم)', /خابر الشركة|مراجعة المكتب|راجع المكتب/.test(mtext) &&
+  check('نافذة التفاصيل تدعو للحجز الإلكتروني (بلا نموذج داخلها)', /احجز هذه الوظيفة إلكترونياً/.test(mtext) &&
     !box.querySelector('[data-request]') && !box.querySelector('input'));
+  const bookBtn = box.querySelector('[data-action="open-booking"]');
+  check('خاتمة النافذة فيها زر الحجز الإلكتروني بكود الوظيفة',
+    !!bookBtn && bookBtn.getAttribute('data-code') === detailsBtn.getAttribute('data-code'));
   const reserveLink = box.querySelector('a[href^="https://wa.me/"]');
-  check('خاتمة النافذة فيها زر واتساب للحجز', !!reserveLink, 'لا يوجد رابط حجز');
-  if (reserveLink) check('رابط الحجز في النافذة يحمل كود الوظيفة', /HRC-\d{3,}/.test(decodeURIComponent(reserveLink.getAttribute('href'))));
+  check('قناة واتساب الثانوية موجودة في النافذة', !!reserveLink, 'لا يوجد رابط واتساب');
+  if (reserveLink) check('رابط الواتساب في النافذة يحمل كود الوظيفة', /HRC-\d{3,}/.test(decodeURIComponent(reserveLink.getAttribute('href'))));
   const close = box.querySelector('[data-close]');
   if (close) click(W, close);
   await new Promise((r) => setTimeout(r, 120));

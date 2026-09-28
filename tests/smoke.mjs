@@ -169,19 +169,160 @@ check('الموقع العام بلا واجهة تحقق للزائر', () => {
     site.doc.querySelector('[data-action="verify"]');
   return !bad || 'ما زالت واجهة التحقق ظاهرة للزائر';
 });
-check('بطاقة الوظيفة تعرض «احجز» برابط واتساب يحمل كود الوظيفة', () => {
+check('بطاقة الوظيفة تعرض زر «احجز» يفتح نافذة الحجز الإلكتروني بكود الوظيفة', () => {
   site.doc.getElementById('filter-reset') && site.doc.getElementById('filter-reset')
     .dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-  const a = site.doc.querySelector('#jobs-grid .job-card a[href^="https://wa.me/"]');
-  if (!a) return 'لا يوجد زر حجز بالواتساب في بطاقة الوظيفة';
-  const href = a.getAttribute('href');
-  const codeOk = /HRC-\d{3,}/.test(decodeURIComponent(href)) || 'الرسالة لا تحمل كود الوظيفة';
-  return (codeOk === true && /9647/.test(href)) || String(codeOk);
+  const a = site.doc.querySelector('#jobs-grid .job-card [data-action="open-booking"]');
+  if (!a) return 'لا يوجد زر حجز في بطاقة الوظيفة';
+  const code = a.getAttribute('data-code');
+  if (!/^HRC-\d{3,}$/.test(code || '')) return 'زر الحجز لا يحمل كود الوظيفة: ' + code;
+  a.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  const modal = lastModal(site.doc);
+  if (!modal) return 'لم تُفتح نافذة الحجز';
+  const hasName = modal.querySelector('#bk-fullname');
+  const hasProgress = modal.querySelector('.bk-progress');
+  const stripCode = modal.querySelector('.bk-jobstrip');
+  return (hasName && hasProgress && stripCode && stripCode.textContent.includes(code)) ||
+    'النافذة لا تبدأ بخطوة الاسم/شريط الوظيفة المختارة';
 });
 check('لا يوجد أي زر «ترشّح» في العرض العام', () => {
   const t = site.doc.getElementById('jobs-grid').textContent;
   return (!/ترشّح/.test(t) && !/اطلب استمارة/.test(t)) || 'ما زال نص الترشح/الطلب ظاهراً للزائر';
 });
+
+/* ═══ نافذة الحجز الإلكتروني: المسار الكامل خطوة بخطوة ═══ */
+function bkFill(doc, win, id, value) {
+  const el = doc.getElementById('bk-' + id);
+  if (!el) throw new Error('حقل مفقود: bk-' + id);
+  if (el.type === 'checkbox') el.checked = !!value;
+  else el.value = value;
+  const ev = (el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'date') ? 'change' : 'input';
+  el.dispatchEvent(new win.Event(ev, { bubbles: true }));
+}
+function bkFootBtn(doc, sel) {
+  const m = lastModal(doc);
+  if (!m) throw new Error('نافذة الحجز غير مفتوحة');
+  return m.querySelector('.modal-foot ' + sel);
+}
+function bkStepId(doc) {
+  const s = lastModal(doc).querySelector('[data-bk-step]');
+  return s ? s.getAttribute('data-bk-step') : '(فارغ)';
+}
+check('معالج الحجز: التحقق يمنع التقدم بلا اسم ثم يقبل الاسم الكامل', () => {
+  const btn = site.doc.querySelector('#jobs-grid .job-card [data-action="open-booking"]');
+  btn.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  const errShown = lastModal(site.doc).querySelector('.bk-field.has-error');
+  if (!errShown) return 'لم يظهر خطأ عند ترك الاسم فارغاً';
+  bkFill(site.doc, site.window, 'fullname', 'أحمد محمد علي');
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  return bkStepId(site.doc) === 'phone' || 'لم ينتقل لخطوة الهاتف بعد الاسم الصحيح';
+});
+check('معالج الحجز: رفض هاتف خاطئ ثم قبول رقم عراقي صحيح', () => {
+  bkFill(site.doc, site.window, 'phone', '12345');
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  if (bkStepId(site.doc) !== 'phone') return 'مرّ رقم خاطئ بلا اعتراض';
+  bkFill(site.doc, site.window, 'phone', '07701234567');
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  return bkStepId(site.doc) === 'personal' || 'لم ينتقل لخطوة المعلومات الشخصية';
+});
+check('معالج الحجز: تاريخ الميلاد والجنس مع رفض عمر خارج 18–65', () => {
+  bkFill(site.doc, site.window, 'dob', '2012-01-01');
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  if (bkStepId(site.doc) !== 'personal') return 'قُبل عمر 14 سنة';
+  bkFill(site.doc, site.window, 'dob', '1996-05-10');
+  bkFill(site.doc, site.window, 'gender', 'ذكر');
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  return bkStepId(site.doc) === 'address' || 'لم ينتقل لخطوة السكن';
+});
+check('معالج الحجز: المنطقة والعنوان التفصيلي', () => {
+  bkFill(site.doc, site.window, 'region', 'الحلة');
+  bkFill(site.doc, site.window, 'address', 'الحلة - المحلة 7 - شارع 40');
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  return bkStepId(site.doc) === 'edu' || 'لم ينتقل لخطوة التعليم';
+});
+check('معالج الحجز: المستوى التعليمي ثم خطوة الدفع', () => {
+  bkFill(site.doc, site.window, 'education', 'إعدادي');
+  bkFill(site.doc, site.window, 'experience', 'سنتان عامل إنتاج');
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  return bkStepId(site.doc) === 'pay' || 'لم ينتقل لخطوة الدفع';
+});
+check('معالج الحجز: البطاقة تُنسّق وتُرفض إن كانت غير صحيحة (Luhn)', () => {
+  const num = lastModal(site.doc).querySelector("#bk-cardNumber");
+  if (!num) return 'حقل رقم البطاقة مفقود';
+  bkFill(site.doc, site.window, 'cardNumber', '4111111111111112');
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  if (bkStepId(site.doc) !== 'pay') return 'مرّ رقم بطاقة فاشل في خوارزمية Luhn';
+  bkFill(site.doc, site.window, 'cardNumber', '4111111111111111');
+  if (num.value !== '4111 1111 1111 1111') return 'الرقم لم يُنسَّق مجموعات رباعية: ' + num.value;
+  const preview = lastModal(site.doc).querySelector('#bk-num-view');
+  if (!preview || preview.textContent !== '4111 1111 1111 1111') return 'معاينة البطاقة لا تتحدث لحظياً';
+  const brand = lastModal(site.doc).querySelector('#bk-brand-view');
+  if (!brand || brand.textContent !== 'VISA') return 'نوع البطاقة (Visa) لم يُكتشف: ' + (brand && brand.textContent);
+  bkFill(site.doc, site.window, 'cardName', 'AHMED MOHAMMED ALI');
+  bkFill(site.doc, site.window, 'cardExp', '1230');
+  const exp = lastModal(site.doc).querySelector("#bk-cardExp");
+  if (exp.value !== '12/30') return 'تاريخ الانتهاء لم يُنسَّق MM/YY: ' + exp.value;
+  bkFill(site.doc, site.window, 'cardCvv', '123');
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  return bkStepId(site.doc) === 'review' || 'لم ينتقل لخطوة المراجعة';
+});
+check('معالج الحجز: المراجعة تعرض بيانات مقنّعة وتشترط الموافقة على الشروط', () => {
+  const txt = lastModal(site.doc).textContent;
+  if (!txt.includes('أحمد محمد علي')) return 'المراجعة لا تعرض الاسم';
+  if (!txt.includes('•••• 1111')) return 'المراجعة لا تعرض البطاقة المقنّعة';
+  if (txt.includes('4111 1111 1111 1111')) return '⚠️ الرقم الكامل ظهر في المراجعة!';
+  bkFootBtn(site.doc, '[data-bk-confirm]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  if (!lastModal(site.doc).querySelector('.bk-field.has-error') && !lastModal(site.doc).querySelector('.bk-err.show'))
+    return 'التأكيد مرّ دون الموافقة على الشروط';
+  return true;
+});
+await (async () => {
+  const name = 'معالج الحجز: التأكيد يُثبّت الحجز برقم مرجعي ويحفظه مقنّعاً';
+  try {
+    bkFill(site.doc, site.window, 'agree', true);
+    bkFootBtn(site.doc, '[data-bk-confirm]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 1500));
+    const modal = lastModal(site.doc);
+    const ref = modal.querySelector('.bk-ref');
+    if (!ref || !/^HRC-BK-\d{6}$/.test(ref.textContent.trim())) return bad(name, 'شاشة النجاح بلا رقم حجز مرجعي');
+    const wa = modal.querySelector('#bk-send-wa');
+    if (!wa || !decodeURIComponent(wa.getAttribute('href')).includes(ref.textContent.trim()))
+      return bad(name, 'زر إبلاغ الشركة لا يحمل رقم الحجز');
+    const saved = site.window.HRCBooking.list();
+    if (saved.length !== 1) return bad(name, 'لم يُحفظ الحجز في السجل: ' + saved.length);
+    const rec = saved[0];
+    const raw = JSON.stringify(rec);
+    if (raw.includes('4111111111111111') || raw.includes('"cardCvv"')) return bad(name, '⚠️ الرقم الكامل أو CVV محفوظان!');
+    if (rec.card.last4 !== '1111' || rec.card.brand !== 'VISA') return bad(name, 'تقنيع البطاقة غير سليم: ' + raw);
+    if (rec.fullName !== 'أحمد محمد علي' || rec.phone !== '07701234567') return bad(name, 'بيانات الحجز ناقصة: ' + raw);
+    if (!rec.jobCode || !/^HRC-\d{3,}$/.test(rec.jobCode)) return bad(name, 'الحجز بلا كود وظيفة');
+    return ok(name);
+  } catch (e) { bad(name, e.message); }
+})();
+check('معالج الحجز: المسار من زر الواجهة يمر بخطوة اختيار الوظيفة', () => {
+  const hero = site.doc.querySelector('.hero-cta [data-action="open-booking"]');
+  if (!hero) return 'زر الحجز في الواجهة مفقود';
+  hero.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  if (bkStepId(site.doc) !== 'name') return 'لم تفتح النافذة على خطوة الاسم';
+  bkFill(site.doc, site.window, 'fullname', 'مروان كاظم جبار');
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  if (bkStepId(site.doc) !== 'job') return 'بعد الاسم يجب أن تظهر خطوة اختيار الوظيفة (وظهرت: ' + bkStepId(site.doc) + ')';
+  /* لا اختيار → رفض */
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  if (bkStepId(site.doc) !== 'job' || !lastModal(site.doc).querySelector('.bk-err.show'))
+    return 'مرّ بلا اختيار وظيفة بلا اعتراض';
+  /* اختر أول وظيفة متاحة → التالي → الهاتف */
+  const sel = lastModal(site.doc).querySelector('#bk-job');
+  const code = sel.options[1].value;
+  bkFill(site.doc, site.window, 'job', code);
+  bkFootBtn(site.doc, '[data-bk-next]').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  if (bkStepId(site.doc) !== 'phone') return 'اختيار الوظيفة لم يُسجَّل — بقيت الخطوة: ' + bkStepId(site.doc);
+  const strip = lastModal(site.doc).querySelector('.bk-jobstrip');
+  if (!strip || !strip.textContent.includes(code)) return 'شريط الوظيفة لا يعرض الوظيفة المختارة';
+  return true;
+});
+closeAllModals(site.doc);
 
 /* مسار الطلب يبقى داخلياً: الموظف يسجّل الطلب (كما لو استقبله المكتب) ثم يعتمده */
 check('تسجيل طلب قيد المراجعة من المنظومة الداخلية', () => {
@@ -676,9 +817,17 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
     return (okPage.window.__brcMockFetchCalls === 1 && st.state === 'on' && st.role === 'public' && st.readOnly === true) ||
       JSON.stringify({ calls: okPage.window.__brcMockFetchCalls, state: st.state, role: st.role });
   });
-  await acheck('بطاقة الوظيفة تعرض «احجز» بواتساب يحمل كود الوظيفة المعلنة', async () => {
-    const a = okPage.doc.querySelector('#jobs-grid .job-card a[href^="https://wa.me/"]');
-    return (a && /HRC-9001|HRC-9002/.test(decodeURIComponent(a.getAttribute('href')))) || 'لا زر حجز واتساب';
+  await acheck('بطاقة الوظيفة تعرض زر «احجز» يحمل كود الوظيفة المعلنة', async () => {
+    const a = okPage.doc.querySelector('#jobs-grid .job-card [data-action="open-booking"]');
+    return (a && /HRC-9001|HRC-9002/.test(a.getAttribute('data-code') || '')) || 'لا زر حجز إلكتروني';
+  });
+  await acheck('نافذة الحجز تعمل في وضع القاعدة: الوظيفة المعلنة مختارة مسبقاً', async () => {
+    const a = okPage.doc.querySelector('#jobs-grid .job-card [data-action="open-booking"]');
+    a.dispatchEvent(new okPage.window.MouseEvent('click', { bubbles: true }));
+    const modal = [...okPage.doc.querySelectorAll('.modal-backdrop .modal')].pop();
+    return (modal && modal.querySelector('#bk-fullname') &&
+      modal.querySelector('.bk-jobstrip').textContent.includes(a.getAttribute('data-code'))) ||
+      'النافذة لم تُفتح بشريط الوظيفة المعلنة';
   });
   okPage.dom.window.close();
 

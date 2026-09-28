@@ -85,7 +85,7 @@ const DEMO_SEED_JSON = (() => {
   return m[1];
 })();
 
-const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'public', 'verify', 'dashboard'];
+const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard'];
 
 /* ---------------------------------------------------------------------------
  *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
@@ -100,7 +100,7 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
    ولا اتصالاً لحظياً. قياس الحجم أظهر أن المكتبة الكاملة كانت ثلث ما ينزّله.
    اللوحة تبقى على المكتبة الكاملة لأنها تحتاج Auth و Realtime فعلاً. */
 const SCRIPTS = {
-  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'public'],
+  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
   verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
   dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard']
 };
