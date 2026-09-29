@@ -76,7 +76,7 @@ async function loadPage(file) {
 
 /* ── مصادر ثابتة للمقارنة ────────────────────────────────────────────────── */
 const css = readFileSync(join(ROOT, 'assets/css/style.css'), 'utf8');
-const jsSrcAll = ['config', 'qr', 'store', 'ui', 'voucher', 'public', 'verify', 'dashboard']
+const jsSrcAll = ['config', 'qr', 'store', 'ui', 'voucher', 'booking', 'public', 'verify', 'dashboard']
   .map((n) => readFileSync(join(ROOT, 'assets/js/' + n + '.js'), 'utf8')).join('\n');
 const cssClasses = new Set([...css.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map((m) => m[1]));
 const sprite = readFileSync(join(ROOT, 'src/partials/sprite.html'), 'utf8');
@@ -182,7 +182,7 @@ section('3.b) سلامة style.css — المتغيرات المعرّفة، ا�
   else ok('قاعدة حجم أساسية للأيقونات موجودة — تحمي ' + iconCount + ' أيقونة في الصفحات');
 
   // (د) كل ملفات JS تُحلَّل بلا خطأ نحوي
-  const jsFiles = ['config', 'qr', 'store', 'ui', 'voucher', 'public', 'verify', 'dashboard'];
+  const jsFiles = ['config', 'qr', 'store', 'ui', 'voucher', 'booking', 'public', 'verify', 'dashboard'];
   let syntaxBad = [];
   for (const f of jsFiles) {
     try { new Function(readFileSync(join(ROOT, 'assets/js/' + f + '.js'), 'utf8')); }
@@ -192,23 +192,25 @@ section('3.b) سلامة style.css — المتغيرات المعرّفة، ا�
   else ok('كل ملفات JS (' + jsFiles.length + ') سليمة نحوياً');
 }
 
-/* ═══ 3.c) عقد الطباعة: A4 واستثناء كل شيء غير الاستمارة ═════════════════ */
-section('3.c) الطباعة — مقاس A4 وطباعة الاستمارة فقط');
+/* ═══ 3.c) عقد الطباعة: بطاقة 86×54مم واستثناء كل شيء غيرها ═════════════════ */
+section('3.c) الطباعة — مقاس بطاقة 86×54مم وطباعة البطاقة فقط');
 
 {
-  const hasPage = /@page\s*{[^}]*size:\s*A4/i.test(css);
+  const hasPage = /@page\s*{[^}]*size:\s*86mm\s+54mm/i.test(css);
   const hidesAll = /body\s*\*\s*{[^}]*visibility:\s*hidden/i.test(css);
   const showsRoot = /#print-root[^{]*{[^}]*visibility:\s*visible/i.test(css);
   const hiddenOnScreen = /#print-root\s*{[^}]*display:\s*none/i.test(css);
-  /* الورقة المطبوعة يجب أن تكون نظيفة: لا علامة مائية ولا أي صورة خلفية داخل الاستمارة */
+  /* الورقة المطبوعة يجب أن تكون نظيفة: لا علامة مائية ولا أي صورة خلفية داخل البطاقة */
   const noWm = !/v-watermark/.test(css);
-  const noBgInPrint = /\.voucher,\s*\.voucher\s*\*[^{]*{[^}]*background-image:\s*none/i.test(css);
-  if (!hasPage) bad('مقاس الورق A4 محدَّد (@page)', 'لا يوجد size: A4');
-  else if (!hidesAll || !showsRoot) bad('الطباعة تُظهر الاستمارة وحدها', 'visibility: hidden=' + hidesAll + ' / visible=' + showsRoot);
+  const noBgInPrint = /#print-root \.hrc-card[^{]*{[^}]*background-image:\s*none/i.test(css);
+  const noA4 = !/size:\s*A4/i.test(css);
+  if (!hasPage) bad('مقاس بطاقة 86×54مم محدَّد (@page)', 'لا يوجد size: 86mm 54mm');
+  else if (!noA4) bad('لا بقايا مقاس A4 في عقد الطباعة');
+  else if (!hidesAll || !showsRoot) bad('الطباعة تُظهر البطاقة وحدها', 'visibility: hidden=' + hidesAll + ' / visible=' + showsRoot);
   else if (!hiddenOnScreen) bad('حاوية الطباعة مخفية على الشاشة');
-  else if (!noWm) bad('لا علامة مائية في الاستمارة المطبوعة', 'ما زالت .v-watermark موجودة في CSS');
-  else if (!noBgInPrint) bad('صور الخلفية مُلغاة داخل الاستمارة عند الطباعة');
-  else ok('عقد الطباعة سليم: A4 portrait، تُطبع الاستمارة وحدها، والورقة بيضاء نظيفة بلا علامة مائية');
+  else if (!noWm) bad('لا علامة مائية في البطاقة المطبوعة', 'ما زالت .v-watermark موجودة في CSS');
+  else if (!noBgInPrint) bad('صور الخلفية مُلغاة داخل البطاقة عند الطباعة');
+  else ok('عقد الطباعة سليم: بطاقة 86×54مم بالحجم الفعلي، تُطبع البطاقة وحدها، والورقة نظيفة بلا علامة مائية');
 }
 
 /* ═══ 4) الأصول على القرص ════════════════════════════════════════════════ */
@@ -253,6 +255,7 @@ function pageIds(file) {
 const ALL_IDS = new Set([...PAGES].flatMap((f) => [...pageIds(f)]));
 const CONTRACT = [
   ['assets/js/public.js', 'index.html'],
+  ['assets/js/booking.js', 'index.html'],
   ['assets/js/verify.js', 'verify.html'],
   ['assets/js/dashboard.js', 'dashboard.html'],
   ['assets/js/ui.js', null],
@@ -262,9 +265,15 @@ for (const [js, page] of CONTRACT) {
   const src = readFileSync(join(ROOT, js), 'utf8');
   const used = idsUsedIn(js);
   const staticPool = page ? pageIds(page) : ALL_IDS;
+  /* نافذة «بطاقتي» تبني حقولها عبر helpers (fieldHtml/inputHtml/selectHtml)
+     فتُنتج bk-serial/bk-job/bk-code/bk-rcode ديناميكياً — نستخرجها من نداءات
+     الـ helpers نفسها بدل البحث عن قالب نصي حرفي. */
+  const helperIds = new Set([...src.matchAll(/\b(?:fieldHtml|inputHtml|selectHtml)\(\s*'(\w+)'/g)]
+    .map((m) => 'bk-' + m[1]));
+  const built = (id) => src.includes("id=\"bk-' + id + '\"") || (js === 'assets/js/booking.js' && helperIds.has(id));
   // المعرّف إمّا ثابت في الصفحة، أو يُبنى ديناميكياً بواسطة الكود نفسه (id="…" داخل قالب نصي)
-  const missing = [...used].filter((id) => !staticPool.has(id) && !src.includes('id="' + id + '"'));
-  const dynamic = [...used].filter((id) => !staticPool.has(id) && src.includes('id="' + id + '"'));
+  const missing = [...used].filter((id) => !staticPool.has(id) && !src.includes('id="' + id + '"') && !built(id));
+  const dynamic = [...used].filter((id) => !staticPool.has(id) && (src.includes('id="' + id + '"') || built(id)));
   if (missing.length) bad(js + ' — كل المعرّفات موجودة' + (page ? ' في ' + page : ''), 'مفقود: ' + missing.join(', '));
   else ok(js + ' — ' + used.size + ' معرّفاً، كلها متوفرة' + (page ? ' في ' + page : '') +
     (dynamic.length ? ' (منها ' + dynamic.length + ' يُبنى ديناميكياً في النوافذ)' : ''));
@@ -357,7 +366,7 @@ for (const [js, page] of CONTRACT) {
      بلا قاعدة بيانات ففارغةً تصبح بلا فائدة — تُحقن وقت البناء.) */
   {
     const FAKE = ['علي حسين محمد', 'زهراء عبد الكريم', '07701112233',
-                  'مخازن الفرات', '07701234567', 'HRC-NO-000117'];
+                  'مخازن الفرات', '07701234567', 'HRC-BC-000117'];
     const dirty = [];
     for (const f of ['index.html', 'verify.html', 'dashboard.html', '404.html']) {
       const src = readFileSync(join(ROOT, f), 'utf8');
@@ -455,19 +464,28 @@ for (const [js, page] of CONTRACT) {
   if (/verifySerial|verify-quick|verify-serial/.test(pjs)) rogue.push('التحقق من الموقع العام');
   if (/data-action="request-form"|data-action="verify"/.test(pjs)) rogue.push('إجراءات الزائر');
   if (rogue.length) bad('public.js — خالٍ من منطق الطلب والتحقق', rogue.join(' | '));
-  else ok('public.js — خالٍ تماماً من منطق تقديم الطلب والتحقق (عرض وتواصل فقط)');
+  else ok('public.js — خالٍ من منطق الطلب القديم والتحقق (لوحة الوظائف + فتح الحجز فقط)');
+
+  /* نافذة الحجز الإلكتروني (booking.js): منطق الحجز فقط — لا تحقق من الاستمارات
+     ولا تخزين لرقم البطاقة الكامل أو CVV (سياسة التقنيع في رأس الملف) */
+  const bjs = readFileSync(join(ROOT, 'assets/js/booking.js'), 'utf8');
+  const brogue = [];
+  if (/verifySerial|verify-quick|verify-serial/.test(bjs)) brogue.push('التحقق من الاستمارات');
+  if (/cvv.*storage|storage.*cvv/i.test(bjs)) brogue.push('تخزين CVV');
+  if (brogue.length) bad('booking.js — منطق الحجز فقط بلا تحقق ولا تخزين بطاقة كامل', brogue.join(' | '));
+  else ok('booking.js — معالج حجز فقط: بلا تحقق استمارات، والبطاقة تُحفظ مقنّعة (النوع وآخر 4)');
 
   const w = loaded['index.html'].window;
-  const hrefs = [...loaded['index.html'].doc.querySelectorAll('#jobs-grid a[href^="https://wa.me/"]')];
-  const msgOk = hrefs.length > 0 && hrefs.every((a) => /HRC-\d{3,}/.test(decodeURIComponent(a.getAttribute('href'))));
-  if (!msgOk) bad('بطاقات الوظائف — زر حجز بالواتساب يحمل كود الوظيفة', 'عدد الأزرار: ' + hrefs.length);
-  else ok('بطاقات الوظائف — ' + hrefs.length + ' زر حجز بالواتساب، كلها تحمل كود الوظيفة في الرسالة');
+  const bookBtns = [...loaded['index.html'].doc.querySelectorAll('#jobs-grid [data-action="open-booking"]')];
+  const bookOk = bookBtns.length > 0 && bookBtns.every((b) => /^HRC-\d{3,}$/.test(b.getAttribute('data-code') || ''));
+  if (!bookOk) bad('بطاقات الوظائف — زر «احجز» يحمل كود الوظيفة', 'عدد الأزرار: ' + bookBtns.length);
+  else ok('بطاقات الوظائف — ' + bookBtns.length + ' زر حجز إلكتروني، كلها تحمل كود الوظيفة');
 
-  const t = w.HRCStore.token('HRC-NO-000120');
-  const noToken = w.HRCStore.verify('HRC-NO-000120');
+  const t = w.HRCStore.token('HRC-BC-000120');
+  const noToken = w.HRCStore.verify('HRC-BC-000120');
   if (noToken.masked !== true) bad('طبقة البيانات — التحقق بلا بصمة يبقى مقنّعاً', 'masked=' + noToken.masked);
   else ok('طبقة البيانات — لا كشف بيانات بلا بصمة صحيحة (تقنيع في الرد نفسه)');
-  if (!w.HRCStore.verify('HRC-NO-000120', t).ok) bad('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل', 'فشل');
+  if (!w.HRCStore.verify('HRC-BC-000120', t).ok) bad('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل', 'فشل');
   else ok('طبقة البيانات — التحقق بالبصمة الصحيحة يعمل للموظف');
 }
 
@@ -580,7 +598,7 @@ for (const file of PAGES.filter((f) => f.startsWith('hrc-'))) {
   ok(file + ' — حجمه ' + sizeMB + ' ميجابايت ويحتوي ' + dataUris + ' أصلاً مدمجاً' + sameAsFull);
 }
 {
-  const routes = ['', '#jobs', '#!verify?form=HRC-NO-000120', '#!dashboard'];
+  const routes = ['', '#jobs', '#!verify?form=HRC-BC-000120', '#!dashboard'];
   ok('مسارات التنقل داخل الملف الواحد: ' + routes.join('  ·  '));
 }
 
@@ -621,7 +639,7 @@ section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا ر�
   else ok('ترويسات الأمان كاملة + sw.js بلا كاش (يُجبر الأجهزة على النسخة الجديدة)');
 
   /* رابط التحقق المطبوع يجب أن يبقى نظيفاً (بلا .html) لأنه يتغيّر إلى النطاق الرسمي */
-  const vurl = loaded['index.html'].window.HRCStore.verifyLocalUrl('HRC-NO-000120');
+  const vurl = loaded['index.html'].window.HRCStore.verifyLocalUrl('HRC-BC-000120');
   if (!/^verify\.html\?/.test(vurl)) bad('رابط التحقق المحلي', vurl);
   else ok('رابط التحقق المحلي نظيف ويطابق مسار /verify في _redirects');
 
@@ -695,7 +713,7 @@ section('9) سلامة البيانات — البيانات التجريبية 
   const apps = S.listApplicants();
   const rules = S.settings();
   if (jobs.length !== 8) bad('الوظائف التجريبية (8)', 'عددها ' + jobs.length); else ok('الوظائف التجريبية: ' + jobs.length + ' وظيفة (' + st.available + ' متاحة · ' + st.reserved + ' محجوزة · ' + st.closed + ' مغلقة)');
-  if (apps.length !== 4) bad('الاستمارات التجريبية (4)', 'عددها ' + apps.length); else ok('الاستمارات التجريبية: ' + apps.length + ' استمارة (' + apps.map((a) => a.serial.replace('HRC-NO-', '')).join(' · ') + ')');
+  if (apps.length !== 4) bad('الاستمارات التجريبية (4)', 'عددها ' + apps.length); else ok('الاستمارات التجريبية: ' + apps.length + ' استمارة (' + apps.map((a) => a.serial.replace('HRC-BC-', '')).join(' · ') + ')');
 
   const slotsOk = apps.every((a) => S.getAttempts(a.serial).length === rules.attemptLimit);
   if (!slotsOk) bad('كل استمارة لها ' + rules.attemptLimit + ' محاولات'); else ok('كل استمارة لها ' + rules.attemptLimit + ' خانات محاولات');
@@ -743,48 +761,49 @@ section('9) سلامة البيانات — البيانات التجريبية 
 }
 
 /* ═══ 10) التنسيق والطباعة — القالب A4 ═══════════════════════════════════ */
-section('10) الاستمارة المطبوعة A4 — البنية الكاملة');
+section('10) بطاقة التوظيف المطبوعة (86×54مم) — البنية الكاملة');
 
 {
   const w = loaded['index.html'].window;
-  const app = w.HRCStore.getApplicant('HRC-NO-000120');
+  const app = w.HRCStore.getApplicant('HRC-BC-000120');
   w.HRCStore.selectAttempt(app.serial, 'HRC-1046');
   const fresh = w.HRCStore.getApplicant(app.serial);
-  const html = w.HRCVoucher.buildHtml(fresh, w.HRCStore.getAttempts(app.serial));
+  const attempts = w.HRCStore.getAttempts(app.serial);
+  const html = w.HRCVoucher.buildHtml(fresh, attempts);
 
   const must = {
     'شعار الشركة': /i-emblem|brand-mark|v-logo/,
     'الاسم العربي': /شركة الهدف للتوظيف/,
     'الاسم الإنجليزي': /Al-Hadaf Recruitment Company/,
-    'تخصص الشركة': /الأيادي العاملة من الناحية الفنية والتخصصية/,
     'الهاتف الأول': /07760058007/,
-    'الهاتف الثاني': /07715993271/,
-    'العنوان الكامل': /حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي/,
-    'الرقم التسلسلي': /HRC-NO:\s*000120/,
-    'اسم الباحث': /سجاد|HRC-NO-000120/,
-    'تاريخ الإصدار': /تاريخ الإصدار/,
-    'تاريخ الانتهاء': /تاريخ الانتهاء|الانتهاء/,
-    'جدول المحاولات': /كود الوظيفة/,
-    'خمس خانات': /المحاولة #?5|المحاولة الخامسة|>5</,
-    'الكيو آر كود': /<svg/,
-    'التواقيع': /v-sign|التوقيع/,
-    'الإخلاء القانوني': /غير مسؤولة قانونياً وعشائياً/
+    'الباركود التسلسلي': /HRC-BC-000120/,
+    'اسم الباحث': /حسين كاظم عبد الله/,
+    'تاريخا الإصدار والانتهاء': /الإصدار/,
+    'الباركود QR': /<svg/,
+    'رمزا الفرصتين': new RegExp(attempts.map((t) => t.code.replace('-', '\\-')).join('|')),
+    'قواعد الفرصتين': /فرصتين مستقلتين/,
+    'حجز 24 ساعة': /24 ساعة/,
+    'الفرصة لا تعود': /ولا تعود/,
+    'إعادة الطباعة بمكتب استنساخ': /مكتب استنساخ/,
+    'الإخلاء القانوني': /غير مسؤولة قانونياً وعشائ/
   };
   const missing = Object.entries(must).filter(([, re]) => !re.test(html)).map(([k]) => k);
-  if (missing.length) bad('قالب الاستمارة يحتوي كل العناصر المطلوبة', 'ناقص: ' + missing.join(' · '));
-  else ok('قالب الاستمارة يحتوي كل العناصر المطلوبة (' + Object.keys(must).length + ' عنصراً)');
+  if (missing.length) bad('قالب البطاقة يحتوي كل العناصر المطلوبة', 'ناقص: ' + missing.join(' · '));
+  else ok('قالب البطاقة يحتوي كل العناصر المطلوبة (' + Object.keys(must).length + ' عنصراً)');
 
-  /* الورقة البيضاء: ممنوع أي علامة مائية أو صورة خلفية داخل قالب الاستمارة */
-  if (/v-watermark|brick-pattern/.test(html)) bad('الاستمارة المطبوعة بلا علامة مائية', 'القالب ما زال يُدرج صورة العلامة المائية');
-  else ok('الاستمارة المطبوعة نظيفة: لا علامة مائية ولا صورة خلفية (ورقة بيضاء)');
+  /* الورقة النظيفة: ممنوع أي علامة مائية أو صورة خلفية داخل قالب البطاقة */
+  if (/v-watermark|brick-pattern/.test(html)) bad('البطاقة المطبوعة بلا علامة مائية', 'القالب ما زال يُدرج صورة العلامة المائية');
+  else ok('البطاقة المطبوعة نظيفة: لا علامة مائية ولا صورة خلفية (ورقة مقوّى نظيفة)');
 
-  const rows = (html.match(/<tr/g) || []).length;
-  if (rows < 5) bad('الاستمارة تعرض المحاولات الخمس', rows + ' صفوف'); else ok('الاستمارة تعرض جدول المحاولات: ' + rows + ' صفاً');
+  const codeBoxes = (html.match(/class="code"/g) || []).length;
+  const faces = (html.match(/class="hrc-card[" ]/g) || []).length;
+  if (codeBoxes !== 2 || faces !== 2) bad('البطاقة تعرض وجهين برمزي الفرصتين', 'أوجه ' + faces + ' / صناديق رموز ' + codeBoxes);
+  else ok('البطاقة تعرض وجهين (أمامي/خلفي) وصندوقي رمزي الفرصتين');
 
   const svgCount = (html.match(/<svg/g) || []).length;
   const hasQrPath = /<path[^>]+d="M[\d. ]/.test(html);
-  if (svgCount < 1 || !hasQrPath) bad('كيو آر كود التحقق مرسوم داخل الاستمارة', 'svg=' + svgCount);
-  else ok('كيو آر كود التحقق مرسوم داخل الاستمارة (' + svgCount + ' عنصر SVG بمصفوفة وحدات حقيقية)');
+  if (svgCount < 1 || !hasQrPath) bad('باركود QR مرسوم داخل البطاقة', 'svg=' + svgCount);
+  else ok('باركود QR مرسوم داخل البطاقة (' + svgCount + ' عنصر SVG بمصفوفة وحدات حقيقية)');
 }
 
 /* ═══ 11) التنقّل — لا رابط يوصل إلى «صفحة غير موجودة» ═══════════════════ */

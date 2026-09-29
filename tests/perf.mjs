@@ -39,9 +39,13 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
  *  الكبيرة (مثل إعادة مكتبة 213KB إلى صفحة عامة).
  * ------------------------------------------------------------------------- */
 const BUDGET = {
-  'index.html': { raw: 400, requests: 20 },
-  'verify.html': { raw: 380, requests: 20 },
-  'dashboard.html': { raw: 700, requests: 20 }
+  /* رُفعت السقوف 2026-09-27 مع إضافة نافذة الحجز الإلكتروني، ثم 2026-09-30 مع
+     نظام بطاقة التوظيف (قالب بطاقة 86×54مم في voucher.js + شاشات بطاقتي) —
+     بقي الغرض الأصلي قائماً: التقاط القفزات الكبيرة (مثل إعادة مكتبة سوبابيس
+     213KB إلى صفحة زائر)، لا معاقبة إضافة ميزة موثّقة. */
+  'index.html': { raw: 440, requests: 20 },
+  'verify.html': { raw: 390, requests: 20 },
+  'dashboard.html': { raw: 740, requests: 20 }
 };
 
 function payloadOf(page) {
@@ -128,8 +132,8 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
       if (req.headers['content-profile'] !== 'brc') return json({ code: 'PGRST202', message: 'no function' }, 404);
       return json({ ok: false, error: 'لا توجد استمارة بهذا الرقم' });
     }
-    if (req.url.startsWith('/rest/v1/rpc/request_form')) {
-      return json({ ok: true, serial: 'HRC-NO-900777', status: 'pending' });
+    if (req.url.startsWith('/rest/v1/rpc/lookup_card')) {
+      return json({ ok: true, card: { serial: 'HRC-BC-900777', fullName: 'ع••• ••••', phone: '0770•••••', status: 'active', issueDate: '2026-09-30T00:00:00Z', expiryDate: '2026-10-30T00:00:00Z', chancesLeft: 2, chances: [], succeeded: false } });
     }
     return json({ code: 'PGRST205', message: 'not found' }, 404);
   });
@@ -186,11 +190,11 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
     !seen.some((s) => /\/(jobs|applicants|job_attempts|staff|audit_log|settings)\b/.test(s.url)),
     JSON.stringify(seen.map((s) => s.url)));
 
-  /* الدوال: الطلب الإلكتروني والتحقق من نفس الصفحة/الصفحة المجاورة */
-  const req = await w.HRCStore.submitPublicRequest({ fullName: 'علي', phone: '07701112223', address: 'بابل', gender: 'ذكر' });
-  check('الطلب الإلكتروني يعمل بالعميل المصغّر (RPC)', req.ok && req.serial === 'HRC-NO-900777', JSON.stringify(req));
-  const vr = await w.HRCStore.verifyCloud('HRC-NO-000000', null);
-  check('التحقق يعمل بالعميل المصغّر ويُرجع «لا توجد استمارة»', vr.ok === false && /لا توجد استمارة/.test(vr.error), JSON.stringify(vr));
+  /* الدوال العامة: «بطاقتي» (lookup_card) والتحقق من نفس الصفحة/الصفحة المجاورة */
+  const req = await w.HRCStore.cardLookup('HRC-BC-900777');
+  check('«بطاقتي» يعمل بالعميل المصغّر (RPC عام)', req.ok && req.card.serial === 'HRC-BC-900777', JSON.stringify(req.error || req.card.serial));
+  const vr = await w.HRCStore.verifyCloud('HRC-BC-000000', null);
+  check('التحقق يعمل بالعميل المصغّر ويُرجع «لا توجد بطاقة»', vr.ok === false && /لا توجد استمارة|لا توجد بطاقة/.test(vr.error), JSON.stringify(vr));
   check('لا محاولة تسجيل دخول من صفحة عامة', (await w.HRCStore.signIn('admin', 'x')).code === 'no_auth');
 
   api.close();

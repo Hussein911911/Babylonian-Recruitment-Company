@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>التحقق من الاستمارة | شركة الهدف للتوظيف</title>
-<meta name="description" content="صفحة التحقق الرسمية لاستمارات شركة الهدف للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.">
-<meta name="keywords" content="توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, استمارة توظيف, HRC, عمالة فنية">
+<title>التحقق من بطاقة التوظيف | شركة الهدف للتوظيف</title>
+<meta name="description" content="صفحة التحقق الرسمية لبطاقات شركة الهدف للتوظيف — امسح الباركود أو أدخل الرقم التسلسلي للتحقق من صحة البطاقة وحالة الفرصتين.">
+<meta name="keywords" content="توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, بطاقة توظيف, HRC, عمالة فنية">
 <meta name="theme-color" content="#0b1a3a">
 <meta name="author" content="Al-Hadaf Recruitment Company">
-<meta property="og:title" content="التحقق من الاستمارة | شركة الهدف للتوظيف">
-<meta property="og:description" content="صفحة التحقق الرسمية لاستمارات شركة الهدف للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.">
+<meta property="og:title" content="التحقق من بطاقة التوظيف | شركة الهدف للتوظيف">
+<meta property="og:description" content="صفحة التحقق الرسمية لبطاقات شركة الهدف للتوظيف — امسح الباركود أو أدخل الرقم التسلسلي للتحقق من صحة البطاقة وحالة الفرصتين.">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=2717d438e2">
+<link rel="stylesheet" href="assets/css/style.css?v=8ed2e55142">
 </head>
 <body>
 <!-- ===========================================================================
@@ -197,6 +197,21 @@
     <circle cx="18" cy="5.5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.5" r="2.6"/>
     <path d="M8.4 10.7 15.7 7M8.4 13.3l7.3 3.7"/>
   </symbol>
+  <!-- بطاقة مصرفية (نافذة الحجز الإلكتروني) -->
+  <symbol id="i-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.5" y="5" width="19" height="14" rx="2.6"/>
+    <path d="M2.5 9.6h19"/>
+    <path d="M6 14.5h3.2M12 14.5h2.4"/>
+  </symbol>
+  <!-- علامة نجاح داخل دائرة -->
+  <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9.2"/>
+    <path d="M8.2 12.4l2.7 2.7 5-5.6"/>
+  </symbol>
+  <!-- سهم لليمين (زر «السابق» في نافذة الحجز — الواجهة RTL) -->
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 12h14M13 6l6 6-6 6"/>
+  </symbol>
 </svg>
 
 <!-- ============================== الترويسة ============================== -->
@@ -254,11 +269,17 @@
       <a href="index.html#services">خدماتنا</a>
       <a href="index.html#about">عن الشركة</a>
       <a href="index.html#contact">تواصل معنا</a>
+      <!-- زر الحجز الإلكتروني: في الموقع العام يفتح نافذة الخطوات مباشرة
+           (booking.js)، وفي بقية الصفحات يرشد إلى لوحة الوظائف. -->
+      <a href="index.html#jobs" class="nav-book" data-action="open-booking">
+        <svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>
+        بطاقتي
+      </a>
     </nav>
   </div>
 </header>
 
-<!-- ============================== صفحة التحقق من الاستمارة ============================== -->
+<!-- ============================== صفحة التحقق من بطاقة التوظيف ============================== -->
 <section class="verify-hero">
   <div class="container">
     <div class="flex-between flex-wrap">
@@ -267,9 +288,9 @@
           <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
           أداة داخلية — للموظفين والإدارة
         </span>
-        <h1 style="color:#fff;font-size:clamp(1.4rem,3vw,2.1rem);margin-bottom:6px">التحقق من استمارة شركة الهدف للتوظيف</h1>
+        <h1 style="color:#fff;font-size:clamp(1.4rem,3vw,2.1rem);margin-bottom:6px">التحقق من بطاقة توظيف شركة الهدف</h1>
         <p style="color:#c3cee5;margin:0;max-width:70ch">
-          صفحة داخلية تُفتح بكيو آر كود الاستمارة المطبوعة أو بالرقم التسلسلي، وتُظهر حالة الاستمارة
+          صفحة داخلية تُفتح بباركود البطاقة المطبوعة أو بالرقم التسلسلي، وتُظهر حالة البطاقة
           والمحاولات المرتبطة بها وأكواد الوظائف. <b>الوصول مقصور على حسابات الموظفين والإدارة.</b>
         </p>
       </div>
@@ -292,8 +313,8 @@
     <div class="panel-body">
       <form class="toolbar" id="verify-form" autocomplete="off">
         <div class="field grow">
-          <label for="v-serial">الرقم التسلسلي للاستمارة</label>
-          <input type="text" id="v-serial" placeholder="HRC-NO-000120" required>
+          <label for="v-serial">الرقم التسلسلي للبطاقة</label>
+          <input type="text" id="v-serial" placeholder="HRC-BC-000120" required>
         </div>
         <div class="field">
           <label>&nbsp;</label>
@@ -301,7 +322,7 @@
         </div>
       </form>
       <p class="tiny muted mt-2 mb-0">
-        اكتب الرقم التسلسلي كما هو مطبوع على الاستمارة (مثال: <b class="mono" dir="ltr">HRC-NO-000120</b>)
+        اكتب الرقم التسلسلي كما هو مطبوع على البطاقة (مثال: <b class="mono" dir="ltr">HRC-BC-000120</b>)
       </p>
     </div>
   </div>
@@ -310,17 +331,17 @@
     <div class="contact-card" style="text-align:right">
       <div class="ic" style="margin:0 0 12px"><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg></div>
       <h3>ما معنى «سارية»؟</h3>
-      <p>الاستمارة داخل مدة صلاحيتها (30 يوماً) ويمكن استخدام محاولاتها المتبقية لحجز وظائف جديدة.</p>
+      <p>البطاقة داخل مدة صلاحيتها (30 يوماً) ويمكن استخدام فرصها المتبقية للتقديم على وظائف جديدة.</p>
     </div>
     <div class="contact-card" style="text-align:right">
       <div class="ic" style="margin:0 0 12px"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg></div>
-      <h3>«انتهت المهلة»</h3>
-      <p>انقضت 24 ساعة على حجز الوظيفة دون تثبيت نتيجة المقابلة، فأُفرجت الوظيفة تلقائياً وتحتاج إجراءً من المكتب.</p>
+      <h3>«حرجة — بانتظار قرار الشركة»</h3>
+      <p>انقضت 24 ساعة على حجز الوظيفة دون تثبيت نتيجة المقابلة، فتنتقل الوظيفة والفرصة إلى حالة «حرجة» بانتظار قرار الشركة: التوظيف أو الإرجاع أو الحذف — والفرصة مستهلكة لا تعود.</p>
     </div>
     <div class="contact-card" style="text-align:right">
       <div class="ic" style="margin:0 0 12px"><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg></div>
-      <h3>استمارة غير موجودة</h3>
-      <p>إن لم يظهر الرقم، فقد تكون الاستمارة مزوّرة أو الرقم خاطئاً — راجع المكتب على الأرقام الرسمية.</p>
+      <h3>بطاقة غير موجودة</h3>
+      <p>إن لم يظهر الرقم، فقد تكون البطاقة مزوّرة أو الرقم خاطئاً — راجع المكتب على الأرقام الرسمية.</p>
     </div>
   </div>
 </div>
@@ -350,18 +371,18 @@
         <h4>روابط سريعة</h4>
         <ul>
           <li><a href="index.html#jobs">الوظائف المتاحة</a></li>
-          <li><a href="index.html#how">آلية العمل والمحاولات</a></li>
+          <li><a href="index.html#how">آلية العمل والفرصتان</a></li>
           <li><a href="index.html#services">خدماتنا</a></li>
           <li><a href="index.html#about">عن الشركة</a></li>
-          <li><a href="index.html#verify">الحجز والتحقق</a></li>
+          <li><a href="index.html#verify">بطاقة التوظيف والتحقق</a></li>
         </ul>
       </div>
       <div>
         <h4>للباحثين عن عمل</h4>
         <ul>
-          <li><a href="https://wa.me/9647760058007" target="_blank" rel="noopener">احجز وظيفتك بالواتساب</a></li>
-          <li><a href="index.html#verify">كيف أحجز وظيفة؟</a></li>
-          <li><a href="index.html#how">ما معنى المحاولات الخمس؟</a></li>
+          <li><a href="index.html#jobs" data-action="open-booking">تابع بطاقتي</a></li>
+          <li><a href="index.html#verify">كيف أقدّم على وظيفة؟</a></li>
+          <li><a href="index.html#how">ما معنى الفرصتين؟</a></li>
           <li><a href="index.html#how">حجز الوظيفة 24 ساعة</a></li>
         </ul>
       </div>
@@ -404,16 +425,16 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=2717d438e2"></script>
-<script src="assets/js/supabase-config.js?v=2717d438e2"></script>
-<script src="assets/js/cloud-http.js?v=2717d438e2"></script>
-<script src="assets/js/qr.js?v=2717d438e2"></script>
-<script src="assets/js/cloud.js?v=2717d438e2"></script>
-<script src="assets/js/cloud-sync.js?v=2717d438e2"></script>
-<script src="assets/js/store.js?v=2717d438e2"></script>
-<script src="assets/js/ui.js?v=2717d438e2"></script>
-<script src="assets/js/nav.js?v=2717d438e2"></script>
-<script src="assets/js/voucher.js?v=2717d438e2"></script>
-<script src="assets/js/verify.js?v=2717d438e2"></script>
+<script src="assets/js/config.js?v=8ed2e55142"></script>
+<script src="assets/js/supabase-config.js?v=8ed2e55142"></script>
+<script src="assets/js/cloud-http.js?v=8ed2e55142"></script>
+<script src="assets/js/qr.js?v=8ed2e55142"></script>
+<script src="assets/js/cloud.js?v=8ed2e55142"></script>
+<script src="assets/js/cloud-sync.js?v=8ed2e55142"></script>
+<script src="assets/js/store.js?v=8ed2e55142"></script>
+<script src="assets/js/ui.js?v=8ed2e55142"></script>
+<script src="assets/js/nav.js?v=8ed2e55142"></script>
+<script src="assets/js/voucher.js?v=8ed2e55142"></script>
+<script src="assets/js/verify.js?v=8ed2e55142"></script>
 </body>
 </html>

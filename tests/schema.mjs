@@ -73,9 +73,10 @@ const funcs = [];
 let f;
 while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 
-/* 19 بعد فصل trg_make_attempts عن trg_defaults (إصلاح 23503: إنشاء خانات
-   المحاولات نُقل إلى مُشغِّل AFTER INSERT لأن BEFORE يسبق كتابة الاستمارة) */
-check('عدد الدوال المتوقّع (19)', funcs.length === 19, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+/* 23 = 19 السابقة + نظام بطاقة التوظيف 2026-09-30:
+   brc.chance_code (رمز الفرصة) + دوال «بطاقتي» العامة الثلاث
+   (lookup_card / use_chance / verify_card_code). */
+check('عدد الدوال المتوقّع (23)', funcs.length === 23, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
 const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',

@@ -1,7 +1,7 @@
 /* ===========================================================================
- *  HRC — صفحة التحقق من الاستمارة (تُفتح عبر كيو آر كود الاستمارة)
- *  تُظهر: الرقم التسلسلي، اسم الباحث، المحاولات المرتبطة وأكواد الوظائف،
- *  وحالة الاستمارة (سارية / منتهية / استُهلكت المحاولات / مكتملة).
+ *  HRC — صفحة التحقق من بطاقة التوظيف (تُفتح عبر باركود البطاقة)
+ *  تُظهر: الرقم التسلسلي، اسم الباحث، الفرص المرتبطة وأكواد الوظائف،
+ *  وحالة البطاقة (سارية / منتهية / استُهلكت الفرصتان).
  *  تعمل في وضعين: صفحة مستقلة (verify.html?form=...) أو ضمن الملف المستقل
  *  (hrc-standalone.html#!verify?form=...).
  * =========================================================================== */
@@ -38,7 +38,7 @@
     s = String(s || '').trim().toUpperCase();
     if (!s) return '';
     /* بادئة واحدة موحّدة HRC. الرقم المجرّد (6 خانات) يُكمَّل بها. */
-    if (!/^HRC-NO/i.test(s)) s = 'HRC-NO-' + s.replace(/[^0-9]/g, '').padStart(6, '0');
+    if (!/^HRC-BC/i.test(s)) s = 'HRC-BC-' + s.replace(/[^0-9]/g, '').padStart(6, '0');
     return s;
   }
 
@@ -57,8 +57,8 @@
 
     var st = Store.cloudStatus ? Store.cloudStatus() : null;
     /* الزائر لا يقرأ جدول brc.applicants (RLS) — فالتحقق يمرّ عبر دالة القاعدة
-       brc.verify_form التي تتحقق من البصمة وتُرجع استمارة واحدة مقنّعة إن لم
-       تطابق. لولا هذا لظهر لأي زائر «لا توجد استمارة بهذا الرقم» دائماً. */
+       brc.verify_form التي تتحقق من البصمة وتُرجع بطاقة واحدة مقنّعة إن لم
+       تطابق. لولا هذا لظهر لأي زائر «لا توجد بطاقة بهذا الرقم» دائماً. */
     if (st && st.configured && st.state === 'on' && st.role !== 'staff' && Store.verifyCloud) {
       var host = document.getElementById('verify-root');
       host.innerHTML = '<div class="verify-status info"><div class="seal">' +
@@ -78,13 +78,13 @@
 
   /* تحويل رد دالة القاعدة إلى الشكل الذي تتوقّعه renderResult تماماً.
      حساب الحالة هنا (لا في SQL) ليبقى سلوك الوضعين واحداً: القاعدة تُخزّن
-     'active' حتى بعد التوظيف، والحالة المعروضة تُشتقّ من المحاولات. */
+     'active' حتى بعد التوظيف، والحالة المعروضة تُشتقّ من الفرص. */
   function cloudShape(f) {
     var attempts = f.attempts || [];
     var status = f.status;
     if (status !== 'pending' && status !== 'rejected' && status !== 'expired') {
-      if (attempts.some(function (a) { return a.slotStatus === 'succeeded'; })) status = 'completed';
-      else if (f.expiryDate && new Date(f.expiryDate).getTime() < Date.now()) status = 'expired';
+      /* التوظيف لا ينهي البطاقة (قرار مقفل): تبقى «سارية» ما دامت مدة/فرصة متبقية */
+      if (f.expiryDate && new Date(f.expiryDate).getTime() < Date.now()) status = 'expired';
       else if (f.attemptsLeft === 0) status = 'exhausted';
       else status = 'active';
     }
@@ -108,7 +108,7 @@
 
   /* ===========================================================================
    *  بوابة الصلاحية — سياسة الشركة (طلب الإدارة):
-   *  الزائر لا يتحقق من أي استمارة. التحقق محصور بالموظفين والإدارة، ويُفتح
+   *  الزائر لا يتحقق من أي بطاقة. التحقق محصور بالموظفين والإدارة، ويُفتح
    *  لمن يملك جلسة دخول فعّالة في المنظومة الداخلية (نفس نافذة المتصفح).
    *  البوابة تُطبَّق **قبل** أي قراءة أو عرض بيانات، فلا يظهر للزائر حتى وجود
    *  الرقم التسلسلي أو عدمه (لا تسريب معلومات إطلاقاً).
@@ -127,7 +127,7 @@
         '<div class="verify-status warn" style="padding:26px 24px">' +
           '<div class="seal" style="background:#fdf3e0;color:#8a6d2c">' + UI.ic('lock') + '</div>' +
           '<div>' +
-            '<h1>التحقق من الاستمارات خاص بموظفي الشركة والإدارة</h1>' +
+            '<h1>التحقق من بطاقات التوظيف خاص بموظفي الشركة والإدارة</h1>' +
             '<p class="muted mb-2 small">سجّل الدخول إلى المنظومة الداخلية بحساب الموظف الرسمي، ثم أعد فتح رابط ' +
             'الكيو آر كود أو اكتب الرقم التسلسلي هنا. <b>الزبائن الكرام:</b> للحجز أو الاستفسار خابرونا أو راجعوا المكتب.</p>' +
             '<div class="flex flex-wrap" style="gap:10px">' +
@@ -188,7 +188,7 @@
       '<div class="verify-status info" style="padding:26px 24px">' +
         '<div class="seal" style="background:#e5eefb;color:#2563a8">' + UI.ic('qr') + '</div>' +
         '<div><h1>امسح الكيو آر كود أو أدخل الرقم التسلسلي</h1>' +
-        '<p class="muted mb-0 small">في أسفل كل استمارة كيو آر كود يفتح هذه الصفحة تلقائياً مع رقم الاستمارة.</p></div>' +
+        '<p class="muted mb-0 small">باركود كل بطاقة يفتح هذه الصفحة تلقائياً مع رقمها التسلسلي.</p></div>' +
       '</div>';
   }
 
@@ -197,28 +197,27 @@
     host.innerHTML = '' +
       '<div class="verify-status danger">' +
         '<div class="seal">' + UI.ic('alert') + '</div>' +
-        '<div><h1>لا توجد استمارة بهذا الرقم</h1>' +
+        '<div><h1>لا توجد بطاقة بهذا الرقم</h1>' +
         '<p class="muted mb-0 small">' + (reason ? UI.esc(reason) + ' — ' : '') +
-        'الرقم المُدخل: <b class="mono" dir="ltr">' + UI.esc(serial) + '</b> — تأكد من الرقم أو راجع المكتب على الأرقام الرسمية.</p></div>' +
+        'الرقم المُدخل: <b class="mono" dir="ltr">' + UI.esc(serial) + '</b> — تأكد من الباركود أو راجع المكتب على الأرقام الرسمية.</p></div>' +
       '</div>' +
       '<div class="panel-body" style="padding-top:0">' +
         '<div class="panel" style="background:#fbe6e5;border-color:#f0c3c1"><div class="panel-body" style="padding:14px 16px">' +
-        '<p class="mb-0 small">' + UI.ic('shield') + ' <b>تنبيه:</b> الاستمارات غير المسجّلة في نظام الشركة لا يُعتد بها. ' +
+        '<p class="mb-0 small">' + UI.ic('shield') + ' <b>تنبيه:</b> البطاقات غير المسجّلة في نظام الشركة لا يُعتد بها. ' +
         'تحقق دائماً عبر هذه الصفحة أو بالاتصال بالشركة.</p></div></div>' +
         '<div class="mt-2">' + UI.ic('phone') + ' <span class="mono" dir="ltr">' + UI.esc(CFG.company.phones.join(' / ')) + '</span></div>' +
       '</div>';
   }
 
-  function statusClass(k) { return ({ active: 'ok', completed: 'info', exhausted: 'warn', pending: 'warn', rejected: 'danger' })[k] || 'danger'; }
-  function statusIcon(k) { return ({ active: 'check', completed: 'check', exhausted: 'alert', pending: 'hourglass', rejected: 'x-circle' })[k] || 'x-circle'; }
+  function statusClass(k) { return ({ active: 'ok', exhausted: 'warn', pending: 'warn', rejected: 'danger' })[k] || 'danger'; }
+  function statusIcon(k) { return ({ active: 'check', exhausted: 'alert', pending: 'hourglass', rejected: 'x-circle' })[k] || 'x-circle'; }
   function statusTitle(k) {
     return ({
-      active: 'استمارة سارية وصحيحة',
+      active: 'بطاقة سارية وصحيحة',
       pending: 'طلب قيد المراجعة',
       rejected: 'طلب مرفوض',
-      expired: 'استمارة منتهية الصلاحية',
-      exhausted: 'استُهلكت المحاولات الخمس',
-      completed: 'تم التوظيف — استمارة مكتملة'
+      expired: 'بطاقة منتهية الصلاحية (30 يوماً)',
+      exhausted: 'استُهلكت الفرصتان — تُشترى بطاقة جديدة'
     })[k] || k;
   }
 
@@ -248,7 +247,7 @@
       ? (r.status === 'pending'
         ? '<div class="panel" style="background:#fdf6e3;border-color:#f0d9a3;margin:0 24px 18px"><div class="panel-body" style="padding:14px 16px">' +
           '<p class="mb-0 small">' + UI.ic('hourglass') + ' <b>طلبك قيد المراجعة:</b> استلم النظام طلبك وسيراجعه موظفونا خلال وقت قصير. ' +
-          'عند القبول تصدر الاستمارة رسمياً برقمها التسلسلي وتبدأ صلاحية 30 يوماً. يمكنك متابعة الحالة من هذه الصفحة أو الاتصال بنا.</p></div></div>'
+          'عند القبول تصدر البطاقة رسمياً بباركودها وتبدأ صلاحية 30 يوماً بفرصتين. يمكنك متابعة الحالة من «بطاقتي» أو الاتصال بنا.</p></div></div>'
         : '<div class="panel" style="background:#fbe6e5;border-color:#f0c3c1;margin:0 24px 18px"><div class="panel-body" style="padding:14px 16px">' +
           '<p class="mb-0 small">' + UI.ic('x-circle') + ' <b>نأسف، رُفض الطلب.</b> ' +
           (r.rejectReason ? 'السبب: ' + UI.esc(r.rejectReason) + '. ' : '') + 'يمكنك مراجعة المكتب للاستفسار أو تقديم طلب جديد.</p></div></div>')
@@ -272,14 +271,14 @@
     var tokenWarn = (tokenParam && r.tokenOk === false)
       ? '<div class="panel" style="background:#fbe6e5;border-color:#f0c3c1;margin:0 24px 18px"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('alert') + ' <b>تحذير أمني:</b> بصمة التحقق في الرابط غير مطابقة. ' +
-        'قد يكون الرابط مُعدّلاً — تحقق من الاستمارة الأصلية أو اتصل بالشركة.</p></div></div>' : '';
+        'قد يكون الرابط مُعدّلاً — تحقق من البطاقة الأصلية أو اتصل بالشركة.</p></div></div>' : '';
 
     host.innerHTML = '' +
       '<div class="verify-status ' + cls + '">' +
         '<div class="seal">' + UI.ic(statusIcon(r.status)) + '</div>' +
         '<div style="flex:1">' +
           '<h1>' + statusTitle(r.status) + '</h1>' +
-          '<p class="muted mb-0 small">رقم الاستمارة <b class="mono" dir="ltr">' + UI.esc(r.serial) + '</b> — ' +
+          '<p class="muted mb-0 small">رقم البطاقة <b class="mono" dir="ltr">' + UI.esc(r.serial) + '</b> — ' +
             'الباحث: <b>' + UI.esc(r.fullName) + '</b> — تم التحقق في ' + UI.esc(Store.fmtDateTime(r.verifiedAt)) + '</p>' +
         '</div>' +
         '<div style="text-align:center">' + stBadge +
@@ -295,8 +294,8 @@
             '<div class="data-item"><div class="k">اسم الباحث</div><div class="v">' + UI.esc(r.fullName) + '</div></div>' +
             '<div class="data-item"><div class="k">الهاتف</div><div class="v mono" dir="ltr">' + UI.esc(r.phone) + '</div></div>' +
             dateCells +
-            '<div class="data-item"><div class="k">المحاولات المستخدمة</div><div class="v">' + r.attemptsUsed + ' من ' + r.attemptLimit + '</div></div>' +
-            '<div class="data-item"><div class="k">المحاولات المتاحة</div><div class="v">' + r.attemptsLeft + '</div></div>' +
+            '<div class="data-item"><div class="k">الفرص المستخدمة</div><div class="v">' + r.attemptsUsed + ' من ' + r.attemptLimit + '</div></div>' +
+            '<div class="data-item"><div class="k">الفرص المتاحة</div><div class="v">' + r.attemptsLeft + '</div></div>' +
             '<div class="data-item"><div class="k">المُصدر</div><div class="v">' + UI.esc(r.createdBy) + '</div></div>' +
           '</div></div>' +
           '<div class="verify-qr">' + root.HRCVoucher.qrSvg(Store.verifyUrl(r.serial), 170) +
@@ -304,9 +303,9 @@
         '</div>' +
 
         (isRequest ? '' :
-          '<h3 class="mt-4">المحاولات المرتبطة بالاستمارة</h3>' +
+          '<h3 class="mt-4">الفرص المرتبطة بالبطاقة</h3>' +
           '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:940px">' +
-            '<thead><tr><th>المحاولة</th><th>كود الوظيفة</th><th>المنطقة</th><th>الوظيفة</th>' +
+            '<thead><tr><th>الفرصة</th><th>كود الوظيفة</th><th>المنطقة</th><th>الوظيفة</th>' +
             '<th>هاتف جهة الاتصال</th><th>حالة المهلة</th><th>وقت الاختيار</th><th>مهلة الحجز</th><th>ملاحظة</th></tr></thead>' +
             '<tbody>' + rows + '</tbody>' +
           '</table></div></div>') +
@@ -315,7 +314,7 @@
           '<p class="mb-0 small">' + UI.ic('shield') + ' <b>ملاحظة قانونية:</b> ' + UI.esc(root.HRCVoucher.DISCLAIMER) + '</p>' +
         '</div></div>' +
         '<div class="flex flex-wrap mt-3">' +
-          (isRequest ? '' : '<button class="btn btn-lapis" id="verify-print">' + UI.ic('print') + ' طباعة نسخة الاستمارة</button>') +
+          (isRequest ? '' : '<button class="btn btn-lapis" id="verify-print">' + UI.ic('print') + ' طباعة البطاقة (86×54مم)</button>') +
           '<button class="btn btn-outline" id="verify-copy">' + UI.ic('share') + ' نسخ رابط التحقق</button>' +
         '</div>' +
       '</div>';

@@ -85,7 +85,7 @@ const DEMO_SEED_JSON = (() => {
   return m[1];
 })();
 
-const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'public', 'verify', 'dashboard'];
+const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard'];
 
 /* ---------------------------------------------------------------------------
  *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
@@ -100,7 +100,7 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
    ولا اتصالاً لحظياً. قياس الحجم أظهر أن المكتبة الكاملة كانت ثلث ما ينزّله.
    اللوحة تبقى على المكتبة الكاملة لأنها تحتاج Auth و Realtime فعلاً. */
 const SCRIPTS = {
-  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'public'],
+  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
   verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
   dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard']
 };
@@ -123,8 +123,8 @@ const verQ = (p) => `${p}?v=${ASSET_VER}`;
 
 const META = {
   title: 'شركة الهدف للتوظيف | Al-Hadaf Recruitment Company',
-  desc: 'شركة الهدف للتوظيف (HRC) في الحلة — بابل: استمارات ترشيح موثّقة بكيو آر كود، خمس محاولات، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة.',
-  keywords: 'توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, استمارة توظيف, HRC, عمالة فنية'
+  desc: 'شركة الهدف للتوظيف (HRC) في الحلة — بابل: بطاقات توظيف بباركود QR وفرصتين مستقلتين، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة بقرار حرج.',
+  keywords: 'توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, بطاقة توظيف, HRC, عمالة فنية'
 };
 
 function docHead({ title, desc, css = null, icon = 'assets/img/favicon.svg', extra = '' }) {
@@ -164,8 +164,8 @@ writeFileSync(P('index.html'), buildPage({
   title: META.title, desc: META.desc, body: partials.public, scripts: SCRIPTS.public
 }));
 writeFileSync(P('verify.html'), buildPage({
-  title: 'التحقق من الاستمارة | شركة الهدف للتوظيف',
-  desc: 'صفحة التحقق الرسمية لاستمارات شركة الهدف للتوظيف — امسح الكيو آر كود أو أدخل الرقم التسلسلي للتحقق من صحة الاستمارة وحالة المحاولات.',
+  title: 'التحقق من بطاقة التوظيف | شركة الهدف للتوظيف',
+  desc: 'صفحة التحقق الرسمية لبطاقات شركة الهدف للتوظيف — امسح الباركود أو أدخل الرقم التسلسلي للتحقق من صحة البطاقة وحالة الفرصتين.',
   body: partials.verify, scripts: SCRIPTS.verify
 }));
 /* صفحة 404 بهوية الشركة: يقرأها Cloudflare Pages تلقائياً من /404.html عند أي

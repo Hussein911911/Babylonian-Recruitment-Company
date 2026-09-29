@@ -122,8 +122,8 @@
         fee: CFG.rules.formFee, feePaid: true, printedCount: 1
       });
     });
-    // المحاولات: خمس خانات لكل استمارة (منها المُستخدم في البيانات التجريبية)
-    var limit = Number(d.settings.attemptLimit || 5);
+    // الفرص: خانتان لكل بطاقة (منها المُستخدم في البيانات التجريبية)
+    var limit = Number(d.settings.attemptLimit || 2);
     d.applicants.forEach(function (app) {
       for (var i = 1; i <= limit; i++) {
         var t = CFG.seed.attempts.filter(function (x) { return x.serial === app.serial && x.no === i; })[0];
@@ -132,7 +132,7 @@
         // الحجز الجاري: بدأ قبل 3 ساعات وتنتهي مهلته بعد نحو 21 ساعة (لعرض العدّاد التنازلي)
         var selected = isHold ? addHours(new Date(), -3) : addDays(new Date(), -2 - i);
         d.attempts.push({
-          id: uid('att'), serial: app.serial, no: i,
+          id: uid('att'), serial: app.serial, no: i, code: chanceCode(d.attempts),
           jobId: job ? job.id : null,
           jobCode: job ? job.code : null, jobTitle: job ? job.title : null,
           location: job ? job.region : null,
@@ -480,17 +480,44 @@
 
   function deleteJob(code) {
     var job = getJob(code); if (!job) return false;
+    /* حذف وظيفة عليها حجز/حرجة يغلق فرصة البطاقة المرتبطة (الفرصة مستهلكة —
+       قرار معتمد: لا تعود الفرصة بأي نتيجة) */
+    db.attempts.forEach(function (t) {
+      if (t.jobId === job.id && (t.slotStatus === 'reserved' || t.slotStatus === 'critical')) {
+        t.slotStatus = 'expired';
+        t.closedAt = nowISO();
+        t.holdExpiresAt = null;
+        t.note = 'حذفت الشركة الوظيفة ' + job.code + ' — استُهلكت الفرصة';
+      }
+    });
     db.jobs = db.jobs.filter(function (j) { return j.code !== code; });
     audit('حذف وظيفة', 'job', code, job.title + ' — ' + job.region);
     save(); emit();
     return true;
   }
 
-  /* ======================= الباحثون عن العمل والاستمارات ======================= */
+  /* ======================= الباحثون عن العمل والبطاقات ======================= */
 
+  /* بادئة البطاقة: HRC-BC-###### (BC = بطاقة توظيف) — الباركود هو هوية البطاقة */
   function nextSerial() {
     db.counters.formSerial++;
-    return 'HRC-NO-' + pad(db.counters.formSerial, 6);
+    return 'HRC-BC-' + pad(db.counters.formSerial, 6);
+  }
+
+  /* رمز خاص لكل فرصة داخل البطاقة (4 أرقام + شرطة + حرفان) — يستخدمه الزبون
+     للتقديم الذاتي أونلاين: الباركود وحده لا يكفي لاستهلاك فرصة. */
+  function chanceCode(pool) {
+    var letters = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+    /* pool اختياري: يُمرَّر أثناء seedDb لأن المتغير العام db ما زال null حينها */
+    var attempts = pool || (db ? db.attempts : []);
+    for (var guard = 0; guard < 50; guard++) {
+      var code = pad(Math.floor(1000 + Math.random() * 9000), 4) + '-' +
+        letters[Math.floor(Math.random() * letters.length)] +
+        letters[Math.floor(Math.random() * letters.length)];
+      var taken = attempts.some(function (t) { return t.code === code; });
+      if (!taken) return code;
+    }
+    return pad(Math.floor(1000 + Math.random() * 9000), 4) + '-XX';
   }
 
   function createApplicant(data) {
@@ -504,31 +531,35 @@
       status: pending ? 'pending' : 'active',
       createdBy: currentUser() ? currentUser().username : 'system',
       createdAt: issue.toISOString(), notes: data.notes || '',
+      posName: data.posName || '',
       requestedCode: data.requestedCode || null,
       requestedAt: data.requestedCode ? issue.toISOString() : null,
       fee: Number(data.fee != null ? data.fee : db.settings.formFee),
-      feePaid: !!data.feePaid, printedCount: 0,
+      /* البطاقة تُباع كاشاً عند الإصدار (لا دفع إلكتروني) — الافتراضي مدفوع */
+      feePaid: data.feePaid != null ? !!data.feePaid : true, printedCount: 0,
       rejectReason: ''
     };
     db.applicants.unshift(app);
     if (!pending) createAttempts(app.serial);
-    audit(pending ? 'طلب استمارة جديد' : 'إصدار استمارة', 'applicant', app.serial,
-      (pending ? 'طلب إلكتروني قيد المراجعة من الباحث ' : 'إصدار استمارة للباحث ') + app.fullName + ' — رسم ' + money(app.fee));
+    audit(pending ? 'طلب بطاقة جديد' : 'إصدار بطاقة توظيف', 'applicant', app.serial,
+      (pending ? 'طلب إلكتروني قيد المراجعة من الباحث ' : 'بيع/إصدار بطاقة توظيف للباحث ') + app.fullName +
+      (app.posName ? ' — نقطة البيع: ' + app.posName : '') + ' — سعر ' + money(app.fee) + ' (كاش)');
     save(); emit();
     return app;
   }
 
   function createAttempts(serial) {
-    for (var i = 1; i <= Number(db.settings.attemptLimit || 5); i++) {
+    for (var i = 1; i <= Number(db.settings.attemptLimit || 2); i++) {
       db.attempts.push({
-        id: uid('att'), serial: serial, no: i, jobId: null, jobCode: null, jobTitle: null,
+        id: uid('att'), serial: serial, no: i, code: chanceCode(),
+        jobId: null, jobCode: null, jobTitle: null,
         location: null, employerName: null, employerPhone: null, slotStatus: 'empty',
         selectedAt: null, holdExpiresAt: null, closedAt: null, note: '', staff: null
       });
     }
   }
 
-  /* قبول طلب استمارة قيد المراجعة ⇒ تتحول لاستمارة رسمية سارية */
+  /* قبول طلب بطاقة قيد المراجعة ⇒ تتحول لبطاقة رسمية سارية */
   function approveApplicant(serial) {
     var app = getApplicant(serial);
     if (!app || app.status !== 'pending') return { ok: false, error: 'الطلب غير موجود أو ليس قيد المراجعة' };
@@ -537,18 +568,18 @@
     app.issueDate = issue.toISOString();
     app.expiryDate = addDays(issue, Number(db.settings.validityDays || 30)).toISOString();
     if (!getAttempts(serial).length) createAttempts(serial);
-    audit('قبول طلب استمارة', 'applicant', serial, 'قبول طلب الباحث ' + app.fullName + ' — صدرت الاستمارة رسمياً برقم ' + serial);
+    audit('قبول طلب بطاقة', 'applicant', serial, 'قبول طلب الباحث ' + app.fullName + ' — صدرت البطاقة رسمياً برقم ' + serial);
     save(); emit();
     return { ok: true, app: app };
   }
 
-  /* رفض طلب استمارة قيد المراجعة */
+  /* رفض طلب بطاقة قيد المراجعة */
   function rejectApplicant(serial, reason) {
     var app = getApplicant(serial);
     if (!app || app.status !== 'pending') return { ok: false, error: 'الطلب غير موجود أو ليس قيد المراجعة' };
     app.status = 'rejected';
     app.rejectReason = reason || '';
-    audit('رفض طلب استمارة', 'applicant', serial, 'رفض طلب الباحث ' + app.fullName + (reason ? ' — السبب: ' + reason : ''));
+    audit('رفض طلب بطاقة', 'applicant', serial, 'رفض طلب الباحث ' + app.fullName + (reason ? ' — السبب: ' + reason : ''));
     save(); emit();
     return { ok: true, app: app };
   }
@@ -583,8 +614,8 @@
       .sort(function (a, b) { return a.no - b.no; });
   }
 
-  /* الخانة الفعّالة: أول محاولة فارغة — كل خانة (1..5) تُستخدم مرة واحدة فقط،
-     والمرفوضة/المنتهية تبقى مسجّلة في تاريخ الاستمارة دون إعادة استخدام. */
+  /* الخانة الفعّالة: أول فرصة فارغة — كل فرصة (1..2) تُستخدم مرة واحدة فقط،
+     والمرفوضة/المنتهية تبقى مسجّلة في تاريخ البطاقة دون إعادة استخدام. */
   function activeAttempt(serial) {
     return getAttempts(serial).filter(function (t) { return t.slotStatus === 'empty'; })[0] || null;
   }
@@ -593,30 +624,40 @@
     return getAttempts(serial).filter(function (t) { return t.slotStatus === 'empty'; }).length;
   }
 
+  /* حالة البطاقة — التوظيف لا ينهي البطاقة (يبقى للزبون حقه في فرصته
+     الثانية حتى نهاية المدة): تنتهي البطاقة بانتهاء 30 يوماً أو استنفاد الفرصتين. */
   function formStatus(app) {
     if (!app) return 'active';
     if (app.status === 'pending') return 'pending';
     if (app.status === 'rejected') return 'rejected';
-    if (getAttempts(app.serial).some(function (t) { return t.slotStatus === 'succeeded'; })) return 'completed';
     if (new Date(app.expiryDate).getTime() < Date.now()) return 'expired';
-    if (attemptsLeft(app.serial) === 0) return 'exhausted';
+    /* «سارية» ما دامت فرصة قيد اللعب (حجز جارٍ أو حالة حرجة بانتظار قرار) —
+       أما «استُهلكت الفرصتان» فتعني انتهاء كل الفرص بنتيجة نهائية. */
+    var inPlay = getAttempts(app.serial).some(function (t) {
+      return t.slotStatus === 'reserved' || t.slotStatus === 'critical';
+    });
+    if (attemptsLeft(app.serial) === 0 && !inPlay) return 'exhausted';
     return 'active';
   }
 
-  /* ======================= المحاولات: الاختيار والنتائج ======================= */
+  /* ======================= الفرص: الاختيار والنتائج ======================= */
 
-  function selectAttempt(serial, jobCode) {
+  function selectAttempt(serial, jobCode, opts) {
+    opts = opts || {};
     var app = getApplicant(serial);
-    if (!app) return { ok: false, error: 'الاستمارة غير موجودة' };
+    if (!app) return { ok: false, error: 'البطاقة غير موجودة' };
     var st = formStatus(app);
     if (st === 'pending') return { ok: false, error: 'الطلب قيد المراجعة — اقبل الطلب أولاً قبل الترشيح' };
     if (st === 'rejected') return { ok: false, error: 'الطلب مرفوض — لا يمكن الترشيح عليه' };
-    if (st === 'expired') return { ok: false, error: 'انتهت صلاحية الاستمارة (30 يوماً)' };
+    if (st === 'expired') return { ok: false, error: 'انتهت صلاحية البطاقة (30 يوماً)' };
     var job = getJob(jobCode);
     if (!job) return { ok: false, error: 'الوظيفة غير موجودة' };
     if (job.status !== 'available') return { ok: false, error: 'الوظيفة غير متاحة حالياً (' + CFG.jobStatus[job.status].ar + ')' };
+    /* منع استهلاك الفرصتين على نفس الوظيفة */
+    if (getAttempts(serial).some(function (t) { return t.jobId === job.id && t.slotStatus !== 'empty'; }))
+      return { ok: false, error: 'هذه البطاقة قُدِّمت على هذه الوظيفة من قبل — اختر وظيفة أخرى' };
     var slot = activeAttempt(serial);
-    if (!slot) return { ok: false, error: 'لا توجد محاولات متاحة — استُهلكت محاولات الاستمارة (' + (db.settings.attemptLimit || 5) + ')' };
+    if (!slot) return { ok: false, error: 'لا توجد فرص متاحة — استُهلكت فرص البطاقة (' + (db.settings.attemptLimit || 2) + ')' };
 
     var hours = Number(db.settings.holdHours || 24);
     slot.jobId = job.id; slot.jobCode = job.code; slot.jobTitle = job.title;
@@ -631,15 +672,133 @@
     job.holdExpiresAt = slot.holdExpiresAt;
 
     audit('حجز مؤقت لوظيفة', 'job', job.code,
-      'المحاولة #' + slot.no + ' للاستمارة ' + serial + ' — تعليق الوظيفة ' + hours + ' ساعة حتى ' + fmtDateTime(slot.holdExpiresAt));
+      'الفرصة #' + slot.no + ' للبطاقة ' + serial + ' — تعليق الوظيفة ' + hours + ' ساعة حتى ' + fmtDateTime(slot.holdExpiresAt) +
+      (opts.byCustomer ? ' | تقديم ذاتي من الزبون برمز الفرصة' : ''));
     save(); emit();
     return { ok: true, attempt: slot, job: job };
   }
 
-  /* نتيجة المقابلة: succeeded | rejected */
+  /* ======================= بطاقتي: واجهة الزبون العامة ======================= */
+  /* إثبات حيازة البطاقة: الباركود + رمز إحدى الفرصتين — يُرجع الحمولة
+     الكاملة للطباعة (الاسم والهاتف ورمزا الفرصتين). الرمز سرّي على ظهر
+     الورقة، فمن يملكه يملك البطاقة (نموذج الحيازة المعتمد). */
+  function cardVerifyCode(serial, code) {
+    serial = String(serial || '').trim().toUpperCase();
+    code = String(code || '').trim().toUpperCase();
+    var app = getApplicant(serial);
+    if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود' };
+    var slot = getAttempts(serial).filter(function (t) {
+      return String(t.code || '').toUpperCase() === code;
+    })[0];
+    if (!slot) return { ok: false, error: 'رمز الفرصة غير صحيح — انسخه كما هو من ظهر بطاقتك' };
+    return { ok: true, app: app, attempts: getAttempts(serial) };
+  }
+
+
+
+  /* عرض آمن للبطاقة للزبون نفسه (بالباركود): بلا رموز الفرص وبلا بيانات صاحب
+     العمل — هذه أصول الشركة. الرمز سرّي يدخله الزبون من ورقته عند التقديم. */
+  function lookupCard(serial) {
+    var app = getApplicant(String(serial || '').trim().toUpperCase());
+    if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود — تأكد من الرقم المطبوع على بطاقتك' };
+    if (app.status === 'pending') return { ok: false, error: 'هذه البطاقة قيد المراجعة لدى الشركة' };
+    var attempts = getAttempts(app.serial).map(function (t) {
+      return {
+        no: t.no, slotStatus: t.slotStatus,
+        jobCode: t.jobCode, jobTitle: t.jobTitle, location: t.location,
+        selectedAt: t.selectedAt, holdExpiresAt: t.holdExpiresAt,
+        note: t.slotStatus === 'rejected' || t.slotStatus === 'expired' ? (t.note || '') : ''
+      };
+    });
+    return {
+      ok: true,
+      card: {
+        serial: app.serial,
+        fullName: maskName(app.fullName),
+        phone: maskPhone(app.phone),
+        status: formStatus(app),
+        issueDate: app.issueDate,
+        expiryDate: app.expiryDate,
+        chancesLeft: attemptsLeft(app.serial),
+        chances: attempts,
+        succeeded: attempts.some(function (t) { return t.slotStatus === 'succeeded'; })
+      }
+    };
+  }
+
+  /* التقديم الذاتي من الزبون: الباركود + رمز الفرصة + الوظيفة.
+     الرمز سرّ مطبوع على ظهر بطاقته — لا تُستهلك فرصة بدونه. */
+  function useChance(serial, code, jobCode) {
+    serial = String(serial || '').trim().toUpperCase();
+    code = String(code || '').trim().toUpperCase();
+    var app = getApplicant(serial);
+    if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود' };
+    var st = formStatus(app);
+    if (st === 'expired') return { ok: false, error: 'انتهت صلاحية البطاقة (30 يوماً)' };
+    if (st === 'exhausted') return { ok: false, error: 'استُهلكت فرص البطاقة — تشترى بطاقة جديدة من نقاط البيع' };
+    var slot = getAttempts(serial).filter(function (t) {
+      return t.slotStatus === 'empty' && String(t.code || '').toUpperCase() === code;
+    })[0];
+    if (!slot) return { ok: false, error: 'رمز الفرصة غير صحيح — انسخ الرمز المطبوع على ظهر بطاقتك كما هو' };
+    var res = selectAttempt(serial, jobCode, { byCustomer: true });
+    if (!res.ok) return res;
+    audit('تقديم ذاتي ببطاقة', 'applicant', serial,
+      'الزبون ' + app.fullName + ' استخدم الفرصة #' + slot.no + ' بنفسه من الموقع على الوظيفة ' + jobCode);
+    save();
+    return res;
+  }
+
+
+  /* توجيه موحّد «بطاقتي»: سحابة إن كانت مفعّلة (RPC عامة آمنة)، وإلا محلياً */
+  function cardLookup(serial) {
+    var st = cloudStatus();
+    if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.lookupCard && cloud.client) {
+      return root.HRCCloud.lookupCard(cloud.client, serial);
+    }
+    return Promise.resolve(lookupCard(serial));
+  }
+
+  function cardUseChance(serial, code, jobCode) {
+    var st = cloudStatus();
+    if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.useChance && cloud.client) {
+      return root.HRCCloud.useChance(cloud.client, serial, code, jobCode);
+    }
+    return Promise.resolve(useChance(serial, code, jobCode));
+  }
+
+  function cardVerify(serial, code) {
+    var st = cloudStatus();
+    if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.verifyCardCode && cloud.client) {
+      return root.HRCCloud.verifyCardCode(cloud.client, serial, code).then(function (r) {
+        if (!r || !r.ok) return r || { ok: false, error: 'تعذّر التحقق' };
+        /* نحوّل حمولة القاعدة إلى شكل app/attempts الذي يفهمه قالب الطباعة */
+        var d = r.data || {};
+        return {
+          ok: true,
+          app: {
+            id: d.id || null, serial: d.serial, fullName: d.fullName, phone: d.phone,
+            issueDate: d.issueDate, expiryDate: d.expiryDate, posName: d.posName || ''
+          },
+          attempts: (d.attempts || []).map(function (a) {
+            return {
+              no: a.no, code: a.code, slotStatus: a.slotStatus, jobCode: a.jobCode,
+              jobTitle: a.jobTitle, location: a.location, selectedAt: a.selectedAt,
+              holdExpiresAt: a.holdExpiresAt, closedAt: a.closedAt, note: a.note || ''
+            };
+          })
+        };
+      });
+    }
+    return Promise.resolve(cardVerifyCode(serial, code));
+  }
+
+  /* ======================= النتائج ======================= */
+  /* نتيجة المقابلة: succeeded | rejected — كلتاهما تستهلك الفرصة ولا تعود،
+     لكن التوظيف لا يُنهي البطاقة: يبقى للزبون حقه في فرصته الأخرى حتى
+     نهاية مدة البطاقة (30 يوماً). */
   function setOutcome(serial, no, outcome, note) {
     var slot = getAttempts(serial).filter(function (t) { return t.no === Number(no); })[0];
-    if (!slot) return { ok: false, error: 'المحاولة غير موجودة' };
+    if (!slot) return { ok: false, error: 'الفرصة غير موجودة' };
     var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
     slot.slotStatus = outcome;
     slot.closedAt = nowISO();
@@ -647,42 +806,46 @@
     slot.holdExpiresAt = null;
 
     if (job) {
-      if (outcome === 'succeeded') { job.status = 'closed'; job.reservedBy = null; job.holdExpiresAt = null; job.closedAt = nowISO(); }
-      else { job.status = 'available'; job.reservedBy = null; job.holdExpiresAt = null; }
+      if (outcome === 'succeeded') { job.status = 'closed'; job.reservedBy = null; job.holdExpiresAt = null; job.critical = false; job.closedAt = nowISO(); }
+      else { job.status = 'available'; job.reservedBy = null; job.holdExpiresAt = null; job.critical = false; }
     }
-    // تفعيل المحاولة التالية تلقائياً (أول خانة فارغة متبقية على الاستمارة)
+    // تفعيل الفرصة التالية تلقائياً (أول خانة فارغة متبقية على البطاقة)
     var next = null;
     if (outcome === 'rejected') next = activeAttempt(serial);
     audit(outcome === 'succeeded' ? 'إتمام توظيف' : 'رفض مرشح',
       'attempt', serial + ' / #' + no,
       (job ? job.code + ' — ' + job.title : '') + ' | ' +
       (outcome === 'succeeded'
-        ? 'تم التوظيف وإغلاق الوظيفة'
-        : 'إعادة الوظيفة إلى (متاحة) وتفعيل المحاولة #' + (next ? next.no : '—') + ' تلقائياً') +
+        ? 'تم التوظيف وإغلاق الوظيفة — وتبقى فرصة الزبون الأخرى محفوظة حتى نهاية مدة البطاقة'
+        : 'إعادة الوظيفة إلى (متاحة) وتفعيل الفرصة #' + (next ? next.no : '—') + ' تلقائياً') +
       (note ? ' | ملاحظة: ' + note : ''));
     save(); emit();
     return { ok: true, attempt: slot, job: job, nextAttempt: next };
   }
 
-  /* إفراج يدوي عن الحجز مع وسم "انتهت المهلة / تتطلب إجراء" */
+  /* إقرار الموظف بعد الحالة الحرجة: إرجاع الوظيفة متوفرة — الفرصة تبقى
+     مستهلكة (قرار معتمد: لا تعود الفرصة بأي نتيجة). */
   function releaseHold(serial, no, reason) {
     var slot = getAttempts(serial).filter(function (t) { return t.no === Number(no); })[0];
-    if (!slot) return { ok: false, error: 'المحاولة غير موجودة' };
+    if (!slot) return { ok: false, error: 'الفرصة غير موجودة' };
     var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
     slot.slotStatus = 'expired';
     slot.closedAt = nowISO();
     slot.holdExpiresAt = null;
-    slot.note = reason || 'انتهت مهلة 24 ساعة دون تثبيت النتيجة';
-    if (job) { job.status = 'available'; job.reservedBy = null; job.holdExpiresAt = null; }
-    audit('إفراج عن حجز', 'job', job ? job.code : '—',
-      'المحاولة #' + no + ' للاستمارة ' + serial + ' — أُعيدت الوظيفة إلى (متاحة) | ' + slot.note);
+    slot.note = reason || 'قرار الشركة بعد انتهاء مهلة الحجز — استُهلكت الفرصة وأُعيدت الوظيفة متوفرة';
+    if (job) { job.status = 'available'; job.reservedBy = null; job.holdExpiresAt = null; job.critical = false; }
+    audit('إرجاع وظيفة بعد حرجة', 'job', job ? job.code : '—',
+      'الفرصة #' + no + ' للبطاقة ' + serial + ' — أُعيدت الوظيفة إلى (متاحة) | ' + slot.note);
     save(); emit();
     return { ok: true, attempt: slot, job: job };
   }
 
   /* ======================= الصيانة التلقائية ======================= */
 
-  /* تُنفّذ عند تحميل الصفحة وكل 30 ثانية وكل دقيقة على الواجهة */
+  /* تُنفّذ عند تحميل الصفحة وكل 30 ثانية وكل دقيقة على الواجهة.
+     نظام البطاقات (2026-09-30): لا إفراج تلقائي — الوظيفة التي تنتهي مهلة
+     حجزها (24 ساعة) دون قرار تنتقل هي وفرصة الزبون إلى حالة «حرجة»
+     بانتظار قرار الموظف: تم التوظيف / إرجاعها متوفرة / حذفها. */
   function runMaintenance() {
     /* في الوضع السحابي بلا جلسة موظف: لا كتابة إطلاقاً. أي تعديل هنا يُرفض من
        RLS (42501) ويبقى في قائمة انتظار الدفع يعيد المحاولة بلا نهاية — والصيانة
@@ -690,43 +853,39 @@
     if (cloud.state === 'on' && cloud.role !== 'staff') return [];
     var actions = [];
     var now = new Date();
-    if (!db.settings || db.settings.autoReleaseEnabled === false) { /* معطّل من الإعدادات */ }
 
-    // 1) إفراج تلقائي عن الحجوزات المنتهية (24 ساعة)
-    if (db.settings.autoReleaseEnabled !== false && CFG.rules.autoReleaseEnabled) {
-      db.jobs.forEach(function (job) {
-        if (job.status !== 'reserved' || !job.holdExpiresAt) return;
-        if (new Date(job.holdExpiresAt).getTime() > now.getTime()) return;
-        var slot = db.attempts.filter(function (t) {
-          return t.serial === job.reservedBy && t.jobId === job.id && t.slotStatus === 'reserved';
-        })[0];
-        job.status = 'available';
-        job.reservedBy = null;
-        job.holdExpiresAt = null;
-        if (slot) {
-          slot.slotStatus = 'expired';
-          slot.closedAt = now.toISOString();
-          slot.holdExpiresAt = null;
-          slot.note = 'انتهت مهلة 24 ساعة دون تثبيت نتيجة المقابلة — تتطلب إجراء';
-        }
-        db.audit.unshift({
-          id: uid('log'), ts: now.toISOString(), user: 'system', role: 'system', name: 'النظام (تلقائي)',
-          ip: localIp(), action: 'إفراج تلقائي (24 ساعة)', entity: 'job', entityId: job.code,
-          details: 'انتهت مهلة الحجز دون تثبيت النتيجة — أُعيدت الوظيفة إلى (متاحة) ووُسمت المحاولة #' +
-            (slot ? slot.no : '—') + ' للاستمارة ' + (job.reservedBy || '—') + ' بـ (انتهت المهلة)'
-        });
-        actions.push({ type: 'autoRelease', job: job.code, serial: job.reservedBy });
+    // 1) الحجوزات المنتهية (24 ساعة) ← حالة «حرجة» بانتظار قرار الموظف
+    db.jobs.forEach(function (job) {
+      if (job.status !== 'reserved' || !job.holdExpiresAt) return;
+      if (new Date(job.holdExpiresAt).getTime() > now.getTime()) return;
+      var slot = db.attempts.filter(function (t) {
+        return t.serial === job.reservedBy && t.jobId === job.id && t.slotStatus === 'reserved';
+      })[0];
+      /* الوظيفة تبقى مقفلة (محجوزة) حتى القرار — لا يقدم عليها غيره */
+      job.holdExpiresAt = null;
+      job.critical = true;
+      if (slot) {
+        slot.slotStatus = 'critical';
+        slot.holdExpiresAt = null;
+        slot.note = 'انتهت مهلة 24 ساعة دون قرار — بانتظار قرار الشركة (توظيف / إرجاع / حذف)';
+      }
+      db.audit.unshift({
+        id: uid('log'), ts: now.toISOString(), user: 'system', role: 'system', name: 'النظام (تلقائي)',
+        ip: localIp(), action: 'حالة حرجة (انتهاء 24 ساعة)', entity: 'job', entityId: job.code,
+        details: 'انتهت مهلة الحجز دون قرار — الوظيفة بانتظار قرار الموظف: تم التوظيف أو إرجاعها متوفرة أو حذفها' +
+          (slot ? ' | الفرصة #' + slot.no + ' للبطاقة ' + slot.serial : '')
       });
-    }
+      actions.push({ type: 'criticalHold', job: job.code, serial: job.reservedBy });
+    });
 
-    // 2) انتهاء صلاحية الاستمارات (30 يوماً)
+    // 2) انتهاء صلاحية البطاقات (30 يوماً)
     db.applicants.forEach(function (app) {
       if (app.status === 'active' && new Date(app.expiryDate).getTime() < now.getTime()) {
         app.status = 'expired';
         db.audit.unshift({
           id: uid('log'), ts: now.toISOString(), user: 'system', role: 'system', name: 'النظام (تلقائي)',
-          ip: localIp(), action: 'انتهاء استمارة', entity: 'applicant', entityId: app.serial,
-          details: 'انتهت صلاحية الاستمارة (30 يوماً) بتاريخ ' + fmtDate(app.expiryDate)
+          ip: localIp(), action: 'انتهاء بطاقة', entity: 'applicant', entityId: app.serial,
+          details: 'انتهت صلاحية البطاقة (30 يوماً) بتاريخ ' + fmtDate(app.expiryDate)
         });
         actions.push({ type: 'formExpired', serial: app.serial });
       }
@@ -751,6 +910,19 @@
   function verifyUrl(serial) { return verifyBaseUrl() + '?form=' + encodeURIComponent(serial) + '&t=' + token(serial); }
   function verifyLocalUrl(serial) { return CFG.verifyLocal + '?form=' + encodeURIComponent(serial) + '&t=' + token(serial); }
 
+  /* رابط «بطاقتي» المطبوع في باركود QR على البطاقة: يفتح الموقع العام ويفتح
+     نافذة بطاقتي مع تعبئة الباركود تلقائياً (hash: ‎#card=HRC-BC-######). */
+  function cardUrl(serial) {
+    var base;
+    if (CFG.autoVerifyBase !== false && typeof location !== 'undefined' && location &&
+        /^https?:$/.test(location.protocol) && location.origin) {
+      base = location.origin + location.pathname.replace(/[^/]*$/, '');
+    } else {
+      base = String(CFG.verifyBase || '').replace(/verify\/?$/, '');
+    }
+    return base + 'index.html#card=' + encodeURIComponent(serial);
+  }
+
   /* تقنيع للعرض العام بلا بصمة مطابقة — مطابق لدالتي brc.mask_name/mask_phone
      في القاعدة حتى يكون سلوك الوضعين واحداً (المحلي والسحابي). */
   function maskName(v) {
@@ -768,7 +940,7 @@
 
   function verify(serial, t) {
     var app = getApplicant(serial);
-    if (!app) return { ok: false, error: 'لا توجد استمارة بهذا الرقم', serial: serial };
+    if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الرقم', serial: serial };
     var validToken = token(serial);
     var tokenOk = !!t && t === validToken;
     /* ⚠️ بلا بصمة مطابقة تُقنَّع بيانات الباحث في الرد نفسه (لا في العرض فقط):
@@ -791,7 +963,7 @@
       daysLeft: app.expiryDate ? diffDays(app.expiryDate, new Date()) : null,
       attemptsLeft: attemptsLeft(app.serial),
       attemptsUsed: getAttempts(app.serial).filter(function (x) { return x.slotStatus !== 'empty'; }).length,
-      attemptLimit: Number(db.settings.attemptLimit || 5),
+      attemptLimit: Number(db.settings.attemptLimit || 2),
       createdBy: app.createdBy,
       attempts: getAttempts(app.serial).map(function (x) {
         return {
@@ -803,7 +975,7 @@
       tokenOk: tokenOk,
       verifiedAt: nowISO()
     };
-    audit('تحقق من استمارة (QR)', 'applicant', app.serial,
+    audit('تحقق من بطاقة (QR)', 'applicant', app.serial,
       'فحص عبر رابط التحقق' + (!t ? ' — بلا بصمة (عرض مقنّع)' : (tokenOk ? ' — بصمة صحيحة' : ' — تحذير: بصمة غير مطابقة')));
     save();
     return payload;
@@ -825,7 +997,7 @@
     };
   }
 
-  /* لوحة مالية: عدد الاستمارات المطبوعة والمبالغ المتوقعة لكل موظف */
+  /* لوحة مالية: عدد البطاقات المطبوعة والمبالغ المتوقعة لكل موظف */
   function financials(from, to) {
     var rows = {};
     db.applicants.forEach(function (a) {
@@ -877,11 +1049,15 @@
   }
 
   function pendingActions() {
-    var out = { holds: [], expired: [], exhausted: [], rejected: [], requests: [] };
+    var out = { holds: [], critical: [], expired: [], exhausted: [], rejected: [], requests: [] };
     db.jobs.forEach(function (j) {
       if (j.status === 'reserved' && j.holdExpiresAt) {
         var h = diffHours(j.holdExpiresAt, new Date());
         out.holds.push({ job: j, hoursLeft: h, serial: j.reservedBy });
+      }
+      /* الحالة الحرجة: انتهت مهلة 24 ساعة دون قرار — بانتظار الموظف */
+      if (j.status === 'reserved' && !j.holdExpiresAt && j.critical) {
+        out.critical.push({ job: j, serial: j.reservedBy });
       }
     });
     db.applicants.forEach(function (a) {
@@ -890,7 +1066,7 @@
       if (st === 'rejected') return;
       var used = getAttempts(a.serial).filter(function (t) { return t.slotStatus !== 'empty'; }).length;
       if (st === 'expired') out.expired.push(a);
-      else if (used >= Number(db.settings.attemptLimit || 5)) out.exhausted.push(a);
+      else if (used >= Number(db.settings.attemptLimit || 2)) out.exhausted.push(a);
       var rej = getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'rejected'; });
       if (rej.length) out.rejected.push({ applicant: a, count: rej.length });
     });
@@ -900,7 +1076,7 @@
   function markPrinted(serial) {
     var app = getApplicant(serial); if (!app) return;
     app.printedCount = Number(app.printedCount || 0) + 1;
-    audit('طباعة استمارة', 'applicant', serial, 'طباعة نموذج A4 مع كيو آر كود — العدد الكلي ' + app.printedCount);
+    audit('طباعة بطاقة', 'applicant', serial, 'طباعة بطاقة التوظيف 86×54مم مع باركود QR — العدد الكلي ' + app.printedCount);
     save(); emit();
   }
 
@@ -1664,41 +1840,6 @@
    *  ويبقى في قائمة الانتظار يحاول بلا نهاية.
    *  في الوضع المحلي (بلا سحابة) نُكمل بالمسار المحلي كما كان تماماً.
    * ------------------------------------------------------------------------- */
-  function submitPublicRequest(data) {
-    var st = cloudStatus();
-    var viaCloud = st.configured && st.state === 'on' && st.role !== 'staff' &&
-      root.HRCCloud && root.HRCCloud.requestForm && cloud.client;
-
-    if (!viaCloud) {
-      var appLocal = createApplicant({
-        fullName: data.fullName, phone: data.phone, dob: data.dob, gender: data.gender,
-        address: data.address, requestedCode: data.requestedCode || null,
-        notes: data.notes, pending: true
-      });
-      return Promise.resolve({ ok: true, serial: appLocal.serial, app: appLocal, mode: 'local' });
-    }
-
-    return root.HRCCloud.requestForm(cloud.client, data).then(function (r) {
-      if (!r || !r.ok) return r || { ok: false, error: 'تعذّر إرسال الطلب' };
-      /* نضيف الطلب إلى الذاكرة للعرض (وإلى الكاش). لا دفع: لا جلسة موظف،
-         وصفّ القاعدة هو المرجع — وعند الدخول لاحقاً تُتبنّى بيانات القاعدة. */
-      if (!db.applicants) db.applicants = [];
-      var app = {
-        id: uid('app'), serial: r.serial, fullName: data.fullName, phone: data.phone,
-        address: data.address || '', dob: data.dob || '', gender: data.gender || 'ذكر',
-        nationality: 'عراقي', issueDate: null, expiryDate: null, status: 'pending',
-        rejectReason: '', createdBy: 'system', createdAt: nowISO(),
-        notes: data.notes || '', requestedCode: data.requestedCode || null,
-        fee: Number(db.settings.formFee || 10000), feePaid: false, printedCount: 0
-      };
-      db.applicants.unshift(app);
-      saveLocal(); emit();
-      return { ok: true, serial: r.serial, app: app, mode: 'cloud' };
-    }).catch(function (e) {
-      return { ok: false, error: 'تعذّر الاتصال بالخادم: ' + (e && e.message || e) };
-    });
-  }
-
   /* التحقق السحابي (صفحة التحقق للزائر): دالة القاعدة تتحقق من البصمة
      وتُرجع استمارة واحدة — بخلاف قراءة الجدول الذي يسحب بيانات الجميع. */
   function verifyCloud(serial, t) {
@@ -1720,6 +1861,15 @@
   if (root.addEventListener) root.addEventListener('online', onOnline);
 
 
+
+  /* نقاط البيع المعتمدة المسجلة في البطاقات — لقائمة الإكمال التلقائي عند الإصدار */
+  function listPosNames() {
+    var seen = {}, out = [];
+    (db && db.applicants ? db.applicants : []).forEach(function (a) {
+      if (a && a.posName && !seen[a.posName]) { seen[a.posName] = 1; out.push(a.posName); }
+    });
+    return out;
+  }
 
   /* ======================= تصدير ======================= */
 
@@ -1765,8 +1915,11 @@
     // صيانة
     runMaintenance: runMaintenance, pendingActions: pendingActions,
     // تحقق
-    verify: verify, verifyUrl: verifyUrl, verifyBaseUrl: verifyBaseUrl, verifyLocalUrl: verifyLocalUrl, token: token,
-    maskName: maskName, maskPhone: maskPhone, submitPublicRequest: submitPublicRequest,
+    verify: verify, verifyUrl: verifyUrl, verifyBaseUrl: verifyBaseUrl, verifyLocalUrl: verifyLocalUrl, cardUrl: cardUrl, token: token,
+    maskName: maskName, maskPhone: maskPhone,
+    // بطاقتي (الزبون)
+    lookupCard: lookupCard, useChance: useChance,
+    cardLookup: cardLookup, cardUseChance: cardUseChance, cardVerify: cardVerify, cardVerifyCode: cardVerifyCode, listPosNames: listPosNames,
     // مالية
     stats: stats, financials: financials, financialTotals: financialTotals,
     markPrinted: markPrinted, setFeePaid: setFeePaid,

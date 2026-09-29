@@ -5,8 +5,8 @@
  *  تُشغّل الصفحات فعلياً في DOM حقيقي وتتحقق من:
  *   • عدم وجود أخطاء JavaScript
  *   • عرض الوظائف والفلاتر والبحث السريع في الموقع العام
- *   • إصدار استمارة، طباعة قالب A4، توليد الكيو آر كود
- *   • منطق الحجز 24 ساعة، الإفراج التلقائي، والتفعيل التلقائي للمحاولة التالية
+ *   • إصدار بطاقة توظيف (بيع كاش عند نقطة بيع)، طباعة قالب 86×54مم، الباركود
+ *   • منطق فرصتي البطاقة، الحجز 24 ساعة، الحالة الحرجة وقراراتها الثلاثة
  *   • صفحة التحقق (QR) والمنظومة الداخلية (دخول، جدولة، سجل تدقيق، مالية)
  *   • عمل النسخة المستقلة بالكامل عبر الرابط الهاشي
  *
@@ -169,19 +169,130 @@ check('الموقع العام بلا واجهة تحقق للزائر', () => {
     site.doc.querySelector('[data-action="verify"]');
   return !bad || 'ما زالت واجهة التحقق ظاهرة للزائر';
 });
-check('بطاقة الوظيفة تعرض «احجز» برابط واتساب يحمل كود الوظيفة', () => {
+/* ═══ نافذة «بطاقتي»: مسار الزبون الكامل بنظام البطاقة ═══ */
+check('بطاقة الوظيفة تعرض زر «قدّم ببطاقتك» يفتح نافذة «بطاقتي»', () => {
   site.doc.getElementById('filter-reset') && site.doc.getElementById('filter-reset')
     .dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-  const a = site.doc.querySelector('#jobs-grid .job-card a[href^="https://wa.me/"]');
-  if (!a) return 'لا يوجد زر حجز بالواتساب في بطاقة الوظيفة';
-  const href = a.getAttribute('href');
-  const codeOk = /HRC-\d{3,}/.test(decodeURIComponent(href)) || 'الرسالة لا تحمل كود الوظيفة';
-  return (codeOk === true && /9647/.test(href)) || String(codeOk);
+  const a = site.doc.querySelector('#jobs-grid .job-card [data-action="open-booking"]');
+  if (!a) return 'لا يوجد زر تقديم في بطاقة الوظيفة';
+  const code = a.getAttribute('data-code');
+  if (!/^HRC-\d{3,}$/.test(code || '')) return 'الزر لا يحمل كود الوظيفة: ' + code;
+  a.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  const modal = lastModal(site.doc);
+  return (modal && !!modal.querySelector('#bk-serial') && modal.textContent.includes('بطاقتي')) ||
+    'لم تُفتح نافذة بطاقتي على شاشة إدخال الباركود';
 });
-check('لا يوجد أي زر «ترشّح» في العرض العام', () => {
-  const t = site.doc.getElementById('jobs-grid').textContent;
-  return (!/ترشّح/.test(t) && !/اطلب استمارة/.test(t)) || 'ما زال نص الترشح/الطلب ظاهراً للزائر';
+check('بطاقتي: باركود بصيغة خاطئة يُرفض فوراً', () => {
+  const inp = lastModal(site.doc).querySelector('#bk-serial');
+  inp.value = 'HRC-XX-123';
+  inp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
+  lastModal(site.doc).querySelector('#bk-lookup').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  const err = lastModal(site.doc).querySelector('[data-bk-err="serial"]');
+  return (err && err.textContent.trim().length > 3) || 'مرّ باركود خاطئ بلا اعتراض';
 });
+await (async () => {
+  const name = 'بطاقتي: باركود غير موجود يعطي رسالة واضحة';
+  try {
+    const inp = lastModal(site.doc).querySelector('#bk-serial');
+    inp.value = 'HRC-BC-999999';
+    inp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
+    lastModal(site.doc).querySelector('#bk-lookup').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 140));
+    const err = lastModal(site.doc).querySelector('[data-bk-err="serial"]');
+    if (!err || !/لا توجد بطاقة/.test(err.textContent)) return bad(name, 'رسالة الرفض: ' + (err && err.textContent));
+    return ok(name);
+  } catch (e) { bad(name, e.message); }
+})();
+await (async () => {
+  const name = 'بطاقتي: باركود صحيح يعرض الحالة ببيانات مقنّعة وبلا رموز الفرص';
+  try {
+    const inp = lastModal(site.doc).querySelector('#bk-serial');
+    inp.value = 'HRC-BC-000117';
+    inp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
+    lastModal(site.doc).querySelector('#bk-lookup').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 160));
+    const txt = lastModal(site.doc).textContent;
+    const st = site.window.HRCBooking.state();
+    if (st.view !== 'status') return bad(name, 'الشاشة: ' + st.view);
+    if (!txt.includes('HRC-BC-000117')) return bad(name, 'الباركود غير ظاهر');
+    if (txt.includes('علي حسين محمد')) return bad(name, '⚠️ الاسم الكامل ظهر بلا تقنيع');
+    if (txt.includes('07701112233')) return bad(name, '⚠️ الهاتف الكامل ظهر بلا تقنيع');
+    const codes = site.window.HRCStore.getAttempts('HRC-BC-000117').map((t) => t.code);
+    const leaked = codes.some((c) => txt.includes(c));
+    if (leaked) return bad(name, '⚠️ رمز فرصة ظهر في شاشة الحالة');
+    if (!/فرصة متاحة|الفرص|فرصت/.test(txt)) return bad(name, 'حالة الفرص غير ظاهرة');
+    return ok(name);
+  } catch (e) { bad(name, e.message); }
+})();
+await (async () => {
+  const name = 'بطاقتي: استخدام فرصة برمز خاطئ يُرفض ثم برمز صحيح يثبّت التقديم';
+  try {
+    lastModal(site.doc).querySelector('#bk-use').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 60));
+    const sel = lastModal(site.doc).querySelector('#bk-job');
+    if (!sel) return bad(name, 'قائمة الوظائف المتاحة غير ظاهرة');
+    sel.value = 'HRC-1046';
+    sel.dispatchEvent(new site.window.Event('change', { bubbles: true }));
+    const codeInp = lastModal(site.doc).querySelector('#bk-code');
+    codeInp.value = '0000-ZZ';
+    codeInp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
+    lastModal(site.doc).querySelector('#bk-confirm').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 160));
+    const err = lastModal(site.doc).querySelector('[data-bk-err="code"]');
+    if (!err || !/رمز الفرصة غير صحيح/.test(err.textContent)) return bad(name, 'رمز خاطئ مرّ بلا اعتراض: ' + (err && err.textContent));
+    const real = site.window.HRCStore.getAttempts('HRC-BC-000117').find((t) => t.slotStatus === 'empty').code;
+    codeInp.value = real;
+    codeInp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
+    lastModal(site.doc).querySelector('#bk-confirm').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 260));
+    const job = site.window.HRCStore.getJob('HRC-1046');
+    const slot = site.window.HRCStore.getAttempts('HRC-BC-000117').find((t) => t.jobCode === 'HRC-1046');
+    if (job.status !== 'reserved' || !slot || slot.slotStatus !== 'reserved')
+      return bad(name, 'التقديم لم يثبّت: job=' + job.status + ' slot=' + (slot && slot.slotStatus));
+    return ok(name);
+  } catch (e) { bad(name, e.message); }
+})();
+await (async () => {
+  const name = 'بطاقتي: إعادة الطباعة تتطلب رمز فرصة صحيحاً';
+  try {
+    closeAllModals(site.doc);
+    site.window.HRCBooking.open({ serial: 'HRC-BC-000117' });
+    await new Promise((r) => setTimeout(r, 160));
+    lastModal(site.doc).querySelector('#bk-reprint').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 60));
+    const rc = lastModal(site.doc).querySelector('#bk-rcode');
+    if (!rc) return bad(name, 'شاشة إعادة الطباعة لا تطلب رمز الفرصة');
+    rc.value = '1111-AA';
+    rc.dispatchEvent(new site.window.Event('input', { bubbles: true }));
+    lastModal(site.doc).querySelector('#bk-print').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 160));
+    const err = lastModal(site.doc).querySelector('[data-bk-err="rcode"]');
+    if (!err || !/رمز الفرصة غير صحيح/.test(err.textContent)) return bad(name, 'رمز خاطئ مرّ في إعادة الطباعة');
+    const real = site.window.HRCStore.getAttempts('HRC-BC-000117')[0].code;
+    rc.value = real;
+    rc.dispatchEvent(new site.window.Event('input', { bubbles: true }));
+    const printsBefore = site.window.__printed;
+    lastModal(site.doc).querySelector('#bk-print').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 400));
+    if (site.window.__printed <= printsBefore) return bad(name, 'لم تُستدعَ الطباعة برمز صحيح');
+    const html = site.doc.getElementById('print-root').innerHTML;
+    if (!html.includes('HRC-BC-000117')) return bad(name, 'حاوية الطباعة لا تحمل البطاقة');
+    return ok(name);
+  } catch (e) { bad(name, e.message); }
+})();
+await (async () => {
+  const name = 'رابط ‎#card= يفتح نافذة بطاقتي معبّأة بالباركود';
+  try {
+    closeAllModals(site.doc);
+    const h = await load('index.html', { hash: '#card=HRC-BC-000120', waitMs: 320 });
+    const st = h.window.HRCBooking.state();
+    const m = lastModal(h.doc);
+    if (!(m && st.serial === 'HRC-BC-000120' && st.view === 'status'))
+      return bad(name, 'view=' + st.view + ' serial=' + st.serial + ' modal=' + !!m);
+    return ok(name);
+  } catch (e) { bad(name, e.message); }
+})();
+closeAllModals(site.doc);
 
 /* مسار الطلب يبقى داخلياً: الموظف يسجّل الطلب (كما لو استقبله المكتب) ثم يعتمده */
 check('تسجيل طلب قيد المراجعة من المنظومة الداخلية', () => {
@@ -194,13 +305,13 @@ check('تسجيل طلب قيد المراجعة من المنظومة الدا�
   const valid = app && app.status === 'pending' && !app.expiryDate && app.requestedCode === 'HRC-1043';
   return (after === before + 1 && valid) || 'لم يُسجَّل الطلب: ' + JSON.stringify(app);
 });
-check('قبول طلب قيد المراجعة يحوّله لاستمارة سارية بخمس محاولات', () => {
+check('قبول طلب قيد المراجعة يحوّله لبطاقة سارية بفرصتين', () => {
   const apps = site.window.HRCStore.listApplicants({ q: 'اختبار آلي' });
   if (!apps.length) return 'لا يوجد طلب للاختبار';
   const serial = apps[0].serial;
   const res = site.window.HRCStore.approveApplicant(serial);
   const app = site.window.HRCStore.getApplicant(serial);
-  const valid = res.ok === true && app.status === 'active' && !!app.expiryDate && site.window.HRCStore.attemptsLeft(serial) === 5;
+  const valid = res.ok === true && app.status === 'active' && !!app.expiryDate && site.window.HRCStore.attemptsLeft(serial) === 2;
   return valid || 'فشل القبول: ' + JSON.stringify({ res: res, app: app && { status: app.status, expiry: app.expiryDate } });
 });
 check('رفض طلب قيد المراجعة يعلّم الطلب كمرفوض', () => {
@@ -212,176 +323,241 @@ check('رفض طلب قيد المراجعة يعلّم الطلب كمرفوض'
 });
 
 /* ======================= 2) قالب الاستمارة المطبوعة ======================= */
-console.log('\n=== 2) قالب الاستمارة A4 + الكيو آر كود ===');
-check('قالب الاستمارة يحتوي كل الأقسام المطلوبة', () => {
-  const app = site.window.HRCStore.getApplicant('HRC-NO-000120');
+console.log('\n=== 2) قالب بطاقة التوظيف (86×54مم) + الباركود ===');
+check('قالب البطاقة يحوي الوجهين وكل بياناتها المطلوبة', () => {
+  const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
   const html = site.window.HRCVoucher.buildHtml(app);
   const needed = [
     'شركة الهدف للتوظيف', 'Al-Hadaf Recruitment Company',
-    '07760058007', '07715993271',
-    'حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي',
-    'HRC-NO: 000120', 'الاسم الكامل', 'تاريخ الإصدار', 'تاريخ الانتهاء',
-    'جدول المحاولات', 'كود الوظيفة', 'هاتف جهة الاتصال', 'حالة المهلة',
-    'خدمات الشركة تنحصر في توفير الأيادي العاملة', 'الشركة غير مسؤولة قانونياً وعشائياً',
-    '<svg', 'توقيع الموظف'
+    '07760058007',
+    'HRC-BC-000120', 'حسين كاظم عبد الله',
+    'hrc-card', '<svg', 'فرصتان'
   ];
   const missing = needed.filter((x) => !html.includes(x));
-  return missing.length === 0 || 'ناقص: ' + missing.join(' , ');
+  if (missing.length) return 'ناقص: ' + missing.join(' , ');
+  const faces = (html.match(/class="hrc-card[" ]/g) || []).length;
+  return faces === 2 || 'عدد الأوجه: ' + faces;
 });
-check('الاستمارة تعرض 5 صفوف محاولات بالضبط', () => {
-  const app = site.window.HRCStore.getApplicant('HRC-NO-000120');
+check('ظهر البطاقة يعرض رمزي الفرصتين بصيغة NNNN-AA ويحمل التعليمات المقفلة', () => {
+  const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
+  const attempts = site.window.HRCStore.getAttempts('HRC-BC-000120');
   const html = site.window.HRCVoucher.buildHtml(app);
-  const rows = (html.match(/<tr>/g) || []).length - 1; // ناقص صف الترويسة
-  return rows === 5 || 'عدد الصفوف: ' + rows;
+  const codes = attempts.map((t) => t.code);
+  if (!codes.every((c) => /^\d{4}-[A-HJ-NP-Z]{2}$/.test(c || ''))) return 'رمز فرصة بصيغة خاطئة: ' + codes.join(',');
+  if (!codes.every((c) => html.includes(c))) return 'ظهر البطاقة لا يعرض الرموز: ' + codes.join(',');
+  const rules = ['فرصتين مستقلتين', '24 ساعة', 'ولا تعود', 'مكتب استنساخ'];
+  const miss = rules.filter((r) => !html.includes(r));
+  return miss.length === 0 || 'تعليمات ناقصة بالظهر: ' + miss.join(' , ');
 });
-check('رابط التحقق في الكيو آر كود بالصيغة المطلوبة', () => {
-  const url = site.window.HRCStore.verifyUrl('HRC-NO-000120');
-  // الرابط يتبع نطاق النشر، أو الرابط الرسمي عند العمل من ملف محلي
-  return /^https?:\/\/[^/]+\/verify\?form=HRC-NO-000120&t=[0-9a-f]{8}$/.test(url) ||
-    /^https:\/\/hrc-babil\.com\/verify\?form=HRC-NO-000120&t=[0-9a-f]{8}$/.test(url) || url;
+check('باركود الوجه الأمامي يفتح «بطاقتي» بصيغة ‎#card=HRC-BC-######', () => {
+  const url = site.window.HRCStore.cardUrl('HRC-BC-000120');
+  return /#card=HRC-BC-000120$/.test(url) || url;
+});
+check('رابط التحقق الداخلي للبطاقة بالصيغة المطلوبة', () => {
+  const url = site.window.HRCStore.verifyUrl('HRC-BC-000120');
+  return /^https?:\/\/[^/]+\/verify\?form=HRC-BC-000120&t=[0-9a-f]{8}$/.test(url) ||
+    /^https:\/\/hrc-babil\.com\/verify\?form=HRC-BC-000120&t=[0-9a-f]{8}$/.test(url) || url;
 });
 {
-  const app = site.window.HRCStore.getApplicant('HRC-NO-000119');
+  const app = site.window.HRCStore.getApplicant('HRC-BC-000119');
   const before = app.printedCount;
   site.window.HRCVoucher.print(app);
   await new Promise((r) => setTimeout(r, 260));
-  const after = site.window.HRCStore.getApplicant('HRC-NO-000119').printedCount;
+  const after = site.window.HRCStore.getApplicant('HRC-BC-000119').printedCount;
   const rootHtml = site.doc.getElementById('print-root').innerHTML;
-  if (after === before + 1 && site.window.__printed > 0 && rootHtml.includes('HRC-NO-000119')) {
+  if (after === before + 1 && site.window.__printed > 0 && rootHtml.includes('HRC-BC-000119')) {
     ok('الطباعة تستدعي نافذة الطباعة وتزيد عدّاد الطباعة');
   } else {
     bad('الطباعة تستدعي نافذة الطباعة وتزيد عدّاد الطباعة',
       'قبل ' + before + ' بعد ' + after + ' | استدعاءات الطباعة ' + site.window.__printed + ' | حاوية الطباعة ' + rootHtml.length);
   }
 }
-check('الاختبارات الذاتية لمولّد الكيو آر كود تنجح بالكامل', () => {
+check('الاختبارات الذاتية لمولّد الباركود تنجح بالكامل', () => {
   const r = site.window.HRCQR.selfTest();
   return r.failed === 0 || (r.failed + ' اختبار فاشل: ' + JSON.stringify(r.results.filter((x) => !x.pass)));
 });
 
 /* ======================= 3) منطق العمل ======================= */
-console.log('\n=== 3) منطق المحاولات والحجز 24 ساعة ===');
+console.log('\n=== 3) منطق الفرصتين والحجز 24 ساعة والحالة الحرجة ===');
 const S = site.window.HRCStore;
-check('الحجز المؤقت يضبط الوظيفة على «محجوزة» ويحدد مهلة 24 ساعة', () => {
-  const res = S.selectAttempt('HRC-NO-000118', 'HRC-1046');
-  if (!res.ok) return res.error;
-  const job = S.getJob('HRC-1046');
-  const hours = S.diffHours(job.holdExpiresAt, new Date());
-  return (job.status === 'reserved' && hours > 23 && hours <= 24) || ('الحالة ' + job.status + ' والمهلة ' + hours);
+check('البطاقة الجديدة تُصدر بباركود HRC-BC وفرصتين برموز مستقلة', () => {
+  const app = S.createApplicant({ fullName: 'فحص البطاقة', phone: '07711111110', address: 'الحلة', posName: 'مكتب فحص — شارع 40' });
+  if (!/^HRC-BC-\d{6}$/.test(app.serial)) return 'الباركود: ' + app.serial;
+  if (app.feePaid !== true) return 'البطاقة تُباع كاشاً — يجب أن تكون مدفوعة عند الإصدار';
+  if (!app.posName) return 'نقطة البيع غير مسجلة';
+  const att = S.getAttempts(app.serial);
+  if (att.length !== 2) return 'عدد الفرص: ' + att.length;
+  const codes = att.map((t) => t.code);
+  if (!codes.every((c) => /^\d{4}-[A-HJ-NP-Z]{2}$/.test(c || ''))) return 'صيغة رمز فرصة: ' + codes.join(',');
+  if (codes[0] === codes[1]) return 'الرمزان متطابقان!';
+  if (S.listPosNames().indexOf('مكتب فحص — شارع 40') < 0) return 'نقطة البيع غير مدرجة بقائمة الإكمال';
+  return true;
 });
-check('رقم هاتف صاحب العمل محفوظ داخلياً ويظهر في الاستمارة المطبوعة', () => {
-  const app = S.getApplicant('HRC-NO-000118');
-  const html = site.window.HRCVoucher.buildHtml(app);
-  return html.includes(S.getJob('HRC-1046').employer.phone) || 'هاتف صاحب العمل غير ظاهر في الاستمارة';
+await (async () => {
+  const name = 'التقديم الذاتي (باركود + رمز فرصة) يحجز الوظيفة 24 ساعة';
+  try {
+    const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
+    const code = S.getAttempts(serial).find((t) => t.slotStatus === 'empty').code;
+    const res = await S.cardUseChance(serial, code, 'HRC-1042');
+    if (!res || !res.ok) return bad(name, (res && res.error) || 'رفض غير متوقع');
+    const job = S.getJob('HRC-1042');
+    const hours = S.diffHours(job.holdExpiresAt, new Date());
+    return (job.status === 'reserved' && hours > 23 && hours <= 24)
+      ? ok(name) : bad(name, 'الحالة ' + job.status + ' والمهلة ' + hours);
+  } catch (e) { bad(name, e.message); }
+})();
+await (async () => {
+  const name = 'التقديم الذاتي برمز فرصة خاطئ مرفوض ولا يستهلك الفرصة';
+  try {
+    const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
+    const left = S.attemptsLeft(serial);
+    const res = await S.cardUseChance(serial, '9999-QQ', 'HRC-1042');
+    const pass = (!res.ok && /رمز الفرصة غير صحيح/.test(res.error) && S.attemptsLeft(serial) === left);
+    return pass ? ok(name) : bad(name, JSON.stringify({ res: res.error, left: left, now: S.attemptsLeft(serial) }));
+  } catch (e) { bad(name, e.message); }
+})();
+check('التحقق برمز الفرصة يكشف بيانات البطاقة كاملة (إثبات الحيازة)', () => {
+  const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
+  const code = S.getAttempts(serial)[0].code;
+  const r = S.cardVerifyCode(serial, code);
+  const bad1 = !r.ok || !r.app || r.app.serial !== serial || !r.attempts || r.attempts.length !== 2;
+  if (bad1) return 'شكل الرد: ' + JSON.stringify({ ok: r.ok, app: r.app && r.app.serial });
+  const r2 = S.cardVerifyCode(serial, '0000-AA');
+  return r2.ok === false || 'رمز خاطئ قُبل!';
 });
-check('رفض المرشح يعيد الوظيفة «متاحة» ويفعّل المحاولة التالية تلقائياً', () => {
-  const pick = S.selectAttempt('HRC-NO-000119', S.listJobs({ status: 'available' })[0].code);
-  if (!pick.ok) return 'تعذّر الترشيح: ' + pick.error;
-  const usedNo = pick.attempt.no;
-  const jobCode = pick.job.code;
-  const res = S.setOutcome('HRC-NO-000119', usedNo, 'rejected', 'لم يجتز المقابلة');
-  const job = S.getJob(jobCode);
-  const next = S.activeAttempt('HRC-NO-000119');
-  const nextExpected = usedNo + 1;
-  return (res.ok && job.status === 'available' && next && next.no === nextExpected) ||
-    ('الوظيفة: ' + job.status + ' — المحاولة المستخدمة #' + usedNo + ' — التالية: ' + (next ? next.no : 'لا يوجد'));
+check('رفض المرشح يعيد الوظيفة «متاحة» والفرصة مستهلكة لا تعود', () => {
+  const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
+  const usedNo = S.getAttempts(serial).find((t) => t.slotStatus === 'reserved').no;
+  const res = S.setOutcome(serial, usedNo, 'rejected', 'لم يجتز المقابلة');
+  const job = S.getJob('HRC-1042');
+  const left = S.attemptsLeft(serial);
+  return (res.ok && job.status === 'available' && left === 1) ||
+    ('الوظيفة: ' + job.status + ' — المتبقي: ' + left);
 });
-check('الإفراج التلقائي عند انتهاء المهلة يعيد الوظيفة ويوسم المحاولة «انتهت المهلة»', () => {
-  const r = S.selectAttempt('HRC-NO-000119', 'HRC-1047');
-  if (!r.ok) return r.error;
-  // إرجاع المهلة إلى الماضي لمحاكاة انتهاء الـ 24 ساعة
+await (async () => {
+  const name = 'انتهاء مهلة 24 ساعة يدخل الوظيفة «حالة حرجة» — لا إفراج تلقائي';
+  try {
+  const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
+  const code = S.getAttempts(serial).find((t) => t.slotStatus === 'empty').code;
+  const r = await S.cardUseChance(serial, code, 'HRC-1047');
+  if (!r.ok) return bad(name, r.error);
+  // إرجاع المهلة إلى الماضي لمحاكاة انتهاء الـ24 ساعة
   const job = S.getJob('HRC-1047');
   job.holdExpiresAt = new Date(Date.now() - 60000).toISOString();
   S.db().attempts.filter((t) => t.jobId === job.id && t.slotStatus === 'reserved')
     .forEach((t) => { t.holdExpiresAt = job.holdExpiresAt; });
   const actions = S.runMaintenance();
-  const slot = S.getAttempts('HRC-NO-000119').find((t) => t.jobId === job.id);
-  return (job.status === 'available' && slot.slotStatus === 'expired' && actions.length > 0) ||
-    ('الحالة ' + job.status + ' / المحاولة ' + slot.slotStatus + ' / إجراءات ' + actions.length);
+  const slot = S.getAttempts(serial).find((t) => t.jobId === job.id);
+  const crit = S.pendingActions().critical || [];
+  const stayed = job.status === 'reserved' && !job.holdExpiresAt && job.critical === true;
+  const good = stayed && slot.slotStatus === 'critical' && crit.some((c) => c.job.code === 'HRC-1047');
+  return good ? ok(name) : bad(name,
+    'الوظيفة ' + job.status + ' (critical=' + job.critical + ') / الفرصة ' + slot.slotStatus + ' / طابور الحرجة ' + crit.length);
+  } catch (e) { bad(name, e.message); }
+})();
+check('قرار الحرجة «إرجاع» يعيد الوظيفة متاحة والفرصة تبقى مستهلكة', () => {
+  const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
+  const no = S.getAttempts(serial).find((t) => t.slotStatus === 'critical').no;
+  const res = S.releaseHold(serial, no, 'قرار حرجة: إرجاع');
+  const job = S.getJob('HRC-1047');
+  const slot = S.getAttempts(serial).find((x) => x.no === no);
+  return (res.ok && job.status === 'available' && job.critical !== true && slot.slotStatus !== 'empty') ||
+    ('إرجاع: ' + res.ok + ' / الوظيفة ' + job.status + ' / الفرصة ' + slot.slotStatus);
 });
-check('توثيق العملية التلقائية في سجل التدقيق باسم النظام', () => {
-  const logs = S.listAudit({ q: 'إفراج تلقائي' });
-  return logs.length > 0 || 'لا سجل إفراج تلقائي';
+check('حد الفرصتين مُطبّق — لا فرصة ثالثة', () => {
+  const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
+  if (S.attemptsLeft(serial) !== 0) return 'المتبقي قبل الفحص: ' + S.attemptsLeft(serial);
+  const res = S.selectAttempt(serial, 'HRC-1048');
+  return (res.ok === false) || 'قُبلت فرصة ثالثة!';
 });
-check('الاستمارة المنتهية (30 يوماً) تتوقف عن قبول محاولات جديدة', () => {
-  const app = S.getApplicant('HRC-NO-000120');
+check('توثيق العمليات في سجل التدقيق (تقديم ذاتي + قرار حرج)', () => {
+  const selfApply = S.listAudit({ q: 'تقديم ذاتي ببطاقة' });
+  const critical = S.listAudit({ q: 'حرجة' });
+  return (selfApply.length > 0 && critical.length > 0) ||
+    ('تقديم ذاتي: ' + selfApply.length + ' / حرجة: ' + critical.length);
+});
+check('البطاقة المنتهية (30 يوماً) تتوقف عن قبول التقديم', () => {
+  const app = S.getApplicant('HRC-BC-000120');
   app.expiryDate = new Date(Date.now() - 86400000).toISOString();
   app.status = 'active';
   S.runMaintenance();
-  const st = S.formStatus(S.getApplicant('HRC-NO-000120'));
-  const res = S.selectAttempt('HRC-NO-000120', 'HRC-1048');
+  const st = S.formStatus(S.getApplicant('HRC-BC-000120'));
+  const res = S.selectAttempt('HRC-BC-000120', 'HRC-1048');
   return (st === 'expired' && res.ok === false && /صلاحية/.test(res.error)) || ('الحالة ' + st + ' / النتيجة ' + JSON.stringify(res));
 });
-check('حد المحاولات الخمس مُطبّق', () => {
-  const app = S.createApplicant({ fullName: 'فحص المحاولات', phone: '07711111111', address: 'الحلة' });
-  let count = 0;
-  // نستهلك 5 محاولات على وظائف متاحة ثم نحاول السادسة
-  const codes = S.listJobs({ status: 'available' }).map((j) => j.code);
-  for (let i = 0; i < 6; i++) {
-    const res = S.selectAttempt(app.serial, codes[i % codes.length]);
-    if (res.ok) { count++; S.setOutcome(app.serial, res.attempt.no, 'rejected', 'فحص'); }
-  }
-  const sixth = S.selectAttempt(app.serial, codes[0]);
-  return (count === 5 && sixth.ok === false) || ('نجح ' + count + ' محاولة، والمحاولة السادسة: ' + JSON.stringify(sixth));
+check('التوظيف يغلق الوظيفة ولا يُنهي البطاقة (تبقى سارية)', () => {
+  const app = S.createApplicant({ fullName: 'توظيف ناجح', phone: '07711111112', address: 'الحلة' });
+  S.selectAttempt(app.serial, 'HRC-1048');
+  const res = S.setOutcome(app.serial, 1, 'succeeded', 'نجح');
+  const job = S.getJob('HRC-1048');
+  const st = S.formStatus(S.getApplicant(app.serial));
+  const left = S.attemptsLeft(app.serial);
+  return (res.ok && job.status === 'closed' && st === 'active' && left === 1) ||
+    ('الوظيفة ' + job.status + ' / حالة البطاقة ' + st + ' / المتبقي ' + left);
 });
 
 /* ======================= 4) صفحة التحقق ======================= */
 console.log('\n=== 4) صفحة التحقق (verify.html) ===');
 /* الزائر: بوابة تسدّ التحقق كلياً (بلا أي بيانات) */
-const gate = await load('verify.html', { search: '?form=HRC-NO-000120' });
+const gate = await load('verify.html', { search: '?form=HRC-BC-000120' });
 check('صفحة التحقق للزائر تعرض بوابة «للموظفين والإدارة فقط»', () => {
   const t = gate.doc.getElementById('verify-root').textContent;
   return /موظفي الشركة والإدارة|تسجيل دخول الموظفين/.test(t) || 'لا توجد بوابة للزائر';
 });
-check('الزائر لا يرى أي بيانات استمارة (لا رقم ولا اسم ولا محاولات)', () => {
+check('الزائر لا يرى أي بيانات بطاقة (لا رقم ولا اسم ولا فرص)', () => {
   const t = gate.doc.getElementById('verify-root').textContent;
-  const leak = t.includes('HRC-NO-000120') || t.includes('حسين') || /محاولة/.test(t);
+  const leak = t.includes('HRC-BC-000120') || t.includes('حسين') || /فرصة/.test(t);
   return !leak || 'تسريب بيانات للزائر في صفحة التحقق';
 });
 check('لا يمكن للزائر تشغيل التحقق من رابط الكيو آر كود (يبقى محجوباً)', () => {
-  gate.window.HRCVerify.mount('?form=HRC-NO-000120&t=deadbeef');
+  gate.window.HRCVerify.mount('?form=HRC-BC-000120&t=deadbeef');
   const t = gate.doc.getElementById('verify-root').textContent;
-  return (/موظفي الشركة والإدارة/.test(t) && !t.includes('HRC-NO-000120')) || 'البوابة لا تحمي mount()';
+  return (/موظفي الشركة والإدارة/.test(t) && !t.includes('HRC-BC-000120')) || 'البوابة لا تحمي mount()';
 });
 
 /* الموظف: التحقق يعمل كما كان */
-const verify = await load('verify.html', { search: '?form=HRC-NO-000120', session: STAFF_SESSION });
+const verify = await load('verify.html', { search: '?form=HRC-BC-000120', session: STAFF_SESSION });
 check('بجلسة موظف: صفحة التحقق تُحمّل بدون أخطاء', () => verify.errors.length === 0 || verify.errors.join(' | '));
 check('بلا بصمة: تُظهر الرقم والحالة مع تقنيع اسم الباحث وهاتفه', () => {
   const t = verify.doc.getElementById('verify-root').textContent;
   const masked = !t.includes('حسين كاظم عبد الله');
-  return (t.includes('HRC-NO-000120') && masked &&
-    (t.includes('سارية') || t.includes('منتهية') || t.includes('استُهلكت') || t.includes('مكتملة'))) ||
-    ('الاسم ظاهر بلا بصمة؟ ' + !masked);
+  const hasStatus = t.includes('سارية') || t.includes('استُهلكت');
+  return (t.includes('HRC-BC-000120') && masked && hasStatus && !t.includes('مكتملة')) ||
+    ('الاسم ظاهر بلا بصمة؟ ' + !masked + ' — لا شارة حالة صحيحة');
 });
 check('بالنمط: الاسم مقنّع في الرد نفسه لا في العرض فقط', () => {
-  const r = verify.window.HRCStore.verify('HRC-NO-000120');
+  const r = verify.window.HRCStore.verify('HRC-BC-000120');
   return (r.masked === true && !r.fullName.includes('حسين') && /•/.test(r.fullName) && /•/.test(r.phone)) ||
     JSON.stringify({ masked: r.masked, fullName: r.fullName, phone: r.phone });
 });
 /* بالبصمة الصحيحة (كما في رابط الكيو آر كود) تظهر البيانات كاملة */
-const vTok = verify.window.HRCStore.token('HRC-NO-000120');
-const verifyTok = await load('verify.html', { search: '?form=HRC-NO-000120&t=' + vTok, session: STAFF_SESSION });
+const vTok = verify.window.HRCStore.token('HRC-BC-000120');
+const verifyTok = await load('verify.html', { search: '?form=HRC-BC-000120&t=' + vTok, session: STAFF_SESSION });
 check('بالبصمة الصحيحة: اسم الباحث يظهر كاملاً', () => {
   const t = verifyTok.doc.getElementById('verify-root').textContent;
   return t.includes('حسين كاظم عبد الله') || 'الاسم غير ظاهر مع بصمة صحيحة';
 });
 
-check('تعرض جدول المحاولات مع أكواد الوظائف', () => {
+check('تعرض جدول الفرصتين مع أكواد الوظائف', () => {
   const rows = verify.doc.querySelectorAll('#verify-root table.data tbody tr').length;
   const hasCode = verify.doc.getElementById('verify-root').textContent.includes('HRC-1042');
-  return (rows === 5 && hasCode) || ('صفوف: ' + rows + ' / كود: ' + hasCode);
+  return (rows === 2 && hasCode) || ('صفوف: ' + rows + ' / كود: ' + hasCode);
+});
+check('التوظيف لا يُنهي البطاقة: HRC-BC-000118 (فرصة ناجحة) تبقى «سارية»', () => {
+  const r = verify.window.HRCStore.verify('HRC-BC-000118');
+  return (r.ok === true && r.status === 'active' && r.attemptsLeft === 1) ||
+    JSON.stringify({ status: r.status, left: r.attemptsLeft });
 });
 check('تعرض كيو آر كود التحقق (SVG)', () => {
   const svg = verify.doc.querySelector('#verify-root .verify-qr svg path');
   return !!svg || 'لا يوجد SVG للكيو آر كود';
 });
 check('رقم غير موجود يعطي رسالة واضحة', () => {
-  const s2 = verify.window.HRCStore.verify('HRC-NO-999999');
-  return (s2.ok === false && /لا توجد استمارة/.test(s2.error)) || JSON.stringify(s2);
+  const s2 = verify.window.HRCStore.verify('HRC-BC-999999');
+  return (s2.ok === false && /لا توجد بطاقة/.test(s2.error)) || JSON.stringify(s2);
 });
 check('بصمة تحقق غير مطابقة تُرفع كتحذير', () => {
-  const res = verify.window.HRCStore.verify('HRC-NO-000120', 'deadbeef');
+  const res = verify.window.HRCStore.verify('HRC-BC-000120', 'deadbeef');
   return res.tokenOk === false || 'لم يتم كشف البصمة المزيفة';
 });
 
@@ -422,12 +598,12 @@ check('جدول الوظائف يعرض بيانات صاحب العمل (للم
   const t = dash.doc.getElementById('jobs-table-body').textContent;
   return (t.includes('07701234567') && t.includes('HRC-1042')) || 'البيانات الداخلية غير ظاهرة';
 });
-check('جدول الاستمارات يعرض المحاولات المتبقية', () => {
+check('جدول البطاقات يعرض الفرص المتبقية', () => {
   dash.doc.querySelector('#side-nav button[data-view="applicants"]').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   const rows = dash.doc.querySelectorAll('#apps-table-body tr').length;
   return rows >= 4 || 'عدد الصفوف: ' + rows;
 });
-check('إصدار استمارة من اللوحة', () => {
+check('إصدار وبيع بطاقة من اللوحة (كاش + نقطة بيع + باركود HRC-BC)', () => {
   closeAllModals(dash.doc);
   const before = dash.window.HRCStore.stats().forms;
   dash.doc.getElementById('btn-new-app').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
@@ -436,9 +612,17 @@ check('إصدار استمارة من اللوحة', () => {
   box.querySelector('#n-name').value = 'باحث من اللوحة';
   box.querySelector('#n-phone').value = '07722222222';
   box.querySelector('#n-address').value = 'المحاويل';
+  const pos = box.querySelector('#n-pos');
+  if (!pos) return 'حقل نقطة البيع مفقود';
+  pos.value = 'استنساكب الحلة — شارع 40';
   box.querySelector('#n-save').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   const after = dash.window.HRCStore.stats().forms;
-  return after === before + 1 || ('قبل ' + before + ' بعد ' + after);
+  if (after !== before + 1) return 'قبل ' + before + ' بعد ' + after;
+  const app = dash.window.HRCStore.listApplicants({ q: 'باحث من اللوحة' })[0];
+  const valid = /^HRC-BC-\d{6}$/.test(app.serial) && app.feePaid === true &&
+    app.posName === 'استنساكب الحلة — شارع 40' &&
+    app.fee === dash.window.HRCStore.settings().formFee;
+  return valid || 'بيانات البيع: ' + JSON.stringify({ s: app.serial, feePaid: app.feePaid, pos: app.posName, fee: app.fee });
 });
 check('نموذج إضافة وظيفة يُنتج كود HRC-#### جديداً', () => {
   closeAllModals(dash.doc);
@@ -457,10 +641,10 @@ check('نموذج إضافة وظيفة يُنتج كود HRC-#### جديداً'
   return (after === before + 1 && newJob && /^HRC-\d{4}$/.test(newJob.code)) || ('عدد ' + after + ' / كود ' + (newJob && newJob.code));
 });
 check('شاشة الحجوزات تعرض الحجوزات الجارية مع العدّاد التنازلي', () => {
-  const r = dash.window.HRCStore.selectAttempt('HRC-NO-000117', 'HRC-1049') ;
+  const r = dash.window.HRCStore.selectAttempt('HRC-BC-000117', 'HRC-1049');
   // HRC-1049 مغلقة → نتوقع فشلاً، ثم نجرّب وظيفة متاحة
   const avail = dash.window.HRCStore.listJobs({ status: 'available' })[0];
-  const ok = dash.window.HRCStore.selectAttempt('HRC-NO-000117', avail.code);
+  const ok = dash.window.HRCStore.selectAttempt('HRC-BC-000117', avail.code);
   dash.doc.querySelector('#side-nav button[data-view="holds"]').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   const list = dash.doc.getElementById('holds-list').textContent;
   const timer = dash.doc.querySelector('#holds-list [data-expiry]');
@@ -489,6 +673,11 @@ check('البحث السريع بالكود يفتح بطاقة الوظيفة',
   const modal = lastModal(dash.doc);
   return (modal && modal.textContent.includes('HRC-1045') && modal.textContent.includes('بطاقة الوظيفة الداخلية')) || 'لم تُفتح البطاقة';
 });
+check('الإعدادات: الفرصتان والإفراج التلقائي مقفلان (لا يظهران كحقلي تحرير)', () => {
+  const att = dash.doc.getElementById('set-attempts');
+  const auto = dash.doc.getElementById('set-auto');
+  return (!att && !auto) || 'حقل مقفل ما زال قابلاً للتحرير';
+});
 check('صلاحية المدير تُظهر اللوحة المالية وسجل التدقيق الكامل', () => {
   closeAllModals(dash.doc);
   dash.window.HRCStore.logout();
@@ -504,7 +693,7 @@ check('صلاحية المدير تُظهر اللوحة المالية وسجل
   return (navVisible && view.classList.contains('active') && bars > 0 && stats === 4) ||
     ('ظاهر: ' + navVisible + ' / نشط: ' + view.classList.contains('active') + ' / أعمدة: ' + bars + ' / بطاقات: ' + stats + ' / سجل: ' + auditRows);
 });
-check('اللوحة المالية تحسب المتوقع تحصيله = الاستمارات × الرسم', () => {
+check('اللوحة المالية تحسب المتوقع تحصيله = البطاقات × السعر', () => {
   const fee = dash.window.HRCStore.settings().formFee;
   const rows = dash.window.HRCStore.financials('', '');
   return rows.every((r) => r.expected === r.forms * fee) || JSON.stringify(rows.map((r) => [r.forms, r.expected, fee]));
@@ -523,25 +712,25 @@ check('لا مسارات ملفات خارجية (كل شيء مدمج)', () => 
   return bads.length === 0 || bads.join(',');
 });
 /* نسخة ثانية بجلسة موظف: التحقق يفتح داخل الملف المستقل */
-const stStaff = await load('hrc-standalone.html', { hash: '#!verify?form=HRC-NO-000120', session: STAFF_SESSION });
+const stStaff = await load('hrc-standalone.html', { hash: '#!verify?form=HRC-BC-000120', session: STAFF_SESSION });
 
 check('القسم العام يعرض الوظائف داخل الملف المستقل', () => {
   const n = st.doc.querySelectorAll('#jobs-grid .job-card').length;
   return n >= 8 || 'عدد البطاقات ' + n;
 });
 check('مسار التحقق بالملف المستقل محجوب عن الزائر', () => {
-  st.window.location.hash = '#!verify?form=HRC-NO-000120';
+  st.window.location.hash = '#!verify?form=HRC-BC-000120';
   st.window.dispatchEvent(new st.window.Event('hashchange'));
   const root = st.doc.getElementById('verify-root').textContent;
   const routeHidden = st.doc.getElementById('route-verify').hidden;
   const siteHidden = st.doc.getElementById('route-site').hidden;
-  const blocked = /موظفي الشركة والإدارة/.test(root) && !root.includes('HRC-NO-000120');
+  const blocked = /موظفي الشركة والإدارة/.test(root) && !root.includes('HRC-BC-000120');
   return (!routeHidden && siteHidden && blocked) ||
     ('مخفي التحقق: ' + routeHidden + ' / النص: ' + root.slice(0, 60));
 });
 check('مسار التحقق بالملف المستقل يعمل بجلسة موظف', () => {
   const root = stStaff.doc.getElementById('verify-root').textContent;
-  return root.includes('HRC-NO-000120') || ('النص: ' + root.slice(0, 90));
+  return root.includes('HRC-BC-000120') || ('النص: ' + root.slice(0, 90));
 });
 check('المسار الهاشي يعرض المنظومة الداخلية', () => {
   st.window.location.hash = '#!dashboard';
@@ -676,9 +865,16 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
     return (okPage.window.__brcMockFetchCalls === 1 && st.state === 'on' && st.role === 'public' && st.readOnly === true) ||
       JSON.stringify({ calls: okPage.window.__brcMockFetchCalls, state: st.state, role: st.role });
   });
-  await acheck('بطاقة الوظيفة تعرض «احجز» بواتساب يحمل كود الوظيفة المعلنة', async () => {
-    const a = okPage.doc.querySelector('#jobs-grid .job-card a[href^="https://wa.me/"]');
-    return (a && /HRC-9001|HRC-9002/.test(decodeURIComponent(a.getAttribute('href')))) || 'لا زر حجز واتساب';
+  await acheck('بطاقة الوظيفة تعرض زر «احجز» يحمل كود الوظيفة المعلنة', async () => {
+    const a = okPage.doc.querySelector('#jobs-grid .job-card [data-action="open-booking"]');
+    return (a && /HRC-9001|HRC-9002/.test(a.getAttribute('data-code') || '')) || 'لا زر حجز إلكتروني';
+  });
+  await acheck('نافذة «بطاقتي» تعمل في وضع القاعدة: تفتح على شاشة إدخال الباركود', async () => {
+    const a = okPage.doc.querySelector('#jobs-grid .job-card [data-action="open-booking"]');
+    a.dispatchEvent(new okPage.window.MouseEvent('click', { bubbles: true }));
+    const modal = [...okPage.doc.querySelectorAll('.modal-backdrop .modal')].pop();
+    return (modal && modal.querySelector('#bk-serial') && modal.textContent.includes('بطاقتي')) ||
+      'لم تُفتح نافذة بطاقتي';
   });
   okPage.dom.window.close();
 
@@ -732,7 +928,7 @@ console.log('\n=== 8) أدوات الموظف — التحقق من المنظو
   if (viewBtn) viewBtn.dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   await new Promise((r) => setTimeout(r, 120));
 
-  const verifyBtn = dash.doc.querySelector('[data-app-verify="HRC-NO-000120"]');
+  const verifyBtn = dash.doc.querySelector('[data-app-verify="HRC-BC-000120"]');
   check('زر التحقق من الاستمارة موجود في جدول الموظف',
     () => !!verifyBtn || ('الأزرار الموجودة: ' + dash.doc.querySelectorAll('[data-app-verify]').length));
 
@@ -742,12 +938,12 @@ console.log('\n=== 8) أدوات الموظف — التحقق من المنظو
     const box = lastModal(dash.doc);
     const bt = box ? box.textContent : '';
     check('نافذة التحقق تعرض الرقم ورابط التحقق المطبوع',
-      () => (/HRC-NO-000120/.test(bt) && /\/verify(\.html)?\?form=/.test(bt)) || bt.slice(0, 120));
+      () => (/HRC-BC-000120/.test(bt) && /\/verify(\.html)?\?form=/.test(bt)) || bt.slice(0, 120));
     check('كيو آر كود الاستمارة مرسوم داخل النافذة', () => !!(box && box.querySelector('svg')));
     check('زر «فتح صفحة التحقق» موجود للموظف', () => !!(box && box.querySelector('#go-verify')));
     check('رابط التحقق المحلي صالح',
-      () => /verify\.html\?form=HRC-NO-000120/.test(dash.window.HRCStore.verifyLocalUrl('HRC-NO-000120')),
-      dash.window.HRCStore.verifyLocalUrl('HRC-NO-000120'));
+      () => /verify\.html\?form=HRC-BC-000120/.test(dash.window.HRCStore.verifyLocalUrl('HRC-BC-000120')),
+      dash.window.HRCStore.verifyLocalUrl('HRC-BC-000120'));
     const close = box && box.querySelector('[data-close]');
     if (close) close.dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   }
