@@ -149,6 +149,12 @@ class Contract(FPDF):
         self.set_draw_color(*WARN_BD)
         self.set_text_color(90, 40, 40)
         self.set_line_width(0.3)
+        # لا تُقسم الصناديق التنبيهية القصيرة بين صفحتين
+        n = max(1, len(self.multi_cell(
+            CONTENT_W, 6, ar(txt), align=Align.R,
+            dry_run=True, output='LINES')))
+        if self.get_y() + n * 6 > 272:
+            self.add_page()
         x, y = MARGIN, self.get_y()
         self.multi_cell(CONTENT_W, 6, ar(txt), align=Align.R,
                         fill=True, border=1)
@@ -333,7 +339,10 @@ def render(md: str, total=None, title_ar=None) -> Contract:
                 doc.h1(val)
                 first_h1 = False
             else:
-                doc.h2(val)
+                # كل عنوان رئيسي لاحق (الملاحق عادةً) يبدأ صفحة جديدة
+                # بعنوان بارز — يفصل أقسام المستند الكبرى بشكل لا يلتبس.
+                doc.add_page()
+                doc.h1(val)
         elif kind == 'h2':
             doc.h2(val)
         elif kind == 'h3':
