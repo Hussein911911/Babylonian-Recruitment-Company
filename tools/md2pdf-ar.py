@@ -169,14 +169,10 @@ class Contract(FPDF):
         self.line(MARGIN, y, PAGE_W - MARGIN, y)
         self.ln(3)
 
-    def table(self, rows):
-        """rows[0] رأس الجدول. الأعمدة تُعرض من اليمين لليسار."""
-        if not rows:
-            return
+    def _table_widths(self, rows):
+        """عرض الأعمدة تقديرياً حسب أطول محتوى، مع حدّ أدنى."""
         ncol = max(len(r) for r in rows)
         rows = [r + [''] * (ncol - len(r)) for r in rows]
-
-        # عرض تقديري حسب أطول محتوى، مع حدّ أدنى
         weights = []
         for c in range(ncol):
             longest = max(len(strip_md(r[c])) for r in rows)
@@ -184,20 +180,63 @@ class Contract(FPDF):
         total = sum(weights)
         widths = [max(CONTENT_W * w / total, 16) for w in weights]
         scale = CONTENT_W / sum(widths)
-        widths = [w * scale for w in widths]
+        return [w * scale for w in widths]
+
+    def _table_row_h(self, cells, widths):
+        self.set_font('Cairo', '', 9.2)
+        line_h = 5.4
+        h = 0
+        for i, cell in enumerate(cells):
+            txt = strip_md(cell)
+            n = max(1, len(self.multi_cell(
+                widths[i], line_h, ar(txt), align=Align.R,
+                dry_run=True, output='LINES')))
+            h = max(h, n * line_h)
+        return h + 1.6
+
+    def _nlines(self, w, h, txt, size, bold=False):
+        self.set_font('Cairo', 'B' if bold else '', size)
+        return max(1, len(self.multi_cell(
+            w, h, ar(txt), align=Align.R, dry_run=True, output='LINES')))
+
+    def est_h(self, kind, val):
+        """الارتفاع التقديري لعنصر (مم) — يُستخدم لمنع انقسام المادة
+        بين صفحتين: تُقاس المادة كاملة قبل رسمها."""
+        if kind == 'h1':
+            return 8 + self._nlines(CONTENT_W, 9, val, 17, True) * 9
+        if kind == 'h2':
+            return 5 + self._nlines(CONTENT_W, 8, val, 12.5, True) * 8
+        if kind == 'h3':
+            return 2 + self._nlines(CONTENT_W, 6.5, val, 11, True) * 6.5
+        if kind == 'p':
+            return self._nlines(CONTENT_W, 6, val, 10.5) * 6 + 1
+        if kind == 'li':
+            txt, mark, indent = val
+            return self._nlines(CONTENT_W - 6 - indent, 6, txt, 10.5) * 6
+        if kind == 'quote':
+            return self._nlines(CONTENT_W, 6, ' '.join(val), 9.8) * 6 + 2
+        if kind == 'hr':
+            return 5
+        if kind == 'table':
+            widths = self._table_widths(val)
+            ncol = len(widths)
+            padded = [r + [''] * (ncol - len(r)) for r in val]
+            return sum(self._table_row_h(r, widths) for r in padded) + 3
+        return 0
+
+    def table(self, rows):
+        """rows[0] رأس الجدول. الأعمدة تُعرض من اليمين لليسار."""
+        if not rows:
+            return
+        ncol = max(len(r) for r in rows)
+        rows = [r + [''] * (ncol - len(r)) for r in rows]
+        widths = self._table_widths(rows)
 
         self.set_font('Cairo', '', 9.2)
         line_h = 5.4
 
         def row_height(cells):
-            h = 0
-            for i, cell in enumerate(cells):
-                txt = strip_md(cell)
-                n = max(1, len(self.multi_cell(
-                    widths[i], line_h, ar(txt), align=Align.R,
-                    dry_run=True, output='LINES')))
-                h = max(h, n * line_h)
-            return h + 1.6
+            return self._table_row_h(cells, widths)
 
         # لا نبدأ جدولاً في ذيل الصفحة: الرأس وحده (أو مع صف واحد) في أسفل
         # الورقة يُنتج جدولاً مقطوعاً يصعب قراءته على من يستلم المستند.
@@ -333,31 +372,59 @@ def render(md: str, total=None, title_ar=None) -> Contract:
     doc.add_page()
     first_h1 = True
 
-    for kind, val in parse(md):
-        if kind == 'h1':
-            if first_h1:
-                doc.h1(val)
-                first_h1 = False
-            else:
-                # كل عنوان رئيسي لاحق (الملاحق عادةً) يبدأ صفحة جديدة
-                # بعنوان بارز — يفصل أقسام المستند الكبرى بشكل لا يلتبس.
+    elements = parse(md)
+
+    # تجميع العناصر: كل مادة (h2) أو ملحق (h1 لاحق) وحدة واحدة —
+    # تُقاس قبل رسمها، فإن لم تسع المتبقي من الصفحة انتقلت كاملةً
+    # إلى صفحة جديدة، فلا تبدأ مادة بذيل صفحة وتكتمل في التالية.
+    groups, cur = [], []
+    h1_seen = False
+    for el in elements:
+        if el[0] == 'h1':
+            if h1_seen and cur:
+                groups.append(cur)
+                cur = []
+            h1_seen = True
+        elif el[0] == 'h2' and cur:
+            groups.append(cur)
+            cur = []
+        cur.append(el)
+    if cur:
+        groups.append(cur)
+
+    for g in groups:
+        # الملحق (h1) يبدأ صفحة جديدة بنفسه؛ المواد (h2) هي التي
+        # تحتاج القياس. المادة الأطول من صفحة كاملة تُترك تسيل
+        # طبيعياً (لا مفرّ من تقسيمها).
+        if g[0][0] == 'h2':
+            h = sum(doc.est_h(k, v) for k, v in g)
+            if doc.get_y() + h > 272 and h <= 240:
                 doc.add_page()
-                doc.h1(val)
-        elif kind == 'h2':
-            doc.h2(val)
-        elif kind == 'h3':
-            doc.h3(val)
-        elif kind == 'p':
-            doc.para(val)
-        elif kind == 'li':
-            txt, mark, indent = val
-            doc.bullet(txt, mark, indent)
-        elif kind == 'table':
-            doc.table(val)
-        elif kind == 'quote':
-            doc.quote(val)
-        elif kind == 'hr':
-            doc.hr()
+        for kind, val in g:
+            if kind == 'h1':
+                if first_h1:
+                    doc.h1(val)
+                    first_h1 = False
+                else:
+                    # كل عنوان رئيسي لاحق (الملاحق عادةً) يبدأ صفحة جديدة
+                    # بعنوان بارز — يفصل أقسام المستند الكبرى بشكل لا يلتبس.
+                    doc.add_page()
+                    doc.h1(val)
+            elif kind == 'h2':
+                doc.h2(val)
+            elif kind == 'h3':
+                doc.h3(val)
+            elif kind == 'p':
+                doc.para(val)
+            elif kind == 'li':
+                txt, mark, indent = val
+                doc.bullet(txt, mark, indent)
+            elif kind == 'table':
+                doc.table(val)
+            elif kind == 'quote':
+                doc.quote(val)
+            elif kind == 'hr':
+                doc.hr()
 
     return doc
 
