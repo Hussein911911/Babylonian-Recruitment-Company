@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>الصفحة غير موجودة | شركة الهدف للتوظيف</title>
 <meta name="description" content="الرابط المطلوب غير موجود على موقع شركة الهدف للتوظيف — تصفّح الوظائف المتاحة أو تواصل معنا مباشرة.">
-<meta name="keywords" content="توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, استمارة توظيف, HRC, عمالة فنية">
+<meta name="keywords" content="توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, بطاقة توظيف, HRC, عمالة فنية">
 <meta name="theme-color" content="#0b1a3a">
 <meta name="author" content="Al-Hadaf Recruitment Company">
 <meta property="og:title" content="الصفحة غير موجودة | شركة الهدف للتوظيف">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
-<link rel="stylesheet" href="/assets/css/style.css?v=2717d438e2">
+<link rel="stylesheet" href="/assets/css/style.css?v=72eb9e05f2">
 </head>
 <body>
 <!-- ===========================================================================
@@ -197,6 +197,21 @@
     <circle cx="18" cy="5.5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.5" r="2.6"/>
     <path d="M8.4 10.7 15.7 7M8.4 13.3l7.3 3.7"/>
   </symbol>
+  <!-- بطاقة مصرفية (نافذة الحجز الإلكتروني) -->
+  <symbol id="i-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.5" y="5" width="19" height="14" rx="2.6"/>
+    <path d="M2.5 9.6h19"/>
+    <path d="M6 14.5h3.2M12 14.5h2.4"/>
+  </symbol>
+  <!-- علامة نجاح داخل دائرة -->
+  <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9.2"/>
+    <path d="M8.2 12.4l2.7 2.7 5-5.6"/>
+  </symbol>
+  <!-- سهم لليمين (زر «السابق» في نافذة الحجز — الواجهة RTL) -->
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 12h14M13 6l6 6-6 6"/>
+  </symbol>
 </svg>
 
 <!-- ============================== الترويسة ============================== -->
@@ -254,6 +269,12 @@
       <a href="/index.html#services">خدماتنا</a>
       <a href="/index.html#about">عن الشركة</a>
       <a href="/index.html#contact">تواصل معنا</a>
+      <!-- زر الحجز الإلكتروني: في الموقع العام يفتح نافذة الخطوات مباشرة
+           (booking.js)، وفي بقية الصفحات يرشد إلى لوحة الوظائف. -->
+      <a href="/index.html#jobs" class="nav-book" data-action="open-booking">
+        <svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>
+        بطاقتي
+      </a>
     </nav>
   </div>
 </header>
@@ -340,18 +361,18 @@
         <h4>روابط سريعة</h4>
         <ul>
           <li><a href="/index.html#jobs">الوظائف المتاحة</a></li>
-          <li><a href="/index.html#how">آلية العمل والمحاولات</a></li>
+          <li><a href="/index.html#how">آلية العمل والفرصتان</a></li>
           <li><a href="/index.html#services">خدماتنا</a></li>
           <li><a href="/index.html#about">عن الشركة</a></li>
-          <li><a href="/index.html#verify">الحجز والتحقق</a></li>
+          <li><a href="/index.html#verify">بطاقة التوظيف والتحقق</a></li>
         </ul>
       </div>
       <div>
         <h4>للباحثين عن عمل</h4>
         <ul>
-          <li><a href="https://wa.me/9647760058007" target="_blank" rel="noopener">احجز وظيفتك بالواتساب</a></li>
-          <li><a href="/index.html#verify">كيف أحجز وظيفة؟</a></li>
-          <li><a href="/index.html#how">ما معنى المحاولات الخمس؟</a></li>
+          <li><a href="/index.html#jobs" data-action="open-booking">تابع بطاقتي</a></li>
+          <li><a href="/index.html#verify">كيف أقدّم على وظيفة؟</a></li>
+          <li><a href="/index.html#how">ما معنى الفرصتين؟</a></li>
           <li><a href="/index.html#how">حجز الوظيفة 24 ساعة</a></li>
         </ul>
       </div>
@@ -394,8 +415,8 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="/assets/js/config.js?v=2717d438e2"></script>
-<script src="/assets/js/ui.js?v=2717d438e2"></script>
-<script src="/assets/js/nav.js?v=2717d438e2"></script>
+<script src="/assets/js/config.js?v=72eb9e05f2"></script>
+<script src="/assets/js/ui.js?v=72eb9e05f2"></script>
+<script src="/assets/js/nav.js?v=72eb9e05f2"></script>
 </body>
 </html>

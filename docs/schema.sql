@@ -1,13 +1,19 @@
 -- ===========================================================================
 --  شركة الهدف للتوظيف (BRC) — مخطط قاعدة البيانات الكامل لـ PostgreSQL / Supabase
 --  ---------------------------------------------------------------------------
+--  نظام بطاقة التوظيف (v1.0 — 2026-09-30):
+--   • بطاقة تُشترى كاشاً عند نقاط البيع — لا دفع إلكتروني نهائياً
+--   • باركود HRC-BC-000123 + رمز فرصة سري (NNNN-AA) لكل خانة من فرصتي البطاقة
+--   • الفرصة تُستهلك بالتقديم ولا تعود؛ التوظيف لا يُنهي البطاقة؛ المدة 30 يوماً
+--   • انتهاء مهلة الحجز (24 ساعة) ← حالة «حرجة» بقرار يدوي (توظيف/إرجاع/حذف)
+--
 --  يتضمّن:
---   • الجداول والقيود والفهارس (وظائف، باحثون/استمارات، محاولات، تدقيق، إعدادات)
---   • مشغّلات (Triggers) للحجز المؤقت 24 ساعة، الإفراج التلقائي، وإعادة التفعيل
---   • توليد الأكواد: HRC-1042 للوظائف و HRC-NO-000120 للاستمارات
+--   • الجداول والقيود والفهارس (وظائف، بطاقات، فرص، تدقيق، إعدادات)
+--   • مشغّلات (Triggers) للحجز المؤقت 24 ساعة، الحالة الحرجة، وتثبيت النتائج
+--   • توليد الأكواد: HRC-1042 للوظائف و HRC-BC-000123 للبطاقات و NNNN-AA للفرص
 --   • سجل تدقيق لحظي (بالثانية + المستخدم + IP + التفاصيل)
---   • سياسات RLS: الزائر يرى البيانات العامة فقط، الموظف يدير، المدير يرى المالية
---   • دوال RPC للتحقق بالكيو آر كود وللترشيح وتثبيت النتائج
+--   • سياسات RLS: الزائر يتابع بطاقته عبر دوال آمنة فقط، الموظف يدير، المدير يرى المالية
+--   • دوال RPC: بطاقتي (lookup_card/use_chance/verify_card_code) + التحقق الداخلي
 --
 --  طريقتان للتشغيل على Supabase (اختر واحدة):
 --   1) تلقائي (موصى به): نفس الملف منسوخ في
@@ -56,11 +62,11 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type brc.slot_status as enum ('empty', 'reserved', 'succeeded', 'rejected', 'expired');
+  create type brc.slot_status as enum ('empty', 'reserved', 'critical', 'succeeded', 'rejected', 'expired');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type brc.form_status as enum ('active', 'expired', 'exhausted', 'completed');
+  create type brc.form_status as enum ('blank', 'active', 'expired', 'exhausted', 'completed');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
@@ -84,22 +90,65 @@ create table if not exists brc.staff (
   created_at   timestamptz not null default now()
 );
 
--- 2.3 الاستمارات (الباحثون عن عمل) — صالحة 30 يوماً، 5 محاولات
+-- 2.2ب سجل الباركودات الصادرة — لا يعود باركود أبداً ولو حُذفت بطاقته.
+--     الباركودات عشوائية (قرار مقفل 2026-09-30): لا تسلسل يُخمَّن ولا رقمين
+--     متجاورين يتشابهان — وهذا أساس منع التزوير.
+create table if not exists brc.issued_serials (
+  serial    text primary key,
+  issued_at timestamptz not null default now(),
+  note      text default ''
+);
+alter table brc.issued_serials enable row level security;
+create index if not exists issued_serials_serial_idx on brc.issued_serials (serial);
+
+-- باركود عشوائي فريد: 6 خانات (100000–999999) لا تتشابه مع أي بطاقة أخرى
+create or replace function brc.next_form_serial() returns text
+language plpgsql
+as $$
+declare v text;
+begin
+  loop
+    v := 'HRC-BC-' || lpad((100000 + floor(random() * 900000))::int::text, 6, '0');
+    exit when not exists (select 1 from brc.issued_serials where serial = v)
+           and not exists (select 1 from brc.applicants where serial = v);
+    insert into brc.issued_serials (serial) values (v)
+      on conflict (serial) do nothing;
+    return v;
+  end loop;
+end $$;
+
+-- كل بطاقة تُدرج تُسجَّل بسجل الباركودات (حتى المسار اليدوي/الاستيراد)
+create or replace function brc.trg_log_issued_serial() returns trigger
+language plpgsql security definer
+set search_path = brc, public
+as $$
+begin
+  insert into brc.issued_serials (serial) values (new.serial)
+    on conflict (serial) do nothing;
+  return new;
+end $$;
+
+drop trigger if exists trg_applicants_log_serial on brc.applicants;
+create trigger trg_applicants_log_serial after insert or update of serial on brc.applicants
+  for each row execute function brc.trg_log_issued_serial();
+
+-- 2.3 بطاقات التوظيف (الباحثون عن عمل) — صالحة 30 يوماً، فرصتان مستقلتان
 create table if not exists brc.applicants (
   id            uuid primary key default gen_random_uuid(),
-  serial        text not null unique,                            -- HRC-NO-000120
+  serial        text not null unique,                            -- HRC-BC-000120
   full_name     text not null,
   phone         text not null,
   address       text default '',
   dob           date,
   gender        text default 'ذكر',
   nationality   text default 'عراقي',
-  issue_date    timestamptz not null default now(),
-  expiry_date   timestamptz not null default (now() + interval '30 days'),
-  attempt_limit smallint not null default 5 check (attempt_limit between 1 and 10),
+  issue_date    timestamptz,                                   -- فارغة عند إصدار الدفعة — تُملأ عند البيع
+  expiry_date   timestamptz,                                   -- تبدأ 30 يوماً من التعبئة لا من إصدار الدفعة
+  attempt_limit smallint not null default 2 check (attempt_limit between 1 and 10),   -- مقفلة: فرصتان
   status        brc.form_status not null default 'active',
-  fee_amount    integer not null default 10000,
-  fee_paid      boolean not null default false,
+  fee_amount    integer not null default 10000,   -- سعر البطاقة (كاش عند نقطة البيع)
+  fee_paid      boolean not null default true,    -- البطاقة تُباع كاشاً عند الإصدار
+  pos_name      text default '',                 -- نقطة البيع التي باعت البطاقة (مكتب الاستنساخ)
   printed_count integer not null default 0,
   requested_code text,                                           -- الوظيفة المطلوبة من الموقع العام
   reject_reason text default '',                                 -- سبب الرفض (يظهر للباحث في صفحة التحقق)
@@ -113,6 +162,8 @@ create index if not exists applicants_expiry_idx on brc.applicants (expiry_date)
 create index if not exists applicants_created_by_idx on brc.applicants (created_by);
 
 -- 2.2 الوظائف (بيانات صاحب العمل داخلية ولا تُعرض للعامة)
+--     critical: انتهت مهلة الحجز (24 ساعة) دون قرار — الوظيفة مقفلة بانتظار
+--     قرار الموظف (توظيف/إرجاع/حذف) ولا يُفرج عنها تلقائياً (قرار مقفل).
 create table if not exists brc.jobs (
   id                  uuid primary key default gen_random_uuid(),
   code                text not null unique,                      -- HRC-1042
@@ -134,8 +185,9 @@ create table if not exists brc.jobs (
   interview_location  text default '',
 
   status              brc.job_status not null default 'available',
-  reserved_by         text references brc.applicants (serial) on delete set null,  -- استمارة الحجز الحالي
+  reserved_by         text references brc.applicants (serial) on delete set null,  -- بطاقة الحجز الحالي
   hold_expires_at     timestamptz,                               -- مهلة 24 ساعة
+  critical            boolean not null default false,            -- انتهت المهلة دون قرار — بانتظار قرار الموظف
   closed_at           timestamptz,
   notes               text default '',                           -- ملاحظات داخلية على الوظيفة
   image_url           text default '',                           -- صورة بطاقة الوظيفة
@@ -148,7 +200,25 @@ create table if not exists brc.jobs (
   )
 );
 
--- 2.4 المحاولات (5 خانات لكل استمارة)
+-- رمز فرصة فريد: 4 أرقام + شرطة + حرفان (بلا I/L/O للالتباس البصري)
+create or replace function brc.chance_code() returns text
+language plpgsql
+as $$
+declare
+  letters text[] := array['A','B','C','D','E','F','G','H','J','K','M','N','P','Q','R','S','T','U','V','W','X','Y','Z'];
+  c text;
+begin
+  loop
+    c := lpad((1000 + floor(random() * 9000))::int::text, 4, '0') || '-' ||
+         letters[1 + floor(random() * array_length(letters, 1))] ||
+         letters[1 + floor(random() * array_length(letters, 1))];
+    exit when not exists (select 1 from brc.job_attempts where chance_code = c);
+    return c;
+  end loop;
+end $$;
+
+-- 2.4 فرص البطاقة (خانتان لكل بطاقة) — chance_code: رمز الفرصة السري
+--     المطبوع على ظهر البطاقة، يستخدمه الزبون للتقديم الذاتي وإعادة الطباعة.
 create table if not exists brc.job_attempts (
   id                uuid primary key default gen_random_uuid(),
   serial            text not null references brc.applicants (serial) on delete cascade,
@@ -156,12 +226,14 @@ create table if not exists brc.job_attempts (
   job_id            uuid references brc.jobs (id) on delete set null,
   job_code          text,
   slot_status       brc.slot_status not null default 'empty',
+  chance_code       text not null default brc.chance_code(),
   selected_at       timestamptz,
   hold_expires_at   timestamptz,
   closed_at         timestamptz,
   outcome_note      text default '',
   staff_id          uuid references brc.staff (id) on delete set null,
-  unique (serial, attempt_no)
+  unique (serial, attempt_no),
+  unique (chance_code)
 );
 create index if not exists attempts_serial_idx on brc.job_attempts (serial);
 create index if not exists attempts_job_idx on brc.job_attempts (job_id);
@@ -195,11 +267,11 @@ create table if not exists brc.settings (
 
 insert into brc.settings (key, value) values
   ('rules', jsonb_build_object(
-      'attempt_limit', 5,
+      'attempt_limit', 2,        -- فرصتان لكل بطاقة (مقفل بقرار الشركة)
       'validity_days', 30,
       'hold_hours', 24,
       'form_fee', 10000,
-      'auto_release', true)),
+      'auto_release', false)),   -- لا إفراج تلقائي: الحالة الحرجة تُحسم بقرار يدوي
   ('company', jsonb_build_object(
       'nameAr',      'شركة الهدف للتوظيف',
       'nameEn',      'Al-Hadaf Recruitment Company',
@@ -230,17 +302,6 @@ begin
   loop
     v := 'HRC-' || nextval('brc.job_code_seq')::text;
     exit when not exists (select 1 from brc.jobs where code = v);
-  end loop;
-  return v;
-end $$;
-
-create or replace function brc.next_form_serial() returns text
-language plpgsql as $$
-declare v text;
-begin
-  loop
-    v := 'HRC-NO-' || lpad(nextval('brc.form_serial_seq')::text, 6, '0');
-    exit when not exists (select 1 from brc.applicants where serial = v);
   end loop;
   return v;
 end $$;
@@ -294,13 +355,15 @@ begin
     if coalesce(new.serial, '') = '' then
       new.serial := brc.next_form_serial();
     end if;
-    if new.attempt_limit is null or new.attempt_limit = 5 then
-      new.attempt_limit := coalesce((rules->>'attempt_limit')::smallint, 5);
+    if new.attempt_limit is null or new.attempt_limit = 2 then
+      new.attempt_limit := coalesce((rules->>'attempt_limit')::smallint, 2);
     end if;
     if new.fee_amount is null or new.fee_amount = 10000 then
       new.fee_amount := coalesce((rules->>'form_fee')::integer, 10000);
     end if;
-    if new.expiry_date is null then
+    /* الصلاحية تبدأ عند البيع (التعبئة) لا عند إصدار الدفعة الفارغة:
+       البطاقة الفارغة (blank) بلا issue_date وتبقى expiry_date فارغة. */
+    if new.expiry_date is null and new.issue_date is not null then
       new.expiry_date := new.issue_date + make_interval(days => coalesce((rules->>'validity_days')::int, 30));
     end if;
     /* ⚠️ لا تُنشأ خانات المحاولات هنا: هذا مُشغِّل BEFORE INSERT، أي أن صف
@@ -352,10 +415,10 @@ begin
 
     select * into form_row from brc.applicants where serial = new.serial for update;
     if form_row.serial is null then
-      raise exception 'الاستمارة % غير موجودة', new.serial;
+      raise exception 'البطاقة % غير موجودة', new.serial;
     end if;
     if now() > form_row.expiry_date then
-      raise exception 'انتهت صلاحية الاستمارة % (30 يوماً)', new.serial using errcode = 'P0001';
+      raise exception 'انتهت صلاحية البطاقة % (30 يوماً)', new.serial using errcode = 'P0001';
     end if;
 
     select * into job_row from brc.jobs where id = new.job_id for update;
@@ -382,7 +445,7 @@ begin
     values (coalesce(current_setting('request.jwt.claims', true), '{}')::jsonb->>'sub', 'staff',
             coalesce(current_setting('request.headers', true)::jsonb->>'x-forwarded-for', ''),
             'حجز مؤقت لوظيفة (24 ساعة)', 'job', job_row.code,
-            'الاستمارة ' || new.serial || ' — المحاولة #' || new.attempt_no);
+            'البطاقة ' || new.serial || ' — الفرصة #' || new.attempt_no);
   end if;
 
   -- عند تثبيت نتيجة: نجاح → إغلاق الوظيفة، رفض → إعادتها «متاحة»
@@ -396,6 +459,7 @@ begin
                          else 'available'::brc.job_status end,
            reserved_by = null,
            hold_expires_at = null,
+           critical = false,
            closed_at = case when new.slot_status = 'succeeded' then now() else null end,
            updated_at = now()
      where id = new.job_id;
@@ -406,7 +470,7 @@ begin
             'job', new.job_code,
             case when new.slot_status = 'succeeded'
                  then 'تم التوظيف وإغلاق الوظيفة'
-                 else 'أُعيدت الوظيفة إلى (متاحة) وتُفعَّل المحاولة التالية تلقائياً' end
+                 else 'أُعيدت الوظيفة إلى (متاحة) — والفرصة مستهلكة لا تعود' end
             || coalesce(' | ' || nullif(new.outcome_note, ''), ''));
   end if;
 
@@ -480,14 +544,17 @@ create trigger trg_audit_attempts after insert or update or delete on brc.job_at
   for each row execute function brc.trg_audit();
 
 -- ===========================================================================
---  5) الإفراج التلقائي بعد 24 ساعة + انتهاء صلاحية الاستمارات (30 يوماً)
+--  5) الحالة الحرجة بعد 24 ساعة + انتهاء صلاحية البطاقات (30 يوماً)
 --     تُنفَّذ دورياً عبر pg_cron (كل دقيقة) أو عبر Edge Function.
+--     نظام البطاقات (2026-09-30): لا إفراج تلقائي — الوظيفة التي تنتهي مهلة
+--     حجزها دون قرار تبقى مقفلة وتنتقل مع فرصة الزبون إلى حالة «حرجة»
+--     بانتظار قرار الموظف: تم التوظيف / إرجاعها متوفرة / حذفها.
 -- ===========================================================================
 create or replace function brc.run_auto_release() returns table (released_job text, expired_form text)
 language plpgsql as $$
 declare r record;
 begin
-  -- (أ) حجوزات انتهت مهلتها دون تثبيت النتيجة
+  -- (أ) حجوزات انتهت مهلتها دون قرار ← حالة «حرجة» (لا إفراج تلقائي)
   for r in
     select j.id, j.code, j.reserved_by, a.attempt_no
       from brc.jobs j
@@ -499,20 +566,19 @@ begin
      for update of j
   loop
     update brc.jobs
-       set status = 'available', reserved_by = null, hold_expires_at = null, updated_at = now()
+       set critical = true, hold_expires_at = null, updated_at = now()
      where id = r.id;
 
     update brc.job_attempts
-       set slot_status = 'expired',
-           closed_at = now(),
+       set slot_status = 'critical',
            hold_expires_at = null,
-           outcome_note = 'انتهت مهلة 24 ساعة دون تثبيت نتيجة المقابلة — تتطلب إجراء'
+           outcome_note = 'انتهت مهلة 24 ساعة دون قرار — بانتظار قرار الشركة (توظيف / إرجاع / حذف)'
      where job_id = r.id and slot_status = 'reserved';
 
     insert into brc.audit_log (username, role, action, entity, entity_id, details)
-    values ('system', 'system', 'إفراج تلقائي (24 ساعة)', 'job', r.code,
-            'انتهت المهلة — أُعيدت الوظيفة إلى (متاحة) ووُسمت المحاولة #' || coalesce(r.attempt_no::text, '—') ||
-            ' للاستمارة ' || coalesce(r.reserved_by, '—') || ' بـ (انتهت المهلة)');
+    values ('system', 'system', 'حالة حرجة (انتهاء 24 ساعة)', 'job', r.code,
+            'انتهت المهلة دون قرار — الوظيفة مقفلة بانتظار قرار الموظف، والفرصة #' || coalesce(r.attempt_no::text, '—') ||
+            ' للبطاقة ' || coalesce(r.reserved_by, '—') || ' في حالة حرجة');
 
     released_job := r.code; expired_form := r.reserved_by;
     return next;
@@ -527,23 +593,22 @@ begin
     update brc.applicants set status = 'expired', updated_at = now() where serial = r.serial;
 
     insert into brc.audit_log (username, role, action, entity, entity_id, details)
-    values ('system', 'system', 'انتهاء استمارة', 'applicant', r.serial, 'انتهت صلاحية الاستمارة (30 يوماً)');
+    values ('system', 'system', 'انتهاء بطاقة', 'applicant', r.serial, 'انتهت صلاحية البطاقة (30 يوماً)');
 
     released_job := null; expired_form := r.serial;
     return next;
   end loop;
 
-  -- (ج) استمارات استُهلكت محاولاتها
+  -- (ج) بطاقات استُهلكت فرصها (لا فرصة فارغة ولا فرصة قيد اللعب)
   update brc.applicants f
      set status = 'exhausted', updated_at = now()
    where f.status = 'active'
      and not exists (select 1 from brc.job_attempts a where a.serial = f.serial and a.slot_status = 'empty')
-     and not exists (select 1 from brc.job_attempts a where a.serial = f.serial and a.slot_status = 'succeeded');
+     and not exists (select 1 from brc.job_attempts a where a.serial = f.serial
+                       and a.slot_status in ('reserved', 'critical'));
 
-  update brc.applicants f
-     set status = 'completed', updated_at = now()
-   where f.status <> 'completed'
-     and exists (select 1 from brc.job_attempts a where a.serial = f.serial and a.slot_status = 'succeeded');
+  /* التوظيف لا يُنهي البطاقة (قرار مقفل 2026-09-30): لا حالة completed —
+     يبقى للزبون حقه في فرصته الأخرى حتى نهاية مدة البطاقة. */
 
   return;
 end $$;
@@ -644,7 +709,7 @@ declare v jsonb; f record; v_ok boolean;
 begin
   select * into f from brc.applicants where serial = p_serial;
   if f.serial is null then
-    return jsonb_build_object('ok', false, 'error', 'لا توجد استمارة بهذا الرقم');
+    return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الرقم');
   end if;
 
   v_ok := (p_token is not null
@@ -660,6 +725,7 @@ begin
     'status', f.status,
     'daysLeft', ceil(extract(epoch from (f.expiry_date - now())) / 86400.0),
     'attemptLimit', f.attempt_limit,
+    'posName', coalesce(f.pos_name, ''),
     'requestedCode', f.requested_code,
     'rejectReason', coalesce(f.reject_reason, ''),
     'createdAt', f.created_at,
@@ -681,6 +747,8 @@ begin
                'jobTitle', coalesce(j.title, '—'),
                'location', coalesce(j.region, '—'),
                'slotStatus', a.slot_status,
+               /* رمز الفرصة سرّي: يُكشف فقط للبصمة الصحيحة (الموظف/الإدارة) */
+               'code', case when v_ok then a.chance_code else null end,
                'selectedAt', a.selected_at,
                'holdExpiresAt', a.hold_expires_at,
                'closedAt', a.closed_at,
@@ -690,9 +758,427 @@ begin
   ) into v;
 
   insert into brc.audit_log (username, role, action, entity, entity_id, details)
-  values ('public', 'public', 'تحقق من استمارة (QR)', 'applicant', f.serial, 'فحص عبر رابط التحقق');
+  values ('public', 'public', 'تحقق من بطاقة (باركود)', 'applicant', f.serial, 'فحص عبر رابط التحقق');
 
   return v;
+end $$;
+
+-- 7.1ج ‎«بطاقتي» — الدوال العامة الآمنة لنظام بطاقة التوظيف (2026-09-30)
+-- ---------------------------------------------------------------------------
+--  المسار العام الجديد: الزبون يشتري بطاقة (كاش عند نقطة بيع) ويتبعها بنفسه
+--  بالباركود المطبوع عليها. الأمان قائم على نموذج الحيازة:
+--    • lookup_card: عرض البطاقة بالباركود فقط — بيانات مقنّنة وبلا رموز
+--      الفرص وبلا بيانات صاحب العمل.
+--    • use_chance: استهلاك فرصة يتطلب رمز الفرصة السري (ظهر البطاقة).
+--    • verify_card_code: إعادة الطباعة تتطلب رمز فرصة (إثبات الحيازة) وتُرجع
+--      الحمولة الكاملة للطباعة.
+--  كلها security definer بلا كشف لأي جدول: anon ممنوع من brc.applicants
+--  وbrc.job_attempts وbrc.jobs (البيانات الداخلية).
+create or replace function brc.lookup_card(p_serial text) returns jsonb
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare f record;
+begin
+  select * into f from brc.applicants where serial = upper(btrim(coalesce(p_serial, '')));
+  if f.serial is null then
+    return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود — تأكد من الرقم المطبوع على بطاقتك');
+  end if;
+  if f.status = 'pending' then
+    return jsonb_build_object('ok', false, 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
+  end if;
+  if f.status = 'blank' then
+    return jsonb_build_object('ok', false, 'error', 'هذه البطاقة فارغة ولم تُبع بعد — إذا عُرضت لك للبيع فخابر الشركة فوراً لتفادي التزوير');
+  end if;
+
+  insert into brc.audit_log (username, role, action, entity, entity_id, details)
+  values ('public', 'public', 'متابعة بطاقة (بطاقتي)', 'applicant', f.serial, 'عرض الحالة بالباركود — بيانات مقنّنة');
+
+  return jsonb_build_object(
+    'ok', true,
+    'serial', f.serial,
+    'fullName', brc.mask_name(f.full_name),
+    'phone', brc.mask_phone(f.phone),
+    'status', f.status,
+    'issueDate', f.issue_date,
+    'expiryDate', f.expiry_date,
+    'chancesLeft', (select count(*) from brc.job_attempts a where a.serial = f.serial and a.slot_status = 'empty'),
+    'succeeded', exists (select 1 from brc.job_attempts a where a.serial = f.serial and a.slot_status = 'succeeded'),
+    'chances', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+               'no', a.attempt_no,
+               'slotStatus', a.slot_status,
+               'jobCode', a.job_code,
+               'jobTitle', j.title,
+               'location', j.region,
+               'selectedAt', a.selected_at,
+               'holdExpiresAt', a.hold_expires_at,
+               'note', case when a.slot_status in ('rejected', 'expired') then a.outcome_note else '' end
+             ) order by a.attempt_no), '[]'::jsonb)
+        from brc.job_attempts a left join brc.jobs j on j.id = a.job_id
+       where a.serial = f.serial)
+  );
+end $$;
+
+create or replace function brc.use_chance(p_serial text, p_code text, p_job_code text) returns jsonb
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare
+  f record;
+  a record;
+  j record;
+  hold_hours int;
+begin
+  select * into f from brc.applicants where serial = upper(btrim(coalesce(p_serial, '')));
+  if f.serial is null then
+    return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود');
+  end if;
+  if f.status = 'blank' then
+    return jsonb_build_object('ok', false, 'error', 'هذه البطاقة فارغة ولم تُبع بعد');
+  end if;
+  if f.status = 'expired' or (f.expiry_date is not null and now() > f.expiry_date) then
+    return jsonb_build_object('ok', false, 'error', 'انتهت صلاحية البطاقة (30 يوماً)');
+  end if;
+  if f.status in ('exhausted') then
+    return jsonb_build_object('ok', false, 'error', 'استُهلكت فرص البطاقة — تشترى بطاقة جديدة من نقاط البيع');
+  end if;
+
+  -- الفرصة: خانة فارغة رمزها هو المُرسل (الرمز سرّي على ظهر البطاقة)
+  select * into a from brc.job_attempts
+   where serial = f.serial and slot_status = 'empty' and chance_code = upper(btrim(coalesce(p_code, '')))
+   order by attempt_no limit 1;
+  if a.id is null then
+    return jsonb_build_object('ok', false, 'error', 'رمز الفرصة غير صحيح — انسخ الرمز المطبوع على ظهر بطاقتك كما هو');
+  end if;
+
+  select * into j from brc.jobs where code = upper(btrim(coalesce(p_job_code, ''))) for update;
+  if j.id is null then
+    return jsonb_build_object('ok', false, 'error', 'الوظيفة غير موجودة');
+  end if;
+  if j.status <> 'available' then
+    return jsonb_build_object('ok', false, 'error', 'الوظيفة غير متاحة حالياً (' || j.status || ')');
+  end if;
+
+  select coalesce((value->>'hold_hours')::int, 24) into hold_hours from brc.settings where key = 'rules';
+
+  -- الحجز عبر المشغّل trg_attempt_hold (تحقق الشروط + قفل الوظيفة + تدقيق)
+  update brc.job_attempts
+     set slot_status = 'reserved',
+         job_id = j.id,
+         job_code = j.code,
+         selected_at = now(),
+         hold_expires_at = now() + make_interval(hours => hold_hours)
+   where id = a.id
+  returning * into a;
+
+  insert into brc.audit_log (username, role, action, entity, entity_id, details)
+  values ('public', 'public', 'تقديم ذاتي ببطاقة', 'applicant', f.serial,
+          'الزبون ' || brc.mask_name(f.full_name) || ' استخدم الفرصة #' || a.attempt_no ||
+          ' بنفسه من الموقع على الوظيفة ' || j.code);
+
+  return jsonb_build_object(
+    'ok', true,
+    'attempt', jsonb_build_object(
+      'no', a.attempt_no, 'code', a.chance_code, 'slotStatus', a.slot_status,
+      'jobCode', a.job_code, 'jobTitle', j.title,
+      'selectedAt', a.selected_at, 'holdExpiresAt', a.hold_expires_at),
+    'job', jsonb_build_object('code', j.code, 'title', j.title, 'region', j.region)
+  );
+end $$;
+
+create or replace function brc.verify_card_code(p_serial text, p_code text) returns jsonb
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare
+  f record;
+  hit record;
+begin
+  select * into f from brc.applicants where serial = upper(btrim(coalesce(p_serial, '')));
+  if f.serial is null then
+    return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود');
+  end if;
+
+  -- إثبات الحيازة: رمز إحدى الفرصتين (المطبوع على ظهر البطاقة)
+  select * into hit from brc.job_attempts
+   where serial = f.serial and chance_code = upper(btrim(coalesce(p_code, '')))
+   limit 1;
+  if hit.id is null then
+    return jsonb_build_object('ok', false, 'error', 'رمز الفرصة غير صحيح — انسخه كما هو من ظهر بطاقتك');
+  end if;
+
+  insert into brc.audit_log (username, role, action, entity, entity_id, details)
+  values ('public', 'public', 'إعادة طباعة بطاقة', 'applicant', f.serial,
+          'إثبات حيازة برمز الفرصة #' || hit.attempt_no || ' — حُملت الحمولة الكاملة للطباعة');
+
+  return jsonb_build_object(
+    'ok', true,
+    'data', jsonb_build_object(
+      'id', f.id, 'serial', f.serial, 'fullName', f.full_name, 'phone', f.phone,
+      'issueDate', f.issue_date, 'expiryDate', f.expiry_date, 'posName', coalesce(f.pos_name, ''),
+      'attempts', (
+        select coalesce(jsonb_agg(jsonb_build_object(
+                 'no', a.attempt_no, 'code', a.chance_code, 'slotStatus', a.slot_status,
+                 'jobCode', a.job_code, 'jobTitle', j.title, 'location', j.region,
+                 'selectedAt', a.selected_at, 'holdExpiresAt', a.hold_expires_at,
+                 'closedAt', a.closed_at, 'note', a.outcome_note
+               ) order by a.attempt_no), '[]'::jsonb)
+          from brc.job_attempts a left join brc.jobs j on j.id = a.job_id
+         where a.serial = f.serial)
+    )
+  );
+end $$;
+
+-- 7.1ج بيع نقطة البيع عبر الموقع + صفحة صاحب العمل (قرار الإدارة 2026-10-01)
+-- ---------------------------------------------------------------------------/
+--  activate_card: نقطة البيع تمسح باركود البطاقة الفارغة فتُعبّأ بيانات الزبون
+--                 مع اختيار الوظيفة (إلزامي) وتُستهلك الفرصة الأولى بحجز 24 ساعة.
+--  employer_view: صاحب العمل يمسح نفس الباركود فيرى تعريف المتقدم والوظيفة
+--                 وبيانات التواصل — بلا رموز فرص (سرّ الزبون).
+--  employer_decide: قرار صاحب العمل (توظيف/رفض) يُسجَّل فوراً ويوثّق بالتدقيق.
+-- 1) بيع وتعبئة بطاقة فارغة من نقطة البيع عبر الموقع العام
+--    p_data: { fullName, phone, address, dob, gender, posName, fee?, feePaid?, notes?, jobCode }
+create or replace function brc.activate_card(p_serial text, p_data jsonb)
+returns jsonb
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare
+  f        record;
+  j        record;
+  a        record;
+  rules    jsonb;
+  v_name   text;
+  v_phone  text;
+  v_pos    text;
+  v_job    text;
+begin
+  select * into f from brc.applicants
+   where serial = upper(btrim(coalesce(p_serial, ''))) for update;
+  if f.serial is null then
+    return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود — تأكد من الرقم المطبوع على البطاقة الفارغة');
+  end if;
+  if f.status <> 'blank' then
+    return jsonb_build_object('ok', false, 'error', 'هذه البطاقة ليست فارغة — حالتها: ' || f.status::text);
+  end if;
+
+  v_name  := btrim(coalesce(p_data->>'fullName', ''));
+  v_phone := btrim(coalesce(p_data->>'phone', ''));
+  v_pos   := btrim(coalesce(p_data->>'posName', ''));
+  v_job   := upper(btrim(coalesce(p_data->>'jobCode', '')));
+  if v_name = ''  then return jsonb_build_object('ok', false, 'error', 'اسم الزبون مطلوب'); end if;
+  if v_phone = '' then return jsonb_build_object('ok', false, 'error', 'هاتف الزبون مطلوب'); end if;
+  if v_pos = ''   then return jsonb_build_object('ok', false, 'error', 'اسم نقطة البيع مطلوب'); end if;
+  if v_job = ''   then return jsonb_build_object('ok', false, 'error', 'اختيار الوظيفة إلزامي — لا يكتمل البيع بدونه'); end if;
+
+  /* الوظيفة جزء من الاستمارة: تُقفل قبل أي كتابة (منع سباق حجز مزدوج) */
+  select * into j from brc.jobs where code = v_job for update;
+  if j.id is null then
+    return jsonb_build_object('ok', false, 'error', 'الوظيفة المختارة غير موجودة');
+  end if;
+  if j.status <> 'available' then
+    return jsonb_build_object('ok', false, 'error', 'الوظيفة ' || j.code || ' غير متاحة حالياً — اختر وظيفة أخرى');
+  end if;
+
+  select value into rules from brc.settings where key = 'rules';
+
+  update brc.applicants set
+      full_name   = v_name,
+      phone       = v_phone,
+      address     = coalesce(nullif(btrim(coalesce(p_data->>'address', '')), ''), f.address),
+      dob         = nullif(p_data->>'dob', '')::date,
+      gender      = coalesce(nullif(p_data->>'gender', ''), 'ذكر'),
+      status      = 'active',
+      issue_date  = now(),
+      expiry_date = now() + make_interval(days => coalesce((rules->>'validity_days')::int, 30)),
+      pos_name    = v_pos,
+      fee_amount  = coalesce(nullif(p_data->>'fee', '')::int, f.fee_amount),
+      fee_paid    = coalesce((p_data->>'feePaid')::boolean, true),
+      notes       = coalesce(nullif(p_data->>'notes', ''), f.notes)
+  where serial = f.serial
+  returning * into f;
+
+  /* استهلاك الفرصة الأولى بالوظيفة المختارة: حجز 24 ساعة عبر trg_attempt_hold
+     (يتحقق من توافر الوظيفة مجدداً + يقفلها + يدوّن الحجز بسجل التدقيق). */
+  select id into a from brc.job_attempts
+   where serial = f.serial and slot_status = 'empty'
+   order by attempt_no limit 1 for update;
+  if a.id is null then
+    raise exception 'لا توجد فرصة متاحة على البطاقة %', f.serial using errcode = 'P0001';
+  end if;
+
+  update brc.job_attempts
+     set slot_status     = 'reserved',
+         job_id          = j.id,
+         job_code        = j.code,
+         selected_at     = now(),
+         hold_expires_at = now() + make_interval(hours => coalesce((rules->>'hold_hours')::int, 24))
+   where id = a.id
+  returning * into a;
+
+  insert into brc.audit_log (username, role, action, entity, entity_id, details)
+  values ('public', 'pos', 'بيع وتعبئة بطاقة فارغة', 'applicant', f.serial,
+          'بيع البطاقة ' || f.serial || ' للزبون ' || f.full_name ||
+          ' — نقطة البيع: ' || v_pos ||
+          ' — سعر ' || to_char(f.fee_amount, 'FM999,999,999') || ' د.ع (كاش)' ||
+          ' — بدأت صلاحية ' || coalesce((rules->>'validity_days')::int, 30) || ' يوماً من الآن' ||
+          ' | الوظيفة المختارة: ' || j.code || ' — ' || j.title);
+
+  return jsonb_build_object(
+    'ok', true,
+    'app', jsonb_build_object(
+      'serial', f.serial, 'fullName', f.full_name, 'phone', f.phone,
+      'address', coalesce(f.address, ''), 'dob', f.dob, 'gender', f.gender,
+      'status', f.status::text, 'issueDate', f.issue_date, 'expiryDate', f.expiry_date,
+      'posName', coalesce(f.pos_name, ''), 'fee', f.fee_amount, 'feePaid', f.fee_paid),
+    'attempt', jsonb_build_object(
+      'no', a.attempt_no, 'code', a.chance_code, 'slotStatus', a.slot_status::text,
+      'jobCode', a.job_code, 'jobTitle', j.title, 'location', j.region,
+      'selectedAt', a.selected_at, 'holdExpiresAt', a.hold_expires_at),
+    'job', jsonb_build_object('code', j.code, 'title', j.title, 'region', j.region));
+exception when others then
+  /* أخطاء المشغّلات (P0001) نصوص عربية نظيفة تمر كما هي للواجهة */
+  return jsonb_build_object('ok', false, 'error', sqlerrm);
+end $$;
+
+-- 2) صفحة صاحب العمل: الباركود وحده يكفي — تعريف المتقدم والتقديم الجاري
+--    وبيانات التواصل. لا رموز فرص إطلاقاً (سرّ الزبون لفرصته الثانية).
+create or replace function brc.employer_view(p_serial text)
+returns jsonb
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare
+  f     record;
+  a     record;
+  j     record;
+  v_st  text;
+begin
+  select * into f from brc.applicants
+   where serial = upper(btrim(coalesce(p_serial, '')));
+  if f.serial is null then
+    return jsonb_build_object('ok', false, 'code', 'not_found', 'error', 'لا توجد بطاقة بهذا الباركود');
+  end if;
+  if f.status = 'blank' then
+    return jsonb_build_object('ok', false, 'code', 'blank', 'error', 'هذه البطاقة فارغة ولم تُبع بعد');
+  end if;
+  if f.status = 'pending' then
+    return jsonb_build_object('ok', false, 'code', 'pending', 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
+  end if;
+
+  /* أحدث تقديم قيد اللعب (قد تكون الفرصتان محجوزتين معاً: وظيفة نقطة البيع
+     + تقديم الزبون) — هو المطبوع على استمارة A4 الذي يحمله الزبون لصاحب العمل */
+  select * into a from brc.job_attempts
+   where serial = f.serial and slot_status in ('reserved', 'critical')
+   order by selected_at desc nulls last, attempt_no desc limit 1;
+  if a.id is not null then
+    select * into j from brc.jobs where id = a.job_id;
+  end if;
+
+  /* نفس منطق حالة البطاقة في الواجهة (formStatus): منتهية/مستهلكة محسوبتان */
+  v_st := case
+    when f.status in ('pending', 'rejected') then f.status::text
+    when f.expiry_date is not null and now() > f.expiry_date then 'expired'
+    when (select count(*) from brc.job_attempts x where x.serial = f.serial and x.slot_status = 'empty') = 0
+         and not exists (select 1 from brc.job_attempts x
+                          where x.serial = f.serial and x.slot_status in ('reserved', 'critical'))
+      then 'exhausted'
+    else 'active' end;
+
+  if a.id is not null then
+    insert into brc.audit_log (username, role, action, entity, entity_id, details)
+    values ('public', 'employer', 'صاحب العمل شاهد تعريف المتقدم', 'applicant', f.serial,
+            'فتح صفحة الباركود — التقديم الجاري على ' || coalesce(a.job_code, '—') ||
+            ' — الزبون ' || f.full_name);
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'card', jsonb_build_object(
+      'serial', f.serial, 'fullName', f.full_name, 'phone', f.phone,
+      'address', coalesce(f.address, ''), 'gender', coalesce(f.gender, ''), 'dob', f.dob,
+      'status', v_st, 'issueDate', f.issue_date, 'expiryDate', f.expiry_date,
+      'posName', coalesce(f.pos_name, ''),
+      'chancesLeft', (select count(*) from brc.job_attempts x where x.serial = f.serial and x.slot_status = 'empty'),
+      'succeeded', exists (select 1 from brc.job_attempts x where x.serial = f.serial and x.slot_status = 'succeeded'),
+      'applied', case when a.id is null then null else jsonb_build_object(
+        'no', a.attempt_no, 'jobCode', a.job_code, 'jobTitle', j.title, 'region', j.region,
+        'appliedAt', a.selected_at, 'holdExpiresAt', a.hold_expires_at,
+        'slotStatus', a.slot_status::text,
+        'employer', jsonb_build_object(
+          'name', j.employer_name, 'phone', j.employer_phone,
+          'address', j.employer_address, 'interviewLocation', j.interview_location)
+      ) end));
+exception when others then
+  return jsonb_build_object('ok', false, 'error', sqlerrm);
+end $$;
+
+-- 3) قرار صاحب العمل من صفحة الباركود مباشرة: توظيف/رفض — يُسجَّل فوراً
+--    لدى الشركة ويوثّق بسجل التدقيق. الفرصة مستهلكة بالتقديم ولا تعود.
+create or replace function brc.employer_decide(p_serial text, p_decision text)
+returns jsonb
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare
+  f        record;
+  a        record;
+  j        record;
+  outcome  brc.slot_status;
+begin
+  if p_decision not in ('hire', 'reject') then
+    return jsonb_build_object('ok', false, 'error', 'قرار غير صحيح — hire أو reject فقط');
+  end if;
+
+  select * into f from brc.applicants
+   where serial = upper(btrim(coalesce(p_serial, '')));
+  if f.serial is null then
+    return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود');
+  end if;
+  if f.status = 'blank' then
+    return jsonb_build_object('ok', false, 'error', 'هذه البطاقة فارغة ولم تُبع بعد');
+  end if;
+
+  select * into a from brc.job_attempts
+   where serial = f.serial and slot_status in ('reserved', 'critical')
+   order by selected_at desc nulls last, attempt_no desc limit 1 for update;
+  if a.id is null then
+    return jsonb_build_object('ok', false, 'error', 'لا يوجد تقديم قيد القرار على هذه البطاقة — راجع الشركة');
+  end if;
+
+  outcome := case when p_decision = 'hire' then 'succeeded'::brc.slot_status
+                  else 'rejected'::brc.slot_status end;
+
+  /* trg_attempt_hold يُغلق الوظيفة عند النجاح أو يعيدها متاحة عند الرفض */
+  update brc.job_attempts
+     set slot_status = outcome,
+         outcome_note = case when p_decision = 'hire'
+                             then 'قرار صاحب العمل: تم التوظيف — سُجّل من صفحة الباركود'
+                             else 'قرار صاحب العمل: لم يتم التوظيف — سُجّل من صفحة الباركود' end
+   where id = a.id
+  returning * into a;
+
+  select * into j from brc.jobs where id = a.job_id;
+
+  insert into brc.audit_log (username, role, action, entity, entity_id, details)
+  values ('public', 'employer',
+          case when p_decision = 'hire' then 'توظيف من صاحب العمل' else 'رفض من صاحب العمل' end,
+          'applicant', f.serial,
+          'صاحب العمل قرر عبر صفحة الباركود على الوظيفة ' || coalesce(a.job_code, '—') ||
+          ' — الفرصة #' || a.attempt_no || ' — الزبون ' || f.full_name);
+
+  return jsonb_build_object(
+    'ok', true,
+    'attempt', jsonb_build_object(
+      'no', a.attempt_no, 'slotStatus', a.slot_status::text,
+      'jobCode', a.job_code, 'jobTitle', j.title, 'location', j.region,
+      'selectedAt', a.selected_at, 'holdExpiresAt', a.hold_expires_at, 'closedAt', a.closed_at),
+    'job', jsonb_build_object('code', j.code, 'title', j.title, 'region', j.region,
+                              'status', j.status::text),
+    'decision', p_decision);
+exception when others then
+  return jsonb_build_object('ok', false, 'error', sqlerrm);
 end $$;
 
 -- 7.1ب طلب استمارة إلكتروني من الموقع العام (بلا حساب ولا جلسة)
@@ -1021,18 +1507,27 @@ grant execute on function brc.is_admin()            to authenticated, service_ro
 grant execute on function brc.current_staff_id()    to authenticated, service_role;
 grant execute on function brc.next_job_code()       to authenticated, service_role;
 grant execute on function brc.next_form_serial()    to authenticated, service_role;
+-- «بطاقتي» للزائر العام: متابعة بطاقته واستخدام فرصته وإعادة طباعتها
+-- (أُعيد كتابة سياسة الزائر 2026-09-30: لا طلب إلكتروني — بطاقة تُشترى كاشاً)
+grant execute on function brc.lookup_card(text)                to anon, authenticated;
+grant execute on function brc.use_chance(text, text, text)      to anon, authenticated;
+grant execute on function brc.verify_card_code(text, text)      to anon, authenticated;
+/* موديل 2026-10-01: مسح نقطة البيع وصاحب العمل من الموقع العام — بلا جلسة */
+grant execute on function brc.activate_card(text, jsonb)        to anon, authenticated;
+grant execute on function brc.employer_view(text)               to anon, authenticated;
+grant execute on function brc.employer_decide(text, text)       to anon, authenticated;
 
--- الزائر العام: يقرأ الواجهة العامة (الوظائف) فقط — بلا تقديم وبلا تحقق
--- ⚠️ سياسة الشركة (قرار الإدارة): الزائر يتصفّح الوظائف ويحجز بالتواصل، ولا يقدّم
---    استمارة ولا يتحقق من أي استمارة. التحقق من الاستمارات وإصدارها للموظفين
---    والإدارة فقط. لذلك:
---      • لا تُمنح brc.verify_form للزائر (anon): كانت هذه هي نقطة التحقق العام.
---        التحقق الآن يتم بجلسة موظف مصادَق عليها (authenticated) من صفحة
---        verify.html — وهي محجوبة عن الزائر ببوابة صلاحية.
---      • لا تُمنح brc.request_form للزائر: الطلب صار يُسجّله المكتب (هاتفياً أو
---        حضورياً) من المنظومة الداخلية.
+-- الزائر العام: يتصفّح الوظائف ويتابع بطاقته — بلا تحقق داخلي وبلا طلب إلكتروني
+-- ⚠️ سياسة الشركة (قرار الإدارة 2026-09-30 — نظام بطاقة التوظيف): الزائر يشتري
+--    بطاقة التوظيف كاشاً من نقطة بيع معتمدة ويتابعها بنفسه بالباركود، ولا يُقدّم
+--    طلباً إلكترونياً ولا يتحقق من بطاقات غيره. لذلك:
+--      • تُمنح للزائر دوال «بطاقتي» الثلاث فقط: lookup_card (بيانات مقنّنة بلا
+--        رموز) وuse_chance وverify_card_code (تتطلبان رمز الفرصة السري).
+--      • لا تُمنح brc.verify_form للزائر (anon): التحقق الداخلي يتم بجلسة موظف
+--        مصادَق عليها (authenticated) من صفحة verify.html — محجوبة عن الزائر.
+--      • لا تُمنح brc.request_form للزائر: مسار الطلب الإلكتروني أُلغي نهائياً.
 -- ⚠️ ولا تُمنح brc.public_verification أصلاً: تلك الواجهة تكشف serial + full_name
---    + status لكل الاستمارات بلا تحقق من البصمة، فيسحب أي حامل لـ anon key أسماء
+--    + status لكل البطاقات بلا تحقق من البصمة، فيسحب أي حامل لـ anon key أسماء
 --    كل الباحثين بنداء واحد.
 grant select on brc.public_jobs to anon, authenticated;
 grant execute on function brc.verify_form(text, text) to authenticated, service_role;

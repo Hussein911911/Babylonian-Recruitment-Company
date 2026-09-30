@@ -1,4 +1,4 @@
-<!-- ============================== صفحة التحقق من الاستمارة ============================== -->
+<!-- ============================== صفحة التحقق من بطاقة التوظيف ============================== -->
 <section class="verify-hero">
   <div class="container">
     <div class="flex-between flex-wrap">
@@ -7,9 +7,9 @@
           <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
           أداة داخلية — للموظفين والإدارة
         </span>
-        <h1 style="color:#fff;font-size:clamp(1.4rem,3vw,2.1rem);margin-bottom:6px">التحقق من استمارة شركة الهدف للتوظيف</h1>
+        <h1 style="color:#fff;font-size:clamp(1.4rem,3vw,2.1rem);margin-bottom:6px">التحقق من بطاقة توظيف شركة الهدف</h1>
         <p style="color:#c3cee5;margin:0;max-width:70ch">
-          صفحة داخلية تُفتح بكيو آر كود الاستمارة المطبوعة أو بالرقم التسلسلي، وتُظهر حالة الاستمارة
+          صفحة داخلية تُفتح بباركود البطاقة المطبوعة أو بالرقم التسلسلي، وتُظهر حالة البطاقة
           والمحاولات المرتبطة بها وأكواد الوظائف. <b>الوصول مقصور على حسابات الموظفين والإدارة.</b>
         </p>
       </div>
@@ -32,8 +32,8 @@
     <div class="panel-body">
       <form class="toolbar" id="verify-form" autocomplete="off">
         <div class="field grow">
-          <label for="v-serial">الرقم التسلسلي للاستمارة</label>
-          <input type="text" id="v-serial" placeholder="HRC-NO-000120" required>
+          <label for="v-serial">الرقم التسلسلي للبطاقة</label>
+          <input type="text" id="v-serial" placeholder="HRC-BC-000120" required>
         </div>
         <div class="field">
           <label>&nbsp;</label>
@@ -41,7 +41,7 @@
         </div>
       </form>
       <p class="tiny muted mt-2 mb-0">
-        اكتب الرقم التسلسلي كما هو مطبوع على الاستمارة (مثال: <b class="mono" dir="ltr">HRC-NO-000120</b>)
+        اكتب الرقم التسلسلي كما هو مطبوع على البطاقة (مثال: <b class="mono" dir="ltr">HRC-BC-000120</b>)
       </p>
     </div>
   </div>
@@ -50,17 +50,17 @@
     <div class="contact-card" style="text-align:right">
       <div class="ic" style="margin:0 0 12px"><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg></div>
       <h3>ما معنى «سارية»؟</h3>
-      <p>الاستمارة داخل مدة صلاحيتها (30 يوماً) ويمكن استخدام محاولاتها المتبقية لحجز وظائف جديدة.</p>
+      <p>البطاقة داخل مدة صلاحيتها (30 يوماً) ويمكن استخدام فرصها المتبقية للتقديم على وظائف جديدة.</p>
     </div>
     <div class="contact-card" style="text-align:right">
       <div class="ic" style="margin:0 0 12px"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg></div>
-      <h3>«انتهت المهلة»</h3>
-      <p>انقضت 24 ساعة على حجز الوظيفة دون تثبيت نتيجة المقابلة، فأُفرجت الوظيفة تلقائياً وتحتاج إجراءً من المكتب.</p>
+      <h3>«حرجة — بانتظار قرار الشركة»</h3>
+      <p>انقضت 24 ساعة على حجز الوظيفة دون تثبيت نتيجة المقابلة، فتنتقل الوظيفة والفرصة إلى حالة «حرجة» بانتظار قرار الشركة: التوظيف أو الإرجاع أو الحذف — والفرصة مستهلكة لا تعود.</p>
     </div>
     <div class="contact-card" style="text-align:right">
       <div class="ic" style="margin:0 0 12px"><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg></div>
-      <h3>استمارة غير موجودة</h3>
-      <p>إن لم يظهر الرقم، فقد تكون الاستمارة مزوّرة أو الرقم خاطئاً — راجع المكتب على الأرقام الرسمية.</p>
+      <h3>بطاقة غير موجودة</h3>
+      <p>إن لم يظهر الرقم، فقد تكون البطاقة مزوّرة أو الرقم خاطئاً — راجع المكتب على الأرقام الرسمية.</p>
     </div>
   </div>
 </div>
