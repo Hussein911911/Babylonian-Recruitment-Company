@@ -453,12 +453,12 @@ step(5, 'الزائر — RPC للطلب والتحقق (الجدول محجوب
   check('pushCloud لا يُرسل شيئاً للزائر', (await Store.pushCloud()).skipped === true ||
     !mock.__calls.some((c) => c.op && ['insert', 'update', 'delete'].includes(c.op)));
 
-  const req = await Store.submitPublicRequest({ fullName: 'علي حسن', phone: '07701234567', address: 'الحلة', gender: 'ذكر' });
-  check('الطلب الإلكتروني يمرّ عبر brc.request_form', mock.__calls.some((c) => c.rpc === 'request_form'), JSON.stringify(mock.__calls.filter((c) => c.rpc)));
-  check('الطلب نجح وأعاد الرقم التسلسلي', req.ok && req.serial === 'HRC-NO-900999', JSON.stringify(req));
-  check('لا إدراج مباشر في جدول الاستمارات (محجوب على anon)',
+  /* نظام البطاقة (2026-09-30): لا طلب إلكتروني عام — الزائر يشتري بطاقة من
+     نقطة البيع. المسار العام الوحيد الآن هو «بطاقتي» عبر RPC عامة آمنة:
+     lookup_card / use_chance / verify_card_code. */
+  check('لا طلب إلكتروني عام بعد الآن (أُزيل submitPublicRequest)', typeof Store.submitPublicRequest !== 'function');
+  check('لا إدراج مباشر في جدول البطاقات (محجوب على anon)',
     !mock.__calls.some((c) => c.table === 'applicants' && c.op === 'insert'));
-  check('الطلب ظاهر محلياً للمتابعة', Store.getApplicant('HRC-NO-900999') !== null);
 
   const vr = await Store.verifyCloud('HRC-NO-900001', null);
   check('التحقق يمرّ عبر brc.verify_form', mock.__calls.some((c) => c.rpc === 'verify_form'));
@@ -467,13 +467,16 @@ step(5, 'الزائر — RPC للطلب والتحقق (الجدول محجوب
   check('لا قراءة مباشرة لجدول الاستمارات من الزائر',
     !mock.__calls.some((c) => c.table === 'applicants' && c.op === 'select'));
 
-  const localReq = Store.submitPublicRequest ? await (async () => {
+  /* في الوضع المحلي: «بطاقتي» يعمل عبر الواجهة المحلية (lookupCard) */
+  {
     const local = bootStore(makeMock({ rows: cloudRows() }), { noVendor: true });
     local.Store.init(); await sleep(30);
-    return local.Store.submitPublicRequest({ fullName: 'سالم', phone: '07701111111', address: 'بابل', gender: 'ذكر' });
-  })() : null;
-  check('في الوضع المحلي: الطلب يُسجّل محلياً كما كان', localReq && localReq.ok && localReq.mode === 'local' && !!localReq.serial,
-    JSON.stringify(localReq));
+    const app = local.Store.createApplicant({ fullName: 'سالم', phone: '07701111111', address: 'بابل', gender: 'ذكر', posName: 'مكتب فحص' });
+    const r = await local.Store.cardLookup(app.serial);
+    const masked = r.ok && r.card.fullName !== 'سالم' && /•/.test(r.card.fullName);
+    check('في الوضع المحلي: بطاقتي يعرض البطاقة محلياً (مقنّنة وبلا رموز)',
+      masked && r.card.chances.length === 2 && !JSON.stringify(r.card).includes(app.serial + '"code"'), JSON.stringify(r.error || r.card.fullName));
+  }
 }
 
 /* ===========================================================================

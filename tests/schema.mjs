@@ -48,7 +48,8 @@ while ((m = tableRe.exec(stripped(STRUCTURE)))) tables.push({ name: m[1].toLower
 const order = {};
 tables.forEach((t, i) => { if (!(t.name in order)) order[t.name] = i; });
 
-check('المخطط يعرّف الجداول الستة المتوقّعة', tables.length === 6,
+/* 7 = الستة + brc.issued_serials (سجل الباركودات — الدفعات الفارغة 2026-09-30) */
+check('المخطط يعرّف الجداول السبعة المتوقّعة', tables.length === 7,
   tables.length + ': ' + tables.map((t) => t.name).join(', '));
 
 const SYSTEM = new Set(['auth.users', 'auth.identities', 'storage.objects']);
@@ -73,9 +74,9 @@ const funcs = [];
 let f;
 while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 
-/* 19 بعد فصل trg_make_attempts عن trg_defaults (إصلاح 23503: إنشاء خانات
-   المحاولات نُقل إلى مُشغِّل AFTER INSERT لأن BEFORE يسبق كتابة الاستمارة) */
-check('عدد الدوال المتوقّع (19)', funcs.length === 19, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+/* 24 = 19 السابقة + نظام بطاقة التوظيف (chance_code + دوال بطاقتي الثلاث)
+   + brc.trg_log_issued_serial (سجل الباركودات العشوائية). */
+check('عدد الدوال المتوقّع (24)', funcs.length === 24, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
 const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
@@ -255,7 +256,7 @@ for (const [label, re] of [
 ]) check(label, re.test(RAW));
 
 const trigCount = [...stripped(RAW).matchAll(/create\s+trigger\s+\w+/gi)].length;
-check('المشغّلات الثمانية موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق)', trigCount === 8, trigCount + '');
+check('المشغّلات التسعة موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق/سجل الباركودات)', trigCount === 9, trigCount + '');
 
 /* ------------------------- 9) مزامنة ملف الـ migration ------------------------- */
 step(9, 'ملف الـ migration — متطابق مع المصدر (تكاملة GitHub في Supabase)');

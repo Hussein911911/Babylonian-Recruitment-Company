@@ -1,8 +1,11 @@
 /* ===========================================================================
  *  HRC — منطق الموقع العام
- *  لوحة الوظائف، البحث الفوري، صفحة الوظيفة، ودعوة الزائر للتواصل مع الشركة.
- *  ⚠️ سياسة الشركة: الزائر يتصفّح فقط — لا تقديم استمارة ولا تحقق منها.
- *     إصدار الاستمارات والتحقق منها محصور بالموظفين والإدارة في المنظومة الداخلية.
+ *  لوحة الوظائف، البحث الفوري، صفحة الوظيفة، ونافذة «بطاقتي».
+ *  نظام بطاقة التوظيف (2026-09-30): التقديم ببطاقة تُشترى كاشاً من نقاط
+ *  البيع — زر «قدّم ببطاقتك» في كل وظيفة متاحة يفتح نافذة بطاقتي في
+ *  booking.js (الباركود ← الحالة ← استخدام فرصة برمزها / إعادة الطباعة).
+ *  لا دفع إلكتروني نهائياً — وواتساب يبقى قناة تواصل موازية.
+ *  ⚠️ سياسة الشركة الباقية: التحقق من البطاقات خاص بالموظفين والإدارة فقط.
  * =========================================================================== */
 (function (root) {
   'use strict';
@@ -146,9 +149,10 @@
     var qsScan = document.getElementById('qs-scan');
     if (qsScan) qsScan.addEventListener('click', function () { openQRScanner(); });
 
-    /* ⚠️ سياسة الشركة: الزائر لا يقدّم طلب استمارة ولا يتحقق من أي استمارة.
-       كل ما يفعله هنا: يتصفّح الوظائف ثم يخابر الشركة أو يراجع المكتب للحجز.
-       أدوات الإصدار والتحقق محصورة بالموظفين والإدارة في المنظومة الداخلية. */
+    /* سياسة البطاقة (2026-09-30): زر «قدّم ببطاقتك» يفتح نافذة «بطاقتي» في
+       booking.js (هذه الوحدة تلتقط [data-action="open-booking"] بنفسها على
+       مستوى المستند فتعمل مع البطاقات المعاد رسمها لحظياً). التحقق من
+       الاستمارات يبقى محصوراً بالموظفين والإدارة في المنظومة الداخلية. */
     document.addEventListener('click', function (e) {
       var v = e.target.closest && e.target.closest('[data-action="job-details"]');
       if (v) { e.preventDefault(); openJob(v.getAttribute('data-code')); }
@@ -288,17 +292,21 @@
     }
   }
 
-  /* تحليل نص الرمز الممسوح: كود وظيفة / رابط استمارة / نص حر */
+  /* تحليل نص الرمز الممسوح: كود وظيفة / باركود بطاقة / نص حر */
   function applyScannedText(text) {
     text = String(text || '').trim();
     if (!text) { UI.toast('warn', 'كود فارغ', 'لم يُقرأ أي نص من الرمز.'); return; }
 
-    /* رمز استمارة (HRC-NO-…): التحقق محصور بالموظفين والإدارة، فلا نكشف
-       هنا أي بيانات — مجرد تنبيه واضح للزائر. */
-    var serial = text.match(/HRC-NO-\d+/i);   // بادئة واحدة موحّدة
+    /* رمز بطاقة توظيف (HRC-BC-…): نفتح «بطاقتي» مباشرة بالباركود المعبّأ —
+       الزبون يرى حالته المقنّعة، واستخدام الفرصة يتطلب رمزها السري. */
+    var serial = text.match(/HRC-BC-\d+/i);   // بادئة بطاقة التوظيف
     if (serial) {
-      UI.toast('info', 'هذه استمارة شركة الهدف للتوظيف',
-        'التحقق من الاستمارات متاح لموظفي الشركة والإدارة فقط. للحجز أو الاستفسار خابر الشركة أو راجع المكتب.', 8000);
+      if (root.HRCBooking && root.HRCBooking.open) {
+        root.HRCBooking.open({ serial: serial[0].toUpperCase() });
+      } else {
+        UI.toast('info', 'بطاقة توظيف شركة الهدف',
+          'افتح الموقع الرئيسي وأدخل باركود بطاقتك من نافذة «بطاقتي».', 8000);
+      }
       return;
     }
 
@@ -395,7 +403,7 @@
       items = [
         { v: s.available, l: 'وظيفة متاحة الآن' },
         { v: s.totalJobs, l: 'وظيفة مُسجّلة في النظام' },
-        { v: s.forms, l: 'استمارة صادرة' },
+        { v: s.forms, l: 'بطاقة صادرة' },
         { v: s.hires, l: 'توظيف ناجح مكتمل' }
       ];
     }
@@ -495,7 +503,7 @@
             hold +
             '<button class="btn btn-outline btn-sm" data-action="job-details" data-code="' + UI.esc(j.code) + '">التفاصيل</button>' +
             (j.status === 'available'
-              ? '<a class="btn btn-gold btn-sm" href="' + bookUrl(j.code) + '" target="_blank" rel="noopener">' + UI.ic('whatsapp') + ' احجز</a>'
+              ? '<button class="btn btn-gold btn-sm" data-action="open-booking" data-code="' + UI.esc(j.code) + '">' + UI.ic('card') + ' قدّم ببطاقتك</button>'
               : '<button class="btn btn-outline btn-sm" disabled>' + st.ar + '</button>') +
           '</div>' +
         '</div>' +
@@ -530,22 +538,25 @@
         '<div class="panel-body" style="padding:14px 16px">' +
           '<p class="mb-0 small">' + UI.ic('lock', '') +
           ' <b>خصوصية صاحب العمل:</b> لا تُعرض بياناته التفصيلية (الاسم، الهاتف، العنوان) في الموقع العام. ' +
-          'تُسلَّم هذه البيانات للباحث عبر شركة الهدف للتوظيف عند مراجعة المكتب وإصدار الاستمارة، وفق سياسة الشركة.</p>' +
+          'تُسلَّم هذه البيانات للباحث عبر شركة الهدف للتوظيف عند التقديم ببطاقة التوظيف، وفق سياسة الشركة.</p>' +
         '</div>' +
       '</div>' +
       (reqs ? '<h3 class="mt-3">الشروط والمتطلبات</h3><ul class="feature-list">' + reqs + '</ul>' : '') +
       (j.description ? '<p class="muted mt-2">' + UI.esc(j.description) + '</p>' : '') +
       '<div class="panel mt-3"><div class="panel-body" style="padding:14px 16px">' +
         '<p class="mb-0 small">' + UI.ic('hourglass') +
-        ' <b>آلية الحجز:</b> الحجز يتم من مكتب الشركة — خابرنا أو راجع المكتب، فتُسجَّل الوظيفة كمحاولة على استمارتك ' +
-        'وتُحجز مؤقتاً <b>24 ساعة</b> بانتظار نتيجة المقابلة، وإن لم تُثبَّت النتيجة تُعاد الوظيفة تلقائياً إلى «متاحة».</p>' +
+        ' <b>آلية التقديم:</b> قدّم على هذه الوظيفة بإحدى فرصتي بطاقة التوظيف — من هنا بادخال باركود بطاقتك ورمز الفرصة، ' +
+        'أو عند نقطة البيع بقراءة الباركود. تُحجز الوظيفة باسمك <b>24 ساعة</b> بانتظار نتيجة المقابلة، ' +
+        'وإن انتهت المدة دون قرار تقرر الشركة: التوظيف أو إرجاع الوظيفة أو حذفها.</p>' +
       '</div></div>';
 
     UI.modal({
       title: j.title, subtitle: 'تفاصيل الوظيفة — ' + j.region, body: body, wide: true,
       footer: (j.status === 'available'
-        ? '<a class="btn btn-gold" href="' + bookUrl(j.code, j.title) + '" target="_blank" rel="noopener">' +
-          UI.ic('whatsapp') + ' خابر الشركة للحجز على هذه الوظيفة</a>'
+        ? '<button class="btn btn-gold" data-action="open-booking" data-code="' + UI.esc(j.code) + '">' +
+          UI.ic('card') + ' قدّم على هذه الوظيفة ببطاقتك</button>' +
+          '<a class="btn btn-outline" href="' + bookUrl(j.code, j.title) + '" target="_blank" rel="noopener">' +
+          UI.ic('whatsapp') + ' أو خابرنا واتساب</a>'
         : '<button class="btn btn-outline" disabled>الوظيفة ' + CFG.jobStatus[j.status].ar + '</button>') +
         '<button class="btn btn-outline" data-close>إغلاق</button>'
     });
