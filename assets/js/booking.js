@@ -36,6 +36,7 @@
   var posStep = 1;       // خطوة المعالج الحالية: كل معلومة بصفحة لحدها (1..6)
   var POS_STEPS = 6;     // نقطة البيع · الاسم · الهاتف · العنوان · الجنس/الميلاد · الوظيفة
   var jobF = { q: '', region: '', shift: '' };   // فلاتر متصفح الوظائف (الخطوة 6)
+  var posErr = '';      // سبب فشل «إتمام» الأخير — يبقى معروضاً داخل الشاشة لا توستاً يختفي بعد ثوانٍ
 
   /* ======================= أدوات ======================= */
   function esc(v) { return UI.esc(String(v == null ? '' : v)); }
@@ -306,6 +307,7 @@
       (jobs.length ? jobPickerHtml(jobs, d) :
         infoBox('alert', '<b>لا توجد وظائف متاحة حالياً</b> — تعذر إتمام البيع من هنا. راجع الشركة.'));
 
+    if (posErr) body = infoBox('alert', '<b>تعذّر إتمام البيع — ' + esc(posErr) + '</b>', 'border-color:#d33;background:#fdeeee') + body;
     host.innerHTML = body + btnRow(
       '<button class="btn btn-gold" id="bk-pos-next" style="padding:14px 26px;font-size:17px">' + UI.ic('arrow-left') +
         (posStep >= POS_STEPS ? ' التالي — مراجعة بياناتي' : ' التالي') + '</button>' +
@@ -413,6 +415,7 @@
   /* «التالي»: تحقق من معلومة الخطوة الحالية فقط ثم حفظها والمضي —
      كل معلومة بصفحة (2026-10-01)، والمراجعة النهائية بيد الزبون نفسه. */
   function posNext() {
+    posErr = '';   /* كل تقدّم للزمام يبدأ بلا خطأ سابق */
     var g = function (id) { var el = document.getElementById('bk-' + id); return el ? String(el.value || '').trim() : ''; };
     var d = posDraft || {};
     var f = ({ 1: 'posName', 2: 'fullName', 3: 'phone', 4: 'address' })[posStep];
@@ -427,6 +430,15 @@
       /* الوظيفة تُختار بالضغط على بطاقتها بمتصفح الوظائف — لا بحقل إدخال */
       if (!d.jobCode) {
         setErr('job', 'اختيار الوظيفة إلزامي — إن لم توجد وظائف متاحة لا يمكن إتمام البيع من هنا.');
+        return;
+      }
+      /* المختارة قد تكون حُجزت بلحظة ما (بيع متزامن أو صفحة بقيت مفتوحة):
+         لا مراجعة بوظيفة غير متاحة — ينظف الاختيار ويظهر السبب داخل الشاشة */
+      if (!availableJobs().some(function (j) { return j.code === d.jobCode; })) {
+        d.jobCode = '';
+        posErr = 'الوظيفة التي اخترتها لم تعد متاحة — حُجزت لزبون آخر أثناء تعبئتك. اختر بطاقة وظيفة أخرى من القائمة.';
+        posDraft = d; render();
+        setErr('job', 'الوظيفة المختارة لم تعد متاحة — اختر وظيفة أخرى.');
         return;
       }
     }
@@ -498,10 +510,16 @@
       if (!r || !r.ok) {
         busy = false;
         if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('check') + ' إتمام'; }
+        /* السبب يبقى مكتوباً داخل الشاشة — التوست وحده يختفي قبل ما يقرأه الزبون */
+        posErr = (r && r.error) || 'تعذّر إتمام البيع — حاول مرة أخرى';
+        /* الوظيفة المختارة إن لم تعد متاحة تُنظف من المسوّدة حتى لا يعيد المحاولة عليها */
+        if (posDraft && posDraft.jobCode &&
+            !availableJobs().some(function (j) { return j.code === posDraft.jobCode; })) posDraft.jobCode = '';
         UI.toast('err', 'تعذّر إتمام البيع', (r && r.error) || 'حاول مرة أخرى');
         view = 'posfill'; posStep = POS_STEPS; render();
         return;
       }
+      posErr = '';
       posDraft = null;
       posResult = r;
       view = 'posdone'; render();
@@ -515,8 +533,9 @@
     }).catch(function () {
       busy = false;
       if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('check') + ' إتمام'; }
+      posErr = 'تعذّر الاتصال — حاول مرة أخرى.';
       UI.toast('err', 'تعذّر الاتصال', 'حاول مرة أخرى');
-      view = 'posfill'; render();
+      view = 'posfill'; posStep = POS_STEPS; render();
     });
   }
 
@@ -885,7 +904,7 @@
     opts = opts || {};
     if (m) { try { m.close(); } catch (e) { } m = null; }
     card = null; doneInfo = null; busy = false;
-    emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' };
+    emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' }; posErr = '';
     view = 'entry';
     serial = String(opts.serial || '').trim().toUpperCase();
     m = UI.modal({
@@ -902,7 +921,7 @@
 
   function close() {
     if (m) { try { m.close(); } catch (e) { } m = null; }
-    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' };
+    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' }; posErr = '';
     view = 'entry';
   }
 

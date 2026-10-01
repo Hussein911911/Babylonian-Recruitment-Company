@@ -714,6 +714,67 @@ await wait(900);
 }
 const DB5 = pub2.w.HRCStore.exportJson();
 
+/* ═══ ج10) سباق الوظيفة: حُجزت من لحظة اختيارها حتى «إتمام» ═══════════════
+   بيع متزامن (صفحة بقيت مفتوحة أو تبويب ثانٍ) يفوز بالوظيفة — وفشل «إتمام»
+   يجب أن يشرح سببه داخل الشاشة لا بتوست يختفي، وينظف الاختيار العالق،
+   ويتعافى الزبون باختيار وظيفة أخرى فوراً. */
+{
+  const P2 = pub2.w.HRCStore, B2 = pub2.w.HRCBooking;
+  const sRace = P2.createCardWithSerial(P2.suggestSerial(), '').card.serial;
+  const sOther = P2.createCardWithSerial(P2.suggestSerial(), '').card.serial;
+  const sThird = P2.createCardWithSerial(P2.suggestSerial(), '').card.serial;
+  B2.open({ serial: sRace, fromHash: true });
+  await wait(350);
+  const bx = () => lastModal(pub2.doc);
+  for (const [id, v] of [['bk-posName', 'نقطة السباق'], ['bk-fullName', 'زبون السباق'], ['bk-phone', '07812121212']]) {
+    setVal(pub2.w, bx().querySelector('#' + id), v);
+    click(pub2.w, bx().querySelector('#bk-pos-next'));
+    await wait(220);
+  }
+  for (let i = 0; i < 2; i++) { click(pub2.w, bx().querySelector('#bk-pos-next')); await wait(220); }
+  check('رحلة السباق وصلت خطوة الوظيفة', B2.state().posStep === 6 && !!bx().querySelector('[data-bk-pick="HRC-1047"]'));
+  click(pub2.w, bx().querySelector('[data-bk-pick="HRC-1047"]'));
+  await wait(250);
+  click(pub2.w, bx().querySelector('#bk-pos-next'));
+  await wait(250);
+  check('وصل المراجعة بوظيفة مختارة', B2.state().view === 'posreview');
+  /* «تبويب آخر» يبيع نفس الوظيفة أولاً — الزبون الأول لا يعلم */
+  const rOther = P2.activateCard(sOther, { posName: 'نقطة أخرى', fullName: 'زبون آخر', phone: '07813131313', jobCode: 'HRC-1047' });
+  check('بيع متزامن على HRC-1047 ينجح للبطاقة الأخرى أولاً', rOther && rOther.ok === true, rOther && rOther.error);
+  click(pub2.w, bx().querySelector('#bk-pos-confirm'));
+  await wait(550);
+  check('فشل «إتمام» لوظيفة محجوزة يعيد لخطوة الوظيفة والسبب داخل الشاشة — لا توستاً عابراً',
+    B2.state().view === 'posfill' && B2.state().posStep === 6 &&
+    bx().textContent.includes('تعذّر إتمام البيع') && bx().textContent.includes('غير متاحة'));
+  check('الوظيفة المحجوزة انحذفت من الاختيار — بلا بطاقة مختارة وبلا ملخص',
+    !bx().querySelector('[data-bk-pick].is-picked') && !bx().querySelector('#bk-job-sum').textContent.trim());
+  /* التعافي: يختار وظيفة متاحة أخرى فيصل المراجعة من جديد */
+  click(pub2.w, bx().querySelector('[data-bk-pick="HRC-1048"]'));
+  await wait(250);
+  click(pub2.w, bx().querySelector('#bk-pos-next'));
+  await wait(250);
+  check('التعافي: اختيار وظيفة أخرى يوصل المراجعة ويختفي خطأ السباق',
+    B2.state().view === 'posreview' && !bx().textContent.includes('تعذّر إتمام البيع'));
+  /* حارس «التالي»: وظيفة حُجزت بعد الاختيار لا تمر للمراجعة أصلاً */
+  click(pub2.w, bx().querySelector('#bk-pos-back'));
+  await wait(250);
+  check('«رجوع» أعاده لخطوة الوظيفة والاختيار محفوظ',
+    B2.state().posStep === 6 && !!bx().querySelector('[data-bk-pick].is-picked'));
+  const rThird = P2.activateCard(sThird, { posName: 'نقطة ثالثة', fullName: 'زبون ثالث', phone: '07814141414', jobCode: 'HRC-1048' });
+  check('حجز HRC-1048 من بطاقة ثالثة ينجح', rThird && rThird.ok === true, rThird && rThird.error);
+  click(pub2.w, bx().querySelector('#bk-pos-next'));
+  await wait(300);
+  const errJob = bx().querySelector('[data-bk-err="job"]');
+  /* عنصر خطأ الوظيفة يوجد فقط حين تُرسم قائمة الوظائف — فإن نفدت كل الوظائف
+     فصندوق السبب أعلى الشاشة هو الرسالة (لا قائمة كي يحملها خطأ الوظيفة) */
+  const pickerShown = !!bx().querySelector('#bk-jlist');
+  check('حارس «التالي» يوقف وظيفة حُجزت بعد الاختيار — والسبب داخل الشاشة',
+    B2.state().posStep === 6 && B2.state().view === 'posfill' &&
+    bx().textContent.includes('لم تعد متاحة') &&
+    (!pickerShown || (errJob && errJob.style.display !== 'none')));
+  B2.close();
+}
+
 /* صاحب العمل يسجّل طلب «لم يتم التوظيف» — لا حسم فوري، والقرار للشركة */
 const emp2 = await open('index.html', '#card=' + encodeURIComponent(SERIAL2), { db: DB5 });
 await wait(900);
