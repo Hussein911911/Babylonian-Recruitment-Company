@@ -2934,10 +2934,11 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
     jobCategories: ['صناعي', 'خدمات', 'صحي', 'هندسي', 'إداري', 'تجاري', 'زراعي', 'تقني'],
 
-    /* حالات الوظيفة */
+    /* حالات الوظيفة — hiring (2026-10-01 ج4): صاحب العمل اختار والقرار للشركة */
     jobStatus: {
       available: { ar: 'متاحة', cls: 'ok' },
       reserved: { ar: 'محجوزة مؤقتاً', cls: 'warn' },
+      hiring: { ar: 'جاري التوظيف — قرار الشركة', cls: 'warn' },
       closed: { ar: 'مغلقة', cls: 'muted' }
     },
 
@@ -2946,6 +2947,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       empty: { ar: '—', cls: 'muted' },
       selected: { ar: 'مُختارة', cls: 'info' },
       reserved: { ar: 'بانتظار المقابلة', cls: 'warn' },
+      hiring: { ar: 'جاري التوظيف — بانتظار قرار الشركة', cls: 'info' },
       critical: { ar: 'حرجة — بانتظار قرار الشركة', cls: 'warn' },
       succeeded: { ar: 'تم التوظيف', cls: 'ok' },
       rejected: { ar: 'مرفوض / لم ينجح', cls: 'danger' },
@@ -4598,7 +4600,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
      فهو التقديم الذي يلاحقه الزبون الآن ويحمله لصاحب العمل. */
   function latestInPlay(serial) {
     var list = getAttempts(serial).filter(function (t) {
-      return t.slotStatus === 'reserved' || t.slotStatus === 'critical';
+      return t.slotStatus === 'reserved' || t.slotStatus === 'critical' || t.slotStatus === 'hiring';
     });
     list.sort(function (a, b) {
       var da = new Date(a.selectedAt || 0).getTime();
@@ -4645,6 +4647,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           appliedAt: current.selectedAt,
           holdExpiresAt: current.holdExpiresAt,
           slotStatus: current.slotStatus,
+          employerDecision: current.employerDecision || null,
+          decisionAt: current.decisionAt || null,
           employer: job ? {
             name: job.employer.name,
             phone: job.employer.phone,
@@ -4656,27 +4660,42 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     };
   }
 
-  /* قرار صاحب العمل من صفحة الباركود مباشرة (توظيف/رفض) — يُسجَّل فوراً
-     بالنظام ويوثّق بسجل التدقيق. الفرصة مستهلكة بالتقديم ولا تعود. */
+  /* طلب صاحب العمل من صفحة الباركود (توظيف/عدم توظيف) — قرار 2026-10-01 (ج4):
+     لا يُحسم شيء فوراً؛ الوظيفة والفرصة تنتقلان لحالة «جاري التوظيف»
+     (مجمّدة بلا مهلة 24 ساعة) حتى يثبّت موظفو الشركة القرار النهائي:
+     تثبيت التوظيف أو إلغاؤه (الوظيفة تعود متاحة والفرصة مستهلكة). */
   function employerDecide(serial, decision) {
     serial = String(serial || '').trim().toUpperCase();
+    if (decision !== 'hire' && decision !== 'reject')
+      return { ok: false, error: 'قرار غير صحيح — hire أو reject فقط' };
     var app = getApplicant(serial);
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود' };
     if (app.status === 'blank') return { ok: false, error: 'هذه البطاقة فارغة ولم تُبع بعد' };
     var slot = latestInPlay(app.serial);
     if (!slot) return { ok: false, error: 'لا يوجد تقديم قيد القرار على هذه البطاقة — راجع الشركة' };
-    var outcome = decision === 'hire' ? 'succeeded' : 'rejected';
-    var note = decision === 'hire'
-      ? 'قرار صاحب العمل: تم التوظيف — سُجّل من صفحة الباركود'
-      : 'قرار صاحب العمل: لم يتم التوظيف — سُجّل من صفحة الباركود';
-    var res = setOutcome(app.serial, slot.no, outcome, note);
-    if (!res.ok) return res;
-    audit(decision === 'hire' ? 'توظيف من صاحب العمل' : 'رفض من صاحب العمل',
+    if (slot.slotStatus === 'hiring')
+      return { ok: false, error: 'طلبك مسجَّل بالفعل — الوظيفة بانتظار قرار الشركة' };
+    var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
+
+    slot.slotStatus = 'hiring';
+    slot.employerDecision = decision;
+    slot.decisionAt = nowISO();
+    slot.holdExpiresAt = null;   /* تجميد المهلة: القرار بيد الشركة الآن */
+    slot.note = decision === 'hire'
+      ? 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة'
+      : 'طلب صاحب العمل: لم يتم التوظيف — بانتظار قرار الشركة';
+    if (job) {
+      job.status = 'hiring';
+      job.critical = false;
+      job.holdExpiresAt = null;   /* hiring: لا مهلة — قرار الشركة المطلوب */
+    }
+    audit(decision === 'hire' ? 'طلب توظيف من صاحب العمل' : 'طلب رفض من صاحب العمل',
       'applicant', app.serial,
-      'صاحب العمل قرر عبر صفحة الباركود على الوظيفة ' + slot.jobCode +
-      ' — الفرصة #' + slot.no + ' — الزبون ' + app.fullName);
+      'صاحب العمل طلب عبر صفحة الباركود ' + (decision === 'hire' ? 'التوظيف' : 'عدم التوظيف') +
+      ' على الوظيفة ' + slot.jobCode + ' — الفرصة #' + slot.no + ' — الزبون ' + app.fullName +
+      ' | الوظيفة «جاري التوظيف» بانتظار قرار الشركة (تثبيت/إلغاء)');
     save(); emit();
-    return { ok: true, attempt: res.attempt, job: res.job, decision: decision };
+    return { ok: true, attempt: slot, job: job, decision: decision, pending: true };
   }
 
   function listBlankCards() {
@@ -4690,7 +4709,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         id: uid('att'), serial: serial, no: i, code: chanceCode(),
         jobId: null, jobCode: null, jobTitle: null,
         location: null, employerName: null, employerPhone: null, slotStatus: 'empty',
-        selectedAt: null, holdExpiresAt: null, closedAt: null, note: '', staff: null
+        selectedAt: null, holdExpiresAt: null, closedAt: null, note: '', staff: null,
+        employerDecision: null, decisionAt: null
       });
     }
   }
@@ -4773,7 +4793,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     /* «سارية» ما دامت فرصة قيد اللعب (حجز جارٍ أو حالة حرجة بانتظار قرار) —
        أما «استُهلكت الفرصتان» فتعني انتهاء كل الفرص بنتيجة نهائية. */
     var inPlay = getAttempts(app.serial).some(function (t) {
-      return t.slotStatus === 'reserved' || t.slotStatus === 'critical';
+      return t.slotStatus === 'reserved' || t.slotStatus === 'critical' || t.slotStatus === 'hiring';
     });
     if (attemptsLeft(app.serial) === 0 && !inPlay) return 'exhausted';
     return 'active';
@@ -5218,7 +5238,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   }
 
   function pendingActions() {
-    var out = { holds: [], critical: [], expired: [], exhausted: [], rejected: [], requests: [] };
+    var out = { holds: [], critical: [], hiring: [], expired: [], exhausted: [], rejected: [], requests: [] };
     db.jobs.forEach(function (j) {
       if (j.status === 'reserved' && j.holdExpiresAt) {
         var h = diffHours(j.holdExpiresAt, new Date());
@@ -5227,6 +5247,13 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       /* الحالة الحرجة: انتهت مهلة 24 ساعة دون قرار — بانتظار الموظف */
       if (j.status === 'reserved' && !j.holdExpiresAt && j.critical) {
         out.critical.push({ job: j, serial: j.reservedBy });
+      }
+      /* جاري التوظيف: طلب صاحب العمل بانتظار تثبيت الشركة (ج4 — 2026-10-01) */
+      if (j.status === 'hiring') {
+        var t = db.attempts.filter(function (x) {
+          return x.jobId === j.id && x.slotStatus === 'hiring';
+        })[0];
+        out.hiring.push({ job: j, serial: j.reservedBy, decision: t ? t.employerDecision : null, at: t ? t.decisionAt : null });
       }
     });
     db.applicants.forEach(function (a) {
@@ -6978,7 +7005,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     if (!attempt) {
       /* أحدث تقديم قيد اللعب أولاً (هو المطبوع لصاحب العمل)، وإلا آخر فرصة مستخدمة */
       var inPlay = attempts.filter(function (t) {
-        return t.slotStatus === 'reserved' || t.slotStatus === 'critical';
+        return t.slotStatus === 'reserved' || t.slotStatus === 'critical' || t.slotStatus === 'hiring';
       });
       inPlay.sort(function (a, b) {
         var da = new Date(a.selectedAt || 0).getTime(), db = new Date(b.selectedAt || 0).getTime();
@@ -7053,8 +7080,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       +     '<ol>'
       +       '<li>امسح الباركود أعلاه بكاميرة أي موبايل — يفتح موقع الشركة ويظهر لك تعريف المتقدم وتفاصيله.</li>'
       +       '<li>اطلع على بيانات المتقدم وأجرِ المقابلة في المكان المحدد أعلاه.</li>'
-      +       '<li>اضغط زر «تم التوظيف» من نفس الصفحة — يُسجَّل قرارك فوراً لدى الشركة وتُغلق الوظيفة.</li>'
-      +       '<li>إن لم يُسجَّل قرار خلال <b>24 ساعة</b> من التقديم، تنتقل الوظيفة لحالة حرجة وتقرر الشركة.</li>'
+      +       '<li>اضغط زر «تم التوظيف» أو «لم يتم التوظيف» من نفس الصفحة — يُسجَّل طلبك لدى الشركة وتبقى الوظيفة «جاري التوظيف» حتى يثبّت موظفو الشركة القرار أو يلغوه.</li>'
+      +       '<li>إن لم يُسجَّل طلب خلال <b>24 ساعة</b> من التقديم، تنتقل الوظيفة لحالة حرجة وتقرر الشركة.</li>'
       +     '</ol>'
       +   '</div>'
       +   '<div class="ff-sign">'
@@ -7207,6 +7234,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   var posResult = null;  // نتيجة تفعيل نقطة البيع { app, attempt, job }
   var empDone = null;    // نتيجة قرار صاحب العمل
   var routeErr = '';     // خطأ توجيه مسح الباركود
+  var posDraft = null;   // مسوّدة استمارة الزبون (قبل ضغطة «إتمام» من الزبون)
 
   /* ======================= أدوات ======================= */
   function esc(v) { return UI.esc(String(v == null ? '' : v)); }
@@ -7472,7 +7500,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       '</div>' +
       jobSel +
       btnRow(
-        '<button class="btn btn-gold" id="bk-pos-confirm">' + UI.ic('check') + ' إتمام البيع وتعبئة البطاقة</button>' +
+        '<button class="btn btn-gold" id="bk-pos-next">' + UI.ic('arrow-left') + ' التالي — مراجعة الزبون</button>' +
         '<button class="btn btn-ghost" id="bk-pos-cancel">' + UI.ic('arrow-right') + ' إلغاء</button>');
     var b;
     var ids = ['posName', 'fullName', 'phone', 'address', 'gender', 'dob', 'job'];
@@ -7481,33 +7509,98 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       if (el) el.addEventListener('input', function () { setErr(id, ''); });
       if (el) el.addEventListener('change', function () { setErr(id, ''); });
     });
-    if ((b = document.getElementById('bk-pos-confirm'))) b.addEventListener('click', doPosFill);
+    if ((b = document.getElementById('bk-pos-next'))) b.addEventListener('click', toPosReview);
     if ((b = document.getElementById('bk-pos-cancel'))) b.addEventListener('click', close);
+    /* استرجاع المسوّدة عند الرجوع للتعديل */
+    if (posDraft) {
+      ['posName', 'fullName', 'phone', 'address', 'gender', 'dob', 'job'].forEach(function (id) {
+        var el = document.getElementById('bk-' + id);
+        if (el && posDraft[id] != null && posDraft[id] !== '') el.value = posDraft[id];
+      });
+    }
     setTimeout(function () { try { var f = document.getElementById('bk-posName'); if (f) f.focus(); } catch (e) { } }, 60);
   }
 
-  function doPosFill() {
+  /* من الشاشة الأولى: تحقق + حفظ مسوّدة ← شاشة مراجعة الزبون (ج4 2026-10-01:
+     بيانات صاحب العمل لا تظهر إلا بعد أن يضغط الزبون «إتمام» بنفسه). */
+  function toPosReview() {
     var g = function (id) { var el = document.getElementById('bk-' + id); return el ? String(el.value || '').trim() : ''; };
-    var fullName = g('fullName'), phone = g('phone'), posName = g('posName');
-    var jobCode = g('job');
-    if (!posName) { setErr('posName', 'اسم نقطة البيع مطلوب — كما هو معتمد لدى الشركة.'); return; }
-    if (!fullName) { setErr('fullName', 'اسم الزبون مطلوب.'); return; }
-    if (!phone) { setErr('phone', 'هاتف الزبون مطلوب.'); return; }
-    if (!jobCode) { setErr('job', 'اختيار الوظيفة إلزامي — إن لم توجد وظائف متاحة لا يمكن إتمام البيع من هنا.'); return; }
+    var d = {
+      posName: g('posName'), fullName: g('fullName'), phone: g('phone'),
+      address: g('address'), gender: g('gender'), dob: g('dob'), jobCode: g('job')
+    };
+    if (!d.posName) { setErr('posName', 'اسم نقطة البيع مطلوب — كما هو معتمد لدى الشركة.'); return; }
+    if (!d.fullName) { setErr('fullName', 'اسم الزبون مطلوب.'); return; }
+    if (!d.phone) { setErr('phone', 'هاتف الزبون مطلوب.'); return; }
+    if (!d.jobCode) { setErr('job', 'اختيار الوظيفة إلزامي — إن لم توجد وظائف متاحة لا يمكن إتمام البيع من هنا.'); return; }
+    posDraft = d;
+    view = 'posreview'; render();
+  }
+
+  /* شاشة المراجعة: بيانات الزبون والوظيفة فقط — بلا أي بيانات صاحب العمل */
+  function renderPosReview(host) {
+    var d = posDraft || {};
+    var job = null;
+    try { job = Store.getJob(d.jobCode); } catch (e) { job = null; }
+    host.innerHTML = stepHead('مراجعة الزبون قبل الإتمام',
+        'راجع بياناتك يا زبون — بالضغط على «إتمام» تُستهلك الفرصة الأولى وتُطبع استمارة التوظيف ببيانات صاحب العمل.', 'user') +
+      '<div class="bk-info" style="border-color:#c8a24a;background:#fdf9ee">' + UI.ic('alert') +
+        ' <b>للزبون:</b> سلّمك موظف نقطة البيع الجهاز — تأكد من بياناتك ووظيفتك ثم اضغط <b>«إتمام»</b> بنفسك.' +
+        ' بيانات التواصل بصاحب العمل تظهر على الاستمارة المطبوعة بعد إتمامك فقط.</div>' +
+      '<h5 style="margin:14px 0 4px">بياناتك</h5>' +
+      '<div class="tiny" style="line-height:2.1;border:1px solid var(--line-soft);border-radius:12px;padding:10px 14px">' +
+        'الاسم الكامل: <b>' + esc(d.fullName) + '</b><br>' +
+        'الهاتف: <b dir="ltr">' + esc(d.phone) + '</b>' +
+        (d.address ? '<br>العنوان: <b>' + esc(d.address) + '</b>' : '') +
+        (d.gender ? '<br>الجنس: <b>' + esc(d.gender) + '</b>' : '') +
+        (d.dob ? '<br>تاريخ الميلاد: <b>' + esc(d.dob) + '</b>' : '') +
+        '<br>نقطة البيع: <b>' + esc(d.posName) + '</b>' +
+      '</div>' +
+      '<h5 style="margin:14px 0 4px">الوظيفة المطلوبة</h5>' +
+      (job
+        ? '<div class="tiny" style="line-height:2.1;border:1px solid var(--line-soft);border-radius:12px;padding:10px 14px">' +
+            'الوظيفة: <b>' + esc(job.title) + '</b> <span class="mono" dir="ltr">(' + esc(job.code) + ')</span><br>' +
+            'المنطقة: <b>' + esc(job.region) + '</b><br>' +
+            'الأجر الشهري: <b>' + esc(Store.money(job.salaryMin)) + ' – ' + esc(Store.money(job.salaryMax)) + '</b><br>' +
+            'الدوام: <b>' + esc(job.shift) + '</b>' +
+          '</div>'
+        : infoBox('alert', 'الوظيفة غير متاحة — ارجع للتعديل واختر وظيفة أخرى.')) +
+      '<div class="bk-info">' + UI.ic('clock') +
+        ' بإتمامك: تُحجز الوظيفة <b>24 ساعة</b> بانتظار قرار صاحب العمل والشركة، وتُستهلك الفرصة الأولى بالتقديم (لا تعود بأي نتيجة).</div>' +
+      btnRow(
+        '<button class="btn btn-gold" id="bk-pos-confirm" style="padding:14px 26px;font-size:16px">' + UI.ic('check') + ' إتمام</button>' +
+        '<button class="btn btn-ghost" id="bk-pos-back">' + UI.ic('arrow-right') + ' رجوع للتعديل</button>');
+    var b;
+    if ((b = document.getElementById('bk-pos-confirm'))) b.addEventListener('click', doPosFill);
+    if ((b = document.getElementById('bk-pos-back'))) b.addEventListener('click', function () { view = 'posfill'; render(); });
+  }
+
+  function doPosFill() {
+    var d = posDraft || {};
+    var fullName = d.fullName, phone = d.phone, posName = d.posName;
+    var jobCode = d.jobCode;
+    if (!posName || !fullName || !phone || !jobCode) {
+      view = 'posfill'; render();
+      UI.toast('err', 'بيانات ناقصة', 'أكمل بيانات الاستمارة أولاً.');
+      return;
+    }
     if (busy) return;
     busy = true;
     var btn = document.getElementById('bk-pos-confirm');
     if (btn) { btn.disabled = true; btn.textContent = 'جارٍ التسجيل…'; }
     Promise.resolve(Store.cardActivate(serial, {
       posName: posName, fullName: fullName, phone: phone,
-      address: g('address'), gender: g('gender'), dob: g('dob'), jobCode: jobCode
+      address: d.address || '', gender: d.gender || 'ذكر', dob: d.dob || '', jobCode: jobCode
     })).then(function (r) {
       busy = false;
       if (!r || !r.ok) {
-        if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('check') + ' إتمام البيع وتعبئة البطاقة'; }
+        busy = false;
+        if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('check') + ' إتمام'; }
         UI.toast('err', 'تعذّر إتمام البيع', (r && r.error) || 'حاول مرة أخرى');
+        view = 'posfill'; render();
         return;
       }
+      posDraft = null;
       posResult = r;
       view = 'posdone'; render();
       /* طباعة استمارة A4 جزء من عملية البيع — تفتح تلقائياً مع زر إعادة */
@@ -7519,8 +7612,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       }, 450);
     }).catch(function () {
       busy = false;
-      if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('check') + ' إتمام البيع وتعبئة البطاقة'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('check') + ' إتمام'; }
       UI.toast('err', 'تعذّر الاتصال', 'حاول مرة أخرى');
+      view = 'posfill'; render();
     });
   }
 
@@ -7569,7 +7663,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         'العنوان: <b>' + esc(a.employer.address || '—') + '</b><br>' +
         'مكان المقابلة: <b>' + esc(a.employer.interviewLocation || '—') + '</b></div></div>') : '';
     host.innerHTML = stepHead('صاحب العمل — تعريف المتقدم',
-        'بيانات المتقدم والوظيفة المطلوبة على هذه البطاقة، وقرارك يُسجَّل فوراً لدى الشركة.', 'briefcase') +
+        'بيانات المتقدم والوظيفة المطلوبة على هذه البطاقة، وطلبك يُسجَّل لدى الشركة ويحسمه موظفوها.', 'briefcase') +
       '<div style="display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:4px 0 6px">' +
         '<b dir="ltr">' + esc(c.serial || serial) + '</b>' + cardStatusBadge(c.status) +
         (c.chancesLeft != null ? '<span class="tiny muted">الفرص المتاحة: <b>' + esc(c.chancesLeft) + '</b></span>' : '') +
@@ -7589,17 +7683,23 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
               (a.region ? '<div class="tiny muted">' + esc(a.region) + '</div>' : '') + '</div>' +
               slotBadge(a.slotStatus) + '</div>' +
             '<div class="tiny muted" style="margin-top:8px">تاريخ التقديم: <b>' + esc(Store.fmtDateTime(a.appliedAt)) + '</b>' +
-              ' · ينتهي الحجز: <b>' + esc(Store.fmtDateTime(a.holdExpiresAt)) + '</b></div>' + empBox +
+              (a.holdExpiresAt ? ' · ينتهي الحجز: <b>' + esc(Store.fmtDateTime(a.holdExpiresAt)) + '</b>' : '') + '</div>' + empBox +
           '</div>' +
-          (a.slotStatus === 'critical'
+          (a.slotStatus === 'hiring'
+            ? infoBox('hourglass', '<b>طلبك مسجَّل — الوظيفة «جاري التوظيف» بانتظار تثبيت الشركة.</b> ' +
+                (a.employerDecision === 'hire'
+                  ? 'طلبتَ التوظيف بتاريخ ' + esc(Store.fmtDateTime(a.decisionAt)) + ' — يثبّته موظفو الشركة أو يلغونه، ثم يتواصلون معك ومع المتقدم.'
+                  : 'سجّلتَ عدم التوظيف بتاريخ ' + esc(Store.fmtDateTime(a.decisionAt)) + ' — القرار النهائي بيد الشركة.'),
+                'border-color:#4a6fa5;background:#eef2fa')
+            : a.slotStatus === 'critical'
             ? infoBox('clock', 'انتهت مهلة الحجز (24 ساعة) — القرار الآن بيد الشركة: توظيف أو إرجاع الوظيفة.', 'border-color:#d33;background:#fdeeee')
             : infoBox('clock', 'بعد انتهاء مهلة 24 ساعة من التقديم دون قرار، تنتقل الوظيفة لحالة حرجة وتقرر الشركة.', ''))
         : (c.succeeded
             ? infoBox('check', '<b>تم توظيف هذا المتقدم بإحدى فرصتي بطاقته</b> — لا يوجد تقديم جارٍ حالياً.', 'border-color:#3ec1a0;background:#eefaf7')
             : infoBox('alert', '<b>لا يوجد تقديم جارٍ على هذه البطاقة حالياً</b> — إن كان المتقدم بين يديك ليعرض نفسه، فغيّر ذلك عبر الشركة.', ''))) +
-      (a
+      (a && a.slotStatus !== 'hiring'
         ? btnRow(
-            '<button class="btn btn-gold" id="bk-emp-hire">' + UI.ic('check') + ' تم التوظيف — سجّله فوراً</button>' +
+            '<button class="btn btn-gold" id="bk-emp-hire">' + UI.ic('check') + ' تم التوظيف</button>' +
             '<button class="btn btn-danger" id="bk-emp-reject">' + UI.ic('x') + ' لم يتم التوظيف</button>' +
             '<button class="btn btn-ghost" id="bk-emp-back">' + UI.ic('arrow-right') + ' رجوع</button>')
         : btnRow('<button class="btn btn-ghost" id="bk-emp-back">' + UI.ic('arrow-right') + ' رجوع</button>'));
@@ -7613,12 +7713,12 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     if (busy) return;
     var hire = decision === 'hire';
     UI.confirm({
-      title: hire ? 'تأكيد التوظيف' : 'تأكيد الرفض',
+      title: hire ? 'تسجيل طلب توظيف' : 'تسجيل عدم التوظيف',
       message: hire
-        ? 'هل توظّفت هذا المتقدم فعلاً على الوظيفة المطلوبة؟ يُسجَّل القرار فوراً لدى الشركة وتُغلق الوظيفة.'
-        : 'تأكيد أنك لم توظّف هذا المتقدم؟ يُسجَّل الرفض وتعود الوظيفة متاحة وفق قرار الشركة.',
-      note: hire ? 'القرار نهائي ويوثّق باسم صاحب العمل وبوقته.' : 'يمكن للمتقدم استخدام فرصته الثانية على وظيفة أخرى.',
-      confirmText: hire ? 'نعم — تم التوظيف' : 'نعم — لم يتم التوظيف',
+        ? 'هل توظّفت هذا المتقدم فعلاً على الوظيفة المطلوبة؟ يُسجَّل طلبك وتتحول الوظيفة إلى «جاري التوظيف» حتى يثبّته موظفو الشركة.'
+        : 'تأكيد أنك لم توظّف هذا المتقدم؟ يُسجَّل طلبك وتتحول الوظيفة إلى «جاري التوظيف» حتى يقرر موظفو الشركة النهائي.',
+      note: 'القرار النهائي (التثبيت أو الإلغاء) بيد موظفي الشركة — قد يتواصلون معك للتثبيت.',
+      confirmText: hire ? 'نعم — سجّل طلب التوظيف' : 'نعم — سجّل عدم التوظيف',
       danger: !hire
     }).then(function (yes) {
       if (!yes) return;
@@ -7643,11 +7743,13 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         '<div style="width:74px;height:74px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;' +
           (hire
             ? 'background:linear-gradient(135deg,#3ec1a0,#1f8f96);color:#fff;box-shadow:0 14px 34px rgba(31,143,150,.35)'
-            : 'background:linear-gradient(135deg,#e05656,#b03a3a);color:#fff;box-shadow:0 14px 34px rgba(176,58,58,.3)') + '">' + UI.ic(hire ? 'check' : 'x') + '</div>' +
-        '<h4 style="margin:0 0 6px">' + (hire ? 'تم تسجيل التوظيف ✅' : 'سُجّل عدم التوظيف') + '</h4>' +
+            : 'background:linear-gradient(135deg,#4a6fa5,#2f4e7d);color:#fff;box-shadow:0 14px 34px rgba(47,78,125,.3)') + '">' + UI.ic(hire ? 'check' : 'x') + '</div>' +
+        '<h4 style="margin:0 0 6px">' + (hire ? 'سُجّل طلب التوظيف ✅' : 'سُجّل عدم التوظيف') + '</h4>' +
         '<p class="muted small" style="margin:0 auto 10px;max-width:50ch">' + (hire
-          ? 'سُجّل قرارك لدى الشركة على الوظيفة <b>' + esc(at.jobTitle || '') + '</b> وأُغلقت — بالتوفيق للموظف الجديد.'
-          : 'سُجّل قرارك — تبقى للزبون فرصته الثانية على وظيفة أخرى إن توفرت.') + '</p>' +
+          ? 'طلبك على الوظيفة <b>' + esc(at.jobTitle || '') + '</b> مسجَّل — الوظيفة الآن <b>«جاري التوظيف»</b> بانتظار تثبيت موظفي الشركة، ثم يُبلَّغ المتقدم.'
+          : 'طلبك مسجَّل — الوظيفة <b>«جاري التوظيف»</b> بانتظار قرار الشركة النهائي: تثبيت عدم التوظيف أو غير ذلك.') + '</p>' +
+        '<div class="bk-info" style="text-align:right">' + UI.ic('phone') +
+          ' لأي استفسار خابر الشركة: <b dir="ltr">' + esc(CFG.company.phones[0]) + '</b></div>' +
       '</div>' +
       btnRow('<button class="btn btn-ghost" id="bk-empd-close">' + UI.ic('check') + ' تم — إغلاق</button>');
     var b;
@@ -7862,6 +7964,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     else if (view === 'employer') renderEmployer(host);
     else if (view === 'empdone') renderEmpDone(host);
     else if (view === 'posfill') renderPosFill(host);
+    else if (view === 'posreview') renderPosReview(host);
     else if (view === 'posdone') renderPosDone(host);
     else if (view === 'entry') renderEntry(host);
     else if (view === 'status') renderStatus(host);
@@ -7874,7 +7977,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     opts = opts || {};
     if (m) { try { m.close(); } catch (e) { } m = null; }
     card = null; doneInfo = null; busy = false;
-    emp = null; posResult = null; empDone = null; routeErr = '';
+    emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null;
     view = 'entry';
     serial = String(opts.serial || '').trim().toUpperCase();
     m = UI.modal({
@@ -7891,7 +7994,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
   function close() {
     if (m) { try { m.close(); } catch (e) { } m = null; }
-    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = '';
+    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null;
     view = 'entry';
   }
 
@@ -9353,7 +9456,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       jobsNav.classList.remove('hidden');
     }
     if (holdsNav) {
-      var c = pa.holds.length;
+      var c = (pa.hiring || []).length + pa.holds.length;
       holdsNav.textContent = String(c);
       holdsNav.classList.toggle('hidden', c === 0);
     }
@@ -9410,8 +9513,18 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         '<div class="hint">' + UI.esc(x.hint) + '</div></div>';
     }).join('');
 
-    // إجراءات مطلوبة
+    // إجراءات مطلوبة — طلبات صاحب العمل أولاً (جاري التوظيف بانتظار تثبيت الشركة)
     var actions = [];
+    (pa.hiring || []).forEach(function (h) {
+      actions.push({
+        title: '🔵 جاري التوظيف — الوظيفة ' + h.job.code,
+        sub: 'البطاقة ' + (h.serial || '—') + ' — طلب صاحب العمل: ' +
+          (h.decision === 'hire' ? 'تم التوظيف (بانتظار تثبيتك)' : 'لم يتم التوظيف (القرار بيدك)') +
+          ' · صاحب العمل: ' + h.job.employer.name,
+        badge: '<span class="badge info">تثبيت مطلوب</span>',
+        act: { label: 'قرار', handler: function () { setView('holds'); } }
+      });
+    });
     pa.requests.forEach(function (r) {
       actions.push({
         title: 'طلب بطاقة قيد المراجعة: ' + r.serial,
@@ -9503,7 +9616,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
     tbody.innerHTML = rows.map(function (j) {
       var holdCell = '—';
-      if (j.status === 'reserved' && j.critical) {
+      if (j.status === 'hiring') {
+        holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div><span class="badge info">جاري التوظيف — قرار الشركة</span>';
+      } else if (j.status === 'reserved' && j.critical) {
         holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div><span class="badge danger">حرجة — قرار مطلوب</span>';
       } else if (j.status === 'reserved' && j.holdExpiresAt) {
         holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div>' + UI.holdHtml(j.holdExpiresAt, { withDate: false });
@@ -9523,11 +9638,13 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         '<td class="tiny">' + UI.esc(j.employer.name) + '<br><span class="mono" dir="ltr">' + UI.esc(j.employer.phone) + '</span><br><span class="muted">' + UI.esc(j.employer.address) + '</span></td>' +
         '<td><div class="cell-actions">' +
           '<button class="btn btn-outline btn-sm" data-job-edit="' + UI.esc(j.code) + '">' + UI.ic('edit') + ' تعديل</button>' +
-          (j.status === 'reserved' && j.critical
-            ? '<button class="btn btn-danger btn-sm" data-job-critical="' + UI.esc(j.code) + '">' + UI.ic('alert') + ' قرار حرجة</button>'
-            : (j.status === 'reserved'
-              ? '<button class="btn btn-warn btn-sm" data-job-release="' + UI.esc(j.code) + '">' + UI.ic('refresh') + ' إرجاع</button>'
-              : '')) +
+          (j.status === 'hiring'
+            ? '<button class="btn btn-lapis btn-sm" data-job-hiring="' + UI.esc(j.code) + '">' + UI.ic('check') + ' قرار التوظيف</button>'
+            : (j.status === 'reserved' && j.critical
+              ? '<button class="btn btn-danger btn-sm" data-job-critical="' + UI.esc(j.code) + '">' + UI.ic('alert') + ' قرار حرجة</button>'
+              : (j.status === 'reserved'
+                ? '<button class="btn btn-warn btn-sm" data-job-release="' + UI.esc(j.code) + '">' + UI.ic('refresh') + ' إرجاع</button>'
+                : ''))) +
           (j.status === 'available'
               ? '<button class="btn btn-lapis btn-sm" data-job-close="' + UI.esc(j.code) + '">إغلاق</button>'
               : '<button class="btn btn-ok btn-sm" data-job-reopen="' + UI.esc(j.code) + '">إعادة تفعيل</button>') +
@@ -9541,6 +9658,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     });
     tbody.querySelectorAll('[data-job-release]').forEach(function (b) {
       b.addEventListener('click', function () { openHoldsModal(b.getAttribute('data-job-release')); });
+    });
+    tbody.querySelectorAll('[data-job-hiring]').forEach(function (b) {
+      b.addEventListener('click', function () { openHoldsModal(b.getAttribute('data-job-hiring')); });
     });
     tbody.querySelectorAll('[data-job-critical]').forEach(function (b) {
       b.addEventListener('click', function () { openHoldsModal(b.getAttribute('data-job-critical')); });
@@ -10003,6 +10123,12 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           '<button class="btn btn-ok btn-sm" data-win="' + t.no + '">' + UI.ic('check') + ' توظيف</button>' +
           '<button class="btn btn-danger btn-sm" data-reject="' + t.no + '">' + UI.ic('x-circle') + ' رفض</button>' +
           '<button class="btn btn-warn btn-sm" data-release="' + t.no + '">إرجاع</button></div>';
+      } else if (t.slotStatus === 'hiring') {
+        /* جاري التوظيف (ج4): طلب صاحب العمل بانتظار تثبيت الشركة */
+        actions = '<div class="flex" style="gap:6px;flex-wrap:wrap">' +
+          '<button class="btn btn-ok btn-sm" data-win="' + t.no + '">' + UI.ic('check') + ' تثبيت التوظيف</button>' +
+          '<button class="btn btn-danger btn-sm" data-reject="' + t.no + '">' + UI.ic('x-circle') + ' رفض المتقدم</button>' +
+          '<button class="btn btn-warn btn-sm" data-release="' + t.no + '">إلغاء التوظيف — الوظيفة متاحة</button></div>';
       } else if (t.slotStatus === 'succeeded') {
         actions = '<span class="badge ok">مكتمل</span>';
       } else {
@@ -10015,6 +10141,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         '<div>' + (filled ? UI.slotBadge(t.slotStatus) +
           (t.slotStatus === 'reserved' && t.holdExpiresAt ? '<div class="mt-1">' + UI.holdHtml(t.holdExpiresAt, { withDate: false }) + '</div>' : '') +
           (t.slotStatus === 'critical' ? '<div class="mt-1"><span class="badge danger">حرجة — قرار مطلوب</span></div>' : '') +
+          (t.slotStatus === 'hiring' ? '<div class="mt-1"><span class="badge info">' +
+            (t.employerDecision === 'hire' ? 'طلب صاحب العمل: توظيف' : 'طلب صاحب العمل: عدم توظيف') +
+            '</span>' + (t.decisionAt ? '<div class="tiny muted mt-1">' + Store.fmtDateTime(t.decisionAt) + '</div>' : '') + '</div>' : '') +
           (t.code ? '<div class="tiny mono mt-1" dir="ltr">' + UI.esc(t.code) + '</div>' : '') +
           (t.note ? '<div class="tiny muted mt-1">' + UI.esc(t.note) + '</div>' : '') : '') + '</div>' +
         '<div>' + actions + '</div>' +
@@ -10146,16 +10275,22 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       }).join('') + '</tbody></table></div></div>';
   }
 
-  /* تثبيت نتيجة المقابلة */
-  function outcomeModal(serial, no, outcome, closeParent) {
+  /* تثبيت نتيجة المقابلة — presetNote: ملاحظة جاهزة (مثل تثبيت طلب صاحب العمل) */
+  function outcomeModal(serial, no, outcome, closeParent, presetNote) {
     var win = outcome === 'succeeded';
+    var slot = Store.getAttempts(serial).filter(function (t) { return t.no === Number(no); })[0];
+    var fromEmployer = slot && slot.slotStatus === 'hiring';
     UI.modal({
       title: win ? 'تثبيت التوظيف' : 'تسجيل رفض المرشح',
-      body: '<p class="muted small">' + (win
-        ? 'سيُثبَّت التوظيف وتُغلق الوظيفة نهائياً على الموقع العام.'
-        : 'ستُعاد الوظيفة إلى «متاحة» فوراً، وتُتاح الفرصة الثانية للباحث إن لم تُستخدم.') + '</p>' +
+      body: (fromEmployer
+        ? '<p class="muted small">' + (slot.employerDecision === 'hire'
+            ? 'طلب صاحب العمل: <b>تم التوظيف</b> — بتثبيتك يُغلق القرار وتُغلق الوظيفة.'
+            : 'طلب صاحب العمل: <b>لم يتم التوظيف</b> — القرار النهائي بيدك الآن.') + '</p>'
+        : '<p class="muted small">' + (win
+          ? 'سيُثبَّت التوظيف وتُغلق الوظيفة نهائياً على الموقع العام.'
+          : 'ستُعاد الوظيفة إلى «متاحة» فوراً، وتُتاح الفرصة الثانية للباحث إن لم تُستخدم.') + '</p>') +
         '<div class="field"><label for="o-note">ملاحظة (تُحفظ في السجل والبطاقة)</label>' +
-        '<textarea id="o-note" placeholder="' + (win ? 'اسم جهة العمل، تاريخ المباشرة...' : 'سبب الرفض: لم يحضر المقابلة، عدم كفاية الخبرة...') + '"></textarea></div>',
+        '<textarea id="o-note" placeholder="' + (win ? 'اسم جهة العمل، تاريخ المباشرة...' : 'سبب الرفض: لم يحضر المقابلة، عدم كفاية الخبرة...') + '">' + UI.esc(presetNote || '') + '</textarea></div>',
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn ' + (win ? 'btn-ok' : 'btn-danger') + '" id="o-save">' + (win ? 'تثبيت التوظيف' : 'تسجيل الرفض') + '</button>',
       onMount: function (box, close) {
@@ -10179,43 +10314,64 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     var job = Store.getJob(jobCode);
     if (!job || !job.reservedBy) return;
     var serial = job.reservedBy;
-    var critical = !!(job.critical && !job.holdExpiresAt);
-    var t = Store.getAttempts(serial).filter(function (x) { return x.jobId === job.id && (x.slotStatus === 'reserved' || x.slotStatus === 'critical'); })[0];
+    var critical = !!(job.critical && !job.holdExpiresAt && job.status === 'reserved');
+    var hiring = job.status === 'hiring';
+    var t = Store.getAttempts(serial).filter(function (x) {
+      return x.jobId === job.id && (x.slotStatus === 'reserved' || x.slotStatus === 'critical' || x.slotStatus === 'hiring');
+    })[0];
     UI.modal({
-      title: (critical ? '🔴 قرار حالة حرجة — ' : 'إدارة الحجز المؤقت — ') + job.code,
+      title: (hiring ? '🔵 قرار توظيف صاحب العمل — ' : critical ? '🔴 قرار حالة حرجة — ' : 'إدارة الحجز المؤقت — ') + job.code,
       subtitle: job.title + ' · ' + job.region,
       body: '<div class="data-grid mb-3">' +
         '<div class="data-item"><div class="k">البطاقة المحجوزة</div><div class="v mono">' + UI.esc(serial) + '</div></div>' +
         '<div class="data-item"><div class="k">الفرصة</div><div class="v">#' + (t ? t.no : '—') + '</div></div>' +
-        '<div class="data-item"><div class="k">' + (critical ? 'انتهى الحجز' : 'ينتهي الحجز') + '</div><div class="v" dir="ltr">' + (critical ? 'انتهت مهلة 24 ساعة' : Store.fmtDateTime(job.holdExpiresAt)) + '</div></div>' +
-        '<div class="data-item"><div class="k">الحالة</div><div class="v">' + (critical ? '<span class="badge danger">حرجة — قرار مطلوب</span>' : UI.holdHtml(job.holdExpiresAt, { withDate: false })) + '</div></div>' +
+        '<div class="data-item"><div class="k">' + (hiring ? 'طلب صاحب العمل' : critical ? 'انتهى الحجز' : 'ينتهي الحجز') + '</div><div class="v" dir="ltr">' +
+          (hiring
+            ? (t && t.employerDecision === 'hire' ? 'تم التوظيف ✅' : 'لم يتم التوظيف') + (t && t.decisionAt ? ' — ' + Store.fmtDateTime(t.decisionAt) : '')
+            : critical ? 'انتهت مهلة 24 ساعة' : Store.fmtDateTime(job.holdExpiresAt)) + '</div></div>' +
+        '<div class="data-item"><div class="k">الحالة</div><div class="v">' +
+          (hiring ? '<span class="badge info">جاري التوظيف — بانتظار قرارك</span>'
+                  : critical ? '<span class="badge danger">حرجة — قرار مطلوب</span>' : UI.holdHtml(job.holdExpiresAt, { withDate: false })) + '</div></div>' +
         '<div class="data-item"><div class="k">صاحب العمل</div><div class="v">' + UI.esc(job.employer.name) + '</div></div>' +
         '<div class="data-item"><div class="k">هاتفه</div><div class="v mono" dir="ltr">' + UI.esc(job.employer.phone) + '</div></div>' +
         '<div class="data-item" style="grid-column:1/-1"><div class="k">مكان المقابلة</div><div class="v">' + UI.esc(job.interviewLocation) + '</div></div>' +
         '</div>' +
-        '<p class="tiny muted mb-0">' + UI.ic('hourglass') + (critical
+        '<p class="tiny muted mb-0">' + UI.ic('hourglass') + (hiring
+          ? ' طلب صاحب العمل بانتظار قرارك: «تم التوظيف» يثبّته ويغلق الوظيفة، و«رفض» أو «إرجاع» يعيد الوظيفة متاحة — والفرصة مستهلكة بأي نتيجة (قرار معتمد).'
+          : critical
           ? ' انتهت مهلة الـ24 ساعة دون قرار — الوظيفة مقفلة بانتظار قرارك، والفرصة تُستهلك بأي نتيجة (قرار معتمد: لا تعود الفرصة).'
           : ' إن انتهت المدة دون قرار تنتقل الوظيفة إلى حالة «حرجة» وتُحسم من هنا: توظيف أو إرجاع أو حذف.') + '</p>',
       footer: '<button class="btn btn-outline" data-close>إغلاق</button>' +
-        '<button class="btn btn-warn" id="h-release">' + UI.ic('refresh') + ' إرجاع الوظيفة</button>' +
+        '<button class="btn btn-warn" id="h-release">' + UI.ic('refresh') + (hiring ? ' إلغاء التوظيف — الوظيفة متاحة' : ' إرجاع الوظيفة') + '</button>' +
         '<button class="btn btn-danger" id="h-del">' + UI.ic('trash') + ' حذف الوظيفة</button>' +
         '<button class="btn btn-danger" id="h-reject">' + UI.ic('x-circle') + ' رفض</button>' +
-        '<button class="btn btn-ok" id="h-win">' + UI.ic('check') + ' تم التوظيف</button>',
+        '<button class="btn btn-ok" id="h-win">' + UI.ic('check') + (hiring ? ' تثبيت التوظيف' : ' تم التوظيف') + '</button>',
       onMount: function (box, close) {
-        box.querySelector('#h-win').addEventListener('click', function () { close(); outcomeModal(serial, t ? t.no : 1, 'succeeded'); });
+        box.querySelector('#h-win').addEventListener('click', function () {
+          close();
+          outcomeModal(serial, t ? t.no : 1, 'succeeded', null,
+            hiring ? 'تثبيت طلب صاحب العمل: تم التوظيف — أقرّته الشركة' : null);
+        });
         box.querySelector('#h-reject').addEventListener('click', function () { close(); outcomeModal(serial, t ? t.no : 1, 'rejected'); });
         box.querySelector('#h-release').addEventListener('click', function () {
-          var res = Store.releaseHold(serial, t ? t.no : 1, critical ? 'إرجاع بعد حالة حرجة — قرار الموظف' : 'إرجاع يدوي من لوحة المتابعة');
-          if (res.ok) { UI.toast('warn', 'تم الإرجاع', 'أُعيدت الوظيفة ' + job.code + ' إلى المتاح — والفرصة مستهلكة.'); close(); }
+          var res = Store.releaseHold(serial, t ? t.no : 1,
+            hiring ? 'إلغاء توظيف صاحب العمل بقرار الشركة — أُعيدت الوظيفة متاحة والفرصة مستهلكة'
+                   : critical ? 'إرجاع بعد حالة حرجة — قرار الموظف' : 'إرجاع يدوي من لوحة المتابعة');
+          if (res.ok) {
+            UI.toast(hiring ? 'warn' : 'warn', hiring ? 'أُلغي التوظيف' : 'تم الإرجاع',
+              'أُعيدت الوظيفة ' + job.code + ' إلى المتاح — والفرصة مستهلكة.');
+            close();
+          }
         });
         box.querySelector('#h-del').addEventListener('click', function () {
           UI.confirm({
             title: 'حذف الوظيفة', danger: true, confirmText: 'حذف نهائي',
             message: 'ستُحذف الوظيفة ' + job.code + ' نهائياً، وتُغلق فرصة البطاقة ' + serial + ' كمستهلكة — لا تعود الفرصة (قرار معتمد).'
-          }, function (delClose) {
+          }).then(function (yes) {
+            if (!yes) return;
             Store.deleteJob(job.code);
             UI.toast('warn', 'حُذفت الوظيفة', job.code + ' — أُغلقت فرصة البطاقة ' + serial + '.');
-            delClose(); close();
+            close();
           });
         });
       }
@@ -10226,8 +10382,21 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   function renderHolds() {
     var pa = Store.pendingActions();
     var label = document.getElementById('holds-count-label');
-    if (label) label.textContent = ((pa.critical || []).length + pa.holds.length) + ' حجز/حرجة';
+    if (label) label.textContent = ((pa.hiring || []).length + (pa.critical || []).length + pa.holds.length) + ' حجز/قرار';
     var host = document.getElementById('holds-list');
+    var hiringHtml = (pa.hiring || []).length ? pa.hiring.map(function (h) {
+      return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;border-color:#bcd0ea;background:#f2f6fc">' +
+        '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) +
+        '<small>' + UI.esc(h.job.region) + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
+        '<div class="tiny muted mt-1">مكان المقابلة: ' + UI.esc(h.job.interviewLocation) + '</div></div>' +
+        '<div><div class="tiny muted">البطاقة</div><div class="mono">' + UI.esc(h.serial || '—') + '</div>' +
+        '<span class="badge info">' + (h.decision === 'hire' ? 'طلب توظيف ✅ — ثبتّه أو ألغه' : 'طلب عدم توظيف — القرار بيدك') + '</span>' +
+        (h.at ? '<div class="tiny muted mt-1">' + Store.fmtDateTime(h.at) + '</div>' : '') + '</div>' +
+        '<div class="flex" style="gap:6px;flex-wrap:wrap">' +
+          '<button class="btn btn-lapis btn-sm" data-hold-manage="' + UI.esc(h.job.code) + '">' + UI.ic('check') + ' قرار</button>' +
+          '<button class="btn btn-outline btn-sm" data-hold-app="' + UI.esc(h.serial || '') + '">البطاقة</button>' +
+        '</div></div>';
+    }).join('') : '';
     var criticalHtml = (pa.critical || []).length ? pa.critical.map(function (h) {
       return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;border-color:#f0c3c1;background:#fdf5f4">' +
         '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) +
@@ -10240,7 +10409,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           '<button class="btn btn-outline btn-sm" data-hold-app="' + UI.esc(h.serial || '') + '">البطاقة</button>' +
         '</div></div>';
     }).join('') : '';
-    host.innerHTML = criticalHtml + (pa.holds.length ? pa.holds.map(function (h) {
+    host.innerHTML = hiringHtml + criticalHtml + (pa.holds.length ? pa.holds.map(function (h) {
       var urgent = h.hoursLeft < 4;
       return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;' +
         (urgent ? 'border-color:#f0c3c1;background:#fdf5f4' : '') + '">' +

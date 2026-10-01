@@ -400,8 +400,8 @@ check('التقديم الذاتي موثّق في سجل التدقيق', P.lis
 
 const DB2 = P.exportJson();
 
-/* ═══ 3ب) صاحب العمل: يمسح الباركود فيوظّف مباشرة من الموقع ═════════════ */
-step('3ب', 'صاحب العمل — يمسح نفس الباركود فيرى المتقدم ويضغط «تم التوظيف»');
+/* ═══ 3ب) صاحب العمل: يمسح الباركود ويسجّل طلبه — والقرار للشركة ═══════ */
+step('3ب', 'صاحب العمل — يمسح الباركود ويسجّل طلب توظيف (الوظيفة «جاري التوظيف» حتى قرار الشركة)');
 
 const emp = await open('index.html', '#card=' + encodeURIComponent(SERIAL), { db: DB2 });
 await wait(900);
@@ -423,29 +423,51 @@ await wait(900);
   check('صفحة صاحب العمل لا تكشف رموز الفرص (سرّ الزبون)',
     !CHANCES.some((c) => c && text.includes(c.code)));
   const hire = box.querySelector('#bk-emp-hire');
-  check('زر «تم التوظيف — سجّله فوراً» ظاهر', !!hire);
+  check('زر «تم التوظيف» ظاهر', !!hire);
   if (hire) click(emp.w, hire);
   await wait(350);
 }
 {
   const box = lastModal(emp.doc);
   const yes = box && box.querySelector('[data-ok]');
-  check('نافذة تأكيد قرار التوظيف تطلب التثبيت', !!yes && /تأكيد التوظيف/.test(box.textContent));
+  check('نافذة تسجيل طلب التوظيف توضّح أن القرار بيد الشركة', !!yes &&
+    /سجّل طلب التوظيف|بانتظار تثبيت/.test(box.textContent));
   if (yes) click(emp.w, yes);
   await wait(450);
 }
 {
   const box = lastModal(emp.doc);
-  check('شاشة «تم تسجيل التوظيف» ظاهرة لصاحب العمل', !!box && /تم تسجيل التوظيف/.test(box.textContent));
+  check('شاشة «سُجّل طلب التوظيف» تبيّن انتظار قرار الشركة', !!box &&
+    /سُجّل طلب التوظيف/.test(box.textContent) && /جاري التوظيف/.test(box.textContent));
 }
 {
   const E = emp.w.HRCStore;
-  check('قرار صاحب العمل أغلق الوظيفة HRC-1042 فوراً', E.getJob('HRC-1042').status === 'closed');
-  check('الفرصة الثانية «تم التوظيف» والبطاقة تبقى بفرصة أولى قيد القرار',
-    E.getAttempts(SERIAL)[1].slotStatus === 'succeeded' &&
+  check('الوظيفة HRC-1042 تحولت لـ«جاري التوظيف» — لم تُغلق فوراً',
+    E.getJob('HRC-1042').status === 'hiring' && E.getJob('HRC-1042').critical === false,
+    E.getJob('HRC-1042').status);
+  check('الفرصة الثانية «جاري التوظيف» بطلب صاحب العمل — والبطاقة سارية',
+    E.getAttempts(SERIAL)[1].slotStatus === 'hiring' &&
+    E.getAttempts(SERIAL)[1].employerDecision === 'hire' &&
     E.getAttempts(SERIAL)[0].slotStatus === 'reserved' &&
     E.formStatus(E.getApplicant(SERIAL)) === 'active');
-  check('قرار صاحب العمل موثّق بسجل التدقيق', E.listAudit().some((l) => /توظيف من صاحب العمل/.test(l.action)));
+  check('طلب صاحب العمل موثّق بسجل التدقيق', E.listAudit().some((l) => /طلب توظيف من صاحب العمل/.test(l.action)));
+}
+/* الطلب مسجَّل: صفحة صاحب العمل تعرض بانتظار الشركة — بلا أزرار قرار */
+{
+  const box = lastModal(emp.doc);
+  const again = box.querySelector('#bk-empd-close');
+  if (again) { click(emp.w, again); await wait(250); }
+  const emp2 = await open('index.html', '#card=' + encodeURIComponent(SERIAL), { db: emp.w.HRCStore.exportJson() });
+  await wait(900);
+  {
+    const b2 = lastModal(emp2.doc);
+    const g = b2 && b2.querySelector('#bk-gate-emp');
+    if (g) { click(emp2.w, g); await wait(350); }
+    const b3 = lastModal(emp2.doc);
+    const t3 = b3 ? b3.textContent : '';
+    check('صفحة صاحب العمل بعد الطلب: «بانتظار تثبيت الشركة» وبلا أزرار قرار',
+      /بانتظار تثبيت الشركة/.test(t3) && !b3.querySelector('#bk-emp-hire') && !b3.querySelector('#bk-emp-reject'));
+  }
 }
 const DB2B = emp.w.HRCStore.exportJson();
 
@@ -473,17 +495,24 @@ click(dash2.w, dash2.doc.querySelector('#side-nav button[data-view="overview"]')
 await wait(200);
 {
   const ov = dash2.doc.getElementById('ov-actions');
-  check('«إجراءات مطلوبة» تعرض الحالة الحرجة بقرار مطلوب', !!ov && /حالة حرجة/.test(ov.textContent) &&
-    /HRC-1043/.test(ov.textContent));
+  check('«إجراءات مطلوبة» تعرض طلب التوظيف المعلّق والحالة الحرجة معاً', !!ov &&
+    /جاري التوظيف/.test(ov.textContent) && /HRC-1042/.test(ov.textContent) &&
+    /حالة حرجة/.test(ov.textContent) && /HRC-1043/.test(ov.textContent));
 }
 
 const DB3 = D2.exportJson();
 
-/* ═══ 5) قرار الموظف: تم التوظيف — البطاقة لا تنتهي ═════════════════════ */
-step(5, 'قرار الموظف — تم التوظيف من المنظومة أيضاً («ثنينهم»): الوظيفة تُغلق والفرصتان انتهتا');
+/* ═══ 5) قرار الشركة: تثبيت طلب صاحب العمل + حسم الحالة الحرجة ═════════ */
+step(5, 'قرار الشركة — تثبيت طلب صاحب العمل («ثنينهم») ثم حسم الحالة الحرجة');
 
-/* التوظيف يسجَّل بالطريقتين: قرار صاحب العمل من صفحة الباركود (القسم 3ب)
-   وتسجيل الموظف من المنظومة — هنا دور الموظف على الفرصة الأولى الحرجة. */
+/* «ثنينهم» (ج4): طلب صاحب العمل لا يُحسم فوراً — الموظف يثبّته من المنظومة */
+const confirmHire = D2.setOutcome(SERIAL, 2, 'succeeded', 'تثبيت طلب صاحب العمل: تم التوظيف — أقرّته الشركة');
+check('الموظف ثبتّ طلب توظيف صاحب العمل', confirmHire.ok === true, confirmHire.error);
+const jobEmp = D2.getJob('HRC-1042');
+check('الوظيفة HRC-1042 أُغلقت بالتثبيت', jobEmp.status === 'closed');
+check('الفرصة الثانية «تم التوظيف» بعد التثبيت', D2.getAttempts(SERIAL)[1].slotStatus === 'succeeded');
+
+/* ثم دور الموظف على الفرصة الأولى الحرجة (HRC-1043) */
 const win = D2.setOutcome(SERIAL, 1, 'succeeded', 'اجتاز المقابلة وبدأ الشغل');
 check('قرار توظيف الموظف سُجّل', win.ok === true, win.error);
 const jobClosed = D2.getJob('HRC-1043');
@@ -497,8 +526,8 @@ check('عرض الزبون يبيّن «تم توظيف بإحدى الفرصت�
 
 const DB4 = D2.exportJson();
 
-/* ═══ 6) نقطة البيع عبر الموقع + قرار الإرجاع ══════════════════════════ */
-step(6, 'نقطة البيع عبر الموقع — تعبئة بطاقة فارغة بمسح الباركود ثم قرار «إرجاع»');
+/* ═══ 6) نقطة البيع عبر الموقع + طلب صاحب العمل وإلغاء الشركة ══════════ */
+step(6, 'نقطة البيع عبر الموقع — تعبئة بطاقة فارغة بخطوتين ثم طلب «لم يتم التوظيف» وإلغاء الشركة للتوظيف');
 
 /* بطاقة ثانية من دفعة الجلسة لا تزال فارغة: نقطة البيع تمسح باركودها بأي
    موبايل فيفتح الموقع «استمارة الزبون» مباشرة (موديل 2026-10-01). */
@@ -514,8 +543,22 @@ await wait(900);
   setVal(pub2.w, box.querySelector('#bk-phone'), '07709876543');
   setVal(pub2.w, box.querySelector('#bk-address'), 'المحاويل - المركز');
   setVal(pub2.w, box.querySelector('#bk-job'), 'HRC-1046');
-  click(pub2.w, box.querySelector('#bk-pos-confirm'));
-  await wait(1000);   /* يشمل الطباعة التلقائية لاستمارة A4 */
+  /* الخطوة الثانية (ج4): «التالي» ← شاشة مراجعة الزبون بلا أي بيانات صاحب عمل */
+  click(pub2.w, box.querySelector('#bk-pos-next'));
+  await wait(350);
+}
+{
+  const box = lastModal(pub2.doc);
+  const text = box ? box.textContent : '';
+  check('شاشة «مراجعة الزبون» تعرض بياناته ووظيفته المختارة',
+    /مراجعة الزبون/.test(text) && text.includes('سجاد حسن الموسوي') &&
+    text.includes('07709876543') && text.includes('HRC-1046'));
+  check('المراجعة لا تكشف أي بيانات لصاحب العمل قبل ضغطة «إتمام»',
+    !/مكان المقابلة/.test(text) && !text.includes('07751234567') && !text.includes('كافيه دجلة'));
+  const confirmBtn = box.querySelector('#bk-pos-confirm');
+  check('زر «إتمام» بيد الزبون نفسه', !!confirmBtn && /إتمام/.test(confirmBtn.textContent));
+  if (confirmBtn) click(pub2.w, confirmBtn);
+  await wait(1000);   /* يشمل الطباعة التلقائية لاستمارة A4 ببيانات صاحب العمل */
 }
 {
   const P2 = pub2.w.HRCStore;
@@ -532,18 +575,40 @@ await wait(900);
 }
 const DB5 = pub2.w.HRCStore.exportJson();
 
-/* قرار الإرجاع بعد انتهاء المهلة: الوظيفة تعود متاحة والفرصة لا تعود */
+/* صاحب العمل يسجّل طلب «لم يتم التوظيف» — لا حسم فوري، والقرار للشركة */
+const emp2 = await open('index.html', '#card=' + encodeURIComponent(SERIAL2), { db: DB5 });
+await wait(900);
+{
+  const b = lastModal(emp2.doc);
+  const g = b && b.querySelector('#bk-gate-emp');
+  if (g) { click(emp2.w, g); await wait(350); }
+  const b2 = lastModal(emp2.doc);
+  const reject = b2 && b2.querySelector('#bk-emp-reject');
+  check('زر «لم يتم التوظيف» ظاهر لصاحب العمل', !!reject);
+  if (reject) { click(emp2.w, reject); await wait(300); }
+  const b3 = lastModal(emp2.doc);
+  const yes = b3 && b3.querySelector('[data-ok]');
+  if (yes) { click(emp2.w, yes); await wait(450); }
+  const E2S = emp2.w.HRCStore;
+  check('الوظيفة HRC-1046 أصبحت «جاري التوظيف» بطلب عدم توظيف',
+    E2S.getJob('HRC-1046').status === 'hiring' &&
+    E2S.getAttempts(SERIAL2)[0].employerDecision === 'reject',
+    E2S.getJob('HRC-1046').status);
+  check('طلب الرفض موثّق بسجل التدقيق', E2S.listAudit().some((l) => /طلب رفض من صاحب العمل/.test(l.action)));
+}
+
+/* الشركة تُلغي التوظيف: الوظيفة تعود متاحة والفرصة المستهلَكة لا تعود */
 const dash3 = await open('dashboard.html', undefined, { session: 'staff' });
 const D3 = dash3.w.HRCStore;
-D3.importJson(DB5);
+D3.importJson(emp2.w.HRCStore.exportJson());
 await wait(250);
-const rel = D3.releaseHold(SERIAL2, 1, 'صاحب العمل أجّل التعيين — أُعيدت الوظيفة متوفرة');
-check('قرار الإرجاع سُجّل', rel.ok === true, rel.error);
+const rel = D3.releaseHold(SERIAL2, 1, 'إلغاء توظيف صاحب العمل بقرار الشركة — الفرصة مستهلكة');
+check('قرار إلغاء التوظيف سُجّل', rel.ok === true, rel.error);
 check('الوظيفة HRC-1046 رجعت «متاحة» لغيره', D3.getJob('HRC-1046').status === 'available');
-check('فرصة البطاقة الثانية المستهلَكة بالإرجاع لا تعود (بقيت فرصة واحدة)', D3.attemptsLeft(SERIAL2) === 1 &&
+check('فرصة البطاقة الثانية المستهلَكة بالإلغاء لا تعود (بقيت فرصة واحدة)', D3.attemptsLeft(SERIAL2) === 1 &&
   D3.getAttempts(SERIAL2)[0].slotStatus === 'expired');
 check('كل قرارات الرحلة موثقة بسجل التدقيق (' + D3.listAudit().length + ' قيداً)',
-  D3.listAudit().some((l) => /توظيف/.test(l.action)) && D3.listAudit().some((l) => /إرجاع/.test(l.action)));
+  D3.listAudit().some((l) => /توظيف/.test(l.action)) && D3.listAudit().some((l) => /طلب رفض|إلغاء/.test(l.action)));
 
 const DB6 = D3.exportJson();
 

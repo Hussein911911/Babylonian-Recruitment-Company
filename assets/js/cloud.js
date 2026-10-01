@@ -184,7 +184,10 @@
       holdExpiresAt: toISO(r.hold_expires_at),
       closedAt: toISO(r.closed_at),
       note: r.outcome_note || '',
-      staff: r.staff_id ? (staffById[r.staff_id] || null) : null
+      staff: r.staff_id ? (staffById[r.staff_id] || null) : null,
+      /* ج4 2026-10-01: طلب صاحب العمل (توظيف/عدم توظيف) بانتظار قرار الشركة */
+      employerDecision: r.employer_decision || null,
+      decisionAt: toISO(r.decision_at)
     };
   }
 
@@ -202,7 +205,8 @@
       slot_status: o.slotStatus || 'empty',
       chance_code: o.code || null,          /* رمز الفرصة السري (ظهر البطاقة) */
       selected_at: o.selectedAt || null, hold_expires_at: o.holdExpiresAt || null,
-      closed_at: o.closedAt || null, outcome_note: o.note || ''
+      closed_at: o.closedAt || null, outcome_note: o.note || '',
+      employer_decision: o.employerDecision || null, decision_at: o.decisionAt || null
     };
   }
 
@@ -665,7 +669,7 @@
       });
   }
 
-  /* قرار صاحب العمل (توظيف/رفض) من صفحة الباركود — يُسجَّل فوراً */
+  /* طلب صاحب العمل (توظيف/عدم توظيف) من صفحة الباركود — الوظيفة «جاري التوظيف» حتى قرار الشركة */
   function employerDecideRpc(client, serial, decision) {
     if (!serial || !decision) return Promise.resolve({ ok: false, error: 'وسائط ناقصة' });
     return client.rpc('employer_decide', {

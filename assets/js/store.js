@@ -671,7 +671,7 @@
      فهو التقديم الذي يلاحقه الزبون الآن ويحمله لصاحب العمل. */
   function latestInPlay(serial) {
     var list = getAttempts(serial).filter(function (t) {
-      return t.slotStatus === 'reserved' || t.slotStatus === 'critical';
+      return t.slotStatus === 'reserved' || t.slotStatus === 'critical' || t.slotStatus === 'hiring';
     });
     list.sort(function (a, b) {
       var da = new Date(a.selectedAt || 0).getTime();
@@ -718,6 +718,8 @@
           appliedAt: current.selectedAt,
           holdExpiresAt: current.holdExpiresAt,
           slotStatus: current.slotStatus,
+          employerDecision: current.employerDecision || null,
+          decisionAt: current.decisionAt || null,
           employer: job ? {
             name: job.employer.name,
             phone: job.employer.phone,
@@ -729,27 +731,42 @@
     };
   }
 
-  /* قرار صاحب العمل من صفحة الباركود مباشرة (توظيف/رفض) — يُسجَّل فوراً
-     بالنظام ويوثّق بسجل التدقيق. الفرصة مستهلكة بالتقديم ولا تعود. */
+  /* طلب صاحب العمل من صفحة الباركود (توظيف/عدم توظيف) — قرار 2026-10-01 (ج4):
+     لا يُحسم شيء فوراً؛ الوظيفة والفرصة تنتقلان لحالة «جاري التوظيف»
+     (مجمّدة بلا مهلة 24 ساعة) حتى يثبّت موظفو الشركة القرار النهائي:
+     تثبيت التوظيف أو إلغاؤه (الوظيفة تعود متاحة والفرصة مستهلكة). */
   function employerDecide(serial, decision) {
     serial = String(serial || '').trim().toUpperCase();
+    if (decision !== 'hire' && decision !== 'reject')
+      return { ok: false, error: 'قرار غير صحيح — hire أو reject فقط' };
     var app = getApplicant(serial);
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود' };
     if (app.status === 'blank') return { ok: false, error: 'هذه البطاقة فارغة ولم تُبع بعد' };
     var slot = latestInPlay(app.serial);
     if (!slot) return { ok: false, error: 'لا يوجد تقديم قيد القرار على هذه البطاقة — راجع الشركة' };
-    var outcome = decision === 'hire' ? 'succeeded' : 'rejected';
-    var note = decision === 'hire'
-      ? 'قرار صاحب العمل: تم التوظيف — سُجّل من صفحة الباركود'
-      : 'قرار صاحب العمل: لم يتم التوظيف — سُجّل من صفحة الباركود';
-    var res = setOutcome(app.serial, slot.no, outcome, note);
-    if (!res.ok) return res;
-    audit(decision === 'hire' ? 'توظيف من صاحب العمل' : 'رفض من صاحب العمل',
+    if (slot.slotStatus === 'hiring')
+      return { ok: false, error: 'طلبك مسجَّل بالفعل — الوظيفة بانتظار قرار الشركة' };
+    var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
+
+    slot.slotStatus = 'hiring';
+    slot.employerDecision = decision;
+    slot.decisionAt = nowISO();
+    slot.holdExpiresAt = null;   /* تجميد المهلة: القرار بيد الشركة الآن */
+    slot.note = decision === 'hire'
+      ? 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة'
+      : 'طلب صاحب العمل: لم يتم التوظيف — بانتظار قرار الشركة';
+    if (job) {
+      job.status = 'hiring';
+      job.critical = false;
+      job.holdExpiresAt = null;   /* hiring: لا مهلة — قرار الشركة المطلوب */
+    }
+    audit(decision === 'hire' ? 'طلب توظيف من صاحب العمل' : 'طلب رفض من صاحب العمل',
       'applicant', app.serial,
-      'صاحب العمل قرر عبر صفحة الباركود على الوظيفة ' + slot.jobCode +
-      ' — الفرصة #' + slot.no + ' — الزبون ' + app.fullName);
+      'صاحب العمل طلب عبر صفحة الباركود ' + (decision === 'hire' ? 'التوظيف' : 'عدم التوظيف') +
+      ' على الوظيفة ' + slot.jobCode + ' — الفرصة #' + slot.no + ' — الزبون ' + app.fullName +
+      ' | الوظيفة «جاري التوظيف» بانتظار قرار الشركة (تثبيت/إلغاء)');
     save(); emit();
-    return { ok: true, attempt: res.attempt, job: res.job, decision: decision };
+    return { ok: true, attempt: slot, job: job, decision: decision, pending: true };
   }
 
   function listBlankCards() {
@@ -763,7 +780,8 @@
         id: uid('att'), serial: serial, no: i, code: chanceCode(),
         jobId: null, jobCode: null, jobTitle: null,
         location: null, employerName: null, employerPhone: null, slotStatus: 'empty',
-        selectedAt: null, holdExpiresAt: null, closedAt: null, note: '', staff: null
+        selectedAt: null, holdExpiresAt: null, closedAt: null, note: '', staff: null,
+        employerDecision: null, decisionAt: null
       });
     }
   }
@@ -846,7 +864,7 @@
     /* «سارية» ما دامت فرصة قيد اللعب (حجز جارٍ أو حالة حرجة بانتظار قرار) —
        أما «استُهلكت الفرصتان» فتعني انتهاء كل الفرص بنتيجة نهائية. */
     var inPlay = getAttempts(app.serial).some(function (t) {
-      return t.slotStatus === 'reserved' || t.slotStatus === 'critical';
+      return t.slotStatus === 'reserved' || t.slotStatus === 'critical' || t.slotStatus === 'hiring';
     });
     if (attemptsLeft(app.serial) === 0 && !inPlay) return 'exhausted';
     return 'active';
@@ -1291,7 +1309,7 @@
   }
 
   function pendingActions() {
-    var out = { holds: [], critical: [], expired: [], exhausted: [], rejected: [], requests: [] };
+    var out = { holds: [], critical: [], hiring: [], expired: [], exhausted: [], rejected: [], requests: [] };
     db.jobs.forEach(function (j) {
       if (j.status === 'reserved' && j.holdExpiresAt) {
         var h = diffHours(j.holdExpiresAt, new Date());
@@ -1300,6 +1318,13 @@
       /* الحالة الحرجة: انتهت مهلة 24 ساعة دون قرار — بانتظار الموظف */
       if (j.status === 'reserved' && !j.holdExpiresAt && j.critical) {
         out.critical.push({ job: j, serial: j.reservedBy });
+      }
+      /* جاري التوظيف: طلب صاحب العمل بانتظار تثبيت الشركة (ج4 — 2026-10-01) */
+      if (j.status === 'hiring') {
+        var t = db.attempts.filter(function (x) {
+          return x.jobId === j.id && x.slotStatus === 'hiring';
+        })[0];
+        out.hiring.push({ job: j, serial: j.reservedBy, decision: t ? t.employerDecision : null, at: t ? t.decisionAt : null });
       }
     });
     db.applicants.forEach(function (a) {

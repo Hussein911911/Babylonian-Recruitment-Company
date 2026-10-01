@@ -68,10 +68,11 @@
 
     jobCategories: ['صناعي', 'خدمات', 'صحي', 'هندسي', 'إداري', 'تجاري', 'زراعي', 'تقني'],
 
-    /* حالات الوظيفة */
+    /* حالات الوظيفة — hiring (2026-10-01 ج4): صاحب العمل اختار والقرار للشركة */
     jobStatus: {
       available: { ar: 'متاحة', cls: 'ok' },
       reserved: { ar: 'محجوزة مؤقتاً', cls: 'warn' },
+      hiring: { ar: 'جاري التوظيف — قرار الشركة', cls: 'warn' },
       closed: { ar: 'مغلقة', cls: 'muted' }
     },
 
@@ -80,6 +81,7 @@
       empty: { ar: '—', cls: 'muted' },
       selected: { ar: 'مُختارة', cls: 'info' },
       reserved: { ar: 'بانتظار المقابلة', cls: 'warn' },
+      hiring: { ar: 'جاري التوظيف — بانتظار قرار الشركة', cls: 'info' },
       critical: { ar: 'حرجة — بانتظار قرار الشركة', cls: 'warn' },
       succeeded: { ar: 'تم التوظيف', cls: 'ok' },
       rejected: { ar: 'مرفوض / لم ينجح', cls: 'danger' },

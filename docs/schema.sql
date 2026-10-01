@@ -58,11 +58,11 @@ set search_path = brc, public;
 --  1) الأنواع (Enums)
 -- ===========================================================================
 do $$ begin
-  create type brc.job_status  as enum ('available', 'reserved', 'closed');
+  create type brc.job_status  as enum ('available', 'reserved', 'hiring', 'closed');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type brc.slot_status as enum ('empty', 'reserved', 'critical', 'succeeded', 'rejected', 'expired');
+  create type brc.slot_status as enum ('empty', 'reserved', 'critical', 'hiring', 'succeeded', 'rejected', 'expired');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
@@ -232,6 +232,9 @@ create table if not exists brc.job_attempts (
   closed_at         timestamptz,
   outcome_note      text default '',
   staff_id          uuid references brc.staff (id) on delete set null,
+  /* ج4 2026-10-01: طلب صاحب العمل (توظيف/عدم توظيف) — القرار النهائي للشركة */
+  employer_decision text,                                          -- hire | reject
+  decision_at       timestamptz,
   unique (serial, attempt_no),
   unique (chance_code)
 );
@@ -551,7 +554,9 @@ create trigger trg_audit_attempts after insert or update or delete on brc.job_at
 --     بانتظار قرار الموظف: تم التوظيف / إرجاعها متوفرة / حذفها.
 -- ===========================================================================
 create or replace function brc.run_auto_release() returns table (released_job text, expired_form text)
-language plpgsql as $$
+language plpgsql security definer
+set search_path = brc, public
+as $$
 declare r record;
 begin
   -- (أ) حجوزات انتهت مهلتها دون قرار ← حالة «حرجة» (لا إفراج تلقائي)
@@ -599,19 +604,17 @@ begin
     return next;
   end loop;
 
-  -- (ج) بطاقات استُهلكت فرصها (لا فرصة فارغة ولا فرصة قيد اللعب)
+  -- (ج) بطاقات استُهلكت فرصها (لا فرصة فارغة ولا فرصة قيد اللعب — hiring ضمنها)
   update brc.applicants f
      set status = 'exhausted', updated_at = now()
    where f.status = 'active'
      and not exists (select 1 from brc.job_attempts a where a.serial = f.serial and a.slot_status = 'empty')
      and not exists (select 1 from brc.job_attempts a where a.serial = f.serial
-                       and a.slot_status in ('reserved', 'critical'));
-
-  /* التوظيف لا يُنهي البطاقة (قرار مقفل 2026-09-30): لا حالة completed —
-     يبقى للزبون حقه في فرصته الأخرى حتى نهاية مدة البطاقة. */
+                       and a.slot_status in ('reserved', 'critical', 'hiring'));
 
   return;
 end $$;
+
 
 -- جدولة التنفيذ كل دقيقة (Supabase: pg_cron)
 do $$ begin
@@ -672,10 +675,19 @@ create or replace view brc.v_financials_by_staff as
 
 -- 6.4 لوحة المتابعة: إجراءات مطلوبة
 create or replace view brc.v_pending_actions as
-  select 'hold'::text as kind, j.code as reference, j.reserved_by as serial,
-         j.hold_expires_at as due_at,
-         round(extract(epoch from (j.hold_expires_at - now())) / 3600.0, 1) as hours_left,
-         'حجز مؤقت بانتظار نتيجة المقابلة'::text as description
+  select 'hiring'::text as kind, j.code as reference, j.reserved_by as serial,
+         a.decision_at as due_at, null::numeric as hours_left,
+         case when a.employer_decision = 'hire'
+              then 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة'
+              else 'طلب صاحب العمل: لم يتم التوظيف — بانتظار قرار الشركة' end::text as description
+    from brc.jobs j
+    join brc.job_attempts a on a.job_id = j.id and a.slot_status = 'hiring'
+   where j.status = 'hiring'
+  union all
+  select 'hold'::text, j.code, j.reserved_by,
+         j.hold_expires_at,
+         round(extract(epoch from (j.hold_expires_at - now())) / 3600.0, 1),
+         'حجز مؤقت بانتظار نتيجة المقابلة'::text
     from brc.jobs j
    where j.status = 'reserved'
   union all
@@ -688,7 +700,6 @@ create or replace view brc.v_pending_actions as
          'استمارة منتهية الصلاحية (30 يوماً)'
     from brc.applicants f
    where f.status = 'expired';
-
 -- ===========================================================================
 --  7) دوال RPC (تُنادى من الواجهة)
 -- ===========================================================================
@@ -1050,10 +1061,10 @@ language plpgsql security definer
 set search_path = brc, public
 as $$
 declare
-  f     record;
-  a     record;
-  j     record;
-  v_st  text;
+  f    record;
+  a    record;
+  j    record;
+  v_st text;
 begin
   select * into f from brc.applicants
    where serial = upper(btrim(coalesce(p_serial, '')));
@@ -1067,22 +1078,19 @@ begin
     return jsonb_build_object('ok', false, 'code', 'pending', 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
   end if;
 
-  /* أحدث تقديم قيد اللعب (قد تكون الفرصتان محجوزتين معاً: وظيفة نقطة البيع
-     + تقديم الزبون) — هو المطبوع على استمارة A4 الذي يحمله الزبون لصاحب العمل */
   select * into a from brc.job_attempts
-   where serial = f.serial and slot_status in ('reserved', 'critical')
+   where serial = f.serial and slot_status in ('reserved', 'critical', 'hiring')
    order by selected_at desc nulls last, attempt_no desc limit 1;
   if a.id is not null then
     select * into j from brc.jobs where id = a.job_id;
   end if;
 
-  /* نفس منطق حالة البطاقة في الواجهة (formStatus): منتهية/مستهلكة محسوبتان */
   v_st := case
     when f.status in ('pending', 'rejected') then f.status::text
     when f.expiry_date is not null and now() > f.expiry_date then 'expired'
     when (select count(*) from brc.job_attempts x where x.serial = f.serial and x.slot_status = 'empty') = 0
          and not exists (select 1 from brc.job_attempts x
-                          where x.serial = f.serial and x.slot_status in ('reserved', 'critical'))
+                          where x.serial = f.serial and x.slot_status in ('reserved', 'critical', 'hiring'))
       then 'exhausted'
     else 'active' end;
 
@@ -1106,6 +1114,8 @@ begin
         'no', a.attempt_no, 'jobCode', a.job_code, 'jobTitle', j.title, 'region', j.region,
         'appliedAt', a.selected_at, 'holdExpiresAt', a.hold_expires_at,
         'slotStatus', a.slot_status::text,
+        'employerDecision', a.employer_decision,
+        'decisionAt', a.decision_at,
         'employer', jsonb_build_object(
           'name', j.employer_name, 'phone', j.employer_phone,
           'address', j.employer_address, 'interviewLocation', j.interview_location)
@@ -1113,6 +1123,7 @@ begin
 exception when others then
   return jsonb_build_object('ok', false, 'error', sqlerrm);
 end $$;
+
 
 -- 3) قرار صاحب العمل من صفحة الباركود مباشرة: توظيف/رفض — يُسجَّل فوراً
 --    لدى الشركة ويوثّق بسجل التدقيق. الفرصة مستهلكة بالتقديم ولا تعود.
@@ -1122,10 +1133,9 @@ language plpgsql security definer
 set search_path = brc, public
 as $$
 declare
-  f        record;
-  a        record;
-  j        record;
-  outcome  brc.slot_status;
+  f       record;
+  a       record;
+  j       record;
 begin
   if p_decision not in ('hire', 'reject') then
     return jsonb_build_object('ok', false, 'error', 'قرار غير صحيح — hire أو reject فقط');
@@ -1140,46 +1150,63 @@ begin
     return jsonb_build_object('ok', false, 'error', 'هذه البطاقة فارغة ولم تُبع بعد');
   end if;
 
+  /* أحدث تقديم قيد اللعب (قد تكون الفرصتان محجوزتين معاً) — وإن كان الطلب
+     مسجَّلاً بالفعل (hiring) نرفض التكرار */
   select * into a from brc.job_attempts
-   where serial = f.serial and slot_status in ('reserved', 'critical')
+   where serial = f.serial and slot_status in ('reserved', 'critical', 'hiring')
    order by selected_at desc nulls last, attempt_no desc limit 1 for update;
   if a.id is null then
     return jsonb_build_object('ok', false, 'error', 'لا يوجد تقديم قيد القرار على هذه البطاقة — راجع الشركة');
   end if;
+  if a.slot_status = 'hiring' then
+    return jsonb_build_object('ok', false, 'error', 'طلبك مسجَّل بالفعل — الوظيفة بانتظار قرار الشركة');
+  end if;
 
-  outcome := case when p_decision = 'hire' then 'succeeded'::brc.slot_status
-                  else 'rejected'::brc.slot_status end;
+  select * into j from brc.jobs where id = a.job_id for update;
 
-  /* trg_attempt_hold يُغلق الوظيفة عند النجاح أو يعيدها متاحة عند الرفض */
   update brc.job_attempts
-     set slot_status = outcome,
+     set slot_status = 'hiring',
+         employer_decision = p_decision,
+         decision_at = now(),
+         hold_expires_at = null,               /* تجميد المهلة: القرار بيد الشركة */
          outcome_note = case when p_decision = 'hire'
-                             then 'قرار صاحب العمل: تم التوظيف — سُجّل من صفحة الباركود'
-                             else 'قرار صاحب العمل: لم يتم التوظيف — سُجّل من صفحة الباركود' end
+                             then 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة'
+                             else 'طلب صاحب العمل: لم يتم التوظيف — بانتظار قرار الشركة' end
    where id = a.id
   returning * into a;
 
-  select * into j from brc.jobs where id = a.job_id;
+  update brc.jobs
+     set status = 'hiring',
+         critical = false,
+         hold_expires_at = null,
+         updated_at = now()
+   where id = j.id
+  returning * into j;
 
   insert into brc.audit_log (username, role, action, entity, entity_id, details)
   values ('public', 'employer',
-          case when p_decision = 'hire' then 'توظيف من صاحب العمل' else 'رفض من صاحب العمل' end,
+          case when p_decision = 'hire' then 'طلب توظيف من صاحب العمل' else 'طلب رفض من صاحب العمل' end,
           'applicant', f.serial,
-          'صاحب العمل قرر عبر صفحة الباركود على الوظيفة ' || coalesce(a.job_code, '—') ||
-          ' — الفرصة #' || a.attempt_no || ' — الزبون ' || f.full_name);
+          'صاحب العمل طلب عبر صفحة الباركود ' ||
+          case when p_decision = 'hire' then 'التوظيف' else 'عدم التوظيف' end ||
+          ' على الوظيفة ' || coalesce(a.job_code, '—') || ' — الفرصة #' || a.attempt_no ||
+          ' — الزبون ' || f.full_name ||
+          ' | الوظيفة «جاري التوظيف» بانتظار قرار الشركة (تثبيت/إلغاء)');
 
   return jsonb_build_object(
     'ok', true,
     'attempt', jsonb_build_object(
       'no', a.attempt_no, 'slotStatus', a.slot_status::text,
       'jobCode', a.job_code, 'jobTitle', j.title, 'location', j.region,
-      'selectedAt', a.selected_at, 'holdExpiresAt', a.hold_expires_at, 'closedAt', a.closed_at),
+      'selectedAt', a.selected_at, 'decisionAt', a.decision_at,
+      'employerDecision', a.employer_decision),
     'job', jsonb_build_object('code', j.code, 'title', j.title, 'region', j.region,
                               'status', j.status::text),
-    'decision', p_decision);
+    'decision', p_decision, 'pending', true);
 exception when others then
   return jsonb_build_object('ok', false, 'error', sqlerrm);
 end $$;
+
 
 -- 7.1ب طلب استمارة إلكتروني من الموقع العام (بلا حساب ولا جلسة)
 -- ---------------------------------------------------------------------------
@@ -1317,7 +1344,7 @@ begin
          outcome_note = coalesce(nullif(p_note, ''), outcome_note),
          staff_id = brc.current_staff_id()
    where serial = p_serial and attempt_no = p_attempt_no
-     and slot_status = 'reserved';
+     and slot_status in ('reserved', 'critical', 'hiring');
 
   if not found then
     return jsonb_build_object('ok', false, 'error', 'لا يوجد حجز جارٍ لهذه المحاولة');
@@ -1326,6 +1353,7 @@ begin
 exception when others then
   return jsonb_build_object('ok', false, 'error', sqlerrm);
 end $$;
+
 
 -- 7.4 إفراج يدوي عن حجز
 create or replace function brc.release_hold(p_serial text, p_attempt_no smallint, p_reason text default '')
@@ -1340,11 +1368,16 @@ begin
      set slot_status = 'expired',
          closed_at = now(),
          hold_expires_at = null,
-         outcome_note = coalesce(nullif(p_reason, ''), 'إفراج يدوي عن الحجز')
-   where serial = p_serial and attempt_no = p_attempt_no and slot_status = 'reserved';
+         outcome_note = coalesce(nullif(p_reason, ''),
+           case when employer_decision is not null
+                then 'إلغاء توظيف صاحب العمل بقرار الشركة — الفرصة مستهلكة'
+                else 'إفراج يدوي عن الحجز' end)
+   where serial = p_serial and attempt_no = p_attempt_no
+     and slot_status in ('reserved', 'critical', 'hiring');
 
   return jsonb_build_object('ok', found);
 end $$;
+
 
 -- 7.5 أدوات الصلاحية
 -- ⚠️ حرجة: هذه الدوال تقرأ من brc.staff المُفعَّل عليه RLS، وسياسات brc.staff نفسها
