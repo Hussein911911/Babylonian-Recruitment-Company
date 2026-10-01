@@ -704,6 +704,11 @@ await wait(900);
   check('استمارة A4 طُبعت تلقائياً بنفس باركود البطاقة', pub2.w.__printed > 0 &&
     pub2.doc.getElementById('print-root').innerHTML.includes(SERIAL2) &&
     /استمارة توظيف/.test(pub2.doc.getElementById('print-root').innerHTML));
+  check('شاشة النجاح تعرض الاستمارة نفسها للعين — ببيانات صاحب العمل كاملة',
+    !!lastModal(pub2.doc).querySelector('.hrc-form') &&
+    lastModal(pub2.doc).textContent.includes('سجاد حسن الموسوي') &&
+    lastModal(pub2.doc).textContent.includes('كافيه دجلة') &&
+    /مكان المقابلة/.test(lastModal(pub2.doc).textContent));
   check('بيع نقطة البيع من الموقع موثّق بسجل التدقيق',
     P2.listAudit().some((l) => /بيع وتعبئة بطاقة فارغة/.test(l.action)));
 }

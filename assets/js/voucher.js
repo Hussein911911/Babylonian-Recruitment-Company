@@ -441,8 +441,11 @@
     setTimeout(function () { window.print(); setTimeout(after, 1600); }, 160);
   }
 
-  /* معاينة الاستمارة داخل نافذة (للشاشة) */
+  /* معاينة الاستمارة داخل نافذة (للشاشة) — تُستدعى من شاشة نجاح البيع
+     فيتأكد أنماطها أولاً (ليست مخصصة لوضع الطباعة وحده) */
   function previewForm(app, attempt) {
+    ensureStyle();
+    ensureFormStyle();
     return '<div style="background:#f3ecd9;border:1px solid var(--line-soft);border-radius:12px;padding:18px 20px;overflow:auto">'
       + formHtml(app, attempt) + '</div>';
   }

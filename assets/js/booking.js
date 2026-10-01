@@ -535,9 +535,15 @@
           ' — الوظيفة محجوزة 24 ساعة بانتظار قرار صاحب العمل' +
           (at.holdExpiresAt ? ' حتى <b>' + esc(Store.fmtDateTime(at.holdExpiresAt)) + '</b>' : '') + '.</div>' : '') +
         '<div class="bk-info" style="text-align:right;border-color:#c8a24a;background:#fdf9ee">' + UI.ic('print') +
-          ' <b>الآن: اطبع استمارة التوظيف A4</b> وسلّمها للزبون مع البطاقة — تحمل نفس الباركود ' +
-          'وبيانات الزبون والوظيفة وبيانات التواصل بصاحب العمل.</div>' +
+          ' <b>هذي استمارة التوظيف A4</b> — تحمل نفس باركود البطاقة وبيانات الزبون والوظيفة ' +
+          'وبيانات التواصل بصاحب العمل. اطبعها وسلّمها للزبون مع البطاقة.</div>' +
       '</div>' +
+      /* الاستمارة نفسها معروضة أمام العين مباشرة (ليست مخفية للطباعة وحدها):
+         بعض المتصفحات تحجب حوار الطباعة داخل الإطارات المحاطة — والزبون/النقطة
+         يشوفان الورقة على الشاشة بأي حال ويمكن طباعتها بالزر. */
+      '<div style="max-height:56vh;overflow:auto;border:1px solid #dfe4ec;border-radius:12px;margin-top:4px">' +
+        '<div style="zoom:.62">' + ((root.HRCVoucher && root.HRCVoucher.previewForm)
+          ? root.HRCVoucher.previewForm(app, at) : '') + '</div></div>' +
       btnRow(
         '<button class="btn btn-gold" id="bk-pos-print">' + UI.ic('print') + ' اطبع استمارة التوظيف A4</button>' +
         '<button class="btn btn-ghost" id="bk-pos-close">' + UI.ic('check') + ' تم — إغلاق</button>');
