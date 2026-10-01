@@ -372,7 +372,7 @@
    *  عبر brc.request_form التي تتحقق من المدخلات وتضع الحالة 'pending' دائماً.
    * ----------------------------------------------------------------------- */
   function requestForm(client, data) {
-    return client.rpc('request_form', {
+    return rpcCall(client, 'request_form', {
       p_full_name: String(data.fullName || '').trim(),
       p_phone: String(data.phone || '').trim(),
       p_address: String(data.address || '').trim(),
@@ -401,7 +401,7 @@
    * ------------------------------------------------------------------------- */
   function verifyForm(client, serial, token) {
     if (!serial) return Promise.resolve({ ok: false, code: 'bad_input', error: 'أدخل رقم الاستمارة' });
-    return client.rpc('verify_form', { p_serial: String(serial).trim(), p_token: token || null })
+    return rpcCall(client, 'verify_form', { p_serial: String(serial).trim(), p_token: token || null })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر التحقق' };
@@ -551,7 +551,7 @@
   /* عرض آمن للبطاقة بالباركود: بلا رموز فرص وبلا بيانات صاحب العمل */
   function lookupCardRpc(client, serial) {
     if (!serial) return Promise.resolve({ ok: false, error: 'أدخل باركود البطاقة' });
-    return client.rpc('lookup_card', { p_serial: String(serial).trim() })
+    return rpcCall(client, 'lookup_card', { p_serial: String(serial).trim() })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
@@ -586,7 +586,7 @@
   function useChanceRpc(client, serial, code, jobCode) {
     if (!serial || !code || !jobCode)
       return Promise.resolve({ ok: false, error: 'أكمل الباركود ورمز الفرصة والوظيفة' });
-    return client.rpc('use_chance', {
+    return rpcCall(client, 'use_chance', {
       p_serial: String(serial).trim(), p_code: String(code).trim(), p_job_code: String(jobCode).trim()
     })
       .then(function (res) {
@@ -607,7 +607,7 @@
      يُرجع الحمولة الكاملة للطباعة (الاسم والهاتف ورمزا الفرصتين) */
   function verifyCardCodeRpc(client, serial, code) {
     if (!serial || !code) return Promise.resolve({ ok: false, error: 'أدخل الباركود ورمز الفرصة' });
-    return client.rpc('verify_card_code', { p_serial: String(serial).trim(), p_code: String(code).trim() })
+    return rpcCall(client, 'verify_card_code', { p_serial: String(serial).trim(), p_code: String(code).trim() })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
@@ -623,6 +623,21 @@
   }
 
 
+  /* نداء RPC موحّد: PostgREST يحدّد مخطط الدالة بموجب Accept-Profile —
+     ومكتبة supabase-js ترسل في نداءات POST/rpc ترويسة Content-Profile وحدها
+     فيبقى البحث في public ويفشل بـ PGRST202 «Could not find the function
+     public.… in the schema cache» رغم وجود الدالة بسكيما brc. نضيف الترويسة
+     الناقصة قبل كل نداء (لا أثر إن سبق وجودها، ولا شيء ينكسر بعملاء بلا rest
+     كالعميل المصغّر HRCHttp الذي يرسلها من عنده). */
+  function rpcCall(client, name, args) {
+    try {
+      var sc = (root.HRCSupabaseConfig && root.HRCSupabaseConfig.schema) || 'brc';
+      if (client && client.rest && client.rest.headers && client.rest.headers.set)
+        client.rest.headers.set('Accept-Profile', sc);
+    } catch (e) { /* عميل وهمي بالاختبارات أو واجهة مختلفة — تجاهل */ }
+    return client.rpc(name, args);
+  }
+
   /* ========================================================================
    *  موديل 2026-10-01: بيع نقطة البيع + صفحة صاحب العمل (مسارات عامة)
    *  ---------------------------------------------------------------------- */
@@ -632,7 +647,7 @@
      المخزن المحلي كي تعمل الواجهة (booking) بالمسارين دون تفريق. */
   function activateCardRpc(client, serial, data) {
     if (!serial) return Promise.resolve({ ok: false, error: 'أدخل باركود البطاقة' });
-    return client.rpc('activate_card', {
+    return rpcCall(client, 'activate_card', {
       p_serial: String(serial).trim(),
       p_data: data || {}
     })
@@ -654,7 +669,7 @@
      ترجّع {ok, card} بنفس شكل employerView المحلية (بما فيها code للتوجيه). */
   function employerViewRpc(client, serial) {
     if (!serial) return Promise.resolve({ ok: false, code: 'not_found', error: 'أدخل باركود البطاقة' });
-    return client.rpc('employer_view', { p_serial: String(serial).trim() })
+    return rpcCall(client, 'employer_view', { p_serial: String(serial).trim() })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
@@ -672,7 +687,7 @@
   /* طلب صاحب العمل (توظيف/عدم توظيف) من صفحة الباركود — الوظيفة «جاري التوظيف» حتى قرار الشركة */
   function employerDecideRpc(client, serial, decision) {
     if (!serial || !decision) return Promise.resolve({ ok: false, error: 'وسائط ناقصة' });
-    return client.rpc('employer_decide', {
+    return rpcCall(client, 'employer_decide', {
       p_serial: String(serial).trim(), p_decision: String(decision).trim()
     })
       .then(function (res) {
