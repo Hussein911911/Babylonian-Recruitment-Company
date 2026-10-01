@@ -584,14 +584,85 @@ await wait(900);
 {
   const box = lastModal(pub2.doc);
   check('مسح باركود بطاقة فارغة يفتح «استمارة الزبون» لنقطة البيع',
-    !!box && /استمارة الزبون/.test(box.textContent) && !!box.querySelector('#bk-posName'));
-  setVal(pub2.w, box.querySelector('#bk-posName'), 'مكتب الرافدين — المحاويل');
-  setVal(pub2.w, box.querySelector('#bk-fullName'), 'سجاد حسن الموسوي');
-  setVal(pub2.w, box.querySelector('#bk-phone'), '07709876543');
-  setVal(pub2.w, box.querySelector('#bk-address'), 'المحاويل - المركز');
-  setVal(pub2.w, box.querySelector('#bk-job'), 'HRC-1046');
-  /* الخطوة الثانية (ج4): «التالي» ← شاشة مراجعة الزبون بلا أي بيانات صاحب عمل */
+    !!box && /استمارة الزبون|الخطوة 1 من 6/.test(box.textContent) && !!box.querySelector('#bk-posName'));
+  check('المعالج الخطوي: الخطوة الأولى تعرض معلومة واحدة فقط (نقطة البيع) وبلا بقية الحقول',
+    !!box.querySelector('#bk-posName') && !box.querySelector('#bk-fullName') &&
+    !box.querySelector('#bk-phone') && !box.querySelector('#bk-job') &&
+    /الخطوة 1 من 6/.test(box.textContent));
+  /* إلزامي الاسم: «التالي» بحقل فاضغ يوقف ويظهر الخطأ */
   click(pub2.w, box.querySelector('#bk-pos-next'));
+  await wait(150);
+  check('«التالي» بحقل إلزامي فاضغ يوقف مع رسالة خطأ واضحة',
+    pub2.w.HRCBooking.state().posStep === 1 &&
+    box.querySelector('[data-bk-err="posName"]').style.display !== 'none');
+  setVal(pub2.w, box.querySelector('#bk-posName'), 'مكتب الرافدين — المحاويل');
+  click(pub2.w, box.querySelector('#bk-pos-next'));
+  await wait(250);
+}
+{
+  const box = lastModal(pub2.doc);
+  check('خطوة 2: الاسم الكامل بمعلومة واحدة وزر «التالي»',
+    pub2.w.HRCBooking.state().posStep === 2 && !!box.querySelector('#bk-fullName') &&
+    !box.querySelector('#bk-phone') && /الخطوة 2 من 6/.test(box.textContent));
+  setVal(pub2.w, box.querySelector('#bk-fullName'), 'سجاد حسن الموسوي');
+  click(pub2.w, box.querySelector('#bk-pos-next'));
+  await wait(250);
+}
+{
+  const box = lastModal(pub2.doc);
+  check('خطوة 3: رقم الهاتف', pub2.w.HRCBooking.state().posStep === 3 && !!box.querySelector('#bk-phone'));
+  setVal(pub2.w, box.querySelector('#bk-phone'), '07709876543');
+  click(pub2.w, box.querySelector('#bk-pos-next'));
+  await wait(250);
+}
+{
+  const box = lastModal(pub2.doc);
+  check('خطوة 4: العنوان (اختياري — يمشي فاضغاً)', pub2.w.HRCBooking.state().posStep === 4 && !!box.querySelector('#bk-address'));
+  setVal(pub2.w, box.querySelector('#bk-address'), 'المحاويل - المركز');
+  click(pub2.w, box.querySelector('#bk-pos-next'));
+  await wait(250);
+}
+{
+  const box = lastModal(pub2.doc);
+  check('خطوة 5: الجنس وتاريخ الميلاد (اختيارية)', pub2.w.HRCBooking.state().posStep === 5 &&
+    !!box.querySelector('#bk-gender') && !!box.querySelector('#bk-dob'));
+  click(pub2.w, box.querySelector('#bk-pos-next'));
+  await wait(250);
+}
+{
+  const box = lastModal(pub2.doc);
+  check('خطوة 6: اختيار الوظيفة إلزامي قبل المراجعة', pub2.w.HRCBooking.state().posStep === 6 &&
+    !!box.querySelector('#bk-job') && !box.querySelector('#bk-fullName'));
+  click(pub2.w, box.querySelector('#bk-pos-next'));
+  await wait(150);
+  check('«التالي» بلا وظيفة مختارة يوقف مع خطأ', pub2.w.HRCBooking.state().posStep === 6 &&
+    box.querySelector('[data-bk-err="job"]').style.display !== 'none');
+  setVal(pub2.w, box.querySelector('#bk-job'), 'HRC-1046');
+  await wait(120);
+  check('ملخص الوظيفة يظهر تحت القائمة فورياً (الأجر والمنطقة والدوام)',
+    /باريستا/.test(box.querySelector('#bk-job-sum').textContent) &&
+    /الهاشمية/.test(box.querySelector('#bk-job-sum').textContent));
+  click(pub2.w, box.querySelector('#bk-pos-next'));
+  await wait(350);
+}
+{
+  /* رجوع من المراجعة → خطوة الوظيفة → رجوع خطوة خطوة → تقدم ثانية */
+  const box = lastModal(pub2.doc);
+  check('زر «رجوع للتعديل» يعيد لآخر خطوة (الوظيفة)', !!box.querySelector('#bk-pos-back'));
+  click(pub2.w, box.querySelector('#bk-pos-back'));
+  await wait(200);
+  check('الرجوع من المراجعة يفتح خطوة الوظيفة والاختيار محفوظ',
+    pub2.w.HRCBooking.state().view === 'posfill' &&
+    pub2.w.HRCBooking.state().posStep === 6 &&
+    lastModal(pub2.doc).querySelector('#bk-job').value === 'HRC-1046');
+  click(pub2.w, lastModal(pub2.doc).querySelector('#bk-pos-back'));
+  await wait(200);
+  check('«رجوع» داخل المعالج يرجع خطوة ويحفظ المسوّدة',
+    pub2.w.HRCBooking.state().posStep === 5 &&
+    lastModal(pub2.doc).querySelector('#bk-gender').value === 'ذكر');
+  click(pub2.w, lastModal(pub2.doc).querySelector('#bk-pos-next'));
+  await wait(200);
+  click(pub2.w, lastModal(pub2.doc).querySelector('#bk-pos-next'));
   await wait(350);
 }
 {

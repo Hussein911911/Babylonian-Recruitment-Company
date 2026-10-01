@@ -33,6 +33,8 @@
   var empDone = null;    // نتيجة قرار صاحب العمل
   var routeErr = '';     // خطأ توجيه مسح الباركود
   var posDraft = null;   // مسوّدة استمارة الزبون (قبل ضغطة «إتمام» من الزبون)
+  var posStep = 1;       // خطوة المعالج الحالية: كل معلومة بصفحة لحدها (1..6)
+  var POS_STEPS = 6;     // نقطة البيع · الاسم · الهاتف · العنوان · الجنس/الميلاد · الوظيفة
 
   /* ======================= أدوات ======================= */
   function esc(v) { return UI.esc(String(v == null ? '' : v)); }
@@ -58,9 +60,9 @@
       '</h4><p class="muted small mb-0">' + desc + '</p></div>';
   }
 
-  function fieldHtml(id, label, inner, hint) {
+  function fieldHtml(id, label, inner, hint, optional) {
     return '<div class="bk-field" data-bk-field="' + id + '">' +
-      '<label for="bk-' + id + '">' + esc(label) + ' <span class="bk-req">*</span></label>' +
+      '<label for="bk-' + id + '">' + esc(label) + (optional ? '' : ' <span class="bk-req">*</span>') + '</label>' +
       inner +
       (hint ? '<span class="bk-hint">' + esc(hint) + '</span>' : '') +
       '<span class="bk-err" data-bk-err="' + id + '">' + UI.ic('alert') + '<span></span></span>' +
@@ -263,76 +265,108 @@
    * واختيار الوظيفة (إلزامي) — ثم تُطبع استمارة A4 بنفس الباركود.
    * ==================================================================== */
   function renderPosFill(host) {
-    var jobs = availableJobs();
-    var posNames = [];
-    try { posNames = Store.listPosNames() || []; } catch (e) { posNames = []; }
-    var posList = '<datalist id="bk-posnames">' +
-      posNames.map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join('') + '</datalist>';
-    var jobSel = jobs.length
-      ? fieldHtml('job', 'الوظيفة التي يقدم عليها الزبون <span class="chip chip-warn tiny">إلزامي</span>',
-          selectHtml('job', jobs.map(function (j) {
+    var jobs = availableJobs(), posNames = [], d = posDraft || {}, lastPos = '';
+    try { posNames = Store.listPosNames() || []; } catch (e) { }
+    try { lastPos = localStorage.getItem('hrc_last_pos') || ''; } catch (e) { }
+    var BIG = 'style="font-size:18px;padding:12px 14px"';
+    var LTR = 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;font-size:18px;padding:12px 14px" inputmode="tel"';
+    var opt = '<div class="bk-info">' + UI.ic('check') + ' اضغط «التالي» حتى لو تركتها فاضية.</div>';
+    /* رأس الخطوة + شريط التقدم (خطوة من ست) */
+    var head = function (t, sub, ic) {
+      var dots = '';
+      for (var i = 1; i <= POS_STEPS; i++)
+        dots += '<span style="flex:1;height:7px;border-radius:7px;background:' +
+          (i < posStep ? '#3ec1a0' : i === posStep ? '#c8a24a' : '#e4e7ee') + '"></span>';
+      return stepHead('الخطوة ' + posStep + ' من ' + POS_STEPS + ' — ' + t, sub, ic) +
+        '<div style="display:flex;gap:5px;margin:0 0 14px">' + dots + '</div>';
+    };
+    var body = '', focus = null;
+
+    if (posStep === 1) body = head('اسم نقطة البيع', 'يعبّيها موظف النقطة قبل تسليم الجهاز للزبون.', 'card') +
+        '<div class="bk-info">' + UI.ic('alert') + ' <b>لنقطة البيع فقط:</b> البيع كاش فقط — حسب تعرفة الشركة.</div>' +
+        '<datalist id="bk-posnames">' + posNames.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>' +
+        fieldHtml('posName', 'اسم نقطة البيع', inputHtml('posName', 'text', 'مثال: مكتب النور للاستنساخ', d.posName || lastPos, 'list="bk-posnames" ' + BIG),
+          'يُطبع على الاستمارة ويُسجَّل لدى الشركة.'), focus = 'bk-posName';
+    else if (posStep === 2) body = head('الاسم الكامل', 'اسمك يُطبع على استمارة التوظيف.', 'user') +
+        fieldHtml('fullName', 'الاسم الكامل للزبون', inputHtml('fullName', 'text', 'الاسم الرباعي', d.fullName || '', BIG),
+          'كما في هوية الأحوال المدنية.'), focus = 'bk-fullName';
+    else if (posStep === 3) body = head('رقم الهاتف', 'عليه تواصل الشركة معك — اكتبه بدقة.', 'phone') +
+        fieldHtml('phone', 'رقم هاتف الزبون', inputHtml('phone', 'tel', '07XXXXXXXXX', d.phone || '', LTR),
+          'تأكد منه مرتين قبل التالي.'), focus = 'bk-phone';
+    else if (posStep === 4) body = head('العنوان', 'معلومات إضافية — تخليها فاضغة إذا ما تعرف.', 'pin') +
+        fieldHtml('address', 'العنوان (اختياري)', inputHtml('address', 'text', 'المحافظة — القضاء — المحلة', d.address || '', BIG),
+          'يساعد بترشيح وظائف قريبة منك.', true) + opt, focus = 'bk-address';
+    else if (posStep === 5) body = head('الجنس وتاريخ الميلاد', 'معلومات إضافية — تساعد بترشيح ما يناسبك.', 'calendar') +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">' +
+        fieldHtml('gender', 'الجنس', selectHtml('gender', [{ v: 'ذكر', t: 'ذكر' }, { v: 'أنثى', t: 'أنثى' }], d.gender || 'ذكر'), null, true) +
+        fieldHtml('dob', 'تاريخ الميلاد (اختياري)', inputHtml('dob', 'date', '', d.dob || '', 'dir="ltr"'), null, true) +
+        '</div>' + opt, focus = 'bk-gender';
+    else body = head('اختيار الوظيفة', 'آخر معلومة — بعدها تراجع بياناتك وتضغط «إتمام».', 'briefcase') +
+      (jobs.length
+        ? fieldHtml('job', 'اختر وظيفتك', selectHtml('job', jobs.map(function (j) {
             return { v: j.code, t: j.code + ' — ' + j.title + ' (' + j.region + ')' };
-          }), '', 'اختر وظيفة من المتاحة…'),
+          }), d.jobCode || '', 'اختر وظيفة من المتاحة…'),
           'اختيار الوظيفة يستهلك الفرصة الأولى بحجز 24 ساعة بانتظار قرار صاحب العمل.')
-      : infoBox('alert', '<b>لا توجد وظائف متاحة حالياً</b> — يمكن تفعيل البطاقة الآن واختيار الوظيفة لاحقاً من «بطاقتي» برمز الفرصة.');
-    host.innerHTML = stepHead('بيع البطاقة — استمارة الزبون',
-        'امسحتَ باركود بطاقة فارغة: عبّي بيانات الزبون واختر الوظيفة، ثم اطبع استمارة التوظيف A4 بنفس الباركود.', 'card') +
-      '<div class="bk-info">' + UI.ic('alert') +
-        ' <b>لنقطة البيع فقط:</b> هذه الشاشة تظهر لأن البطاقة لم تُبع بعد. بيع البطاقات كاش فقط ' +
-        '(لا ماستر كارد / فيزا) — السعر حسب تعرفة الشركة.</div>' +
-      posList +
-      fieldHtml('posName', 'اسم نقطة البيع <span class="chip chip-warn tiny">إلزامي</span>',
-        inputHtml('posName', 'text', 'مثال: مكتب النور للاستنساخ', '', 'list="bk-posnames"'),
-        'يُطبع على استمارة الزبون ويُسجَّل بسجل الشركة.') +
-      fieldHtml('fullName', 'الاسم الكامل للزبون <span class="chip chip-warn tiny">إلزامي</span>',
-        inputHtml('fullName', 'text', 'الاسم الرباعي', '')) +
-      fieldHtml('phone', 'رقم هاتف الزبون <span class="chip chip-warn tiny">إلزامي</span>',
-        inputHtml('phone', 'tel', '07XXXXXXXXX', '', 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700" inputmode="tel"')) +
-      fieldHtml('address', 'العنوان (اختياري)',
-        inputHtml('address', 'text', 'المحافظة — القضاء — المحلة', '')) +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">' +
-        fieldHtml('gender', 'الجنس',
-          selectHtml('gender', [{ v: 'ذكر', t: 'ذكر' }, { v: 'أنثى', t: 'أنثى' }], 'ذكر')) +
-        fieldHtml('dob', 'تاريخ الميلاد (اختياري)',
-          inputHtml('dob', 'date', '', '', 'dir="ltr" style="direction:ltr"')) +
-      '</div>' +
-      jobSel +
-      btnRow(
-        '<button class="btn btn-gold" id="bk-pos-next">' + UI.ic('arrow-left') + ' التالي — مراجعة الزبون</button>' +
-        '<button class="btn btn-ghost" id="bk-pos-cancel">' + UI.ic('arrow-right') + ' إلغاء</button>');
+        : infoBox('alert', '<b>لا توجد وظائف متاحة حالياً</b> — تعذر إتمام البيع من هنا. راجع الشركة.')) +
+      '<div id="bk-job-sum" style="margin-top:10px">' + jobSummaryHtml(d.jobCode) + '</div>', focus = 'bk-job';
+
+    host.innerHTML = body + btnRow(
+      '<button class="btn btn-gold" id="bk-pos-next" style="padding:14px 26px;font-size:17px">' + UI.ic('arrow-left') +
+        (posStep >= POS_STEPS ? ' التالي — مراجعة بياناتي' : ' التالي') + '</button>' +
+      (posStep > 1 ? '<button class="btn btn-ghost" id="bk-pos-back">' + UI.ic('arrow-right') + ' رجوع</button>' : '') +
+      '<button class="btn btn-ghost" id="bk-pos-cancel">' + UI.ic('x') + ' إلغاء</button>');
     var b;
-    var ids = ['posName', 'fullName', 'phone', 'address', 'gender', 'dob', 'job'];
-    ids.forEach(function (id) {
+    ['posName', 'fullName', 'phone', 'address', 'gender', 'dob', 'job'].forEach(function (id) {
       var el = document.getElementById('bk-' + id);
       if (el) el.addEventListener('input', function () { setErr(id, ''); });
       if (el) el.addEventListener('change', function () { setErr(id, ''); });
     });
-    if ((b = document.getElementById('bk-pos-next'))) b.addEventListener('click', toPosReview);
+    if ((b = document.getElementById('bk-pos-next'))) b.addEventListener('click', posNext);
+    if ((b = document.getElementById('bk-pos-back'))) b.addEventListener('click', posBack);
     if ((b = document.getElementById('bk-pos-cancel'))) b.addEventListener('click', close);
-    /* استرجاع المسوّدة عند الرجوع للتعديل */
-    if (posDraft) {
-      ['posName', 'fullName', 'phone', 'address', 'gender', 'dob', 'job'].forEach(function (id) {
-        var el = document.getElementById('bk-' + id);
-        if (el && posDraft[id] != null && posDraft[id] !== '') el.value = posDraft[id];
-      });
-    }
-    setTimeout(function () { try { var f = document.getElementById('bk-posName'); if (f) f.focus(); } catch (e) { } }, 60);
+    if ((b = document.getElementById('bk-job'))) b.addEventListener('change', function () {
+      var sum = document.getElementById('bk-job-sum');
+      if (sum) sum.innerHTML = jobSummaryHtml(b.value);
+    });
+    if (focus) setTimeout(function () {
+      try { var f = document.getElementById(focus); if (f) { f.focus(); if (f.select) f.select(); } } catch (e) { }
+    }, 60);
   }
 
-  /* من الشاشة الأولى: تحقق + حفظ مسوّدة ← شاشة مراجعة الزبون (ج4 2026-10-01:
-     بيانات صاحب العمل لا تظهر إلا بعد أن يضغط الزبون «إتمام» بنفسه). */
-  function toPosReview() {
+  /* ملخص الوظيفة المختارة تحت القائمة — واضح للزبون قبل ما يمشي */
+  function jobSummaryHtml(code) {
+    var j = null;
+    try { j = Store.getJob(String(code || '').trim().toUpperCase()); } catch (e) { }
+    if (!j) return '';
+    return '<div style="border:1px solid #dfe4ec;border-radius:12px;padding:12px 14px;line-height:2.1">' +
+      '<b>' + esc(j.title) + '</b> <span class="mono tiny" dir="ltr">(' + esc(j.code) + ')</span><br>' +
+      'المنطقة: <b>' + esc(j.region) + '</b> · الأجر: <b>' + esc(Store.money(j.salaryMin)) + ' – ' + esc(Store.money(j.salaryMax)) +
+      '</b> · الدوام: <b>' + esc(j.shift) + '</b></div>';
+  }
+
+  function posBack() { if (posStep > 1) { posStep--; render(); } }
+
+  /* «التالي»: تحقق من معلومة الخطوة الحالية فقط ثم حفظها والمضي —
+     كل معلومة بصفحة (2026-10-01)، والمراجعة النهائية بيد الزبون نفسه. */
+  function posNext() {
     var g = function (id) { var el = document.getElementById('bk-' + id); return el ? String(el.value || '').trim() : ''; };
-    var d = {
-      posName: g('posName'), fullName: g('fullName'), phone: g('phone'),
-      address: g('address'), gender: g('gender'), dob: g('dob'), jobCode: g('job')
-    };
-    if (!d.posName) { setErr('posName', 'اسم نقطة البيع مطلوب — كما هو معتمد لدى الشركة.'); return; }
-    if (!d.fullName) { setErr('fullName', 'اسم الزبون مطلوب.'); return; }
-    if (!d.phone) { setErr('phone', 'هاتف الزبون مطلوب.'); return; }
-    if (!d.jobCode) { setErr('job', 'اختيار الوظيفة إلزامي — إن لم توجد وظائف متاحة لا يمكن إتمام البيع من هنا.'); return; }
+    var d = posDraft || {};
+    var f = ({ 1: 'posName', 2: 'fullName', 3: 'phone', 4: 'address', 6: 'jobCode' })[posStep];
+    if (f) {
+      var v = g(f === 'jobCode' ? 'job' : f);
+      d[f] = v;
+      if (f !== 'address' && !v) {
+        setErr(f === 'jobCode' ? 'job' : f, ({ posName: 'اسم نقطة البيع مطلوب — كما هو معتمد لدى الشركة.',
+          fullName: 'الاسم الكامل مطلوب.', phone: 'رقم الهاتف مطلوب.',
+          jobCode: 'اختيار الوظيفة إلزامي — إن لم توجد وظائف متاحة لا يمكن إتمام البيع من هنا.' })[f]);
+        return;
+      }
+    }
+    if (posStep === 1) { try { localStorage.setItem('hrc_last_pos', d.posName); } catch (e) { } }
+    else if (posStep === 5) { d.gender = g('gender') || 'ذكر'; d.dob = g('dob'); }
     posDraft = d;
-    view = 'posreview'; render();
+    if (posStep >= POS_STEPS) { view = 'posreview'; render(); return; }
+    posStep++; render();
   }
 
   /* شاشة المراجعة: بيانات الزبون والوظيفة فقط — بلا أي بيانات صاحب العمل */
@@ -367,10 +401,12 @@
         ' بإتمامك: تُحجز الوظيفة <b>24 ساعة</b> بانتظار قرار صاحب العمل والشركة، وتُستهلك الفرصة الأولى بالتقديم (لا تعود بأي نتيجة).</div>' +
       btnRow(
         '<button class="btn btn-gold" id="bk-pos-confirm" style="padding:14px 26px;font-size:16px">' + UI.ic('check') + ' إتمام</button>' +
-        '<button class="btn btn-ghost" id="bk-pos-back">' + UI.ic('arrow-right') + ' رجوع للتعديل</button>');
+        '<button class="btn btn-ghost" id="bk-pos-back">' + UI.ic('arrow-right') + ' رجوع للتعديل</button>') +
+      '<div class="bk-info" style="margin-top:10px">' + UI.ic('edit') +
+        ' في خطأ؟ «رجوع للتعديل» ثم «رجوع» خطوة خطوة حتى تصحّح.</div>';
     var b;
     if ((b = document.getElementById('bk-pos-confirm'))) b.addEventListener('click', doPosFill);
-    if ((b = document.getElementById('bk-pos-back'))) b.addEventListener('click', function () { view = 'posfill'; render(); });
+    if ((b = document.getElementById('bk-pos-back'))) b.addEventListener('click', function () { view = 'posfill'; posStep = POS_STEPS; render(); });
   }
 
   function doPosFill() {
@@ -378,7 +414,7 @@
     var fullName = d.fullName, phone = d.phone, posName = d.posName;
     var jobCode = d.jobCode;
     if (!posName || !fullName || !phone || !jobCode) {
-      view = 'posfill'; render();
+      view = 'posfill'; posStep = POS_STEPS; render();
       UI.toast('err', 'بيانات ناقصة', 'أكمل بيانات الاستمارة أولاً.');
       return;
     }
@@ -395,7 +431,7 @@
         busy = false;
         if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('check') + ' إتمام'; }
         UI.toast('err', 'تعذّر إتمام البيع', (r && r.error) || 'حاول مرة أخرى');
-        view = 'posfill'; render();
+        view = 'posfill'; posStep = POS_STEPS; render();
         return;
       }
       posDraft = null;
@@ -775,7 +811,7 @@
     opts = opts || {};
     if (m) { try { m.close(); } catch (e) { } m = null; }
     card = null; doneInfo = null; busy = false;
-    emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null;
+    emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1;
     view = 'entry';
     serial = String(opts.serial || '').trim().toUpperCase();
     m = UI.modal({
@@ -792,7 +828,7 @@
 
   function close() {
     if (m) { try { m.close(); } catch (e) { } m = null; }
-    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null;
+    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1;
     view = 'entry';
   }
 
@@ -823,7 +859,7 @@
     /* الحالة الحالية للنافذة — للاختبارات والتشخيص */
     state: function () {
       return {
-        view: view, serial: serial,
+        view: view, serial: serial, posStep: posStep,
         card: card ? JSON.parse(JSON.stringify(card)) : null,
         emp: emp ? JSON.parse(JSON.stringify(emp)) : null
       };
