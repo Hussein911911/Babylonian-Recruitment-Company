@@ -631,15 +631,31 @@ await wait(900);
 }
 {
   const box = lastModal(pub2.doc);
-  check('خطوة 6: اختيار الوظيفة إلزامي قبل المراجعة', pub2.w.HRCBooking.state().posStep === 6 &&
-    !!box.querySelector('#bk-job') && !box.querySelector('#bk-fullName'));
+  check('خطوة 6: متصفح وظائف ببطاقات وفلاتر (بحث + منطقة + دوام) — بلا قائمة منسدلة',
+    pub2.w.HRCBooking.state().posStep === 6 && !!box.querySelector('#bk-jlist') &&
+    !!box.querySelector('#bk-jq') && !!box.querySelector('#bk-jr') && !!box.querySelector('#bk-js') &&
+    box.querySelectorAll('[data-bk-pick]').length >= 3 && !box.querySelector('#bk-fullName'));
+  check('بطاقات الوظائف المتاحة تعرض العنوان والكود والمنطقة والأجر — بلا بيانات صاحب عمل',
+    (() => { const c = box.querySelector('[data-bk-pick]'); const t = c.textContent;
+      return /HRC-10\d\d/.test(c.getAttribute('data-bk-pick')) && /\d{3}.\d{3}/.test(t) && !t.includes('07701234567'); })());
   click(pub2.w, box.querySelector('#bk-pos-next'));
   await wait(150);
   check('«التالي» بلا وظيفة مختارة يوقف مع خطأ', pub2.w.HRCBooking.state().posStep === 6 &&
     box.querySelector('[data-bk-err="job"]').style.display !== 'none');
-  setVal(pub2.w, box.querySelector('#bk-job'), 'HRC-1046');
-  await wait(120);
-  check('ملخص الوظيفة يظهر تحت القائمة فورياً (الأجر والمنطقة والدوام)',
+  /* الفلترة الحية: البحث يقصّر القائمة فورياً */
+  setVal(pub2.w, box.querySelector('#bk-jq'), 'باريستا');
+  await wait(200);
+  check('البحث يفلتر البطاقات فورياً (باريستا وحدها)',
+    box.querySelectorAll('[data-bk-pick]').length === 1 &&
+    !!box.querySelector('[data-bk-pick="HRC-1046"]'));
+  setVal(pub2.w, box.querySelector('#bk-jq'), '');
+  await wait(200);
+  check('تصفير البحث يعيد كل الوظائف المتاحة', box.querySelectorAll('[data-bk-pick]').length >= 3);
+  /* الاختيار بالضغط على البطاقة */
+  click(pub2.w, box.querySelector('[data-bk-pick="HRC-1046"]'));
+  await wait(200);
+  check('اختيار البطاقة يميزها بالذهبي مع ملخص فوري (الأجر والمنطقة والدوام)',
+    box.querySelector('[data-bk-pick="HRC-1046"]').classList.contains('is-picked') &&
     /باريستا/.test(box.querySelector('#bk-job-sum').textContent) &&
     /الهاشمية/.test(box.querySelector('#bk-job-sum').textContent));
   click(pub2.w, box.querySelector('#bk-pos-next'));
@@ -651,10 +667,10 @@ await wait(900);
   check('زر «رجوع للتعديل» يعيد لآخر خطوة (الوظيفة)', !!box.querySelector('#bk-pos-back'));
   click(pub2.w, box.querySelector('#bk-pos-back'));
   await wait(200);
-  check('الرجوع من المراجعة يفتح خطوة الوظيفة والاختيار محفوظ',
+  check('الرجوع من المراجعة يفتح متصفح الوظائف والاختيار محفوظ (بطاقة مميزة)',
     pub2.w.HRCBooking.state().view === 'posfill' &&
     pub2.w.HRCBooking.state().posStep === 6 &&
-    lastModal(pub2.doc).querySelector('#bk-job').value === 'HRC-1046');
+    lastModal(pub2.doc).querySelector('[data-bk-pick="HRC-1046"]').classList.contains('is-picked'));
   click(pub2.w, lastModal(pub2.doc).querySelector('#bk-pos-back'));
   await wait(200);
   check('«رجوع» داخل المعالج يرجع خطوة ويحفظ المسوّدة',

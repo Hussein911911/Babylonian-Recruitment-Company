@@ -1107,6 +1107,17 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .bk-stephead h4 { margin: 0 0 4px; font-size: 1.12rem; color: var(--lapis); }
 .bk-stephead h4 svg { color: var(--gold-3); }
 .bk-step { animation: bkFade .26s ease-out; }
+
+/* بطاقة وظيفة قابلة للاختيار — خطوة «اختيار الوظيفة» باستمارة الزبون
+   (تصفح الوظائف المتاحة بفلاتر مثل قسم الوظائف بالموقع) */
+.bk-pick { display: block; width: 100%; text-align: right; background: #fff;
+  border: 1.5px solid #dfe4ec; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+  cursor: pointer; font: inherit; color: inherit; transition: border-color .15s, background .15s; }
+.bk-pick:hover { border-color: #c8a24a; }
+.bk-pick.is-picked { border-color: #c8a24a; background: #fdf9ee; box-shadow: inset 0 0 0 1px #c8a24a; }
+.bk-pick-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.bk-pick-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; color: #5b6472; font-size: 12.5px; }
+.bk-pick-meta svg { width: 13px; height: 13px; vertical-align: -2px; }
 @keyframes bkFade { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
 
 /* الحقول */

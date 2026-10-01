@@ -35,6 +35,7 @@
   var posDraft = null;   // مسوّدة استمارة الزبون (قبل ضغطة «إتمام» من الزبون)
   var posStep = 1;       // خطوة المعالج الحالية: كل معلومة بصفحة لحدها (1..6)
   var POS_STEPS = 6;     // نقطة البيع · الاسم · الهاتف · العنوان · الجنس/الميلاد · الوظيفة
+  var jobF = { q: '', region: '', shift: '' };   // فلاتر متصفح الوظائف (الخطوة 6)
 
   /* ======================= أدوات ======================= */
   function esc(v) { return UI.esc(String(v == null ? '' : v)); }
@@ -301,14 +302,9 @@
         fieldHtml('gender', 'الجنس', selectHtml('gender', [{ v: 'ذكر', t: 'ذكر' }, { v: 'أنثى', t: 'أنثى' }], d.gender || 'ذكر'), null, true) +
         fieldHtml('dob', 'تاريخ الميلاد (اختياري)', inputHtml('dob', 'date', '', d.dob || '', 'dir="ltr"'), null, true) +
         '</div>' + opt, focus = 'bk-gender';
-    else body = head('اختيار الوظيفة', 'آخر معلومة — بعدها تراجع بياناتك وتضغط «إتمام».', 'briefcase') +
-      (jobs.length
-        ? fieldHtml('job', 'اختر وظيفتك', selectHtml('job', jobs.map(function (j) {
-            return { v: j.code, t: j.code + ' — ' + j.title + ' (' + j.region + ')' };
-          }), d.jobCode || '', 'اختر وظيفة من المتاحة…'),
-          'اختيار الوظيفة يستهلك الفرصة الأولى بحجز 24 ساعة بانتظار قرار صاحب العمل.')
-        : infoBox('alert', '<b>لا توجد وظائف متاحة حالياً</b> — تعذر إتمام البيع من هنا. راجع الشركة.')) +
-      '<div id="bk-job-sum" style="margin-top:10px">' + jobSummaryHtml(d.jobCode) + '</div>', focus = 'bk-job';
+    else body = head('اختيار الوظيفة', 'تصفّح الوظائف المتاحة واختر بطاقتك — ثم راجع واضغط «إتمام».', 'briefcase') +
+      (jobs.length ? jobPickerHtml(jobs, d) :
+        infoBox('alert', '<b>لا توجد وظائف متاحة حالياً</b> — تعذر إتمام البيع من هنا. راجع الشركة.'));
 
     host.innerHTML = body + btnRow(
       '<button class="btn btn-gold" id="bk-pos-next" style="padding:14px 26px;font-size:17px">' + UI.ic('arrow-left') +
@@ -324,13 +320,81 @@
     if ((b = document.getElementById('bk-pos-next'))) b.addEventListener('click', posNext);
     if ((b = document.getElementById('bk-pos-back'))) b.addEventListener('click', posBack);
     if ((b = document.getElementById('bk-pos-cancel'))) b.addEventListener('click', close);
-    if ((b = document.getElementById('bk-job'))) b.addEventListener('change', function () {
-      var sum = document.getElementById('bk-job-sum');
-      if (sum) sum.innerHTML = jobSummaryHtml(b.value);
-    });
+    if (posStep === POS_STEPS && jobs.length) bindJobPicker(jobs);
     if (focus) setTimeout(function () {
       try { var f = document.getElementById(focus); if (f) { f.focus(); if (f.select) f.select(); } } catch (e) { }
     }, 60);
+  }
+
+  /* ===== متصفح الوظائف (الخطوة 6): بطاقات متاحة بفلاتر بحث/منطقة/دوام —
+     مثل قسم الوظائف بالموقع — والزبون يضغط البطاقة ليختارها. تُعرض الحقول
+     العامة فقط: بلا أي بيانات لصاحب العمل قبل ضغطته «إتمام». ===== */
+  function jobPickerHtml(jobs, d) {
+    var regions = [], shifts = [];
+    jobs.forEach(function (j) {
+      if (regions.indexOf(j.region) < 0) regions.push(j.region);
+      if (shifts.indexOf(j.shift) < 0) shifts.push(j.shift);
+    });
+    var sel = function (id, list, cur, allLabel) {
+      return '<select id="' + id + '" style="font-size:13.5px;padding:9px 10px">' +
+        '<option value="">' + allLabel + '</option>' +
+        list.map(function (v) { return '<option' + (v === cur ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') + '</select>';
+    };
+    return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">' +
+        '<input id="bk-jq" type="search" placeholder="ابحث: عنوان الوظيفة أو كودها…" value="' + esc(jobF.q) + '" style="grid-column:1/-1;font-size:14.5px;padding:10px 12px">' +
+        sel('bk-jr', regions, jobF.region, 'كل المناطق') + sel('bk-js', shifts, jobF.shift, 'كل الدوامات') +
+      '</div>' +
+      '<div class="tiny muted" style="margin-bottom:8px">الوظائف المتاحة: <b id="bk-jcount"></b> — اضغط البطاقة لاختيارها</div>' +
+      '<div id="bk-jlist" style="max-height:44vh;overflow:auto;padding-left:2px"></div>' +
+      '<span class="bk-err" data-bk-err="job" style="margin-top:10px">' + UI.ic('alert') + '<span></span></span>' +
+      '<div id="bk-job-sum" style="margin-top:10px">' + jobSummaryHtml(d.jobCode) + '</div>';
+  }
+
+  function jobCardHtml(j, picked) {
+    return '<button type="button" class="bk-pick' + (picked ? ' is-picked' : '') + '" data-bk-pick="' + esc(j.code) + '">' +
+      '<div class="bk-pick-top"><b>' + esc(j.title) + '</b> <span class="mono tiny" dir="ltr">' + esc(j.code) + '</span></div>' +
+      '<div class="bk-pick-meta">' +
+        '<span>' + UI.ic('pin') + ' ' + esc(j.region) + '</span>' +
+        '<span>' + UI.ic('money') + ' ' + esc(Store.money(j.salaryMin)) + ' – ' + esc(Store.money(j.salaryMax)) + '</span>' +
+        '<span>' + UI.ic('clock') + ' ' + esc(j.shift) + '</span>' +
+        (j.gender && j.gender !== 'لا فرق' ? '<span>' + UI.ic('users') + ' ' + esc(j.gender) + '</span>' : '') +
+      '</div>' +
+      '<div class="tiny" style="margin-top:6px;font-weight:700;color:' + (picked ? '#1d7a5f' : '#986a1d') + '">' +
+        (picked ? UI.ic('check') + ' مختارة — اضغط «التالي»' : 'اضغط للاختيار') + '</div></button>';
+  }
+
+  function bindJobPicker(jobs) {
+    var paint = function () {
+      var q = String(jobF.q || '').trim();
+      var list = jobs.filter(function (j) {
+        return (!q || j.title.indexOf(q) > -1 || j.code.indexOf(q.toUpperCase()) > -1) &&
+          (!jobF.region || j.region === jobF.region) && (!jobF.shift || j.shift === jobF.shift);
+      });
+      var host = document.getElementById('bk-jlist');
+      if (!host) return;
+      host.innerHTML = list.length
+        ? list.map(function (j) { return jobCardHtml(j, !!(posDraft && posDraft.jobCode === j.code)); }).join('')
+        : '<div class="bk-info">لا توجد وظائف مطابقة — غيّر البحث أو التصفية.</div>';
+      var c = document.getElementById('bk-jcount');
+      if (c) c.textContent = list.length;
+      var picks = host.querySelectorAll('[data-bk-pick]');
+      for (var i = 0; i < picks.length; i++) picks[i].addEventListener('click', function () {
+        var code = this.getAttribute('data-bk-pick');
+        if (!posDraft) posDraft = {};
+        posDraft.jobCode = code;
+        setErr('job', '');
+        paint();   /* يعاد رسم القائمة فقط — الفلاتر تبقى بمكانها */
+        var sum = document.getElementById('bk-job-sum');
+        if (sum) sum.innerHTML = jobSummaryHtml(code);
+      });
+    };
+    var q = document.getElementById('bk-jq');
+    if (q) q.addEventListener('input', function () { jobF.q = q.value; paint(); });
+    var r = document.getElementById('bk-jr');
+    if (r) r.addEventListener('change', function () { jobF.region = r.value; paint(); });
+    var sh = document.getElementById('bk-js');
+    if (sh) sh.addEventListener('change', function () { jobF.shift = sh.value; paint(); });
+    paint();
   }
 
   /* ملخص الوظيفة المختارة تحت القائمة — واضح للزبون قبل ما يمشي */
@@ -351,14 +415,18 @@
   function posNext() {
     var g = function (id) { var el = document.getElementById('bk-' + id); return el ? String(el.value || '').trim() : ''; };
     var d = posDraft || {};
-    var f = ({ 1: 'posName', 2: 'fullName', 3: 'phone', 4: 'address', 6: 'jobCode' })[posStep];
+    var f = ({ 1: 'posName', 2: 'fullName', 3: 'phone', 4: 'address' })[posStep];
     if (f) {
-      var v = g(f === 'jobCode' ? 'job' : f);
-      d[f] = v;
-      if (f !== 'address' && !v) {
-        setErr(f === 'jobCode' ? 'job' : f, ({ posName: 'اسم نقطة البيع مطلوب — كما هو معتمد لدى الشركة.',
-          fullName: 'الاسم الكامل مطلوب.', phone: 'رقم الهاتف مطلوب.',
-          jobCode: 'اختيار الوظيفة إلزامي — إن لم توجد وظائف متاحة لا يمكن إتمام البيع من هنا.' })[f]);
+      d[f] = g(f);
+      if (f !== 'address' && !d[f]) {
+        setErr(f, ({ posName: 'اسم نقطة البيع مطلوب — كما هو معتمد لدى الشركة.',
+          fullName: 'الاسم الكامل مطلوب.', phone: 'رقم الهاتف مطلوب.' })[f]);
+        return;
+      }
+    } else if (posStep === POS_STEPS) {
+      /* الوظيفة تُختار بالضغط على بطاقتها بمتصفح الوظائف — لا بحقل إدخال */
+      if (!d.jobCode) {
+        setErr('job', 'اختيار الوظيفة إلزامي — إن لم توجد وظائف متاحة لا يمكن إتمام البيع من هنا.');
         return;
       }
     }
@@ -811,7 +879,7 @@
     opts = opts || {};
     if (m) { try { m.close(); } catch (e) { } m = null; }
     card = null; doneInfo = null; busy = false;
-    emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1;
+    emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' };
     view = 'entry';
     serial = String(opts.serial || '').trim().toUpperCase();
     m = UI.modal({
@@ -828,7 +896,7 @@
 
   function close() {
     if (m) { try { m.close(); } catch (e) { } m = null; }
-    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1;
+    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' };
     view = 'entry';
   }
 
