@@ -523,6 +523,9 @@ const D2 = dash2.w.HRCStore;
 D2.importJson(DB2B);
 dash2.w.HRCRefresh && dash2.w.HRCRefresh();
 await wait(250);
+check('زر «إضافة بطاقة» ظاهر للموظف أيضاً (الدفعات للإدارة وحدها)',
+  !dash2.doc.getElementById('btn-new-card').classList.contains('hidden') &&
+  dash2.doc.getElementById('btn-new-batch').classList.contains('hidden'));
 
 /* تقديم ساعة حجز وظيفة نقطة البيع (الفرصة الأولى) للماضي ثم تشغيل الصيانة */
 D2.db().jobs.forEach(function (j) { if (j.code === 'HRC-1043') j.holdExpiresAt = new Date(Date.now() - 3600000).toISOString(); });
