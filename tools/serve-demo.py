@@ -74,6 +74,40 @@ RESET_JS = """(function () {
 """
 
 
+def db_update_page():
+    """صفحة نسخ ملف تحديث القاعدة بضغطة واحدة (زر للمعاينة فقط)."""
+    with open(os.path.join(ROOT, 'docs', 'UPDATE-2026-10-02.sql'), encoding='utf-8') as f:
+        sql = f.read()
+    esc = sql.replace('&', '&amp;').replace('<', '&lt;')
+    return ("""<!doctype html><html dir="rtl" lang="ar"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تحديث قاعدة بيانات Supabase — نسخ بضغطة</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#f5f7fb;margin:0;padding:18px}
+.card{max-width:880px;margin:auto;background:#fff;border:1px solid #dfe4ec;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(16,27,52,.06)}
+h3{margin:0 0 10px;color:#101b34}
+ol{margin:8px 0 14px;padding-inline-start:22px;color:#37435c;font-size:15px;line-height:2}
+button{font:700 17px system-ui;padding:15px 22px;border-radius:12px;border:0;background:linear-gradient(135deg,#c8a24a,#a9852f);color:#fff;width:100%;cursor:pointer}
+button:active{transform:scale(.98)}
+.ok{color:#1f8f96;font-weight:800;margin-top:12px;text-align:center;display:none;font-size:16px}
+textarea{width:100%;height:36vh;margin-top:14px;font:11px/1.45 monospace;direction:ltr;border:1px solid #dfe4ec;border-radius:10px;padding:10px;box-sizing:border-box;background:#fafbfe;color:#37435c}
+.tiny{color:#7a869c;font-size:12.5px;margin-top:10px;line-height:1.8}
+</style></head><body><div class="card">
+<h3>🗄️ تحديث قاعدة بيانات Supabase (2026-10-02)</h3>
+<ol>
+<li>اضغط الزر تحت — ينسخ ملف SQL كاملاً للحافظة</li>
+<li>افتح <b>supabase.com</b> → مشروعك → من القائمة: <b>SQL Editor</b> → <b>New query</b></li>
+<li>ضغط مطول بمربع الكود → <b>لصق</b> → اضغط <b>Run</b></li>
+<li>النجاح: رسالة خضراء <b dir="ltr">Success. No rows returned</b></li>
+</ol>
+<button onclick="navigator.clipboard.writeText(document.getElementById('sql').value).then(function(){document.getElementById('ok').style.display='block'}).catch(function(){document.getElementById('sql').select()})">📋 انسخ ملف SQL كاملاً بضغطة</button>
+<div class="ok" id="ok">✅ اننسخ — الحين الصقه بمحرر SQL عند Supabase واضغط Run</div>
+<textarea id="sql" readonly onfocus="this.select()">""" + esc + """</textarea>
+<p class="tiny">آمن للإعادة أي عدد من المرات · لا يحذف جدولاً ولا يمس بيانات الزبائن · كل جملة إما «إن لم تكن موجودة» أو «استبدل إن وجدت». إذا ظهر خطأ أحمر بمحرر SQL صوّره وابعثه — لا شيء ينكسر.</p>
+</div></body></html>""")
+
+
+
 class DemoHandler(http.server.SimpleHTTPRequestHandler):
     # ملفا الحجب للمعاينة (مساران ثابتان — لا شيء غيرهما)
     OVERLAYS = {
@@ -103,6 +137,9 @@ class DemoHandler(http.server.SimpleHTTPRequestHandler):
             path = '/dashboard.html'
         if path == '/__demo_reset.js':
             self._send(RESET_JS.encode('utf-8'), 'application/javascript; charset=utf-8')
+            return
+        if path == '/__db-update':
+            self._send(db_update_page().encode('utf-8'), 'text/html; charset=utf-8')
             return
         if path in self.OVERLAYS:
             fp = os.path.join(ROOT, path.lstrip('/'))
