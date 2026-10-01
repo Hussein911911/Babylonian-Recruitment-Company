@@ -238,6 +238,49 @@ check('ورق الدفعة يوضّح أن الصلاحية تبدأ عند ال
   await wait(150);
 }
 
+/* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فورية بلا دفعة كاملة */
+check('زر «إضافة بطاقة» ظاهر للإدارة', !dash.doc.getElementById('btn-new-card').classList.contains('hidden'));
+click(dash.w, dash.doc.getElementById('btn-new-card'));
+await wait(200);
+{
+  const box = lastModal(dash.doc);
+  check('نافذة «إضافة بطاقة بكودها»: كود مقترح + زر توليد + ملاحظة',
+    !!box.querySelector('#c-code') && !!box.querySelector('#c-gen') && !!box.querySelector('#c-notes') &&
+    /^HRC-BC-\d{6}$/.test(box.querySelector('#c-code').value));
+  /* صيغة خاطئة ثم كود مكرر: يُرفضان برسالة داخل النافذة */
+  setVal(dash.w, box.querySelector('#c-code'), 'A1B2C3');
+  click(dash.w, box.querySelector('#c-save'));
+  await wait(120);
+  check('الصيغة الخاطئة مرفوضة داخل النافذة', box.querySelector('#c-err').style.display !== 'none' &&
+    /صيغة الكود غير صحيحة/.test(box.querySelector('#c-err').textContent));
+  setVal(dash.w, box.querySelector('#c-code'), blankSerials[0]);   /* باركود بطاقة الدفعة */
+  click(dash.w, box.querySelector('#c-save'));
+  await wait(120);
+  check('الكود المكرر (بطاقة موجودة) مرفوض', box.querySelector('#c-err').style.display !== 'none' &&
+    /مسجَّل لبطاقة موجودة/.test(box.querySelector('#c-err').textContent));
+  /* 6 أرقام تُسبَق تلقائياً بـ HRC-BC */
+  setVal(dash.w, box.querySelector('#c-code'), '777777');
+  setVal(dash.w, box.querySelector('#c-notes'), 'بطاقة اختبار الزر');
+  click(dash.w, box.querySelector('#c-save'));
+  await wait(250);
+}
+{
+  const box = lastModal(dash.doc);
+  check('نافذة النتيجة تعرض البطاقة المضافة وزر الطباعة',
+    !!box && /أُضيفت البطاقة HRC-BC-777777/.test(box.textContent) && !!box.querySelector('#c-print'));
+  const CARD1 = D.getApplicant('HRC-BC-777777');
+  check('البطاقة المضافة فارغة بفرصتين فارغتين وجاهزة للبيع',
+    CARD1 && CARD1.status === 'blank' &&
+    D.getAttempts('HRC-BC-777777').length === 2 &&
+    D.getAttempts('HRC-BC-777777').every((t) => t.slotStatus === 'empty') &&
+    D.listBlankCards().some((b) => b.serial === 'HRC-BC-777777'));
+  check('إضافة البطاقة بكودها موثّقة بسجل التدقيق',
+    D.listAudit().some((l) => l.action === 'إضافة بطاقة بكودها' && String(l.entityId || '').includes('HRC-BC-777777')));
+  const closeC = box.querySelector('[data-close]');
+  if (closeC) click(dash.w, closeC);
+  await wait(150);
+}
+
 /* بيع وتعبئة بطاقة فارغة: البيانات تُسجَّل على نفس الباركود */
 click(dash.w, dash.doc.getElementById('btn-new-app'));
 await wait(200);
@@ -258,8 +301,9 @@ const SERIAL = blankSerials[0];
 }
 const RECORD = D.getApplicant(SERIAL);
 const TOKEN = D.token(SERIAL);
+/* المخزون: 2 قبل الدفعة + 3 دفعة + 1 بطاقة الزر اليدوية − 1 المبيعة = +3 */
 check('البيع نجح على نفس الباركود المطبوع (' + SERIAL + ')', !!RECORD && RECORD.status === 'active' &&
-  RECORD.serial === SERIAL && D.listBlankCards().length === stockBefore + 2);
+  RECORD.serial === SERIAL && D.listBlankCards().length === stockBefore + 3);
 check('بيع البطاقة سُجّل كاشاً مع نقطة البيع', RECORD.feePaid === true &&
   RECORD.posName === 'مكتب الاستنساخ — الحلة شارع 40');
 check('الصلاحية (30 يوماً) بدأت من لحظة التعبئة لا من إصدار الدفعة',

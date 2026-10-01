@@ -2406,6 +2406,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         </form>
         <button class="btn btn-lapis btn-sm" id="btn-new-app"><svg class="ic"><use href="#i-user-plus" xlink:href="#i-user-plus"/></svg> بيع وتعبئة بطاقة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-batch" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
+        <button class="btn btn-outline btn-sm" id="btn-new-card" data-admin-only="true"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
         <button class="btn btn-gold btn-sm" id="btn-new-job"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة وظيفة</button>
         <button class="btn btn-outline btn-sm" id="btn-run-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تحديث</button>
       </div>
@@ -4547,6 +4548,52 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     return made;
   }
 
+  /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
+     المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة.
+     الكود بصيغة HRC-BC-###### (أو 6 أرقام فتُسبَق تلقائياً) ويجب أن يكون
+     فريداً ولم يُستعمل أبداً — سجل usedSerials يمنع عودة أي باركود. */
+  function createCardWithSerial(serial, notes) {
+    serial = String(serial || '').trim().toUpperCase();
+    if (/^\d{6}$/.test(serial)) serial = 'HRC-BC-' + serial;
+    if (!/^HRC-BC-\d{6}$/.test(serial))
+      return { ok: false, error: 'صيغة الكود غير صحيحة — اكتب 6 أرقام، أو الكود كاملاً بصيغة HRC-BC-######' };
+    if (!db.usedSerials || !Array.isArray(db.usedSerials)) db.usedSerials = [];
+    if (getApplicant(serial))
+      return { ok: false, error: 'هذا الباركود مسجَّل لبطاقة موجودة أصلاً — اختر كوداً آخر' };
+    if (db.usedSerials.indexOf(serial) >= 0)
+      return { ok: false, error: 'هذا الباركود استُعمل سابقاً لبطاقة حُذفت ولا يعود أبداً (منع التزوير) — اختر كوداً آخر' };
+    var card = {
+      id: uid('app'), serial: serial, fullName: '', phone: '', address: '',
+      dob: '', gender: 'ذكر', nationality: 'عراقي',
+      issueDate: null, expiryDate: null, status: 'blank',
+      createdBy: currentUser() ? currentUser().username : 'system',
+      createdAt: nowISO(), notes: notes || '', posName: '',
+      requestedCode: null, requestedAt: null,
+      fee: Number(db.settings.formFee || 10000), feePaid: false, printedCount: 0, rejectReason: ''
+    };
+    db.applicants.unshift(card);
+    createAttempts(serial);
+    db.usedSerials.push(serial);
+    audit('إضافة بطاقة بكودها', 'applicant', serial,
+      'بطاقة فارغة واحدة بكود يدوي مختار — فرصتان برمزين — تُطبع الآن وتُعبّأ عند البيع' +
+      (notes ? ' | ' + notes : ''));
+    save(); emit();
+    return { ok: true, card: card };
+  }
+
+  /* اقتراح كود عشوائي متاح لبطاقة مفردة — للعرض بالنافذة فقط ولا يُحرق
+     بسجل usedSerials إلا عند الإضافة الفعلية (createCardWithSerial). */
+  function suggestSerial() {
+    if (!db.usedSerials || !Array.isArray(db.usedSerials)) db.usedSerials = [];
+    var exists = {};
+    db.applicants.forEach(function (a) { exists[a.serial] = 1; });
+    for (var guard = 0; guard < 500; guard++) {
+      var s = 'HRC-BC-' + String(100000 + Math.floor(Math.random() * 900000));
+      if (!exists[s] && db.usedSerials.indexOf(s) < 0) return s;
+    }
+    return '';
+  }
+
   /* تعبئة بطاقة فارغة عند البيع (نقطة البيع): بيانات الزبون تُسجَّل على نفس
      الباركود المطبوع على الورقة، والصلاحية (30 يوماً) تبدأ من هذه اللحظة. */
   function activateCard(serial, data) {
@@ -6106,7 +6153,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'HRC-' + (db.counters.jobCode + 1); },
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,
-    createCardBatch: createCardBatch, activateCard: activateCard, listBlankCards: listBlankCards, randomSerial: randomSerial,
+    createCardBatch: createCardBatch, createCardWithSerial: createCardWithSerial, suggestSerial: suggestSerial,
+    activateCard: activateCard, listBlankCards: listBlankCards, randomSerial: randomSerial,
     approveApplicant: approveApplicant, rejectApplicant: rejectApplicant,
     getAttempts: getAttempts, attemptsLeft: attemptsLeft, formStatus: formStatus, activeAttempt: activeAttempt,
     // محاولات
@@ -10751,6 +10799,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     if (na) na.addEventListener('click', function () { newApplicantModal(); });
     var nb = document.getElementById('btn-new-batch');
     if (nb) nb.addEventListener('click', newBatchModal);
+    var nc = document.getElementById('btn-new-card');
+    if (nc) nc.addEventListener('click', newCardModal);
     var rm = document.getElementById('btn-run-maintenance');
     if (rm) rm.addEventListener('click', function () {
       var actions = Store.runMaintenance();
@@ -11243,6 +11293,71 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           /* استمارة A4 جزء من عملية البيع: تُطبع تلقائياً وتظل متاحة من نافذة الفرص */
           try { if (V && V.printForm) V.printForm(res.app, res.attempt); } catch (e) { }
           attemptsModal(res.app.serial);
+        });
+      }
+    });
+  }
+
+  /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
+     المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة. */
+  function newCardModal() {
+    var body = '<form id="card1-form" onsubmit="return false">' +
+      '<div class="field"><label for="c-code">كود البطاقة (الباركود) *</label>' +
+        '<div style="display:flex;gap:8px;align-items:stretch">' +
+          '<input type="text" id="c-code" class="mono" dir="ltr" placeholder="HRC-BC-481926" required style="flex:1">' +
+          '<button type="button" class="btn btn-outline" id="c-gen" style="white-space:nowrap">' + UI.ic('refresh') + ' ولّد كوداً</button>' +
+        '</div>' +
+        '<span class="tiny muted" style="display:block;margin-top:6px">اكتب <b>6 أرقام</b> أو الكود كاملاً بصيغة <b dir="ltr">HRC-BC-######</b> — يجب أن يكون فريداً ولم يُستعمل من قبل.</span>' +
+        '<div class="tiny" id="c-err" style="display:none;color:#c0392b;background:#fdeeee;border:1px solid #f2c4c4;border-radius:8px;padding:6px 10px;margin-top:8px"></div>' +
+      '</div>' +
+      '<div class="field" style="margin-top:12px"><label for="c-notes">ملاحظة (اختياري)</label>' +
+        '<input type="text" id="c-notes" placeholder="مثال: بطاقة تعويض للسيد أحمد — مكتب الحلة"></div>' +
+      '</form>' +
+      '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
+        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرصتين ورمزين، وتُطبع بوجهيها بمقاس 86×54مم — ' +
+        'وصلاحية 30 يوماً تبدأ عند تعبئتها عند البيع لا من الآن. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
+
+    UI.modal({
+      title: 'إضافة بطاقة بكودها', subtitle: 'بطاقة واحدة فارغة تُسجَّل فوراً بالمخزون — بلا دفعة كاملة',
+      body: body,
+      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
+        '<button class="btn btn-gold" id="c-save">' + UI.ic('card') + ' إضافة البطاقة</button>',
+      onMount: function (box, close) {
+        var codeInp = box.querySelector('#c-code');
+        var errBox = box.querySelector('#c-err');
+        codeInp.value = Store.suggestSerial();
+        box.querySelector('#c-gen').addEventListener('click', function () {
+          codeInp.value = Store.suggestSerial();
+          errBox.style.display = 'none';
+        });
+        box.querySelector('#c-save').addEventListener('click', function () {
+          var serial = String(codeInp.value || '').trim();
+          var notes = box.querySelector('#c-notes').value.trim();
+          errBox.style.display = 'none';
+          if (!serial) { codeInp.focus(); return; }
+          var r = Store.createCardWithSerial(serial, notes);
+          if (!r.ok) { errBox.textContent = r.error; errBox.style.display = 'block'; codeInp.focus(); return; }
+          close();
+          cardResultModal(r.card);
+        });
+      }
+    });
+  }
+
+  /* نتيجة إضافة البطاقة: الكود + طباعتها فوراً */
+  function cardResultModal(card) {
+    UI.modal({
+      title: 'أُضيفت البطاقة ' + card.serial,
+      subtitle: 'بطاقة فارغة واحدة بالمخزون — بفرصتين ورمزين',
+      body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت البطاقة بالمخزون وجاهزة للبيع والتعبئة. ' +
+          'اطبعها الآن على <b>ورق مقوى 300–350غم</b> بخيار «الحجم الفعلي» — صفحتان (وجه أمامي وخلفي) بمقاس 86×54مم، وتُغلَّف حرارياً بمكتب الاستنساخ.</p></div></div>' +
+        '<div style="text-align:center"><span class="chip chip-code mono" dir="ltr" style="font-size:15px">' + UI.esc(card.serial) + '</span></div>',
+      footer: '<button class="btn btn-outline" data-close>لاحقاً</button>' +
+        '<button class="btn btn-gold" id="c-print">' + UI.ic('print') + ' طباعة البطاقة</button>',
+      onMount: function (box) {
+        box.querySelector('#c-print').addEventListener('click', function () {
+          V.printBatch([card]);
         });
       }
     });

@@ -1794,6 +1794,8 @@
     if (na) na.addEventListener('click', function () { newApplicantModal(); });
     var nb = document.getElementById('btn-new-batch');
     if (nb) nb.addEventListener('click', newBatchModal);
+    var nc = document.getElementById('btn-new-card');
+    if (nc) nc.addEventListener('click', newCardModal);
     var rm = document.getElementById('btn-run-maintenance');
     if (rm) rm.addEventListener('click', function () {
       var actions = Store.runMaintenance();
@@ -2286,6 +2288,71 @@
           /* استمارة A4 جزء من عملية البيع: تُطبع تلقائياً وتظل متاحة من نافذة الفرص */
           try { if (V && V.printForm) V.printForm(res.app, res.attempt); } catch (e) { }
           attemptsModal(res.app.serial);
+        });
+      }
+    });
+  }
+
+  /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
+     المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة. */
+  function newCardModal() {
+    var body = '<form id="card1-form" onsubmit="return false">' +
+      '<div class="field"><label for="c-code">كود البطاقة (الباركود) *</label>' +
+        '<div style="display:flex;gap:8px;align-items:stretch">' +
+          '<input type="text" id="c-code" class="mono" dir="ltr" placeholder="HRC-BC-481926" required style="flex:1">' +
+          '<button type="button" class="btn btn-outline" id="c-gen" style="white-space:nowrap">' + UI.ic('refresh') + ' ولّد كوداً</button>' +
+        '</div>' +
+        '<span class="tiny muted" style="display:block;margin-top:6px">اكتب <b>6 أرقام</b> أو الكود كاملاً بصيغة <b dir="ltr">HRC-BC-######</b> — يجب أن يكون فريداً ولم يُستعمل من قبل.</span>' +
+        '<div class="tiny" id="c-err" style="display:none;color:#c0392b;background:#fdeeee;border:1px solid #f2c4c4;border-radius:8px;padding:6px 10px;margin-top:8px"></div>' +
+      '</div>' +
+      '<div class="field" style="margin-top:12px"><label for="c-notes">ملاحظة (اختياري)</label>' +
+        '<input type="text" id="c-notes" placeholder="مثال: بطاقة تعويض للسيد أحمد — مكتب الحلة"></div>' +
+      '</form>' +
+      '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
+        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرصتين ورمزين، وتُطبع بوجهيها بمقاس 86×54مم — ' +
+        'وصلاحية 30 يوماً تبدأ عند تعبئتها عند البيع لا من الآن. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
+
+    UI.modal({
+      title: 'إضافة بطاقة بكودها', subtitle: 'بطاقة واحدة فارغة تُسجَّل فوراً بالمخزون — بلا دفعة كاملة',
+      body: body,
+      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
+        '<button class="btn btn-gold" id="c-save">' + UI.ic('card') + ' إضافة البطاقة</button>',
+      onMount: function (box, close) {
+        var codeInp = box.querySelector('#c-code');
+        var errBox = box.querySelector('#c-err');
+        codeInp.value = Store.suggestSerial();
+        box.querySelector('#c-gen').addEventListener('click', function () {
+          codeInp.value = Store.suggestSerial();
+          errBox.style.display = 'none';
+        });
+        box.querySelector('#c-save').addEventListener('click', function () {
+          var serial = String(codeInp.value || '').trim();
+          var notes = box.querySelector('#c-notes').value.trim();
+          errBox.style.display = 'none';
+          if (!serial) { codeInp.focus(); return; }
+          var r = Store.createCardWithSerial(serial, notes);
+          if (!r.ok) { errBox.textContent = r.error; errBox.style.display = 'block'; codeInp.focus(); return; }
+          close();
+          cardResultModal(r.card);
+        });
+      }
+    });
+  }
+
+  /* نتيجة إضافة البطاقة: الكود + طباعتها فوراً */
+  function cardResultModal(card) {
+    UI.modal({
+      title: 'أُضيفت البطاقة ' + card.serial,
+      subtitle: 'بطاقة فارغة واحدة بالمخزون — بفرصتين ورمزين',
+      body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت البطاقة بالمخزون وجاهزة للبيع والتعبئة. ' +
+          'اطبعها الآن على <b>ورق مقوى 300–350غم</b> بخيار «الحجم الفعلي» — صفحتان (وجه أمامي وخلفي) بمقاس 86×54مم، وتُغلَّف حرارياً بمكتب الاستنساخ.</p></div></div>' +
+        '<div style="text-align:center"><span class="chip chip-code mono" dir="ltr" style="font-size:15px">' + UI.esc(card.serial) + '</span></div>',
+      footer: '<button class="btn btn-outline" data-close>لاحقاً</button>' +
+        '<button class="btn btn-gold" id="c-print">' + UI.ic('print') + ' طباعة البطاقة</button>',
+      onMount: function (box) {
+        box.querySelector('#c-print').addEventListener('click', function () {
+          V.printBatch([card]);
         });
       }
     });

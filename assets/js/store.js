@@ -618,6 +618,52 @@
     return made;
   }
 
+  /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
+     المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة.
+     الكود بصيغة HRC-BC-###### (أو 6 أرقام فتُسبَق تلقائياً) ويجب أن يكون
+     فريداً ولم يُستعمل أبداً — سجل usedSerials يمنع عودة أي باركود. */
+  function createCardWithSerial(serial, notes) {
+    serial = String(serial || '').trim().toUpperCase();
+    if (/^\d{6}$/.test(serial)) serial = 'HRC-BC-' + serial;
+    if (!/^HRC-BC-\d{6}$/.test(serial))
+      return { ok: false, error: 'صيغة الكود غير صحيحة — اكتب 6 أرقام، أو الكود كاملاً بصيغة HRC-BC-######' };
+    if (!db.usedSerials || !Array.isArray(db.usedSerials)) db.usedSerials = [];
+    if (getApplicant(serial))
+      return { ok: false, error: 'هذا الباركود مسجَّل لبطاقة موجودة أصلاً — اختر كوداً آخر' };
+    if (db.usedSerials.indexOf(serial) >= 0)
+      return { ok: false, error: 'هذا الباركود استُعمل سابقاً لبطاقة حُذفت ولا يعود أبداً (منع التزوير) — اختر كوداً آخر' };
+    var card = {
+      id: uid('app'), serial: serial, fullName: '', phone: '', address: '',
+      dob: '', gender: 'ذكر', nationality: 'عراقي',
+      issueDate: null, expiryDate: null, status: 'blank',
+      createdBy: currentUser() ? currentUser().username : 'system',
+      createdAt: nowISO(), notes: notes || '', posName: '',
+      requestedCode: null, requestedAt: null,
+      fee: Number(db.settings.formFee || 10000), feePaid: false, printedCount: 0, rejectReason: ''
+    };
+    db.applicants.unshift(card);
+    createAttempts(serial);
+    db.usedSerials.push(serial);
+    audit('إضافة بطاقة بكودها', 'applicant', serial,
+      'بطاقة فارغة واحدة بكود يدوي مختار — فرصتان برمزين — تُطبع الآن وتُعبّأ عند البيع' +
+      (notes ? ' | ' + notes : ''));
+    save(); emit();
+    return { ok: true, card: card };
+  }
+
+  /* اقتراح كود عشوائي متاح لبطاقة مفردة — للعرض بالنافذة فقط ولا يُحرق
+     بسجل usedSerials إلا عند الإضافة الفعلية (createCardWithSerial). */
+  function suggestSerial() {
+    if (!db.usedSerials || !Array.isArray(db.usedSerials)) db.usedSerials = [];
+    var exists = {};
+    db.applicants.forEach(function (a) { exists[a.serial] = 1; });
+    for (var guard = 0; guard < 500; guard++) {
+      var s = 'HRC-BC-' + String(100000 + Math.floor(Math.random() * 900000));
+      if (!exists[s] && db.usedSerials.indexOf(s) < 0) return s;
+    }
+    return '';
+  }
+
   /* تعبئة بطاقة فارغة عند البيع (نقطة البيع): بيانات الزبون تُسجَّل على نفس
      الباركود المطبوع على الورقة، والصلاحية (30 يوماً) تبدأ من هذه اللحظة. */
   function activateCard(serial, data) {
@@ -2177,7 +2223,8 @@
     setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'HRC-' + (db.counters.jobCode + 1); },
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,
-    createCardBatch: createCardBatch, activateCard: activateCard, listBlankCards: listBlankCards, randomSerial: randomSerial,
+    createCardBatch: createCardBatch, createCardWithSerial: createCardWithSerial, suggestSerial: suggestSerial,
+    activateCard: activateCard, listBlankCards: listBlankCards, randomSerial: randomSerial,
     approveApplicant: approveApplicant, rejectApplicant: rejectApplicant,
     getAttempts: getAttempts, attemptsLeft: attemptsLeft, formStatus: formStatus, activeAttempt: activeAttempt,
     // محاولات
