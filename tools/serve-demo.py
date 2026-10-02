@@ -75,37 +75,90 @@ RESET_JS = """(function () {
 
 
 def db_update_page():
-    """صفحة نسخ ملف تحديث القاعدة بضغطة واحدة (زر للمعاينة فقط)."""
-    with open(os.path.join(ROOT, 'docs', 'UPDATE-2026-10-02.sql'), encoding='utf-8') as f:
-        sql = f.read()
-    esc = sql.replace('&', '&amp;').replace('<', '&lt;')
+    """صفحة تحديث القاعدة بأجزاء صغيرة يُنسخ كل منها بضغطة (زر للمعاينة فقط).
+
+    لماذا أجزاء؟ النسخ الكامل (134KB) انقطع بلصق الجوال مرة (2026-10-02:
+    «unterminated dollar-quoted string») — كل جزء هنا أقل من 25KB فيصل كاملاً،
+    ولكل جزء «سطر الختام» يتأكد منه الملصِق قبل Run. المسار الموثق لترقية
+    قاعدة قائمة هو ملفات الهجرات الأربعة؛ docs/schema.sql الكامل للقواعد
+    الجديدة ولا حاجة إليه هنا.
+    """
+    parts = [
+        ('1', 'نظام البطاقات v1 — الحالة الحرجة ورمز الفرصة السري',
+         'supabase/migrations/20260930000000_card_system_v1.sql',
+         '-- سجلاً تاريخياً؛ الجديدة تُعالج بـ brc.run_auto_release() المحذَّثة (حالة حرجة).'),
+        ('2', 'دفعات البطاقات الفارغة والباركودات العشوائية',
+         'supabase/migrations/20260930010000_blank_batches_random_serials.sql',
+         "--    الفارغة الجديدة تُدرج بـ status='blank' و issue_date=null من الواجهة."),
+        ('3', 'بيع نقطة البيع باختيار الوظيفة + صفحة صاحب العمل ★ الأهم',
+         'supabase/migrations/20260930020000_pos_sale_and_employer.sql',
+         'grant execute on function brc.employer_decide(text, text)    to anon, authenticated;'),
+        ('4', 'طلب صاحب العمل (توظيف/عدم توظيف) وقرار الشركة',
+         'supabase/migrations/20260930030000_employer_request_company_decision.sql',
+         "'استمارة منتهية الصلاحية (30 يوماً)' يسبقها where f.status = 'expired';"),
+    ]
+    cards = ''
+    hidden = ''
+    for num, title, rel, last_line in parts:
+        with open(os.path.join(ROOT, rel), encoding='utf-8') as f:
+            sql = f.read()
+        esc = sql.replace('&', '&amp;').replace('<', '&lt;')
+        cards += ('<div class="part"><div class="phead"><span class="badge">' + num +
+                  '</span><b>' + title + '</b><span class="kb">' + str(len(sql) // 1024) + 'KB</span></div>'
+                  '<button onclick="cp(\'sql' + num + '\')">📋 انسخ الجزء ' + num + '</button>'
+                  '<div class="ok" id="ok' + num + '">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div>'
+                  '<div class="verify">بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">' +
+                  last_line.replace('&', '&amp;').replace('<', '&lt;') + '</code></div></div>')
+        hidden += '<textarea id="sql' + num + '" class="hidden-ta" readonly>' + esc + '</textarea>'
+    notify = "notify pgrst, 'reload schema';"
     return ("""<!doctype html><html dir="rtl" lang="ar"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تحديث قاعدة بيانات Supabase — نسخ بضغطة</title>
+<title>تحديث قاعدة بيانات Supabase — بأجزاء صغيرة</title>
 <style>
-body{font-family:system-ui,sans-serif;background:#f5f7fb;margin:0;padding:18px}
-.card{max-width:880px;margin:auto;background:#fff;border:1px solid #dfe4ec;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(16,27,52,.06)}
-h3{margin:0 0 10px;color:#101b34}
-ol{margin:8px 0 14px;padding-inline-start:22px;color:#37435c;font-size:15px;line-height:2}
-button{font:700 17px system-ui;padding:15px 22px;border-radius:12px;border:0;background:linear-gradient(135deg,#c8a24a,#a9852f);color:#fff;width:100%;cursor:pointer}
+body{font-family:system-ui,sans-serif;background:#f5f7fb;margin:0;padding:16px;color:#101b34}
+.wrap{max-width:720px;margin:auto}
+h3{margin:2px 0 8px}
+.steps{background:#fff;border:1px solid #dfe4ec;border-radius:14px;padding:14px 16px;margin-bottom:14px;font-size:14.5px;line-height:2;color:#37435c}
+.steps b{color:#101b34}
+.part{background:#fff;border:1px solid #dfe4ec;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(16,27,52,.04)}
+.phead{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:15px}
+.phead b{flex:1}
+.badge{width:30px;height:30px;border-radius:50%;background:#101b34;color:#f5d67b;display:grid;place-items:center;font-weight:800;flex:none}
+.kb{font-size:12px;color:#7a869c;background:#f1f3f9;border-radius:99px;padding:3px 10px;flex:none}
+button{font:700 16px system-ui;padding:13px 20px;border-radius:12px;border:0;background:linear-gradient(135deg,#c8a24a,#a9852f);color:#fff;width:100%;cursor:pointer}
 button:active{transform:scale(.98)}
-.ok{color:#1f8f96;font-weight:800;margin-top:12px;text-align:center;display:none;font-size:16px}
-textarea{width:100%;height:36vh;margin-top:14px;font:11px/1.45 monospace;direction:ltr;border:1px solid #dfe4ec;border-radius:10px;padding:10px;box-sizing:border-box;background:#fafbfe;color:#37435c}
-.tiny{color:#7a869c;font-size:12.5px;margin-top:10px;line-height:1.8}
-</style></head><body><div class="card">
-<h3>🗄️ تحديث قاعدة بيانات Supabase (2026-10-02)</h3>
-<ol>
-<li>اضغط الزر تحت — ينسخ ملف SQL كاملاً للحافظة</li>
-<li>افتح <b>supabase.com</b> → مشروعك → من القائمة: <b>SQL Editor</b> → <b>New query</b></li>
-<li>ضغط مطول بمربع الكود → <b>لصق</b> → اضغط <b>Run</b></li>
-<li>النجاح: رسالة خضراء <b dir="ltr">Success. No rows returned</b></li>
-</ol>
-<button onclick="navigator.clipboard.writeText(document.getElementById('sql').value).then(function(){document.getElementById('ok').style.display='block'}).catch(function(){document.getElementById('sql').select()})">📋 انسخ ملف SQL كاملاً بضغطة</button>
-<div class="ok" id="ok">✅ اننسخ — الحين الصقه بمحرر SQL عند Supabase واضغط Run</div>
-<textarea id="sql" readonly onfocus="this.select()">""" + esc + """</textarea>
-<p class="tiny">آمن للإعادة أي عدد من المرات · لا يحذف جدولاً ولا يمس بيانات الزبائن · كل جملة إما «إن لم تكن موجودة» أو «استبدل إن وجدت». إذا ظهر خطأ أحمر بمحرر SQL صوّره وابعثه — لا شيء ينكسر.</p>
+button.final{background:linear-gradient(135deg,#3ec1a0,#1f8f96)}
+.ok{color:#1f8f96;font-weight:800;margin-top:10px;text-align:center;display:none;font-size:15px}
+.verify{margin-top:12px;font-size:13px;color:#5b677e;line-height:1.9;background:#fafbfe;border:1px dashed #d5dcea;border-radius:10px;padding:10px 12px}
+.verify code{direction:ltr;display:block;font-size:11px;color:#8a6d1f;background:#fdf9ee;padding:6px 8px;border-radius:8px;margin-top:5px;overflow-wrap:anywhere}
+.hidden-ta{position:fixed;left:-9999px;top:0;width:10px;height:10px;opacity:0}
+.tiny{color:#7a869c;font-size:12.5px;margin:10px 2px 0;line-height:1.9}
+</style></head><body><div class="wrap">
+<h3>🗄️ تحديث قاعدة بيانات Supabase — بأجزاء صغيرة</h3>
+<div class="steps">
+<b>الطريقة:</b> افتح <b>Supabase → مشروعك → SQL Editor → + New query</b> (نافذة جديدة فاضية — امسح أي نص قديم فيها).
+بعدها شغّل الأجزاء الخمسة تحت <b>بالترتيب</b>: اضغط زر النسخ → اضغط مطولاً بمحرر SQL → لصق → <b>Run</b> → لازم تطلع خضرا <b dir="ltr">Success</b> → بعدها الجزء اللي بعده.
+</div>
+""" + cards + """
+<div class="part"><div class="phead"><span class="badge">5</span><b>إعادة تحميل ذاكرة المخطط (سطر واحد)</b></div>
+<button class="final" onclick="cp('sql5')">📋 انسخ الجزء 5 (الأخير)</button>
+<div class="ok" id="ok5">✅ اننسخ — الصقه واضغط Run وخلصنا</div>
+<div class="verify">آخر سطر بعد اللصق لازم يكون:<br><code dir="ltr">notify pgrst, 'reload schema';</code></div></div>
+<p class="tiny">كل الأجزاء آمنة للإعادة أي عدد مرات («إن لم توجد / استبدل إن وجدت») ولا تمس بيانات الزبائن — إذا فشل جزء في منتصفه، أعِد ضغط زره ولصقه من جديد ثم Run. إذا استمر خطأ أحمر: صوّره وابعثه.</p>
+""" + hidden + """
+<textarea id="sql5" class="hidden-ta" readonly>""" + notify + """</textarea>
+<script>
+function cp(id){
+  var t=document.getElementById(id);
+  t.style.position='static';t.style.width='100%';t.style.height='40px';t.style.opacity='1';
+  t.focus();t.select();
+  var done=function(){document.getElementById('ok'+id.replace('sql','')).style.display='block';
+    t.style.position='fixed';t.style.left='-9999px';t.style.width='10px';t.style.height='10px';t.style.opacity='0';};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(done).catch(function(){try{document.execCommand('copy');done();}catch(e){}});}
+  else{try{document.execCommand('copy');done();}catch(e){}}
+}
+</script>
 </div></body></html>""")
-
 
 
 class DemoHandler(http.server.SimpleHTTPRequestHandler):
