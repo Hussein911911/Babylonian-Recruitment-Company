@@ -83,7 +83,17 @@ def db_update_page():
     قاعدة قائمة هو ملفات الهجرات الأربعة؛ docs/schema.sql الكامل للقواعد
     الجديدة ولا حاجة إليه هنا.
     """
+    # الجزء 0: قيم التعداد تُثبَّت بمعزل عن استخدامها — محرر Supabase يشغّل كل
+    # لصقة بمعاملة واحدة، فيرفض PostgreSQL استخدام قيمة أُضيفت بالدفعة نفسها
+    # (55P04 «unsafe use of new value» — فجَّر الجزء 1 عند سطر 491 من 495).
+    enum_sql = ("alter type brc.slot_status add value if not exists 'critical';\n"
+                "alter type brc.form_status add value if not exists 'blank';\n"
+                "alter type brc.job_status  add value if not exists 'hiring';\n"
+                "alter type brc.slot_status add value if not exists 'hiring';\n")
     parts = [
+        ('0', 'تثبيت قيم التعداد الجديدة ★ ابدأ بهذا — 4 أسطر',
+         None,
+         "alter type brc.slot_status add value if not exists 'hiring';"),
         ('1', 'نظام البطاقات v1 — الحالة الحرجة ورمز الفرصة السري',
          'supabase/migrations/20260930000000_card_system_v1.sql',
          '-- سجلاً تاريخياً؛ الجديدة تُعالج بـ brc.run_auto_release() المحذَّثة (حالة حرجة).'),
@@ -100,8 +110,11 @@ def db_update_page():
     cards = ''
     hidden = ''
     for num, title, rel, last_line in parts:
-        with open(os.path.join(ROOT, rel), encoding='utf-8') as f:
-            sql = f.read()
+        if rel is None:
+            sql = enum_sql
+        else:
+            with open(os.path.join(ROOT, rel), encoding='utf-8') as f:
+                sql = f.read()
         esc = sql.replace('&', '&amp;').replace('<', '&lt;')
         cards += ('<div class="part"><div class="phead"><span class="badge">' + num +
                   '</span><b>' + title + '</b><span class="kb">' + str(len(sql) // 1024) + 'KB</span></div>'
@@ -137,7 +150,7 @@ button.final{background:linear-gradient(135deg,#3ec1a0,#1f8f96)}
 <h3>🗄️ تحديث قاعدة بيانات Supabase — بأجزاء صغيرة</h3>
 <div class="steps">
 <b>الطريقة:</b> افتح <b>Supabase → مشروعك → SQL Editor → + New query</b> (نافذة جديدة فاضية — امسح أي نص قديم فيها).
-بعدها شغّل الأجزاء الخمسة تحت <b>بالترتيب</b>: اضغط زر النسخ → اضغط مطولاً بمحرر SQL → لصق → <b>Run</b> → لازم تطلع خضرا <b dir="ltr">Success</b> → بعدها الجزء اللي بعده.
+بعدها شغّل الأجزاء الستة تحت <b>بالترتيب</b> — الجزء 0 أولاً لأنه يثبّت قيم التعداد بلصقة لحالها (قانون PostgreSQL: القيمة الجديدة لازم تثبت قبل استخدامها بنفس الدفعة): اضغط زر النسخ → اضغط مطولاً بمحرر SQL → لصق → <b>Run</b> → لازم تطلع خضرا <b dir="ltr">Success</b> → بعدها الجزء اللي بعده.
 </div>
 """ + cards + """
 <div class="part"><div class="phead"><span class="badge">5</span><b>إعادة تحميل ذاكرة المخطط (سطر واحد)</b></div>
