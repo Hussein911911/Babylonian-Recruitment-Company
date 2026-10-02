@@ -6,3 +6,4 @@ tests/.tmp/
 
 # مجلد النشر المُجمَّع (يُبنى بـ npm run dist)
 dist/
+__pycache__/
