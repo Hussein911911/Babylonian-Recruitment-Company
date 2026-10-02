@@ -35,8 +35,9 @@ begin
          letters[1 + floor(random() * array_length(letters, 1))] ||
          letters[1 + floor(random() * array_length(letters, 1))];
     exit when not exists (select 1 from brc.job_attempts where chance_code = c);
-    return c;
   end loop;
+  -- إصلاح 2026-10-03: return كان داخل اللوب — الخروج بلا قيمة (2F005)
+  return c;
 end $$;
 alter table brc.job_attempts add column if not exists chance_code text;
 

@@ -292,6 +292,21 @@ if (migNames.includes(MIG_NAME)) {
   bad('ملف الـ migration مطابق', 'غير موجود');
 }
 
+/* ── 2026-10-03: خطأ 2F005 على القاعدة الحية ──
+   كانت chance_code() و next_form_serial() تعيدان القيمة من داخل اللوب
+   بعد exit: عند التفرد يخرج التنفيذ من اللوب ويصل نهاية الدالة بلا RETURN
+   (2F005: control reached end of function without RETURN) وعند التصادم
+   تعيد قيمة مكررة. النمط السليم: exit when … ; ثم end loop ثم return. */
+step(11, 'اللوبات — لا return داخل اللوب بعد exit (نمط 2F005)');
+{
+  const INVERTED = /exit\s+when[^;]+;\s*\n\s*return\s+\w+\s*;\s*\n\s*end\s+loop\b/;
+  const SRC = [join(ROOT, 'docs', 'schema.sql')]
+    .concat(readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql')).map((f) => join(MIG_DIR, f)));
+  const hits = SRC.filter((f) => INVERTED.test(readFileSync(f, 'utf8')));
+  check('لا نمط معكوس في schema.sql وكل ملفات migrations', hits.length === 0,
+        'الملفات: ' + hits.map((f) => f.split('/').pop()).join(', '));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');

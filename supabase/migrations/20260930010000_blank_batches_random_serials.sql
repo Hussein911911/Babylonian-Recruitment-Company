@@ -44,10 +44,11 @@ begin
     v := 'HRC-BC-' || lpad((100000 + floor(random() * 900000))::int::text, 6, '0');
     exit when not exists (select 1 from brc.issued_serials where serial = v)
            and not exists (select 1 from brc.applicants where serial = v);
-    insert into brc.issued_serials (serial) values (v)
-      on conflict (serial) do nothing;
-    return v;
   end loop;
+  insert into brc.issued_serials (serial) values (v)
+    on conflict (serial) do nothing;
+  -- إصلاح 2026-10-03: return كان داخل اللوب — الخروج بلا قيمة (2F005)
+  return v;
 end $$;
 
 create or replace function brc.trg_log_issued_serial() returns trigger

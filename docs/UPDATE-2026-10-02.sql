@@ -54,8 +54,9 @@ begin
          letters[1 + floor(random() * array_length(letters, 1))] ||
          letters[1 + floor(random() * array_length(letters, 1))];
     exit when not exists (select 1 from brc.job_attempts where chance_code = c);
-    return c;
   end loop;
+  -- إصلاح 2026-10-03: return كان داخل اللوب — الخروج بلا قيمة (2F005)
+  return c;
 end $$;
 alter table brc.job_attempts add column if not exists chance_code text;
 
@@ -562,10 +563,11 @@ begin
     v := 'HRC-BC-' || lpad((100000 + floor(random() * 900000))::int::text, 6, '0');
     exit when not exists (select 1 from brc.issued_serials where serial = v)
            and not exists (select 1 from brc.applicants where serial = v);
-    insert into brc.issued_serials (serial) values (v)
-      on conflict (serial) do nothing;
-    return v;
   end loop;
+  insert into brc.issued_serials (serial) values (v)
+    on conflict (serial) do nothing;
+  -- إصلاح 2026-10-03: return كان داخل اللوب — الخروج بلا قيمة (2F005)
+  return v;
 end $$;
 
 create or replace function brc.trg_log_issued_serial() returns trigger
@@ -1447,10 +1449,11 @@ begin
     v := 'HRC-BC-' || lpad((100000 + floor(random() * 900000))::int::text, 6, '0');
     exit when not exists (select 1 from brc.issued_serials where serial = v)
            and not exists (select 1 from brc.applicants where serial = v);
-    insert into brc.issued_serials (serial) values (v)
-      on conflict (serial) do nothing;
-    return v;
   end loop;
+  insert into brc.issued_serials (serial) values (v)
+    on conflict (serial) do nothing;
+  -- إصلاح 2026-10-03: return كان داخل اللوب — الخروج بلا قيمة (2F005)
+  return v;
 end $$;
 
 -- كل بطاقة تُدرج تُسجَّل بسجل الباركودات (حتى المسار اليدوي/الاستيراد)
@@ -1549,8 +1552,9 @@ begin
          letters[1 + floor(random() * array_length(letters, 1))] ||
          letters[1 + floor(random() * array_length(letters, 1))];
     exit when not exists (select 1 from brc.job_attempts where chance_code = c);
-    return c;
   end loop;
+  -- إصلاح 2026-10-03: return كان داخل اللوب — الخروج بلا قيمة (2F005)
+  return c;
 end $$;
 
 -- 2.4 فرص البطاقة (خانتان لكل بطاقة) — chance_code: رمز الفرصة السري
