@@ -500,7 +500,7 @@ ul.pr li::before{content:"✓";position:absolute;inset-inline-start:0;color:var(
 <script>
 /* ===== توليد الكيو آر محلياً (رابط تجريبي — بالنسخة النهائية يفتح صفحة «بطاقتي») ===== */
 (function(){
-  var url = 'https://arena-01a0b563-babylonian-re.babylonian-recruitment-company.pages.dev/card?bc=HRC-BC-000123';
+  var url = 'https://babylonian-recruitment-company.pages.dev/card?bc=HRC-BC-000123';
   try{
     var model = window.HRCQR.encode(url, 'M');
     var svg = window.HRCQR.renderSVG(model, { margin: 1, size: 132, dark: '#0b1a3a', light: '#ffffff' });

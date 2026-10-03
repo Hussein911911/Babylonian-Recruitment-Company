@@ -47,7 +47,7 @@
        المطبوعة رابطاً ميتاً. autoVerifyBase يجعل الرابط يتبع نطاق النشر
        تلقائياً عند الفتح من موقع منشور، وهذا الاحتياطي يُستعمل عند تعذّر ذلك
        (مثلاً فتح الملف المستقل من القرص). */
-    verifyBase: 'https://arena-01a0b563-babylonian-re.babylonian-recruitment-company.pages.dev/verify',  // احتياطي فقط؛ يُستبدل بالنطاق الرسمي عند التسليم
+    verifyBase: 'https://babylonian-recruitment-company.pages.dev/verify',  // النطاق الرسمي (الإنتاج) بعد دمج التسليم 2026-10-03
     autoVerifyBase: true,                          // يتبع نطاق النشر تلقائياً (Cloudflare Pages/النطاق الرسمي)
     verifyLocal: 'verify.html',                    // صفحة التحقق المحلية (للعمل بلا إنترنت)
     verifySecret: 'HRC-BABIL-2026-TOKEN',          // مفتاح توليد بصمة التحقق
