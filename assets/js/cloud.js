@@ -179,11 +179,15 @@
       employerName: job ? job.employer.name : null,
       employerPhone: job ? job.employer.phone : null,
       slotStatus: r.slot_status || 'empty',
+      code: r.chance_code || null,          /* رمز الفرصة السري (ظهر البطاقة) */
       selectedAt: toISO(r.selected_at),
       holdExpiresAt: toISO(r.hold_expires_at),
       closedAt: toISO(r.closed_at),
       note: r.outcome_note || '',
-      staff: r.staff_id ? (staffById[r.staff_id] || null) : null
+      staff: r.staff_id ? (staffById[r.staff_id] || null) : null,
+      /* ج4 2026-10-01: طلب صاحب العمل (توظيف/عدم توظيف) بانتظار قرار الشركة */
+      employerDecision: r.employer_decision || null,
+      decisionAt: toISO(r.decision_at)
     };
   }
 
@@ -199,8 +203,10 @@
       job_id: UUID_RE.test(String(o.jobId || '')) ? o.jobId : null,
       job_code: o.jobCode || null,
       slot_status: o.slotStatus || 'empty',
+      chance_code: o.code || null,          /* رمز الفرصة السري (ظهر البطاقة) */
       selected_at: o.selectedAt || null, hold_expires_at: o.holdExpiresAt || null,
-      closed_at: o.closedAt || null, outcome_note: o.note || ''
+      closed_at: o.closedAt || null, outcome_note: o.note || '',
+      employer_decision: o.employerDecision || null, decision_at: o.decisionAt || null
     };
   }
 
@@ -366,7 +372,7 @@
    *  عبر brc.request_form التي تتحقق من المدخلات وتضع الحالة 'pending' دائماً.
    * ----------------------------------------------------------------------- */
   function requestForm(client, data) {
-    return client.rpc('request_form', {
+    return rpcCall(client, 'request_form', {
       p_full_name: String(data.fullName || '').trim(),
       p_phone: String(data.phone || '').trim(),
       p_address: String(data.address || '').trim(),
@@ -395,7 +401,7 @@
    * ------------------------------------------------------------------------- */
   function verifyForm(client, serial, token) {
     if (!serial) return Promise.resolve({ ok: false, code: 'bad_input', error: 'أدخل رقم الاستمارة' });
-    return client.rpc('verify_form', { p_serial: String(serial).trim(), p_token: token || null })
+    return rpcCall(client, 'verify_form', { p_serial: String(serial).trim(), p_token: token || null })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر التحقق' };
@@ -538,6 +544,166 @@
     return function () { try { client.removeChannel(chan); } catch (e) { /* تجاهل */ } };
   }
 
+  /* ============================================================================
+   *  بطاقتي (الزبون) — دوال عامة آمنة عبر RPC
+   *  ------------------------------------------------------------------------ */
+
+  /* عرض آمن للبطاقة بالباركود: بلا رموز فرص وبلا بيانات صاحب العمل */
+  function lookupCardRpc(client, serial) {
+    if (!serial) return Promise.resolve({ ok: false, error: 'أدخل باركود البطاقة' });
+    return rpcCall(client, 'lookup_card', { p_serial: String(serial).trim() })
+      .then(function (res) {
+        if (res && res.error) {
+          return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
+        }
+        var data = res && res.data;
+        if (!data || typeof data !== 'object') return { ok: false, code: 'empty', error: 'لا نتيجة من الخادم' };
+        if (data.ok === false) return { ok: false, code: 'not_found', error: data.error || 'لا توجد بطاقة بهذا الباركود' };
+        /* الشكلان المقبولان من دالة القاعدة: حقول مسطّحة أو متداخلة تحت card */
+        var c = data.card || data;
+        return {
+          ok: true,
+          card: {
+            serial: c.serial, fullName: c.fullName, phone: c.phone,
+            status: c.status, issueDate: c.issueDate, expiryDate: c.expiryDate,
+            chancesLeft: c.chancesLeft, succeeded: c.succeeded === true,
+            chances: (c.chances || []).map(function (ch) {
+              return {
+                no: ch.no, slotStatus: ch.slotStatus, jobCode: ch.jobCode, jobTitle: ch.jobTitle,
+                location: ch.location, selectedAt: ch.selectedAt, holdExpiresAt: ch.holdExpiresAt,
+                note: ch.note || ''
+              };
+            })
+          }
+        };
+      })
+      .catch(function (e) {
+        return { ok: false, code: 'network', error: 'تعذّر الاتصال: ' + (e && e.message || e) };
+      });
+  }
+
+  /* التقديم الذاتي: الباركود + رمز الفرصة + الوظيفة */
+  function useChanceRpc(client, serial, code, jobCode) {
+    if (!serial || !code || !jobCode)
+      return Promise.resolve({ ok: false, error: 'أكمل الباركود ورمز الفرصة والوظيفة' });
+    return rpcCall(client, 'use_chance', {
+      p_serial: String(serial).trim(), p_code: String(code).trim(), p_job_code: String(jobCode).trim()
+    })
+      .then(function (res) {
+        if (res && res.error) {
+          return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر تنفيذ التقديم' };
+        }
+        var data = res && res.data;
+        if (!data || typeof data !== 'object') return { ok: false, code: 'empty', error: 'لا نتيجة من الخادم' };
+        if (data.ok === false) return { ok: false, code: 'rejected', error: data.error || 'تعذّر تنفيذ التقديم' };
+        return { ok: true, data: data };
+      })
+      .catch(function (e) {
+        return { ok: false, code: 'network', error: 'تعذّر الاتصال: ' + (e && e.message || e) };
+      });
+  }
+
+  /* إثبات حيازة البطاقة لإعادة الطباعة: الباركود + رمز إحدى الفرصتين
+     يُرجع الحمولة الكاملة للطباعة (الاسم والهاتف ورمزا الفرصتين) */
+  function verifyCardCodeRpc(client, serial, code) {
+    if (!serial || !code) return Promise.resolve({ ok: false, error: 'أدخل الباركود ورمز الفرصة' });
+    return rpcCall(client, 'verify_card_code', { p_serial: String(serial).trim(), p_code: String(code).trim() })
+      .then(function (res) {
+        if (res && res.error) {
+          return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
+        }
+        var data = res && res.data;
+        if (!data || typeof data !== 'object') return { ok: false, code: 'empty', error: 'لا نتيجة من الخادم' };
+        if (data.ok === false) return { ok: false, code: 'bad_code', error: data.error || 'رمز الفرصة غير صحيح' };
+        return { ok: true, data: data };
+      })
+      .catch(function (e) {
+        return { ok: false, code: 'network', error: 'تعذّر الاتصال: ' + (e && e.message || e) };
+      });
+  }
+
+
+  /* نداء RPC موحّد: PostgREST يحدّد مخطط الدالة بموجب Accept-Profile —
+     ومكتبة supabase-js ترسل في نداءات POST/rpc ترويسة Content-Profile وحدها
+     فيبقى البحث في public ويفشل بـ PGRST202 «Could not find the function
+     public.… in the schema cache» رغم وجود الدالة بسكيما brc. نضيف الترويسة
+     الناقصة قبل كل نداء (لا أثر إن سبق وجودها، ولا شيء ينكسر بعملاء بلا rest
+     كالعميل المصغّر HRCHttp الذي يرسلها من عنده). */
+  function rpcCall(client, name, args) {
+    try {
+      var sc = (root.HRCSupabaseConfig && root.HRCSupabaseConfig.schema) || 'brc';
+      if (client && client.rest && client.rest.headers && client.rest.headers.set)
+        client.rest.headers.set('Accept-Profile', sc);
+    } catch (e) { /* عميل وهمي بالاختبارات أو واجهة مختلفة — تجاهل */ }
+    return client.rpc(name, args);
+  }
+
+  /* ========================================================================
+   *  موديل 2026-10-01: بيع نقطة البيع + صفحة صاحب العمل (مسارات عامة)
+   *  ---------------------------------------------------------------------- */
+
+  /* بيع وتعبئة بطاقة فارغة من الموقع العام: بيانات الزبون + الوظيفة (إلزامي)
+     تُستهلك الفرصة الأولى بحجز 24 ساعة — ترجّع {app, attempt, job} بنفس شكل
+     المخزن المحلي كي تعمل الواجهة (booking) بالمسارين دون تفريق. */
+  function activateCardRpc(client, serial, data) {
+    if (!serial) return Promise.resolve({ ok: false, error: 'أدخل باركود البطاقة' });
+    return rpcCall(client, 'activate_card', {
+      p_serial: String(serial).trim(),
+      p_data: data || {}
+    })
+      .then(function (res) {
+        if (res && res.error) {
+          return { ok: false, error: res.error.message || 'تعذّر إتمام البيع' };
+        }
+        var d = res && res.data;
+        if (!d || typeof d !== 'object') return { ok: false, error: 'لا نتيجة من الخادم' };
+        if (d.ok === false) return { ok: false, error: d.error || 'تعذّر إتمام البيع' };
+        return { ok: true, app: d.app || null, attempt: d.attempt || null, job: d.job || null };
+      })
+      .catch(function (e) {
+        return { ok: false, error: 'تعذّر الاتصال: ' + (e && e.message || e) };
+      });
+  }
+
+  /* صفحة صاحب العمل: الباركود وحده يكفي — بلا رموز فرص (سرّ الزبون).
+     ترجّع {ok, card} بنفس شكل employerView المحلية (بما فيها code للتوجيه). */
+  function employerViewRpc(client, serial) {
+    if (!serial) return Promise.resolve({ ok: false, code: 'not_found', error: 'أدخل باركود البطاقة' });
+    return rpcCall(client, 'employer_view', { p_serial: String(serial).trim() })
+      .then(function (res) {
+        if (res && res.error) {
+          return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
+        }
+        var d = res && res.data;
+        if (!d || typeof d !== 'object') return { ok: false, code: 'empty', error: 'لا نتيجة من الخادم' };
+        if (d.ok === false) return { ok: false, code: d.code || 'not_found', error: d.error || 'لا توجد بطاقة بهذا الباركود' };
+        return { ok: true, card: d.card || null };
+      })
+      .catch(function (e) {
+        return { ok: false, code: 'network', error: 'تعذّر الاتصال: ' + (e && e.message || e) };
+      });
+  }
+
+  /* طلب صاحب العمل (توظيف/عدم توظيف) من صفحة الباركود — الوظيفة «جاري التوظيف» حتى قرار الشركة */
+  function employerDecideRpc(client, serial, decision) {
+    if (!serial || !decision) return Promise.resolve({ ok: false, error: 'وسائط ناقصة' });
+    return rpcCall(client, 'employer_decide', {
+      p_serial: String(serial).trim(), p_decision: String(decision).trim()
+    })
+      .then(function (res) {
+        if (res && res.error) {
+          return { ok: false, error: res.error.message || 'تعذّر تسجيل القرار' };
+        }
+        var d = res && res.data;
+        if (!d || typeof d !== 'object') return { ok: false, error: 'لا نتيجة من الخادم' };
+        if (d.ok === false) return { ok: false, error: d.error || 'تعذّر تسجيل القرار' };
+        return { ok: true, attempt: d.attempt || null, job: d.job || null, decision: d.decision };
+      })
+      .catch(function (e) {
+        return { ok: false, error: 'تعذّر الاتصال: ' + (e && e.message || e) };
+      });
+  }
+
   root.HRCCloud = {
     /* تحويل */
     jobFromDb: jobFromDb, jobToDb: jobToDb,
@@ -548,7 +714,10 @@
     settingsFromDb: settingsFromDb, settingsToDb: settingsToDb,
     /* بيانات */
     buildDb: buildDb, fetchAll: fetchAll, TABLES: TABLES,
+
     fetchPublicJobs: fetchPublicJobs, verifyForm: verifyForm,
+    lookupCard: lookupCardRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,
+    activateCard: activateCardRpc, employerView: employerViewRpc, employerDecide: employerDecideRpc,
     requestForm: requestForm,
     applyChange: applyChange, subscribeAll: subscribeAll,
     synthId: synthId

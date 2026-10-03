@@ -48,7 +48,8 @@ while ((m = tableRe.exec(stripped(STRUCTURE)))) tables.push({ name: m[1].toLower
 const order = {};
 tables.forEach((t, i) => { if (!(t.name in order)) order[t.name] = i; });
 
-check('المخطط يعرّف الجداول الستة المتوقّعة', tables.length === 6,
+/* 7 = الستة + brc.issued_serials (سجل الباركودات — الدفعات الفارغة 2026-09-30) */
+check('المخطط يعرّف الجداول السبعة المتوقّعة', tables.length === 7,
   tables.length + ': ' + tables.map((t) => t.name).join(', '));
 
 const SYSTEM = new Set(['auth.users', 'auth.identities', 'storage.objects']);
@@ -73,16 +74,17 @@ const funcs = [];
 let f;
 while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 
-/* 19 بعد فصل trg_make_attempts عن trg_defaults (إصلاح 23503: إنشاء خانات
-   المحاولات نُقل إلى مُشغِّل AFTER INSERT لأن BEFORE يسبق كتابة الاستمارة) */
-check('عدد الدوال المتوقّع (19)', funcs.length === 19, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+/* 27 = 24 السابقة + موديل 2026-10-01: بيع نقطة البيع وصفحة صاحب العمل
+   (activate_card + employer_view + employer_decide). */
+check('عدد الدوال المتوقّع (27)', funcs.length === 27, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
 const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
   'brc.trg_defaults', 'brc.trg_attempt_hold', 'brc.trg_no_duplicate_job', 'brc.trg_audit',
   'brc.run_auto_release', 'brc.is_staff', 'brc.is_admin', 'brc.current_staff_id',
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
-  'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold'];
+  'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold',
+  'brc.activate_card', 'brc.employer_view', 'brc.employer_decide'];
 check('كل الدوال المتوقّعة موجودة بالاسم', EXPECTED_FUNCS.every((n) => funcs.some((x) => x.name === n)),
   'المفقود: ' + EXPECTED_FUNCS.filter((n) => !funcs.some((x) => x.name === n)).join(', '));
 
@@ -136,6 +138,11 @@ check('الزائر يستطيع قراءة brc.public_jobs فقط', /public_job
    الفحص هنا يقرأ سطور GRANT (لا REVOKE) فلا يُخدع بإبطال لاحق. */
 check('الزائر لا يستطيع نداء brc.verify_form (التحقق للموظفين والإدارة)', !/verify_form/i.test(anonTargets), anonTargets.slice(0, 160));
 check('الزائر لا يستطيع نداء brc.request_form (لا تقديم استمارة من الموقع)', !/request_form/i.test(anonTargets), anonTargets.slice(0, 160));
+/* موديل 2026-10-01: مسارات عامة مقصودة — نقطة البيع تبيع، وصاحب العمل يقرر
+   بالباركود وحده (خصوصية قبلتها الإدارة صراحة). */
+check('الزائر يستطيع نداء brc.activate_card (بيع نقطة البيع عبر الموقع)', /activate_card/i.test(anonTargets));
+check('الزائر يستطيع نداء brc.employer_view (صفحة صاحب العمل بالباركود)', /employer_view/i.test(anonTargets));
+check('الزائر يستطيع نداء brc.employer_decide (قرار التوظيف من صفحة الباركود)', /employer_decide/i.test(anonTargets));
 const authGrants = grantLines.filter((l) => /\bauthenticated\b/i.test(l)).join(' ');
 check('الموظف المسجَّل يستطيع نداء brc.verify_form', /verify_form/i.test(authGrants));
 check('لا جدول حساس ممنوح للزائر مباشرة',
@@ -255,7 +262,7 @@ for (const [label, re] of [
 ]) check(label, re.test(RAW));
 
 const trigCount = [...stripped(RAW).matchAll(/create\s+trigger\s+\w+/gi)].length;
-check('المشغّلات الثمانية موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق)', trigCount === 8, trigCount + '');
+check('المشغّلات التسعة موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق/سجل الباركودات)', trigCount === 9, trigCount + '');
 
 /* ------------------------- 9) مزامنة ملف الـ migration ------------------------- */
 step(9, 'ملف الـ migration — متطابق مع المصدر (تكاملة GitHub في Supabase)');
@@ -283,6 +290,21 @@ if (migNames.includes(MIG_NAME)) {
     'وُجد تعيين سرّ في كود قابل للتنفيذ');
 } else {
   bad('ملف الـ migration مطابق', 'غير موجود');
+}
+
+/* ── 2026-10-03: خطأ 2F005 على القاعدة الحية ──
+   كانت chance_code() و next_form_serial() تعيدان القيمة من داخل اللوب
+   بعد exit: عند التفرد يخرج التنفيذ من اللوب ويصل نهاية الدالة بلا RETURN
+   (2F005: control reached end of function without RETURN) وعند التصادم
+   تعيد قيمة مكررة. النمط السليم: exit when … ; ثم end loop ثم return. */
+step(11, 'اللوبات — لا return داخل اللوب بعد exit (نمط 2F005)');
+{
+  const INVERTED = /exit\s+when[^;]+;\s*\n\s*return\s+\w+\s*;\s*\n\s*end\s+loop\b/;
+  const SRC = [join(ROOT, 'docs', 'schema.sql')]
+    .concat(readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql')).map((f) => join(MIG_DIR, f)));
+  const hits = SRC.filter((f) => INVERTED.test(readFileSync(f, 'utf8')));
+  check('لا نمط معكوس في schema.sql وكل ملفات migrations', hits.length === 0,
+        'الملفات: ' + hits.map((f) => f.split('/').pop()).join(', '));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

@@ -165,3 +165,18 @@ wrangler pages deploy dist --project-name babylonian-recruitment-company
 - [ ] الـ Service Worker عندك صار `hrc-cache-v4` (DevTools → Application → Cache Storage)
 - [ ] إن كانت القاعدة بلا وظائف معلنة تظهر «لا توجد وظائف معروضة حالياً» — أضِف
       الوظائف من المنظومة الداخلية (`إضافة وظيفة`) أو من SQL Editor
+
+## أعطال معروفة وعلاجها
+
+### «Could not find the function public.… in the schema cache» عند «إتمام» (2026-10-02)
+
+**السبب**: عميل الصفحات العامة (`assets/js/cloud-http.js`) كان يرسل لدوال RPC
+ترويسة `Content-Profile` وحدها — بينما PostgREST يبحث عن الدالة بموجب
+`Accept-Profile`، فيبحث في مخطط `public` بدل `brc` ويرد الخطأ أعلاه رغم أن
+الدالة موجودة. أُصلحت بجعل `rpc()` ترسل الترويستين معاً، وأضيف ما يقابلها
+لعميل supabase-js الكامل في `cloud.js` (`rpcCall`) — والتحقق قائم في
+`tests/cloud-http.mjs` (ترويسات HTTP حقيقية باعتراض fetch، لا محاكاة منطقية).
+
+**إن ظهرت رسالة مشابهة بعد النشر**: طبّق `docs/UPDATE-2026-10-02.sql` في
+Supabase SQL Editor (ملف واحد آمن للإعادة يجمع آخر الترحيلات + المخطط الكامل
++ إعادة تحميل ذاكرة المخطط).

@@ -27,17 +27,21 @@ export const DEMO_SEED = {
         'HRC-1049': { status: 'closed' }        // الباقي تُستنتج حالاته من المحاولات المُزرَعة
       },
       applicants: [
-        { serial: 'HRC-NO-000117', fullName: 'علي حسين محمد', phone: '07701112233', address: 'الحلة - حي الجامعة', dob: '1996-04-12', createdBy: 'staff' },
-        { serial: 'HRC-NO-000118', fullName: 'زهراء عبد الكريم', phone: '07702223344', address: 'المحاويل - حي الحسين', dob: '1999-08-02', createdBy: 'staff2' },
-        { serial: 'HRC-NO-000119', fullName: 'مصطفى جبار علي', phone: '07703334455', address: 'الكفل - حي الزهراء', dob: '1994-01-25', createdBy: 'staff' },
-        { serial: 'HRC-NO-000120', fullName: 'حسين كاظم عبد الله', phone: '07704445566', address: 'الحلة - شارع 40', dob: '1997-11-30', createdBy: 'staff' }
+        { serial: 'HRC-BC-000117', fullName: 'علي حسين محمد', phone: '07701112233', address: 'الحلة - حي الجامعة', dob: '1996-04-12', createdBy: 'staff' },
+        { serial: 'HRC-BC-000118', fullName: 'زهراء عبد الكريم', phone: '07702223344', address: 'المحاويل - حي الحسين', dob: '1999-08-02', createdBy: 'staff2' },
+        { serial: 'HRC-BC-000119', fullName: 'مصطفى جبار علي', phone: '07703334455', address: 'الكفل - حي الزهراء', dob: '1994-01-25', createdBy: 'staff' },
+        { serial: 'HRC-BC-000120', fullName: 'حسين كاظم عبد الله', phone: '07704445566', address: 'الحلة - شارع 40', dob: '1997-11-30', createdBy: 'staff' },
+        /* بطاقات فارغة بالمخزن — أصدرتها الشركة دفعات وتنتظر التعبئة عند البيع
+           (باركودات عشوائية غير متسلسلة، بلا بيانات زبون) */
+        { serial: 'HRC-BC-739214', blank: true, createdBy: 'admin' },
+        { serial: 'HRC-BC-284651', blank: true, createdBy: 'admin' }
       ],
       /* محاولات مرتبطة بالاستمارات التجريبية */
       attempts: [
-        { serial: 'HRC-NO-000120', no: 1, jobCode: 'HRC-1042', slotStatus: 'rejected', note: 'رفض صاحب العمل — عدم توفر سكن قريب' },
-        { serial: 'HRC-NO-000120', no: 2, jobCode: 'HRC-1044', slotStatus: 'reserved', note: 'بانتظار نتيجة المقابلة' },
-        { serial: 'HRC-NO-000119', no: 1, jobCode: 'HRC-1045', slotStatus: 'reserved', note: 'مقابلة مجدولة' },
-        { serial: 'HRC-NO-000118', no: 1, jobCode: 'HRC-1043', slotStatus: 'succeeded', note: 'تم التوظيف فعلياً' }
+        { serial: 'HRC-BC-000120', no: 1, jobCode: 'HRC-1042', slotStatus: 'rejected', note: 'رفض صاحب العمل — عدم توفر سكن قريب' },
+        { serial: 'HRC-BC-000120', no: 2, jobCode: 'HRC-1044', slotStatus: 'reserved', note: 'بانتظار نتيجة المقابلة' },
+        { serial: 'HRC-BC-000119', no: 1, jobCode: 'HRC-1045', slotStatus: 'reserved', note: 'مقابلة مجدولة' },
+        { serial: 'HRC-BC-000118', no: 1, jobCode: 'HRC-1043', slotStatus: 'succeeded', note: 'تم التوظيف فعلياً' }
       ]
     };
 

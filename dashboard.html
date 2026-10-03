@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>المنظومة الداخلية | شركة الهدف للتوظيف</title>
 <meta name="description" content="لوحة الموظفين والإدارة لشركة الهدف للتوظيف: إدارة الوظائف، إصدار الاستمارات، متابعة الحجوزات، سجل التدقيق، واللوحة المالية.">
-<meta name="keywords" content="توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, استمارة توظيف, HRC, عمالة فنية">
+<meta name="keywords" content="توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, بطاقة توظيف, HRC, عمالة فنية">
 <meta name="theme-color" content="#0b1a3a">
 <meta name="author" content="Al-Hadaf Recruitment Company">
 <meta property="og:title" content="المنظومة الداخلية | شركة الهدف للتوظيف">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=2717d438e2">
+<link rel="stylesheet" href="assets/css/style.css?v=699367ef46">
 </head>
 <body>
 <!-- ===========================================================================
@@ -197,6 +197,21 @@
     <circle cx="18" cy="5.5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.5" r="2.6"/>
     <path d="M8.4 10.7 15.7 7M8.4 13.3l7.3 3.7"/>
   </symbol>
+  <!-- بطاقة مصرفية (نافذة الحجز الإلكتروني) -->
+  <symbol id="i-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.5" y="5" width="19" height="14" rx="2.6"/>
+    <path d="M2.5 9.6h19"/>
+    <path d="M6 14.5h3.2M12 14.5h2.4"/>
+  </symbol>
+  <!-- علامة نجاح داخل دائرة -->
+  <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9.2"/>
+    <path d="M8.2 12.4l2.7 2.7 5-5.6"/>
+  </symbol>
+  <!-- سهم لليمين (زر «السابق» في نافذة الحجز — الواجهة RTL) -->
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 12h14M13 6l6 6-6 6"/>
+  </symbol>
 </svg>
 
 <!-- ============================== الترويسة ============================== -->
@@ -254,6 +269,12 @@
       <a href="index.html#services">خدماتنا</a>
       <a href="index.html#about">عن الشركة</a>
       <a href="index.html#contact">تواصل معنا</a>
+      <!-- زر الحجز الإلكتروني: في الموقع العام يفتح نافذة الخطوات مباشرة
+           (booking.js)، وفي بقية الصفحات يرشد إلى لوحة الوظائف. -->
+      <a href="index.html#jobs" class="nav-book" data-action="open-booking">
+        <svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>
+        بطاقتي
+      </a>
     </nav>
   </div>
 </header>
@@ -349,7 +370,7 @@
   <main class="app-main">
     <div class="app-top">
       <div style="display:flex;align-items:center;gap:8px">
-        <button class="hamburger-btn no-print" id="hamburger-btn" aria-label="فتح القائمة">
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="فتح القائمة">
           <span></span>
           <span></span>
           <span></span>
@@ -365,7 +386,9 @@
           <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
           <input type="text" id="quick-code" placeholder="بحث سريع بكود الوظيفة (HRC-1042)" aria-label="بحث بكود الوظيفة">
         </form>
-        <button class="btn btn-lapis btn-sm" id="btn-new-app"><svg class="ic"><use href="#i-user-plus" xlink:href="#i-user-plus"/></svg> إصدار استمارة</button>
+        <button class="btn btn-lapis btn-sm" id="btn-new-app"><svg class="ic"><use href="#i-user-plus" xlink:href="#i-user-plus"/></svg> بيع وتعبئة بطاقة</button>
+        <button class="btn btn-outline btn-sm" id="btn-new-batch" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
+        <button class="btn btn-outline btn-sm" id="btn-new-card" title="بطاقة واحدة فارغة بكودها — تُسجَّل فوراً بالمخزون"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
         <button class="btn btn-gold btn-sm" id="btn-new-job"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة وظيفة</button>
         <button class="btn btn-outline btn-sm" id="btn-run-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تحديث</button>
       </div>
@@ -461,7 +484,7 @@
       <div class="panel">
         <div class="panel-head">
           <h3><svg class="ic"><use href="#i-file" xlink:href="#i-file"/></svg> الاستمارات الصادرة</h3>
-          <span class="badge info" id="apps-count-label">0 استمارة</span>
+          <span class="badge info" id="apps-count-label">0 بطاقة</span>
         </div>
         <div class="panel-body">
           <div class="toolbar">
@@ -469,19 +492,19 @@
               <label for="aq">بحث (رقم تسلسلي / اسم / هاتف)</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="aq" placeholder="HRC-NO-000120 أو اسم الباحث">
+                <input type="search" id="aq" placeholder="HRC-BC-000120 أو اسم الباحث">
               </div>
             </div>
             <div class="field">
-              <label for="a-status">حالة الاستمارة</label>
+              <label for="a-status">حالة البطاقة</label>
               <select id="a-status">
                 <option value="all">الكل</option>
+                <option value="blank">فارغة — بالمخزن</option>
                 <option value="pending">قيد المراجعة</option>
                 <option value="active">سارية</option>
                 <option value="rejected">مرفوض</option>
                 <option value="expired">منتهية الصلاحية</option>
-                <option value="completed">مكتملة</option>
-                <option value="exhausted">استُهلكت المحاولات</option>
+                <option value="exhausted">استُهلكت الفرصتان</option>
               </select>
             </div>
             <div class="field">
@@ -496,13 +519,13 @@
               <thead>
                 <tr>
                   <th>الرقم التسلسلي</th><th>اسم الباحث</th><th>الهاتف</th><th>الإصدار</th>
-                  <th>الانتهاء</th><th>المتبقي</th><th>المحاولات</th><th>الحالة</th><th>إجراءات</th>
+                  <th>الانتهاء</th><th>المتبقي</th><th>الفرص</th><th>الحالة</th><th>إجراءات</th>
                 </tr>
               </thead>
               <tbody id="apps-table-body"></tbody>
             </table>
           </div>
-          <div class="tfoot-note">الاستمارة صالحة 30 يوماً وتحتوي 5 محاولات — بعد استهلاك المحاولات أو انتهاء المدة تتوقف صلاحية الترشيح.</div>
+          <div class="tfoot-note">البطاقة صالحة 30 يوماً وفيها فرصتان مستقلتان — بعد استهلاك الفرصتين أو انتهاء المدة تتوقف صلاحية التقديم.</div>
         </div>
       </div>
     </section>
@@ -517,10 +540,10 @@
         <div class="panel-body" id="holds-list"></div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> محاولات منتهية المهلة (تتطلب إجراء)</h3></div>
+        <div class="panel-head"><h3><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> حالات حرجة بانتظار قرار (توظيف / إرجاع / حذف)</h3></div>
         <div class="table-wrap" style="border:none;box-shadow:none">
           <div class="table-scroll"><table class="data" style="min-width:700px">
-            <thead><tr><th>الاستمارة</th><th>الباحث</th><th>المحاولة</th><th>كود الوظيفة</th><th>انتهت في</th><th>ملاحظة</th><th>إجراء</th></tr></thead>
+            <thead><tr><th>البطاقة</th><th>الباحث</th><th>الفرصة</th><th>كود الوظيفة</th><th>انتهت في</th><th>ملاحظة</th><th>إجراء</th></tr></thead>
             <tbody id="expired-table-body"></tbody>
           </table></div>
         </div>
@@ -543,7 +566,7 @@
               <label for="log-q">بحث في التفاصيل</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="log-q" placeholder="إفراج تلقائي ، HRC-1042 ، اسم مستخدم ...">
+                <input type="search" id="log-q" placeholder="حالة حرجة ، HRC-1042 ، اسم مستخدم ...">
               </div>
             </div>
             <div class="field">
@@ -593,11 +616,11 @@
         <div class="table-wrap" style="border:none;box-shadow:none">
           <div class="table-scroll">
             <table class="data" style="min-width:680px">
-              <thead><tr><th>الموظف</th><th>الاستمارات الصادرة</th><th>مرات الطباعة</th><th>الرسم لكل استمارة</th><th>المتوقع تحصيله</th><th>المستلَم</th><th>حالة الدفع</th><th>توظيف ناجح</th><th>حجوزات جارية</th></tr></thead>
+              <thead><tr><th>الموظف</th><th>البطاقات الصادرة</th><th>مرات الطباعة</th><th>سعر البطاقة</th><th>المتوقع تحصيله</th><th>المستلَم (كاش)</th><th>حالة البيع</th><th>توظيف ناجح</th><th>حجوزات جارية</th></tr></thead>
               <tbody id="fin-table-body"></tbody>
             </table>
           </div>
-          <div class="tfoot-note">المبالغ تقديرية وفق رسم الاستمارة المُعرّف في الإعدادات، وتُحدَّث تلقائياً مع كل إصدار أو استلام رسم.</div>
+          <div class="tfoot-note">المبالغ وفق سعر البطاقة المُعرّف في الإعدادات — البيع كاش عند نقاط البيع فقط، وتُحدَّث تلقائياً مع كل إصدار.</div>
         </div>
       </div>
     </section>
@@ -609,19 +632,16 @@
           <div class="panel-head"><h3><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg> قواعد العمل</h3></div>
           <div class="panel-body">
             <form id="settings-form">
-              <div class="field mb-2"><label for="set-attempts">عدد المحاولات لكل استمارة</label><input type="number" id="set-attempts" min="1" max="10"></div>
-              <div class="field mb-2"><label for="set-days">صلاحية الاستمارة (يوم)</label><input type="number" id="set-days" min="1" max="180"></div>
+              <div class="field mb-2"><label for="set-attempts-locked">الفرص لكل بطاقة</label><input type="number" id="set-attempts-locked" value="2" disabled title="مقفلة بقرار الشركة"></div>
+              <div class="field mb-2"><label for="set-days">صلاحية البطاقة (يوم)</label><input type="number" id="set-days" min="1" max="180"></div>
               <div class="field mb-2"><label for="set-hours">مدة الحجز المؤقت للوظيفة (ساعة)</label><input type="number" id="set-hours" min="1" max="168"></div>
-              <div class="field mb-2"><label for="set-fee">رسم إصدار الاستمارة (دينار)</label><input type="number" id="set-fee" min="0" step="500"></div>
-              <label class="flex" style="align-items:center;gap:9px;font-weight:700;font-size:.9rem">
-                <input type="checkbox" id="set-auto" style="width:auto"> تشغيل الإفراج التلقائي عند انتهاء مدة الحجز
-              </label>
+              <div class="field mb-2"><label for="set-fee">سعر البطاقة (دينار — كاش)</label><input type="number" id="set-fee" min="0" step="500"></div>
               <button class="btn btn-lapis mt-3" type="submit"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg> حفظ الإعدادات</button>
             </form>
           </div>
         </div>
         <div class="panel">
-          <div class="panel-head"><h3><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg> بيانات الشركة (تظهر في الاستمارة)</h3></div>
+          <div class="panel-head"><h3><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg> بيانات الشركة (تظهر في البطاقة)</h3></div>
           <div class="panel-body">
             <div class="data-grid">
               <div class="data-item"><div class="k">الاسم العربي</div><div class="v">شركة الهدف للتوظيف</div></div>
@@ -632,7 +652,7 @@
               <div class="data-item wide"><div class="k">رابط التحقق المطبوع في الكيو آر كود</div><div class="v mono" dir="ltr" id="set-verify-base">—</div></div>
             </div>
             <p class="tiny muted mt-3 mb-0">
-              نص الإخلاء القانوني المطبوع في أسفل كل استمارة:
+              نص الإخلاء القانوني المطبوع على ظهر كل بطاقة:
               «خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية.
               الشركة غير مسؤولة قانونياً وعشائياً عن الشخص المرسل وصاحب العمل.»
             </p>
@@ -689,7 +709,7 @@
             <div class="data-grid mt-3">
               <div class="data-item"><div class="k">الوظائف المخزّنة</div><div class="v" id="db-jobs">0</div></div>
               <div class="data-item"><div class="k">الاستمارات</div><div class="v" id="db-apps">0</div></div>
-              <div class="data-item"><div class="k">المحاولات</div><div class="v" id="db-attempts">0</div></div>
+              <div class="data-item"><div class="k">الفرص (خانات)</div><div class="v" id="db-attempts">0</div></div>
               <div class="data-item"><div class="k">سجلات التدقيق</div><div class="v" id="db-audit">0</div></div>
               <div class="data-item"><div class="k">النسخ الاحتياطية</div><div class="v" id="db-backups">0</div></div>
             </div>
@@ -770,18 +790,18 @@
         <h4>روابط سريعة</h4>
         <ul>
           <li><a href="index.html#jobs">الوظائف المتاحة</a></li>
-          <li><a href="index.html#how">آلية العمل والمحاولات</a></li>
+          <li><a href="index.html#how">آلية العمل والفرصتان</a></li>
           <li><a href="index.html#services">خدماتنا</a></li>
           <li><a href="index.html#about">عن الشركة</a></li>
-          <li><a href="index.html#verify">الحجز والتحقق</a></li>
+          <li><a href="index.html#verify">بطاقة التوظيف والتحقق</a></li>
         </ul>
       </div>
       <div>
         <h4>للباحثين عن عمل</h4>
         <ul>
-          <li><a href="https://wa.me/9647760058007" target="_blank" rel="noopener">احجز وظيفتك بالواتساب</a></li>
-          <li><a href="index.html#verify">كيف أحجز وظيفة؟</a></li>
-          <li><a href="index.html#how">ما معنى المحاولات الخمس؟</a></li>
+          <li><a href="index.html#jobs" data-action="open-booking">تابع بطاقتي</a></li>
+          <li><a href="index.html#verify">كيف أقدّم على وظيفة؟</a></li>
+          <li><a href="index.html#how">ما معنى الفرصتين؟</a></li>
           <li><a href="index.html#how">حجز الوظيفة 24 ساعة</a></li>
         </ul>
       </div>
@@ -824,17 +844,17 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=2717d438e2"></script>
-<script src="assets/vendor/supabase.js?v=2717d438e2"></script>
-<script src="assets/js/supabase-config.js?v=2717d438e2"></script>
-<script src="assets/js/qr.js?v=2717d438e2"></script>
-<script src="assets/js/cloud.js?v=2717d438e2"></script>
-<script src="assets/js/cloud-auth.js?v=2717d438e2"></script>
-<script src="assets/js/cloud-sync.js?v=2717d438e2"></script>
-<script src="assets/js/store.js?v=2717d438e2"></script>
-<script src="assets/js/ui.js?v=2717d438e2"></script>
-<script src="assets/js/nav.js?v=2717d438e2"></script>
-<script src="assets/js/voucher.js?v=2717d438e2"></script>
-<script src="assets/js/dashboard.js?v=2717d438e2"></script>
+<script src="assets/js/config.js?v=699367ef46"></script>
+<script src="assets/vendor/supabase.js?v=699367ef46"></script>
+<script src="assets/js/supabase-config.js?v=699367ef46"></script>
+<script src="assets/js/qr.js?v=699367ef46"></script>
+<script src="assets/js/cloud.js?v=699367ef46"></script>
+<script src="assets/js/cloud-auth.js?v=699367ef46"></script>
+<script src="assets/js/cloud-sync.js?v=699367ef46"></script>
+<script src="assets/js/store.js?v=699367ef46"></script>
+<script src="assets/js/ui.js?v=699367ef46"></script>
+<script src="assets/js/nav.js?v=699367ef46"></script>
+<script src="assets/js/voucher.js?v=699367ef46"></script>
+<script src="assets/js/dashboard.js?v=699367ef46"></script>
 </body>
 </html>

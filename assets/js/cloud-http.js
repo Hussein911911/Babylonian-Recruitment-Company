@@ -23,7 +23,7 @@
     var schema = opts.schema || 'brc';
     var base = String(url).replace(/\/+$/, '') + '/rest/v1/';
 
-    function headers(write) {
+    function headers(write, both) {
       var h = {
         apikey: key,
         Authorization: 'Bearer ' + key,
@@ -31,7 +31,14 @@
       };
       /* السكيما تُعلَن في الترويسة: بلا Accept-Profile يقرأ PostgREST من
          public دائماً فيرد PGRST205 «جدول غير موجود» — وهو أشهر خطأ إعداد. */
-      h[write ? 'Content-Profile' : 'Accept-Profile'] = schema;
+      if (both) {
+        /* نداءات RPC تحتاج الترويستين معاً: PostgREST يبحث عن الدالة بموجب
+           Accept-Profile — أما Content-Profile وحده فيترك البحث في public
+           فيرد PGRST202 «Could not find the function public.… in the schema
+           cache» رغم أن الدالة موجودة بسكيما brc (انظر tests/cloud-http.mjs). */
+        h['Accept-Profile'] = schema;
+        h['Content-Profile'] = schema;
+      } else h[write ? 'Content-Profile' : 'Accept-Profile'] = schema;
       return h;
     }
 
@@ -47,8 +54,8 @@
       return { message: msg, code: code || ('HTTP_' + status) };
     }
 
-    function request(method, path, body, write) {
-      var init = { method: method, headers: headers(write) };
+    function request(method, path, body, write, both) {
+      var init = { method: method, headers: headers(write, both) };
       if (body !== undefined) {
         init.headers['Content-Type'] = 'application/json';
         init.body = JSON.stringify(body);
@@ -94,7 +101,7 @@
     }
 
     function rpc(name, args) {
-      return request('POST', 'rpc/' + name, args || {}, true);
+      return request('POST', 'rpc/' + name, args || {}, true, true);
     }
 
     /* لا جلسة ولا مصادقة في هذا العميل — وهو المقصود: صلاحيات الزائر فقط */

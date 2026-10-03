@@ -1034,50 +1034,226 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .data-item .k { font-size: .78rem; color: var(--muted); font-weight: 700; }
 .data-item .v { font-size: .98rem; font-weight: 800; color: var(--lapis-2); word-break: break-word; }
 .verify-qr { display: grid; place-items: center; gap: 10px; }
+.data-item.wide { grid-column: 1 / -1; }
 .verify-qr svg { width: 172px; height: 172px; border: 1px solid var(--line-soft); border-radius: 14px; padding: 8px; background: #fff; }
 
-/* ============================ 18) الاستمارة المطبوعة (A4) ============================ */
+/* ============================ 18) طباعة بطاقة التوظيف (86×54مم) ============================ */
+/* أنماط البطاقة نفسها يحقنها voucher.js (hrc-card) وقت الطباعة — هنا عقد
+   الطباعة العام فقط: المقاس الفعلي للبطاقة وإظهار حاوية الطباعة وحدها. */
 #print-root { display: none; }
-.voucher { background: #fff; color: #000; font-size: 11.6px; line-height: 1.6; }
-.voucher .v-head { display: flex; align-items: center; gap: 12px; border-bottom: 2.5px solid #0b1a3a; padding-bottom: 8px; margin-bottom: 10px; }
-.voucher .v-logo { width: 74px; height: 74px; flex: none; }
-.voucher .v-titles { flex: 1; }
-.voucher .v-titles h1 { font-size: 18px; margin: 0; color: #0b1a3a; }
-.voucher .v-titles .en { font-size: 10.5px; letter-spacing: 1.2px; color: #555; font-weight: 700; }
-.voucher .v-titles .meta { font-size: 10px; color: #333; margin-top: 3px; }
-.voucher .v-phone-box { text-align: center; border: 1px solid #0b1a3a; border-radius: 8px; padding: 5px 9px; min-width: 132px; }
-.voucher .v-phone-box .k { font-size: 9.5px; color: #444; }
-.voucher .v-phone-box .v { font-weight: 900; font-size: 12px; direction: ltr; }
-.voucher .v-band { display: flex; justify-content: space-between; gap: 10px; background: #0b1a3a; color: #fff; padding: 6px 12px; border-radius: 7px; font-weight: 800; font-size: 11.5px; }
-.voucher .v-section-title { font-weight: 900; font-size: 12px; color: #0b1a3a; margin: 10px 0 5px; border-inline-start: 4px solid #c8a24a; padding-inline-start: 7px; }
-.voucher .v-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.voucher .v-cell { border: 1px solid #c9ced8; border-radius: 6px; padding: 5px 7px; }
-.voucher .v-cell .k { font-size: 9.3px; color: #555; font-weight: 700; }
-.voucher .v-cell .v { font-size: 11.5px; font-weight: 800; }
-.voucher .v-cell.wide { grid-column: span 2; }
-.voucher table { width: 100%; border-collapse: collapse; }
-.voucher table th, .voucher table td { border: 1px solid #9aa3b2; padding: 5px 6px; text-align: center; font-size: 10.6px; }
-.voucher table th { background: #eef1f7; font-weight: 800; color: #0b1a3a; }
-.voucher table td.right { text-align: right; }
-.voucher .v-foot { display: grid; grid-template-columns: 150px 1fr; gap: 14px; margin-top: 10px; align-items: start; }
-.voucher .v-qr { text-align: center; }
-.voucher .v-qr svg { width: 132px; height: 132px; }
-.voucher .v-qr .ser { font-size: 10px; font-weight: 900; direction: ltr; }
-.voucher .v-note { border: 1px dashed #8a6d2c; background: #fdf9ee; border-radius: 7px; padding: 7px 10px; font-size: 10.2px; line-height: 1.7; }
-.voucher .v-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 12px; text-align: center; font-size: 10.5px; }
-.voucher .v-sign div { border-top: 1px solid #333; padding-top: 4px; }
-/* لا علامة مائية: الاستمارة تُطبع على ورقة بيضاء نظيفة بلا أي مربع/نقش باهت */
-.voucher-sheet { position: relative; }
 
 @media print {
-  @page { size: A4 portrait; margin: 9mm; }
-  html, body { background: #fff !important; }
-  body * { visibility: hidden !important; }
-  #print-root, #print-root * { visibility: visible !important; }
-  #print-root { display: block !important; position: absolute; inset: 0; width: 100%; }
-  #print-root .voucher { width: 100%; }
-  .no-print, .toast-wrap, .modal-backdrop, .app-side, .site-header, .site-footer { display: none !important; }
-  .voucher, .voucher * { background-image: none !important; box-shadow: none !important; text-shadow: none !important; }
+  /* بطاقة 86×54مم بالحجم الفعلي — بلا هوامش (voucher.js يضبط تفاصيل الصفحتين)
+     ─────────────────────────────────────────────────────────────────────
+     ⚠️ حجب الصفحة «عرضاً» لا «إخفاءً»: القاعدة القديمة كانت
+     visibility:hidden وتترك المحتوى يحجز مساحته، فتطبع صفحات فاضية قبل
+     البطاقة وبعدها (كانت تخرّب ورقة الطباعة). display:none يزيلها كلياً. */
+  @page { size: 86mm 54mm; margin: 0; }
+  html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+  body > *:not(#print-root) { display: none !important; }
+  #print-root { display: block !important; position: static !important; width: auto !important; }
+  #print-root:empty { display: none !important; }
+  /* الألوان تطبع كما هي (اللازوردي والذهبي والنصوص البيضاء) — بلا هذه
+     الخاصية يحذف المتصفح الخلفيات فيطبع النص الأبيض على ورق أبيض. */
+  #print-root .hrc-card, #print-root .hrc-card * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  #print-root .hrc-card { box-shadow: none !important; }
+}
+
+/* ============================ 18.b) نافذة «بطاقتي» ============================
+   شاشات البطاقة: الدخول بالباركود، الحالة، استخدام فرصة، إعادة الطباعة —
+   نفس الهوية (لازورد + ذهب + خط Cairo). */
+.modal-booking { width: min(680px, 96vw); }
+.bk-wrap { direction: rtl; }
+
+/* شريط التقدّم: نقاط مرقّمة موصولة بخط ذهبي */
+.bk-progress {
+  display: flex; gap: 2px; position: relative; margin-bottom: 22px;
+}
+.bk-progress::before {
+  content: ''; position: absolute; top: 17px; right: 10%; left: 10%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--line), transparent); z-index: 0;
+}
+.bk-pg-step { flex: 1 1 0; text-align: center; position: relative; z-index: 1; min-width: 0; }
+.bk-pg-dot {
+  width: 34px; height: 34px; border-radius: 50%; margin: 0 auto 7px;
+  display: grid; place-items: center; font-weight: 800; font-size: .9rem;
+  background: #efe9da; color: #8d7c50; border: 1.5px solid var(--line-soft);
+  transition: .22s;
+}
+.bk-pg-dot svg { width: 15px; height: 15px; }
+.bk-pg-step.is-done .bk-pg-dot { background: var(--lapis-3); color: #fff; border-color: var(--lapis-3); }
+.bk-pg-step.is-current .bk-pg-dot {
+  background: linear-gradient(135deg, var(--gold), #dcbf72); color: #241a05;
+  border-color: transparent; box-shadow: 0 5px 16px rgba(200, 162, 74, .45); transform: scale(1.1);
+}
+.bk-pg-label { font-size: .74rem; color: var(--muted); font-weight: 700; display: block; line-height: 1.5; }
+.bk-pg-step.is-current .bk-pg-label { color: var(--gold-3); font-weight: 800; }
+.bk-pg-step.is-done .bk-pg-label { color: var(--lapis-2); }
+
+/* شريط الوظيفة المختارة أعلى الخطوة */
+.bk-jobstrip {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: linear-gradient(135deg, #fdf9ee, #f7efdd); border: 1px solid var(--line);
+  border-radius: 13px; padding: 10px 14px; margin-bottom: 18px;
+}
+.bk-jobstrip > svg { width: 22px; height: 22px; color: var(--gold-3); }
+.bk-jobstrip b { display: block; font-size: .95rem; }
+.bk-jobstrip .chip { margin-inline-start: auto; }
+
+.bk-stephead { margin-bottom: 16px; }
+.bk-stephead h4 { margin: 0 0 4px; font-size: 1.12rem; color: var(--lapis); }
+.bk-stephead h4 svg { color: var(--gold-3); }
+.bk-step { animation: bkFade .26s ease-out; }
+
+/* بطاقة وظيفة قابلة للاختيار — خطوة «اختيار الوظيفة» باستمارة الزبون
+   (تصفح الوظائف المتاحة بفلاتر مثل قسم الوظائف بالموقع) */
+.bk-pick { display: block; width: 100%; text-align: right; background: #fff;
+  border: 1.5px solid #dfe4ec; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+  cursor: pointer; font: inherit; color: inherit; transition: border-color .15s, background .15s; }
+.bk-pick:hover { border-color: #c8a24a; }
+.bk-pick.is-picked { border-color: #c8a24a; background: #fdf9ee; box-shadow: inset 0 0 0 1px #c8a24a; }
+.bk-pick-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.bk-pick-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; color: #5b6472; font-size: 12.5px; }
+.bk-pick-meta svg { width: 13px; height: 13px; vertical-align: -2px; }
+@keyframes bkFade { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
+
+/* الحقول */
+.bk-field { margin-bottom: 15px; }
+.bk-field label { display: block; font-weight: 800; font-size: .88rem; margin-bottom: 6px; color: var(--lapis-2); }
+.bk-req { color: var(--danger); }
+.bk-field input, .bk-field select, .bk-field textarea {
+  width: 100%; padding: 11px 13px; border: 1.5px solid var(--line-soft); border-radius: 11px;
+  font: inherit; font-size: .95rem; background: #fff; color: var(--text); transition: .16s;
+}
+.bk-field textarea { resize: vertical; min-height: 74px; }
+.bk-field input:focus, .bk-field select:focus, .bk-field textarea:focus {
+  border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200, 162, 74, .18); outline: none;
+}
+.bk-field input[type="date"] { cursor: pointer; }
+.bk-field.has-error input, .bk-field.has-error select, .bk-field.has-error textarea {
+  border-color: var(--danger); box-shadow: 0 0 0 3px rgba(168, 50, 47, .12);
+}
+.bk-err {
+  display: none; align-items: center; gap: 6px; color: var(--danger);
+  font-size: .79rem; font-weight: 700; margin-top: 6px;
+}
+.bk-err svg { width: 14px; height: 14px; flex: none; }
+.bk-field.has-error .bk-err, .bk-err.show { display: flex; }
+.bk-hint { display: block; font-size: .76rem; color: var(--muted); margin-top: 6px; }
+
+/* بلا وظائف متاحة */
+.bk-empty {
+  display: grid; place-items: center; gap: 6px; text-align: center; padding: 26px 14px;
+  border: 1.5px dashed var(--line); border-radius: 14px; background: #fdfbf6;
+}
+.bk-empty svg { width: 30px; height: 30px; color: var(--gold-3); }
+
+/* معاينة البطاقة المصرفية */
+.bk-cardvis {
+  position: relative; overflow: hidden; direction: ltr; text-align: left; color: #fff;
+  background: linear-gradient(130deg, #17376c 0%, #0b1a3a 55%, #08132a 100%);
+  border-radius: 17px; padding: 20px 22px; width: min(430px, 100%); margin: 2px auto 18px;
+  box-shadow: 0 16px 38px rgba(8, 19, 42, .38); border: 1px solid rgba(200, 162, 74, .35);
+}
+.bk-cardvis::before {
+  content: ''; position: absolute; inset-inline-end: -46px; top: -58px; width: 190px; height: 190px;
+  border-radius: 50%; background: radial-gradient(circle, rgba(200, 162, 74, .22), transparent 70%);
+}
+.bk-cardvis::after {
+  content: ''; position: absolute; inset-inline-start: -34px; bottom: -70px; width: 160px; height: 160px;
+  border-radius: 50%; background: radial-gradient(circle, rgba(62, 193, 196, .16), transparent 70%);
+}
+.bk-cardvis > * { position: relative; z-index: 1; }
+.bk-cardvis-top { display: flex; justify-content: space-between; align-items: center; }
+.bk-chip {
+  width: 46px; height: 33px; border-radius: 7px;
+  background: linear-gradient(135deg, #f2e2ac, #c8a24a 60%, #8a6d2c);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .25);
+}
+.bk-cardvis-brandbox { display: inline-flex; align-items: center; gap: 8px; color: var(--gold-2); }
+.bk-cardvis-brandbox svg { width: 21px; height: 21px; }
+.bk-brand { font-weight: 900; font-style: italic; letter-spacing: 1.2px; font-size: 1.02rem; color: var(--gold-2); }
+.bk-cardvis-num {
+  font-size: clamp(1.12rem, 4.4vw, 1.45rem); letter-spacing: 2.6px; font-weight: 700;
+  margin: 20px 0 16px; white-space: nowrap; overflow: hidden;
+}
+.bk-cardvis-foot { display: flex; justify-content: space-between; gap: 18px; }
+.bk-cardvis-k { display: block; font-size: .58rem; letter-spacing: 1.4px; color: #9fb0d4; font-weight: 700; }
+.bk-cardvis-v { font-size: .86rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+
+/* صف الرسم وشريط الأمان */
+.bk-fee {
+  display: flex; align-items: center; gap: 10px; background: #fdf9ee; border: 1px dashed var(--gold);
+  border-radius: 12px; padding: 11px 15px; font-weight: 700; color: var(--lapis-2); font-size: .92rem;
+}
+.bk-fee svg { width: 19px; height: 19px; color: var(--gold-3); }
+.bk-fee b { margin-inline-start: auto; color: var(--gold-3); font-size: 1.02rem; }
+.bk-secure {
+  display: flex; gap: 10px; align-items: flex-start; background: #f2f9f4; border: 1px solid #cdeed9;
+  color: #1d6a43; border-radius: 12px; padding: 11px 14px; font-size: .8rem; line-height: 1.8; margin-top: 13px;
+}
+.bk-secure svg { width: 18px; height: 18px; flex: none; margin-top: 3px; color: #1f8f4e; }
+
+/* المراجعة النهائية */
+.bk-summary { border: 1px solid var(--line-soft); border-radius: 14px; overflow: hidden; background: #fff; }
+.bk-sum-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+  padding: 10px 15px; border-bottom: 1px dashed var(--line-soft); font-size: .9rem;
+}
+.bk-sum-row:last-child { border-bottom: none; }
+.bk-sum-row .k { color: var(--muted); font-weight: 700; flex: none; }
+.bk-sum-row .v { font-weight: 800; text-align: left; word-break: break-word; }
+.bk-check {
+  display: flex; gap: 11px; align-items: flex-start; margin-top: 15px; cursor: pointer;
+  background: #fdfbf6; border: 1.5px solid var(--line-soft); border-radius: 12px; padding: 12px 14px;
+  font-size: .84rem; line-height: 1.9; transition: .16s;
+}
+.bk-check:hover { border-color: var(--gold); }
+.bk-check input { width: 19px; height: 19px; margin-top: 6px; accent-color: var(--gold-3); flex: none; cursor: pointer; }
+.bk-field[data-bk-field="agree"] { margin-top: 8px; }
+
+/* شاشة النجاح */
+.bk-success { text-align: center; padding: 4px 0 2px; animation: bkFade .3s ease-out; }
+.bk-success-ic {
+  width: 78px; height: 78px; border-radius: 50%; margin: 4px auto 16px; display: grid; place-items: center;
+  background: linear-gradient(135deg, #2eb35f, #1f8f4e); color: #fff;
+  box-shadow: 0 12px 30px rgba(31, 143, 78, .35);
+}
+.bk-success-ic svg { width: 38px; height: 38px; }
+.bk-success h4 { font-size: 1.3rem; color: var(--lapis); margin-bottom: 4px; }
+.bk-ref {
+  display: inline-block; font-size: 1.28rem; font-weight: 800; letter-spacing: 1.5px;
+  background: #fdf9ee; border: 1.5px dashed var(--gold); border-radius: 12px;
+  padding: 10px 22px; color: var(--gold-3); margin: 6px 0 4px;
+}
+.bk-foot-note { margin-inline-start: auto; align-self: center; }
+
+/* زر «احجز الآن» الذهبي في شريط التنقل */
+.main-nav a.nav-book {
+  background: linear-gradient(135deg, var(--gold), #dcbf72); color: #241a05 !important;
+  font-weight: 800; border-radius: 10px; box-shadow: 0 5px 14px rgba(200, 162, 74, .35);
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.main-nav a.nav-book svg { width: 16px; height: 16px; }
+.main-nav a.nav-book:hover {
+  background: linear-gradient(135deg, #dcbf72, #e8d089); color: #241a05 !important;
+  transform: translateY(-1px); box-shadow: 0 8px 18px rgba(200, 162, 74, .45);
+}
+
+/* استجابة نافذة الحجز للشاشات الصغيرة */
+@media (max-width: 620px) {
+  .bk-pg-label { display: none; }
+  .bk-progress { gap: 6px; margin-bottom: 18px; }
+  .bk-progress::before { right: 18%; left: 18%; }
+  .modal-booking .modal-foot { justify-content: stretch; }
+  .modal-booking .modal-foot .btn { flex: 1 1 auto; }
+  .bk-foot-note { margin-inline-start: 0; width: 100%; text-align: center; order: 3; }
+  .bk-cardvis { padding: 16px; }
+  .bk-sum-row { flex-direction: column; gap: 2px; align-items: flex-start; padding: 9px 14px; }
+  .bk-sum-row .v { text-align: right; }
 }
 
 /* ============================ 19) استجابة الشاشات ============================ */
