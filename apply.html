@@ -517,7 +517,16 @@ body{
 </symbol>
 </svg>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- ── عميل الاتصال: محلي ومصغّر (نفس نمط بقية الصفحات العامة) ──
+     قبل 2026-10-06 كانت هذه الصفحة تنزّل مكتبة سوبابيس الكاملة (213KB) من CDN
+     خارجي، ولها مشكلتان حقيقيتان:
+       1) CDN محجوب/متأخر عند بعض المشغّلين ⇒ الصفحة تعلَق على «جاري التحميل» أبداً.
+       2) المكتبة الكاملة تعلن السكيما في **Content-Profile وحده** لنداءات RPC،
+          وPostgREST يبحث عن الدالة بـ Accept-Profile — فيرد PGRST202
+          «Could not find the function public.… in the schema cache» رغم أن
+          الدالة موجودة في brc (نفس العطل المُصلَح سابقاً في cloud-http.js).
+     عميل HRCHttp المحلي يعلن الترويستين معاً ولا يترك الصفحة رهينة طرف خارجي. ── -->
+<script src="assets/js/cloud-http.js"></script>
 <script>
 (function(){
 'use strict';
@@ -1029,13 +1038,66 @@ function initDates(){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   صفحة الخطأ — برسالة عربية وسبب واضح وخطوة إصلاح
+   ═══════════════════════════════════════════════════════════════
+   الدرس (2026-10-06): زبون مسح باركود بطاقته فرأى رسالة PostgREST خاماً
+   بالإنجليزية «Could not find the function … in the schema cache» وما عرف
+   شنو يسوي. الرسالة كانت صحيحة — الدالة فعلاً غير مثبّتة بقاعدة الشركة —
+   لكن الصفحة ما كانت تقول ذلك بالعربي ولا تدلّ على الإصلاح. */
+var fatalShown=false;
+function fatal(msg,hintHtml){
+  if(fatalShown)return;
+  fatalShown=true;
+  var box=$('error-msg');
+  if(box){
+    box.textContent=msg;
+    if(hintHtml){
+      var h=document.createElement('div');
+      h.style.cssText='margin-top:12px;font-size:9.5pt;color:#e8d089;line-height:2;text-align:right;max-width:340px';
+      h.innerHTML=hintHtml;
+      box.parentNode.insertBefore(h,box.nextSibling);
+    }
+  }
+  try{G.go(-999);}catch(e){}
+  $('pg-loading').classList.remove('active');
+  $('pg-error').classList.add('active');
+}
+
+/* وصول البيانات أخيراً بعد ظهور الخطأ (شبكة بطيئة): نُخفي الخطأ ونعرض الترحيب */
+function clearFatal(){
+  if(!fatalShown)return;
+  fatalShown=false;
+  var e=$('pg-error'),w=$('pg-welcome');
+  if(e)e.classList.remove('active');
+  if(w)w.classList.add('active');
+  curPage=0;transitioning=false;
+}
+
+/* هل رد الخطأ يعني «الدالة غير مثبّتة على القاعدة»؟ (PGRST202 / نفس النص) */
+function isMissingFunction(err){
+  if(!err)return false;
+  var code=String(err.code||''),msg=String(err.message||'');
+  return code==='PGRST202'||/schema cache/i.test(msg)||
+    /could not find the function/i.test(msg)||/function\s+\S+\s+does not exist/i.test(msg);
+}
+
+var DB_UPDATE_HINT='افتح صفحة تحديث القاعدة على نفس الموقع: '+
+  '<a href="db-update.html" style="color:#f0d98a;text-decoration:underline">db-update.html</a>'+
+  ' ونفّذ <b>الجزء 5</b> ثم <b>الجزء الأخير</b> (إعادة تحميل ذاكرة المخطط) في محرر SQL، ثم أعد فتح هذا الرابط.<br>'+
+  'للإدارة: النص الكامل في <b dir="ltr">docs/UPDATE-2026-10-06.sql</b> — الشرح في <b>ملاحظات التحديث</b>.';
+
+/* ═══════════════════════════════════════════════════════════════
    تحميل البيانات
    ═══════════════════════════════════════════════════════════════ */
 function loadData(){
   dataLoading=true;
   var p=new URLSearchParams(window.location.search);
   var serial=p.get('form')||p.get('serial')||p.get('s')||'';
-  if(!serial){$('error-msg').textContent='لا يوجد رقم بطاقة في الرابط';G.go(-999);$('pg-loading').classList.remove('active');$('pg-error').classList.add('active');return;}
+  if(!serial){
+    fatal('لا يوجد رقم بطاقة في الرابط — امسح باركود البطاقة كاملاً من جديد.',
+      'إن كنت كتبت الرابط يدوياً فتأكد من وجود <b dir="ltr">?form=HRC-BC-……</b> في آخره.');
+    return;
+  }
   cardSerial=serial.trim().toUpperCase();
 
   Promise.all([
@@ -1043,8 +1105,28 @@ function loadData(){
     client.from('public_jobs').select('*')
   ]).then(function(res){
     var cr=res[0];
-    if(cr.error){$('error-msg').textContent='تعذّر الاتصال: '+(cr.error.message||cr.error);$('pg-loading').classList.remove('active');$('pg-error').classList.add('active');return;}
-    var cd=cr.data;if(!cd||cd.ok===false){$('error-msg').textContent=cd?(cd.error||'لا توجد بطاقة'):'لا نتيجة';$('pg-loading').classList.remove('active');$('pg-error').classList.add('active');return;}
+    if(cr.error){
+      if(isMissingFunction(cr.error)){
+        fatal('قاعدة الشركة تحتاج تحديثاً بسيطاً: دالة التقديم الذاتي (self_service_card) غير مثبّتة فيها بعد، فباركود بطاقتك لا يجدها.',
+          DB_UPDATE_HINT);
+      }else if(String(cr.error.code||'')==='42501'||/permission denied/i.test(String(cr.error.message||''))){
+        fatal('قاعدة الشركة رفضت الطلب: صلاحية التقديم الذاتي منزوعة عن الزائر.',
+          DB_UPDATE_HINT);
+      }else if(String(cr.error.code||'')==='NETWORK'){
+        fatal('تعذّر الوصول إلى الإنترنت — تحقق من اتصال الجهاز ثم اضغط «إعادة المحاولة».',
+          'الباركود سليم والرقم <b dir="ltr">'+esc(cardSerial)+'</b>؛ المشكلة في الشبكة فقط.');
+      }else{
+        fatal('تعذّر الاتصال بقاعدة الشركة: '+(cr.error.message||cr.error),
+          'تحقق من الإنترنت ثم اضغط «إعادة المحاولة».');
+      }
+      return;
+    }
+    var cd=cr.data;
+    if(!cd||cd.ok===false){
+      fatal(cd?(cd.error||'لا توجد بطاقة بهذا الباركود'):'لم يصل رد من الخادم — تحقق من الإنترنت وأعد المحاولة.',
+        'الرقم المُقروء من الباركود: <b dir="ltr">'+esc(cardSerial)+'</b> — إن كان مختلفاً عن المطبوع على البطاقة فامسح الباركود مرة أخرى بإضاءة أفضل.');
+      return;
+    }
     var c=cd.card||cd;
     cardData={serial:c.serial,status:c.status,profile:c.profile||{},
       chancesLeft:c.chancesLeft!=null?Number(c.chancesLeft):2,
@@ -1058,7 +1140,15 @@ function loadData(){
       if(ch.slotStatus!=='empty'&&ch.jobCode){appliedJobs.push({jobCode:ch.jobCode,jobTitle:ch.jobTitle||''});}
     });
 
-    var jr=res[1];if(jr.error){$('error-msg').textContent='تعذّر تحميل الوظائف';$('pg-loading').classList.remove('active');$('pg-error').classList.add('active');return;}
+    var jr=res[1];
+    if(jr.error){
+      if(isMissingFunction(jr.error)){
+        fatal('قاعدة الشركة تحتاج تحديثاً بسيطاً: واجهة الوظائف العامة غير مثبّتة فيها بعد، فالصفحة لا تجدها.',DB_UPDATE_HINT);
+      }else{
+        fatal('تعذّر تحميل قائمة الوظائف من قاعدة الشركة.', 'تحقق من الإنترنت ثم اضغط «إعادة المحاولة».');
+      }
+      return;
+    }
     jobs=(jr.data||[]).map(function(r){
       return{id:r.id,code:r.code,title:r.title,category:r.category||'خدمات',region:r.region||'',
         salaryMin:r.salary_min||0,salaryMax:r.salary_max||0,shift:r.shift||'صباحي',description:r.description||'',
@@ -1068,18 +1158,19 @@ function loadData(){
     }).filter(function(j){return j.status==='available';});
 
     dataReady=true;
-
-    dataReady=true;
     dataLoading=false;
+    clearFatal();   /* كان الخطأ معروضاً وتأخّرت الشبكة: نعرض الترحيب الآن */
 
     if(chancesLeft<=0&&appliedJobs.length>0){
       curPage=0;
       G.go(7);
     }
   }).catch(function(e){
-    dataReady=true;
     dataLoading=false;
     console.error('خطأ تحميل البيانات:',e);
+    /* كان هنا سطر console فقط: الزبون يبقى على «جاري التحميل» بلا سبب ولا حل */
+    fatal('تعذّر الوصول إلى قاعدة الشركة — تحقق من الإنترنت ثم اضغط «إعادة المحاولة».',
+      'إذا استمرت المشكلة راجع الشركة؛ رقم البطاقة مطبوع أسفل الباركود.');
   });
 }
 
@@ -1092,9 +1183,10 @@ var dataLoading=false;
 function ensureClient(){
   if(client)return true;
   try{
-    if(!window.supabase||!window.supabase.createClient)return false;
-    client=window.supabase.createClient(SUPA_URL,SUPA_KEY,{db:{schema:SCHEMA},auth:{persistSession:false,autoRefreshToken:false}});
-    try{client.rest.headers.set('Accept-Profile',SCHEMA);}catch(e){}
+    if(!window.HRCHttp||!window.HRCHttp.createClient)return false;
+    /* HRCHttp يعلن سكيما brc في Accept-Profile وContent-Profile معاً — شرط نجاح
+       نداءات RPC (انظر رأس cloud-http.js). */
+    client=window.HRCHttp.createClient(SUPA_URL,SUPA_KEY,{schema:SCHEMA});
     return true;
   }catch(e){return false;}
 }
@@ -1118,6 +1210,7 @@ function startApp(){
     });
   });
   tryLoad();
+  startWatchdog();
 }
 
 function tryLoad(){

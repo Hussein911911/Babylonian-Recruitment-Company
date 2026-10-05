@@ -74,9 +74,10 @@ const funcs = [];
 let f;
 while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 
-/* 27 = 24 السابقة + موديل 2026-10-01: بيع نقطة البيع وصفحة صاحب العمل
-   (activate_card + employer_view + employer_decide). */
-check('عدد الدوال المتوقّع (27)', funcs.length === 27, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+/* 29 = 27 السابقة + موديل 2026-10-06: التقديم الذاتي من باركود البطاقة
+   (self_service_card + apply_with_card) — كانتا في ملف هجرة وحده دون مسار
+   التحديث، فصار مسح باركود البطاقة يفتح خطأ على الزبون. */
+check('عدد الدوال المتوقّع (29)', funcs.length === 29, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
 const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
@@ -84,7 +85,8 @@ const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify
   'brc.run_auto_release', 'brc.is_staff', 'brc.is_admin', 'brc.current_staff_id',
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
   'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold',
-  'brc.activate_card', 'brc.employer_view', 'brc.employer_decide'];
+  'brc.activate_card', 'brc.employer_view', 'brc.employer_decide',
+  'brc.self_service_card', 'brc.apply_with_card'];
 check('كل الدوال المتوقّعة موجودة بالاسم', EXPECTED_FUNCS.every((n) => funcs.some((x) => x.name === n)),
   'المفقود: ' + EXPECTED_FUNCS.filter((n) => !funcs.some((x) => x.name === n)).join(', '));
 
@@ -143,6 +145,14 @@ check('الزائر لا يستطيع نداء brc.request_form (لا تقديم
 check('الزائر يستطيع نداء brc.activate_card (بيع نقطة البيع عبر الموقع)', /activate_card/i.test(anonTargets));
 check('الزائر يستطيع نداء brc.employer_view (صفحة صاحب العمل بالباركود)', /employer_view/i.test(anonTargets));
 check('الزائر يستطيع نداء brc.employer_decide (قرار التوظيف من صفحة الباركود)', /employer_decide/i.test(anonTargets));
+/* موديل 2026-10-06: مسار باركود البطاقة (apply.html) — بلا جلسة، ومن دونه يصير
+   مسح باركود كل بطاقة خطأً على الزبون. */
+check('الزائر يستطيع نداء brc.self_service_card (باركود البطاقة يقرأ حالته)', /self_service_card/i.test(anonTargets));
+check('الزائر يستطيع نداء brc.apply_with_card (تقديم ذاتي بلا جلسة موظف)', /apply_with_card/i.test(anonTargets));
+/* الباركود بيان الحيازة، ومع ذلك: لا تُمنح هاتان الدالتان لـ public تلقائياً */
+check('دالتا التقديم الذاتي مُبطَلتان من public قبل المنح',
+  /revoke\s+all\s+on\s+function\s+brc\.self_service_card\(text\)\s+from\s+public/i.test(stripped(RAW)) &&
+  /revoke\s+all\s+on\s+function\s+brc\.apply_with_card\(text,\s*text,\s*jsonb\)\s+from\s+public/i.test(stripped(RAW)));
 const authGrants = grantLines.filter((l) => /\bauthenticated\b/i.test(l)).join(' ');
 check('الموظف المسجَّل يستطيع نداء brc.verify_form', /verify_form/i.test(authGrants));
 check('لا جدول حساس ممنوح للزائر مباشرة',
@@ -305,6 +315,68 @@ step(11, 'اللوبات — لا return داخل اللوب بعد exit (نمط
   const hits = SRC.filter((f) => INVERTED.test(readFileSync(f, 'utf8')));
   check('لا نمط معكوس في schema.sql وكل ملفات migrations', hits.length === 0,
         'الملفات: ' + hits.map((f) => f.split('/').pop()).join(', '));
+}
+
+/* ── 2026-10-06: الدرس الأهم من عطل «باركود البطاقة يفتح خطأً» ──
+   الدالتان كانتا مكتوبتين في ملف هجرة داخل supabase/migrations/ وحده، ولم
+   تُضافا إلى مسار التحديث الذي تستعمله الإدارة (db-update.html و
+   docs/UPDATE-*.sql) ولا إلى المصدر docs/schema.sql. النتيجة: الكود ينادي
+   دالة غير موجودة على القاعدة ⇒ خطأ PostgREST إنكليزي خام عند الزبون.
+   هذا الفحص يمنع تكرار النمط: كل دالة يناديها باركود البطاقة يجب أن تكون
+   معرَّفة في المصدر، وممنوحة للزائر، وموجودة في مسار التحديث. */
+step(12, 'مسار التحديث — كل دالة يناديها باركود البطاقة تصل للإدارة فعلاً');
+{
+  const applySrc = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+  const called = [...new Set([...applySrc.matchAll(/rpc\('(\w+)'/g)].map((m) => m[1]))];
+  check('قراءة الدوال التي تناديها صفحة الباركود', called.length >= 3, called.join(', '));
+
+  const notDefined = called.filter((n) => !new RegExp('function\\s+brc\\.' + n + '\\s*\\(', 'i').test(RAW));
+  check('كل دالة يناديها الباركود مُعرَّفة في docs/schema.sql', notDefined.length === 0,
+    'غير معرَّفة: ' + notDefined.join(', '));
+
+  const notGranted = called.filter((n) =>
+    !new RegExp('grant\\s+execute\\s+on\\s+function\\s+brc\\.' + n + '\\s*\\([^)]*\\)\\s+to\\s+[^;]*anon', 'i')
+      .test(stripped(RAW)));
+  check('كل دالة يناديها الباركود ممنوحة للزائر (anon) في المخطط', notGranted.length === 0,
+    'بلا منح للزائر: ' + notGranted.join(', '));
+
+  /* الدوال الجديدة تحديداً = ما تُنشئه هجرة التقديم الذاتي (2026-10-06).
+     نفحصها هي وحدها: activate_card أقدم وتُثبّتها الأجزاء السابقة (لا تُكرَّر). */
+  const selfMigName = '20261006000000_self_service_card_application.sql';
+  let selfMig = '';
+  try { selfMig = readFileSync(join(MIG_DIR, selfMigName), 'utf8'); } catch { selfMig = ''; }
+  const newFns = [...new Set([...selfMig.matchAll(/create\s+or\s+replace\s+function\s+brc\.(\w+)/gi)].map((m) => m[1]))];
+  check('قراءة دالتَي هجرة التقديم الذاتي من ملف الهجرة', newFns.length >= 2, newFns.join(', '));
+  const defined = (src) => newFns.filter((n) => !new RegExp('function\\s+brc\\.' + n + '\\s*\\(', 'i').test(src));
+  check('دوال التقديم الذاتي مُدرجة في docs/schema.sql (المصدر الوحيد)', defined(RAW).length === 0,
+    'ناقص: ' + defined(RAW).join(', '));
+
+  /* مسار التحديث الفعلي: الملف + صفحة اللصق */
+  const upFile = join(ROOT, 'docs', 'UPDATE-2026-10-06.sql');
+  let upSql = '';
+  try { upSql = readFileSync(upFile, 'utf8'); } catch { upSql = ''; }
+  check('ملف تحديث 2026-10-06 موجود', upSql.length > 0, upFile);
+  check('ملف التحديث يُنشئ دالتَي التقديم الذاتي كاملتين', defined(upSql).length === 0,
+    'ناقص: ' + defined(upSql).join(', '));
+  check('ملف التحديث يُعيد تحميل ذاكرة المخطط (بدونه يبقى «in the schema cache»)',
+    /notify\s+pgrst\s*,\s*'reload schema'/i.test(upSql));
+
+  const upd = readFileSync(join(ROOT, 'db-update.html'), 'utf8');
+  const part5 = (upd.match(/<textarea id="sql5"[\s\S]*?<\/textarea>/) || [''])[0];
+  check('صفحة تحديث القاعدة فيها جزء للباركود يُنشئ الدالتين', defined(part5).length === 0,
+    'ناقص في الجزء 5: ' + defined(part5).join(', '));
+  check('صفحة تحديث القاعدة فيها زر نسخ للجزء الجديد', /cp\('sql5'\)/.test(upd) && /id="ok5"/.test(upd));
+  /* النص في صفحة اللصق يجب أن يطابق ملف التحديث حرفياً بعد فك ترميز HTML */
+  const part5Sql = part5.replace(/^<textarea[^>]*>/, '').replace(/<\/textarea>\s*$/, '')
+    .replace(/&lt;/g, '<').replace(/&amp;/g, '&');
+  check('نص الجزء 5 مطابق حرفياً لملف docs/UPDATE-2026-10-06.sql', part5Sql === upSql,
+    'طول الصفحة ' + part5Sql.length + ' مقابل ' + upSql.length + ' — أعِد تضمينه');
+
+  /* الواجهة: لا CDN خارجي — العميل المصغّر المحلي يعلن السكيما في الترويستين */
+  check('صفحة الباركود تستعمل عميل الاتصال المحلي (cloud-http.js)',
+    /assets\/js\/cloud-http\.js/.test(applySrc) && !/cdn\.jsdelivr|unpkg\.com|esm\.sh/i.test(applySrc));
+  check('صفحة الباركود تشرح للمستخدم العربي سبب الخطأ بدل رسالة الخادم الخام',
+    /isMissingFunction/.test(applySrc) && /db-update\.html/.test(applySrc));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */
