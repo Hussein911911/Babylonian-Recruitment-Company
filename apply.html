@@ -47,12 +47,22 @@ body{
 .pages-wrap{position:relative;overflow:hidden}
 .page{
   display:none;position:absolute;inset:0;
-  transition:transform .5s cubic-bezier(.4,0,.2,1),opacity .4s ease;
+  transition:transform .58s cubic-bezier(.22,1,.36,1),opacity .42s ease;
   opacity:0;pointer-events:none;will-change:transform,opacity;
 }
 .page.active{
   display:block;position:relative;opacity:1;pointer-events:auto;
-  transform:translateX(0);
+  transform:translateX(0) scale(1);
+}
+.page.active .card,.page.active .section-title,.page.active .chances-bar,.page.active .filter-row,.page.active #jobs-list{
+  animation:contentArrive .48s cubic-bezier(.22,1,.36,1) both;
+}
+.page.active .section-title{animation-delay:.04s}
+.page.active .filter-row{animation-delay:.08s}
+.page.active #jobs-list{animation-delay:.12s}
+@keyframes contentArrive{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 /* اتجاه الانتقال */
 .page.slide-in-right{transform:translateX(100%);opacity:0}
@@ -61,14 +71,17 @@ body{
 .page.slide-out-left{transform:translateX(-100%);opacity:0}
 
 /* ── حركات الترحيب ── */
-.anim-zoom{animation:aZoom .7s cubic-bezier(.22,1,.36,1) both}
-.anim-slide-r{animation:aSlideR .6s cubic-bezier(.22,1,.36,1) .15s both}
-.anim-fade-up{animation:aFadeUp .5s cubic-bezier(.22,1,.36,1) .3s both}
-.anim-fade-up2{animation:aFadeUp .5s cubic-bezier(.22,1,.36,1) .5s both}
+.anim-zoom{animation:aZoom .85s cubic-bezier(.22,1,.36,1) both}
+.anim-zoom.anim-glow{animation:aZoom .85s cubic-bezier(.22,1,.36,1) both,aGlow 2.5s ease-in-out .85s infinite}
+.anim-slide-r{animation:aSlideR .8s cubic-bezier(.22,1,.36,1) .18s both}
+.anim-slide-l-zoom{animation:aSlideLZoom .82s cubic-bezier(.22,1,.36,1) .38s both}
+.anim-fade-up{animation:aFadeUp .6s cubic-bezier(.22,1,.36,1) .58s both}
+.anim-fade-up2{animation:aFadeUp .6s cubic-bezier(.22,1,.36,1) .78s both}
 .anim-glow{animation:aGlow 2.5s ease-in-out infinite}
-@keyframes aZoom{from{opacity:0;transform:scale(.65)}to{opacity:1;transform:scale(1)}}
-@keyframes aSlideR{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
-@keyframes aFadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes aZoom{0%{opacity:0;transform:scale(.55)}65%{opacity:1;transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+@keyframes aSlideR{0%{opacity:0;transform:translateX(-42px) scale(.94)}75%{opacity:1;transform:translateX(4px) scale(1.015)}100%{opacity:1;transform:translateX(0) scale(1)}}
+@keyframes aSlideLZoom{0%{opacity:0;transform:translateX(42px) scale(.82)}70%{opacity:1;transform:translateX(-4px) scale(1.04)}100%{opacity:1;transform:translateX(0) scale(1)}}
+@keyframes aFadeUp{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes aGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(200,162,74,.25))}50%{filter:drop-shadow(0 0 18px rgba(200,162,74,.55))}}
 
 /* ── بطاقة ── */
@@ -82,6 +95,7 @@ body{
 .welcome .emblem{width:85px;height:85px;margin:0 auto 14px;display:block}
 .welcome h1{font-size:19pt;font-weight:900;color:#e8d089;margin-bottom:5px}
 .welcome .sub{font-size:10.5pt;color:rgba(249,246,239,.6);margin-bottom:20px;line-height:1.8}
+.employer-link{display:block;margin:12px auto 0;background:none;border:0;color:rgba(249,246,239,.5);font:600 8.5pt 'Cairo',sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .gold-line{height:1px;background:linear-gradient(90deg,transparent,#c8a24a 50%,transparent);margin:14px auto;width:75%}
 
 /* ── الأزرار ── */
@@ -171,6 +185,9 @@ body{
 .job-item{display:flex;align-items:baseline;gap:4px}
 .job-item .k{font-size:7.5pt;color:rgba(249,246,239,.4);white-space:nowrap}
 .job-item .v{font-size:9.5pt;font-weight:700;color:#f4efe2}
+.job-category{display:inline-flex;align-items:center;gap:5px;color:#e8d089;font-size:8pt;margin:-2px 0 7px}
+.job-details{margin:8px 0;padding:10px;border-radius:10px;background:rgba(29,107,196,.08);border:1px solid rgba(29,107,196,.18);font-size:9pt;line-height:1.8;color:rgba(249,246,239,.78)}
+.job-details[hidden]{display:none}.job-details ul{padding-inline-start:20px;margin:4px 0 0}.job-actions{display:flex;gap:8px;margin-top:9px}.job-actions .btn{flex:1}
 
 /* ── اختيار الجنس ── */
 .gender-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -291,6 +308,14 @@ body{
 .loading p{font-size:10pt;color:rgba(249,246,239,.45)}
 
 .footer{text-align:center;padding:14px 0;font-size:7pt;color:rgba(249,246,239,.25);margin-top:12px}
+@media print{
+  @page{size:A4;margin:10mm}
+  body{background:#fff!important;padding:0!important}
+  body *{visibility:hidden!important}
+  #result-content,.form-sheet,#result-content .form-sheet,#result-content .form-sheet *{visibility:visible!important}
+  #result-content .form-sheet{position:absolute;inset:0 auto auto 0;width:100%;box-shadow:none;border-radius:0;overflow:visible}
+  .form-sheet{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}
 </style>
 </head>
 <body>
@@ -330,9 +355,11 @@ body{
       <div class="welcome">
         <svg class="emblem anim-zoom anim-glow" viewBox="0 0 120 120"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
         <h1 class="anim-slide-r">أهلاً بك في منصة الهدف</h1>
-        <p class="sub anim-fade-up">فرصتك للحصول على وظيفة تبدأ من هنا</p>
+        <p class="sub anim-slide-l-zoom">فرصتك للحصول على وظيفة تبدأ من هنا</p>
         <div class="gold-line anim-fade-up"></div>
+        <div id="welcome-status" aria-live="polite" style="min-height:1.5em;color:#e8d089;font-size:9pt"></div>
         <div class="anim-fade-up2"><button class="btn btn-primary" id="btn-start" onclick="G.start()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>ابدأ الآن</button></div>
+        <button type="button" class="employer-link" onclick="G.openEmployer()">صاحب العمل؟ متابعة طلب توظيف</button>
       </div>
     </div>
 
@@ -499,24 +526,24 @@ body{
    بيانات المحافظات العراقية (18 محافظة + أقضية + نواحي)
    ═══════════════════════════════════════════════════════════════ */
 var IRAQ={
-"بابل":{"الحلة":["中心","الكرعاوي","المحاويل","العبيدي"],"المسيّب":["中心","الهاشمية","الجعيفرة"],"المحاويل":["中心","الكفل","العبيدي","النعمانية"],"الهاشمية":["中心","الإسكان","الزهراء"]},
-"بغداد":{"الكرخ":["中心","المنصور","الحارثية","الكاظمية","العامرية","البياع","الشعلة"],"الرصافة":["中心","الكرادة","زيونة","الجادرية","فلسطين","الأعظمية"],"الكاظمية":["中心","الشالجية","الحرية"],"المدائن":["中心","سلمان باق","الواسطي"],"أبو غريب":["中心","الإصلاح","الرجبية"],"التاجي":["中心","الطارمية","الحسينية"],"المحمودية":["中心","اللطيفية","اليوسفية"],"الطارمية":["中心","البو حمدان","العزايز"]},
-"كربلاء":{"كربلاء":["中心","الحر","حسين"],"الهندية":["中心","خان الظ鲴","العبيدي"],"عين التمر":["中心","العُمية","الوهيبي"]},
-"النجف":{"النجف":["中心","الكوفة","المناذرة","الحنانة"],"المناذرة":["中心","الشامية","الهاشمية"],"الكوفة":["中心","العبيدي","الحيرة"],"الشامية":["中心","العُبية"]},
-"ذي قار":{"الناصرية":["中心","سوق الشيوخ","الشطرة","الرفاعي"],"سوق الشيوخ":["中心","الجبايش","الدراجي"],"الشطرة":["中心","الإصلاح","التنومة"],"الرفاعي":["中心","القلعة","البطحاء"],"الجبايش":["中心","الحويش","الكُرمة"]},
-"ميسان":{"العمارة":["中心","علي الغربي","المجر الكبير"],"علي الغربي":["中心","القلعة","الكحلاء"],"المجر الكبير":["中心","السلام","الزيركان"],"الكحلاء":["中心","المشرح"]},
-"البصرة":{"البصرة":["中心","العشار","الزبير","الفاو","أبو الخصيب"],"الزبير":["中心","أم قصر","الشعبة"],"الفاو":["中心","الشط العرب"],"أبو الخصيب":["中心","الدوار","العشار"],"أم قصر":["中心","ميناء أم قصر"]},
-"ديالى":{"بعقوبة":["中心","المقدادية","خانقين","بلدروز","الخالص"],"المقدادية":["中心","الرحبة"],"خانقين":["中心","الوجيهية","جلولاء"],"بلدروز":["中心","نفط خانة"],"الخالص":["中心","بهرز","العبيدي"]},
-"الأنبار":{"الرمادي":["中心","الحبانية","الفلوجة","هيت"],"الفلوجة":["中心","الكرمة","الصقلاوية"],"هيت":["中心","الحديثة","القائم"],"القائم":["中心","عنة","الرطبة"],"الحديثة":["中心","الكرابلة"],"الرطبة":["中心","النخيب"]},
-"نينوى":{"الموصل":["中心","الحمام_الليل","تلعفر","سنجار","الحمدانية"],"تلعفر":["中心","القيارة","العياضية"],"سنجار":["中心","الرحيمية"],"الحمدانية":["中心","桲🏘اية"]},
-"صلاح الدين":{"تكريت":["中心","سامراء","بلد","الدور","بيجي"],"سامراء":["中心","الم忾م"],"بلد":["中心","الإسكان","الドルوي"],"بيجي":["中心","الサイدي"],"الشرقاط":["中心","العزيزية"]},
-"كركوك":{"كركوك":["中心","الحويجة","داقوق","دبس"],"الحويجة":["中心","الرياض","الزاب"],"داقوق":["中心","ال.ColumnHeader"],"دبس":["中心","تل الورد"]},
-"واسط":{"الكوت":["中心","الحي","النعمانية","العزيزية"],"النعمانية":["中心","العزيزية"],"العزيزية":["中心","الصويرة"]},
-"المثنى":{"السماوة":["中心","الخضر","الرميثية","الوركاء"],"الخضر":["中心","الحجرية"],"الرميثية":["中心","العزيزية"],"الوركاء":["中心","الشنافية"]},
-"القادسية":{"الديوانية":["中心","عفك","الشامية","الحمزة"],"عفك":["中心","السنية"],"الشامية":["中心","العُبية"],"الحمزة":["中心","الأخماس"]},
-"أربيل":{"أربيل":["中心","عنكاوا","شقلاوة","سوران","كويسنجق"],"شقلاوة":["中心","صلاح الدين"],"سوران":["中心","حلبجة"],"كويسنجق":["中心","دوكان"]},
-"السليمانية":{"السليمانية":["中心","حلبجة","رانية","دوكان","بنجوين"],"حلبجة":["中心","سيروان"],"رانية":["中心","دوكان"],"دوكان":["中心","السعيدية"]},
-"دهوك":{"دهوك":["中心","زاخو","العمادية","السمايل","بردرش"],"زاخو":["中心","سيميل","الفريد"],"العمادية":["中心","سيروان"]}
+"بابل":{"الحلة":["المركز","الكرعاوي","المحاويل","العبيدي"],"المسيّب":["المركز","الهاشمية","الجعيفرة"],"المحاويل":["المركز","الكفل","العبيدي","النعمانية"],"الهاشمية":["المركز","الإسكان","الزهراء"]},
+"بغداد":{"الكرخ":["المركز","المنصور","الحارثية","الكاظمية","العامرية","البياع","الشعلة"],"الرصافة":["المركز","الكرادة","زيونة","الجادرية","فلسطين","الأعظمية"],"الكاظمية":["المركز","الشالجية","الحرية"],"المدائن":["المركز","سلمان باق","الواسطي"],"أبو غريب":["المركز","الإصلاح","الرجبية"],"التاجي":["المركز","الطارمية","الحسينية"],"المحمودية":["المركز","اللطيفية","اليوسفية"],"الطارمية":["المركز","البو حمدان","العزايز"]},
+"كربلاء":{"كربلاء":["المركز","الحر","حسين"],"الهندية":["المركز","الخيرات","العبيدي"],"عين التمر":["المركز","العُمية","الوهيبي"]},
+"النجف":{"النجف":["المركز","الكوفة","المناذرة","الحنانة"],"المناذرة":["المركز","الشامية","الهاشمية"],"الكوفة":["المركز","العبيدي","الحيرة"],"الشامية":["المركز","العُبية"]},
+"ذي قار":{"الناصرية":["المركز","سوق الشيوخ","الشطرة","الرفاعي"],"سوق الشيوخ":["المركز","الجبايش","الدراجي"],"الشطرة":["المركز","الإصلاح","التنومة"],"الرفاعي":["المركز","القلعة","البطحاء"],"الجبايش":["المركز","الحويش","الكُرمة"]},
+"ميسان":{"العمارة":["المركز","علي الغربي","المجر الكبير"],"علي الغربي":["المركز","القلعة","الكحلاء"],"المجر الكبير":["المركز","السلام","الزيركان"],"الكحلاء":["المركز","المشرح"]},
+"البصرة":{"البصرة":["المركز","العشار","الزبير","الفاو","أبو الخصيب"],"الزبير":["المركز","أم قصر","الشعبة"],"الفاو":["المركز","الشط العرب"],"أبو الخصيب":["المركز","الدوار","العشار"],"أم قصر":["المركز","ميناء أم قصر"]},
+"ديالى":{"بعقوبة":["المركز","المقدادية","خانقين","بلدروز","الخالص"],"المقدادية":["المركز","الرحبة"],"خانقين":["المركز","الوجيهية","جلولاء"],"بلدروز":["المركز","نفط خانة"],"الخالص":["المركز","بهرز","العبيدي"]},
+"الأنبار":{"الرمادي":["المركز","الحبانية","الفلوجة","هيت"],"الفلوجة":["المركز","الكرمة","الصقلاوية"],"هيت":["المركز","الحديثة","القائم"],"القائم":["المركز","عنة","الرطبة"],"الحديثة":["المركز","الكرابلة"],"الرطبة":["المركز","النخيب"]},
+"نينوى":{"الموصل":["المركز","حمام العليل","تلعفر","سنجار","الحمدانية"],"تلعفر":["المركز","القيارة","العياضية"],"سنجار":["المركز","الرحيمية"],"الحمدانية":["المركز","برطلة"]},
+"صلاح الدين":{"تكريت":["المركز","سامراء","بلد","الدور","بيجي"],"سامراء":["المركز","المعتصم"],"بلد":["المركز","الإسكان","الدجيل"],"بيجي":["المركز","الصينية"],"الشرقاط":["المركز","العزيزية"]},
+"كركوك":{"كركوك":["المركز","الحويجة","داقوق","دبس"],"الحويجة":["المركز","الرياض","الزاب"],"داقوق":["المركز","الزوية"],"دبس":["المركز","تل الورد"]},
+"واسط":{"الكوت":["المركز","الحي","النعمانية","العزيزية"],"النعمانية":["المركز","العزيزية"],"العزيزية":["المركز","الصويرة"]},
+"المثنى":{"السماوة":["المركز","الخضر","الرميثية","الوركاء"],"الخضر":["المركز","الحجرية"],"الرميثية":["المركز","العزيزية"],"الوركاء":["المركز","الشنافية"]},
+"القادسية":{"الديوانية":["المركز","عفك","الشامية","الحمزة"],"عفك":["المركز","السنية"],"الشامية":["المركز","العُبية"],"الحمزة":["المركز","الأخماس"]},
+"أربيل":{"أربيل":["المركز","عنكاوا","شقلاوة","سوران","كويسنجق"],"شقلاوة":["المركز","صلاح الدين"],"سوران":["المركز","حلبجة"],"كويسنجق":["المركز","دوكان"]},
+"السليمانية":{"السليمانية":["المركز","حلبجة","رانية","دوكان","بنجوين"],"حلبجة":["المركز","سيروان"],"رانية":["المركز","دوكان"],"دوكان":["المركز","السعيدية"]},
+"دهوك":{"دهوك":["المركز","زاخو","العمادية","السمايل","بردرش"],"زاخو":["المركز","سيميل","الفريد"],"العمادية":["المركز","سيروان"]}
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -568,7 +595,16 @@ var curPage=0;
 var transitioning=false; /* منع النقرات أثناء الانتقال */
 
 var G={
-  start:function(){G.go(1);},
+  openEmployer:function(){
+    var base=location.pathname.replace(/[^/]*$/,'');
+    location.href=base+'index.html?role=employer#card='+encodeURIComponent(cardSerial||'');
+  },
+
+  start:function(){
+    if(!dataReady){$('welcome-status').textContent='جارٍ التحقق من البطاقة وتحميل الوظائف…';return;}
+    if(cardData&&cardData.chancesLeft===1&&cardData.profile&&cardData.profile.fullName){G.go(6);return;}
+    G.go(1);
+  },
 
   /* الانتقال لصفحة نسبية: +1 = التالي، -1 = رجوع، أو رقم مطلق */
   go:function(dir){
@@ -584,7 +620,7 @@ var G={
     var newEl=$(STEP_IDS[target]);
 
     /* إظهار/إخفاء الشريط */
-    var showBar=target>=1&&target<=6;
+    var showBar=target>=1&&target<=5;
     $('topbar').style.display=target>=1?'flex':'none';
     $('steps-bar').style.display=showBar?'flex':'none';
     if(showBar){
@@ -605,7 +641,7 @@ var G={
     newEl.style.transition='none';
     newEl.style.display='block';
     newEl.style.opacity='0';
-    newEl.style.transform=forward?'translateX(40px)':'translateX(-40px)';
+    newEl.style.transform=forward?'translateX(42px) scale(.97)':'translateX(-42px) scale(.97)';
     newEl.classList.add('active');
 
     void newEl.offsetHeight;
@@ -655,7 +691,7 @@ var G={
         el=$('f-name'); v=el.value.trim();
         if(!v){setInvalid(el,'err-name','⚠️','اكتب اسمك الثلاثي الكامل — مثال: أحمد محمد علي');return;}
         if(v.length<3){setInvalid(el,'err-name','⚠️','الاسم قصير جداً — يجب أن يكون 3 أحرف على الأقل');return;}
-        if(v.split(/\s+/).length<2){setInvalid(el,'err-name','⚠️','اكتب الاسم الثلاثي الكامل (ثلاث كلمات) — مثال: أحمد محمد علي');return;}
+        if(v.split(/\s+/).length<3){setInvalid(el,'err-name','⚠️','اكتب الاسم الثلاثي الكامل (ثلاث كلمات على الأقل) — مثال: أحمد محمد علي');return;}
         if(/[0-9]/.test(v)){setInvalid(el,'err-name','⚠️','الاسم لا يجب أن يحتوي أرقام — اكتب الاسم بالحروف فقط');return;}
         setValid(el);clearErr('err-name');
         break;
@@ -676,6 +712,8 @@ var G={
         var d=$('f-day').value,m=$('f-mon').value,y=$('f-yr').value;
         if(!d||!m||!y){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">يرجى إكمال تاريخ الميلاد — اختر اليوم والشهر والسنة</span></div>';return;}
         /* فحص العمر (16-70) */
+        var chosenDate=new Date(parseInt(y),parseInt(m)-1,parseInt(d));
+        if(chosenDate.getFullYear()!==parseInt(y)||chosenDate.getMonth()!==parseInt(m)-1||chosenDate.getDate()!==parseInt(d)){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">تاريخ الميلاد غير صحيح — تحقق من اليوم والشهر</span></div>';return;}
         var age=new Date().getFullYear()-parseInt(y);
         if(age<16){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">العمر أقل من 16 سنة — الحد الأدنى للتوظيف هو 16 سنة</span></div>';return;}
         if(age>70){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">يرجى التحقق من سنة الميلاد — العمر المُدخل '+ar(age)+' سنة</span></div>';return;}
@@ -695,6 +733,23 @@ var G={
         break;
     }
     G.go(curPage+1);
+  },
+
+  readProfile:function(){
+    var dob=$('f-yr').value+'-'+pad2($('f-mon').value)+'-'+pad2($('f-day').value);
+    return{fullName:$('f-name').value.trim(),phone:$('f-phone').value.trim(),
+      province:$('f-prov').value,district:$('f-dist').value,subdistrict:$('f-sub').value,
+      landmark:$('f-lm').value.trim(),dob:dob,gender:selectedGender};
+  },
+
+  fillProfile:function(p){
+    if(!p)return;
+    $('f-name').value=p.fullName||'';$('f-phone').value=p.phone||'';$('f-lm').value=p.landmark||'';
+    if(p.province){$('f-prov').value=p.province;$('f-prov').dispatchEvent(new Event('change'));}
+    if(p.district){$('f-dist').value=p.district;$('f-dist').dispatchEvent(new Event('change'));}
+    if(p.subdistrict)$('f-sub').value=p.subdistrict;
+    if(p.gender){selectedGender=p.gender;document.querySelectorAll('.gender-opt').forEach(function(g){g.classList.toggle('selected',g.dataset.v===p.gender);});}
+    if(p.dob){var bits=String(p.dob).slice(0,10).split('-');if(bits.length===3){$('f-yr').value=String(Number(bits[0]));$('f-mon').value=String(Number(bits[1]));$('f-day').value=String(Number(bits[2]));}}
   },
 
   pickGender:function(el){
@@ -728,6 +783,8 @@ var G={
 
   filter:function(c){currentFilter=c;G.renderFilters();G.renderJobs();},
 
+  toggleDetails:function(code){var box=$('details-'+code);if(box)box.hidden=!box.hidden;},
+
   renderJobs:function(){
     var f=currentFilter==='الكل'?jobs:jobs.filter(function(j){return j.category===currentFilter;});
     var c=$('jobs-list'),e=$('jobs-empty');
@@ -737,18 +794,27 @@ var G={
     f.forEach(function(j){
       var done=appliedJobs.some(function(a){return a.jobCode===j.code;});
       var sal=money(j.salaryMin)+' – '+money(j.salaryMax);
+      var reqs=j.requirements.map(function(r){return'<li>'+esc(r)+'</li>';}).join('');
       h+='<div class="job-card">'
         +'<div class="job-head"><div class="title">'+esc(j.title)+'</div><div class="badge badge-open">🟢 متوفرة</div></div>'
+        +'<div class="job-category">✦ '+esc(j.category)+' · '+esc(j.code)+'</div>'
         +'<div class="job-grid">'
         +'<div class="job-item"><span class="k">الراتب:</span><span class="v">'+esc(sal)+'</span></div>'
         +'<div class="job-item"><span class="k">الدوام:</span><span class="v">'+esc(j.shift)+'</span></div>'
         +'<div class="job-item"><span class="k">المنطقة:</span><span class="v">'+esc(j.region)+'</span></div>'
         +'<div class="job-item"><span class="k">الجنس:</span><span class="v">'+esc(j.gender)+'</span></div>'
-        +'</div>';
-      if(done){h+='<button class="btn btn-outline btn-sm btn-block" disabled style="margin-top:4px">✓ تم التقديم</button>';}
-      else if(chancesLeft<=0){h+='<button class="btn btn-outline btn-sm btn-block" disabled style="margin-top:4px">لا توجد فرص</button>';}
-      else{h+='<button class="btn btn-primary btn-sm btn-block" style="margin-top:4px" onclick="G.showConfirm(\''+esc(j.code)+'\')">تقديم على الوظيفة</button>';}
-      h+='</div>';
+        +'<div class="job-item"><span class="k">الشواغر:</span><span class="v">'+ar(j.vacancies)+'</span></div>'
+        +'</div>'
+        +'<div class="job-details" id="details-'+esc(j.code)+'" hidden>'
+        +(j.description?'<div><b>وصف الوظيفة:</b> '+esc(j.description)+'</div>':'')
+        +(reqs?'<div><b>المتطلبات:</b><ul>'+reqs+'</ul></div>':'')
+        +(!j.description&&!reqs?'<div>لا توجد تفاصيل إضافية لهذه الوظيفة حالياً.</div>':'')
+        +'</div>'
+        +'<div class="job-actions"><button class="btn btn-outline btn-sm" onclick="G.toggleDetails(\''+esc(j.code)+'\')">تفاصيل الوظيفة</button>';
+      if(done){h+='<button class="btn btn-outline btn-sm" disabled>✓ تم التقديم</button>';}
+      else if(chancesLeft<=0){h+='<button class="btn btn-outline btn-sm" disabled>انتهت الفرص</button>';}
+      else{h+='<button class="btn btn-primary btn-sm" onclick="G.showConfirm(\''+esc(j.code)+'\')">تقديم على الوظيفة</button>';}
+      h+='</div></div>';
     });
     c.innerHTML=h;
   },
@@ -779,10 +845,8 @@ var G={
     }
     var btn=$('btn-ok');btnLoading(btn,true);
 
-    var emptyCh=cardData.chances.find(function(ch){return ch.slotStatus==='empty';});
-    if(!emptyCh||!emptyCh.code){G.doActivate(pendingJob);return;}
-
-    client.rpc('use_chance',{p_serial:cardSerial,p_code:emptyCh.code,p_job_code:pendingJob.code})
+    if(chancesLeft<=0){btnLoading(btn,false);showModalError('⚠️','انتهت فرص البطاقة — لا يمكن إرسال طلب جديد');return;}
+    client.rpc('apply_with_card',{p_serial:cardSerial,p_job_code:pendingJob.code,p_data:G.readProfile()})
     .then(function(res){
       btnLoading(btn,false);
       if(res.error){showModalError('⚠️','تعذّر التقديم — '+((res.error.message||res.error)+' — حاول مرة أخرى أو تواصل مع الشركة'));return;}
@@ -811,6 +875,8 @@ var G={
      النتيجة — استمارة التوظيف الكاملة
      ═══════════════════════════════════════════════════════════ */
   onSuccess:function(data,job){
+    cardData.profile=data.profile||data.app||G.readProfile();
+    G.fillProfile(cardData.profile);
     appliedJobs.push({jobCode:job.code,jobTitle:job.title});
     chancesLeft=Math.max(0,chancesLeft-1);
     var emptyCh=cardData.chances.find(function(ch){return ch.slotStatus==='empty';});
@@ -888,6 +954,7 @@ var G={
       +'الحلة – بابل، العراق — <b dir="ltr">07760058007 / 07715993271</b></div>'
       +'</div></div>';
 
+    h+='<button class="btn btn-primary" style="margin-top:12px" onclick="window.print()">🖨️ طباعة استمارة التقديم</button>';
     if(chancesLeft>0){
       h+='<div class="alert alert-info" style="margin-top:10px">متبقي لك <b>'+ar(chancesLeft)+'</b> '+(chancesLeft===1?'فرصة':'فرص')+' — يمكنك العودة لاختيار وظيفة أخرى بنفس الباركود</div>';
     }else{
@@ -972,18 +1039,19 @@ function loadData(){
   cardSerial=serial.trim().toUpperCase();
 
   Promise.all([
-    client.rpc('lookup_card',{p_serial:cardSerial}),
+    client.rpc('self_service_card',{p_serial:cardSerial}),
     client.from('public_jobs').select('*')
   ]).then(function(res){
     var cr=res[0];
     if(cr.error){$('error-msg').textContent='تعذّر الاتصال: '+(cr.error.message||cr.error);$('pg-loading').classList.remove('active');$('pg-error').classList.add('active');return;}
     var cd=cr.data;if(!cd||cd.ok===false){$('error-msg').textContent=cd?(cd.error||'لا توجد بطاقة'):'لا نتيجة';$('pg-loading').classList.remove('active');$('pg-error').classList.add('active');return;}
     var c=cd.card||cd;
-    cardData={serial:c.serial,fullName:c.fullName||'',phone:c.phone||'',status:c.status,
-      chancesLeft:c.chancesLeft!=null?c.chancesLeft:2,
-      chances:(c.chances||[]).map(function(ch){return{no:ch.no,slotStatus:ch.slotStatus,code:ch.code||ch.chanceCode||'',jobCode:ch.jobCode||'',jobTitle:ch.jobTitle||''};})
+    cardData={serial:c.serial,status:c.status,profile:c.profile||{},
+      chancesLeft:c.chancesLeft!=null?Number(c.chancesLeft):2,
+      chances:(c.chances||[]).map(function(ch){return{no:ch.no,slotStatus:ch.slotStatus,code:'',jobCode:ch.jobCode||'',jobTitle:ch.jobTitle||''};})
     };
     chancesLeft=cardData.chancesLeft;
+    if(cardData.profile.fullName)G.fillProfile(cardData.profile);
 
     /* إذا البطاقة فيها تقديم سابق — نعّرف الوظائف المقدّم عليها */
     cardData.chances.forEach(function(ch){
@@ -993,7 +1061,8 @@ function loadData(){
     var jr=res[1];if(jr.error){$('error-msg').textContent='تعذّر تحميل الوظائف';$('pg-loading').classList.remove('active');$('pg-error').classList.add('active');return;}
     jobs=(jr.data||[]).map(function(r){
       return{id:r.id,code:r.code,title:r.title,category:r.category||'خدمات',region:r.region||'',
-        salaryMin:r.salary_min||0,salaryMax:r.salary_max||0,shift:r.shift||'صباحي',
+        salaryMin:r.salary_min||0,salaryMax:r.salary_max||0,shift:r.shift||'صباحي',description:r.description||'',
+        requirements:Array.isArray(r.requirements)?r.requirements:[],vacancies:r.vacancies||1,imageUrl:r.image_url||'',
         gender:r.gender||'لا فرق',employer:{name:r.employer_name||'',phone:r.employer_phone||'',address:r.employer_address||''},
         interviewLocation:r.interview_location||'',status:r.status||'available'};
     }).filter(function(j){return j.status==='available';});

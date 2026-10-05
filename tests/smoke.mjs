@@ -281,16 +281,11 @@ await (async () => {
   } catch (e) { bad(name, e.message); }
 })();
 await (async () => {
-  const name = 'رابط ‎#card= يفتح نافذة بطاقتي معبّأة بالباركود';
+  const name = 'رابط QR القديم ‎#card= يحوّل إلى صفحة الترحيب بالتقديم';
   try {
-    closeAllModals(site.doc);
-    const h = await load('index.html', { hash: '#card=HRC-BC-000120', waitMs: 320 });
-    const st = h.window.HRCBooking.state();
-    const m = lastModal(h.doc);
-    /* موديل 2026-10-01: بطاقة مفعّلة ← بوابة الدور (الزبون / صاحب العمل) */
-    if (!(m && st.serial === 'HRC-BC-000120' && st.view === 'gate'))
-      return bad(name, 'view=' + st.view + ' serial=' + st.serial + ' modal=' + !!m);
-    if (!/أنا صاحب العمل/.test(m.textContent)) return bad(name, 'بوابة الدور لا تعرض خيار صاحب العمل');
+    const source = readFileSync(resolve(ROOT, 'assets/js/booking.js'), 'utf8');
+    if (!/location\.replace\('apply\.html\?form='\s*\+\s*encodeURIComponent\(s\)\)/.test(source))
+      return bad(name, 'رابط الباركود القديم لا يوجّه إلى صفحة التقديم');
     return ok(name);
   } catch (e) { bad(name, e.message); }
 })();
@@ -354,9 +349,21 @@ check('ظهر البطاقة يعرض رمزي الفرصتين بصيغة NNNN-
   const miss = rules.filter((r) => !html.includes(r));
   return miss.length === 0 || 'تعليمات ناقصة بالظهر: ' + miss.join(' , ');
 });
-check('باركود الوجه الأمامي يفتح «بطاقتي» بصيغة ‎#card=HRC-BC-######', () => {
+check('باركود الوجه الأمامي يفتح صفحة الترحيب بالتقديم مع رقم البطاقة', () => {
   const url = site.window.HRCStore.cardUrl('HRC-BC-000120');
-  return /#card=HRC-BC-000120$/.test(url) || url;
+  return /apply\.html\?form=HRC-BC-000120$/.test(url) || url;
+});
+check('التقديم الذاتي يحفظ بيانات المتقدم ويتيح المحاولة الثانية بنفس البطاقة', () => {
+  const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
+  const migration = readFileSync(resolve(ROOT, 'supabase/migrations/20261006000000_self_service_card_application.sql'), 'utf8');
+  return page.includes("rpc('self_service_card'") && page.includes("rpc('apply_with_card'") &&
+    page.includes('G.go(6)') && migration.includes('self_application_data') &&
+    migration.includes("'employer_phone'") || 'مسار حفظ الملف الشخصي/إعادة المحاولة غير مكتمل';
+});
+check('تفاصيل الوظيفة تشمل الوصف والمتطلبات مع زر فتح/إغلاق', () => {
+  const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
+  return page.includes('j.description') && page.includes('j.requirements') &&
+    page.includes('G.toggleDetails') || 'تفاصيل بطاقة الوظيفة غير مكتملة';
 });
 check('رابط التحقق الداخلي للبطاقة بالصيغة المطلوبة', () => {
   const url = site.window.HRCStore.verifyUrl('HRC-BC-000120');

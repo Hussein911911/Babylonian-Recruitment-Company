@@ -447,7 +447,7 @@ const DB2 = P.exportJson();
 /* ═══ 3ب) صاحب العمل: يمسح الباركود ويسجّل طلبه — والقرار للشركة ═══════ */
 step('3ب', 'صاحب العمل — يمسح الباركود ويسجّل طلب توظيف (الوظيفة «جاري التوظيف» حتى قرار الشركة)');
 
-const emp = await open('index.html', '#card=' + encodeURIComponent(SERIAL), { db: DB2 });
+const emp = await open('index.html', '?role=employer#card=' + encodeURIComponent(SERIAL), { db: DB2 });
 await wait(900);
 {
   const box = lastModal(emp.doc);
@@ -501,7 +501,7 @@ await wait(900);
   const box = lastModal(emp.doc);
   const again = box.querySelector('#bk-empd-close');
   if (again) { click(emp.w, again); await wait(250); }
-  const emp2 = await open('index.html', '#card=' + encodeURIComponent(SERIAL), { db: emp.w.HRCStore.exportJson() });
+  const emp2 = await open('index.html', '?role=employer#card=' + encodeURIComponent(SERIAL), { db: emp.w.HRCStore.exportJson() });
   await wait(900);
   {
     const b2 = lastModal(emp2.doc);
@@ -579,7 +579,7 @@ step(6, 'نقطة البيع عبر الموقع — تعبئة بطاقة فا�
 /* بطاقة ثانية من دفعة الجلسة لا تزال فارغة: نقطة البيع تمسح باركودها بأي
    موبايل فيفتح الموقع «استمارة الزبون» مباشرة (موديل 2026-10-01). */
 const SERIAL2 = blankSerials[1];
-const pub2 = await open('index.html', '#card=' + encodeURIComponent(SERIAL2), { db: DB4 });
+const pub2 = await open('index.html', '?role=pos#card=' + encodeURIComponent(SERIAL2), { db: DB4 });
 await wait(900);
 {
   const box = lastModal(pub2.doc);
@@ -776,7 +776,7 @@ const DB5 = pub2.w.HRCStore.exportJson();
 }
 
 /* صاحب العمل يسجّل طلب «لم يتم التوظيف» — لا حسم فوري، والقرار للشركة */
-const emp2 = await open('index.html', '#card=' + encodeURIComponent(SERIAL2), { db: DB5 });
+const emp2 = await open('index.html', '?role=employer#card=' + encodeURIComponent(SERIAL2), { db: DB5 });
 await wait(900);
 {
   const b = lastModal(emp2.doc);

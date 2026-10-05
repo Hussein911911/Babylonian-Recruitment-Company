@@ -1215,8 +1215,8 @@
   function verifyUrl(serial) { return verifyBaseUrl() + '?form=' + encodeURIComponent(serial) + '&t=' + token(serial); }
   function verifyLocalUrl(serial) { return CFG.verifyLocal + '?form=' + encodeURIComponent(serial) + '&t=' + token(serial); }
 
-  /* رابط «بطاقتي» المطبوع في باركود QR على البطاقة: يفتح الموقع العام ويفتح
-     نافذة بطاقتي مع تعبئة الباركود تلقائياً (hash: ‎#card=HRC-BC-######). */
+  /* QR بطاقة التوظيف يفتح رحلة التقديم الذاتية مباشرةً على صفحة الترحيب؛
+     صفحة التقديم تقرأ رقم البطاقة من الرابط وتعرض البيانات بعد ضغط «ابدأ الآن». */
   function cardUrl(serial) {
     var base;
     if (CFG.autoVerifyBase !== false && typeof location !== 'undefined' && location &&
@@ -1225,7 +1225,7 @@
     } else {
       base = String(CFG.verifyBase || '').replace(/verify\/?$/, '');
     }
-    return base + 'index.html#card=' + encodeURIComponent(serial);
+    return base + 'apply.html?form=' + encodeURIComponent(serial);
   }
 
   /* تقنيع للعرض العام بلا بصمة مطابقة — مطابق لدالتي brc.mask_name/mask_phone
