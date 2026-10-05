@@ -925,14 +925,21 @@
     view = 'entry';
   }
 
-  /* فتح البطاقة من باركود QR المطبوع: ‎#card=HRC-BC-###### */
+  /* روابط QR القديمة كانت تفتح #card=... على الصفحة العامة؛ حوّلها
+     للرحلة الجديدة حتى تصل البطاقات المطبوعة سابقاً إلى صفحة الترحيب أيضاً. */
   function openFromHash() {
     if (!location || !location.hash) return;
     var mt = /#card=([A-Za-z0-9-]+)/.exec(location.hash);
     if (!mt) return;
     var s = decodeURIComponent(mt[1]).trim().toUpperCase();
-    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
-    if (serialPattern(s)) open({ serial: s, fromHash: true });
+    if (!serialPattern(s)) return;
+    var role = new URLSearchParams(location.search).get('role');
+    if (role === 'employer' || role === 'pos') {
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
+      open({ serial: s, fromHash: true });
+      return;
+    }
+    location.replace('apply.html?form=' + encodeURIComponent(s));
   }
 
   /* التقاط أزرار «بطاقتي» بكل الصفحة (نفس نقاط الاحجز السابقة) */
