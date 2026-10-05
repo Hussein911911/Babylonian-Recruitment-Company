@@ -6,4 +6,7 @@ tests/.tmp/
 
 # مجلد النشر المُجمَّع (يُبنى بـ npm run dist)
 dist/
+
+# معاينة الاستمارة المطبوعة (تُولَّد محلياً من tests/apply-flow.mjs — أداة تطوير)
+form-preview.html
 __pycache__/

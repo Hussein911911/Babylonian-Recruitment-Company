@@ -236,61 +236,114 @@ body{
 .gender-opt .icon{font-size:24pt;display:block;margin-bottom:4px}
 
 /* ── نافذة التأكيد ── */
-/* ── الاستمارة ── */
+/* ══════════════════════════════════════════════════════════════
+   الاستمارة — ورقة A4 واحدة، فخمة ومهنية (تُطبع كاملة بصفحة واحدة)
+   القياسات بالمليمتر حتى يبقى التخطيط ثابتاً في الطباعة:
+   رأس 17مم + شريط البطاقة 27مم + 6 أقسام ≈ 200مم < 281مم المتاحة
+   ══════════════════════════════════════════════════════════════ */
 .form-sheet{
-  background:#fff;color:#231a06;border-radius:14px;overflow:hidden;
+  background:#fff;color:#20180a;border-radius:14px;overflow:hidden;
   font-family:'Cairo','Segoe UI',Tahoma,sans-serif;direction:rtl;
   box-shadow:0 8px 30px rgba(0,0,0,.3);
 }
 .fs-head{
-  background:linear-gradient(135deg,#16294d,#1d3a6e);color:#f4efe2;
-  padding:12px 14px;display:flex;justify-content:space-between;align-items:center;
+  background:linear-gradient(135deg,#0f1f3d,#1d3a6e 55%,#16294d);color:#f4efe2;
+  min-height:20mm;padding:7px 14px;display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1.2mm solid #c8a24a;
+  box-shadow:inset 0 -1.1mm 0 rgba(255,255,255,.06);
 }
-.fs-head .brand{display:flex;align-items:center;gap:6px}
-.fs-head .brand svg{width:28px;height:28px}
-.fs-head .brand .n1{font-size:11pt;font-weight:900;color:#e8d089}
-.fs-head .brand .n2{font-size:5pt;color:rgba(249,246,239,.5);letter-spacing:.1em;direction:ltr}
-.fs-head .ttl{font-size:11pt;font-weight:900;color:#e8d089}
-.fs-head .ttl2{font-size:5pt;color:rgba(249,246,239,.45);letter-spacing:.15em;direction:ltr;text-align:left}
-.fs-body{padding:12px 14px}
-.fs-meta{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
-.fs-qr{display:flex;flex-direction:column;align-items:center;gap:2px}
-.fs-qr .box{padding:2px;border:1px solid #16294d;border-radius:4px;background:#fff}
-.fs-qr .cap{font-size:7pt;font-weight:900;color:#16294d;direction:ltr;letter-spacing:.04em}
-.fs-fields{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
-.fs-f .k{font-size:6pt;font-weight:700;color:#8d7c50;line-height:1.2}
-.fs-f .v{font-size:8.5pt;font-weight:800;color:#16294d;line-height:1.3}
+.fs-head .brand{display:flex;align-items:center;gap:8px}
+.fs-head .brand svg{width:36px;height:36px}
+.fs-head .brand .n1{font-size:14pt;font-weight:900;color:#e8d089;line-height:1.15}
+.fs-head .brand .n2{font-size:4.8pt;color:rgba(249,246,239,.55);letter-spacing:.13em;direction:ltr}
+.fs-head .ttl{font-size:13pt;font-weight:900;color:#f7f0dc;line-height:1.2}
+.fs-head .ttl2{font-size:4.8pt;color:rgba(249,246,239,.5);letter-spacing:.18em;direction:ltr;text-align:left}
+.fs-body{padding:8px 13px 9px}
+
+/* ── شريط البطاقة: باركود + أرقامها ── */
+.fs-meta{display:flex;gap:9px;align-items:stretch;margin-bottom:5px}
+.fs-qr{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  min-width:31mm;padding:5px 6px;background:#fdfcf7;border:1.2px solid #c8a24a;border-radius:9px;
+}
+.fs-qr .box{padding:2px;background:#fff;border-radius:3px;line-height:0}
+.fs-qr .cap{font-size:6.4pt;font-weight:900;color:#16294d;direction:ltr;letter-spacing:.03em}
+.fs-qr .cap2{font-size:4.6pt;color:#8d7c50}
+.fs-fields{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0 9px;align-content:start}
+.fs-f{padding:1.2px 0;min-width:0}
+.fs-f .k{font-size:6.1pt;font-weight:700;color:#8d7c50;line-height:1.2}
+.fs-f .v{font-size:8.5pt;font-weight:800;color:#16294d;line-height:1.3;overflow-wrap:anywhere}
 .fs-qr-note{
-  grid-column:1/-1;font-size:6pt;line-height:1.6;color:#6b5320;background:#fdf9ee;
-  border:1px dashed #c8a24a;border-radius:4px;padding:3px 6px;margin-top:4px;text-align:center;
+  grid-column:1/-1;font-size:6pt;line-height:1.55;color:#6b5320;background:#fdf9ee;
+  border:1px dashed #c8a24a;border-radius:4px;padding:2.5px 6px;margin-top:3px;text-align:center;
 }
+
+/* ── عنوان قسم ── */
 .fs-h3{
-  font-size:8.5pt;font-weight:900;color:#16294d;margin:8px 0 5px;
-  padding-bottom:2px;border-bottom:1px solid #c8a24a;
-  display:flex;align-items:center;gap:4px;
+  display:flex;align-items:center;gap:5px;margin:5px 0 2.5px;
+  font-size:9pt;font-weight:900;color:#16294d;
+  padding-bottom:2px;border-bottom:1px solid #e3d7b4;
 }
-.fs-h3::before{content:'';width:2px;height:12px;background:#c8a24a;border-radius:1px;flex-shrink:0}
-.fs-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 6px}
+.fs-h3::before{content:'';width:2.4mm;height:2.4mm;background:linear-gradient(135deg,#e8d089,#a8781a);
+  border-radius:50%;flex-shrink:0}
+.fs-h3 .en{font-size:4.6pt;color:#a89a78;font-weight:700;letter-spacing:.1em;direction:ltr;margin-inline-start:auto}
+
+/* ── جدول بيانات بصفوف مهنية ── */
+.fs-tbl{
+  display:grid;grid-template-columns:1fr 1fr;
+  border:1px solid #ece2c8;border-radius:7px;overflow:hidden;
+}
+.fs-td{
+  display:flex;align-items:baseline;gap:5px;min-width:0;
+  padding:3.4px 8px;border-bottom:1px solid #f2ead6;background:#fff;
+}
+.fs-tbl .fs-td:nth-child(4n+1),.fs-tbl .fs-td:nth-child(4n+2){background:#fbf8f0}
+.fs-td:last-child,.fs-td:nth-last-child(2){border-bottom:0}
+.fs-td .k{font-size:6.1pt;font-weight:700;color:#8d7c50;white-space:nowrap}
+.fs-td .v{flex:1;font-size:8.5pt;font-weight:800;color:#16294d;line-height:1.35;overflow-wrap:anywhere}
+.fs-td.wide{grid-column:1/-1}
+.fs-td.mono .v{direction:ltr;text-align:right}
+
+/* ── صندوق صاحب العمل ── */
 .fs-emp{
-  border:1px solid #c8a24a;border-radius:6px;background:#fdf9ee;
-  padding:6px 8px;margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:2px 6px;
+  border:1.2px solid #d9c489;border-radius:8px;background:#fdfaf1;
+  padding:5px 8px 6px;margin-top:4px;
 }
-.fs-emp-hd{grid-column:1/-1;font-size:7.5pt;font-weight:900;color:#a8781a;border-bottom:1px solid #c8a24a;padding-bottom:2px;margin-bottom:2px}
-.fs-sign{display:flex;justify-content:space-between;gap:8px;margin-top:8px}
-.fs-sign .s{flex:1;text-align:center;font-size:7pt;font-weight:700;color:#16294d}
-.fs-sign .l{border-bottom:1px dotted #8d7c50;height:10mm;margin-bottom:1mm}
-.fs-foot{
-  border-top:1px solid #16294d;padding-top:4px;margin-top:6px;
-  font-size:5.5pt;color:#6b5320;text-align:center;line-height:1.6;
+.fs-emp-hd{
+  display:flex;align-items:center;gap:5px;margin-bottom:4px;padding-bottom:3px;
+  font-size:8.4pt;font-weight:900;color:#8a6d2c;border-bottom:1px solid #e6d7ae;
 }
-.fs-terms{list-style:none;padding:0;margin:4px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:1px 6px}
-.fs-terms li{font-size:5.5pt;line-height:1.5;color:#3a2f14;padding-inline-start:6px;position:relative}
-.fs-terms li::before{content:'★';position:absolute;inset-inline-start:0;color:#c8a24a;font-size:5pt;top:1px}
+.fs-emp .fs-tbl{border-color:#efe4c8;background:transparent}
+.fs-emp .fs-td{background:transparent!important;border-bottom-color:#efe4c8}
+
+/* ── الشروط: شرائح مرتبة ── */
+.fs-terms{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
+.fs-terms li{font-size:6.4pt;line-height:1.55;color:#3a2f14;padding-inline-start:9px;position:relative}
+.fs-terms li::before{content:'★';position:absolute;inset-inline-start:0;top:0;color:#c8a24a;font-size:5pt}
+
+/* ── تعليمات صاحب العمل ── */
 .fs-emp-box{
-  background:#16294d;color:#f4efe2;border-radius:4px;padding:4px 6px;margin-top:6px;
+  background:linear-gradient(135deg,#16294d,#102243);color:#f4efe2;
+  border-radius:8px;padding:5px 8px;margin-top:5px;
+  display:flex;gap:10px;align-items:flex-start;
 }
-.fs-emp-box h5{margin:0 0 2px;font-size:7pt;color:#e8d089}
-.fs-emp-box ol{margin:0;padding-inline-start:8px;font-size:5.5pt;line-height:1.7;columns:2;column-gap:6px}
+.fs-emp-box h5{margin:0;font-size:7.8pt;color:#e8d089;white-space:nowrap;line-height:1.6}
+.fs-emp-box ol{
+  margin:0;padding-inline-start:12px;font-size:6.1pt;line-height:1.7;
+  columns:2;column-gap:12px;flex:1;
+}
+.fs-emp-box b{color:#e8d089}
+
+/* ── التوقيعات ── */
+.fs-sign{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:6px}
+.fs-sign .s{text-align:center;font-size:6.9pt;font-weight:800;color:#16294d}
+.fs-sign .l{border-bottom:1px dotted #8d7c50;height:10mm;margin-bottom:1mm}
+
+/* ── التذييل ── */
+.fs-foot{
+  margin-top:5px;padding-top:3px;border-top:2px solid #16294d;
+  font-size:5.8pt;color:#6b5320;text-align:center;line-height:1.6;
+}
 
 /* ── التنبيهات ── */
 .alert{padding:10px 14px;border-radius:10px;font-size:9.5pt;margin-bottom:10px;line-height:1.8;display:flex;align-items:flex-start;gap:8px}
@@ -459,15 +512,19 @@ body{
 
 /* ── الطباعة: استمارة A4 وحدها بلا واجهة ── */
 @media print{
-  @page{size:A4;margin:10mm}
-  body{background:#fff!important;padding:0!important}
+  @page{size:A4;margin:8mm}
+  html,body{background:#fff!important;padding:0!important;margin:0!important;height:auto!important}
   body *{visibility:hidden!important}
   #result-content .form-sheet,#result-content .form-sheet *{visibility:visible!important}
-  #result-content .form-sheet{position:absolute;inset:0 auto auto 0;width:100%;box-shadow:none;border-radius:0;overflow:visible;margin:0}
+  #result-content .form-sheet{
+    position:absolute;inset:0 auto auto 0;width:100%;max-width:100%;margin:0;
+    box-shadow:none;border-radius:0;overflow:visible;
+  }
   /* الورقة فقط تُطبع: بلا هيرو النجاح وبلا أزرار الصفحة */
   #result-content .ok-hero,#result-content .result-actions{display:none!important}
-  .form-sheet,.fs-meta,.fs-grid,.fs-table{break-inside:avoid}
-  .fs-row,.fs-f{break-inside:avoid}
+  /* منع انقسام أي قسم بين صفحتين — الاستمارة كلها صفحة واحدة A4 */
+  .form-sheet,.fs-head,.fs-meta,.fs-tbl,.fs-emp,.fs-terms,.fs-emp-box,.fs-sign,.fs-foot{break-inside:avoid;page-break-inside:avoid}
+  .fs-td,.fs-f,.fs-tr{break-inside:avoid;page-break-inside:avoid}
   .form-sheet{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
 </style>
@@ -1296,66 +1353,93 @@ var G={
     }
     var attemptNo=appliedJobs.length; /* 1 أو 2 — أي فرصة استُخدمت الآن */
 
-    /* بناء الاستمارة A4 */
+    /* ══════════════════════════════════════════════════════════
+       بناء الاستمارة — ورقة A4 واحدة: رأس فخم، شريط بطاقة بالباركود،
+       جداول بيانات مهنية، صندوق صاحب العمل، شروط، تعليمات، توقيعات.
+       ══════════════════════════════════════════════════════════ */
+    var statusTxt = chancesLeft<=0 ? 'مستنفدة الفرص' : 'سارية';
+    var jobStatus = 'مُرشّح للمقابلة';
+
     var h=''
-      /* ── رأس الاستمارة ── */
       +'<div class="form-sheet">'
-      +'<div class="fs-head"><div class="brand"><svg viewBox="0 0 120 120" width="28" height="28"><use href="#i-emblem" xlink:href="#i-emblem"/></svg><div><div class="n1">شركة الهدف للتوظيف</div><div class="n2">AL-HADAF RECRUITMENT COMPANY</div></div></div>'
-      +'<div style="text-align:left"><div class="ttl">استمارة توظيف</div><div class="ttl2">JOB APPLICATION FORM</div></div></div>'
+      /* ── رأس الاستمارة ── */
+      +'<div class="fs-head">'
+      +'<div class="brand"><svg viewBox="0 0 120 120" width="31" height="31"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>'
+      +'<div><div class="n1">شركة الهدف للتوظيف</div><div class="n2">AL-HADAF RECRUITMENT COMPANY</div></div></div>'
+      +'<div style="text-align:left"><div class="ttl">استمارة توظيف</div><div class="ttl2">JOB APPLICATION FORM</div></div>'
+      +'</div>'
       +'<div class="fs-body">'
-      /* ── باركود + بيانات البطاقة ── */
-      +'<div class="fs-meta"><div class="fs-qr"><div class="box" id="qr-box"></div><div class="cap">'+esc(cardSerial)+'</div></div>'
+
+      /* ── شريط البطاقة: الباركود + بياناتها ── */
+      +'<div class="fs-meta">'
+      +'<div class="fs-qr"><div class="box" id="qr-box"></div>'
+      +'<div class="cap">'+esc(cardSerial)+'</div><div class="cap2">امسح للتحقق</div></div>'
       +'<div class="fs-fields">'
       +'<div class="fs-f"><div class="k">رقم البطاقة</div><div class="v" style="direction:ltr">'+esc(cardSerial)+'</div></div>'
-      +'<div class="fs-f"><div class="k">حالة البطاقة</div><div class="v">سارية</div></div>'
+      +'<div class="fs-f"><div class="k">حالة البطاقة</div><div class="v">'+esc(statusTxt)+'</div></div>'
+      +'<div class="fs-f"><div class="k">الفرصة المستخدمة</div><div class="v">'+esc(attemptNo)+' من 2</div></div>'
       +'<div class="fs-f"><div class="k">نقطة البيع</div><div class="v">تقديم ذاتي عبر الموقع</div></div>'
-      +'<div class="fs-f"><div class="k">الفرصة</div><div class="v">'+esc(attemptNo)+' من 2</div></div>'
-      +'<div class="fs-f"><div class="k">انتهاء البطاقة</div><div class="v" style="direction:ltr">'+esc(expTxt)+'</div></div>'
+      +'<div class="fs-f"><div class="k">انتهاء الصلاحية</div><div class="v" style="direction:ltr">'+esc(expTxt)+'</div></div>'
       +'<div class="fs-f"><div class="k">مهلة الرد على الحجز</div><div class="v">'+esc(holdTxt)+'</div></div>'
+      +'<div class="fs-qr-note">هذا الباركود هو <b>باركود البطاقة نفسه</b> — يُستخدم للتحقق من الاستمارة ولاختيار وظيفة ثانية ما دامت فرصة متاحة.</div>'
       +'</div></div>'
-      +'<div class="fs-qr-note">هذا الباركود هو <b>باركود البطاقة نفسه</b> — يُستخدم لاختيار وظيفة ثانية ما دامت فرصة متاحة، ولصاحب العمل للتحقق من الاستمارة.</div>'
+
       /* ── بيانات المتقدم ── */
-      +'<div class="fs-h3">بيانات المتقدم</div>'
-      +'<div class="fs-grid">'
-      +'<div class="fs-f"><div class="k">الاسم الكامل</div><div class="v">'+esc(app.fullName||$('f-name').value)+'</div></div>'
-      +'<div class="fs-f"><div class="k">رقم الهاتف</div><div class="v" style="direction:ltr">'+esc(app.phone||$('f-phone').value)+'</div></div>'
-      +'<div class="fs-f"><div class="k">السكن</div><div class="v">'+esc(addr)+'</div></div>'
-      +'<div class="fs-f"><div class="k">الجنس · الميلاد</div><div class="v">'+esc(selectedGender)+' · '+esc(dob)+'</div></div>'
+      +'<div class="fs-h3">بيانات المتقدم<span class="en">APPLICANT</span></div>'
+      +'<div class="fs-tbl">'
+      +'<div class="fs-td"><span class="k">الاسم الثلاثي:</span><span class="v">'+esc(app.fullName||$('f-name').value)+'</span></div>'
+      +'<div class="fs-td mono"><span class="k">الهاتف:</span><span class="v">'+esc(app.phone||$('f-phone').value)+'</span></div>'
+      +'<div class="fs-td"><span class="k">الميلاد:</span><span class="v" style="direction:ltr">'+esc(dob)+'</span></div>'
+      +'<div class="fs-td"><span class="k">الجنس:</span><span class="v">'+esc(selectedGender)+'</span></div>'
+      +'<div class="fs-td wide"><span class="k">السكن:</span><span class="v">'+esc(addr)+'</span></div>'
       +'</div>'
-      /* ── الوظيفة ── */
-      +'<div class="fs-h3">الوظيفة المطلوبة</div>'
-      +'<div class="fs-grid">'
-      +'<div class="fs-f"><div class="k">الوظيفة</div><div class="v">'+esc(job.title)+'</div></div>'
-      +'<div class="fs-f"><div class="k">الكود</div><div class="v" style="direction:ltr">'+esc(job.code)+'</div></div>'
-      +'<div class="fs-f"><div class="k">المنطقة</div><div class="v">'+esc(job.region)+'</div></div>'
-      +'<div class="fs-f"><div class="k">الأجر</div><div class="v">'+esc(sal)+'</div></div>'
-      +'<div class="fs-f"><div class="k">الدوام</div><div class="v">'+esc(job.shift)+'</div></div>'
-      +'<div class="fs-f"><div class="k">الحالة</div><div class="v" style="color:#1e9e55">مُرشّح للمقابلة</div></div>'
+
+      /* ── الوظيفة المطلوبة ── */
+      +'<div class="fs-h3">الوظيفة المطلوبة<span class="en">JOB</span></div>'
+      +'<div class="fs-tbl">'
+      +'<div class="fs-td"><span class="k">الوظيفة:</span><span class="v">'+esc(job.title)+'</span></div>'
+      +'<div class="fs-td mono"><span class="k">الكود:</span><span class="v">'+esc(job.code)+'</span></div>'
+      +'<div class="fs-td"><span class="k">المنطقة:</span><span class="v">'+esc(job.region)+'</span></div>'
+      +'<div class="fs-td"><span class="k">الأجر الشهري:</span><span class="v">'+esc(sal)+'</span></div>'
+      +'<div class="fs-td"><span class="k">الدوام:</span><span class="v">'+esc(job.shift)+'</span></div>'
+      +'<div class="fs-td"><span class="k">حالة الطلب:</span><span class="v" style="color:#1e9e55">'+esc(jobStatus)+'</span></div>'
       +'</div>'
+
       /* ── صاحب العمل ── */
       +'<div class="fs-emp">'
-      +'<div class="fs-emp-hd">✦ بيانات التواصل بصاحب العمل</div>'
-      +'<div class="fs-f"><div class="k">اسم جهة العمل</div><div class="v">'+esc(empN)+'</div></div>'
-      +'<div class="fs-f"><div class="k">هاتف جهة العمل</div><div class="v" style="direction:ltr">'+esc(empP)+'</div></div>'
-      +'<div class="fs-f"><div class="k">عنوان جهة العمل</div><div class="v">'+esc(empA)+'</div></div>'
-      +'<div class="fs-f"><div class="k">مكان المقابلة</div><div class="v">'+esc(empL)+'</div></div>'
-      +'</div>'
-      /* ── الشروط ── */
-      +'<div class="fs-h3">شروط البطاقة</div>'
+      +'<div class="fs-emp-hd">✦ بيانات التواصل مع صاحب العمل<span class="en" style="margin-inline-start:auto;color:#c0ab7c;font-size:4.6pt;letter-spacing:.1em;direction:ltr">EMPLOYER</span></div>'
+      +'<div class="fs-tbl">'
+      +'<div class="fs-td"><span class="k">جهة العمل:</span><span class="v">'+esc(empN)+'</span></div>'
+      +'<div class="fs-td mono"><span class="k">الهاتف:</span><span class="v">'+esc(empP)+'</span></div>'
+      +'<div class="fs-td"><span class="k">العنوان:</span><span class="v">'+esc(empA)+'</span></div>'
+      +'<div class="fs-td"><span class="k">مكان المقابلة:</span><span class="v">'+esc(empL)+'</span></div>'
+      +'</div></div>'
+
+      /* ── شروط البطاقة ── */
+      +'<div class="fs-h3">شروط البطاقة<span class="en">TERMS</span></div>'
       +'<ul class="fs-terms">'
-      +'<li>بطاقة <b>شخصية</b> تحتوي <b>فرصتين مستقلتين</b> صالحة <b>30 يوماً</b>.</li>'
+      +'<li>بطاقة <b>شخصية</b> بفرصتين مستقلتين، صالحة <b>30 يوماً</b>.</li>'
       +'<li>حجز الوظيفة مؤقت <b>24 ساعة</b> ثم تقرر الشركة.</li>'
       +'<li>تُستهلك الفرصة بالتقديم <b>ولا تعود</b> بأي نتيجة.</li>'
       +'<li>للاستفسار: نقطة البيع أو مقر الشركة.</li>'
       +'</ul>'
+
       /* ── تعليمات صاحب العمل ── */
-      +'<div class="fs-emp-box"><h5>✦ لصاحب العمل — كيف تُكمل التوظيف؟</h5>'
-      +'<ol><li>امسح الباركود بكاميرة الموبايل.</li><li>أجرِ المقابلة في المكان المحدد.</li><li>اضغط «تم التوظيف» أو «لم يتم».</li><li>إن لم يُسجَّل قرار خلال <b>24 ساعة</b> تنتقل لحالة حرجة.</li></ol></div>'
+      +'<div class="fs-emp-box"><h5>✦ لصاحب العمل</h5>'
+      +'<ol><li>امسح الباركود بكاميرة الموبايل.</li><li>أجرِ المقابلة في المكان المحدد.</li>'
+      +'<li>اضغط «تم التوظيف» أو «لم يتم».</li><li>بلا قرار خلال <b>24 ساعة</b> تنتقل لحالة حرجة.</li></ol></div>'
+
       /* ── التوقيعات ── */
-      +'<div class="fs-sign"><div class="s"><div class="l"></div>توقيع الزبون</div><div class="s"><div class="l"></div>توقيع نقطة البيع</div><div class="s"><div class="l"></div>ختم الشركة</div></div>'
+      +'<div class="fs-sign">'
+      +'<div class="s"><div class="l"></div>توقيع الزبون</div>'
+      +'<div class="s"><div class="l"></div>توقيع نقطة البيع</div>'
+      +'<div class="s"><div class="l"></div>ختم الشركة</div>'
+      +'</div>'
+
       /* ── التذييل ── */
-      +'<div class="fs-foot">ملاحظات: خدمات الشركة تنحصر في توفير الأيادي العاملة الفنية والتخصصية فقط وليس الأمنية. الشركة غير مسؤولة قانونياً وعشائرياً عن الشخص المرسل وصاحب العمل.<br>'
+      +'<div class="fs-foot">خدمات الشركة تنحصر في توفير الأيادي العاملة الفنية والتخصصية فقط وليس الأمنية — والشركة غير مسؤولة قانونياً وعشائرياً عن الشخص المرسل وصاحب العمل.<br>'
       +'الحلة – بابل، العراق — <b dir="ltr">07760058007 / 07715993271</b></div>'
+
       +'</div></div>';
 
     /* ── رأس النجاح: علامة صح مرسومة + وميض ذهبي ── */
@@ -1394,7 +1478,7 @@ var G={
           var qrBox=$('qr-box');
           if(qrBox){
             var model=HRCQR.encode(cUrl,'M');
-            qrBox.innerHTML=HRCQR.renderSVG(model,{margin:1,size:72,dark:'#16294d',light:'#ffffff'});
+            qrBox.innerHTML=HRCQR.renderSVG(model,{margin:1,size:84,dark:'#16294d',light:'#ffffff'});
           }
         }
       }catch(e){}
