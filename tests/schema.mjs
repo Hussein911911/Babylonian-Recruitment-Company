@@ -328,7 +328,11 @@ step(12, 'مسار التحديث — كل دالة يناديها باركود 
 {
   const applySrc = readFileSync(join(ROOT, 'apply.html'), 'utf8');
   const called = [...new Set([...applySrc.matchAll(/rpc\('(\w+)'/g)].map((m) => m[1]))];
-  check('قراءة الدوال التي تناديها صفحة الباركود', called.length >= 3, called.join(', '));
+  /* دالتان الآن بدل ثلاث: التصميم الجديد لصفحة الباركود يستعمل self_service_card
+     لقراءة البطاقة وapply_with_card للتقديم، والوظائف تُقرأ مباشرة من جدول
+     public_jobs — أما activate_card (نقطة البيع) فصارت في صفحة نقطة البيع وحدها.
+     المهم ألا يقلّ العدد عن اثنتين، وهو ما يعني أن المسح وجد النداءات فعلاً. */
+  check('قراءة الدوال التي تناديها صفحة الباركود', called.length >= 2, called.join(', '));
 
   const notDefined = called.filter((n) => !new RegExp('function\\s+brc\\.' + n + '\\s*\\(', 'i').test(RAW));
   check('كل دالة يناديها الباركود مُعرَّفة في docs/schema.sql', notDefined.length === 0,

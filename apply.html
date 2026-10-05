@@ -34,14 +34,18 @@ body{
 .topbar .t1{font-size:12pt;font-weight:900;color:#e8d089;line-height:1.2}
 .topbar .t2{font-size:5.5pt;font-weight:600;color:rgba(249,246,239,.45);letter-spacing:.1em;direction:ltr}
 
-/* ── عداد الخطوات ── */
-.steps-bar{display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:16px;direction:ltr}
+/* ── عداد الخطوات (شريط تقدم فخم) ── */
+.steps-bar{display:flex;flex-direction:column;gap:7px;margin-bottom:16px}
+.steps-track{display:flex;align-items:center;justify-content:center;gap:5px;direction:ltr}
 .step-dot{
-  height:6px;border-radius:3px;transition:all .5s cubic-bezier(.4,0,.2,1);flex:0 0 8px;
-  background:rgba(249,246,239,.1);
+  height:6px;border-radius:3px;flex:0 0 8px;background:rgba(249,246,239,.1);
+  transition:flex-basis .55s cubic-bezier(.22,1,.36,1),background .4s ease,box-shadow .4s ease;
 }
-.step-dot.active{flex:0 0 28px;background:linear-gradient(90deg,#1d6bc4,#3d8be4)}
-.step-dot.done{background:rgba(34,160,91,.5)}
+.step-dot.done{background:linear-gradient(90deg,#c8a24a,#8a6d2c);box-shadow:0 0 8px rgba(200,162,74,.3)}
+.step-dot.active{flex:0 0 34px;background:linear-gradient(90deg,#1d6bc4,#6db8ff);box-shadow:0 0 12px rgba(29,107,196,.45)}
+.step-label{text-align:center;font-size:8pt;font-weight:700;color:rgba(249,246,239,.42)}
+.step-label b{color:#e8d089}
+.step-label .pct{color:#5ee8a0;font-weight:900}
 
 /* ── نظام الصفحات ── */
 .pages-wrap{position:relative;overflow:hidden}
@@ -88,7 +92,25 @@ body{
 .card{
   background:rgba(255,255,255,.04);border:1px solid rgba(200,162,74,.15);
   border-radius:14px;padding:16px;margin-bottom:14px;
+  position:relative;overflow:hidden;
 }
+/* وهج ذهبي خفيف يمرّ على البطاقة عند دخول الخطوة */
+.card::after{
+  content:'';position:absolute;top:0;bottom:0;width:45%;left:-70%;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(200,162,74,.09),transparent);
+  transform:skewX(-18deg);
+}
+.page.active .card::after{animation:cardSheen 1.5s cubic-bezier(.4,0,.2,1) .1s both}
+@keyframes cardSheen{0%{left:-70%}100%{left:130%}}
+/* أبناء البطاقة يظهرون واحداً بعد الآخر */
+.page.active .card>*{animation:childIn .5s cubic-bezier(.22,1,.36,1) both}
+.page.active .card>*:nth-child(1){animation-delay:.06s}
+.page.active .card>*:nth-child(2){animation-delay:.12s}
+.page.active .card>*:nth-child(3){animation-delay:.18s}
+.page.active .card>*:nth-child(4){animation-delay:.24s}
+.page.active .card>*:nth-child(5){animation-delay:.3s}
+.page.active .card>*:nth-child(6){animation-delay:.36s}
+@keyframes childIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── الترحيب ── */
 .welcome{text-align:center;padding-top:36px}
@@ -136,6 +158,19 @@ body{
 .form-group select option{background:#16294d;color:#f4efe2}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* ── مقياس رقم الهاتف (11 رقم) ── */
+.phone-meter{display:flex;align-items:center;gap:8px;margin-top:8px;direction:ltr}
+.phone-meter .pc-num{font:900 12pt 'Cairo',sans-serif;color:#e8d089;min-width:20px;text-align:center;transition:color .3s}
+.phone-meter .pc-of{font:700 8pt 'Cairo',sans-serif;color:rgba(249,246,239,.35)}
+.phone-meter .pc-track{flex:1;height:5px;border-radius:3px;background:rgba(249,246,239,.1);overflow:hidden}
+.phone-meter .pc-track i{display:block;height:100%;width:0;border-radius:3px;transition:width .3s cubic-bezier(.22,1,.36,1),background .3s;background:linear-gradient(90deg,#1d6bc4,#6db8ff)}
+.phone-meter.done .pc-num{color:#5ee8a0}
+.phone-meter.done .pc-track i{background:linear-gradient(90deg,#1e9e55,#5ee8a0)}
+.phone-meter .pc-state{font:700 8pt 'Cairo',sans-serif;color:#f0c060;min-width:44px;text-align:center}
+.phone-meter.done .pc-state{color:#5ee8a0}
+.phone-meter .pc-state.bad{color:#f08080}
+.dob-meter{margin-top:8px;font:700 8pt 'Cairo',sans-serif;color:rgba(249,246,239,.4);text-align:center;min-height:1.4em}
 
 /* ── العنوان ── */
 .section-title{
@@ -201,23 +236,6 @@ body{
 .gender-opt .icon{font-size:24pt;display:block;margin-bottom:4px}
 
 /* ── نافذة التأكيد ── */
-.modal-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
-  z-index:1000;display:none;align-items:center;justify-content:center;padding:14px;
-}
-.modal-overlay.show{display:flex}
-.modal{
-  background:linear-gradient(180deg,#16294d,#0d1f42);border:1px solid rgba(200,162,74,.25);
-  border-radius:18px;padding:22px 18px;max-width:380px;width:100%;text-align:center;
-  animation:mIn .3s cubic-bezier(.22,1,.36,1);
-}
-@keyframes mIn{from{opacity:0;transform:scale(.88) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
-.modal h3{font-size:12pt;font-weight:900;color:#e8d089;margin-bottom:6px}
-.modal p{font-size:10pt;color:rgba(249,246,239,.75);margin-bottom:5px;line-height:1.7}
-.modal .warn{font-size:8.5pt;color:#f0c060;margin-bottom:14px}
-.modal .btns{display:flex;gap:8px}
-.modal .btns .btn{flex:1}
-
 /* ── الاستمارة ── */
 .form-sheet{
   background:#fff;color:#231a06;border-radius:14px;overflow:hidden;
@@ -242,6 +260,10 @@ body{
 .fs-fields{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
 .fs-f .k{font-size:6pt;font-weight:700;color:#8d7c50;line-height:1.2}
 .fs-f .v{font-size:8.5pt;font-weight:800;color:#16294d;line-height:1.3}
+.fs-qr-note{
+  grid-column:1/-1;font-size:6pt;line-height:1.6;color:#6b5320;background:#fdf9ee;
+  border:1px dashed #c8a24a;border-radius:4px;padding:3px 6px;margin-top:4px;text-align:center;
+}
 .fs-h3{
   font-size:8.5pt;font-weight:900;color:#16294d;margin:8px 0 5px;
   padding-bottom:2px;border-bottom:1px solid #c8a24a;
@@ -308,12 +330,144 @@ body{
 .loading p{font-size:10pt;color:rgba(249,246,239,.45)}
 
 .footer{text-align:center;padding:14px 0;font-size:7pt;color:rgba(249,246,239,.25);margin-top:12px}
+/* ═══════════════════════════════════════════════════════════════════════
+   اختيار الوظيفة — البطاقة المختارة تتوهّج بذهبي مع علامة صح
+   ═══════════════════════════════════════════════════════════════════════ */
+.job-card{position:relative;cursor:pointer}
+.job-card.is-done{cursor:default;opacity:.72}
+.job-card.selected{
+  border-color:#c8a24a;background:linear-gradient(180deg,rgba(200,162,74,.12),rgba(200,162,74,.04));
+  box-shadow:0 0 0 1px rgba(200,162,74,.45),0 8px 26px rgba(200,162,74,.16);
+  transform:translateY(-2px);
+}
+.job-card .pick-mark{
+  position:absolute;top:-9px;inset-inline-start:-9px;width:30px;height:30px;border-radius:50%;
+  display:none;place-items:center;font-size:13pt;font-weight:900;color:#0b1a3a;
+  background:linear-gradient(135deg,#f2e2ac,#c8a24a);box-shadow:0 4px 14px rgba(200,162,74,.45);
+}
+.job-card.selected .pick-mark{display:grid;animation:pickPop .5s cubic-bezier(.22,1.4,.36,1) both}
+@keyframes pickPop{0%{transform:scale(0) rotate(-40deg);opacity:0}60%{transform:scale(1.25) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0)}}
+.page.active #jobs-list .job-card{animation:jobIn .5s cubic-bezier(.22,1,.36,1) both}
+@keyframes jobIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* تذييل قائمة الوظائف: المختار + زر التالي */
+.jobs-foot{margin-top:10px}
+.jobs-hint{
+  font-size:8.5pt;font-weight:700;color:rgba(249,246,239,.5);text-align:center;
+  padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.03);
+  border:1px dashed rgba(200,162,74,.25);margin-bottom:10px;transition:all .3s;
+}
+.jobs-hint.picked{color:#e8d089;background:rgba(200,162,74,.08);border-style:solid;border-color:rgba(200,162,74,.4)}
+.jobs-hint .warn{color:#f0c060}
+.jobs-hint b{color:#e8d089}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   صفحة المراجعة قبل الإتمام
+   ═══════════════════════════════════════════════════════════════════════ */
+.rv-card{
+  background:linear-gradient(180deg,rgba(22,41,77,.75),rgba(13,31,66,.7));
+  border:1px solid rgba(200,162,74,.22);border-radius:16px;padding:16px;margin-bottom:14px;
+  position:relative;overflow:hidden;
+}
+.rv-top{display:flex;gap:10px;align-items:center;padding-bottom:12px;border-bottom:1px solid rgba(200,162,74,.18);margin-bottom:12px}
+.rv-ic{
+  width:44px;height:44px;flex:none;border-radius:12px;display:grid;place-items:center;font-size:18pt;
+  background:linear-gradient(135deg,rgba(29,107,196,.3),rgba(200,162,74,.18));border:1px solid rgba(200,162,74,.3);
+}
+.rv-t{font-size:12pt;font-weight:900;color:#e8d089;line-height:1.4}
+.rv-s{font-size:8pt;color:rgba(249,246,239,.5);margin-top:2px;line-height:1.6}
+.rv-head{
+  font-size:9.5pt;font-weight:900;color:#e8d089;margin:14px 0 8px;
+  display:flex;align-items:center;gap:6px;
+}
+.rv-head:first-of-type{margin-top:0}
+.rv-head::before{content:'';width:3px;height:14px;background:#c8a24a;border-radius:2px;flex:none}
+.rv-row{
+  display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed rgba(249,246,239,.07);
+  animation:rvIn .45s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes rvIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.rv-row:last-child{border-bottom:0}
+.rv-k{font-size:8.5pt;color:rgba(249,246,239,.45);flex:0 0 78px}
+.rv-v{font-size:10pt;font-weight:800;color:#f4efe2;flex:1;line-height:1.6;word-break:break-word}
+.rv-v.mono{letter-spacing:.04em}
+.rv-edit{
+  flex:none;font:700 7.5pt 'Cairo',sans-serif;color:#6db8ff;background:rgba(29,107,196,.14);
+  border:1px solid rgba(29,107,196,.35);border-radius:8px;padding:4px 9px;cursor:pointer;transition:all .2s;
+}
+.rv-edit:hover{background:rgba(29,107,196,.25)}
+.rv-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.rv-chip{
+  font-size:8pt;font-weight:800;padding:5px 10px;border-radius:8px;
+  background:rgba(200,162,74,.1);border:1px solid rgba(200,162,74,.28);color:#e8d089;
+}
+.rv-chip.ok{background:rgba(34,160,91,.12);border-color:rgba(34,160,91,.3);color:#5ee8a0}
+.rv-note{
+  font-size:8pt;line-height:1.9;color:rgba(249,246,239,.5);margin-top:12px;
+  background:rgba(255,255,255,.03);border-radius:10px;padding:10px 12px;
+}
+.rv-note b{color:#e8d089}
+.rv-warn-move{animation:shake .45s ease}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   نجاح الإتمام — علامة صح مرسومة + وميض ذهبي
+   ═══════════════════════════════════════════════════════════════════════ */
+.ok-hero{position:relative;text-align:center;padding:20px 14px 8px;overflow:hidden}
+.ok-check{
+  width:78px;height:78px;margin:0 auto 12px;border-radius:50%;position:relative;display:grid;place-items:center;
+  background:radial-gradient(circle at 35% 30%,rgba(94,232,160,.25),rgba(34,160,91,.06));
+  border:2px solid rgba(94,232,160,.5);box-shadow:0 0 26px rgba(94,232,160,.25);
+  animation:okPop .7s cubic-bezier(.22,1.4,.36,1) both;
+}
+@keyframes okPop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.ok-check svg{width:40px;height:40px;fill:none;stroke:#5ee8a0;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.ok-check svg path{stroke-dasharray:44;stroke-dashoffset:44;animation:okDraw .65s cubic-bezier(.65,0,.35,1) .3s forwards}
+@keyframes okDraw{to{stroke-dashoffset:0}}
+.ok-check::before,.ok-check::after{
+  content:'';position:absolute;inset:-2px;border-radius:50%;border:2px solid rgba(94,232,160,.45);
+  animation:okRing 1.8s ease-out .35s infinite;
+}
+.ok-check::after{animation-delay:1.1s}
+@keyframes okRing{0%{transform:scale(.92);opacity:.75}100%{transform:scale(1.65);opacity:0}}
+.ok-title{font-size:14pt;font-weight:900;color:#5ee8a0;margin-bottom:4px}
+.ok-sub{font-size:9pt;color:rgba(249,246,239,.6);line-height:1.9}
+.ok-sub b{color:#e8d089}
+.spark{
+  position:absolute;top:52px;left:50%;width:7px;height:7px;border-radius:50%;pointer-events:none;
+  background:linear-gradient(135deg,#f2e2ac,#c8a24a);opacity:0;
+  animation:sparkFly 1.5s cubic-bezier(.2,.7,.3,1) forwards;
+}
+@keyframes sparkFly{
+  0%{opacity:0;transform:translate(0,0) scale(.3)}
+  18%{opacity:1}
+  100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.9)}
+}
+/* ظهور الاستمارة بعد النجاح */
+.form-sheet{animation:sheetUp .7s cubic-bezier(.22,1,.36,1) .25s both}
+@keyframes sheetUp{from{opacity:0;transform:translateY(26px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.result-actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.result-actions .btn{width:100%}
+.btn-ghost-gold{background:rgba(200,162,74,.08);border:1.5px solid rgba(200,162,74,.4);color:#e8d089}
+
+/* ولمعة تمرّ على الأزرار المهمّة */
+.btn-shine::before{
+  content:'';position:absolute;top:0;bottom:0;width:42%;left:-70%;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.32),transparent);
+  transform:skewX(-18deg);animation:btnShine 2.8s ease-in-out infinite;
+}
+@keyframes btnShine{0%{left:-70%}55%{left:125%}100%{left:125%}}
+
+/* ── الطباعة: استمارة A4 وحدها بلا واجهة ── */
 @media print{
   @page{size:A4;margin:10mm}
   body{background:#fff!important;padding:0!important}
   body *{visibility:hidden!important}
-  #result-content,.form-sheet,#result-content .form-sheet,#result-content .form-sheet *{visibility:visible!important}
-  #result-content .form-sheet{position:absolute;inset:0 auto auto 0;width:100%;box-shadow:none;border-radius:0;overflow:visible}
+  #result-content .form-sheet,#result-content .form-sheet *{visibility:visible!important}
+  #result-content .form-sheet{position:absolute;inset:0 auto auto 0;width:100%;box-shadow:none;border-radius:0;overflow:visible;margin:0}
+  /* الورقة فقط تُطبع: بلا هيرو النجاح وبلا أزرار الصفحة */
+  #result-content .ok-hero,#result-content .result-actions{display:none!important}
+  .form-sheet,.fs-meta,.fs-grid,.fs-table{break-inside:avoid}
+  .fs-row,.fs-f{break-inside:avoid}
   .form-sheet{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
 </style>
@@ -329,9 +483,12 @@ body{
 
   <!-- عداد الخطوات -->
   <div class="steps-bar" id="steps-bar" style="display:none">
-    <div class="step-dot" data-s="1"></div><div class="step-dot" data-s="2"></div>
-    <div class="step-dot" data-s="3"></div><div class="step-dot" data-s="4"></div>
-    <div class="step-dot" data-s="5"></div>
+    <div class="steps-track" id="steps-track">
+      <div class="step-dot" data-s="1"></div><div class="step-dot" data-s="2"></div>
+      <div class="step-dot" data-s="3"></div><div class="step-dot" data-s="4"></div>
+      <div class="step-dot" data-s="5"></div><div class="step-dot" data-s="6"></div>
+    </div>
+    <div class="step-label" id="step-label"></div>
   </div>
 
   <div class="pages-wrap" id="pages-wrap">
@@ -433,13 +590,19 @@ body{
       </div>
     </div>
 
-    <!-- ═══ 5 — الجنس ═══ -->
-    <div class="page" id="pg-gender">
+    <!-- ═══ 5 — الهاتف ═══ -->
+    <div class="page" id="pg-phone">
       <div class="card">
-        <div class="section-title">نوع الجنس</div>
-        <div class="gender-grid">
-          <div class="gender-opt selected" data-v="ذكر" onclick="G.pickGender(this)"><span class="icon">👨</span>ذكر</div>
-          <div class="gender-opt" data-v="أنثى" onclick="G.pickGender(this)"><span class="icon">👩</span>أنثى</div>
+        <div class="section-title">رقم الهاتف</div>
+        <div id="err-phone"></div>
+        <div class="form-group">
+          <label><span class="req">*</span> رقم الهاتف (11 رقم يبدأ بـ 07)</label>
+          <input type="tel" id="f-phone" placeholder="07XXXXXXXXX" dir="ltr" maxlength="11" inputmode="numeric" pattern="[0-9]*" style="text-align:left;font-size:12pt;letter-spacing:1px" oninput="G.onPhone(this)">
+          <div class="phone-meter">
+            <span id="phone-count" class="pc-num">0</span><span class="pc-of">/ 11</span>
+            <span class="pc-track"><i id="phone-bar"></i></span>
+            <span id="phone-state" class="pc-state">ناقص</span>
+          </div>
         </div>
       </div>
       <div class="btn-row">
@@ -448,14 +611,14 @@ body{
       </div>
     </div>
 
-    <!-- ═══ 6 — الهاتف ═══ -->
-    <div class="page" id="pg-phone">
+    <!-- ═══ 6 — الجنس ═══ -->
+    <div class="page" id="pg-gender">
       <div class="card">
-        <div class="section-title">رقم الهاتف</div>
-        <div id="err-phone"></div>
-        <div class="form-group">
-          <label><span class="req">*</span> رقم الهاتف (11 رقم)</label>
-          <input type="tel" id="f-phone" placeholder="07XXXXXXXXX" dir="ltr" maxlength="11" inputmode="numeric" pattern="[0-9]*" style="text-align:left;font-size:12pt;letter-spacing:1px" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        <div class="section-title">نوع الجنس</div>
+        <div id="err-gender"></div>
+        <div class="gender-grid">
+          <div class="gender-opt selected" data-v="ذكر" onclick="G.pickGender(this)"><span class="icon">👨</span>ذكر</div>
+          <div class="gender-opt" data-v="أنثى" onclick="G.pickGender(this)"><span class="icon">👩</span>أنثى</div>
         </div>
       </div>
       <div class="btn-row">
@@ -473,32 +636,33 @@ body{
       <div id="jobs-empty" style="display:none;text-align:center;padding:24px;color:rgba(249,246,239,.35)">
         <p style="font-size:20pt;margin-bottom:4px">😔</p><p>لا توجد وظائف في هذا القسم</p>
       </div>
-      <div class="btn-row"><button class="btn btn-outline btn-sm" onclick="G.go(-1)">← رجوع</button></div>
+      <div class="jobs-foot">
+        <div class="jobs-hint" id="jobs-hint">اضغط على أي وظيفة لاختيارها ثم «التالي»</div>
+        <div class="btn-row">
+          <button class="btn btn-outline btn-sm" onclick="G.go(-1)">← رجوع</button>
+          <button class="btn btn-primary btn-sm" id="btn-jobs-next" onclick="G.next()" disabled>التالي →</button>
+        </div>
+      </div>
     </div>
 
-    <!-- ═══ 8 — النتيجة ═══ -->
+    <!-- ═══ 8 — مراجعة الطلب قبل الإتمام ═══ -->
+    <div class="page" id="pg-review">
+      <div id="review-content"></div>
+      <div class="btn-row">
+        <button class="btn btn-outline btn-sm" onclick="G.go(-1)">← رجوع</button>
+        <button class="btn btn-success btn-sm btn-shine" id="btn-finish" onclick="G.finish()">✓ إتمام التقديم</button>
+      </div>
+    </div>
+
+    <!-- ═══ 9 — النتيجة: الاستمارة + الباركود ═══ -->
     <div class="page" id="pg-result">
       <div id="result-content"></div>
+      <div class="result-actions" id="result-actions"></div>
       <div class="btn-row" style="margin-top:10px"><button class="btn btn-outline btn-sm" onclick="G.backToJobs()">← العودة للوظائف</button></div>
     </div>
 
   </div><!-- /pages-wrap -->
   <div class="footer">شركة الهدف للتوظيف — بابل، العراق</div>
-</div>
-
-<!-- ═══ نافذة التأكيد ═══ -->
-<div class="modal-overlay" id="modal">
-  <div class="modal">
-    <h3>⚠️ تأكيد التقديم</h3>
-    <p>هل أنت متأكد من التقديم على هذه الوظيفة؟</p>
-    <p class="warn">سيتم احتساب هذا كفرصة واحدة من فرص بطاقتك</p>
-    <div id="modal-job" style="margin-bottom:10px"></div>
-    <div id="modal-err" style="margin-bottom:8px"></div>
-    <div class="btns">
-      <button class="btn btn-success btn-sm" id="btn-ok" onclick="G.confirm()">🟢 تأكيد التقديم</button>
-      <button class="btn btn-danger btn-sm" onclick="G.closeModal()">🔴 الرجوع</button>
-    </div>
-  </div>
 </div>
 
 <!-- ═══ SVG ═══ -->
@@ -562,7 +726,10 @@ var SUPA_URL='https://vqsvztudvfukyuerzcgx.supabase.co';
 var SUPA_KEY='sb_publishable_T4tcGsQpLKJz7GoTnn8uKQ_ORLYKDCC';
 var SCHEMA='brc';
 var client=null, cardSerial=null, cardData=null, jobs=[];
-var chancesLeft=2, appliedJobs=[], pendingJob=null, selectedGender='ذكر', currentFilter='الكل';
+var chancesLeft=2, appliedJobs=[], selectedGender='ذكر', currentFilter='الكل';
+/* رجع الزبون من صفحة المراجعة ليعدّل خطوة: بعد «التالي» نرجع للمراجعة فوراً
+   بدل أن نمشي به كل الخطوات من جديد — راحة واضحة وتقليل تعب. */
+var returnToReview=false;
 
 /* ═══════════════════════════════════════════════════════════════
    أدوات مساعدة
@@ -591,17 +758,20 @@ function btnLoading(btn,on){
   if(on){btn.classList.add('loading-state');btn._origHTML=btn.innerHTML;btn.innerHTML='<span class="spinner" style="width:14px;height:14px"></span> جاري التنفيذ...';}
   else{btn.classList.remove('loading-state');if(btn._origHTML)btn.innerHTML=btn._origHTML;}
 }
-function showModalError(ico,msg){
-  $('modal-err').innerHTML='<div class="alert alert-error" style="margin:0"><span class="ico">'+ico+'</span><span class="msg">'+esc(msg)+'</span></div>';
-}
 
 /* ═══════════════════════════════════════════════════════════════
    نظام الصفحات (Wizard)
    ═══════════════════════════════════════════════════════════════ */
-var STEP_IDS=['pg-welcome','pg-name','pg-addr','pg-dob','pg-gender','pg-phone','pg-jobs','pg-result'];
-var STEP_NUM=[0,1,2,3,4,5,6,7]; /* رقم الخطوة في الشريط (0=ترحيب بلا شريط) */
+/* ترتيب الخطوات (تحديث 2026-10-06 — طلب الإدارة):
+     الاسم ← السكن ← تاريخ الميلاد ← الهاتف ← الجنس ← الوظائف
+     ثم صفحة مراجعة الطلب كاملة (بيانات الزبون + تفاصيل الوظيفة) وبعدها «إتمام»
+     فتُفتح الاستمارة بالباركود. ست خطوات إدخال + صفحتان ختاميتان. */
+var STEP_IDS=['pg-welcome','pg-name','pg-addr','pg-dob','pg-phone','pg-gender','pg-jobs','pg-review','pg-result'];
+var STEP_TOTAL=6;         /* خطوات الإدخال التي يعدّها الشريط */
+var STEP_NAMES=['الاسم الثلاثي','السكن','تاريخ الميلاد','رقم الهاتف','نوع الجنس','اختيار الوظيفة'];
 var curPage=0;
 var transitioning=false; /* منع النقرات أثناء الانتقال */
+var selectedJob=null;    /* الوظيفة المختارة من القائمة (تُستخدم في المراجعة والإتمام) */
 
 var G={
   openEmployer:function(){
@@ -618,7 +788,13 @@ var G={
   /* الانتقال لصفحة نسبية: +1 = التالي، -1 = رجوع، أو رقم مطلق */
   go:function(dir){
     if(transitioning)return;
-    var target=typeof dir==='number'&&Math.abs(dir)<=1?curPage+dir:dir;
+    /* القاعدة: رقم سالب = رجوع نسبي (G.go(-1) من أي زر «رجوع»)،
+       وصفر أو موجب = رقم الصفحة المطلق (1 = الاسم … 8 = الاستمارة).
+       كان الشرط السابق (|dir|<=1 ⇒ نسبي) يجعل G.go(1) انتقالاً إلى الأمام،
+       فأزرار «تعديل» في صفحة المراجعة كانت تنقل الزبون إلى صفحة الاستمارة
+       بدل الصفحة المطلوبة — عطل حقيقي كشفه tests/apply-flow.mjs. */
+    var target=typeof dir==='number'&&dir<0?curPage+dir:dir;
+    if(dir<0)returnToReview=false;   /* رجوع صريح = إلغاء العودة التلقائية للمراجعة */
     if(target<0||target>=STEP_IDS.length)return;
     if(target===curPage)return;
     var prev=curPage;
@@ -628,16 +804,17 @@ var G={
     var oldEl=$(STEP_IDS[prev]);
     var newEl=$(STEP_IDS[target]);
 
-    /* إظهار/إخفاء الشريط */
-    var showBar=target>=1&&target<=5;
+    /* إظهار/إخفاء الشريط العلوي وشريط التقدم */
+    var showBar=target>=1;
     $('topbar').style.display=target>=1?'flex':'none';
     $('steps-bar').style.display=showBar?'flex':'none';
     if(showBar){
       var dots=document.querySelectorAll('.step-dot');
       dots.forEach(function(d){
         var s=parseInt(d.dataset.s);
-        d.className='step-dot'+(s===target?' active':(s<target?' done':''));
+        d.className='step-dot'+(s<target?' done':(s===target?' active':''));
       });
+      G.setStepLabel(target);
     }
 
     /* إخفاء القديم فوراً */
@@ -670,15 +847,53 @@ var G={
       if(cardData&&cardData.fullName&&!f.value)f.value=cardData.fullName;
       setTimeout(function(){f.focus();},500);
     }
-    if(target===6){
+    if(target===4){
       if(cardData&&cardData.phone&&!$('f-phone').value)$('f-phone').value=cardData.phone;
+      G.updatePhoneMeter();
     }
-    if(target===7){G.renderChances();G.renderFilters();G.renderJobs();}
+    if(target===6){G.renderChances();G.renderFilters();G.renderJobs();}
+    if(target===7){G.renderReview();}
+  },
+
+  /* وصف الخطوة الحالية أسفل شريط التقدم */
+  setStepLabel:function(step){
+    var el=$('step-label');if(!el)return;
+    if(step>STEP_TOTAL){
+      var t=step===STEP_TOTAL+1?'مراجعة الطلب':'تم التقديم';
+      el.innerHTML='<b>'+t+'</b> · <span class="pct">'+ar(100)+'%</span>';
+      return;
+    }
+    var pct=Math.round(step/STEP_TOTAL*100);
+    el.innerHTML='الخطوة <b>'+ar(step)+'</b> من '+ar(STEP_TOTAL)+' — '+STEP_NAMES[step-1]+
+      ' · <span class="pct">'+ar(pct)+'%</span>';
+  },
+
+  /* مؤشر رقم الهاتف (11 رقم) */
+  onPhone:function(el){
+    el.value=el.value.replace(/[^0-9]/g,'').slice(0,11);
+    G.updatePhoneMeter();
+  },
+
+  updatePhoneMeter:function(){
+    var el=$('f-phone'),wrap=el&&el.parentNode?el.parentNode.querySelector('.phone-meter'):null;
+    if(!wrap)return;
+    var v=(el.value||''),n=v.length;
+    var num=$('phone-count'),bar=$('phone-bar'),st=$('phone-state');
+    var ok=n===11&&/^07[3-9]/.test(v);
+    if(num)num.textContent=n;
+    if(bar)bar.style.width=Math.min(100,n/11*100)+'%';
+    if(st){
+      st.textContent=n===11?(ok?'صحيح ✓':'تحقق من البداية'):(n>=2&&!/^07/.test(v)?'يبدأ بـ 07':'ناقص');
+      st.className='pc-state'+(ok?'':(n===11||(n>=2&&!/^07/.test(v))?' bad':''));
+    }
+    /* جاهز عند 11 رقماً بداية صحيحة — نُغلق الرقم بعلامة خضراء */
+    if(el){el.classList.toggle('valid',ok);}
+    wrap.classList.toggle('done',ok);
   },
 
   /* التالي مع التحقق */
   next:function(){
-    /* في صفحة الهاتف — تأكد من تحميل البيانات قبل عرض الوظائف */
+    /* في صفحة الجنس (آخر خطوة قبل الوظائف) — تأكد من تحميل البيانات */
     if(curPage===5 && !dataReady){
       var waitBtn=document.activeElement;
       if(waitBtn&&waitBtn.classList.contains('btn'))btnLoading(waitBtn,true);
@@ -686,62 +901,84 @@ var G={
         w+=300;
         if(dataReady){clearInterval(iv);if(waitBtn)btnLoading(waitBtn,false);G.next();}
         else if(w>=6000){clearInterval(iv);if(waitBtn)btnLoading(waitBtn,false);
-          setInvalid(null,'err-phone','🌐','البيانات لم تُحمّل بعد — تحقق من الإنترنت وأعد المحاولة');
+          setInvalid(null,'err-gender','🌐','البيانات لم تُحمّل بعد — تحقق من الإنترنت وأعد المحاولة');
         }
       },300);
       return;
     }
-    var v, el;
     var btn=document.activeElement;
     if(btn&&btn.classList.contains('btn')){btn.classList.add('btn-click');setTimeout(function(){btn.classList.remove('btn-click');},300);}
 
-    switch(curPage){
+    if(curPage>=1&&curPage<=5&&!G.validateStep(curPage))return;
+
+    /* صفحة الوظائف: لا عبور قبل اختيار وظيفة */
+    if(curPage===6){
+      if(chancesLeft<=0){G.jobsWarn('لا توجد فرص متبقية في هذه البطاقة — راجع المكتب');return;}
+      if(!selectedJob){G.jobsWarn('اختر وظيفة أولاً — اضغط على بطاقة أي وظيفة ثم «التالي»');return;}
+      G.go(7);
+      return;
+    }
+    /* كان قادماً من «تعديل» في صفحة المراجعة: أعِده إلى المراجعة مباشرة */
+    if(returnToReview){returnToReview=false;G.go(7);return;}
+    G.go(curPage+1);
+  },
+
+  /* «تعديل» من صفحة المراجعة */
+  editStep:function(step){
+    returnToReview=true;
+    G.go(step);
+  },
+
+  /* التحقق من خطوة — يُنادى من «التالي» ومن «الإتمام» معاً */
+  validateStep:function(step){
+    var v, el;
+    switch(step){
       case 1: /* الاسم */
         el=$('f-name'); v=el.value.trim();
-        if(!v){setInvalid(el,'err-name','⚠️','اكتب اسمك الثلاثي الكامل — مثال: أحمد محمد علي');return;}
-        if(v.length<3){setInvalid(el,'err-name','⚠️','الاسم قصير جداً — يجب أن يكون 3 أحرف على الأقل');return;}
-        if(v.split(/\s+/).length<3){setInvalid(el,'err-name','⚠️','اكتب الاسم الثلاثي الكامل (ثلاث كلمات على الأقل) — مثال: أحمد محمد علي');return;}
-        if(/[0-9]/.test(v)){setInvalid(el,'err-name','⚠️','الاسم لا يجب أن يحتوي أرقام — اكتب الاسم بالحروف فقط');return;}
+        if(!v){setInvalid(el,'err-name','⚠️','اكتب اسمك الثلاثي الكامل — مثال: أحمد محمد علي');return false;}
+        if(v.length<3){setInvalid(el,'err-name','⚠️','الاسم قصير جداً — يجب أن يكون 3 أحرف على الأقل');return false;}
+        if(v.split(/\s+/).length<3){setInvalid(el,'err-name','⚠️','اكتب الاسم الثلاثي الكامل (ثلاث كلمات على الأقل) — مثال: أحمد محمد علي');return false;}
+        if(/[0-9]/.test(v)){setInvalid(el,'err-name','⚠️','الاسم لا يجب أن يحتوي أرقام — اكتب الاسم بالحروف فقط');return false;}
         setValid(el);clearErr('err-name');
-        break;
+        return true;
       case 2: /* السكن — كله إجباري */
         el=$('f-prov');
-        if(!el.value){setInvalid(el,'err-addr','📍','اختر المحافظة من القائمة');return;}
+        if(!el.value){setInvalid(el,'err-addr','📍','اختر المحافظة من القائمة');return false;}
         el=$('f-dist');
-        if(!el.value){setInvalid(el,'err-addr','📍','اختر القضاء / المنطقة من القائمة');return;}
+        if(!el.value){setInvalid(el,'err-addr','📍','اختر القضاء / المنطقة من القائمة');return false;}
         el=$('f-sub');
-        if(!el.value){setInvalid(el,'err-addr','📍','اختر الناحية من القائمة');return;}
+        if(!el.value){setInvalid(el,'err-addr','📍','اختر الناحية من القائمة');return false;}
         el=$('f-lm');
-        if(!el.value.trim()){setInvalid(el,'err-addr','📍','اكتب أقرب نقطة دالة — مثال: قرب مجمع الكرعاوي أو مقابل مستشفى الحلة');return;}
-        if(el.value.trim().length<3){setInvalid(el,'err-addr','📍','نقطة الدالة قصيرة — اكتب وصفاً أوضح (3 أحرف على الأقل)');return;}
+        if(!el.value.trim()){setInvalid(el,'err-addr','📍','اكتب أقرب نقطة دالة — مثال: قرب مجمع الكرعاوي أو مقابل مستشفى الحلة');return false;}
+        if(el.value.trim().length<3){setInvalid(el,'err-addr','📍','نقطة الدالة قصيرة — اكتب وصفاً أوضح (3 أحرف على الأقل)');return false;}
         setValid($('f-prov'));setValid($('f-dist'));setValid($('f-sub'));setValid($('f-lm'));
         clearErr('err-addr');
-        break;
+        return true;
       case 3: /* المواليد */
         var d=$('f-day').value,m=$('f-mon').value,y=$('f-yr').value;
-        if(!d||!m||!y){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">يرجى إكمال تاريخ الميلاد — اختر اليوم والشهر والسنة</span></div>';return;}
+        if(!d||!m||!y){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">يرجى إكمال تاريخ الميلاد — اختر اليوم والشهر والسنة</span></div>';return false;}
         /* فحص العمر (16-70) */
         var chosenDate=new Date(parseInt(y),parseInt(m)-1,parseInt(d));
-        if(chosenDate.getFullYear()!==parseInt(y)||chosenDate.getMonth()!==parseInt(m)-1||chosenDate.getDate()!==parseInt(d)){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">تاريخ الميلاد غير صحيح — تحقق من اليوم والشهر</span></div>';return;}
+        if(chosenDate.getFullYear()!==parseInt(y)||chosenDate.getMonth()!==parseInt(m)-1||chosenDate.getDate()!==parseInt(d)){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">تاريخ الميلاد غير صحيح — تحقق من اليوم والشهر</span></div>';return false;}
         var age=new Date().getFullYear()-parseInt(y);
-        if(age<16){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">العمر أقل من 16 سنة — الحد الأدنى للتوظيف هو 16 سنة</span></div>';return;}
-        if(age>70){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">يرجى التحقق من سنة الميلاد — العمر المُدخل '+ar(age)+' سنة</span></div>';return;}
+        if(age<16){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">العمر أقل من 16 سنة — الحد الأدنى للتوظيف هو 16 سنة</span></div>';return false;}
+        if(age>70){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">يرجى التحقق من سنة الميلاد — العمر المُدخل '+ar(age)+' سنة</span></div>';return false;}
         setValid($('f-day'));setValid($('f-mon'));setValid($('f-yr'));
         clearErr('err-dob');
-        break;
-      case 4: /* الجنس */
-        break;
-      case 5: /* الهاتف — 11 رقم بالضبط */
+        return true;
+      case 4: /* الهاتف — 11 رقم بالضبط تبدأ بـ 07 */
         el=$('f-phone'); v=el.value.trim();
-        if(!v){setInvalid(el,'err-phone','📱','أدخل رقم هاتفك العراقي — 11 رقم يبدأ بـ 07');return;}
-        if(!/^\d+$/.test(v)){setInvalid(el,'err-phone','📱','رقم الهاتف يجب أن يحتوي أرقام فقط بدون مسافات أو رموز — مثال: 07712345678');return;}
-        if(v.length<11){setInvalid(el,'err-phone','📱','الرقم قصير — متبقي '+ar(11-v.length)+' '+digitWord(11-v.length)+' — أكمل إلى 11 رقم');return;}
-        if(v.length>11){setInvalid(el,'err-phone','📱','الرقم طويل — يجب حذف '+ar(v.length-11)+' '+digitWord(v.length-11)+' — المطلوب 11 رقم فقط');return;}
-        if(!/^07[3-9]/.test(v)){setInvalid(el,'err-phone','📱','رقم الهاتف العراقي يبدأ بـ 07 ويكون المحارف الثالث من 3 إلى 9 — تأكد من الرقم');return;}
+        if(!v){setInvalid(el,'err-phone','📱','أدخل رقم هاتفك العراقي — 11 رقم يبدأ بـ 07');return false;}
+        if(!/^\d+$/.test(v)){setInvalid(el,'err-phone','📱','رقم الهاتف يجب أن يحتوي أرقام فقط بدون مسافات أو رموز — مثال: 07712345678');return false;}
+        if(v.length<11){setInvalid(el,'err-phone','📱','الرقم قصير — متبقي '+ar(11-v.length)+' '+digitWord(11-v.length)+' — أكمل إلى 11 رقم');return false;}
+        if(v.length>11){setInvalid(el,'err-phone','📱','الرقم طويل — يجب حذف '+ar(v.length-11)+' '+digitWord(v.length-11)+' — المطلوب 11 رقم فقط');return false;}
+        if(!/^07[3-9]/.test(v)){setInvalid(el,'err-phone','📱','رقم الهاتف العراقي يبدأ بـ 07 ويكون المحرف الثالث من 3 إلى 9 — تأكد من الرقم');return false;}
         setValid(el);clearErr('err-phone');
-        break;
+        return true;
+      case 5: /* الجنس — قيمة مختارة دائماً (ذكر افتراضاً) */
+        return true;
     }
-    G.go(curPage+1);
+    return true;
   },
 
   readProfile:function(){
@@ -797,15 +1034,19 @@ var G={
   renderJobs:function(){
     var f=currentFilter==='الكل'?jobs:jobs.filter(function(j){return j.category===currentFilter;});
     var c=$('jobs-list'),e=$('jobs-empty');
-    if(!f.length){c.innerHTML='';e.style.display='block';return;}
+    if(!f.length){c.innerHTML='';e.style.display='block';G.syncJobsFooter();return;}
     e.style.display='none';
     var h='';
-    f.forEach(function(j){
+    f.forEach(function(j,i){
       var done=appliedJobs.some(function(a){return a.jobCode===j.code;});
+      var picked=!!(selectedJob&&selectedJob.code===j.code);
       var sal=money(j.salaryMin)+' – '+money(j.salaryMax);
       var reqs=j.requirements.map(function(r){return'<li>'+esc(r)+'</li>';}).join('');
-      h+='<div class="job-card">'
-        +'<div class="job-head"><div class="title">'+esc(j.title)+'</div><div class="badge badge-open">🟢 متوفرة</div></div>'
+      h+='<div class="job-card'+(picked?' selected':'')+(done?' is-done':'')+'" data-job="'+esc(j.code)+'"'
+        +(done?'':' onclick="G.pickJob(\''+esc(j.code)+'\')"')+'>'
+        +'<div class="pick-mark">✓</div>'
+        +'<div class="job-head"><div class="title">'+esc(j.title)+'</div>'
+        +'<div class="badge badge-open">'+(done?'✓ تم التقديم':'🟢 متوفرة')+'</div></div>'
         +'<div class="job-category">✦ '+esc(j.category)+' · '+esc(j.code)+'</div>'
         +'<div class="job-grid">'
         +'<div class="job-item"><span class="k">الراتب:</span><span class="v">'+esc(sal)+'</span></div>'
@@ -819,65 +1060,206 @@ var G={
         +(reqs?'<div><b>المتطلبات:</b><ul>'+reqs+'</ul></div>':'')
         +(!j.description&&!reqs?'<div>لا توجد تفاصيل إضافية لهذه الوظيفة حالياً.</div>':'')
         +'</div>'
-        +'<div class="job-actions"><button class="btn btn-outline btn-sm" onclick="G.toggleDetails(\''+esc(j.code)+'\')">تفاصيل الوظيفة</button>';
+        +'<div class="job-actions"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();G.toggleDetails(\''+esc(j.code)+'\')">تفاصيل الوظيفة</button>';
       if(done){h+='<button class="btn btn-outline btn-sm" disabled>✓ تم التقديم</button>';}
       else if(chancesLeft<=0){h+='<button class="btn btn-outline btn-sm" disabled>انتهت الفرص</button>';}
-      else{h+='<button class="btn btn-primary btn-sm" onclick="G.showConfirm(\''+esc(j.code)+'\')">تقديم على الوظيفة</button>';}
+      else if(picked){h+='<button class="btn btn-success btn-sm" onclick="event.stopPropagation();G.next()">✓ مختارة — متابعة</button>';}
+      else{h+='<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();G.pickJob(\''+esc(j.code)+'\')">اختيار هذه الوظيفة</button>';}
       h+='</div></div>';
     });
     c.innerHTML=h;
+    G.syncJobsFooter();
+  },
+
+  /* اختيار وظيفة من القائمة (بدل النافذة القديمة) */
+  pickJob:function(code){
+    if(chancesLeft<=0)return;
+    if(appliedJobs.some(function(a){return a.jobCode===code;}))return;
+    var job=jobs.find(function(x){return x.code===code;});
+    if(!job)return;
+    selectedJob=job;
+    G.renderJobs();
+    if(navigator.vibrate)try{navigator.vibrate(18);}catch(e){}
+  },
+
+  /* تذييل قائمة الوظائف: المختار + جاهزية «التالي» */
+  syncJobsFooter:function(){
+    var b=$('btn-jobs-next'),h=$('jobs-hint');
+    var okSel=!!selectedJob&&chancesLeft>0;
+    if(b)b.disabled=!okSel;
+    if(!h)return;
+    if(chancesLeft<=0){
+      h.className='jobs-hint';
+      h.innerHTML='<span class="warn">لا توجد فرص متبقية في هذه البطاقة</span> — راجع مكتب الشركة لتجديدها';
+    }else if(okSel){
+      h.className='jobs-hint picked';
+      h.innerHTML='الوظيفة المختارة: <b>'+esc(selectedJob.title)+'</b> — <span class="mono" dir="ltr">'+esc(selectedJob.code)+'</span>';
+    }else{
+      h.className='jobs-hint';
+      h.innerHTML='اضغط على أي وظيفة لاختيارها ثم «التالي»';
+    }
+  },
+
+  jobsWarn:function(msg){
+    var h=$('jobs-hint');
+    if(h){
+      h.className='jobs-hint';
+      h.innerHTML='<span class="warn">'+esc(msg)+'</span>';
+      h.classList.remove('rv-warn-move');void h.offsetWidth;h.classList.add('rv-warn-move');
+    }
+    var list=$('jobs-list');
+    if(list&&list.scrollIntoView)list.scrollIntoView({behavior:'smooth',block:'start'});
   },
 
   /* ═══════════════════════════════════════════════════════════
      التأكيد والتقديم
      ═══════════════════════════════════════════════════════════ */
-  showConfirm:function(code){
-    var j=jobs.find(function(x){return x.code===code;});
-    if(!j)return;
-    pendingJob=j;
-    $('modal-job').innerHTML='<div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px;text-align:right">'
-      +'<div style="font-size:11pt;font-weight:800;color:#f4efe2">'+esc(j.title)+'</div>'
-      +'<div style="font-size:9pt;color:#e8d089;margin-top:2px">'+esc(j.code)+' — '+esc(j.region)+'</div></div>';
-    $('modal').classList.add('show');
+  /* ═══════════════════════════════════════════════════════════
+     المراجعة قبل الإتمام — كل ما ملأه الزبون + الوظيفة المختارة
+     (بدلاً من نافذة التأكيد القديمة: صفحة كاملة يُراجعها الزبون)
+     ═══════════════════════════════════════════════════════════ */
+  dobText:function(){
+    var d=$('f-day').value,m=$('f-mon').value,y=$('f-yr').value;
+    if(!d||!m||!y)return '';
+    return pad2(d)+'/'+pad2(m)+'/'+y;
   },
 
-  closeModal:function(){$('modal').classList.remove('show');pendingJob=null;$('modal-err').innerHTML='';},
+  renderReview:function(){
+    var host=$('review-content');if(!host)return;
+    var p=G.readProfile();
+    var dobTxt=G.dobText();
+    var place=[p.province,p.district,p.subdistrict].filter(function(x){return !!x;}).join(' – ');
+    var j=selectedJob;
 
-  confirm:function(){
-    if(!pendingJob||!cardData){
-      showModalError('🌐','البيانات لم تُحمّل بعد — انتظر بضع ثوانٍ ثم اضغط تأكيد مرة أخرى');
-      return;
+    function row(k,v,step,ltr){
+      return '<div class="rv-row"><div class="rv-k">'+k+'</div>'
+        +'<div class="rv-v'+(ltr?' mono':'')+'"'+(ltr?' dir="ltr"':'')+'>'+esc(v||'—')+'</div>'
+        +(step?'<button class="rv-edit" type="button" onclick="G.editStep('+step+')">تعديل</button>':'')+'</div>';
     }
-    if(!ensureClient()){
-      showModalError('🌐','لا يوجد اتصال بالخادم — تحقق من الإنترنت');
-      return;
-    }
-    var btn=$('btn-ok');btnLoading(btn,true);
 
-    if(chancesLeft<=0){btnLoading(btn,false);showModalError('⚠️','انتهت فرص البطاقة — لا يمكن إرسال طلب جديد');return;}
-    client.rpc('apply_with_card',{p_serial:cardSerial,p_job_code:pendingJob.code,p_data:G.readProfile()})
+    var h='<div class="rv-card">'
+      +'<div class="rv-top"><span class="rv-ic">🧾</span><div style="flex:1">'
+      +'<div class="rv-t">مراجعة الطلب قبل الإتمام</div>'
+      +'<div class="rv-s">تأكد من صحة بياناتك — بعد «إتمام» تُستهلك فرصة واحدة من بطاقتك</div></div></div>';
+
+    /* بيانات المتقدم */
+    h+='<div class="rv-head">بيانات المتقدم</div>'
+      +row('الاسم الثلاثي',p.fullName,1)
+      +row('رقم الهاتف',p.phone,4,1)
+      +row('تاريخ الميلاد',dobTxt,3,1)
+      +row('الجنس',p.gender,5)
+      +row('السكن',(place||'')+(p.landmark?' — '+p.landmark:''),2);
+
+    /* الوظيفة المختارة */
+    if(j){
+      var sal=money(j.salaryMin)+' – '+money(j.salaryMax);
+      h+='<div class="rv-head">الوظيفة المختارة</div>'
+        +row('الوظيفة',j.title,6)
+        +row('الكود',j.code,6,1)
+        +row('المنطقة',j.region,6)
+        +row('الأجر',sal,6)
+        +'<div class="rv-chips">'
+        +'<span class="rv-chip">⏱ الدوام: '+esc(j.shift)+'</span>'
+        +'<span class="rv-chip">✦ '+esc(j.category)+'</span>'
+        +(j.gender?'<span class="rv-chip">👤 '+esc(j.gender)+'</span>':'')
+        +'<span class="rv-chip">الشواغر: '+ar(j.vacancies||1)+'</span>'
+        +'</div>';
+    }else{
+      h+='<div class="rv-head">الوظيفة المختارة</div>'
+        +'<div class="rv-row"><div class="rv-v" style="color:#f0c060">لم تُختَر وظيفة بعد</div>'
+        +'<button class="rv-edit" type="button" onclick="G.editStep(6)">اختيار وظيفة</button></div>';
+    }
+
+    /* البطاقة */
+    h+='<div class="rv-head">البطاقة والفرص</div>'
+      +row('رقم البطاقة',cardSerial,null,1)
+      +'<div class="rv-chips">'
+      +'<span class="rv-chip ok">الفرص المتبقية: '+ar(chancesLeft)+'</span>'
+      +'<span class="rv-chip">حجز مؤقت 24 ساعة</span>'
+      +'<span class="rv-chip">صلاحية 30 يوماً</span>'
+      +'</div>';
+
+    h+='<div id="rv-err"></div>'
+      +'<div class="rv-note">بالضغط على <b>«إتمام التقديم»</b> تُسجَّل استمارتك في نظام الشركة وتُحجز الوظيفة مؤقتاً <b>24 ساعة</b>. '
+      +'الفرصة <b>لا تعود</b> بعد الإتمام بأي نتيجة، وتبقى بقية الفرص صالحة حتى انتهاء مدة البطاقة. '
+      +'تُطبع الاستمارة بباركود بطاقتك نفسه ليراها صاحب العمل.</div>'
+      +'</div>';
+
+    host.innerHTML=h;
+  },
+
+  /* رسالة خطأ داخل صفحة المراجعة */
+  rvError:function(msg){
+    var box=$('rv-err');if(!box)return;
+    box.innerHTML='<div class="alert alert-error" style="margin-top:12px"><span class="ico">⚠️</span>'
+      +'<span class="msg">'+esc(msg)+'</span></div>';
+    var host=$('review-content');
+    if(host&&host.scrollIntoView)host.scrollIntoView({behavior:'smooth',block:'start'});
+    if(navigator.vibrate)try{navigator.vibrate([12,60,12]);}catch(e){}
+  },
+
+  /* ═══════════════════════════════════════════════════════════
+     إتمام التقديم — نقطة الكتابة الوحيدة في القاعدة
+     ═══════════════════════════════════════════════════════════ */
+  finish:function(){
+    if(chancesLeft<=0){G.rvError('انتهت فرص هذه البطاقة — لا يمكن إرسال طلب جديد. راجع المكتب لتجديدها.');return;}
+    if(!cardData){G.rvError('البيانات لم تُحمّل بعد — انتظر ثوانٍ ثم أعد المحاولة.');return;}
+    if(!selectedJob){G.go(6);return;}
+    if(!ensureClient()){G.rvError('لا يوجد اتصال بالخادم — تحقق من الإنترنت.');return;}
+
+    /* إعادة التحقق من كل الخطوات: الزبون قد يكون رجع وعدّل شيئاً */
+    for(var s=1;s<=5;s++){
+      if(!G.validateStep(s)){returnToReview=true;G.go(s);return;}
+    }
+
+    var btn=$('btn-finish');btnLoading(btn,true);
+    var saved=false;   /* صار الطلب مسجّلاً في نظام الشركة؟ (تُستهلك الفرصة عندها) */
+    client.rpc('apply_with_card',{p_serial:cardSerial,p_job_code:selectedJob.code,p_data:G.readProfile()})
     .then(function(res){
       btnLoading(btn,false);
-      if(res.error){showModalError('⚠️','تعذّر التقديم — '+((res.error.message||res.error)+' — حاول مرة أخرى أو تواصل مع الشركة'));return;}
-      var d=res.data;if(!d||d.ok===false){showModalError('⚠️',d?(d.error||'تعذّر التقديم'):'لا نتيجة من الخادم — تحقق من الإنترنت');return;}
-      G.closeModal();G.onSuccess(d,pendingJob);
-    }).catch(function(e){btnLoading(btn,false);showModalError('🌐','خطأ في الاتصال — تحقق من الإنترنت وحاول مرة أخرى');});
+      if(res.error){
+        if(isMissingFunction(res.error)){G.rvError('قاعدة الشركة تحتاج تحديثاً بسيطاً (دالة التقديم الذاتي غير مثبّتة فيها) — راجع إدارة الشركة.');return;}
+        G.rvError('تعذّر التقديم — '+((res.error.message||res.error)+' — حاول مرة أخرى أو تواصل مع الشركة'));
+        return;
+      }
+      var d=res.data;
+      if(!d||d.ok===false){G.rvError(d?(d.error||'تعذّر التقديم'):'لا نتيجة من الخادم — تحقق من الإنترنت');return;}
+      saved=true;
+      G.onSuccess(d,selectedJob);
+    }).catch(function(e){
+      btnLoading(btn,false);
+      /* مهم: إن كان الطلب قد سُجِّل فعلاً فالخطأ في العرض لا في الاتصال —
+         لا نقول للزبون «خطأ اتصال» فيعيد المحاولة وتُستهلك فرصة ثانية بلا داعٍ */
+      if(saved){G.plainResult(e);return;}
+      G.rvError('خطأ في الاتصال — تحقق من الإنترنت وحاول مرة أخرى');
+    });
   },
 
-  doActivate:function(job){
-    var addr=$('f-prov').value+' - '+$('f-dist').value+' - '+$('f-sub').value+' ('+$('f-lm').value.trim()+')';
-    var dob=$('f-yr').value+'-'+pad2($('f-mon').value)+'-'+pad2($('f-day').value);
-    var btn=$('btn-ok');btnLoading(btn,true);
-    client.rpc('activate_card',{p_serial:cardSerial,p_data:{
-      fullName:$('f-name').value.trim(),phone:$('f-phone').value.trim(),
-      address:addr,dob:dob,gender:selectedGender,
-      posName:'تقديم ذاتي عبر الموقع',jobCode:job.code
-    }}).then(function(res){
-      btnLoading(btn,false);
-      if(res.error){showModalError('⚠️','تعذّر تفعيل البطاقة — '+((res.error.message||res.error)+' — تأكد من الباركود'));return;}
-      var d=res.data;if(!d||d.ok===false){showModalError('⚠️',d?(d.error||'تعذّر التفعيل'):'لا نتيجة من الخادم');return;}
-      G.closeModal();G.onSuccess(d,job);
-    }).catch(function(e){btnLoading(btn,false);showModalError('🌐','خطأ في الاتصال — تحقق من الإنترنت');});
+  /* احتياط: الطلب سُجِّل في نظام الشركة لكن تعذّر رسم الاستمارة الكاملة
+     (عطل عرض نادر أو مكتبة ناقصة). لا نُخوّف الزبون برسالة شبكة كاذبة —
+     نعرض بطاقة نتيجة مبسّطة بباركود بطاقته وزرّي طباعة ونسخ رابط. */
+  plainResult:function(err){
+    if(err)console.error('تعذّر عرض الاستمارة الكاملة:',err);
+    var j=selectedJob||{};
+    var host=$('result-content');
+    if(!host)return;
+    host.innerHTML='<div class="rv-card" style="text-align:center">'
+      +'<div style="font-size:34px;line-height:1">✅</div>'
+      +'<div class="rv-t" style="margin-top:6px">تم تسجيل طلبك</div>'
+      +'<div class="rv-s" style="margin-top:4px">وصلنا طلبك على وظيفة «'+esc(j.title||'—')+'» — لكن تعذّر عرض الاستمارة الكاملة على هذه الشاشة.</div>'
+      +'<div class="rv-row" style="text-align:right"><div class="rv-k">رقم البطاقة</div><div class="rv-v mono" dir="ltr">'+esc(cardSerial)+'</div></div>'
+      +'<div class="rv-row" style="text-align:right"><div class="rv-k">كود الوظيفة</div><div class="rv-v mono" dir="ltr">'+esc(j.code||'—')+'</div></div>'
+      +'<div class="rv-note">بياناتك محفوظة في نظام الشركة. اطبع هذه الصفحة أو راجع مكتب الشركة لنسخة مطبوعة — ولا تُعِد التقديم (الفرصة تُستهلك مرة واحدة).</div>'
+      +'</div>';
+    var acts=$('result-actions');
+    if(acts){
+      var a='<button class="btn btn-primary btn-sm btn-shine" onclick="window.print()">🖨 طباعة</button>';
+      a+='<button class="btn btn-outline btn-sm" onclick="G.copyLink()">🔗 نسخ رابط الاستمارة</button>';
+      if(chancesLeft>0)a+='<button class="btn btn-ghost-gold" onclick="G.go(6)">📷 استخدام الباركود لاختيار وظيفة ثانية</button>';
+      a+='<button class="btn btn-outline btn-sm" onclick="G.backToJobs()">← العودة للوظائف</button>';
+      acts.innerHTML=a;
+    }
+    G.go(8);
   },
 
   /* ═══════════════════════════════════════════════════════════
@@ -904,6 +1286,16 @@ var G={
     var dob=$('f-day').value+'/'+$('f-mon').value+'/'+$('f-yr').value;
     var cUrl=(location.origin||'https://hrc-babil.com')+location.pathname.replace(/[^/]*$/,'')+'apply.html?form='+encodeURIComponent(cardSerial);
 
+    /* تاريخان يهمّان صاحب العمل: مهلة الحجز (24 ساعة) وانتهاء صلاحية البطاقة */
+    var holdTxt='—',expTxt=(cardData&&cardData.expiryDate)?String(cardData.expiryDate).slice(0,10).split('-').reverse().join('/'):'—';
+    if(att.holdExpiresAt){
+      var hd=new Date(att.holdExpiresAt);
+      if(!isNaN(hd.getTime())){
+        holdTxt=hd.toLocaleString('ar-IQ',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      }
+    }
+    var attemptNo=appliedJobs.length; /* 1 أو 2 — أي فرصة استُخدمت الآن */
+
     /* بناء الاستمارة A4 */
     var h=''
       /* ── رأس الاستمارة ── */
@@ -916,9 +1308,12 @@ var G={
       +'<div class="fs-fields">'
       +'<div class="fs-f"><div class="k">رقم البطاقة</div><div class="v" style="direction:ltr">'+esc(cardSerial)+'</div></div>'
       +'<div class="fs-f"><div class="k">حالة البطاقة</div><div class="v">سارية</div></div>'
-      +'<div class="fs-f"><div class="k">نقطة البيع</div><div class="v">تقديم ذاتي</div></div>'
-      +'<div class="fs-f"><div class="k">التقديم</div><div class="v">'+esc(appliedJobs.length)+' من 2</div></div>'
+      +'<div class="fs-f"><div class="k">نقطة البيع</div><div class="v">تقديم ذاتي عبر الموقع</div></div>'
+      +'<div class="fs-f"><div class="k">الفرصة</div><div class="v">'+esc(attemptNo)+' من 2</div></div>'
+      +'<div class="fs-f"><div class="k">انتهاء البطاقة</div><div class="v" style="direction:ltr">'+esc(expTxt)+'</div></div>'
+      +'<div class="fs-f"><div class="k">مهلة الرد على الحجز</div><div class="v">'+esc(holdTxt)+'</div></div>'
       +'</div></div>'
+      +'<div class="fs-qr-note">هذا الباركود هو <b>باركود البطاقة نفسه</b> — يُستخدم لاختيار وظيفة ثانية ما دامت فرصة متاحة، ولصاحب العمل للتحقق من الاستمارة.</div>'
       /* ── بيانات المتقدم ── */
       +'<div class="fs-h3">بيانات المتقدم</div>'
       +'<div class="fs-grid">'
@@ -963,15 +1358,34 @@ var G={
       +'الحلة – بابل، العراق — <b dir="ltr">07760058007 / 07715993271</b></div>'
       +'</div></div>';
 
-    h+='<button class="btn btn-primary" style="margin-top:12px" onclick="window.print()">🖨️ طباعة استمارة التقديم</button>';
-    if(chancesLeft>0){
-      h+='<div class="alert alert-info" style="margin-top:10px">متبقي لك <b>'+ar(chancesLeft)+'</b> '+(chancesLeft===1?'فرصة':'فرص')+' — يمكنك العودة لاختيار وظيفة أخرى بنفس الباركود</div>';
-    }else{
-      h+='<div class="alert alert-error" style="margin-top:10px">انتهت فرصك في هذه البطاقة</div>';
-    }
+    /* ── رأس النجاح: علامة صح مرسومة + وميض ذهبي ── */
+    var sparks='';
+    [[-92,-34],[-62,-54],[-32,-66],[0,-72],[32,-66],[62,-54],[92,-34],[-46,16],[46,16],[0,30]]
+      .forEach(function(d,i){
+        sparks+='<span class="spark" style="--dx:'+d[0]+'px;--dy:'+d[1]+'px;animation-delay:'+(0.4+i*0.05).toFixed(2)+'s"></span>';
+      });
+    var hero='<div class="ok-hero">'
+      +'<div class="ok-check"><svg viewBox="0 0 24 24"><path d="M4.5 12.5l4.8 4.8L19.5 7"/></svg></div>'
+      +'<div class="ok-title">تم التقديم بنجاح ✓</div>'
+      +'<div class="ok-sub">مُسجَّلة الفرصة <b>'+ar(appliedJobs.length)+'</b> على وظيفة <b>'+esc(job.title)+'</b><br>'
+      +'حُجزت الوظيفة مؤقتاً <b>24 ساعة</b> — راجع صاحب العمل بالاستمارة أدناه.</div>'
+      +sparks+'</div>';
 
-    $('result-content').innerHTML=h;
+    var note = chancesLeft>0
+      ? '<div class="alert alert-info" style="margin-top:10px"><span class="ico">📷</span><span class="msg">متبقي لك <b>'+ar(chancesLeft)+'</b> '+(chancesLeft===1?'فرصة':'فرص')+' — استخدم <b>نفس باركود البطاقة</b> لاختيار وظيفة أخرى خلال مدة الصلاحية</span></div>'
+      : '<div class="alert alert-error" style="margin-top:10px"><span class="ico">⚠️</span><span class="msg">انتهت فرص هذه البطاقة — تُشترى بطاقة جديدة من نقاط البيع</span></div>';
+
+    $('result-content').innerHTML=hero+h+note;
     $('steps-bar').style.display='none';
+
+    /* ── أزرار ما بعد الاستمارة: طباعة · باركود لوظيفة ثانية · نسخ الرابط ── */
+    var acts='<button class="btn btn-primary btn-shine" onclick="window.print()">🖨️ طباعة الاستمارة (A4)</button>';
+    if(chancesLeft>0){
+      acts+='<button class="btn btn-ghost-gold" onclick="G.go(6)">📷 استخدام الباركود لاختيار وظيفة ثانية</button>';
+    }
+    acts+='<button class="btn btn-outline" onclick="G.copyLink()">🔗 نسخ رابط الاستمارة (يفتحه الباركود)</button>';
+    var actsHost=$('result-actions');
+    if(actsHost)actsHost.innerHTML=acts;
 
     /* توليد الباركود QR — تحميل كسول */
     function genQR(){
@@ -992,15 +1406,42 @@ var G={
       document.head.appendChild(s);
     }
 
-    G.go(7); /* pg-result */
+    /* لا تبقى الوظيفة مختارة عند العودة لقائمة الوظائف */
+    selectedJob=null;
+
+    G.go(8); /* pg-result — الاستمارة */
+  },
+
+  /* نسخ رابط الاستمارة (هو نفسه محتوى الباركود) */
+  copyLink:function(){
+    var url=(location.origin||'https://hrc-babil.com')+location.pathname.replace(/[^/]*$/,'')+'apply.html?form='+encodeURIComponent(cardSerial);
+    var host=$('result-actions');
+    var say=function(){
+      if(!host)return;
+      var t=document.createElement('div');
+      t.className='alert alert-info';t.style.marginTop='10px';
+      t.innerHTML='<span class="ico">🔗</span><span class="msg">تم نسخ الرابط — <b class="mono" dir="ltr">'+esc(url)+'</b></span>';
+      host.appendChild(t);
+      setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},7000);
+    };
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(say,function(){window.prompt('انسخ الرابط:',url);});
+    }else{window.prompt('انسخ الرابط:',url);}
   },
 
   backToJobs:function(){
     transitioning=false;
-    curPage=7;
     G.go(6);
   }
 };
+
+/* ⚠️ إتاحة واجهة الصفحة للنطاق العام — شرط عمل كل أزرار الصفحة.
+   الصفحة كلها داخل دالة مغلقة (IIFE)، وأزرارها مكتوبة بصيغة onclick="G.…"
+   وهي تُنفَّذ في النطاق العام لا داخل المغلّف. فبلا هذا السطر يُطلق كل زر
+   (ابدأ الآن · التالي · الرجوع · إتمام…) خطأ ReferenceError: G is not defined
+   ولا يفعل شيئاً — وهو عطل لا يظهر في أي فحص نصي، فقط بتشغيل الصفحة فعلاً
+   (كشفه tests/apply-flow.mjs). */
+window.G=G;
 
 /* ═══════════════════════════════════════════════════════════════
    تهيئة قوائم المحافظات
@@ -1058,9 +1499,14 @@ function fatal(msg,hintHtml){
       box.parentNode.insertBefore(h,box.nextSibling);
     }
   }
-  try{G.go(-999);}catch(e){}
-  $('pg-loading').classList.remove('active');
-  $('pg-error').classList.add('active');
+  /* نُخفي كل الصفحات ثم نُظهر صفحة الخطأ (G.go لا يقبل أرقاماً سالبة) */
+  var all=document.querySelectorAll('.page');
+  for(var i=0;i<all.length;i++)all[i].classList.remove('active');
+  var bar=$('steps-bar'),top=$('topbar');
+  if(bar)bar.style.display='none';
+  if(top)top.style.display='none';
+  var err=$('pg-error');
+  if(err)err.classList.add('active');
 }
 
 /* وصول البيانات أخيراً بعد ظهور الخطأ (شبكة بطيئة): نُخفي الخطأ ونعرض الترحيب */
@@ -1071,6 +1517,9 @@ function clearFatal(){
   if(e)e.classList.remove('active');
   if(w)w.classList.add('active');
   curPage=0;transitioning=false;
+  /* نصفّر كل الحقول المعلّمة بالخطأ حتى لا تبقى حمراء بلا سبب */
+  var marked=document.querySelectorAll('.invalid');
+  for(var i=0;i<marked.length;i++)marked[i].classList.remove('invalid');
 }
 
 /* هل رد الخطأ يعني «الدالة غير مثبّتة على القاعدة»؟ (PGRST202 / نفس النص) */
@@ -1161,9 +1610,11 @@ function loadData(){
     dataLoading=false;
     clearFatal();   /* كان الخطأ معروضاً وتأخّرت الشبكة: نعرض الترحيب الآن */
 
+    /* فرص البطاقة مستنفدة: لا معنى لمسار الإدخال — رسالة واضحة للزبون */
     if(chancesLeft<=0&&appliedJobs.length>0){
-      curPage=0;
-      G.go(7);
+      fatal('انتهت فرص هذه البطاقة (فرصتان مستقلتان).',
+        'تُشترى بطاقة جديدة من نقاط البيع، أو راجع مكتب الشركة للاستفسار عن النتيجة.<br>'+
+        'رقم البطاقة: <b dir="ltr">'+esc(cardSerial)+'</b>');
     }
   }).catch(function(e){
     dataLoading=false;
@@ -1217,6 +1668,22 @@ function tryLoad(){
   if(dataLoading||dataReady)return;
   if(ensureClient()){loadData();}
   else{setTimeout(tryLoad,800);}
+}
+
+/* حرس الوقت: بلا هذا يبقى الزبون على «جاري تحميل البيانات…» أبداً إن لم تصل
+   مكتبة العميل (لا إنترنت / ملف لم يُنزَّل) — وهذا أسوأ من رسالة خطأ صريحة
+   لأنه لا يقول له شنو صار ولا شنو يسوي. */
+function startWatchdog(){
+  setTimeout(function(){
+    if(dataReady||fatalShown)return;
+    if(!client&&!(window.HRCHttp&&window.HRCHttp.createClient)){
+      fatal('تعذّر تحميل عميل الاتصال من الموقع (ملف cloud-http.js لم يصل).',
+        'افتح الرابط بشبكة سليمة ثم اضغط «إعادة المحاولة».');
+      return;
+    }
+    fatal('تأخّر الاتصال بقاعدة الشركة أكثر من 20 ثانية.',
+      'تحقق من الإنترنت (أو جرّب شبكة أخرى) ثم اضغط «إعادة المحاولة».');
+  },20000);
 }
 
 if(document.readyState==='complete')startApp();

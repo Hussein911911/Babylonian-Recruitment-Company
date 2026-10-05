@@ -365,6 +365,53 @@ check('تفاصيل الوظيفة تشمل الوصف والمتطلبات مع
   return page.includes('j.description') && page.includes('j.requirements') &&
     page.includes('G.toggleDetails') || 'تفاصيل بطاقة الوظيفة غير مكتملة';
 });
+/* ── 2026-10-06 (طلب الإدارة): ترتيب المسار وصفحة المراجعة والاستمارة ──
+   الترتيب المطلوب: الاسم ← السكن ← الميلاد ← الهاتف ← الجنس ← الوظائف ←
+   المراجعة ← الاستمارة، مع اختيار الوظيفة بالنقر على بطاقتها (لا نافذة تأكيد)،
+   ورجوع في كل صفحة. */
+check('ترتيب خطوات التقديم بالضبط كما طُلب (الاسم، السكن، الميلاد، الهاتف، الجنس، الوظائف)', () => {
+  const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
+  const order = ['pg-welcome', 'pg-name', 'pg-addr', 'pg-dob', 'pg-phone', 'pg-gender', 'pg-jobs', 'pg-review', 'pg-result'];
+  const m = page.match(/var STEP_IDS=\[([^\]]*)\]/);
+  const got = m ? m[1].split(',').map((x) => x.trim().replace(/^'|'$/g, '')) : [];
+  return JSON.stringify(got) === JSON.stringify(order) || 'الترتيب الحالي: ' + got.join(' → ');
+});
+check('صفحة المراجعة تعرض بيانات الزبون والوظيفة مع أزرار تعديل ورجوع', () => {
+  const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
+  const has = page.includes('id="pg-review"') && page.includes('renderReview') &&
+    page.includes('rv-edit') && page.includes('مراجعة الطلب قبل الإتمام');
+  return has || 'صفحة المراجعة ناقصة';
+});
+check('اختيار الوظيفة بالنقر على بطاقتها مع علامة اختيار وزر «التالي» معطَّل قبل الاختيار', () => {
+  const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
+  return (page.includes('pickJob') && page.includes('pick-mark') &&
+    page.includes('id="btn-jobs-next"') && /btn-jobs-next"[^>]*disabled/.test(page) &&
+    page.includes('syncJobsFooter')) || 'منطق اختيار الوظيفة ناقص';
+});
+check('لا توجد نافذة تأكيد قديمة — الإتمام من صفحة المراجعة', () => {
+  const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
+  return (!page.includes('modal-overlay') && !page.includes('showModalError') &&
+    page.includes('id="btn-finish"') && page.includes('finish:function')) || 'بقايا النافذة القديمة';
+});
+check('الاستمارة تُطبع بباركود البطاقة نفسه وتذكر إمكانية وظيفة ثانية', () => {
+  const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
+  return (page.includes('fs-qr-note') && page.includes('باركود البطاقة نفسه') &&
+    page.includes('اختيار وظيفة ثانية') && page.includes('قابل للطباعة'.slice(0, 0) + 'window.print()')) ||
+    'ملاحظة الباركود في الاستمارة ناقصة';
+});
+check('الطباعة تُخرج ورقة الاستمارة وحدها (بلا هيرو النجاح وبلا أزرار)', () => {
+  const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
+  const printBlock = page.slice(page.indexOf('@media print'));
+  return printBlock.includes('#result-content .ok-hero') &&
+    printBlock.includes('#result-content .result-actions') &&
+    printBlock.includes('break-inside:avoid') || 'كتلة الطباعة لا تخفي عناصر الواجهة';
+});
+check('كل خطوات الإدخال فيها زر رجوع، ومؤشر الهاتف يتحقق من 11 رقماً تبدأ بـ 07', () => {
+  const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
+  const backs = (page.match(/G\.go\(-1\)/g) || []).length;
+  return (backs >= 6 && page.includes('phone-meter') && page.includes('onPhone') &&
+    /\^07\[3-9\]/.test(page)) || 'أزرار الرجوع ' + backs;
+});
 check('رابط التحقق الداخلي للبطاقة بالصيغة المطلوبة', () => {
   const url = site.window.HRCStore.verifyUrl('HRC-BC-000120');
   return /^https?:\/\/[^/]+\/verify\?form=HRC-BC-000120&t=[0-9a-f]{8}$/.test(url) ||
