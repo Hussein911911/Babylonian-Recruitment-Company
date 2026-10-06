@@ -24,6 +24,28 @@
 -- ===========================================================================
 
 -- ─────────────────────────────────────────────────────────────────────────
+-- 0/أ) ضمان وجود الأعمدة والقيم التي يحتاجها هذا التحديث على قاعدة قديمة
+--      ⚠️ عطل مُشاهد (2026-10-06): ERROR 42703: column "critical" does not exist
+--      السبب: هذه القاعدة لم تُطبَّق عليها الأجزاء 1–5 من صفحة التحديث، فعمدُ
+--      الوظائف «الحرجة» وقيم التعداد الجديدة غائبة — وهذا الجزء يجعل التحديث
+--      مستقلاً تماماً: يُنشئ ما ينقصه بنفسه ثم يكمل.
+--      كل سطر if not exists ⇒ وجودُ العمود/القيمة مسبقاً لا يُغيّر شيئاً.
+-- ─────────────────────────────────────────────────────────────────────────
+alter table brc.jobs         add column if not exists critical boolean not null default false;
+alter table brc.applicants   add column if not exists pos_name text default '';
+alter table brc.applicants   add column if not exists self_application_data jsonb not null default '{}'::jsonb;
+alter table brc.job_attempts add column if not exists chance_code text;
+alter table brc.job_attempts add column if not exists employer_decision text;
+alter table brc.job_attempts add column if not exists decision_at timestamptz;
+do $$ begin alter type brc.slot_status add value if not exists 'critical';  exception when others then null; end $$;
+do $$ begin alter type brc.slot_status add value if not exists 'hiring';    exception when others then null; end $$;
+do $$ begin alter type brc.job_status  add value if not exists 'hiring';    exception when others then null; end $$;
+do $$ begin alter type brc.form_status add value if not exists 'blank';     exception when others then null; end $$;
+do $$ begin alter type brc.form_status add value if not exists 'pending';   exception when others then null; end $$;
+do $$ begin alter type brc.form_status add value if not exists 'rejected';  exception when others then null; end $$;
+do $$ begin alter type brc.form_status add value if not exists 'expired';   exception when others then null; end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────
 -- 0) عمود سبب رفض صاحب العمل (يُقرأ في صفحة صاحب العمل وفي لوحة الموظف)
 -- ─────────────────────────────────────────────────────────────────────────
 alter table brc.job_attempts add column if not exists employer_reason text;
@@ -46,8 +68,9 @@ do $$ begin
 exception when others then null; end $$;
 
 alter table brc.jobs drop constraint if exists jobs_hold_consistency;
+/* status::text لتفادي خطأ «unsafe use of new value of enum type» داخل نفس المعاملة */
 alter table brc.jobs add constraint jobs_hold_consistency
-  check (status <> 'reserved' or hold_expires_at is not null or critical);
+  check (status::text <> 'reserved' or hold_expires_at is not null or critical);
 
 create or replace function brc.trg_attempt_hold() returns trigger
 language plpgsql as $$
@@ -687,15 +710,15 @@ create or replace view brc.v_pending_actions as
               then 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة'
               else 'طلب صاحب العمل: لم يتم التوظيف — بانتظار قرار الشركة' end::text as description
     from brc.jobs j
-    join brc.job_attempts a on a.job_id = j.id and a.slot_status = 'hiring'
-   where j.status = 'hiring'
+    join brc.job_attempts a on a.job_id = j.id and a.slot_status::text = 'hiring'
+   where j.status::text = 'hiring'
   union all
   select 'critical'::text, j.code, j.reserved_by, a.decision_at, null,
          ('رفض صاحب العمل بسبب: ' || coalesce(nullif(a.employer_reason, ''), '—') ||
           ' — القرار: إرجاع الوظيفة متاحة أو حذفها')
     from brc.jobs j
-    join brc.job_attempts a on a.job_id = j.id and a.slot_status = 'critical'
-   where j.status = 'reserved' and j.critical
+    join brc.job_attempts a on a.job_id = j.id and a.slot_status::text = 'critical'
+   where j.status::text = 'reserved' and j.critical
      -- ⚠️ إصلاح 2026-10-06: بلا هذا الشرط كانت وظيفة «انتهت مهلة 24 ساعة» تظهر
      --    كأن صاحب العمل رفضها بسبب فارغ («بسبب: —») بدل «حرجة — انتهت المهلة».
      and a.employer_decision = 'reject'
@@ -703,9 +726,9 @@ create or replace view brc.v_pending_actions as
   select 'critical_timeout'::text, j.code, j.reserved_by, j.hold_expires_at, null,
          'انتهت مهلة 24 ساعة دون قرار — توظيف أو إرجاع أو حذف'::text
     from brc.jobs j
-   where j.status = 'reserved' and j.critical
+   where j.status::text = 'reserved' and j.critical
      and not exists (select 1 from brc.job_attempts a
-                      where a.job_id = j.id and a.slot_status = 'critical'
+                      where a.job_id = j.id and a.slot_status::text = 'critical'
                         and a.employer_decision = 'reject')
   union all
   select 'hold'::text, j.code, j.reserved_by,
@@ -713,17 +736,17 @@ create or replace view brc.v_pending_actions as
          round(extract(epoch from (j.hold_expires_at - now())) / 3600.0, 1),
          'حجز مؤقت بانتظار نتيجة المقابلة'::text
     from brc.jobs j
-   where j.status = 'reserved'
+   where j.status::text = 'reserved'
   union all
   select 'expired_attempt', a.job_code, a.serial, a.closed_at, null,
          'انتهت مهلة 24 ساعة — تتطلب إجراء'
     from brc.job_attempts a
-   where a.slot_status = 'expired'
+   where a.slot_status::text = 'expired'
   union all
   select 'expired_form', f.serial, f.serial, f.expiry_date, null,
          'استمارة منتهية الصلاحية (30 يوماً)'
     from brc.applicants f
-   where f.status = 'expired';
+   where f.status::text = 'expired';
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- 8) إعادة تحميل ذاكرة المخطط في PostgREST فوراً (تُطبَّق الدوال الجديدة بلا انتظار)
