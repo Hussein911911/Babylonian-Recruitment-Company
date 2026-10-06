@@ -667,9 +667,10 @@
 
   /* صفحة صاحب العمل: الباركود وحده يكفي — بلا رموز فرص (سرّ الزبون).
      ترجّع {ok, card} بنفس شكل employerView المحلية (بما فيها code للتوجيه). */
-  function employerViewRpc(client, serial) {
+  function employerViewRpc(client, serial, code) {
     if (!serial) return Promise.resolve({ ok: false, code: 'not_found', error: 'أدخل باركود البطاقة' });
-    return rpcCall(client, 'employer_view', { p_serial: String(serial).trim() })
+    code = String(code || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('hrc.employerCode')) || '').trim().toUpperCase();
+    return rpcCall(client, 'employer_view', { p_serial: String(serial).trim(), p_code: code })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };

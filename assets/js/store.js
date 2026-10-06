@@ -1055,9 +1055,11 @@
 
   /* صفحة صاحب العمل (الباركود يكفي) */
   function cardEmployerView(serial) {
+    var code = String((typeof sessionStorage !== 'undefined' && sessionStorage.getItem('hrc.employerCode')) || '').trim().toUpperCase();
+    if (!code) { code = String(window.prompt('رمز صاحب العمل الذي سلّمته الشركة') || '').trim().toUpperCase(); if (typeof sessionStorage !== 'undefined' && code) sessionStorage.setItem('hrc.employerCode', code); }
     var st = cloudStatus();
     if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.employerView && cloud.client) {
-      return root.HRCCloud.employerView(cloud.client, serial);
+      return root.HRCCloud.employerView(cloud.client, serial, code);
     }
     return Promise.resolve(employerView(serial));
   }
