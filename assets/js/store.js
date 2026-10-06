@@ -1064,9 +1064,11 @@
 
   /* قرار صاحب العمل (توظيف/رفض) من صفحة الباركود */
   function cardEmployerDecide(serial, decision) {
+    var code = String(sessionStorage.getItem('hrc.cardCode') || '').trim().toUpperCase();
+    if (!code) { code = String(window.prompt('اكتب رمز البطاقة المطبوع (٤ أرقام + حرفين)') || '').trim().toUpperCase(); if (code) sessionStorage.setItem('hrc.cardCode', code); }
     var st = cloudStatus();
     if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.employerDecide && cloud.client) {
-      return root.HRCCloud.employerDecide(cloud.client, serial, decision);
+      return root.HRCCloud.employerDecide(cloud.client, serial, decision, code);
     }
     return Promise.resolve(employerDecide(serial, decision));
   }

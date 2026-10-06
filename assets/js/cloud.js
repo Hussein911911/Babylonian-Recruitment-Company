@@ -685,10 +685,11 @@
   }
 
   /* طلب صاحب العمل (توظيف/عدم توظيف) من صفحة الباركود — الوظيفة «جاري التوظيف» حتى قرار الشركة */
-  function employerDecideRpc(client, serial, decision) {
+  function employerDecideRpc(client, serial, decision, code) {
     if (!serial || !decision) return Promise.resolve({ ok: false, error: 'وسائط ناقصة' });
+    code = String(code || sessionStorage.getItem('hrc.cardCode') || '').trim().toUpperCase();
     return rpcCall(client, 'employer_decide', {
-      p_serial: String(serial).trim(), p_decision: String(decision).trim()
+      p_serial: String(serial).trim(), p_code: code, p_decision: String(decision).trim()
     })
       .then(function (res) {
         if (res && res.error) {
