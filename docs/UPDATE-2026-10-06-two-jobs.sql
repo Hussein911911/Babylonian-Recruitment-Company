@@ -1,39 +1,4 @@
 -- ===========================================================================
---  شركة الهدف للتوظيف (HRC) — تحديث 2026-10-06 (ج5): «الباركود يكفي + فرصتان
---  يختارهما صاحب البطاقة + رفض صاحب العمل بالسبب»
--- ---------------------------------------------------------------------------
---  لماذا هذا الملف؟
---  ------------------------------------------------------------------------
---  بعد تحديث 2026-10-06 الأمني (بوابة الرموز) صار مسح باركود البطاقة يطلب
---  «رمز البطاقة» قبل صفحة الترحيب، وصار بيع نقطة البيع يفرض اختيار وظيفة،
---  وكان رفض صاحب العمل يغلق الوظيفة بلا سبب. قرار الإدارة ج5 يلغي ذلك:
---    1) الباركود وحده يكفي — لا رمز بطاقة ولا رمز صاحب عمل (حيازة الورقة = التحكم).
---       رموز الفرصتين تبقى مطبوعة على ظهر البطاقة لإثبات الحيازة عند إعادة الطباعة.
---    2) بيع نقطة البيع بلا وظيفة إلزامية: تُباع البطاقة بفرصتين فارغتين
---       ويختار صاحب البطاقة وظيفتَي فرصتيه بنفسه من صفحة باركوده.
---    3) «تم التوظيف» ⇒ الوظيفة «جاري التوظيف» حتى تثبيت الشركة (كما هي).
---       «رفض التوظيف» ⇒ سبب مكتوب إلزامي، والوظيفة «حرجة — معلّقة»، وموظف
---       الشركة يقرر: إرجاعها متاحة أو حذفها.
---
---  ★ ويصلح في القسم 0/ب خمسة أعطال لازمة ليعمل كل ما سبق فعلاً على قاعدة
---    قائمة (كانت مخفية لأن الواجهة تُختبر محلّياً بلا قاعدة):
---    • قيمة 'pending' الغائبة من نوع form_status (طلب قيد المراجعة).
---    • قيمة 'rejected' الغائبة منه (طلب مرفوض — تستعملها صفحة صاحب العمل).
---    • قيد jobs_hold_consistency كان يرفض أي وظيفة «حرجة» فيفشل مسار انتهاء
---      24 ساعة ومسار رفض صاحب العمل.
---    • مشغّل trg_attempt_hold لم يكن يحرّر الوظيفة عند «إرجاعها متاحة»
---      فتبقى محجوزة للأبد بعد قرار الموظف.
---    • activate_card كان يسقط في مسار «البيع بلا وظيفة» (record j).
---    وأيضاً: v_pending_actions كانت تصف «انتهت المهلة» كأنه رفض بسبب فارغ.
---
---  التنفيذ: Supabase → SQL Editor → New query → الصق الملف كاملاً → Run.
---  آمن للإعادة أي عدد من المرات (idempotent) ولا يمس أي بيانات.
---  نفس النص بالضبط في: supabase/migrations/20261006030000_barcode_first_two_jobs.sql
---  (وهو الجزء المستقلّ: يحذف النسخ المشغولة بالرمز ثم يُنشئ الدوال كاملة،
---   فيعمل على أي قاعدة — طُبِّقت عليها بوابة الرموز أم لا.)
--- ===========================================================================
-
--- ===========================================================================
 --  BRC — الباركود يكفي + الزبون يختار وظيفتَي فرصتيه + رفض صاحب العمل بالسبب
 --  (طلب الإدارة 2026-10-06 / ج5)
 -- ---------------------------------------------------------------------------
@@ -306,6 +271,57 @@ grant execute on function brc.activate_card(text, jsonb) to anon, authenticated;
 -- ─────────────────────────────────────────────────────────────────────────
 -- 3) قراءة بطاقة الباركود: بلا «رمز البطاقة» إطلاقاً (الباركود وحده)
 -- ─────────────────────────────────────────────────────────────────────────
+-- ---------------------------------------------------------------------------
+-- ترميم خانات الفرص الناقصة (إصلاح 2026-10-06)
+--   عطل حقيقي مُشاهد: مزامنة لوحة الموظفين كانت **تحذف** خانات فرص بطاقة
+--   موجودة محلياً بلا خانات (سحب ناقص أو جهاز جديد) — فتُصبح البطاقة الجديدة
+--   بلا أي فرصة في القاعدة، وتقول صفحة التقديم «لا توجد فرصة متاحة — انتهت
+--   فرصك» بلا أي تقديم. هذه الدالة تُنشئ الخانات **الناقصة فقط** حتى
+--   attempt_limit، فلا تُمنح فرصة إضافية لبطاقة مستهلكة أبداً، وتُسجَّل العملية
+--   في التدقيق. آمنة للنداء المتكرر.
+-- ---------------------------------------------------------------------------
+create or replace function brc.ensure_card_attempts(p_serial text) returns integer
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare
+  f record;
+  v_added integer := 0;
+begin
+  select * into f from brc.applicants
+   where serial = upper(btrim(coalesce(p_serial, ''))) for update;
+  if f.serial is null then return 0; end if;
+
+  insert into brc.job_attempts (serial, attempt_no)
+  select f.serial, gs
+    from generate_series(1, greatest(coalesce(f.attempt_limit, 2), 1)) gs
+   where not exists (select 1 from brc.job_attempts a
+                      where a.serial = f.serial and a.attempt_no = gs);
+  get diagnostics v_added = row_count;
+
+  if v_added > 0 then
+    insert into brc.audit_log (username, role, action, entity, entity_id, details)
+    values ('system', 'system', 'ترميم خانات فرص ناقصة', 'applicant', f.serial,
+            'البطاقة كانت بلا خانات فرص كافية — أُنشئت ' || v_added ||
+            ' خانة (تُرمَّم الخانات الناقصة فقط؛ لا فرصة إضافية لبطاقة مستهلكة)');
+  end if;
+  return v_added;
+end $$;
+
+revoke all on function brc.ensure_card_attempts(text) from public;
+grant execute on function brc.ensure_card_attempts(text) to authenticated, service_role;
+
+-- ترميم جماعي فوري: كل بطاقة في القاعدة خاناتها أقل من حدّها تُرمَّم الآن
+-- (نفس نمط ترميم 2026-09-20) — فلا تبقى بطاقة «انتهت فرصك» بلا تقديم.
+insert into brc.job_attempts (serial, attempt_no)
+select a.serial, gs
+  from brc.applicants a
+  cross join generate_series(1, greatest(coalesce(a.attempt_limit, 2), 1)) gs
+ where not exists (select 1 from brc.job_attempts x
+                    where x.serial = a.serial and x.attempt_no = gs);
+/* ⚠️ لا on conflict هنا: job_attempts بلا قيد فريد على (serial, attempt_no) —
+   الوجود مُمنَع بشرط not exists نفسه، فلا تكرار. */
+
 create or replace function brc.self_service_card(p_serial text)
 returns jsonb
 language plpgsql security definer
@@ -319,6 +335,10 @@ begin
   if f.serial is null then
     return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود');
   end if;
+  /* ترميم خانات الفرص الناقصة قبل القراءة (إصلاح 2026-10-06) — بطاقة جديدة
+     فقدت خاناتها بمزامنة ناقصة تُرمَّم هنا فوراً بدل «انتهت فرصك». */
+  perform brc.ensure_card_attempts(f.serial);
+
   if f.status = 'pending' then
     return jsonb_build_object('ok', false, 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
   end if;

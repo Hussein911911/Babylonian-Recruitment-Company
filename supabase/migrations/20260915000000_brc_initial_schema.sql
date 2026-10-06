@@ -1319,6 +1319,46 @@ end $$;
 --       وهذا الملف)، فصار مسح باركود أي بطاقة يفتح على الزبون خطأ PostgREST
 --       خاماً: Could not find the function … in the schema cache. أُدرجتا هنا
 --       ليكتمل «المصدر الوحيد للحقيقة» ولا تتكرّر الحالة.
+-- ---------------------------------------------------------------------------
+-- ترميم خانات الفرص الناقصة (إصلاح 2026-10-06)
+--   عطل حقيقي مُشاهد: مزامنة لوحة الموظفين كانت **تحذف** خانات فرص بطاقة
+--   موجودة محلياً بلا خانات (سحب ناقص أو جهاز جديد) — فتُصبح البطاقة الجديدة
+--   بلا أي فرصة في القاعدة، وتقول صفحة التقديم «لا توجد فرصة متاحة — انتهت
+--   فرصك» بلا أي تقديم. هذه الدالة تُنشئ الخانات **الناقصة فقط** حتى
+--   attempt_limit، فلا تُمنح فرصة إضافية لبطاقة مستهلكة أبداً، وتُسجَّل العملية
+--   في التدقيق. آمنة للنداء المتكرر.
+-- ---------------------------------------------------------------------------
+create or replace function brc.ensure_card_attempts(p_serial text) returns integer
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare
+  f record;
+  v_added integer := 0;
+begin
+  select * into f from brc.applicants
+   where serial = upper(btrim(coalesce(p_serial, ''))) for update;
+  if f.serial is null then return 0; end if;
+
+  insert into brc.job_attempts (serial, attempt_no)
+  select f.serial, gs
+    from generate_series(1, greatest(coalesce(f.attempt_limit, 2), 1)) gs
+   where not exists (select 1 from brc.job_attempts a
+                      where a.serial = f.serial and a.attempt_no = gs);
+  get diagnostics v_added = row_count;
+
+  if v_added > 0 then
+    insert into brc.audit_log (username, role, action, entity, entity_id, details)
+    values ('system', 'system', 'ترميم خانات فرص ناقصة', 'applicant', f.serial,
+            'البطاقة كانت بلا خانات فرص كافية — أُنشئت ' || v_added ||
+            ' خانة (تُرمَّم الخانات الناقصة فقط؛ لا فرصة إضافية لبطاقة مستهلكة)');
+  end if;
+  return v_added;
+end $$;
+
+revoke all on function brc.ensure_card_attempts(text) from public;
+grant execute on function brc.ensure_card_attempts(text) to authenticated, service_role;
+
 create or replace function brc.self_service_card(p_serial text)
 returns jsonb
 language plpgsql security definer
@@ -1332,6 +1372,10 @@ begin
   if f.serial is null then
     return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود');
   end if;
+  /* ترميم خانات الفرص الناقصة قبل القراءة (إصلاح 2026-10-06) — بطاقة جديدة
+     فقدت خاناتها بمزامنة ناقصة تُرمَّم هنا فوراً بدل «انتهت فرصك». */
+  perform brc.ensure_card_attempts(f.serial);
+
   if f.status = 'pending' then
     return jsonb_build_object('ok', false, 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
   end if;

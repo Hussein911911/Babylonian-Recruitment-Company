@@ -74,10 +74,10 @@ const funcs = [];
 let f;
 while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 
-/* 29 = 27 السابقة + موديل 2026-10-06: التقديم الذاتي من باركود البطاقة
-   (self_service_card + apply_with_card) — كانتا في ملف هجرة وحده دون مسار
-   التحديث، فصار مسح باركود البطاقة يفتح خطأ على الزبون. */
-check('عدد الدوال المتوقّع (29)', funcs.length === 29, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+/* 30 = 29 السابقة + إصلاح 2026-10-06: ترميم خانات الفرص الناقصة
+   (ensure_card_attempts) — بطاقة جديدة كانت تظهر «انتهت فرصك» بلا أي تقديم
+   لأن مزامنة لوحة الموظفين كانت تحذف خاناتها من القاعدة. */
+check('عدد الدوال المتوقّع (30)', funcs.length === 30, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
 const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
@@ -86,7 +86,7 @@ const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
   'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold',
   'brc.activate_card', 'brc.employer_view', 'brc.employer_decide',
-  'brc.self_service_card', 'brc.apply_with_card'];
+  'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts'];
 check('كل الدوال المتوقّعة موجودة بالاسم', EXPECTED_FUNCS.every((n) => funcs.some((x) => x.name === n)),
   'المفقود: ' + EXPECTED_FUNCS.filter((n) => !funcs.some((x) => x.name === n)).join(', '));
 

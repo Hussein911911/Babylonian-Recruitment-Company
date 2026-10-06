@@ -1096,7 +1096,18 @@ var G={
     }
     else label='متبقي لك: '+ar(chancesLeft)+' '+(chancesLeft===1?'فرصة':'فرصتان')+' — اختر وظيفة لكل فرصة';
     bar.className='chances-bar '+cls;
-    bar.innerHTML=dots+'<span>'+label+'</span>';
+    bar.innerHTML=dots+'<span>'+label+'</span>'+
+      (chancesLeft<=0
+        ? '<button type="button" class="btn btn-outline btn-sm" id="btn-recheck" style="margin-inline-start:auto">🔄 إعادة فحص البطاقة</button>'
+        : '');
+    var rc=$('btn-recheck');
+    if(rc) rc.addEventListener('click',function(){
+      /* إعادة قراءة البطاقة من القاعدة: الدالة تُرمّم أي خانات فرص ناقصة
+         (عطل 2026-10-06: مزامنة لوحة الموظفين كانت تحذف خانات البطاقة
+         الجديدة فيظهر «انتهت فرصك» بلا أي تقديم). */
+      this.disabled=true; this.textContent='جارٍ الفحص…';
+      location.reload();
+    });
   },
 
   renderFilters:function(){
@@ -1794,8 +1805,17 @@ function loadData(){
     /* فرص البطاقة مستنفدة: لا معنى لمسار الإدخال — رسالة واضحة للزبون */
     if(chancesLeft<=0&&appliedJobs.length>0){
       fatal('انتهت فرص هذه البطاقة (فرصتان مستقلتان).',
+        'وظائفك المسجَّلة: <b>'+esc(appliedJobs.map(function(a){return a.jobTitle||a.jobCode;}).join(' · '))+'</b><br>'+
         'تُشترى بطاقة جديدة من نقاط البيع، أو راجع مكتب الشركة للاستفسار عن النتيجة.<br>'+
         'رقم البطاقة: <b dir="ltr">'+esc(cardSerial)+'</b>');
+    }else if(chancesLeft<=0){
+      /* ⚠️ حالة غير طبيعية (عطل 2026-10-06): صفر فرص بلا أي تقديم مسجَّل —
+         القاعدة تُرمّم الخانات الناقصة عند القراءة، فهذه شبكة أمان أخيرة. */
+      fatal('لا توجد فرص ظاهرة على بطاقتك ولا يوجد أي تقديم مسجَّل عليها.',
+        'هذا خلل بيانات مؤقت من جهة الشركة لا ذنب لك فيه — اضغط «إعادة فحص البطاقة» بعد ثوانٍ، '+
+        'وإن بقي الخطأ راجع المكتب مع رقم بطاقتك:<br>'+
+        'رقم البطاقة: <b dir="ltr">'+esc(cardSerial)+'</b><br>'+
+        '<button type="button" class="btn btn-primary" style="margin-top:10px" onclick="location.reload()">🔄 إعادة فحص البطاقة</button>');
     }
   }).catch(function(e){
     dataLoading=false;
