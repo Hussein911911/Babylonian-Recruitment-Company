@@ -208,12 +208,28 @@ const FAKE_JOB = {
   employer_name: 'معمل بابل', employer_phone: '07701234567', employer_address: 'المنطقة الصناعية',
   interview_location: 'بوابة المعمل'
 };
-const cardState = { chancesLeft: 2, status: 'blank', profile: {} };
+/* وظيفتان إضافيتان: البطاقة الجديدة بفرصتين — الزبون يعيّن وظيفة لكل فرصة */
+const FAKE_JOB2 = {
+  id: 'j2', code: 'HRC-1047', title: 'سائق توصيل', category: 'خدمي', region: 'بابل',
+  salary_min: 450000, salary_max: 600000, shift: 'مسائي', gender: 'ذكر', vacancies: 1,
+  requirements: ['إجازة سوق'], description: 'توصيل طلبات', status: 'available',
+  employer_name: 'شركة الفرات', employer_phone: '07709998888', employer_address: 'شارع ٤٠',
+  interview_location: 'مقر الشركة'
+};
+const FAKE_JOB3 = {
+  id: 'j3', code: 'HRC-1049', title: 'حارس أمن', category: 'أمني', region: 'الحلة',
+  salary_min: 400000, salary_max: 400000, shift: 'ليلي', gender: 'ذكر', vacancies: 3,
+  requirements: [], description: 'حراسة بوابة', status: 'available',
+  employer_name: 'مجمع الكرعاوي', employer_phone: '07701112222', employer_address: 'الكرعاوي',
+  interview_location: 'بوابة المجمع'
+};
+const FAKE_JOBS = [FAKE_JOB, FAKE_JOB2, FAKE_JOB3];
+const cardState = { chancesLeft: 2, status: 'blank', profile: {}, applied: [] };
 
 const HRCHttp = {
   createClient: () => ({
     from: () => ({
-      select: () => Promise.resolve({ data: [FAKE_JOB], error: null })
+      select: () => Promise.resolve({ data: FAKE_JOBS, error: null })
     }),
     rpc: (name, args) => {
       calls.push({ name, args: JSON.parse(JSON.stringify(args)) });
@@ -231,12 +247,22 @@ const HRCHttp = {
         });
       }
       if (name === 'apply_with_card') {
+        const job = FAKE_JOBS.find((j) => j.code === args.p_job_code) || FAKE_JOB;
+        cardState.applied.push(job.code);
         cardState.chancesLeft -= 1;
         return Promise.resolve({
           data: {
             ok: true, profile: args.p_data, app: args.p_data,
-            attempt: { no: 1, code: '4821-QK', slotStatus: 'reserved', holdExpiresAt: new Date(Date.now() + 864e5).toISOString() },
-            job: { code: args.p_job_code, title: FAKE_JOB.title, region: FAKE_JOB.region }
+            attempt: {
+              no: cardState.applied.length, code: '4821-QK', slotStatus: 'reserved',
+              jobCode: job.code, jobTitle: job.title,
+              holdExpiresAt: new Date(Date.now() + 864e5).toISOString()
+            },
+            job: {
+              code: job.code, title: job.title, region: job.region,
+              employer_name: job.employer_name, employer_phone: job.employer_phone,
+              employer_address: job.employer_address, interview_location: job.interview_location
+            }
           }, error: null
         });
       }
@@ -306,6 +332,19 @@ check('نُودِيت self_service_card برقم البطاقة من الراب�
   JSON.stringify(calls.map((c) => c.name)));
 check('قائمة الوظائف العامة تُحمَّل مع البطاقة', calls.length >= 1 && !!$('jobs-list'));
 check('صفحة الترحيب هي المعروضة بعد التحميل', active() === 'pg-welcome', activePages().join(','));
+/* قرار 2026-10-06: الباركود وحده — لا رمز بطاقة عند القراءة (لا نافذة prompt) */
+check('لا رمز بطاقة في نداء قراءة الباركود — الباركود وحده كافٍ (قرار 2026-10-06)',
+  calls.filter((c) => c.name === 'self_service_card').every((c) => !('p_code' in c.args)),
+  JSON.stringify(calls.find((c) => c.name === 'self_service_card')?.args));
+/* باب صاحب العمل: جملة أسفل «ابدأ الآن» تفتح صفحته بالباركود نفسه */
+const empLink = findByOnclick('G.openEmployer()');
+check('جملة «صاحب العمل؟» ظاهرة أسفل «ابدأ الآن» في صفحة الترحيب',
+  !!empLink && /صاحب العمل؟/.test(empLink.textContent), empLink ? empLink.textContent : 'غير موجودة');
+vm.runInContext('G.openEmployer()', ctx);
+check('الضغط عليها يفتح صفحة صاحب العمل بنفس الباركود (role=employer)',
+  /index\.html\?role=employer#card=HRC-BC-000120$/.test(String(sandbox.location.href)),
+  String(sandbox.location.href));
+sandbox.location.href = '';
 
 /* ===========================================================================
  *  4) الخطوة 1 — الاسم الثلاثي
@@ -416,11 +455,11 @@ check('الاختيار يتغيّر للنقر (أنثى)', gos[1].classList.co
 click(findByOnclick('G.next()'));
 await tick(30);
 check('انتقلنا لقائمة الوظائف (الخطوة ٦)', active() === 'pg-jobs', activePages().join(','));
-check('عدد الوظائف المعروضة = الوظائف المتاحة من القاعدة', doc.querySelectorAll('.job-card').length === 1,
+check('عدد الوظائف المعروضة = الوظائف المتاحة من القاعدة', doc.querySelectorAll('.job-card').length === 3,
   String(doc.querySelectorAll('.job-card').length));
 check('زر «التالي» معطَّل قبل اختيار أي وظيفة', $('btn-jobs-next').attrs.disabled !== undefined,
   String($('btn-jobs-next').attrs.disabled));
-check('التلميح يطلب اختيار وظيفة', /اضغط على أي وظيفة/.test($('jobs-hint').innerHTML), $('jobs-hint').innerHTML);
+check('التلميح يطلب تعيين وظيفة لكل فرصة', /اضغط على أي وظيفة/.test($('jobs-hint').innerHTML) && /وظيفتين|فرصة/.test($('jobs-hint').innerHTML), $('jobs-hint').innerHTML);
 
 click(findByOnclick('G.next()'));
 await tick(20);
@@ -429,16 +468,40 @@ check('«التالي» بلا اختيار لا يعبر (رسالة تحذير
 /* ===========================================================================
  *  9) اختيار الوظيفة بالنقر على بطاقتها
  * =========================================================================== */
-step(7, 'اختيار الوظيفة بالنقر على بطاقتها');
+step(7, 'اختيار وظيفتين للفرصتين — صاحب البطاقة يعيّن كل فرصة بنفسه');
 click(doc.querySelectorAll('.job-card')[0]);
 await tick(20);
 const picked = doc.querySelectorAll('.job-card.selected')[0];
 check('البطاقة المختارة تُعلَّم «selected» مع علامة اختيار',
   !!picked && !!picked.querySelector('.pick-mark') && picked.attrs['data-job'] === 'HRC-1042',
   String(doc.querySelectorAll('.job-card.selected').length));
-check('التلميح يعرض الوظيفة المختارة وكودها',
-  /عامل إنتاج/.test($('jobs-hint').innerHTML) && /HRC-1042/.test($('jobs-hint').innerHTML), $('jobs-hint').innerHTML);
-check('زر «التالي» صار مفعّلاً بعد الاختيار', $('btn-jobs-next').attrs.disabled === undefined, String($('btn-jobs-next').attrs.disabled));
+check('العلامة تحمل رقم الفرصة (١) والوسم يبيّن «★ الفرصة ١»',
+  picked.querySelector('.pick-mark').textContent.trim() === '١' && /الفرصة ١/.test(picked.innerHTML), picked.innerHTML.slice(0, 120));
+check('التلميح يعرض الوظيفة الأولى وكودها ورقم فرصتها',
+  /عامل إنتاج/.test($('jobs-hint').innerHTML) && /HRC-1042/.test($('jobs-hint').innerHTML) && /فرصة ١/.test($('jobs-hint').innerHTML),
+  $('jobs-hint').innerHTML);
+check('زر «التالي» صار مفعّلاً بعد أول اختيار', $('btn-jobs-next').attrs.disabled === undefined, String($('btn-jobs-next').attrs.disabled));
+check('زر بطاقة الوظيفة المختارة يعرض «مختارة (فرصة ١)» وإلغاء التعيين',
+  /مختارة \(فرصة ١\)/.test(picked.innerHTML) && /إلغاء/.test(picked.innerHTML), picked.innerHTML.slice(0, 200));
+
+/* الفرصة الثانية: تُعيَّن بنقرة ثانية على وظيفة أخرى */
+click(doc.querySelectorAll('.job-card')[1]);
+await tick(20);
+const sel2 = doc.querySelectorAll('.job-card.selected');
+check('وظيفتان مختارتان في الجلسة نفسها (فرصة ١ + فرصة ٢)',
+  sel2.length === 2 && sel2[1].attrs['data-job'] === 'HRC-1047', String(sel2.length));
+check('العلامة الثانية تحمل «٢» والوسم «★ الفرصة ٢»',
+  sel2[1].querySelector('.pick-mark').textContent.trim() === '٢' && /الفرصة ٢/.test(sel2[1].innerHTML), sel2[1].innerHTML.slice(0, 120));
+check('التلميح يعدّ الاختيارين ويعرض الفرصتين',
+  /HRC-1042/.test($('jobs-hint').innerHTML) && /HRC-1047/.test($('jobs-hint').innerHTML) &&
+  /٢/.test($('jobs-hint').innerHTML), $('jobs-hint').innerHTML);
+
+/* لا فرصة ثالثة: الوظيفة الثالثة لا تُعيَّن */
+click(doc.querySelectorAll('.job-card')[2]);
+await tick(20);
+check('تعيين وظيفة ثالثة ممنوع — البطاقة بفرصتين فقط',
+  doc.querySelectorAll('.job-card.selected').length === 2 && /أكملت اختيار وظيفتَي فرصتيك/.test($('jobs-hint').innerHTML),
+  $('jobs-hint').innerHTML);
 
 click($('btn-jobs-next'));
 await tick(30);
@@ -454,7 +517,13 @@ check('المراجعة تعرض رقم الهاتف المُدخل', rv.include
 check('المراجعة تعرض تاريخ الميلاد المُدخل', rv.includes('15/06/1996'), rv.match(/\d{2}\/\d{2}\/\d{4}/g)?.join(','));
 check('المراجعة تعرض الجنس المختار (أنثى)', rv.includes('أنثى'));
 check('المراجعة تعرض السكن كاملاً', rv.includes('بابل') && rv.includes('قرب مجمع الكرعاوي'));
-check('المراجعة تعرض الوظيفة المختارة وكودها', rv.includes('عامل إنتاج') && rv.includes('HRC-1042'));
+check('المراجعة تعرض وظيفتي الفرصتين وكوديهما',
+  rv.includes('عامل إنتاج') && rv.includes('HRC-1042') && rv.includes('سائق توصيل') && rv.includes('HRC-1047'),
+  rv.slice(0, 200));
+check('المراجعة تسمّي كل وظيفة برقم فرصتها (الفرصة ١ / الفرصة ٢)',
+  /الفرصة ١/.test(rv) && /الفرصة ٢/.test(rv));
+check('المراجعة تعدّ الوظائف المعيَّنة (٢) وتُعلن أن الوظيفة الثالثة غير معيَّنة',
+  /الوظائف المعيَّنة الآن: ٢/.test(rv) && !rv.includes('HRC-1049'), rv.slice(-400));
 check('المراجعة فيها أزرار «تعديل» ترجع للخطوة', (rv.match(/rv-edit/g) || []).length >= 5, String((rv.match(/rv-edit/g) || []).length));
 check('صفحة المراجعة فيها زر رجوع للتعديل الكامل', !!findByOnclick('G.go(-1)'));
 
@@ -473,13 +542,21 @@ check('المراجعة تعرض الاسم بعد التعديل',
 /* ===========================================================================
  *  11) الإتمام — نداء القاعدة بالبيانات الصحيحة
  * =========================================================================== */
-step(9, 'الإتمام: نداء apply_with_card ثم الاستمارة بالباركود');
+step(9, 'الإتمام: نداء apply_with_card لكل وظيفة ثم استمارتان بالباركود');
 click($('btn-finish'));
 await tick(60);
-const applyCall = calls.filter((c) => c.name === 'apply_with_card').pop();
-check('نُودِيت apply_with_card مرة واحدة', calls.filter((c) => c.name === 'apply_with_card').length === 1);
-check('الرقم التسلسلي المُرسل هو رقم الباركود', applyCall && applyCall.args.p_serial === 'HRC-BC-000120', JSON.stringify(applyCall && applyCall.args.p_serial));
-check('كود الوظيفة المُرسل هو الوظيفة المختارة', applyCall && applyCall.args.p_job_code === 'HRC-1042', JSON.stringify(applyCall && applyCall.args.p_job_code));
+const applyCalls = calls.filter((c) => c.name === 'apply_with_card');
+check('نُودِيت apply_with_card مرتين — وظيفة لكل فرصة (قرار 2026-10-06)', applyCalls.length === 2,
+  String(applyCalls.length));
+check('الوظيفتان المُرسلتان هما وظيفتا الفرصتين',
+  applyCalls.map((c) => c.args.p_job_code).join(',') === 'HRC-1042,HRC-1047',
+  applyCalls.map((c) => c.args.p_job_code).join(','));
+const applyCall = applyCalls[0];
+check('الرقم التسلسلي المُرسل هو رقم الباركود في النداءين',
+  applyCalls.every((c) => c.args.p_serial === 'HRC-BC-000120'),
+  JSON.stringify(applyCalls.map((c) => c.args.p_serial)));
+check('لا رمز بطاقة في أي نداء — الباركود وحده (قرار 2026-10-06)',
+  applyCalls.every((c) => !('p_code' in c.args)), JSON.stringify(Object.keys(applyCall.args)));
 const sent = (applyCall && applyCall.args.p_data) || {};
 check('الاسم المُرسل هو آخر تعديل (لا نسخة قديمة)', sent.fullName === 'أحمد محمد علي حسن', sent.fullName);
 check('الهاتف والميلاد والجنس والمحافظة مُرسلة صحيحة',
@@ -491,21 +568,29 @@ check('نقطة الدالة والحقول الأربعة للحقول المط
 /* ===========================================================================
  *  12) صفحة النتيجة: النجاح + الاستمارة + الباركود
  * =========================================================================== */
-step(10, 'الاستمارة: باركود البطاقة نفسه + إمكانية وظيفة ثانية');
+step(10, 'الاستمارتان: ورقة A4 لكل وظيفة — بباركود البطاقة نفسه');
 check('انتقلنا لصفحة الاستمارة', active() === 'pg-result', activePages().join(','));
 const res = $('result-content').innerHTML;
 check('علامة النجاح المرسومة (SVG) موجودة', res.includes('ok-check') && res.includes('ok-title'));
-check('الاستمارة تحمل رقم الباركود', (res.match(/HRC-BC-000120/g) || []).length >= 2, String((res.match(/HRC-BC-000120/g) || []).length));
-check('الاستمارة تُعيد بيانات الزبون المطبوعة', res.includes('أحمد محمد علي حسن') && res.includes('07712345678'));
-check('الاستمارة تحمل بيانات الوظيفة', res.includes('عامل إنتاج') && res.includes('HRC-1042'));
-check('الاستمارة تحمل بيانات صاحب العمل (اسم/هاتف/عنوان/مكان المقابلة)',
-  res.includes('معمل بابل') && res.includes('07701234567') && res.includes('المنطقة الصناعية') && res.includes('بوابة المعمل'));
-check('ملاحظة «باركود البطاقة نفسه» ولاختيار وظيفة ثانية موجودة', res.includes('fs-qr-note') && res.includes('باركود البطاقة نفسه'));
-check('الاستمارة بها الفرصة والمهلة وتاريخ الانتهاء', /الفرصة/.test(res) && /مهلة الرد على الحجز/.test(res));
-check('تاريخان بصيغة مقروءة (مهلة 24 ساعة)', /24/.test(res) || /الفرصة/.test(res));
+check('ورقتان A4 — استمارة لكل وظيفة اختارها الزبون', (res.match(/class="form-sheet"/g) || []).length === 2,
+  String((res.match(/class="form-sheet"/g) || []).length));
+check('الاستمارتان تحملان رقم الباركود', (res.match(/HRC-BC-000120/g) || []).length >= 4, String((res.match(/HRC-BC-000120/g) || []).length));
+check('الاستمارتان تُعيدان بيانات الزبون المطبوعة', res.includes('أحمد محمد علي حسن') && res.includes('07712345678'));
+check('كل استمارة تحمل وظيفتها وكودها',
+  res.includes('عامل إنتاج') && res.includes('HRC-1042') && res.includes('سائق توصيل') && res.includes('HRC-1047'));
+check('كل استمارة تحمل بيانات صاحب عملها (اسم/هاتف/عنوان/مكان المقابلة)',
+  res.includes('معمل بابل') && res.includes('07701234567') && res.includes('المنطقة الصناعية') && res.includes('بوابة المعمل') &&
+  res.includes('شركة الفرات') && res.includes('07709998888') && res.includes('شارع ٤٠'));
+check('كل استمارة تسمّي فرصتها (١ من ٢ / ٢ من ٢)',
+  /الفرصة المستخدمة/.test(res) && res.includes('١ من ٢') && res.includes('٢ من ٢'));
+check('الوظيفة غير المُعيَّنة (HRC-1049) لا تظهر في أي استمارة', !res.includes('HRC-1049'));
+check('ملاحظة «باركود البطاقة نفسه» موجودة في الأوراق', res.includes('fs-qr-note') && res.includes('باركود البطاقة نفسه'));
+check('كل استمارة بها الفرصة والمهلة وتاريخ الانتهاء', /الفرصة/.test(res) && /مهلة الرد على الحجز/.test(res));
+check('عنوان النجاح يعدّ الفرصتين', /فرصتان|فرصتين/.test(res), (res.match(/ok-sub[^<]*/) || [''])[0]);
 const acts = $('result-actions').innerHTML;
-check('زر طباعة الاستمارة', actions_has(acts, 'طباعة') && acts.includes('window.print()'));
-check('زر استخدام نفس الباركود لوظيفة ثانية (فرصة متبقية)', actions_has(acts, 'وظيفة ثانية') && acts.includes('G.go(6)'));
+check('زر طباعة الاستمارات', actions_has(acts, 'طباعة') && acts.includes('window.print()'));
+check('لا زر «وظيفة ثانية» — الفرصتان استُهلكتا', !actions_has(acts, 'وظيفة ثانية'), acts.slice(0, 160));
+check('تنبيه استهلاك الفرصتين ظاهر للزبون', /استُهلكت فرصتا البطاقة/.test(res), res.slice(-260));
 check('زر نسخ رابط الاستمارة', acts.includes('copyLink'));
 check('شريط التقدم يقول «تم التقديم» ١٠٠٪', /تم التقديم/.test($('step-label').textContent), $('step-label').textContent);
 
@@ -514,13 +599,17 @@ function actions_has(html, word) { return html.includes(word); }
 /* ===========================================================================
  *  13) الرجوع واستهلاك الفرص
  * =========================================================================== */
-step(11, 'الرجوع واستهلاك الفرص');
+step(11, 'الرجوع واستهلاك الفرصتين');
 click(findByOnclick('G.backToJobs()'));
 await tick(40);
 check('«العودة للوظائف» ترجع لقائمة الوظائف', active() === 'pg-jobs', activePages().join(','));
-check('الوظيفة المستخدمة تُعلَّم «تم التقديم» ولا تُختار ثانية',
-  doc.querySelectorAll('.job-card.is-done').length === 1 && /تم التقديم/.test(doc.querySelectorAll('.job-card.is-done')[0].innerHTML));
-check('عدد الفرص المتبقية نزل إلى ١', /متبقي لك/.test($('chances-bar').innerHTML) && /١|1/.test($('chances-bar').innerHTML), $('chances-bar').innerHTML);
+check('الوظيفتان المستخدمتان تُعلَّمان «تم التقديم» ولا تُختاران ثانية',
+  doc.querySelectorAll('.job-card.is-done').length === 2 &&
+  doc.querySelectorAll('.job-card.is-done').every((c) => /تم التقديم/.test(c.innerHTML)),
+  String(doc.querySelectorAll('.job-card.is-done').length));
+check('شريط الفرص يقول «لا توجد فرصة متاحة — انتهت فرصك»',
+  /لا توجد فرصة متاحة/.test($('chances-bar').innerHTML), $('chances-bar').innerHTML);
+check('زر «التالي» معطَّل بعد استهلاك الفرصتين', $('btn-jobs-next').attrs.disabled !== undefined);
 
 step(12, 'حماية الزبون: الطلب المسجَّل لا يتحول إلى «خطأ اتصال» إن تعطّل العرض');
 check('دالة الاستمارة الاحتياطية موجودة وتُنتج صفحة قابلة للطباعة', (() => {
@@ -530,7 +619,7 @@ check('دالة الاستمارة الاحتياطية موجودة وتُنت�
   finally { console.error = realErr; }
   const h = $('result-content').innerHTML;
   const a = $('result-actions').innerHTML;
-  return h.includes('HRC-BC-000120') && h.includes('تم تسجيل طلبك') &&
+  return h.includes('HRC-BC-000120') && h.includes('تم تسجيل طلبك') && h.includes('HRC-1042') &&
     (a.includes('طباعة') || h.includes('طباعة'));
 })());
 check('الاستمارة الاحتياطية تُخبر الزبون بألا يعيد التقديم (الفرصة تُستهلك مرة واحدة)',

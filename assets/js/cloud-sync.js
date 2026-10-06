@@ -112,7 +112,19 @@
         else if (current[spec.table][k] !== snapshot[spec.table][k]) ops.push({ table: spec.table, op: 'update', key: k, local: item });
       });
       Object.keys(snapshot[spec.table]).forEach(function (k) {
-        if (!seen[k]) ops.push({ table: spec.table, op: 'delete', key: k });
+        if (seen[k]) return;
+        /* ⚠️ حماية 2026-10-06 (عطل حقيقي مُشاهد): كانت المزامنة تحذف خانات فرص
+           بطاقة **موجودة محلياً لكن خاناتها غير محمّلة** (جهاز جديد، ذاكرة
+           متصفح ممسوحة، سحب ناقص) — فتُصبح البطاقة الجديدة بلا أي فرصة في
+           القاعدة وتقول صفحة التقديم «انتهت فرصك» بلا أي تقديم. لا نحذف خانة
+           أصلية (attempt_no داخل حدّ البطاقة) لبطاقة نعرفها محلياً أبداً. */
+        if (spec.table === 'job_attempts') {
+          var parts = String(k).split(':');
+          var card = (db.applicants || []).filter(function (a) { return a.serial === parts[0]; })[0];
+          var limit = card ? Number(card.attemptLimit || (db.settings && db.settings.attemptLimit) || 2) : 0;
+          if (card && Number(parts[1]) <= limit) return;
+        }
+        ops.push({ table: spec.table, op: 'delete', key: k });
       });
     });
 

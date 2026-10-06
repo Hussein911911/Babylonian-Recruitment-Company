@@ -66,8 +66,21 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type brc.form_status as enum ('blank', 'active', 'expired', 'exhausted', 'completed');
+  create type brc.form_status as enum ('blank', 'pending', 'active', 'expired', 'exhausted', 'completed', 'rejected');
 exception when duplicate_object then null; end $$;
+
+-- ⚠️ إصلاح 2026-10-06: حالة «قيد المراجعة» (pending) مستعملة في brc.request_form
+--    وفي مقارنات self_service_card/employer_view/lookup_card، لكنها لم تكن
+--    مُعرَّفة في النوع إطلاقاً — فكان أي استعمال لها يفشل بـ
+--    invalid input value for enum form_status: "pending". وكذلك 'rejected'
+--    (طلب مرفوض) تستعملها employer_view/المنظومة. الإضافتان idempotent
+--    وآمنتان على قاعدة قائمة (نوع موجود بلا هاتين القيمتين).
+do $$ begin
+  alter type brc.form_status add value if not exists 'pending';
+exception when others then null; end $$;
+do $$ begin
+  alter type brc.form_status add value if not exists 'rejected';
+exception when others then null; end $$;
 
 do $$ begin
   create type brc.user_role   as enum ('admin', 'staff');
@@ -129,10 +142,6 @@ begin
   return new;
 end $$;
 
-drop trigger if exists trg_applicants_log_serial on brc.applicants;
-create trigger trg_applicants_log_serial after insert or update of serial on brc.applicants
-  for each row execute function brc.trg_log_issued_serial();
-
 -- 2.3 بطاقات التوظيف (الباحثون عن عمل) — صالحة 30 يوماً، فرصتان مستقلتان
 create table if not exists brc.applicants (
   id            uuid primary key default gen_random_uuid(),
@@ -164,6 +173,14 @@ create table if not exists brc.applicants (
 create index if not exists applicants_status_idx on brc.applicants (status);
 create index if not exists applicants_expiry_idx on brc.applicants (expiry_date);
 create index if not exists applicants_created_by_idx on brc.applicants (created_by);
+
+-- ⚠️ إصلاح 2026-10-06: كان إنشاء المشغّل موضوعاً **قبل** إنشاء جدول brc.applicants
+--    نفسه، فيفشل الملف كله على أي قاعدة جديدة (relation "brc.applicants" does not exist)
+--    — نُقل إلى ما بعد الجدول وفهارسه.
+
+drop trigger if exists trg_applicants_log_serial on brc.applicants;
+create trigger trg_applicants_log_serial after insert or update of serial on brc.applicants
+  for each row execute function brc.trg_log_issued_serial();
 
 -- 2.2 الوظائف (بيانات صاحب العمل داخلية ولا تُعرض للعامة)
 --     critical: انتهت مهلة الحجز (24 ساعة) دون قرار — الوظيفة مقفلة بانتظار
@@ -199,8 +216,11 @@ create table if not exists brc.jobs (
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
 
+  /* ⚠️ إصلاح 2026-10-06: كان القيد يمنع أي وظيفة «حرجة» (محجوزة بلا مهلة)،
+     فكان مسار انتهاء 24 ساعة ومسار رفض صاحب العمل يفشلان بخرق القيد.
+     الحالة المقصودة: reserved + critical = معلّقة بانتظار قرار الموظف بلا مهلة. */
   constraint jobs_hold_consistency check (
-    (status = 'reserved' and hold_expires_at is not null) or status <> 'reserved'
+    status <> 'reserved' or hold_expires_at is not null or critical
   )
 );
 
@@ -240,6 +260,8 @@ create table if not exists brc.job_attempts (
   /* ج4 2026-10-01: طلب صاحب العمل (توظيف/عدم توظيف) — القرار النهائي للشركة */
   employer_decision text,                                          -- hire | reject
   decision_at       timestamptz,
+  /* ج5 2026-10-06: سبب عدم التوظيف المكتوب من صاحب العمل (إلزامي عند الرفض) */
+  employer_reason   text,
   unique (serial, attempt_no),
   unique (chance_code)
 );
@@ -456,8 +478,10 @@ begin
             'البطاقة ' || new.serial || ' — الفرصة #' || new.attempt_no);
   end if;
 
-  -- عند تثبيت نتيجة: نجاح → إغلاق الوظيفة، رفض → إعادتها «متاحة»
-  if new.slot_status in ('succeeded', 'rejected')
+  -- عند تثبيت نتيجة أو إرجاع الوظيفة: نجاح → إغلاقها، رفض أو إرجاع → «متاحة»
+  -- ⚠️ إصلاح 2026-10-06: كان الشرط succeeded/rejected فقط، فكان «إرجاع الوظيفة
+  --    متاحة» من الحالة الحرجة (release_hold ⇒ expired) يتركها محجوزة للأبد.
+  if new.slot_status in ('succeeded', 'rejected', 'expired')
      and (tg_op = 'INSERT' or old.slot_status is distinct from new.slot_status) then
     new.closed_at := coalesce(new.closed_at, now());
     new.hold_expires_at := null;
@@ -474,11 +498,15 @@ begin
 
     insert into brc.audit_log (username, role, action, entity, entity_id, details)
     values (coalesce(current_setting('request.jwt.claims', true), '{}')::jsonb->>'sub', 'staff',
-            case when new.slot_status = 'succeeded' then 'إتمام توظيف' else 'رفض مرشح' end,
+            case when new.slot_status = 'succeeded' then 'إتمام توظيف'
+                 when new.slot_status = 'rejected' then 'رفض مرشح'
+                 else 'إرجاع وظيفة متاحة بقرار الشركة' end,
             'job', new.job_code,
             case when new.slot_status = 'succeeded'
                  then 'تم التوظيف وإغلاق الوظيفة'
-                 else 'أُعيدت الوظيفة إلى (متاحة) — والفرصة مستهلكة لا تعود' end
+                 when new.slot_status = 'rejected'
+                 then 'أُعيدت الوظيفة إلى (متاحة) — والفرصة مستهلكة لا تعود'
+                 else 'أُعيدت الوظيفة إلى (متاحة) بقرار الشركة من الحالة الحرجة — والفرصة مستهلكة لا تعود' end
             || coalesce(' | ' || nullif(new.outcome_note, ''), ''));
   end if;
 
@@ -679,6 +707,9 @@ create or replace view brc.v_financials_by_staff as
    group by s.id, s.username, s.full_name;
 
 -- 6.4 لوحة المتابعة: إجراءات مطلوبة
+-- ج5 2026-10-06: مصدران للحالة الحرجة — رفض صاحب العمل بسبب مكتوب (kind
+--   'critical' وبالسبب في الوصف)، أو انتهاء مهلة 24 ساعة دون قرار
+--   (kind 'critical_timeout'). كلاهما يقرّره الموظف: إرجاع متاحة أو حذف.
 create or replace view brc.v_pending_actions as
   select 'hiring'::text as kind, j.code as reference, j.reserved_by as serial,
          a.decision_at as due_at, null::numeric as hours_left,
@@ -688,6 +719,26 @@ create or replace view brc.v_pending_actions as
     from brc.jobs j
     join brc.job_attempts a on a.job_id = j.id and a.slot_status = 'hiring'
    where j.status = 'hiring'
+  union all
+  /* رفض صاحب العمل بسبب مكتوب: الوظيفة معلّقة والقرار للشركة */
+  select 'critical'::text, j.code, j.reserved_by, a.decision_at, null,
+         ('رفض صاحب العمل بسبب: ' || coalesce(nullif(a.employer_reason, ''), '—') ||
+          ' — القرار: إرجاع الوظيفة متاحة أو حذفها')
+    from brc.jobs j
+    join brc.job_attempts a on a.job_id = j.id and a.slot_status = 'critical'
+   where j.status = 'reserved' and j.critical
+     -- ⚠️ إصلاح 2026-10-06: بلا هذا الشرط كانت وظيفة «انتهت مهلة 24 ساعة» تظهر
+     --    كأن صاحب العمل رفضها بسبب فارغ («بسبب: —») بدل «حرجة — انتهت المهلة».
+     and a.employer_decision = 'reject'
+  union all
+  /* حرجة بانتهاء المهلة دون قرار (لا رفض مسجَّل) */
+  select 'critical_timeout'::text, j.code, j.reserved_by, j.hold_expires_at, null,
+         'انتهت مهلة 24 ساعة دون قرار — توظيف أو إرجاع أو حذف'::text
+    from brc.jobs j
+   where j.status = 'reserved' and j.critical
+     and not exists (select 1 from brc.job_attempts a
+                      where a.job_id = j.id and a.slot_status = 'critical'
+                        and a.employer_decision = 'reject')
   union all
   select 'hold'::text, j.code, j.reserved_by,
          j.hold_expires_at,
@@ -970,6 +1021,12 @@ declare
   v_pos    text;
   v_job    text;
 begin
+  /* ⚠️ إصلاح 2026-10-06: تهيئة سجلَّي الفرصة والوظيفة — مسار «البيع بلا وظيفة»
+     لا يمرّ على select into a/j، فكان أي استعمال لاحق لهما يفشل بـ
+     «record "j" is not assigned yet» ويسقط البيع بلا وظيفة كاملاً. */
+  select * into a from brc.job_attempts where false;
+  select * into j from brc.jobs where false;
+
   select * into f from brc.applicants
    where serial = upper(btrim(coalesce(p_serial, ''))) for update;
   if f.serial is null then
@@ -986,15 +1043,18 @@ begin
   if v_name = ''  then return jsonb_build_object('ok', false, 'error', 'اسم الزبون مطلوب'); end if;
   if v_phone = '' then return jsonb_build_object('ok', false, 'error', 'هاتف الزبون مطلوب'); end if;
   if v_pos = ''   then return jsonb_build_object('ok', false, 'error', 'اسم نقطة البيع مطلوب'); end if;
-  if v_job = ''   then return jsonb_build_object('ok', false, 'error', 'اختيار الوظيفة إلزامي — لا يكتمل البيع بدونه'); end if;
-
-  /* الوظيفة جزء من الاستمارة: تُقفل قبل أي كتابة (منع سباق حجز مزدوج) */
-  select * into j from brc.jobs where code = v_job for update;
-  if j.id is null then
-    return jsonb_build_object('ok', false, 'error', 'الوظيفة المختارة غير موجودة');
-  end if;
-  if j.status <> 'available' then
-    return jsonb_build_object('ok', false, 'error', 'الوظيفة ' || j.code || ' غير متاحة حالياً — اختر وظيفة أخرى');
+  /* ج5 2026-10-06: اختيار الوظيفة عند البيع صار اختيارياً — إمّا يختارها موظف
+     النقطة للزبون فتُستهلك الفرصة الأولى بحجز 24 ساعة، وإمّا يُباع بلا وظيفة
+     فيختار صاحب البطاقة وظيفتَي فرصتيه بنفسه من صفحة باركود بطاقته. */
+  if v_job <> '' then
+    /* الوظيفة جزء من الاستمارة: تُقفل قبل أي كتابة (منع سباق حجز مزدوج) */
+    select * into j from brc.jobs where code = v_job for update;
+    if j.id is null then
+      return jsonb_build_object('ok', false, 'error', 'الوظيفة المختارة غير موجودة');
+    end if;
+    if j.status <> 'available' then
+      return jsonb_build_object('ok', false, 'error', 'الوظيفة ' || j.code || ' غير متاحة حالياً — اختر وظيفة أخرى');
+    end if;
   end if;
 
   select value into rules from brc.settings where key = 'rules';
@@ -1015,23 +1075,25 @@ begin
   where serial = f.serial
   returning * into f;
 
-  /* استهلاك الفرصة الأولى بالوظيفة المختارة: حجز 24 ساعة عبر trg_attempt_hold
+  /* مع وظيفة مختارة: تُستهلك الفرصة الأولى بحجز 24 ساعة عبر trg_attempt_hold
      (يتحقق من توافر الوظيفة مجدداً + يقفلها + يدوّن الحجز بسجل التدقيق). */
-  select id into a from brc.job_attempts
-   where serial = f.serial and slot_status = 'empty'
-   order by attempt_no limit 1 for update;
-  if a.id is null then
-    raise exception 'لا توجد فرصة متاحة على البطاقة %', f.serial using errcode = 'P0001';
-  end if;
+  if v_job <> '' then
+    select id into a from brc.job_attempts
+     where serial = f.serial and slot_status = 'empty'
+     order by attempt_no limit 1 for update;
+    if a.id is null then
+      raise exception 'لا توجد فرصة متاحة على البطاقة %', f.serial using errcode = 'P0001';
+    end if;
 
-  update brc.job_attempts
-     set slot_status     = 'reserved',
-         job_id          = j.id,
-         job_code        = j.code,
-         selected_at     = now(),
-         hold_expires_at = now() + make_interval(hours => coalesce((rules->>'hold_hours')::int, 24))
-   where id = a.id
-  returning * into a;
+    update brc.job_attempts
+       set slot_status     = 'reserved',
+           job_id          = j.id,
+           job_code        = j.code,
+           selected_at     = now(),
+           hold_expires_at = now() + make_interval(hours => coalesce((rules->>'hold_hours')::int, 24))
+     where id = a.id
+    returning * into a;
+  end if;
 
   insert into brc.audit_log (username, role, action, entity, entity_id, details)
   values ('public', 'pos', 'بيع وتعبئة بطاقة فارغة', 'applicant', f.serial,
@@ -1039,7 +1101,8 @@ begin
           ' — نقطة البيع: ' || v_pos ||
           ' — سعر ' || to_char(f.fee_amount, 'FM999,999,999') || ' د.ع (كاش)' ||
           ' — بدأت صلاحية ' || coalesce((rules->>'validity_days')::int, 30) || ' يوماً من الآن' ||
-          ' | الوظيفة المختارة: ' || j.code || ' — ' || j.title);
+          case when v_job <> '' then ' | الوظيفة المختارة: ' || j.code || ' — ' || j.title
+               else ' | بلا اختيار وظيفة — الفرصتان بانتظار اختيار الزبون بنفسه' end);
 
   return jsonb_build_object(
     'ok', true,
@@ -1048,11 +1111,14 @@ begin
       'address', coalesce(f.address, ''), 'dob', f.dob, 'gender', f.gender,
       'status', f.status::text, 'issueDate', f.issue_date, 'expiryDate', f.expiry_date,
       'posName', coalesce(f.pos_name, ''), 'fee', f.fee_amount, 'feePaid', f.fee_paid),
-    'attempt', jsonb_build_object(
+    'attempt', case when a.id is null then null else jsonb_build_object(
       'no', a.attempt_no, 'code', a.chance_code, 'slotStatus', a.slot_status::text,
       'jobCode', a.job_code, 'jobTitle', j.title, 'location', j.region,
-      'selectedAt', a.selected_at, 'holdExpiresAt', a.hold_expires_at),
-    'job', jsonb_build_object('code', j.code, 'title', j.title, 'region', j.region));
+      'selectedAt', a.selected_at, 'holdExpiresAt', a.hold_expires_at) end,
+    'job', case when a.id is null then null
+                else jsonb_build_object('code', j.code, 'title', j.title, 'region', j.region) end,
+    'chancesLeft', (select count(*) from brc.job_attempts x
+                     where x.serial = f.serial and x.slot_status = 'empty'));
 exception when others then
   /* أخطاء المشغّلات (P0001) نصوص عربية نظيفة تمر كما هي للواجهة */
   return jsonb_build_object('ok', false, 'error', sqlerrm);
@@ -1121,6 +1187,8 @@ begin
         'slotStatus', a.slot_status::text,
         'employerDecision', a.employer_decision,
         'decisionAt', a.decision_at,
+        /* ج5 2026-10-06: سبب الرفض المكتوب يعود لصاحب العمل نفسه ليقرأه */
+        'reason', coalesce(a.employer_reason, ''),
         'employer', jsonb_build_object(
           'name', j.employer_name, 'phone', j.employer_phone,
           'address', j.employer_address, 'interviewLocation', j.interview_location)
@@ -1130,8 +1198,15 @@ exception when others then
 end $$;
 
 
--- 3) قرار صاحب العمل من صفحة الباركود مباشرة: توظيف/رفض — يُسجَّل فوراً
---    لدى الشركة ويوثّق بسجل التدقيق. الفرصة مستهلكة بالتقديم ولا تعود.
+-- 3) قرار صاحب العمل من صفحة الباركود مباشرة: توظيف/رفض — يُسجَّل لدى الشركة
+--    ويوثّق بسجل التدقيق، والفرصة مستهلكة بالتقديم ولا تعود.
+--    ج5 2026-10-06: «تم التوظيف» ⇒ الوظيفة «جاري التوظيف» حتى تثبيت الشركة،
+--    و«رفض التوظيف» ⇒ الوظيفة «حرجة — معلّقة» ليقرّر الموظف: إرجاع متاحة أو
+--    حذف. نسخة القاعدة الحيّة تضيف وسيط السبب الإلزامي:
+--    brc.employer_decide(p_serial, p_decision, p_reason) — انظر
+--    supabase/migrations/20261006030000_barcode_first_two_jobs.sql و
+--    docs/UPDATE-2026-10-06-two-jobs.sql (وهي التي تسجّل السبب في
+--    brc.job_attempts.employer_reason).
 create or replace function brc.employer_decide(p_serial text, p_decision text)
 returns jsonb
 language plpgsql security definer
@@ -1169,34 +1244,56 @@ begin
 
   select * into j from brc.jobs where id = a.job_id for update;
 
-  update brc.job_attempts
-     set slot_status = 'hiring',
-         employer_decision = p_decision,
-         decision_at = now(),
-         hold_expires_at = null,               /* تجميد المهلة: القرار بيد الشركة */
-         outcome_note = case when p_decision = 'hire'
-                             then 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة'
-                             else 'طلب صاحب العمل: لم يتم التوظيف — بانتظار قرار الشركة' end
-   where id = a.id
-  returning * into a;
+  if p_decision = 'hire' then
+    update brc.job_attempts
+       set slot_status = 'hiring',
+           employer_decision = 'hire',
+           employer_reason = null,
+           decision_at = now(),
+           hold_expires_at = null,             /* تجميد المهلة: القرار بيد الشركة */
+           outcome_note = 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة'
+     where id = a.id
+    returning * into a;
 
-  update brc.jobs
-     set status = 'hiring',
-         critical = false,
-         hold_expires_at = null,
-         updated_at = now()
-   where id = j.id
-  returning * into j;
+    update brc.jobs
+       set status = 'hiring',
+           critical = false,
+           hold_expires_at = null,
+           updated_at = now()
+     where id = j.id
+    returning * into j;
 
-  insert into brc.audit_log (username, role, action, entity, entity_id, details)
-  values ('public', 'employer',
-          case when p_decision = 'hire' then 'طلب توظيف من صاحب العمل' else 'طلب رفض من صاحب العمل' end,
-          'applicant', f.serial,
-          'صاحب العمل طلب عبر صفحة الباركود ' ||
-          case when p_decision = 'hire' then 'التوظيف' else 'عدم التوظيف' end ||
-          ' على الوظيفة ' || coalesce(a.job_code, '—') || ' — الفرصة #' || a.attempt_no ||
-          ' — الزبون ' || f.full_name ||
-          ' | الوظيفة «جاري التوظيف» بانتظار قرار الشركة (تثبيت/إلغاء)');
+    insert into brc.audit_log (username, role, action, entity, entity_id, details)
+    values ('public', 'employer', 'طلب توظيف من صاحب العمل', 'applicant', f.serial,
+            'صاحب العمل طلب عبر صفحة الباركود التوظيف' ||
+            ' على الوظيفة ' || coalesce(a.job_code, '—') || ' — الفرصة #' || a.attempt_no ||
+            ' — الزبون ' || f.full_name ||
+            ' | الوظيفة «جاري التوظيف» بانتظار قرار الشركة (تثبيت/إلغاء)');
+  else
+    update brc.job_attempts
+       set slot_status = 'critical',
+           employer_decision = 'reject',
+           decision_at = now(),
+           hold_expires_at = null,
+           outcome_note = 'رفض صاحب العمل — القرار الآن بيد الشركة: إرجاع الوظيفة متاحة أو حذفها'
+     where id = a.id
+    returning * into a;
+
+    update brc.jobs
+       set status = 'reserved',
+           critical = true,
+           hold_expires_at = null,
+           updated_at = now()
+     where id = j.id
+    returning * into j;
+
+    insert into brc.audit_log (username, role, action, entity, entity_id, details)
+    values ('public', 'employer', 'رفض من صاحب العمل', 'applicant', f.serial,
+            'صاحب العمل رفض التوظيف عبر صفحة الباركود' ||
+            ' على الوظيفة ' || coalesce(a.job_code, '—') || ' — الفرصة #' || a.attempt_no ||
+            ' — الزبون ' || f.full_name ||
+            ' | الوظيفة «حرجة — معلّقة» بانتظار قرار الشركة: إرجاع متاحة أو حذف');
+  end if;
 
   return jsonb_build_object(
     'ok', true,
@@ -1204,7 +1301,8 @@ begin
       'no', a.attempt_no, 'slotStatus', a.slot_status::text,
       'jobCode', a.job_code, 'jobTitle', j.title, 'location', j.region,
       'selectedAt', a.selected_at, 'decisionAt', a.decision_at,
-      'employerDecision', a.employer_decision),
+      'employerDecision', a.employer_decision,
+      'reason', coalesce(a.employer_reason, '')),
     'job', jsonb_build_object('code', j.code, 'title', j.title, 'region', j.region,
                               'status', j.status::text),
     'decision', p_decision, 'pending', true);
@@ -1221,6 +1319,46 @@ end $$;
 --       وهذا الملف)، فصار مسح باركود أي بطاقة يفتح على الزبون خطأ PostgREST
 --       خاماً: Could not find the function … in the schema cache. أُدرجتا هنا
 --       ليكتمل «المصدر الوحيد للحقيقة» ولا تتكرّر الحالة.
+-- ---------------------------------------------------------------------------
+-- ترميم خانات الفرص الناقصة (إصلاح 2026-10-06)
+--   عطل حقيقي مُشاهد: مزامنة لوحة الموظفين كانت **تحذف** خانات فرص بطاقة
+--   موجودة محلياً بلا خانات (سحب ناقص أو جهاز جديد) — فتُصبح البطاقة الجديدة
+--   بلا أي فرصة في القاعدة، وتقول صفحة التقديم «لا توجد فرصة متاحة — انتهت
+--   فرصك» بلا أي تقديم. هذه الدالة تُنشئ الخانات **الناقصة فقط** حتى
+--   attempt_limit، فلا تُمنح فرصة إضافية لبطاقة مستهلكة أبداً، وتُسجَّل العملية
+--   في التدقيق. آمنة للنداء المتكرر.
+-- ---------------------------------------------------------------------------
+create or replace function brc.ensure_card_attempts(p_serial text) returns integer
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare
+  f record;
+  v_added integer := 0;
+begin
+  select * into f from brc.applicants
+   where serial = upper(btrim(coalesce(p_serial, ''))) for update;
+  if f.serial is null then return 0; end if;
+
+  insert into brc.job_attempts (serial, attempt_no)
+  select f.serial, gs
+    from generate_series(1, greatest(coalesce(f.attempt_limit, 2), 1)) gs
+   where not exists (select 1 from brc.job_attempts a
+                      where a.serial = f.serial and a.attempt_no = gs);
+  get diagnostics v_added = row_count;
+
+  if v_added > 0 then
+    insert into brc.audit_log (username, role, action, entity, entity_id, details)
+    values ('system', 'system', 'ترميم خانات فرص ناقصة', 'applicant', f.serial,
+            'البطاقة كانت بلا خانات فرص كافية — أُنشئت ' || v_added ||
+            ' خانة (تُرمَّم الخانات الناقصة فقط؛ لا فرصة إضافية لبطاقة مستهلكة)');
+  end if;
+  return v_added;
+end $$;
+
+revoke all on function brc.ensure_card_attempts(text) from public;
+grant execute on function brc.ensure_card_attempts(text) to authenticated, service_role;
+
 create or replace function brc.self_service_card(p_serial text)
 returns jsonb
 language plpgsql security definer
@@ -1234,6 +1372,10 @@ begin
   if f.serial is null then
     return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود');
   end if;
+  /* ترميم خانات الفرص الناقصة قبل القراءة (إصلاح 2026-10-06) — بطاقة جديدة
+     فقدت خاناتها بمزامنة ناقصة تُرمَّم هنا فوراً بدل «انتهت فرصك». */
+  perform brc.ensure_card_attempts(f.serial);
+
   if f.status = 'pending' then
     return jsonb_build_object('ok', false, 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
   end if;

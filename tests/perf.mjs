@@ -55,9 +55,14 @@ const BUDGET = {
   /* 2026-10-02: إصلاح عطل RPC المنشور (Accept-Profile مع Content-Profile في
      cloud-http.js + rpcCall في cloud.js) دفع index.html إلى 510KB بالضبط —
      سقف 515KB بهامش بسيط؛ جوهر الميزانية (منع القفزات الكبيرة) لم يتغير. */
-  'index.html': { raw: 515, requests: 20 },
-  'verify.html': { raw: 420, requests: 20 },
-  'dashboard.html': { raw: 795, requests: 20 }
+  /* 2026-10-06 (الباركود وحده + فرصتان يختارهما صاحب البطاقة + صفحة صاحب
+     العمل بقرار التوظيف/الرفض بالسبب): صفحة التقديم الذاتي apply.html صارت
+     صفحة مستقلة، ونمت booking.js/cloud.js/store.js وداشبورد الموظف بمسار
+     الحالة الحرجة (إرجاع متاحة أو حذف). الرفع هنا 15KB للأولى و15KB
+     للثانية و15KB للثالثة — يبقى الغرض: التقاط القفزات الكبيرة فقط. */
+  'index.html': { raw: 530, requests: 20 },
+  'verify.html': { raw: 435, requests: 20 },
+  'dashboard.html': { raw: 810, requests: 20 }
 };
 
 function payloadOf(page) {
