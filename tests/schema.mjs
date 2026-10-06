@@ -365,6 +365,24 @@ step(12, 'مسار التحديث — كل دالة يناديها باركود 
   check('ملف التحديث يُعيد تحميل ذاكرة المخطط (بدونه يبقى «in the schema cache»)',
     /notify\s+pgrst\s*,\s*'reload schema'/i.test(upSql));
 
+  /* ج5 2026-10-06: مسار تحديث ثانٍ لنفس اليوم — «الباركود يكفي + فرصتان +
+     رفض بالسبب». نفحصه بنفس الصرامة: ملف تحديث + جزء لصق مطابق له حرفياً
+     + عمود السبب + توقيع employer_decide الجديد (مع السبب) + إعادة تحميل الذاكرة. */
+  const upTwoFile = join(ROOT, 'docs', 'UPDATE-2026-10-06-two-jobs.sql');
+  let upTwo = '';
+  try { upTwo = readFileSync(upTwoFile, 'utf8'); } catch { upTwo = ''; }
+  check('ملف تحديث ج5 (باركود + فرصتان + رفض بالسبب) موجود', upTwo.length > 0, upTwoFile);
+  check('ملف ج5 يسجّل السبب في عمود employer_reason',
+    /add column if not exists employer_reason text/i.test(upTwo) &&
+    /employer_reason = v_reason/i.test(upTwo));
+  check('ملف ج5 يعرّف employer_decide بوسيط السبب (text, text, text)',
+    /function\s+brc\.employer_decide\s*\(\s*p_serial\s+text,\s*p_decision\s+text,\s*p_reason\s+text default ''/i.test(upTwo));
+  check('ملف ج5 يحذف النسخ المشغولة بالرمز (بلا رمز بطاقة ولا رمز صاحب عمل)',
+    /drop function if exists brc\.self_service_card\(text, text\)/i.test(upTwo) &&
+    /drop function if exists brc\.employer_decide\(text, text\)/i.test(upTwo));
+  check('ملف ج5 يجعل اختيار الوظيفة اختيارياً (بيع بلا وظيفة)',
+    /بلا اختيار وظيفة/.test(upTwo) && !/اختيار الوظيفة إلزامي/.test(upTwo));
+
   const upd = readFileSync(join(ROOT, 'db-update.html'), 'utf8');
   const part5 = (upd.match(/<textarea id="sql5"[\s\S]*?<\/textarea>/) || [''])[0];
   check('صفحة تحديث القاعدة فيها جزء للباركود يُنشئ الدالتين', defined(part5).length === 0,
@@ -375,6 +393,15 @@ step(12, 'مسار التحديث — كل دالة يناديها باركود 
     .replace(/&lt;/g, '<').replace(/&amp;/g, '&');
   check('نص الجزء 5 مطابق حرفياً لملف docs/UPDATE-2026-10-06.sql', part5Sql === upSql,
     'طول الصفحة ' + part5Sql.length + ' مقابل ' + upSql.length + ' — أعِد تضمينه');
+
+  /* جزء اللصق رقم 6 في صفحة التحديث = ملف ج5 حرفياً (نفس نمط الجزء 5) */
+  const part6 = (upd.match(/<textarea id="sql6"[\s\S]*?<\/textarea>/) || [''])[0];
+  const part6Sql = part6.replace(/^<textarea[^>]*>/, '').replace(/<\/textarea>\s*$/, '')
+    .replace(/&lt;/g, '<').replace(/&amp;/g, '&');
+  check('صفحة تحديث القاعدة فيها جزء 6 لِج5 وزر نسخ', /cp\('sql6'\)/.test(upd) && /id="ok6"/.test(upd));
+  check('نص الجزء 6 مطابق حرفياً لملف docs/UPDATE-2026-10-06-two-jobs.sql', part6Sql === upTwo,
+    'طول الصفحة ' + part6Sql.length + ' مقابل ' + upTwo.length + ' — أعِد تضمينه');
+  check('جزء إعادة تحميل الذاكرة بقي موجوداً (صار الجزء 7)', /cp\('sql7'\)/.test(upd) && /id="ok7"/.test(upd));
 
   /* الواجهة: لا CDN خارجي — العميل المصغّر المحلي يعلن السكيما في الترويستين */
   check('صفحة الباركود تستعمل عميل الاتصال المحلي (cloud-http.js)',

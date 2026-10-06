@@ -676,8 +676,10 @@
     }
     if (!data.fullName || !String(data.fullName).trim()) return { ok: false, error: 'اسم الزبون مطلوب' };
     if (!data.phone || !String(data.phone).trim()) return { ok: false, error: 'هاتف الزبون مطلوب' };
-    /* اختيار الوظيفة جزء من استمارة نقطة البيع (قرار الإدارة 2026-10-01):
-       يستهلك الفرصة الأولى بحجز 24 ساعة بانتظار قرار صاحب العمل. */
+    /* اختيار الوظيفة عند البيع صار **اختيارياً** (قرار الإدارة 2026-10-06):
+       إمّا يختارها موظف النقطة للزبون فتُستهلك الفرصة الأولى بحجز 24 ساعة،
+       وإمّا يُباع بلا وظيفة فيختار صاحب البطاقة وظيفتَي فرصتيه بنفسه من
+       صفحة باركود بطاقته. */
     var preJob = null;
     if (data.jobCode) {
       preJob = getJob(String(data.jobCode).trim().toUpperCase());
@@ -702,7 +704,8 @@
       'بيع البطاقة ' + app.serial + ' للزبون ' + app.fullName +
       (app.posName ? ' — نقطة البيع: ' + app.posName : '') +
       ' — سعر ' + money(app.fee) + ' (كاش) — بدأت صلاحية 30 يوماً من الآن' +
-      (preJob ? ' | الوظيفة المختارة: ' + preJob.code + ' — ' + preJob.title : ''));
+      (preJob ? ' | الوظيفة المختارة: ' + preJob.code + ' — ' + preJob.title
+              : ' | بلا اختيار وظيفة — الفرصتان بانتظار اختيار الزبون بنفسه'));
     var applied = null;
     if (preJob) {
       applied = selectAttempt(serial, preJob.code, { byPos: true });
@@ -766,6 +769,8 @@
           slotStatus: current.slotStatus,
           employerDecision: current.employerDecision || null,
           decisionAt: current.decisionAt || null,
+          reason: current.reason || '',
+          note: current.note || '',
           employer: job ? {
             name: job.employer.name,
             phone: job.employer.phone,
@@ -777,42 +782,54 @@
     };
   }
 
-  /* طلب صاحب العمل من صفحة الباركود (توظيف/عدم توظيف) — قرار 2026-10-01 (ج4):
-     لا يُحسم شيء فوراً؛ الوظيفة والفرصة تنتقلان لحالة «جاري التوظيف»
-     (مجمّدة بلا مهلة 24 ساعة) حتى يثبّت موظفو الشركة القرار النهائي:
-     تثبيت التوظيف أو إلغاؤه (الوظيفة تعود متاحة والفرصة مستهلكة). */
-  function employerDecide(serial, decision) {
+  /* طلب صاحب العمل من صفحة الباركود (توظيف / رفض بالسبب) — قرار 2026-10-06:
+     • «تم التوظيف»: الوظيفة والفرصة «جاري التوظيف» (مجمّدة بلا مهلة) حتى
+       يثبّت موظفو الشركة القرار النهائي.
+     • «رفض التوظيف» بسبب مكتوب: الوظيفة والفرصة إلى الحالة «الحرجة» المعلّقة،
+       ويقرّر موظف الشركة: إرجاع الوظيفة متاحة أو حذفها (أو التوظيف).
+     لا رمز مطلوب: الباركود وحده يكفي (حيازة الورقة). */
+  function employerDecide(serial, decision, reason) {
     serial = String(serial || '').trim().toUpperCase();
     if (decision !== 'hire' && decision !== 'reject')
       return { ok: false, error: 'قرار غير صحيح — hire أو reject فقط' };
+    var why = String(reason || '').trim();
+    if (decision === 'reject' && !why)
+      return { ok: false, error: 'سبب عدم التوظيف مطلوب — اكتب سبباً واضحاً للشركة وللمتقدم' };
     var app = getApplicant(serial);
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود' };
     if (app.status === 'blank') return { ok: false, error: 'هذه البطاقة فارغة ولم تُبع بعد' };
     var slot = latestInPlay(app.serial);
     if (!slot) return { ok: false, error: 'لا يوجد تقديم قيد القرار على هذه البطاقة — راجع الشركة' };
-    if (slot.slotStatus === 'hiring')
+    if (slot.slotStatus === 'hiring' || slot.employerDecision)
       return { ok: false, error: 'طلبك مسجَّل بالفعل — الوظيفة بانتظار قرار الشركة' };
     var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
 
-    slot.slotStatus = 'hiring';
     slot.employerDecision = decision;
     slot.decisionAt = nowISO();
-    slot.holdExpiresAt = null;   /* تجميد المهلة: القرار بيد الشركة الآن */
-    slot.note = decision === 'hire'
-      ? 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة'
-      : 'طلب صاحب العمل: لم يتم التوظيف — بانتظار قرار الشركة';
-    if (job) {
-      job.status = 'hiring';
-      job.critical = false;
-      job.holdExpiresAt = null;   /* hiring: لا مهلة — قرار الشركة المطلوب */
+    slot.holdExpiresAt = null;   /* لا مهلة بعد قرار صاحب العمل: القرار بيد الشركة */
+
+    if (decision === 'hire') {
+      slot.slotStatus = 'hiring';
+      slot.reason = '';
+      slot.note = 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة';
+      if (job) { job.status = 'hiring'; job.critical = false; job.holdExpiresAt = null; }
+    } else {
+      slot.slotStatus = 'critical';
+      slot.reason = why;
+      slot.note = 'رفض صاحب العمل — السبب: ' + why + ' | القرار الآن بيد الشركة: إرجاع الوظيفة متاحة أو حذفها';
+      if (job) { job.status = 'reserved'; job.critical = true; job.holdExpiresAt = null; }
     }
-    audit(decision === 'hire' ? 'طلب توظيف من صاحب العمل' : 'طلب رفض من صاحب العمل',
+
+    audit(decision === 'hire' ? 'طلب توظيف من صاحب العمل' : 'رفض من صاحب العمل مع السبب',
       'applicant', app.serial,
-      'صاحب العمل طلب عبر صفحة الباركود ' + (decision === 'hire' ? 'التوظيف' : 'عدم التوظيف') +
+      'صاحب العمل سجّل عبر صفحة الباركود ' +
+      (decision === 'hire' ? 'طلب التوظيف' : 'رفض التوظيف') +
       ' على الوظيفة ' + slot.jobCode + ' — الفرصة #' + slot.no + ' — الزبون ' + app.fullName +
-      ' | الوظيفة «جاري التوظيف» بانتظار قرار الشركة (تثبيت/إلغاء)');
+      (decision === 'hire'
+        ? ' | الوظيفة «جاري التوظيف» بانتظار قرار الشركة (تثبيت/إلغاء)'
+        : ' | السبب: ' + why + ' | الوظيفة «حرجة — معلّقة» بانتظار قرار الشركة: إرجاع متاحة أو حذف'));
     save(); emit();
-    return { ok: true, attempt: slot, job: job, decision: decision, pending: true };
+    return { ok: true, attempt: slot, job: job, decision: decision, reason: why, pending: true };
   }
 
   function listBlankCards() {
@@ -1053,26 +1070,23 @@
     return Promise.resolve(activateCard(serial, data));
   }
 
-  /* صفحة صاحب العمل (الباركود يكفي) */
+  /* صفحة صاحب العمل: الباركود وحده يكفي — بلا أي رمز وبلا نافذة prompt
+     (قرار الإدارة 2026-10-06: حيازة الورقة = التحكم). */
   function cardEmployerView(serial) {
-    var code = String((typeof sessionStorage !== 'undefined' && sessionStorage.getItem('hrc.employerCode')) || '').trim().toUpperCase();
-    if (!code) { code = String(window.prompt('رمز صاحب العمل الذي سلّمته الشركة') || '').trim().toUpperCase(); if (typeof sessionStorage !== 'undefined' && code) sessionStorage.setItem('hrc.employerCode', code); }
     var st = cloudStatus();
     if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.employerView && cloud.client) {
-      return root.HRCCloud.employerView(cloud.client, serial, code);
+      return root.HRCCloud.employerView(cloud.client, serial);
     }
     return Promise.resolve(employerView(serial));
   }
 
-  /* قرار صاحب العمل (توظيف/رفض) من صفحة الباركود */
-  function cardEmployerDecide(serial, decision) {
-    var code = String((typeof sessionStorage !== 'undefined' && sessionStorage.getItem('hrc.employerCode')) || '').trim().toUpperCase();
-    if (!code) { code = String(window.prompt('اكتب رمز صاحب العمل الذي سلّمته الشركة') || '').trim().toUpperCase(); if (code) if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('hrc.cardCode', code); }
+  /* قرار صاحب العمل (توظيف / رفض بالسبب) من صفحة الباركود — بلا رمز */
+  function cardEmployerDecide(serial, decision, reason) {
     var st = cloudStatus();
     if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.employerDecide && cloud.client) {
-      return root.HRCCloud.employerDecide(cloud.client, serial, decision, code);
+      return root.HRCCloud.employerDecide(cloud.client, serial, decision, reason);
     }
-    return Promise.resolve(employerDecide(serial, decision));
+    return Promise.resolve(employerDecide(serial, decision, reason));
   }
 
   function cardVerify(serial, code) {
@@ -1365,9 +1379,17 @@
         var h = diffHours(j.holdExpiresAt, new Date());
         out.holds.push({ job: j, hoursLeft: h, serial: j.reservedBy });
       }
-      /* الحالة الحرجة: انتهت مهلة 24 ساعة دون قرار — بانتظار الموظف */
+      /* الحالة الحرجة: انتهت مهلة 24 ساعة دون قرار **أو** رفض صاحب العمل
+         بسبب مكتوب — الوظيفة معلّقة بانتظار الموظف: إرجاع متاحة أو حذف */
       if (j.status === 'reserved' && !j.holdExpiresAt && j.critical) {
-        out.critical.push({ job: j, serial: j.reservedBy });
+        var ct = db.attempts.filter(function (x) {
+          return x.jobId === j.id && x.slotStatus === 'critical';
+        })[0];
+        out.critical.push({
+          job: j, serial: j.reservedBy, attempt: ct || null,
+          decidedBy: ct && ct.employerDecision === 'reject' ? 'employer' : 'hold',
+          reason: (ct && ct.reason) || '', at: ct ? ct.decisionAt : null
+        });
       }
       /* جاري التوظيف: طلب صاحب العمل بانتظار تثبيت الشركة (ج4 — 2026-10-01) */
       if (j.status === 'hiring') {

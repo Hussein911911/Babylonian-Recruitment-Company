@@ -434,6 +434,7 @@ body{
   display:flex;align-items:center;gap:6px;
 }
 .rv-head:first-of-type{margin-top:0}
+.rv-sub{font-size:9pt;font-weight:800;color:#6db8ff;margin:10px 0 4px;padding-inline-start:9px;border-inline-start:2px solid rgba(29,107,196,.5)}
 .rv-head::before{content:'';width:3px;height:14px;background:#c8a24a;border-radius:2px;flex:none}
 .rv-row{
   display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed rgba(249,246,239,.07);
@@ -515,13 +516,18 @@ body{
   @page{size:A4;margin:8mm}
   html,body{background:#fff!important;padding:0!important;margin:0!important;height:auto!important}
   body *{visibility:hidden!important}
+  /* كل استمارة ورقة A4 مستقلة — تُطبع كلها إن اختار الزبون وظيفتين */
   #result-content .form-sheet,#result-content .form-sheet *{visibility:visible!important}
   #result-content .form-sheet{
-    position:absolute;inset:0 auto auto 0;width:100%;max-width:100%;margin:0;
+    position:static;inset:auto;width:100%;max-width:100%;margin:0 0 6mm;
     box-shadow:none;border-radius:0;overflow:visible;
+    break-after:page;page-break-after:always;
   }
-  /* الورقة فقط تُطبع: بلا هيرو النجاح وبلا أزرار الصفحة */
+  #result-content .form-sheet:last-child{break-after:auto;page-break-after:auto}
+  /* الورقة فقط تُطبع: بلا هيرو النجاح وبلا أزرار الصفحة وبلا بقية الصفحات */
   #result-content .ok-hero,#result-content .result-actions{display:none!important}
+  #app,#pages-wrap,.page,#pg-result,#result-content{padding:0!important;margin:0!important;border:0!important;min-height:0!important;background:none!important}
+  .page:not(#pg-result),#result-content > *:not(.form-sheet),.topbar,.steps-bar,.footer{display:none!important}
   /* منع انقسام أي قسم بين صفحتين — الاستمارة كلها صفحة واحدة A4 */
   .form-sheet,.fs-head,.fs-meta,.fs-tbl,.fs-emp,.fs-terms,.fs-emp-box,.fs-sign,.fs-foot{break-inside:avoid;page-break-inside:avoid}
   .fs-td,.fs-f,.fs-tr{break-inside:avoid;page-break-inside:avoid}
@@ -828,7 +834,7 @@ var STEP_TOTAL=6;         /* خطوات الإدخال التي يعدّها ا�
 var STEP_NAMES=['الاسم الثلاثي','السكن','تاريخ الميلاد','رقم الهاتف','نوع الجنس','اختيار الوظيفة'];
 var curPage=0;
 var transitioning=false; /* منع النقرات أثناء الانتقال */
-var selectedJob=null;    /* الوظيفة المختارة من القائمة (تُستخدم في المراجعة والإتمام) */
+var pickedJobs=[];       /* وظائف الزبون المعيَّنة لفرصتيه — حتى وظيفتين (قرار 2026-10-06) */
 
 var G={
   openEmployer:function(){
@@ -971,7 +977,7 @@ var G={
     /* صفحة الوظائف: لا عبور قبل اختيار وظيفة */
     if(curPage===6){
       if(chancesLeft<=0){G.jobsWarn('لا توجد فرص متبقية في هذه البطاقة — راجع المكتب');return;}
-      if(!selectedJob){G.jobsWarn('اختر وظيفة أولاً — اضغط على بطاقة أي وظيفة ثم «التالي»');return;}
+      if(!pickedJobs.length){G.jobsWarn('اختر وظيفة أولاً — اضغط على بطاقة أي وظيفة ثم «التالي»');return;}
       G.go(7);
       return;
     }
@@ -1064,14 +1070,33 @@ var G={
   /* ═══════════════════════════════════════════════════════════
      عرض الوظائف
      ═══════════════════════════════════════════════════════════ */
+  /* ═══ الفرصتان: الزبون يعيّن وظيفة لكل فرصة ═══
+     قرار الإدارة 2026-10-06: صاحب البطاقة يختار وظيفتَي فرصتيه بنفسه —
+     يمكنه تعيين وظيفتين معاً في هذه الجلسة أو وظيفة واحدة والثانية لاحقاً
+     بنفس الباركود ما دامت الصلاحية سارية. */
+  maxPick:function(){return Math.max(0,Math.min(2,chancesLeft));},
+
+  pickedIndex:function(code){
+    for(var i=0;i<pickedJobs.length;i++){if(pickedJobs[i].code===code)return i;}
+    return -1;
+  },
+
   renderChances:function(){
     var bar=$('chances-bar');
-    var cls=chancesLeft>=2?'has2':(chancesLeft===1?'has1':'has0');
+    var max=G.maxPick();
+    var cls=pickedJobs.length>=2?'has2':((pickedJobs.length===1||chancesLeft===1)?'has1':'has2');
     var dots='';
-    for(var i=0;i<2;i++) dots+='<span class="chip-dot '+(appliedJobs.length>i?'off':(i<chancesLeft?'on':'off'))+'"></span>';
+    for(var i=0;i<2;i++) dots+='<span class="chip-dot '+((i<chancesLeft||i<pickedJobs.length)?'on':'off')+'"></span>';
+    var label;
+    if(chancesLeft<=0) label='لا توجد فرصة متاحة — انتهت فرصك';
+    else if(pickedJobs.length){
+      var left=Math.max(0,max-pickedJobs.length);
+      label='وظائفك المختارة: '+ar(pickedJobs.length)+' من '+ar(max)+
+        (left>0?(' — يمكنك اختيار '+(left===1?'وظيفة أخرى':'وظيفة أخرى')):' — اضغط «التالي» للتقديم');
+    }
+    else label='متبقي لك: '+ar(chancesLeft)+' '+(chancesLeft===1?'فرصة':'فرصتان')+' — اختر وظيفة لكل فرصة';
     bar.className='chances-bar '+cls;
-    bar.innerHTML=dots+'<span>متبقي لك: '+ar(chancesLeft)+' '+(chancesLeft===1?'فرصة':'فرصتين')+'</span>';
-    if(chancesLeft===0) bar.innerHTML=dots+'<span>لا توجد فرصة متاحة — انتهت فرصك</span>';
+    bar.innerHTML=dots+'<span>'+label+'</span>';
   },
 
   renderFilters:function(){
@@ -1096,14 +1121,15 @@ var G={
     var h='';
     f.forEach(function(j,i){
       var done=appliedJobs.some(function(a){return a.jobCode===j.code;});
-      var picked=!!(selectedJob&&selectedJob.code===j.code);
+      var slotNo=G.pickedIndex(j.code);
+      var picked=slotNo>=0;
       var sal=money(j.salaryMin)+' – '+money(j.salaryMax);
       var reqs=j.requirements.map(function(r){return'<li>'+esc(r)+'</li>';}).join('');
       h+='<div class="job-card'+(picked?' selected':'')+(done?' is-done':'')+'" data-job="'+esc(j.code)+'"'
         +(done?'':' onclick="G.pickJob(\''+esc(j.code)+'\')"')+'>'
-        +'<div class="pick-mark">✓</div>'
+        +'<div class="pick-mark">'+(picked?ar(slotNo+1):'✓')+'</div>'
         +'<div class="job-head"><div class="title">'+esc(j.title)+'</div>'
-        +'<div class="badge badge-open">'+(done?'✓ تم التقديم':'🟢 متوفرة')+'</div></div>'
+        +'<div class="badge badge-open">'+(done?'✓ تم التقديم':(picked?'★ الفرصة '+ar(slotNo+1):'🟢 متوفرة'))+'</div></div>'
         +'<div class="job-category">✦ '+esc(j.category)+' · '+esc(j.code)+'</div>'
         +'<div class="job-grid">'
         +'<div class="job-item"><span class="k">الراتب:</span><span class="v">'+esc(sal)+'</span></div>'
@@ -1120,29 +1146,41 @@ var G={
         +'<div class="job-actions"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();G.toggleDetails(\''+esc(j.code)+'\')">تفاصيل الوظيفة</button>';
       if(done){h+='<button class="btn btn-outline btn-sm" disabled>✓ تم التقديم</button>';}
       else if(chancesLeft<=0){h+='<button class="btn btn-outline btn-sm" disabled>انتهت الفرص</button>';}
-      else if(picked){h+='<button class="btn btn-success btn-sm" onclick="event.stopPropagation();G.next()">✓ مختارة — متابعة</button>';}
-      else{h+='<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();G.pickJob(\''+esc(j.code)+'\')">اختيار هذه الوظيفة</button>';}
+      else if(picked){
+        h+='<button class="btn btn-success btn-sm" onclick="event.stopPropagation();G.next()">✓ مختارة (فرصة '+ar(slotNo+1)+') — متابعة</button>';
+        h+='<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();G.pickJob(\''+esc(j.code)+'\')">↺ إلغاء</button>';
+      }
+      else{h+='<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();G.pickJob(\''+esc(j.code)+'\')">تعيين للفرصة '+ar(Math.min(pickedJobs.length+1,2))+'</button>';}
       h+='</div></div>';
     });
     c.innerHTML=h;
     G.syncJobsFooter();
   },
 
-  /* اختيار وظيفة من القائمة (بدل النافذة القديمة) */
+  /* تعيين وظيفة لفرصة (أو إلغاء تعيينها بالضغط عليها مرة ثانية) */
   pickJob:function(code){
     if(chancesLeft<=0)return;
     if(appliedJobs.some(function(a){return a.jobCode===code;}))return;
+    var slot=G.pickedIndex(code);
+    if(slot>=0){pickedJobs.splice(slot,1);G.renderChances();G.renderJobs();return;}
     var job=jobs.find(function(x){return x.code===code;});
     if(!job)return;
-    selectedJob=job;
+    var max=G.maxPick();
+    if(pickedJobs.length>=max){
+      G.jobsWarn('أكملت اختيار وظيفتَي فرصتيك ('+ar(max)+') — اضغط «↺ إلغاء» على وظيفة مختارة لتغييرها.');
+      return;
+    }
+    pickedJobs.push(job);
+    G.renderChances();
     G.renderJobs();
     if(navigator.vibrate)try{navigator.vibrate(18);}catch(e){}
   },
 
-  /* تذييل قائمة الوظائف: المختار + جاهزية «التالي» */
+  /* تذييل قائمة الوظائف: الوظائف المختارة + جاهزية «التالي» */
   syncJobsFooter:function(){
     var b=$('btn-jobs-next'),h=$('jobs-hint');
-    var okSel=!!selectedJob&&chancesLeft>0;
+    var max=G.maxPick();
+    var okSel=pickedJobs.length>0&&chancesLeft>0;
     if(b)b.disabled=!okSel;
     if(!h)return;
     if(chancesLeft<=0){
@@ -1150,10 +1188,14 @@ var G={
       h.innerHTML='<span class="warn">لا توجد فرص متبقية في هذه البطاقة</span> — راجع مكتب الشركة لتجديدها';
     }else if(okSel){
       h.className='jobs-hint picked';
-      h.innerHTML='الوظيفة المختارة: <b>'+esc(selectedJob.title)+'</b> — <span class="mono" dir="ltr">'+esc(selectedJob.code)+'</span>';
+      h.innerHTML='وظائفك المختارة (<b>'+ar(pickedJobs.length)+'</b> من <b>'+ar(max)+'</b>): '+
+        pickedJobs.map(function(j,i){return '<b>'+esc(j.title)+'</b> <span class="mono" dir="ltr">('+esc(j.code)+')</span> — فرصة '+ar(i+1);}).join(' · ')+
+        (pickedJobs.length<max
+          ? ' — يمكنك تعيين وظيفة أخرى لفرصتك الثانية قبل «التالي»'
+          : ' — اضغط «التالي» لمراجعة الطلب');
     }else{
       h.className='jobs-hint';
-      h.innerHTML='اضغط على أي وظيفة لاختيارها ثم «التالي»';
+      h.innerHTML='اضغط على أي وظيفة لتعيينها لأول فرصة (يمكنك تعيين وظيفتين) ثم «التالي»';
     }
   },
 
@@ -1186,7 +1228,6 @@ var G={
     var p=G.readProfile();
     var dobTxt=G.dobText();
     var place=[p.province,p.district,p.subdistrict].filter(function(x){return !!x;}).join(' – ');
-    var j=selectedJob;
 
     function row(k,v,step,ltr){
       return '<div class="rv-row"><div class="rv-k">'+k+'</div>'
@@ -1197,7 +1238,7 @@ var G={
     var h='<div class="rv-card">'
       +'<div class="rv-top"><span class="rv-ic">🧾</span><div style="flex:1">'
       +'<div class="rv-t">مراجعة الطلب قبل الإتمام</div>'
-      +'<div class="rv-s">تأكد من صحة بياناتك — بعد «إتمام» تُستهلك فرصة واحدة من بطاقتك</div></div></div>';
+      +'<div class="rv-s">تأكد من صحة بياناتك ووظائفك — بعد «إتمام» تُستهلك فرصة لكل وظيفة اخترتها</div></div></div>';
 
     /* بيانات المتقدم */
     h+='<div class="rv-head">بيانات المتقدم</div>'
@@ -1207,23 +1248,25 @@ var G={
       +row('الجنس',p.gender,5)
       +row('السكن',(place||'')+(p.landmark?' — '+p.landmark:''),2);
 
-    /* الوظيفة المختارة */
-    if(j){
-      var sal=money(j.salaryMin)+' – '+money(j.salaryMax);
-      h+='<div class="rv-head">الوظيفة المختارة</div>'
-        +row('الوظيفة',j.title,6)
-        +row('الكود',j.code,6,1)
-        +row('المنطقة',j.region,6)
-        +row('الأجر',sal,6)
-        +'<div class="rv-chips">'
-        +'<span class="rv-chip">⏱ الدوام: '+esc(j.shift)+'</span>'
-        +'<span class="rv-chip">✦ '+esc(j.category)+'</span>'
-        +(j.gender?'<span class="rv-chip">👤 '+esc(j.gender)+'</span>':'')
-        +'<span class="rv-chip">الشواغر: '+ar(j.vacancies||1)+'</span>'
-        +'</div>';
+    /* الوظائف المختارة — وظيفة لكل فرصة */
+    h+='<div class="rv-head">وظائفك المختارة (الفرصتان)</div>';
+    if(pickedJobs.length){
+      pickedJobs.forEach(function(j,i){
+        var sal=money(j.salaryMin)+' – '+money(j.salaryMax);
+        h+='<div class="rv-sub">الفرصة '+ar(i+1)+'</div>'
+          +row('الوظيفة',j.title,6)
+          +row('الكود',j.code,6,1)
+          +row('المنطقة',j.region,6)
+          +row('الأجر',sal,6)
+          +'<div class="rv-chips">'
+          +'<span class="rv-chip">⏱ الدوام: '+esc(j.shift)+'</span>'
+          +'<span class="rv-chip">✦ '+esc(j.category)+'</span>'
+          +(j.gender?'<span class="rv-chip">👤 '+esc(j.gender)+'</span>':'')
+          +'<span class="rv-chip">الشواغر: '+ar(j.vacancies||1)+'</span>'
+          +'</div>';
+      });
     }else{
-      h+='<div class="rv-head">الوظيفة المختارة</div>'
-        +'<div class="rv-row"><div class="rv-v" style="color:#f0c060">لم تُختَر وظيفة بعد</div>'
+      h+='<div class="rv-row"><div class="rv-v" style="color:#f0c060">لم تُعيَّن وظيفة بعد</div>'
         +'<button class="rv-edit" type="button" onclick="G.editStep(6)">اختيار وظيفة</button></div>';
     }
 
@@ -1231,15 +1274,16 @@ var G={
     h+='<div class="rv-head">البطاقة والفرص</div>'
       +row('رقم البطاقة',cardSerial,null,1)
       +'<div class="rv-chips">'
-      +'<span class="rv-chip ok">الفرص المتبقية: '+ar(chancesLeft)+'</span>'
-      +'<span class="rv-chip">حجز مؤقت 24 ساعة</span>'
+      +'<span class="rv-chip ok">الوظائف المعيَّنة الآن: '+ar(pickedJobs.length)+'</span>'
+      +'<span class="rv-chip">الفرص المتاحة للتعيين: '+ar(G.maxPick())+'</span>'
+      +'<span class="rv-chip">حجز مؤقت 24 ساعة لكل وظيفة</span>'
       +'<span class="rv-chip">صلاحية 30 يوماً</span>'
       +'</div>';
 
     h+='<div id="rv-err"></div>'
-      +'<div class="rv-note">بالضغط على <b>«إتمام التقديم»</b> تُسجَّل استمارتك في نظام الشركة وتُحجز الوظيفة مؤقتاً <b>24 ساعة</b>. '
+      +'<div class="rv-note">بالضغط على <b>«إتمام التقديم»</b> تُسجَّل استمارتك في نظام الشركة وتُحجز كل وظيفة اخترتها مؤقتاً <b>24 ساعة</b>. '
       +'الفرصة <b>لا تعود</b> بعد الإتمام بأي نتيجة، وتبقى بقية الفرص صالحة حتى انتهاء مدة البطاقة. '
-      +'تُطبع الاستمارة بباركود بطاقتك نفسه ليراها صاحب العمل.</div>'
+      +'تُطبع استمارة بباركود بطاقتك نفسه لكل وظيفة ليراها صاحب العمل.</div>'
       +'</div>';
 
     host.innerHTML=h;
@@ -1261,7 +1305,7 @@ var G={
   finish:function(){
     if(chancesLeft<=0){G.rvError('انتهت فرص هذه البطاقة — لا يمكن إرسال طلب جديد. راجع المكتب لتجديدها.');return;}
     if(!cardData){G.rvError('البيانات لم تُحمّل بعد — انتظر ثوانٍ ثم أعد المحاولة.');return;}
-    if(!selectedJob){G.go(6);return;}
+    if(!pickedJobs.length){G.go(6);return;}
     if(!ensureClient()){G.rvError('لا يوجد اتصال بالخادم — تحقق من الإنترنت.');return;}
 
     /* إعادة التحقق من كل الخطوات: الزبون قد يكون رجع وعدّل شيئاً */
@@ -1270,25 +1314,59 @@ var G={
     }
 
     var btn=$('btn-finish');btnLoading(btn,true);
+    var list=pickedJobs.slice(0,G.maxPick());
+    var outcomes=[];   /* تقديمات نجحت: {job,data,index} */
+    var failures=[];   /* تقديمات فشلت: {job,error,index} */
+    var profile=G.readProfile();
     var saved=false;   /* صار الطلب مسجّلاً في نظام الشركة؟ (تُستهلك الفرصة عندها) */
-    client.rpc('apply_with_card',{p_serial:cardSerial,p_code:((typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('hrc.cardCode') : '') || window.prompt('اكتب رمز البطاقة المطبوع (٤ أرقام + حرفين)') || '').trim().toUpperCase(),p_job_code:selectedJob.code,p_data:G.readProfile()})
-    .then(function(res){
+
+    /* تُنفَّذ الطلبات واحداً بعد واحد (لا بالتوازي): الأول يفعّل البطاقة الفارغة
+       إن كانت فارغة، والثاني يستهلك الفرصة الثانية على نفس البطاقة. */
+    function applyAt(i){
+      if(i>=list.length)return Promise.resolve();
+      var job=list[i];
+      return client.rpc('apply_with_card',{p_serial:cardSerial,p_job_code:job.code,p_data:profile})
+        .then(function(res){
+          var msg=null;
+          if(res&&res.error){
+            msg=isMissingFunction(res.error)?'MISSING':String(res.error.message||res.error);
+          }else if(!res.data||res.data.ok===false){
+            msg=res.data?(res.data.error||'تعذّر التقديم'):'لا نتيجة من الخادم — تحقق من الإنترنت';
+          }
+          if(msg){failures.push({job:job,error:msg,index:i});return applyAt(i+1);}
+          var d=res.data;
+          saved=true;
+          outcomes.push({job:job,data:d,index:i});
+          /* تحديث حالة البطاقة في الواجهة فوراً */
+          cardData.profile=d.profile||d.app||profile;
+          chancesLeft=Math.max(0,chancesLeft-1);
+          appliedJobs.push({jobCode:job.code,jobTitle:job.title});
+          var empty=null;
+          (cardData.chances||[]).forEach(function(ch){if(!empty&&ch.slotStatus==='empty')empty=ch;});
+          if(empty){empty.slotStatus='reserved';empty.jobCode=job.code;empty.jobTitle=job.title;}
+          return applyAt(i+1);
+        })
+        .catch(function(){
+          failures.push({job:job,error:'تعذّر الاتصال بالخادم',index:i});
+          return applyAt(i+1);
+        });
+    }
+
+    applyAt(0).then(function(){
       btnLoading(btn,false);
-      if(res.error){
-        if(isMissingFunction(res.error)){G.rvError('قاعدة الشركة تحتاج تحديثاً بسيطاً (دالة التقديم الذاتي غير مثبّتة فيها) — راجع إدارة الشركة.');return;}
-        G.rvError('تعذّر التقديم — '+((res.error.message||res.error)+' — حاول مرة أخرى أو تواصل مع الشركة'));
+      if(!outcomes.length){
+        var f=failures[0]||{};
+        if(f.error==='MISSING')G.rvError('قاعدة الشركة تحتاج تحديثاً بسيطاً (دالة التقديم الذاتي غير مثبّتة فيها) — راجع إدارة الشركة.');
+        else G.rvError('تعذّر التقديم — '+esc(f.error||'حاول مرة أخرى')+' — لم تُستهلك أي فرصة من بطاقتك.');
         return;
       }
-      var d=res.data;
-      if(!d||d.ok===false){G.rvError(d?(d.error||'تعذّر التقديم'):'لا نتيجة من الخادم — تحقق من الإنترنت');return;}
-      saved=true;
-      G.onSuccess(d,selectedJob);
+      G.showResults(outcomes,failures);
     }).catch(function(e){
       btnLoading(btn,false);
       /* مهم: إن كان الطلب قد سُجِّل فعلاً فالخطأ في العرض لا في الاتصال —
          لا نقول للزبون «خطأ اتصال» فيعيد المحاولة وتُستهلك فرصة ثانية بلا داعٍ */
-      if(saved){G.plainResult(e);return;}
-      G.rvError('خطأ في الاتصال — تحقق من الإنترنت وحاول مرة أخرى');
+      if(saved){G.showResults(outcomes,failures);return;}
+      G.plainResult(e);
     });
   },
 
@@ -1297,15 +1375,21 @@ var G={
      نعرض بطاقة نتيجة مبسّطة بباركود بطاقته وزرّي طباعة ونسخ رابط. */
   plainResult:function(err){
     if(err)console.error('تعذّر عرض الاستمارة الكاملة:',err);
-    var j=selectedJob||{};
     var host=$('result-content');
     if(!host)return;
+    /* قد يكون الزبون قدّم على وظيفتين في الجلسة نفسها: نعرض كل طلباته المسجَّلة */
+    var list=appliedJobs.length?appliedJobs:pickedJobs.map(function(j){return{jobCode:j.code,jobTitle:j.title};});
+    if(!list.length)list=[{jobCode:'',jobTitle:''}];
+    var rows=list.map(function(j){
+      return '<div class="rv-row" style="text-align:right"><div class="rv-k">الوظيفة</div><div class="rv-v">'+esc(j.jobTitle||'—')+
+        ' <span class="mono" dir="ltr">('+esc(j.jobCode||'—')+')</span></div></div>';
+    }).join('');
     host.innerHTML='<div class="rv-card" style="text-align:center">'
       +'<div style="font-size:34px;line-height:1">✅</div>'
       +'<div class="rv-t" style="margin-top:6px">تم تسجيل طلبك</div>'
-      +'<div class="rv-s" style="margin-top:4px">وصلنا طلبك على وظيفة «'+esc(j.title||'—')+'» — لكن تعذّر عرض الاستمارة الكاملة على هذه الشاشة.</div>'
+      +'<div class="rv-s" style="margin-top:4px">وصلنا '+(list.length===1?'طلبك على وظيفتك':'طلباتك على وظيفتَي فرصتيك')+' — لكن تعذّر عرض الاستمارة الكاملة على هذه الشاشة.</div>'
       +'<div class="rv-row" style="text-align:right"><div class="rv-k">رقم البطاقة</div><div class="rv-v mono" dir="ltr">'+esc(cardSerial)+'</div></div>'
-      +'<div class="rv-row" style="text-align:right"><div class="rv-k">كود الوظيفة</div><div class="rv-v mono" dir="ltr">'+esc(j.code||'—')+'</div></div>'
+      +rows
       +'<div class="rv-note">بياناتك محفوظة في نظام الشركة. اطبع هذه الصفحة أو راجع مكتب الشركة لنسخة مطبوعة — ولا تُعِد التقديم (الفرصة تُستهلك مرة واحدة).</div>'
       +'</div>';
     var acts=$('result-actions');
@@ -1320,16 +1404,9 @@ var G={
   },
 
   /* ═══════════════════════════════════════════════════════════
-     النتيجة — استمارة التوظيف الكاملة
+     ورقة الاستمارة (A4) لتقديم واحد — تُبنى لكل وظيفة قدّم عليها الزبون
      ═══════════════════════════════════════════════════════════ */
-  onSuccess:function(data,job){
-    cardData.profile=data.profile||data.app||G.readProfile();
-    G.fillProfile(cardData.profile);
-    appliedJobs.push({jobCode:job.code,jobTitle:job.title});
-    chancesLeft=Math.max(0,chancesLeft-1);
-    var emptyCh=cardData.chances.find(function(ch){return ch.slotStatus==='empty';});
-    if(emptyCh){emptyCh.slotStatus='reserved';emptyCh.jobCode=job.code;emptyCh.jobTitle=job.title;}
-
+  buildForm:function(data,job,attemptNo){
     var att=data.attempt||{};
     var jR=data.job||{};
     var app=data.app||{};
@@ -1351,16 +1428,10 @@ var G={
         holdTxt=hd.toLocaleString('ar-IQ',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
       }
     }
-    var attemptNo=appliedJobs.length; /* 1 أو 2 — أي فرصة استُخدمت الآن */
-
-    /* ══════════════════════════════════════════════════════════
-       بناء الاستمارة — ورقة A4 واحدة: رأس فخم، شريط بطاقة بالباركود،
-       جداول بيانات مهنية، صندوق صاحب العمل، شروط، تعليمات، توقيعات.
-       ══════════════════════════════════════════════════════════ */
     var statusTxt = chancesLeft<=0 ? 'مستنفدة الفرص' : 'سارية';
     var jobStatus = 'مُرشّح للمقابلة';
 
-    var h=''
+    return ''
       +'<div class="form-sheet">'
       /* ── رأس الاستمارة ── */
       +'<div class="fs-head">'
@@ -1372,12 +1443,12 @@ var G={
 
       /* ── شريط البطاقة: الباركود + بياناتها ── */
       +'<div class="fs-meta">'
-      +'<div class="fs-qr"><div class="box" id="qr-box"></div>'
+      +'<div class="fs-qr"><div class="box" data-qr="'+esc(cUrl)+'" data-serial="'+esc(cardSerial)+'"></div>'
       +'<div class="cap">'+esc(cardSerial)+'</div><div class="cap2">امسح للتحقق</div></div>'
       +'<div class="fs-fields">'
       +'<div class="fs-f"><div class="k">رقم البطاقة</div><div class="v" style="direction:ltr">'+esc(cardSerial)+'</div></div>'
       +'<div class="fs-f"><div class="k">حالة البطاقة</div><div class="v">'+esc(statusTxt)+'</div></div>'
-      +'<div class="fs-f"><div class="k">الفرصة المستخدمة</div><div class="v">'+esc(attemptNo)+' من 2</div></div>'
+      +'<div class="fs-f"><div class="k">الفرصة المستخدمة</div><div class="v">'+ar(attemptNo)+' من ٢</div></div>'
       +'<div class="fs-f"><div class="k">نقطة البيع</div><div class="v">تقديم ذاتي عبر الموقع</div></div>'
       +'<div class="fs-f"><div class="k">انتهاء الصلاحية</div><div class="v" style="direction:ltr">'+esc(expTxt)+'</div></div>'
       +'<div class="fs-f"><div class="k">مهلة الرد على الحجز</div><div class="v">'+esc(holdTxt)+'</div></div>'
@@ -1440,7 +1511,16 @@ var G={
       +'<div class="fs-foot">خدمات الشركة تنحصر في توفير الأيادي العاملة الفنية والتخصصية فقط وليس الأمنية — والشركة غير مسؤولة قانونياً وعشائرياً عن الشخص المرسل وصاحب العمل.<br>'
       +'الحلة – بابل، العراق — <b dir="ltr">07760058007 / 07715993271</b></div>'
 
-      +'</div></div>';
+      +'</div>'
+      +'</div>';
+  },
+
+  /* ═══════════════════════════════════════════════════════════
+     صفحة النتيجة: النجاح + ورقة A4 لكل وظيفة قدّم عليها الزبون
+     ═══════════════════════════════════════════════════════════ */
+  showResults:function(outcomes,failures){
+    var host=$('result-content');if(!host)return;
+    var titles=outcomes.map(function(o){return esc(o.job.title);}).join('</b> + <b>');
 
     /* ── رأس النجاح: علامة صح مرسومة + وميض ذهبي ── */
     var sparks='';
@@ -1451,18 +1531,28 @@ var G={
     var hero='<div class="ok-hero">'
       +'<div class="ok-check"><svg viewBox="0 0 24 24"><path d="M4.5 12.5l4.8 4.8L19.5 7"/></svg></div>'
       +'<div class="ok-title">تم التقديم بنجاح ✓</div>'
-      +'<div class="ok-sub">مُسجَّلة الفرصة <b>'+ar(appliedJobs.length)+'</b> على وظيفة <b>'+esc(job.title)+'</b><br>'
-      +'حُجزت الوظيفة مؤقتاً <b>24 ساعة</b> — راجع صاحب العمل بالاستمارة أدناه.</div>'
+      +'<div class="ok-sub">مُسجَّلة <b>'+ar(outcomes.length)+'</b> '+(outcomes.length===1?'فرصة':'فرصتان')+' على <b>'+titles+'</b><br>'
+      +'كل وظيفة محجوزة مؤقتاً <b>24 ساعة</b> — راجع صاحب العمل بالاستمارة أدناه.</div>'
       +sparks+'</div>';
+
+    var sheets=outcomes.map(function(o){return G.buildForm(o.data,o.job,o.index+1);}).join('');
+
+    var failNote = failures.length
+      ? '<div class="alert alert-error" style="margin-top:10px"><span class="ico">⚠️</span><span class="msg">' +
+        'تعذّر تثبيت: ' + failures.map(function(f){
+          return '<b>'+esc(f.job.title)+'</b> ('+esc(f.error==='MISSING'?'قاعدة الشركة تحتاج تحديثاً — راجع الإدارة':f.error)+')';
+        }).join(' · ') +
+        ' — الطلبات الناجحة أعلاه مسجَّلة، ولم تُستهلك فرصة على ما فشل.</span></div>'
+      : '';
 
     var note = chancesLeft>0
       ? '<div class="alert alert-info" style="margin-top:10px"><span class="ico">📷</span><span class="msg">متبقي لك <b>'+ar(chancesLeft)+'</b> '+(chancesLeft===1?'فرصة':'فرص')+' — استخدم <b>نفس باركود البطاقة</b> لاختيار وظيفة أخرى خلال مدة الصلاحية</span></div>'
-      : '<div class="alert alert-error" style="margin-top:10px"><span class="ico">⚠️</span><span class="msg">انتهت فرص هذه البطاقة — تُشترى بطاقة جديدة من نقاط البيع</span></div>';
+      : '<div class="alert alert-error" style="margin-top:10px"><span class="ico">⚠️</span><span class="msg">استُهلكت فرصتا البطاقة — تُشترى بطاقة جديدة من نقاط البيع</span></div>';
 
-    $('result-content').innerHTML=hero+h+note;
+    host.innerHTML=hero+sheets+failNote+note;
     $('steps-bar').style.display='none';
 
-    /* ── أزرار ما بعد الاستمارة: طباعة · باركود لوظيفة ثانية · نسخ الرابط ── */
+    /* ── أزرار ما بعد الاستمارة: طباعة · وظيفة أخرى · نسخ الرابط ── */
     var acts='<button class="btn btn-primary btn-shine" onclick="window.print()">🖨️ طباعة الاستمارة (A4)</button>';
     if(chancesLeft>0){
       acts+='<button class="btn btn-ghost-gold" onclick="G.go(6)">📷 استخدام الباركود لاختيار وظيفة ثانية</button>';
@@ -1471,31 +1561,36 @@ var G={
     var actsHost=$('result-actions');
     if(actsHost)actsHost.innerHTML=acts;
 
-    /* توليد الباركود QR — تحميل كسول */
+    /* توليد باركود QR لكل ورقة — تحميل كسول */
     function genQR(){
       try{
-        if(window.HRCQR){
-          var qrBox=$('qr-box');
-          if(qrBox){
-            var model=HRCQR.encode(cUrl,'M');
-            qrBox.innerHTML=HRCQR.renderSVG(model,{margin:1,size:84,dark:'#16294d',light:'#ffffff'});
-          }
+        if(!window.HRCQR)return;
+        var boxes=document.querySelectorAll('#result-content [data-qr]');
+        for(var i=0;i<boxes.length;i++){
+          var box=boxes[i];
+          try{
+            var model=HRCQR.encode(box.getAttribute('data-qr'),'M');
+            box.innerHTML=HRCQR.renderSVG(model,{margin:1,size:84,dark:'#16294d',light:'#ffffff'});
+          }catch(e){box.innerHTML='<div style="font-size:7pt;color:#8d7c50;direction:ltr">'+esc(box.getAttribute('data-serial')||'')+'</div>';}
         }
       }catch(e){}
     }
     if(window.HRCQR){genQR();}
     else{
-      var s=document.createElement('script');s.src='assets/js/qr.js';s.onload=genQR;
-      s.onerror=function(){var qb=$('qr-box');if(qb)qb.innerHTML='<div style="font-size:7pt;color:#8d7c50;direction:ltr">'+esc(cardSerial)+'</div>';};
-      document.head.appendChild(s);
+      var sc=document.createElement('script');sc.src='assets/js/qr.js';sc.onload=genQR;
+      sc.onerror=function(){
+        var boxes=document.querySelectorAll('#result-content [data-qr]');
+        for(var i=0;i<boxes.length;i++){boxes[i].innerHTML='<div style="font-size:7pt;color:#8d7c50;direction:ltr">'+esc(boxes[i].getAttribute('data-serial')||'')+'</div>';}
+      };
+      document.head.appendChild(sc);
     }
 
-    /* لا تبقى الوظيفة مختارة عند العودة لقائمة الوظائف */
-    selectedJob=null;
+    /* لا تبقى الوظائف معيَّنة عند العودة لقائمة الوظائف */
+    pickedJobs=[];
+    G.renderChances();
 
-    G.go(8); /* pg-result — الاستمارة */
+    G.go(8); /* pg-result — الاستمارات */
   },
-
   /* نسخ رابط الاستمارة (هو نفسه محتوى الباركود) */
   copyLink:function(){
     var url=(location.origin||'https://hrc-babil.com')+location.pathname.replace(/[^/]*$/,'')+'apply.html?form='+encodeURIComponent(cardSerial);
@@ -1634,7 +1729,9 @@ function loadData(){
   cardSerial=serial.trim().toUpperCase();
 
   Promise.all([
-    client.rpc('self_service_card',{p_serial:cardSerial,p_code:((typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('hrc.cardCode') : '') || window.prompt('اكتب رمز البطاقة المطبوع (٤ أرقام + حرفين)') || '').trim().toUpperCase()}),
+    /* قرار الإدارة 2026-10-06: قراءة الباركود لا تطلب أي رمز — لا نافذة
+       رمز البطاقة ولا رمز صاحب العمل (حيازة البطاقة = التحكم). */
+    client.rpc('self_service_card',{p_serial:cardSerial}),
     client.from('public_jobs').select('*')
   ]).then(function(res){
     var cr=res[0];

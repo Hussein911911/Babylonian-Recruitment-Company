@@ -577,10 +577,18 @@
       });
     });
     (pa.critical || []).forEach(function (h) {
+      /* مصدران للحالة الحرجة: انتهاء مهلة 24 ساعة، أو رفض صاحب العمل بسبب
+         مكتوب (قرار 2026-10-06) — والثاني يُعرض بسببه لأن الموظف يقرؤه قبل أن
+         يقرر: إرجاع الوظيفة متاحة أو حذفها. */
+      var byEmployer = h.decidedBy === 'employer';
       actions.push({
-        title: '🔴 حالة حرجة — الوظيفة ' + h.job.code,
-        sub: 'البطاقة ' + (h.serial || '—') + ' — انتهت مهلة 24 ساعة دون قرار: حدّد التوظيف أو الإرجاع أو الحذف',
-        badge: '<span class="badge danger">قرار مطلوب</span>',
+        title: (byEmployer ? '🔴 رفض صاحب العمل — الوظيفة ' : '🔴 حالة حرجة — الوظيفة ') + h.job.code,
+        sub: 'البطاقة ' + (h.serial || '—') + (byEmployer
+          ? ' — سبب الرفض: ' + (h.reason || '—') + ' | قرارك: إرجاع الوظيفة متاحة أو حذفها'
+          : ' — انتهت مهلة 24 ساعة دون قرار: حدّد التوظيف أو الإرجاع أو الحذف'),
+        badge: byEmployer
+          ? '<span class="badge danger">رفض صاحب العمل — معلّقة</span>'
+          : '<span class="badge danger">قرار مطلوب</span>',
         act: { label: 'قرار', handler: function () { setView('holds'); } }
       });
     });
@@ -662,7 +670,13 @@
       if (j.status === 'hiring') {
         holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div><span class="badge info">جاري التوظيف — قرار الشركة</span>';
       } else if (j.status === 'reserved' && j.critical) {
-        holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div><span class="badge danger">حرجة — قرار مطلوب</span>';
+        var rejT = Store.getAttempts(j.reservedBy).filter(function (x) {
+          return x.jobId === j.id && x.slotStatus === 'critical';
+        })[0];
+        holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div>' +
+          (rejT && rejT.employerDecision === 'reject'
+            ? '<span class="badge danger">رفض صاحب العمل — معلّقة</span><div class="tiny muted">السبب: ' + UI.esc(rejT.reason || '—') + '</div>'
+            : '<span class="badge danger">حرجة — قرار مطلوب</span>');
       } else if (j.status === 'reserved' && j.holdExpiresAt) {
         holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div>' + UI.holdHtml(j.holdExpiresAt, { withDate: false });
       }
@@ -1362,32 +1376,44 @@
     var t = Store.getAttempts(serial).filter(function (x) {
       return x.jobId === job.id && (x.slotStatus === 'reserved' || x.slotStatus === 'critical' || x.slotStatus === 'hiring');
     })[0];
+    /* رفض صاحب العمل: وصل بسبب مكتوب ⇒ الوظيفة «معلّقة/حرجة» والقرار بيد الموظف:
+       إرجاعها متاحة أو حذفها (قرار الإدارة 2026-10-06). */
+    var empReject = !!(t && t.employerDecision === 'reject');
+    var empReason = (t && (t.reason || '')) || '';
     UI.modal({
-      title: (hiring ? '🔵 قرار توظيف صاحب العمل — ' : critical ? '🔴 قرار حالة حرجة — ' : 'إدارة الحجز المؤقت — ') + job.code,
+      title: (hiring ? '🔵 قرار توظيف صاحب العمل — ' : empReject ? '🔴 رفض صاحب العمل — قرارك بالوظيفة — ' : critical ? '🔴 قرار حالة حرجة — ' : 'إدارة الحجز المؤقت — ') + job.code,
       subtitle: job.title + ' · ' + job.region,
       body: '<div class="data-grid mb-3">' +
         '<div class="data-item"><div class="k">البطاقة المحجوزة</div><div class="v mono">' + UI.esc(serial) + '</div></div>' +
         '<div class="data-item"><div class="k">الفرصة</div><div class="v">#' + (t ? t.no : '—') + '</div></div>' +
-        '<div class="data-item"><div class="k">' + (hiring ? 'طلب صاحب العمل' : critical ? 'انتهى الحجز' : 'ينتهي الحجز') + '</div><div class="v" dir="ltr">' +
+        '<div class="data-item"><div class="k">' + (hiring ? 'طلب صاحب العمل' : empReject ? 'قرار صاحب العمل' : critical ? 'انتهى الحجز' : 'ينتهي الحجز') + '</div><div class="v"' + (hiring || empReject ? ' dir="ltr"' : '') + '>' +
           (hiring
             ? (t && t.employerDecision === 'hire' ? 'تم التوظيف ✅' : 'لم يتم التوظيف') + (t && t.decisionAt ? ' — ' + Store.fmtDateTime(t.decisionAt) : '')
+            : empReject
+            ? 'رفض التوظيف ❌' + (t && t.decisionAt ? ' — ' + Store.fmtDateTime(t.decisionAt) : '')
             : critical ? 'انتهت مهلة 24 ساعة' : Store.fmtDateTime(job.holdExpiresAt)) + '</div></div>' +
         '<div class="data-item"><div class="k">الحالة</div><div class="v">' +
           (hiring ? '<span class="badge info">جاري التوظيف — بانتظار قرارك</span>'
+                  : empReject ? '<span class="badge danger">معلّقة/حرجة — القرار بيدك</span>'
                   : critical ? '<span class="badge danger">حرجة — قرار مطلوب</span>' : UI.holdHtml(job.holdExpiresAt, { withDate: false })) + '</div></div>' +
+        (empReject ? '<div class="data-item" style="grid-column:1/-1;border-color:#f0c3c1;background:#fdf5f4">' +
+          '<div class="k">سبب عدم التوظيف المسجَّل من صاحب العمل</div>' +
+          '<div class="v" style="font-weight:800;color:#a5342f">' + UI.esc(empReason || '— لم يُسجَّل سبب —') + '</div></div>' : '') +
         '<div class="data-item"><div class="k">صاحب العمل</div><div class="v">' + UI.esc(job.employer.name) + '</div></div>' +
         '<div class="data-item"><div class="k">هاتفه</div><div class="v mono" dir="ltr">' + UI.esc(job.employer.phone) + '</div></div>' +
         '<div class="data-item" style="grid-column:1/-1"><div class="k">مكان المقابلة</div><div class="v">' + UI.esc(job.interviewLocation) + '</div></div>' +
         '</div>' +
         '<p class="tiny muted mb-0">' + UI.ic('hourglass') + (hiring
           ? ' طلب صاحب العمل بانتظار قرارك: «تم التوظيف» يثبّته ويغلق الوظيفة، و«رفض» أو «إرجاع» يعيد الوظيفة متاحة — والفرصة مستهلكة بأي نتيجة (قرار معتمد).'
+          : empReject
+          ? ' صاحب العمل رفض التوظيف بالسبب أعلاه — القرار الآن بيدك: <b>«إرجاع الوظيفة»</b> تُتيحها من جديد لبقية المتقدمين، و<b>«حذف الوظيفة»</b> تُزيلها نهائياً، و<b>«تم التوظيف»</b> تُثبّت المتقدم عليها. الفرصة مستهلكة بأي نتيجة (قرار معتمد: لا تعود).'
           : critical
           ? ' انتهت مهلة الـ24 ساعة دون قرار — الوظيفة مقفلة بانتظار قرارك، والفرصة تُستهلك بأي نتيجة (قرار معتمد: لا تعود الفرصة).'
           : ' إن انتهت المدة دون قرار تنتقل الوظيفة إلى حالة «حرجة» وتُحسم من هنا: توظيف أو إرجاع أو حذف.') + '</p>',
       footer: '<button class="btn btn-outline" data-close>إغلاق</button>' +
         '<button class="btn btn-warn" id="h-release">' + UI.ic('refresh') + (hiring ? ' إلغاء التوظيف — الوظيفة متاحة' : ' إرجاع الوظيفة') + '</button>' +
         '<button class="btn btn-danger" id="h-del">' + UI.ic('trash') + ' حذف الوظيفة</button>' +
-        '<button class="btn btn-danger" id="h-reject">' + UI.ic('x-circle') + ' رفض</button>' +
+        (empReject ? '' : '<button class="btn btn-danger" id="h-reject">' + UI.ic('x-circle') + ' رفض</button>') +
         '<button class="btn btn-ok" id="h-win">' + UI.ic('check') + (hiring ? ' تثبيت التوظيف' : ' تم التوظيف') + '</button>',
       onMount: function (box, close) {
         box.querySelector('#h-win').addEventListener('click', function () {
@@ -1395,10 +1421,12 @@
           outcomeModal(serial, t ? t.no : 1, 'succeeded', null,
             hiring ? 'تثبيت طلب صاحب العمل: تم التوظيف — أقرّته الشركة' : null);
         });
-        box.querySelector('#h-reject').addEventListener('click', function () { close(); outcomeModal(serial, t ? t.no : 1, 'rejected'); });
+        var rej = box.querySelector('#h-reject');
+        if (rej) rej.addEventListener('click', function () { close(); outcomeModal(serial, t ? t.no : 1, 'rejected'); });
         box.querySelector('#h-release').addEventListener('click', function () {
           var res = Store.releaseHold(serial, t ? t.no : 1,
             hiring ? 'إلغاء توظيف صاحب العمل بقرار الشركة — أُعيدت الوظيفة متاحة والفرصة مستهلكة'
+                   : empReject ? 'قرار الشركة بعد رفض صاحب العمل: إرجاع الوظيفة متاحة — والفرصة مستهلكة'
                    : critical ? 'إرجاع بعد حالة حرجة — قرار الموظف' : 'إرجاع يدوي من لوحة المتابعة');
           if (res.ok) {
             UI.toast(hiring ? 'warn' : 'warn', hiring ? 'أُلغي التوظيف' : 'تم الإرجاع',
@@ -1446,7 +1474,10 @@
         '<small>' + UI.esc(h.job.region) + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
         '<div class="tiny muted mt-1">مكان المقابلة: ' + UI.esc(h.job.interviewLocation) + '</div></div>' +
         '<div><div class="tiny muted">البطاقة</div><div class="mono">' + UI.esc(h.serial || '—') + '</div>' +
-        '<span class="badge danger">حرجة — انتهت مهلة 24 ساعة</span></div>' +
+        (h.decidedBy === 'employer'
+          ? '<span class="badge danger">رفض صاحب العمل — معلّقة بيدك</span>' +
+            '<div class="tiny" style="margin-top:4px;color:#a5342f;font-weight:700">السبب: ' + UI.esc(h.reason || '—') + '</div>'
+          : '<span class="badge danger">حرجة — انتهت مهلة 24 ساعة</span>') + '</div>' +
         '<div class="flex" style="gap:6px;flex-wrap:wrap">' +
           '<button class="btn btn-danger btn-sm" data-hold-manage="' + UI.esc(h.job.code) + '">' + UI.ic('alert') + ' قرار</button>' +
           '<button class="btn btn-outline btn-sm" data-hold-app="' + UI.esc(h.serial || '') + '">البطاقة</button>' +

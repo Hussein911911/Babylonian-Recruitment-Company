@@ -187,7 +187,9 @@
       staff: r.staff_id ? (staffById[r.staff_id] || null) : null,
       /* ج4 2026-10-01: طلب صاحب العمل (توظيف/عدم توظيف) بانتظار قرار الشركة */
       employerDecision: r.employer_decision || null,
-      decisionAt: toISO(r.decision_at)
+      decisionAt: toISO(r.decision_at),
+      /* ج5 2026-10-06: سبب قلة التوظيف المكتوب من صاحب العمل (إلزامي) */
+      reason: r.employer_reason || ''
     };
   }
 
@@ -206,7 +208,8 @@
       chance_code: o.code || null,          /* رمز الفرصة السري (ظهر البطاقة) */
       selected_at: o.selectedAt || null, hold_expires_at: o.holdExpiresAt || null,
       closed_at: o.closedAt || null, outcome_note: o.note || '',
-      employer_decision: o.employerDecision || null, decision_at: o.decisionAt || null
+      employer_decision: o.employerDecision || null, decision_at: o.decisionAt || null,
+      employer_reason: o.reason || null
     };
   }
 
@@ -642,9 +645,10 @@
    *  موديل 2026-10-01: بيع نقطة البيع + صفحة صاحب العمل (مسارات عامة)
    *  ---------------------------------------------------------------------- */
 
-  /* بيع وتعبئة بطاقة فارغة من الموقع العام: بيانات الزبون + الوظيفة (إلزامي)
-     تُستهلك الفرصة الأولى بحجز 24 ساعة — ترجّع {app, attempt, job} بنفس شكل
-     المخزن المحلي كي تعمل الواجهة (booking) بالمسارين دون تفريق. */
+  /* بيع وتعبئة بطاقة فارغة من الموقع العام: بيانات الزبون (+ الوظيفة اختيارية
+     منذ 2026-10-06: بلا وظيفة يختار الزبون وظيفتَي فرصتيه بنفسه). إن اختار
+     موظف النقطة وظيفةً تُستهلك الفرصة الأولى بحجز 24 ساعة. ترجّع {app, attempt, job}
+     بنفس شكل المخزن المحلي كي تعمل الواجهة (booking) بالمسارين دون تفريق. */
   function activateCardRpc(client, serial, data) {
     if (!serial) return Promise.resolve({ ok: false, error: 'أدخل باركود البطاقة' });
     return rpcCall(client, 'activate_card', {
@@ -665,12 +669,11 @@
       });
   }
 
-  /* صفحة صاحب العمل: الباركود وحده يكفي — بلا رموز فرص (سرّ الزبون).
-     ترجّع {ok, card} بنفس شكل employerView المحلية (بما فيها code للتوجيه). */
-  function employerViewRpc(client, serial, code) {
+  /* صفحة صاحب العمل: الباركود وحده يكفي — بلا رمز صاحب عمل وبلا رموز فرص
+     (قرار الإدارة 2026-10-06). ترجّع {ok, card} بنفس شكل employerView المحلية. */
+  function employerViewRpc(client, serial) {
     if (!serial) return Promise.resolve({ ok: false, code: 'not_found', error: 'أدخل باركود البطاقة' });
-    code = String(code || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('hrc.employerCode')) || '').trim().toUpperCase();
-    return rpcCall(client, 'employer_view', { p_serial: String(serial).trim(), p_code: code })
+    return rpcCall(client, 'employer_view', { p_serial: String(serial).trim() })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
@@ -685,12 +688,15 @@
       });
   }
 
-  /* طلب صاحب العمل (توظيف/عدم توظيف) من صفحة الباركود — الوظيفة «جاري التوظيف» حتى قرار الشركة */
-  function employerDecideRpc(client, serial, decision, code) {
+  /* طلب صاحب العمل من صفحة الباركود — بلا رمز:
+     • hire   ⇒ الوظيفة «جاري التوظيف» حتى تثبيت الشركة
+     • reject ⇒ الوظيفة والفرصة «حرجة» مع السبب، والشركة تقرر: إرجاع أو حذف */
+  function employerDecideRpc(client, serial, decision, reason) {
     if (!serial || !decision) return Promise.resolve({ ok: false, error: 'وسائط ناقصة' });
-    code = String(code || sessionStorage.getItem('hrc.cardCode') || '').trim().toUpperCase();
     return rpcCall(client, 'employer_decide', {
-      p_serial: String(serial).trim(), p_code: code, p_decision: String(decision).trim()
+      p_serial: String(serial).trim(),
+      p_decision: String(decision).trim(),
+      p_reason: String(reason || '').trim()
     })
       .then(function (res) {
         if (res && res.error) {
@@ -699,7 +705,7 @@
         var d = res && res.data;
         if (!d || typeof d !== 'object') return { ok: false, error: 'لا نتيجة من الخادم' };
         if (d.ok === false) return { ok: false, error: d.error || 'تعذّر تسجيل القرار' };
-        return { ok: true, attempt: d.attempt || null, job: d.job || null, decision: d.decision };
+        return { ok: true, attempt: d.attempt || null, job: d.job || null, decision: d.decision, reason: d.reason || '' };
       })
       .catch(function (e) {
         return { ok: false, error: 'تعذّر الاتصال: ' + (e && e.message || e) };

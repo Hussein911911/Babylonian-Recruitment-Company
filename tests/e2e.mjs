@@ -451,11 +451,11 @@ const emp = await open('index.html', '?role=employer#card=' + encodeURIComponent
 await wait(900);
 {
   const box = lastModal(emp.doc);
-  check('مسح باركود بطاقة مفعّلة يفتح بوابة الدور (زبون / صاحب العمل)',
-    !!box && /أنا صاحب العمل/.test(box.textContent) && !!box.querySelector('#bk-gate-emp'));
-  const btn = box.querySelector('#bk-gate-emp');
-  if (btn) click(emp.w, btn);
-  await wait(350);
+  /* قرار 2026-10-06: رابط «صاحب العمل؟» يفتح صفحته مباشرة — بلا بوابة دور وبلا رمز */
+  check('رابط صاحب العمل (role=employer) يفتح صفحة صاحب العمل مباشرة بلا بوابة ولا رمز',
+    !!box && /تعريف المتقدم/.test(box.textContent) && !box.querySelector('#bk-gate-emp') &&
+    !/اكتب رمز|رمز صاحب العمل/.test(box.textContent));
+  await wait(50);
 }
 {
   const box = lastModal(emp.doc);
@@ -507,7 +507,7 @@ await wait(900);
     const b2 = lastModal(emp2.doc);
     const g = b2 && b2.querySelector('#bk-gate-emp');
     if (g) { click(emp2.w, g); await wait(350); }
-    const b3 = lastModal(emp2.doc);
+    const b3 = b2 && /تعريف المتقدم/.test(b2.textContent) ? b2 : lastModal(emp2.doc);
     const t3 = b3 ? b3.textContent : '';
     check('صفحة صاحب العمل بعد الطلب: «بانتظار تثبيت الشركة» وبلا أزرار قرار',
       /بانتظار تثبيت الشركة/.test(t3) && !b3.querySelector('#bk-emp-hire') && !b3.querySelector('#bk-emp-reject'));
@@ -775,7 +775,7 @@ const DB5 = pub2.w.HRCStore.exportJson();
   B2.close();
 }
 
-/* صاحب العمل يسجّل طلب «لم يتم التوظيف» — لا حسم فوري، والقرار للشركة */
+/* صاحب العمل يرفض التوظيف بسبب مكتوب — الوظيفة «معلّقة/حرجة» والقرار للشركة */
 const emp2 = await open('index.html', '?role=employer#card=' + encodeURIComponent(SERIAL2), { db: DB5 });
 await wait(900);
 {
@@ -786,29 +786,140 @@ await wait(900);
   const reject = b2 && b2.querySelector('#bk-emp-reject');
   check('زر «لم يتم التوظيف» ظاهر لصاحب العمل', !!reject);
   if (reject) { click(emp2.w, reject); await wait(300); }
+  /* السبب إلزامي: الضغط بلا سبب يوقف مع رسالة ولا يسجّل شيئاً */
   const b3 = lastModal(emp2.doc);
-  const yes = b3 && b3.querySelector('[data-ok]');
-  if (yes) { click(emp2.w, yes); await wait(450); }
+  check('نافذة الرفض تطلب سبباً مكتوباً (إلزامي)',
+    !!b3 && !!b3.querySelector('#bk-reason') && /السبب إلزامي/.test(b3.textContent));
+  const okNoReason = b3.querySelector('#bk-reason-ok');
+  if (okNoReason) { click(emp2.w, okNoReason); await wait(250); }
+  const b4 = lastModal(emp2.doc);
+  const E2Sx = emp2.w.HRCStore;
+  check('الرفض بلا سبب مرفوض ولا يُسجَّل أي قرار',
+    !!b4 && b4.querySelector('#bk-reason-err').style.display !== 'none' &&
+    !E2Sx.getAttempts(SERIAL2)[0].employerDecision,
+    E2Sx.getAttempts(SERIAL2)[0].employerDecision || 'بلا قرار');
+  /* السبب مكتوباً: يُحفظ ويُنقل الوظيفة والفرصة إلى «حرجة / معلّقة» */
+  setVal(emp2.w, b4.querySelector('#bk-reason'), 'العدد مكتمل ولا حاجة لمزيد من العاملين');
+  click(emp2.w, b4.querySelector('#bk-reason-ok'));
+  await wait(500);
   const E2S = emp2.w.HRCStore;
-  check('الوظيفة HRC-1046 أصبحت «جاري التوظيف» بطلب عدم توظيف',
-    E2S.getJob('HRC-1046').status === 'hiring' &&
-    E2S.getAttempts(SERIAL2)[0].employerDecision === 'reject',
-    E2S.getJob('HRC-1046').status);
-  check('طلب الرفض موثّق بسجل التدقيق', E2S.listAudit().some((l) => /طلب رفض من صاحب العمل/.test(l.action)));
+  const att2 = E2S.getAttempts(SERIAL2)[0];
+  const job2 = E2S.getJob('HRC-1046');
+  check('الفرصة انتقلت لحالة «حرجة» مع قرار الرفض وسببه',
+    att2.slotStatus === 'critical' && att2.employerDecision === 'reject' &&
+    /العدد مكتمل/.test(att2.reason || ''), att2.slotStatus + ' / ' + att2.reason);
+  check('الوظيفة HRC-1046 رجعت «معلّقة/حرجة» — لا إغلاق ولا حجز مؤقت',
+    job2.status === 'reserved' && job2.critical === true && !job2.holdExpiresAt,
+    job2.status + ' / critical=' + job2.critical);
+  check('طلبه لم يُحسم معه شيء: لا «جاري توظيف» على الوظيفة',
+    E2S.pendingActions().hiring.every((h) => h.job.code !== 'HRC-1046'));
+  check('طلب الرفض موثّق بسجل التدقيق مع السبب',
+    E2S.listAudit().some((l) => /رفض من صاحب العمل مع السبب/.test(l.action) && /العدد مكتمل/.test(l.details || '')));
+  /* شاشة صاحب العمل بعد الرفض: «حرجة/معلّقة» + السبب المسجَّل + بلا أزرار قرار */
+  const b5 = lastModal(emp2.doc);
+  const t5 = b5 ? b5.textContent : '';
+  check('شاشة صاحب العمل بعد الرفض تُظهر «حرجة — معلّقة» والسبب المسجَّل وبلا أزرار قرار',
+    /سُجّل رفض التوظيف/.test(t5) && /حرجة — معلّقة/.test(t5) && /العدد مكتمل/.test(t5) &&
+    !b5.querySelector('#bk-emp-hire') && !b5.querySelector('#bk-emp-reject'));
 }
 
-/* الشركة تُلغي التوظيف: الوظيفة تعود متاحة والفرصة المستهلَكة لا تعود */
+/* موظف الشركة يرى «إجراءات مطلوبة» بالسبب، وقراره: إرجاع متاحة أو حذف */
 const dash3 = await open('dashboard.html', undefined, { session: 'staff' });
 const D3 = dash3.w.HRCStore;
 D3.importJson(emp2.w.HRCStore.exportJson());
+dash3.w.HRCRefresh && dash3.w.HRCRefresh();
 await wait(250);
-const rel = D3.releaseHold(SERIAL2, 1, 'إلغاء توظيف صاحب العمل بقرار الشركة — الفرصة مستهلكة');
-check('قرار إلغاء التوظيف سُجّل', rel.ok === true, rel.error);
-check('الوظيفة HRC-1046 رجعت «متاحة» لغيره', D3.getJob('HRC-1046').status === 'available');
-check('فرصة البطاقة الثانية المستهلَكة بالإلغاء لا تعود (بقيت فرصة واحدة)', D3.attemptsLeft(SERIAL2) === 1 &&
-  D3.getAttempts(SERIAL2)[0].slotStatus === 'expired');
+click(dash3.w, dash3.doc.querySelector('#side-nav button[data-view="overview"]'));
+await wait(250);
+{
+  const ov = dash3.doc.getElementById('ov-actions');
+  check('«إجراءات مطلوبة» تعرض رفض صاحب العمل وسببه ورقم الوظيفة',
+    !!ov && /رفض صاحب العمل/.test(ov.textContent) && /HRC-1046/.test(ov.textContent) &&
+    /العدد مكتمل/.test(ov.textContent), ov ? ov.textContent.slice(0, 160) : 'لا قائمة');
+}
+click(dash3.w, dash3.doc.querySelector('#side-nav button[data-view="jobs"]'));
+await wait(250);
+{
+  const critBtn = dash3.doc.querySelector('[data-job-critical="HRC-1046"]');
+  check('جدول الوظائف يوفّر زر قرار للحالة المعلّقة', !!critBtn);
+  if (critBtn) { click(dash3.w, critBtn); await wait(300); }
+  const box = lastModal(dash3.doc);
+  check('نافذة القرار تعرض سبب الرفض المسجَّل من صاحب العمل',
+    !!box && /سبب عدم التوظيف المسجَّل/.test(box.textContent) && /العدد مكتمل/.test(box.textContent));
+  check('نافذة القرار توفّر الخيارين المطلوبين: إرجاع الوظيفة متاحة أو حذفها',
+    !!box && !!box.querySelector('#h-release') && !!box.querySelector('#h-del') &&
+    /إرجاع الوظيفة/.test(box.textContent) && /حذف الوظيفة/.test(box.textContent));
+  /* الخيار الأول: إرجاع الوظيفة متاحة — والفرصة مستهلكة لا تعود */
+  if (box.querySelector('#h-release')) { click(dash3.w, box.querySelector('#h-release')); await wait(350); }
+}
+check('الوظيفة HRC-1046 رجعت «متاحة» لغيره بقرار الموظف', D3.getJob('HRC-1046').status === 'available',
+  D3.getJob('HRC-1046').status);
+check('فرصة البطاقة التي رُفضت لا تعود (بقيت فرصة واحدة)', D3.attemptsLeft(SERIAL2) === 1 &&
+  D3.getAttempts(SERIAL2)[0].slotStatus === 'expired', D3.getAttempts(SERIAL2)[0].slotStatus);
+check('قرار الموظف موثّق بالسبب في سجل التدقيق',
+  D3.listAudit().some((l) => /إرجاع الوظيفة متاحة/.test(l.details || '')));
+/* الخيار الثاني متاح أيضاً: حذف الوظيفة نهائياً من نفس النافذة (يُختبر على وظيفة ثالثة) */
+check('حذف الوظيفة متاح كخيار ثانٍ للموظف', typeof D3.deleteJob === 'function' && D3.deleteJob('HRC-1047') === true);
+check('الوظيفة HRC-1047 حُذفت نهائياً بقرار الموظف', !D3.getJob('HRC-1047'));
 check('كل قرارات الرحلة موثقة بسجل التدقيق (' + D3.listAudit().length + ' قيداً)',
-  D3.listAudit().some((l) => /توظيف/.test(l.action)) && D3.listAudit().some((l) => /طلب رفض|إلغاء/.test(l.action)));
+  D3.listAudit().some((l) => /توظيف/.test(l.action)) && D3.listAudit().some((l) => /رفض|إرجاع|حذف/.test(l.action)));
+
+/* ── 6ب) بيع بلا وظيفة: البطاقة تُباع بفرصتين فارغتين والزبون يختار وظيفتَيه ──
+   قرار 2026-10-06: اختيار الوظيفة عند البيع صار اختيارياً — من تخطّاها يعيّن
+   صاحبُ البطاقة وظيفتَي فرصتيه بنفسه من صفحة باركود بطاقته (apply.html). */
+step('6ب', 'بيع بطاقة بلا وظيفة — فرصتان فارغتان يختارهما صاحب البطاقة بنفسه');
+const SERIAL_SKIP = blankSerials[2];
+const pubSkip = await open('index.html', '?role=pos#card=' + encodeURIComponent(SERIAL_SKIP), { db: D3.exportJson() });
+await wait(900);
+{
+  const box = lastModal(pubSkip.doc);
+  check('مسح باركود بطاقة فارغة ثالثة يفتح استمارة نقطة البيع', !!box && !!box.querySelector('#bk-posName'));
+  setVal(pubSkip.w, box.querySelector('#bk-posName'), 'مكتب بابل — المركز');
+  click(pubSkip.w, box.querySelector('#bk-pos-next')); await wait(200);
+  setVal(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-fullName'), 'ليلى عبد الأمير حسن');
+  click(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-pos-next')); await wait(200);
+  setVal(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-phone'), '07711223344');
+  click(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-pos-next')); await wait(200);
+  click(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-pos-next')); await wait(200);  /* العنوان اختياري */
+  click(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-pos-next')); await wait(250);  /* الجنس والميلاد */
+}
+{
+  const box = lastModal(pubSkip.doc);
+  check('خطوة الوظيفة صارت اختيارية بعنوان واضح وخيار تخطٍّ ظاهر',
+    /اختيار الوظيفة \(اختياري\)/.test(box.textContent) && !!box.querySelector('#bk-pos-skip') &&
+    /تخطّي/.test(box.querySelector('#bk-pos-skip').textContent));
+  click(pubSkip.w, box.querySelector('#bk-pos-skip'));
+  await wait(300);
+}
+{
+  const box = lastModal(pubSkip.doc);
+  check('التخطّي ينقل لمراجعة الزبون بلا وظيفة مع توضيح المصير (فرصتان فارغتان)',
+    !!box && /بلا اختيار وظيفة/.test(box.textContent) && /فرصتين فارغتين/.test(box.textContent) &&
+    !/HRC-1046/.test(box.textContent));
+  check('المراجعة لا تطالب بوظيفة ولا تعرض بيانات صاحب عمل', !/مكان المقابلة/.test(box.textContent));
+  click(pubSkip.w, box.querySelector('#bk-pos-confirm'));
+  await wait(600);
+}
+{
+  const P3 = pubSkip.w.HRCStore;
+  const a3 = P3.getApplicant(SERIAL_SKIP);
+  const att3 = P3.getAttempts(SERIAL_SKIP);
+  check('البطاقة فُعّلت بيعاً وبلا وظيفة (الحالة active)', !!a3 && a3.status === 'active', a3 && a3.status);
+  check('الفرصتان بقيتا فارغتين — لم تُستهلك أي فرصة عند البيع',
+    att3.length === 2 && att3.every((t) => t.slotStatus === 'empty') && P3.attemptsLeft(SERIAL_SKIP) === 2,
+    att3.map((t) => t.slotStatus).join(','));
+  check('لا وظيفة محجوزة من هذا البيع', P3.pendingActions().holds.every((h) => h.serial !== SERIAL_SKIP));
+  check('البيع بلا وظيفة موثّق بسجل التدقيق كما هو (بلا اختيار وظيفة)',
+    P3.listAudit().some((l) => /بيع وتعبئة بطاقة فارغة/.test(l.action) && /السERIAL|ليلى عبد الأمير/.test(l.details || '') &&
+      /بلا اختيار وظيفة/.test(l.details || '')));
+  const box = lastModal(pubSkip.doc);
+  check('شاشة البيع تُخبر نقطة البيع أن الزبون يختار وظيفتَيه بنفسه',
+    !!box && /البطاقة صارت نشطة بفرصتين فارغتين/.test(box.textContent) && /يختار وظيفتَيه/.test(box.textContent),
+    box ? box.textContent.slice(0, 160) : '');
+  check('بلا زر طباعة استمارة A4 — لا وظيفة بعد', !box.querySelector('#bk-pos-print'));
+  const closeBtn = box.querySelector('#bk-pos-close');
+  if (closeBtn) { click(pubSkip.w, closeBtn); await wait(200); }
+}
 
 const DB6 = D3.exportJson();
 
@@ -851,59 +962,59 @@ await wait(250);
 /* ═══ 8) إعادة طباعة البطاقة من الموقع العام (إثبات الحيازة) ═════════════ */
 step(8, 'إعادة الطباعة — الزبون يعيد طباعة بطاقته برمز الفرصة (إثبات الحيازة)');
 
-const pub3 = await open('index.html');
-const P3 = pub3.w.HRCStore;
-P3.importJson(DB6);
+const pubCard = await open('index.html');
+const P3C = pubCard.w.HRCStore;
+P3C.importJson(DB6);
 await wait(250);
-const printedBefore = P3.getApplicant(SERIAL).printedCount;
+const printedBefore = P3C.getApplicant(SERIAL).printedCount;
 
-click(pub3.w, pub3.doc.querySelector('header [data-action="open-booking"]'));
+click(pubCard.w, pubCard.doc.querySelector('header [data-action="open-booking"]'));
 await wait(150);
 {
-  const box = lastModal(pub3.doc);
-  setVal(pub3.w, box.querySelector('#bk-serial'), SERIAL);
-  click(pub3.w, box.querySelector('#bk-lookup'));
+  const box = lastModal(pubCard.doc);
+  setVal(pubCard.w, box.querySelector('#bk-serial'), SERIAL);
+  click(pubCard.w, box.querySelector('#bk-lookup'));
   await wait(350);
 }
 {
-  const box = lastModal(pub3.doc);
+  const box = lastModal(pubCard.doc);
   const rp = box.querySelector('#bk-reprint');
   check('زر «إعادة طباعة البطاقة» ظاهر حتى بعد استنفاد الفرصتين', !!rp);
-  if (rp) { click(pub3.w, rp); await wait(250); }
+  if (rp) { click(pubCard.w, rp); await wait(250); }
 }
 {
-  const box = lastModal(pub3.doc);
+  const box = lastModal(pubCard.doc);
   /* رمز خاطئ أولاً: إثبات الحيازة إلزامي */
-  setVal(pub3.w, box.querySelector('#bk-rcode'), '0000-ZZ');
-  click(pub3.w, box.querySelector('#bk-print'));
+  setVal(pubCard.w, box.querySelector('#bk-rcode'), '0000-ZZ');
+  click(pubCard.w, box.querySelector('#bk-print'));
   await wait(300);
-  const errHost = pub3.doc.querySelector('[data-bk-err="rcode"]');
+  const errHost = pubCard.doc.querySelector('[data-bk-err="rcode"]');
   check('إعادة الطباعة برمز خاطئ مرفوضة', !!errHost && /رمز الفرصة/.test(errHost.textContent) &&
     errHost.style.display !== 'none', 'لم يظهر خطأ الرمز');
 
-  setVal(pub3.w, box.querySelector('#bk-rcode'), CHANCES[1].code);
-  click(pub3.w, box.querySelector('#bk-print'));
+  setVal(pubCard.w, box.querySelector('#bk-rcode'), CHANCES[1].code);
+  click(pubCard.w, box.querySelector('#bk-print'));
   await wait(450);
 }
-const reprintHtml = pub3.doc.getElementById('print-root').innerHTML;
+const reprintHtml = pubCard.doc.getElementById('print-root').innerHTML;
 check('إعادة طباعة البطاقة نجحت: الوجهان بالباركود والرمزين — وبلا اسم زبون',
   (reprintHtml.match(/class="hrc-card[" ]/g) || []).length === 2 && reprintHtml.includes(SERIAL) &&
   reprintHtml.includes(CHANCES[0].code) && reprintHtml.includes(CHANCES[1].code) &&
   !reprintHtml.includes('مرتضى كريم جبر'));
-check('نافذة الطباعة استُدعيت لإعادة الطباعة', pub3.w.__printed > 0, 'عدد الاستدعاءات ' + pub3.w.__printed);
-check('عدّاد طباعة البطاقة زاد (' + printedBefore + ' → ' + P3.getApplicant(SERIAL).printedCount + ')',
-  P3.getApplicant(SERIAL).printedCount > printedBefore);
+check('نافذة الطباعة استُدعيت لإعادة الطباعة', pubCard.w.__printed > 0, 'عدد الاستدعاءات ' + pubCard.w.__printed);
+check('عدّاد طباعة البطاقة زاد (' + printedBefore + ' → ' + P3C.getApplicant(SERIAL).printedCount + ')',
+  P3C.getApplicant(SERIAL).printedCount > printedBefore);
 
 /* إعادة طباعة استمارة التوظيف A4 بنفس إثبات الحيازة (رمز الفرصة) */
 {
-  const box = lastModal(pub3.doc);
+  const box = lastModal(pubCard.doc);
   const pf = box.querySelector('#bk-print-form');
   check('زر «تحقق واطبع استمارة A4» ظاهر بإعادة الطباعة', !!pf);
-  setVal(pub3.w, box.querySelector('#bk-rcode'), CHANCES[1].code);
-  if (pf) click(pub3.w, pf);
+  setVal(pubCard.w, box.querySelector('#bk-rcode'), CHANCES[1].code);
+  if (pf) click(pubCard.w, pf);
   await wait(450);
 }
-const formReprint = pub3.doc.getElementById('print-root').innerHTML;
+const formReprint = pubCard.doc.getElementById('print-root').innerHTML;
 /* الاستمارة تعرض آخر تقديم (الفرصة الثانية على HRC-1042 هي الأحدث) */
 check('إعادة طباعة استمارة A4 نجحت: الاسم وآخر وظيفة مقدَّم عليها',
   /استمارة توظيف/.test(formReprint) && formReprint.includes(SERIAL) &&
