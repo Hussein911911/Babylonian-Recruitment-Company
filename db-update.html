@@ -30,7 +30,7 @@ button.final{background:linear-gradient(135deg,#3ec1a0,#1f8f96)}
 <div class="part"><div class="phead"><span class="badge">0</span><b>تثبيت قيم التعداد الجديدة ★ ابدأ بهذا — 4 أسطر</b><span class="kb">0KB</span></div><button onclick="cp('sql0')">📋 انسخ الجزء 0</button><div class="ok" id="ok0">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">alter type brc.slot_status add value if not exists 'hiring';</code></div></div><div class="part"><div class="phead"><span class="badge">1</span><b>نظام البطاقات v1 — الحالة الحرجة ورمز الفرصة السري</b><span class="kb">20KB</span></div><button onclick="cp('sql1')">📋 انسخ الجزء 1</button><div class="ok" id="ok1">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">-- سجلاً تاريخياً؛ الجديدة تُعالج بـ brc.run_auto_release() المحذَّثة (حالة حرجة).</code></div></div><div class="part"><div class="phead"><span class="badge">2</span><b>دفعات البطاقات الفارغة والباركودات العشوائية</b><span class="kb">9KB</span></div><button onclick="cp('sql2')">📋 انسخ الجزء 2</button><div class="ok" id="ok2">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">--    الفارغة الجديدة تُدرج بـ status='blank' و issue_date=null من الواجهة.</code></div></div><div class="part"><div class="phead"><span class="badge">3</span><b>بيع نقطة البيع باختيار الوظيفة + صفحة صاحب العمل ★ الأهم</b><span class="kb">12KB</span></div><button onclick="cp('sql3')">📋 انسخ الجزء 3</button><div class="ok" id="ok3">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">grant execute on function brc.employer_decide(text, text)    to anon, authenticated;</code></div></div><div class="part"><div class="phead"><span class="badge">4</span><b>طلب صاحب العمل (توظيف/عدم توظيف) وقرار الشركة</b><span class="kb">13KB</span></div><button onclick="cp('sql4')">📋 انسخ الجزء 4</button><div class="ok" id="ok4">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">'استمارة منتهية الصلاحية (30 يوماً)' يسبقها where f.status = 'expired';</code></div></div>
 <div class="part"><div class="phead"><span class="badge">5</span><b>التقديم الذاتي من باركود البطاقة ★ إن ظهر خطأ عند مسح الباركود فسببه هنا</b><span class="kb">7KB</span></div><button onclick="cp('sql5')">📋 انسخ الجزء 5</button><div class="ok" id="ok5">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">إن ظهر للزبون عند مسح باركود بطاقته خطأ إنكليزي مثل «Could not find the function brc.self_service_card … in the schema cache» فهذا الجزء هو الدواء: يُثبّت دالتَي التقديم الذاتي على القاعدة (self_service_card و apply_with_card) مع منحهما للزائر. بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">where p.proname in ('self_service_card', 'apply_with_card')</code><br>بعد Run لازم يطلع جدول بسطرين (self_service_card و apply_with_card) — وإن طلع فاضي فالتنفيذ ما وصل، أعِد الزر واللصق.</div></div>
 <div class="part"><div class="phead"><span class="badge">6/أ</span><b>إن ظهر خطأ «column "critical" does not exist» — نفّذ هذا أولاً ★ إصلاح 2026-10-06</b><span class="kb">2KB</span></div><button onclick="cp('sql6a')">📋 انسخ الجزء 6/أ</button><div class="ok" id="ok6a">✅ اننسخ — الصقه بمحرر SQL جديد واضغط Run، ثم ارجع للجزء 6 وأعد تنفيذه</div><div class="verify">سبب الخطأ: قاعدتك قديمة ولم تُطبَّق عليها الأجزاء 1–5 من هذه الصفحة، فعمدُ <code dir="ltr">critical</code> وقيم التعداد الجديدة غائبة. هذا المقتطف يُنشئ الناقص فقط (كل سطر <code dir="ltr">if not exists</code> — آمن على أي قاعدة) فيصير الجزء 6 قابلاً للتنفيذ. نفّذه كاستعلام مستقل، ثم أعد تشغيل الجزء 6. <b>ملاحظة:</b> إذا لم تكن طبّقت الأجزاء 0–5 من قبل، فنفّذها بالترتيب بعد ذلك للحصول على بقية ميزات البطاقة.</div></div><div class="part"><div class="phead"><span class="badge">6</span><b>الباركود يكفي + فرصتان يختارهما صاحب البطاقة + رفض صاحب العمل بالسبب ★ الأحدث</b><span class="kb">44KB</span></div><button onclick="cp('sql6')">📋 انسخ الجزء 6</button><div class="ok" id="ok6">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">نفّذه إن كان مسح باركود البطاقة يطلب رمزاً، أو أردت أن يختار صاحب البطاقة وظيفتَي فرصتيه بنفسه، أو أن يُسجَّل سبب رفض صاحب العمل وتُترك الوظيفة «حرجة — معلّقة» ليقرر الموظف: إرجاعها متاحة أو حذفها. <b>ويصلح أيضاً سبعة أعطال كانت تمنع عمل ذلك فعلاً على القاعدة</b>، ومنها <b>خطأ <code dir="ltr">ERROR 42703: column "critical" does not exist</code></b> على القواعد القديمة — النسخة الجديدة تُنشئ الأعمدة وقيم التعداد الناقصة بنفسها قبل أن تستعملها (قيمتا pending/rejected الناقصتان من نوع الحالة، قيد الوظيفة الحرجة، تحرير الوظيفة عند إرجاعها، ومسار البيع بلا وظيفة، و<b>البطاقة الجديدة التي كانت تظهر لها «انتهت فرصك» بلا سبب</b> — الآن تُرمَّم خانات فرصتها تلقائياً عند القراءة). بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">notify pgrst, 'reload schema';</code><br>ثم نفّذ آخر سطر وحده إن بقي أي خطأ «in the schema cache».<br>للتحقق: <code dir="ltr">select pg_get_function_identity_arguments(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='brc' and p.proname in ('self_service_card','employer_view','employer_decide');</code> — لازم تطلع self_service_card(text) و employer_view(text) و employer_decide(text,text,text) بلا نسخ مشغولة برمز.</div></div>
-<div class="part"><div class="phead"><span class="badge">9</span><b>فحص النتيجة — تأكد أن كل شي تمام ★ اختياري لكن مطمئن</b><span class="kb">4KB</span></div><button onclick="cp('sql9a')">📋 انسخ فحص التثبيت</button><button onclick="cp('sql9b')">📋 انسخ الفحص الوظيفي</button><div class="ok" id="ok9a">✅ اننسخ — الصقه بمحرر SQL واضغط Run (قراءة فقط، لا يغيّر شي)</div><div class="ok" id="ok9b">✅ اننسخ — يُنشئ بطاقة وهمية ثم يتراجع عنها كاملة (ROLLBACK) فلا يبقى أثر</div><div class="verify"><b>فحص التثبيت:</b> جدول من 19 سطراً — كل سطر لازم يطلع «✅ تمام»؛ أي «❌ ناقص» يعني أعد تنفيذ الجزء 6. وأي سطر «❌» آخر يعني شيئاً ناقصاً على قاعدتك — أرسل صورة النتيجة ونقول لك أي جزء ينفَّذ.<br><b>الفحص الوظيفي:</b> يُنشئ بطاقة اختبار برقم <code dir="ltr">HRC-TEST-CHECK-0001</code> بفرصتين، يحذف خاناتها ليحاكي عطل المزامنة، ثم يقرأها فتعود الفرصتان (الترميم التلقائي) — وبعدها <code dir="ltr">ROLLBACK</code> فلا تبقى أي بطاقة وهمية ولا سجل تدقيق. القراءة: كل سطر «✅ تمام». إن ظهر تحذير «there is already a transaction in progress» فهو طبيعي.</div></div><div class="part"><div class="phead"><span class="badge">7</span><b>إعادة تحميل ذاكرة المخطط (سطر واحد)</b></div>
+<div class="part"><div class="phead"><span class="badge">9</span><b>فحص النتيجة — تأكد أن كل شي تمام ★ اختياري لكن مطمئن</b><span class="kb">4KB</span></div><button onclick="cp('sql9a')">📋 انسخ فحص التثبيت</button><button onclick="cp('sql9b')">📋 انسخ الفحص الوظيفي</button><button onclick="cp('sql9c')">📋 انسخ الفحص السريع (سطران) ★</button><div class="ok" id="ok9a">✅ اننسخ — الصقه بمحرر SQL واضغط Run (قراءة فقط، لا يغيّر شي)</div><div class="ok" id="ok9c">✅ اننسخ — يطلع جدول بسطرين فقط: ① فحص التثبيت و② الفحص الوظيفي — آمن ويتراجع عن كل شي</div><div class="ok" id="ok9b">✅ اننسخ — يُنشئ بطاقة وهمية ثم يتراجع عنها كاملة (ROLLBACK) فلا يبقى أثر</div><div class="verify"><b>فحص التثبيت:</b> جدول من 19 سطراً — كل سطر لازم يطلع «✅ تمام»؛ أي «❌ ناقص» يعني أعد تنفيذ الجزء 6. وأي سطر «❌» آخر يعني شيئاً ناقصاً على قاعدتك — أرسل صورة النتيجة ونقول لك أي جزء ينفَّذ.<br><b>الفحص السريع (سطران):</b> إذا تبي نتيجة واضحة بلا تمرير — نفّذه يعطيك سطرين: ① فحص التثبيت و② الفحص الوظيفي، وكلهما «✅ كلشي تمام» عند التثبيت الصحيح.<br><b>الفحص الوظيفي:</b> يُنشئ بطاقة اختبار برقم <code dir="ltr">HRC-TEST-CHECK-0001</code> بفرصتين، يحذف خاناتها ليحاكي عطل المزامنة، ثم يقرأها فتعود الفرصتان (الترميم التلقائي) — وبعدها <code dir="ltr">ROLLBACK</code> فلا تبقى أي بطاقة وهمية ولا سجل تدقيق. القراءة: كل سطر «✅ تمام». إن ظهر تحذير «there is already a transaction in progress» فهو طبيعي.</div></div><div class="part"><div class="phead"><span class="badge">7</span><b>إعادة تحميل ذاكرة المخطط (سطر واحد)</b></div>
 <button class="final" onclick="cp('sql7')">📋 انسخ الجزء 7 (الأخير)</button>
 <div class="ok" id="ok7">✅ اننسخ — الصقه واضغط Run وخلصنا</div>
 <div class="verify">آخر سطر بعد اللصق لازم يكون:<br><code dir="ltr">notify pgrst, 'reload schema';</code></div></div>
@@ -2448,6 +2448,114 @@ from (
          (select count(*)::text from brc.jobs where status::text = 'available') || ' وظيفة متاحة'
 ) t
 order by ord;
+</textarea><textarea id="sql9c" class="hidden-ta" readonly>-- ===========================================================================
+--  BRC — الفحص السريع (تاريخ 2026-10-06) — النتيجة في سطرين فقط
+--  ---------------------------------------------------------------------------
+--  كيف تستعمله: Supabase → SQL Editor → New query → الصق كله → Run
+--  القراءة: يطلع جدول بسطرين — الأول لفحص التثبيت والثاني للفحص الوظيفي.
+--           إذا الاثنان «✅ كلشي تمام» فالتحديث مثبَّت وشغّال.
+--           إذا طلع «❌ ...» معه تفاصيل الناقص — أرسل صورة السطرين لنا.
+--  ✅ آمن تماماً: يُنشئ بطاقة وهمية برقم HRC-TEST-CHECK-0001 ثم يتراجع عنها
+--     كاملة (ROLLBACK) فلا يبقى أي أثر.
+--  ⚠️ إن ظهر تحذير «there is already a transaction in progress» فهو طبيعي.
+-- ===========================================================================
+begin;
+
+create temp table _brc_m (ord int, val text) on commit drop;
+
+insert into brc.applicants
+  (serial, full_name, phone, address, gender, status, issue_date, expiry_date)
+values
+  ('HRC-TEST-CHECK-0001', 'فحص تقني — يُحذف تلقائياً', '07700000000', 'بابل', 'ذكر',
+   'active', now(), now() + interval '30 days');
+
+insert into _brc_m values (1, brc.self_service_card('HRC-TEST-CHECK-0001') #>> '{card,chancesLeft}');
+delete from brc.job_attempts where serial = 'HRC-TEST-CHECK-0001';
+insert into _brc_m values (2, brc.self_service_card('HRC-TEST-CHECK-0001') #>> '{card,chancesLeft}');
+insert into _brc_m values (3, (select count(*)::text from brc.audit_log
+   where action = 'ترميم خانات فرص ناقصة' and entity_id = 'HRC-TEST-CHECK-0001'));
+insert into _brc_m values (4, (select count(*)::text from brc.job_attempts
+   where serial = 'HRC-TEST-CHECK-0001'));
+
+-- ── النتيجة النهائية: سطران — ① فحص التثبيت و ② الفحص الوظيفي ────────────
+with c as (
+  select 1 ord, (select count(*) from information_schema.columns
+     where table_schema='brc' and table_name='jobs' and column_name='critical') = 1 ok
+  union all select 2, (select count(*) from information_schema.columns
+     where table_schema='brc' and table_name='job_attempts'
+       and column_name in ('chance_code','employer_decision','decision_at')) = 3
+  union all select 3, (select count(*) from information_schema.columns
+     where table_schema='brc' and table_name='job_attempts' and column_name='employer_reason') = 1
+  union all select 4, (select count(*) from information_schema.columns
+     where table_schema='brc' and table_name='applicants'
+       and column_name in ('pos_name','self_application_data')) = 2
+  union all select 5, (select count(*) from pg_enum e join pg_type t on t.oid=e.enumtypid
+     where t.typname='slot_status' and e.enumlabel in ('critical','hiring')) = 2
+  union all select 6, (select count(*) from pg_enum e join pg_type t on t.oid=e.enumtypid
+     where t.typname='job_status' and e.enumlabel = 'hiring') = 1
+  union all select 7, (select count(*) from pg_enum e join pg_type t on t.oid=e.enumtypid
+     where t.typname='form_status' and e.enumlabel in ('blank','pending','rejected','expired')) = 4
+  union all select 8, (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='brc' and p.proname='ensure_card_attempts') = 1
+  union all select 9, (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='brc' and p.proname='self_service_card'
+       and pg_get_function_identity_arguments(p.oid) = 'p_serial text') = 1
+  union all select 10, (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='brc' and p.proname='apply_with_card') = 1
+  union all select 11, (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='brc' and p.proname='employer_view') = 1
+  union all select 12, (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='brc' and p.proname='employer_decide'
+       and pg_get_function_identity_arguments(p.oid) = 'p_serial text, p_decision text, p_reason text') = 1
+  union all select 13, (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='brc' and p.proname='use_chance') >= 1
+  union all select 14, (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='brc'
+       and (   (p.proname='self_service_card' and pg_get_function_identity_arguments(p.oid) = 'p_serial text, p_code text')
+            or (p.proname='employer_view'    and array_length(p.proargtypes, 1) >= 2)
+            or (p.proname='employer_decide'  and array_length(p.proargtypes, 1) = 2))) = 0
+  union all select 15, (select count(*) from pg_views v
+     where v.schemaname='brc' and v.viewname='v_pending_actions') = 1
+  union all select 16, (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='brc' and p.proname='trg_make_attempts'
+       and exists (select 1 from pg_trigger tg
+                     join pg_class cl on cl.oid = tg.tgrelid
+                     join pg_namespace cn on cn.oid = cl.relnamespace
+                    where cn.nspname='brc' and cl.relname='applicants'
+                      and tg.tgfoid = p.oid and not tg.tgisinternal)) = 1
+  union all select 17, (select count(*) from brc.applicants a
+     where (select count(*) from brc.job_attempts x where x.serial = a.serial)
+           &lt; greatest(coalesce(a.attempt_limit, 2), 1)) = 0
+  union all select 18, (select count(*) from brc.applicants a
+     where a.status::text not in ('blank')
+       and not exists (select 1 from brc.job_attempts x where x.serial = a.serial)) = 0
+  union all select 19, true
+),
+v_install as (
+  select case when count(*) filter (where not ok) = 0
+              then '① فحص التثبيت: ✅ كلشي تمام — ' || count(*) || ' من ' || count(*) || ' فحص'
+              else '① فحص التثبيت: ❌ ناقص ' || count(*) filter (where not ok) || ' من ' || count(*) ||
+                   ' — أرقام الفحوص الناقصة: ' || string_agg(ord::text, ', ' order by ord) filter (where not ok)
+         end as txt
+    from c
+),
+v_func as (
+  select case when (select val from _brc_m where ord = 1) = '2'
+               and (select val from _brc_m where ord = 2) = '2'
+               and (select val::int from _brc_m where ord = 3) > 0
+               and (select val::int from _brc_m where ord = 4) = 2
+              then '② الفحص الوظيفي: ✅ كلشي تمام — بطاقة جديدة بفرصتين، وبعد حذف خاناتها رجعت فرصتان (الترميم شغال)'
+              else '② الفحص الوظيفي: ❌ خطأ — القيم: ' ||
+                   (select string_agg('فحص' || ord || '=' || val, ' · ' order by ord) from _brc_m) ||
+                   ' — أرسل صورة هذا السطر'
+         end as txt
+)
+select 1 as "#", (select txt from v_install) as "النتيجة"
+union all
+select 2, (select txt from v_func)
+order by 1;
+
+rollback;
 </textarea><textarea id="sql9b" class="hidden-ta" readonly>-- ===========================================================================
 --  BRC — فحص وظيفي آمن (تاريخ 2026-10-06)
 --  ---------------------------------------------------------------------------
