@@ -30,7 +30,7 @@ button.final{background:linear-gradient(135deg,#3ec1a0,#1f8f96)}
 <div class="part"><div class="phead"><span class="badge">0</span><b>تثبيت قيم التعداد الجديدة ★ ابدأ بهذا — 4 أسطر</b><span class="kb">0KB</span></div><button onclick="cp('sql0')">📋 انسخ الجزء 0</button><div class="ok" id="ok0">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">alter type brc.slot_status add value if not exists 'hiring';</code></div></div><div class="part"><div class="phead"><span class="badge">1</span><b>نظام البطاقات v1 — الحالة الحرجة ورمز الفرصة السري</b><span class="kb">20KB</span></div><button onclick="cp('sql1')">📋 انسخ الجزء 1</button><div class="ok" id="ok1">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">-- سجلاً تاريخياً؛ الجديدة تُعالج بـ brc.run_auto_release() المحذَّثة (حالة حرجة).</code></div></div><div class="part"><div class="phead"><span class="badge">2</span><b>دفعات البطاقات الفارغة والباركودات العشوائية</b><span class="kb">9KB</span></div><button onclick="cp('sql2')">📋 انسخ الجزء 2</button><div class="ok" id="ok2">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">--    الفارغة الجديدة تُدرج بـ status='blank' و issue_date=null من الواجهة.</code></div></div><div class="part"><div class="phead"><span class="badge">3</span><b>بيع نقطة البيع باختيار الوظيفة + صفحة صاحب العمل ★ الأهم</b><span class="kb">12KB</span></div><button onclick="cp('sql3')">📋 انسخ الجزء 3</button><div class="ok" id="ok3">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">grant execute on function brc.employer_decide(text, text)    to anon, authenticated;</code></div></div><div class="part"><div class="phead"><span class="badge">4</span><b>طلب صاحب العمل (توظيف/عدم توظيف) وقرار الشركة</b><span class="kb">13KB</span></div><button onclick="cp('sql4')">📋 انسخ الجزء 4</button><div class="ok" id="ok4">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">'استمارة منتهية الصلاحية (30 يوماً)' يسبقها where f.status = 'expired';</code></div></div>
 <div class="part"><div class="phead"><span class="badge">5</span><b>التقديم الذاتي من باركود البطاقة ★ إن ظهر خطأ عند مسح الباركود فسببه هنا</b><span class="kb">7KB</span></div><button onclick="cp('sql5')">📋 انسخ الجزء 5</button><div class="ok" id="ok5">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">إن ظهر للزبون عند مسح باركود بطاقته خطأ إنكليزي مثل «Could not find the function brc.self_service_card … in the schema cache» فهذا الجزء هو الدواء: يُثبّت دالتَي التقديم الذاتي على القاعدة (self_service_card و apply_with_card) مع منحهما للزائر. بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">where p.proname in ('self_service_card', 'apply_with_card')</code><br>بعد Run لازم يطلع جدول بسطرين (self_service_card و apply_with_card) — وإن طلع فاضي فالتنفيذ ما وصل، أعِد الزر واللصق.</div></div>
 <div class="part"><div class="phead"><span class="badge">6/أ</span><b>إن ظهر خطأ «column "critical" does not exist» — نفّذ هذا أولاً ★ إصلاح 2026-10-06</b><span class="kb">2KB</span></div><button onclick="cp('sql6a')">📋 انسخ الجزء 6/أ</button><div class="ok" id="ok6a">✅ اننسخ — الصقه بمحرر SQL جديد واضغط Run، ثم ارجع للجزء 6 وأعد تنفيذه</div><div class="verify">سبب الخطأ: قاعدتك قديمة ولم تُطبَّق عليها الأجزاء 1–5 من هذه الصفحة، فعمدُ <code dir="ltr">critical</code> وقيم التعداد الجديدة غائبة. هذا المقتطف يُنشئ الناقص فقط (كل سطر <code dir="ltr">if not exists</code> — آمن على أي قاعدة) فيصير الجزء 6 قابلاً للتنفيذ. نفّذه كاستعلام مستقل، ثم أعد تشغيل الجزء 6. <b>ملاحظة:</b> إذا لم تكن طبّقت الأجزاء 0–5 من قبل، فنفّذها بالترتيب بعد ذلك للحصول على بقية ميزات البطاقة.</div></div><div class="part"><div class="phead"><span class="badge">6</span><b>الباركود يكفي + فرصتان يختارهما صاحب البطاقة + رفض صاحب العمل بالسبب ★ الأحدث</b><span class="kb">44KB</span></div><button onclick="cp('sql6')">📋 انسخ الجزء 6</button><div class="ok" id="ok6">✅ اننسخ — الصقه بمحرر SQL واضغط Run</div><div class="verify">نفّذه إن كان مسح باركود البطاقة يطلب رمزاً، أو أردت أن يختار صاحب البطاقة وظيفتَي فرصتيه بنفسه، أو أن يُسجَّل سبب رفض صاحب العمل وتُترك الوظيفة «حرجة — معلّقة» ليقرر الموظف: إرجاعها متاحة أو حذفها. <b>ويصلح أيضاً سبعة أعطال كانت تمنع عمل ذلك فعلاً على القاعدة</b>، ومنها <b>خطأ <code dir="ltr">ERROR 42703: column "critical" does not exist</code></b> على القواعد القديمة — النسخة الجديدة تُنشئ الأعمدة وقيم التعداد الناقصة بنفسها قبل أن تستعملها (قيمتا pending/rejected الناقصتان من نوع الحالة، قيد الوظيفة الحرجة، تحرير الوظيفة عند إرجاعها، ومسار البيع بلا وظيفة، و<b>البطاقة الجديدة التي كانت تظهر لها «انتهت فرصك» بلا سبب</b> — الآن تُرمَّم خانات فرصتها تلقائياً عند القراءة). بعد اللصق اسحب لآخر النص وتأكد أن آخر سطر هو:<br><code dir="ltr">notify pgrst, 'reload schema';</code><br>ثم نفّذ آخر سطر وحده إن بقي أي خطأ «in the schema cache».<br>للتحقق: <code dir="ltr">select pg_get_function_identity_arguments(p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='brc' and p.proname in ('self_service_card','employer_view','employer_decide');</code> — لازم تطلع self_service_card(text) و employer_view(text) و employer_decide(text,text,text) بلا نسخ مشغولة برمز.</div></div>
-<div class="part"><div class="phead"><span class="badge">7</span><b>إعادة تحميل ذاكرة المخطط (سطر واحد)</b></div>
+<div class="part"><div class="phead"><span class="badge">9</span><b>فحص النتيجة — تأكد أن كل شي تمام ★ اختياري لكن مطمئن</b><span class="kb">4KB</span></div><button onclick="cp('sql9a')">📋 انسخ فحص التثبيت</button><button onclick="cp('sql9b')">📋 انسخ الفحص الوظيفي</button><div class="ok" id="ok9a">✅ اننسخ — الصقه بمحرر SQL واضغط Run (قراءة فقط، لا يغيّر شي)</div><div class="ok" id="ok9b">✅ اننسخ — يُنشئ بطاقة وهمية ثم يتراجع عنها كاملة (ROLLBACK) فلا يبقى أثر</div><div class="verify"><b>فحص التثبيت:</b> جدول من 19 سطراً — كل سطر لازم يطلع «✅ تمام»؛ أي «❌ ناقص» يعني أعد تنفيذ الجزء 6. وأي سطر «❌» آخر يعني شيئاً ناقصاً على قاعدتك — أرسل صورة النتيجة ونقول لك أي جزء ينفَّذ.<br><b>الفحص الوظيفي:</b> يُنشئ بطاقة اختبار برقم <code dir="ltr">HRC-TEST-CHECK-0001</code> بفرصتين، يحذف خاناتها ليحاكي عطل المزامنة، ثم يقرأها فتعود الفرصتان (الترميم التلقائي) — وبعدها <code dir="ltr">ROLLBACK</code> فلا تبقى أي بطاقة وهمية ولا سجل تدقيق. القراءة: كل سطر «✅ تمام». إن ظهر تحذير «there is already a transaction in progress» فهو طبيعي.</div></div><div class="part"><div class="phead"><span class="badge">7</span><b>إعادة تحميل ذاكرة المخطط (سطر واحد)</b></div>
 <button class="final" onclick="cp('sql7')">📋 انسخ الجزء 7 (الأخير)</button>
 <div class="ok" id="ok7">✅ اننسخ — الصقه واضغط Run وخلصنا</div>
 <div class="verify">آخر سطر بعد اللصق لازم يكون:<br><code dir="ltr">notify pgrst, 'reload schema';</code></div></div>
@@ -2319,13 +2319,191 @@ do $$ begin alter type brc.job_status  add value if not exists 'hiring';    exce
 do $$ begin alter type brc.form_status add value if not exists 'blank';     exception when others then null; end $$;
 do $$ begin alter type brc.form_status add value if not exists 'pending';   exception when others then null; end $$;
 do $$ begin alter type brc.form_status add value if not exists 'rejected';  exception when others then null; end $$;
-do $$ begin alter type brc.form_status add value if not exists 'expired';   exception when others then null; end $$;</textarea></textarea><textarea id="sql7" class="hidden-ta" readonly>notify pgrst, 'reload schema';</textarea>
+do $$ begin alter type brc.form_status add value if not exists 'expired';   exception when others then null; end $$;</textarea></textarea><textarea id="sql9a" class="hidden-ta" readonly>-- ===========================================================================
+--  BRC — فحص التثبيت بعد الجزء 6 (تاريخ 2026-10-06)
+--  ---------------------------------------------------------------------------
+--  كيف تستعمله: Supabase → SQL Editor → New query → الصق هذا كله → Run
+--  القراءة: كل سطر لازم يطلع «✅ تمام».
+--           أي سطر «❌ ناقص» = أعد تنفيذ الجزء 6 من صفحة التحديث.
+--  ✅ لا يغيّر هذا الفحص أي شي إطلاقاً — قراءة فقط.
+-- ===========================================================================
+select ord as "#",
+       item  as "الفحص",
+       case when ok then '✅ تمام' else '❌ ناقص' end as "النتيجة",
+       detail as "التفاصيل"
+from (
+  select 1 ord, 'عمود brc.jobs.critical (الوظيفة الحرجة)' item,
+         (select count(*) from information_schema.columns
+           where table_schema='brc' and table_name='jobs' and column_name='critical') = 1 ok,
+         'يلزم لمسارَي «رفض صاحب العمل» و«انتهت مهلة 24 ساعة»' detail
+  union all
+  select 2, 'أعمدة job_attempts الثلاثة: chance_code + employer_decision + decision_at',
+         (select count(*) from information_schema.columns
+           where table_schema='brc' and table_name='job_attempts'
+             and column_name in ('chance_code','employer_decision','decision_at')) = 3,
+         'رمز الفرصة السري + قرار صاحب العمل ووقته'
+  union all
+  select 3, 'عمود job_attempts.employer_reason (سبب الرفض)',
+         (select count(*) from information_schema.columns
+           where table_schema='brc' and table_name='job_attempts' and column_name='employer_reason') = 1,
+         'سبب عدم التوظيف الإلزامي'
+  union all
+  select 4, 'عمودا applicants: pos_name + self_application_data',
+         (select count(*) from information_schema.columns
+           where table_schema='brc' and table_name='applicants'
+             and column_name in ('pos_name','self_application_data')) = 2,
+         'نقطة البيع + بيانات التقديم الذاتي'
+  union all
+  select 5, 'قيم slot_status: critical + hiring',
+         (select count(*) from pg_enum e join pg_type t on t.oid=e.enumtypid
+           where t.typname='slot_status' and e.enumlabel in ('critical','hiring')) = 2,
+         'حالة الخانة عند الرفض/التوظيف'
+  union all
+  select 6, 'قيمة job_status: hiring',
+         (select count(*) from pg_enum e join pg_type t on t.oid=e.enumtypid
+           where t.typname='job_status' and e.enumlabel = 'hiring') = 1,
+         'حالة الوظيفة «جاري التوظيف»'
+  union all
+  select 7, 'قيم form_status: blank + pending + rejected + expired',
+         (select count(*) from pg_enum e join pg_type t on t.oid=e.enumtypid
+           where t.typname='form_status' and e.enumlabel in ('blank','pending','rejected','expired')) = 4,
+         'حالات البطاقة'
+  union all
+  select 8, 'دالة brc.ensure_card_attempts(text)',
+         (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+           where n.nspname='brc' and p.proname='ensure_card_attempts') = 1,
+         'الترميم التلقائي لخانات الفرص الناقصة'
+  union all
+  select 9, 'دالة brc.self_service_card(text) — بلا رمز',
+         (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+           where n.nspname='brc' and p.proname='self_service_card'
+             and pg_get_function_identity_arguments(p.oid) = 'p_serial text') = 1,
+         'قراءة البطاقة بالباركود وحده'
+  union all
+  select 10, 'دالة brc.apply_with_card(text, text, jsonb)',
+         (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+           where n.nspname='brc' and p.proname='apply_with_card') = 1,
+         'التقديم الذاتي من الموقع'
+  union all
+  select 11, 'دالة brc.employer_view(text) — بلا رمز',
+         (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+           where n.nspname='brc' and p.proname='employer_view') = 1,
+         'صفحة صاحب العمل بالباركود وحده'
+  union all
+  select 12, 'دالة brc.employer_decide(text, text, text)',
+         (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+           where n.nspname='brc' and p.proname='employer_decide'
+             and pg_get_function_identity_arguments(p.oid) = 'p_serial text, p_decision text, p_reason text') = 1,
+         'قرار التوظيف/الرفض مع السبب'
+  union all
+  select 13, 'دالة brc.use_chance(text, text, text) — تحقّق من الاعتماد القديم',
+         (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+           where n.nspname='brc' and p.proname='use_chance') >= 1,
+         'استهلاك الفرصة عند التقديم (تستدعيها apply_with_card)'
+  union all
+  select 14, 'لا وجود لنسخ «مشغولة برمز» (وإلا الباركود يطلب رمزاً)',
+         (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+           where n.nspname='brc'
+             and (   (p.proname='self_service_card' and pg_get_function_identity_arguments(p.oid) = 'p_serial text, p_code text')
+                  or (p.proname='employer_view'    and array_length(p.proargtypes, 1) >= 2)
+                  or (p.proname='employer_decide'  and array_length(p.proargtypes, 1) = 2))) = 0,
+         'المطلوب: صفر نسخ'
+  union all
+  select 15, 'العرض brc.v_pending_actions',
+         (select count(*) from pg_views v where v.schemaname='brc' and v.viewname='v_pending_actions') = 1,
+         'لوحة «الإجراءات المطلوبة» في لوحة الموظفين'
+  union all
+  select 16, 'مشغّل إنشاء فرصتين لكل بطاقة جديدة (brc.trg_make_attempts)',
+         (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+           where n.nspname='brc' and p.proname='trg_make_attempts'
+             and exists (select 1 from pg_trigger tg
+                           join pg_class c  on c.oid = tg.tgrelid
+                           join pg_namespace cn on cn.oid = c.relnamespace
+                          where cn.nspname='brc' and c.relname='applicants'
+                            and tg.tgfoid = p.oid and not tg.tgisinternal)) = 1,
+         'بدونه لا تُنشأ الفرصتان عند بيع بطاقة فارغة'
+  union all
+  select 17, 'بطاقات خاناتها أقل من حدّها',
+         (select count(*) from brc.applicants a
+           where (select count(*) from brc.job_attempts x where x.serial = a.serial)
+                 &lt; greatest(coalesce(a.attempt_limit, 2), 1)) = 0,
+         (select count(*)::text || ' بطاقة (المتوقع 0 — الجزء 6 يرمّمها جماعياً)'
+            from brc.applicants a
+           where (select count(*) from brc.job_attempts x where x.serial = a.serial)
+                 &lt; greatest(coalesce(a.attempt_limit, 2), 1))
+  union all
+  select 18, 'بطاقات بلا أي خانة فرص إطلاقاً (عطل المزامنة)',
+         (select count(*) from brc.applicants a
+           where a.status::text not in ('blank')
+             and not exists (select 1 from brc.job_attempts x where x.serial = a.serial)) = 0,
+         (select count(*)::text || ' بطاقة (المتوقع 0 — تُرمَّم عند أول قراءة)'
+            from brc.applicants a
+           where a.status::text not in ('blank')
+             and not exists (select 1 from brc.job_attempts x where x.serial = a.serial))
+  union all
+  select 19, 'معلومات: حجم القاعدة',
+         true,
+         (select count(*)::text from brc.applicants) || ' بطاقة · ' ||
+         (select count(*)::text from brc.job_attempts where slot_status::text = 'empty') || ' فرصة متاحة · ' ||
+         (select count(*)::text from brc.jobs where status::text = 'available') || ' وظيفة متاحة'
+) t
+order by ord;
+</textarea><textarea id="sql9b" class="hidden-ta" readonly>-- ===========================================================================
+--  BRC — فحص وظيفي آمن (تاريخ 2026-10-06)
+--  ---------------------------------------------------------------------------
+--  ماذا يفعل: يُنشئ بطاقة وهمية برقم HRC-TEST-CHECK-0001، يتأكد أنها تُنشأ
+--  بفرصتين، يحذف خاناتها (نحاكي عطل المزامنة)، يقرأها ثانية ويتأكد أن الترميم
+--  التلقائي أعاد الفرصتين، ثم **يتراجع عن كل شي** (ROLLBACK) — فلا تبقى البطاقة
+--  الوهمية ولا أي أثر في القاعدة.
+--  كيف تستعمله: Supabase → SQL Editor → New query → الصق كله → Run
+--  القراءة: كل سطر لازم يطلع «✅ تمام».
+--  ⚠️ إن ظهر تحذير «there is already a transaction in progress» فهو طبيعي.
+-- ===========================================================================
+begin;
+
+create temp table _brc_res (ord int, item text, val text) on commit drop;
+
+insert into brc.applicants
+  (serial, full_name, phone, address, gender, status, issue_date, expiry_date)
+values
+  ('HRC-TEST-CHECK-0001', 'فحص تقني — يُحذف تلقائياً', '07700000000', 'بابل', 'ذكر',
+   'active', now(), now() + interval '30 days');
+
+insert into _brc_res values (1, '١) بطاقة جديدة: قراءة الباركود ⇒ عدد الفرص',
+  brc.self_service_card('HRC-TEST-CHECK-0001') #>> '{card,chancesLeft}');
+
+delete from brc.job_attempts where serial = 'HRC-TEST-CHECK-0001';
+
+insert into _brc_res values (2, '٢) بعد حذف الخانات (عطل المزامنة): قراءة الباركود ⇒ عدد الفرص',
+  brc.self_service_card('HRC-TEST-CHECK-0001') #>> '{card,chancesLeft}');
+
+insert into _brc_res values (3, '٣) أثر الترميم في سجل التدقيق',
+  (select count(*)::text from brc.audit_log
+    where action = 'ترميم خانات فرص ناقصة' and entity_id = 'HRC-TEST-CHECK-0001'));
+
+insert into _brc_res values (4, '٤) الخانات الموجودة فعلاً للبطاقة بعد الفحص',
+  (select count(*)::text from brc.job_attempts where serial = 'HRC-TEST-CHECK-0001'));
+
+select ord as "#", item as "الفحص", val as "القيمة",
+       case
+         when ord in (1, 2) and val = '2' then '✅ تمام (المتوقع 2)'
+         when ord = 3 and val::int > 0      then '✅ مُسجَّل'
+         when ord = 4 and val::int = 2      then '✅ تمام (المتوقع 2)'
+         when ord in (1, 2)                 then '❌ خطأ — أعد تنفيذ الجزء 6'
+         when ord = 3                       then '⚠️ لا سجل تدقيق'
+         else '❌ خطأ'
+       end as "النتيجة"
+  from _brc_res
+ order by ord;
+
+rollback;
+</textarea><textarea id="sql7" class="hidden-ta" readonly>notify pgrst, 'reload schema';</textarea>
 <script>
 function cp(id){
   var t=document.getElementById(id);
   t.style.position='static';t.style.width='100%';t.style.height='40px';t.style.opacity='1';
   t.focus();t.select();
-  var done=function(){document.getElementById('ok'+id.replace('sql','')).style.display='block';
+  var done=function(){var o=document.getElementById('ok'+id.replace('sql',''));if(o)o.style.display='block';
     t.style.position='fixed';t.style.left='-9999px';t.style.width='10px';t.style.height='10px';t.style.opacity='0';};
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(done).catch(function(){try{document.execCommand('copy');done();}catch(e){}});}
   else{try{document.execCommand('copy');done();}catch(e){}}
