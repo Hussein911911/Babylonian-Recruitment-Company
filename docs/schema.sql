@@ -66,8 +66,21 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type brc.form_status as enum ('blank', 'active', 'expired', 'exhausted', 'completed');
+  create type brc.form_status as enum ('blank', 'pending', 'active', 'expired', 'exhausted', 'completed', 'rejected');
 exception when duplicate_object then null; end $$;
+
+-- ⚠️ إصلاح 2026-10-06: حالة «قيد المراجعة» (pending) مستعملة في brc.request_form
+--    وفي مقارنات self_service_card/employer_view/lookup_card، لكنها لم تكن
+--    مُعرَّفة في النوع إطلاقاً — فكان أي استعمال لها يفشل بـ
+--    invalid input value for enum form_status: "pending". وكذلك 'rejected'
+--    (طلب مرفوض) تستعملها employer_view/المنظومة. الإضافتان idempotent
+--    وآمنتان على قاعدة قائمة (نوع موجود بلا هاتين القيمتين).
+do $$ begin
+  alter type brc.form_status add value if not exists 'pending';
+exception when others then null; end $$;
+do $$ begin
+  alter type brc.form_status add value if not exists 'rejected';
+exception when others then null; end $$;
 
 do $$ begin
   create type brc.user_role   as enum ('admin', 'staff');
@@ -129,10 +142,6 @@ begin
   return new;
 end $$;
 
-drop trigger if exists trg_applicants_log_serial on brc.applicants;
-create trigger trg_applicants_log_serial after insert or update of serial on brc.applicants
-  for each row execute function brc.trg_log_issued_serial();
-
 -- 2.3 بطاقات التوظيف (الباحثون عن عمل) — صالحة 30 يوماً، فرصتان مستقلتان
 create table if not exists brc.applicants (
   id            uuid primary key default gen_random_uuid(),
@@ -164,6 +173,14 @@ create table if not exists brc.applicants (
 create index if not exists applicants_status_idx on brc.applicants (status);
 create index if not exists applicants_expiry_idx on brc.applicants (expiry_date);
 create index if not exists applicants_created_by_idx on brc.applicants (created_by);
+
+-- ⚠️ إصلاح 2026-10-06: كان إنشاء المشغّل موضوعاً **قبل** إنشاء جدول brc.applicants
+--    نفسه، فيفشل الملف كله على أي قاعدة جديدة (relation "brc.applicants" does not exist)
+--    — نُقل إلى ما بعد الجدول وفهارسه.
+
+drop trigger if exists trg_applicants_log_serial on brc.applicants;
+create trigger trg_applicants_log_serial after insert or update of serial on brc.applicants
+  for each row execute function brc.trg_log_issued_serial();
 
 -- 2.2 الوظائف (بيانات صاحب العمل داخلية ولا تُعرض للعامة)
 --     critical: انتهت مهلة الحجز (24 ساعة) دون قرار — الوظيفة مقفلة بانتظار
@@ -199,8 +216,11 @@ create table if not exists brc.jobs (
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
 
+  /* ⚠️ إصلاح 2026-10-06: كان القيد يمنع أي وظيفة «حرجة» (محجوزة بلا مهلة)،
+     فكان مسار انتهاء 24 ساعة ومسار رفض صاحب العمل يفشلان بخرق القيد.
+     الحالة المقصودة: reserved + critical = معلّقة بانتظار قرار الموظف بلا مهلة. */
   constraint jobs_hold_consistency check (
-    (status = 'reserved' and hold_expires_at is not null) or status <> 'reserved'
+    status <> 'reserved' or hold_expires_at is not null or critical
   )
 );
 
@@ -458,8 +478,10 @@ begin
             'البطاقة ' || new.serial || ' — الفرصة #' || new.attempt_no);
   end if;
 
-  -- عند تثبيت نتيجة: نجاح → إغلاق الوظيفة، رفض → إعادتها «متاحة»
-  if new.slot_status in ('succeeded', 'rejected')
+  -- عند تثبيت نتيجة أو إرجاع الوظيفة: نجاح → إغلاقها، رفض أو إرجاع → «متاحة»
+  -- ⚠️ إصلاح 2026-10-06: كان الشرط succeeded/rejected فقط، فكان «إرجاع الوظيفة
+  --    متاحة» من الحالة الحرجة (release_hold ⇒ expired) يتركها محجوزة للأبد.
+  if new.slot_status in ('succeeded', 'rejected', 'expired')
      and (tg_op = 'INSERT' or old.slot_status is distinct from new.slot_status) then
     new.closed_at := coalesce(new.closed_at, now());
     new.hold_expires_at := null;
@@ -476,11 +498,15 @@ begin
 
     insert into brc.audit_log (username, role, action, entity, entity_id, details)
     values (coalesce(current_setting('request.jwt.claims', true), '{}')::jsonb->>'sub', 'staff',
-            case when new.slot_status = 'succeeded' then 'إتمام توظيف' else 'رفض مرشح' end,
+            case when new.slot_status = 'succeeded' then 'إتمام توظيف'
+                 when new.slot_status = 'rejected' then 'رفض مرشح'
+                 else 'إرجاع وظيفة متاحة بقرار الشركة' end,
             'job', new.job_code,
             case when new.slot_status = 'succeeded'
                  then 'تم التوظيف وإغلاق الوظيفة'
-                 else 'أُعيدت الوظيفة إلى (متاحة) — والفرصة مستهلكة لا تعود' end
+                 when new.slot_status = 'rejected'
+                 then 'أُعيدت الوظيفة إلى (متاحة) — والفرصة مستهلكة لا تعود'
+                 else 'أُعيدت الوظيفة إلى (متاحة) بقرار الشركة من الحالة الحرجة — والفرصة مستهلكة لا تعود' end
             || coalesce(' | ' || nullif(new.outcome_note, ''), ''));
   end if;
 
@@ -701,6 +727,9 @@ create or replace view brc.v_pending_actions as
     from brc.jobs j
     join brc.job_attempts a on a.job_id = j.id and a.slot_status = 'critical'
    where j.status = 'reserved' and j.critical
+     -- ⚠️ إصلاح 2026-10-06: بلا هذا الشرط كانت وظيفة «انتهت مهلة 24 ساعة» تظهر
+     --    كأن صاحب العمل رفضها بسبب فارغ («بسبب: —») بدل «حرجة — انتهت المهلة».
+     and a.employer_decision = 'reject'
   union all
   /* حرجة بانتهاء المهلة دون قرار (لا رفض مسجَّل) */
   select 'critical_timeout'::text, j.code, j.reserved_by, j.hold_expires_at, null,
@@ -992,6 +1021,12 @@ declare
   v_pos    text;
   v_job    text;
 begin
+  /* ⚠️ إصلاح 2026-10-06: تهيئة سجلَّي الفرصة والوظيفة — مسار «البيع بلا وظيفة»
+     لا يمرّ على select into a/j، فكان أي استعمال لاحق لهما يفشل بـ
+     «record "j" is not assigned yet» ويسقط البيع بلا وظيفة كاملاً. */
+  select * into a from brc.job_attempts where false;
+  select * into j from brc.jobs where false;
+
   select * into f from brc.applicants
    where serial = upper(btrim(coalesce(p_serial, ''))) for update;
   if f.serial is null then

@@ -29,6 +29,112 @@
 alter table brc.job_attempts add column if not exists employer_reason text;
 
 -- ─────────────────────────────────────────────────────────────────────────
+-- 0/ب) ثلاث إصلاحات لازمة ليعمل التحديث فعلاً على قاعدة قائمة:
+--   • القيمتان الغائبتان 'pending' و'rejected' من نوع brc.form_status —
+--     تستعملهما دوال المراجعة والتقديم الذاتي وصفحة صاحب العمل، وأي استعمال
+--     لهما كان يفشل بـ invalid input value for enum form_status.
+--   • قيد jobs_hold_consistency كان يمنع الوظيفة «الحرجة» (محجوزة بلا مهلة)،
+--     فيفشل مسار انتهاء 24 ساعة ومسار رفض صاحب العمل بخرق القيد.
+--   • مشغّل trg_attempt_hold كان يحرّر الوظيفة عند succeeded/rejected فقط،
+--     فكان «إرجاع الوظيفة متاحة» (release_hold ⇒ expired) يتركها محجوزة.
+-- ─────────────────────────────────────────────────────────────────────────
+do $$ begin
+  alter type brc.form_status add value if not exists 'pending';
+exception when others then null; end $$;
+do $$ begin
+  alter type brc.form_status add value if not exists 'rejected';
+exception when others then null; end $$;
+
+alter table brc.jobs drop constraint if exists jobs_hold_consistency;
+alter table brc.jobs add constraint jobs_hold_consistency
+  check (status <> 'reserved' or hold_expires_at is not null or critical);
+
+create or replace function brc.trg_attempt_hold() returns trigger
+language plpgsql as $$
+declare
+  rules jsonb;
+  hold_hours int;
+  job_row brc.jobs;
+  form_row brc.applicants;
+begin
+  select value into rules from brc.settings where key = 'rules';
+  hold_hours := coalesce((rules->>'hold_hours')::int, 24);
+
+  -- عند تحويل الخانة إلى "محجوزة" (اختيار وظيفة)
+  if new.slot_status = 'reserved' and (tg_op = 'INSERT' or old.slot_status is distinct from 'reserved') then
+
+    select * into form_row from brc.applicants where serial = new.serial for update;
+    if form_row.serial is null then
+      raise exception 'البطاقة % غير موجودة', new.serial;
+    end if;
+    if now() > form_row.expiry_date then
+      raise exception 'انتهت صلاحية البطاقة % (30 يوماً)', new.serial using errcode = 'P0001';
+    end if;
+
+    select * into job_row from brc.jobs where id = new.job_id for update;
+    if job_row.id is null then
+      raise exception 'الوظيفة غير موجودة';
+    end if;
+    if job_row.status <> 'available' then
+      raise exception 'الوظيفة % غير متاحة حالياً (%)', job_row.code, job_row.status using errcode = 'P0001';
+    end if;
+
+    new.selected_at     := coalesce(new.selected_at, now());
+    new.hold_expires_at := coalesce(new.hold_expires_at, now() + make_interval(hours => hold_hours));
+    new.job_code        := coalesce(new.job_code, job_row.code);
+    new.closed_at       := null;
+
+    update brc.jobs
+       set status = 'reserved',
+           reserved_by = new.serial,
+           hold_expires_at = new.hold_expires_at,
+           updated_at = now()
+     where id = new.job_id;
+
+    insert into brc.audit_log (username, role, ip, action, entity, entity_id, details)
+    values (coalesce(current_setting('request.jwt.claims', true), '{}')::jsonb->>'sub', 'staff',
+            coalesce(current_setting('request.headers', true)::jsonb->>'x-forwarded-for', ''),
+            'حجز مؤقت لوظيفة (24 ساعة)', 'job', job_row.code,
+            'البطاقة ' || new.serial || ' — الفرصة #' || new.attempt_no);
+  end if;
+
+  -- عند تثبيت نتيجة أو إرجاع الوظيفة: نجاح → إغلاقها، رفض أو إرجاع → «متاحة»
+  -- ⚠️ إصلاح 2026-10-06: كان الشرط succeeded/rejected فقط، فكان «إرجاع الوظيفة
+  --    متاحة» من الحالة الحرجة (release_hold ⇒ expired) يتركها محجوزة للأبد.
+  if new.slot_status in ('succeeded', 'rejected', 'expired')
+     and (tg_op = 'INSERT' or old.slot_status is distinct from new.slot_status) then
+    new.closed_at := coalesce(new.closed_at, now());
+    new.hold_expires_at := null;
+
+    update brc.jobs
+       set status = case when new.slot_status = 'succeeded' then 'closed'::brc.job_status
+                         else 'available'::brc.job_status end,
+           reserved_by = null,
+           hold_expires_at = null,
+           critical = false,
+           closed_at = case when new.slot_status = 'succeeded' then now() else null end,
+           updated_at = now()
+     where id = new.job_id;
+
+    insert into brc.audit_log (username, role, action, entity, entity_id, details)
+    values (coalesce(current_setting('request.jwt.claims', true), '{}')::jsonb->>'sub', 'staff',
+            case when new.slot_status = 'succeeded' then 'إتمام توظيف'
+                 when new.slot_status = 'rejected' then 'رفض مرشح'
+                 else 'إرجاع وظيفة متاحة بقرار الشركة' end,
+            'job', new.job_code,
+            case when new.slot_status = 'succeeded'
+                 then 'تم التوظيف وإغلاق الوظيفة'
+                 when new.slot_status = 'rejected'
+                 then 'أُعيدت الوظيفة إلى (متاحة) — والفرصة مستهلكة لا تعود'
+                 else 'أُعيدت الوظيفة إلى (متاحة) بقرار الشركة من الحالة الحرجة — والفرصة مستهلكة لا تعود' end
+            || coalesce(' | ' || nullif(new.outcome_note, ''), ''));
+  end if;
+
+  return new;
+end $$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────
 -- 1) حذف النسخ المشغولة بالرمز (بوابة 2026-10-06) والنسخ القديمة المتعارضة
 --    بعد هذه الأسطر يبقى اسم واحد لكل دالة: النسخة التي لا تطلب رمزاً.
 -- ─────────────────────────────────────────────────────────────────────────
@@ -58,6 +164,12 @@ declare
   v_pos   text;
   v_job   text;
 begin
+  /* ⚠️ إصلاح 2026-10-06: تهيئة سجلَّي الفرصة والوظيفة — مسار «البيع بلا وظيفة»
+     لا يمرّ على select into a/j، فكان أي استعمال لاحق لهما يفشل بـ
+     «record "j" is not assigned yet» ويسقط البيع بلا وظيفة كاملاً. */
+  select * into a from brc.job_attempts where false;
+  select * into j from brc.jobs where false;
+
   select * into f from brc.applicants
    where serial = upper(btrim(coalesce(p_serial, ''))) for update;
   if f.serial is null then
@@ -529,6 +641,9 @@ create or replace view brc.v_pending_actions as
     from brc.jobs j
     join brc.job_attempts a on a.job_id = j.id and a.slot_status = 'critical'
    where j.status = 'reserved' and j.critical
+     -- ⚠️ إصلاح 2026-10-06: بلا هذا الشرط كانت وظيفة «انتهت مهلة 24 ساعة» تظهر
+     --    كأن صاحب العمل رفضها بسبب فارغ («بسبب: —») بدل «حرجة — انتهت المهلة».
+     and a.employer_decision = 'reject'
   union all
   select 'critical_timeout'::text, j.code, j.reserved_by, j.hold_expires_at, null,
          'انتهت مهلة 24 ساعة دون قرار — توظيف أو إرجاع أو حذف'::text
