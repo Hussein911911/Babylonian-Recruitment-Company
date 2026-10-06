@@ -1271,7 +1271,7 @@ var G={
 
     var btn=$('btn-finish');btnLoading(btn,true);
     var saved=false;   /* صار الطلب مسجّلاً في نظام الشركة؟ (تُستهلك الفرصة عندها) */
-    client.rpc('apply_with_card',{p_serial:cardSerial,p_code:(sessionStorage.getItem('hrc.cardCode') || window.prompt('اكتب رمز البطاقة المطبوع (٤ أرقام + حرفين)') || '').trim().toUpperCase(),p_job_code:selectedJob.code,p_data:G.readProfile()})
+    client.rpc('apply_with_card',{p_serial:cardSerial,p_code:((typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('hrc.cardCode') : '') || window.prompt('اكتب رمز البطاقة المطبوع (٤ أرقام + حرفين)') || '').trim().toUpperCase(),p_job_code:selectedJob.code,p_data:G.readProfile()})
     .then(function(res){
       btnLoading(btn,false);
       if(res.error){
@@ -1634,7 +1634,7 @@ function loadData(){
   cardSerial=serial.trim().toUpperCase();
 
   Promise.all([
-    client.rpc('self_service_card',{p_serial:cardSerial,p_code:(sessionStorage.getItem('hrc.cardCode') || window.prompt('اكتب رمز البطاقة المطبوع (٤ أرقام + حرفين)') || '').trim().toUpperCase()}),
+    client.rpc('self_service_card',{p_serial:cardSerial,p_code:((typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('hrc.cardCode') : '') || window.prompt('اكتب رمز البطاقة المطبوع (٤ أرقام + حرفين)') || '').trim().toUpperCase()}),
     client.from('public_jobs').select('*')
   ]).then(function(res){
     var cr=res[0];
