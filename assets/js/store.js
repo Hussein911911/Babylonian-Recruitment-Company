@@ -1055,18 +1055,22 @@
 
   /* صفحة صاحب العمل (الباركود يكفي) */
   function cardEmployerView(serial) {
+    var code = String((typeof sessionStorage !== 'undefined' && sessionStorage.getItem('hrc.employerCode')) || '').trim().toUpperCase();
+    if (!code) { code = String(window.prompt('رمز صاحب العمل الذي سلّمته الشركة') || '').trim().toUpperCase(); if (typeof sessionStorage !== 'undefined' && code) sessionStorage.setItem('hrc.employerCode', code); }
     var st = cloudStatus();
     if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.employerView && cloud.client) {
-      return root.HRCCloud.employerView(cloud.client, serial);
+      return root.HRCCloud.employerView(cloud.client, serial, code);
     }
     return Promise.resolve(employerView(serial));
   }
 
   /* قرار صاحب العمل (توظيف/رفض) من صفحة الباركود */
   function cardEmployerDecide(serial, decision) {
+    var code = String((typeof sessionStorage !== 'undefined' && sessionStorage.getItem('hrc.employerCode')) || '').trim().toUpperCase();
+    if (!code) { code = String(window.prompt('اكتب رمز صاحب العمل الذي سلّمته الشركة') || '').trim().toUpperCase(); if (code) if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('hrc.cardCode', code); }
     var st = cloudStatus();
     if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.employerDecide && cloud.client) {
-      return root.HRCCloud.employerDecide(cloud.client, serial, decision);
+      return root.HRCCloud.employerDecide(cloud.client, serial, decision, code);
     }
     return Promise.resolve(employerDecide(serial, decision));
   }
