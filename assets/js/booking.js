@@ -48,7 +48,7 @@
   }
 
   function serialPattern(v) {
-    return /^HRC-BC-\d{4,8}$/i.test(String(v || '').trim());
+    return Store.isCardSerial(v);
   }
 
   /* صندوق عرض معلومات بسيط */
@@ -120,8 +120,8 @@
   /* ======================= 1) الدخول بالباركود ======================= */
   function renderEntry(host) {
     host.innerHTML = stepHead('بطاقتي', 'أدخل باركود بطاقتك المطبوع أسفل الوجه الأمامي — أو امسحه بكاميرة موبايلك من الرابط نفسه.', 'card') +
-      fieldHtml('serial', 'باركود البطاقة (HRC-BC-…)',
-        inputHtml('serial', 'text', 'مثال: HRC-BC-000123', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.04em" inputmode="latin"'),
+      fieldHtml('serial', 'باركود البطاقة (10 خانات)',
+        inputHtml('serial', 'text', 'مثال: 7KQ4M9TR2X', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.04em" inputmode="latin"'),
         'الرقم المطبوع تحت الباركود وعلى واجهة بطاقتك.') +
       '<div class="bk-info" style="margin-top:14px">' + UI.ic('alert') +
         ' <b>ما عندك بطاقة؟</b> بطاقة التوظيف تُشترى كاشاً من نقاط البيع المعتمدة ' +
@@ -150,7 +150,7 @@
   function doLookup() {
     var v = String(serial || '').trim().toUpperCase();
     if (!serialPattern(v)) {
-      setErr('serial', 'اكتب الباركود بصيغته الصحيحة — يبدأ بـ HRC-BC- يليه الرقم.');
+      setErr('serial', 'اكتب الباركود كما هو مطبوع على البطاقة — 10 خانات من حروف وأرقام.');
       return;
     }
     if (busy) return;

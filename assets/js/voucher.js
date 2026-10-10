@@ -215,8 +215,7 @@
       +       validLine
       +       '<div class="perms">فرصتان مستقلتان · للاستفسار: نقطة البيع أو مقر الشركة</div>'
       +     '</div>'
-      +     '<div class="qr"><div class="box hrc-qr-slot">' + qrSvg(cUrl, 132) + '</div>'
-      +       '<div class="cap">' + esc(app.serial) + '</div></div>'
+      +     '<div class="qr"><div class="box hrc-qr-slot">' + qrSvg(cUrl, 132) + '</div></div>'
       +   '</div>'
       + '</div>';
   }
@@ -472,6 +471,7 @@
     if (!app) return;
     var attempts = opts.attempts || Store.getAttempts(app.serial);
     var seq = ++printSeq;
+    setSheetCss(false);
     rootEl.innerHTML = '<div class="hrc-card-sheet">' + frontHtml(app, attempts) + backHtml(app, attempts) + '</div>';
     Store.markPrinted(app.serial);
     function after() { if (printSeq === seq) rootEl.innerHTML = ''; }
@@ -486,6 +486,7 @@
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
     if (!apps || !apps.length) { UI.toast('err', 'تعذّرت الطباعة', 'لا توجد بطاقات بالدفعة'); return; }
     var seq = ++printSeq;
+    setSheetCss(false);
     rootEl.innerHTML = apps.map(function (app) {
       var attempts = Store.getAttempts(app.serial);
       return frontHtml(app, attempts) + backHtml(app, attempts);
@@ -496,6 +497,79 @@
     setTimeout(function () { window.print(); setTimeout(after, 1600); }, 160);
   }
 
+  /* ======================= طباعة الدفعات على ورق A4 ======================= */
+  /* 10 بطاقات بالصفحة (عمودان × 5 صفوف) بمقاسها الفعلي 86×54مم، والباقي على
+     الصفحات التالية. كل 10 بطاقات = صفحة أمامية ثم صفحة خلفية، والخلفية
+     مُبدَّلة أفقياً (العمود 1↔2) لتتطابق مع الأمامية عند الطباعة على الوجهين
+     بخيار «قلب على الحافة الطويلة» — وإن طُبعت وجهاً واحداً فكل صفحة مستقلة. */
+  var SHEET_COLS = 2, SHEET_ROWS = 5, SHEET_PER = SHEET_COLS * SHEET_ROWS;
+  var SHEET_CSS = '@media print{'
+    + '@page{size:A4;margin:0;}'
+    + '#print-root{display:block !important;}'
+    + '#print-root .hrc-sheet-page{width:210mm;height:297mm;box-sizing:border-box;padding:7.5mm 16mm;'
+    +   'display:grid;grid-template-columns:86mm 86mm;grid-auto-rows:54mm;column-gap:6mm;row-gap:3mm;'
+    +   'align-content:start;justify-content:start;overflow:hidden;background:#fff;'
+    +   'page-break-after:always;break-after:page;}'
+    + '#print-root .hrc-sheet-page:last-child{page-break-after:auto;break-after:auto;}'
+    + '#print-root .hrc-cell{width:86mm;height:54mm;overflow:hidden;}'
+    + '#print-root .hrc-cell .hrc-card{margin:0 !important;box-shadow:none !important;'
+    +   'page-break-after:auto !important;break-after:auto !important;}'
+    + '}';
+  var sheetStyleEl = null;
+  function setSheetCss(on) {
+    if (!sheetStyleEl) {
+      sheetStyleEl = document.getElementById('hrc-sheet-style');
+      if (!sheetStyleEl) {
+        sheetStyleEl = document.createElement('style');
+        sheetStyleEl.id = 'hrc-sheet-style';
+        document.head.appendChild(sheetStyleEl);
+      }
+    }
+    /* يُفعَّل فقط أثناء طباعة الورق: يبقى بقية الطباعة (بطاقة مفردة/استمارة) كما هي */
+    sheetStyleEl.textContent = on ? SHEET_CSS : '';
+  }
+
+  function sheetPage(slots) {
+    var cells = [];
+    for (var i = 0; i < SHEET_PER; i++) {
+      cells.push('<div class=\"hrc-cell\">' + (slots[i] || '') + '</div>');
+    }
+    return '<div class=\"hrc-sheet-page\">' + cells.join('') + '</div>';
+  }
+
+  function sheetHtml(apps) {
+    var out = '';
+    for (var p = 0; p < apps.length; p += SHEET_PER) {
+      var chunk = apps.slice(p, p + SHEET_PER);
+      var front = [], back = [];
+      for (var k = 0; k < SHEET_PER; k++) { front.push(''); back.push(''); }
+      chunk.forEach(function (app, i) {
+        var att = Store.getAttempts(app.serial);
+        front[i] = frontHtml(app, att);
+        back[i ^ 1] = backHtml(app, att);   /* تبديل العمودين للوجه الخلفي */
+      });
+      out += sheetPage(front) + sheetPage(back);
+    }
+    return out;
+  }
+
+  /* عدد أوراق A4 (كل ورقة بوجهين) لعدد بطاقات معيّن — للعرض في النافذة */
+  function sheetCount(n) { return Math.ceil((Number(n) || 0) / SHEET_PER); }
+
+  function printSheet(apps) {
+    ensureStyle();
+    var rootEl = document.getElementById('print-root');
+    if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
+    if (!apps || !apps.length) { UI.toast('err', 'تعذّرت الطباعة', 'لا توجد بطاقات للطباعة'); return; }
+    var seq = ++printSeq;
+    setSheetCss(true);
+    rootEl.innerHTML = sheetHtml(apps);
+    apps.forEach(function (app) { try { Store.markPrinted(app.serial); } catch (e) { } });
+    function after() { if (printSeq === seq) { rootEl.innerHTML = ''; setSheetCss(false); } }
+    window.addEventListener('afterprint', after, { once: true });
+    setTimeout(function () { window.print(); setTimeout(after, 2000); }, 160);
+  }
+
   /* معاينة داخل نافذة منبثقة */
   function preview(app) {
     return '<div style="background:#f3ecd9;border:1px solid var(--line-soft);border-radius:12px;padding:18px 20px">'
@@ -503,7 +577,7 @@
   }
 
   root.HRCVoucher = {
-    buildHtml: buildHtml, print: print, printBatch: printBatch, preview: preview,
+    buildHtml: buildHtml, print: print, printBatch: printBatch, printSheet: printSheet, sheetCount: sheetCount, preview: preview,
     formHtml: formHtml, printForm: printForm, previewForm: previewForm,
     DISCLAIMER: DISCLAIMER, qrSvg: qrSvg, verifyUrl: function (s) { return Store.verifyUrl(s); }
   };

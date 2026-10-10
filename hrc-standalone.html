@@ -2274,7 +2274,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       <form class="toolbar" id="verify-form" autocomplete="off">
         <div class="field grow">
           <label for="v-serial">الرقم التسلسلي للبطاقة</label>
-          <input type="text" id="v-serial" placeholder="HRC-BC-000120" required>
+          <input type="text" id="v-serial" placeholder="7KQ4M9TR2X" required>
         </div>
         <div class="field">
           <label>&nbsp;</label>
@@ -2282,7 +2282,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         </div>
       </form>
       <p class="tiny muted mt-2 mb-0">
-        اكتب الرقم التسلسلي كما هو مطبوع على البطاقة (مثال: <b class="mono" dir="ltr">HRC-BC-000120</b>)
+        اكتب الرقم التسلسلي كما هو مطبوع على البطاقة (مثال: <b class="mono" dir="ltr">7KQ4M9TR2X</b>)
       </p>
     </div>
   </div>
@@ -2417,7 +2417,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         </form>
         <button class="btn btn-lapis btn-sm" id="btn-new-app"><svg class="ic"><use href="#i-user-plus" xlink:href="#i-user-plus"/></svg> بيع وتعبئة بطاقة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-batch" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
-        <button class="btn btn-outline btn-sm" id="btn-new-card" title="بطاقة واحدة فارغة بكودها — تُسجَّل فوراً بالمخزون"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
+        <button class="btn btn-outline btn-sm" id="btn-new-card" data-admin-only="true" title="بطاقة واحدة فارغة بكودها — للمدير فقط"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
         <button class="btn btn-gold btn-sm" id="btn-new-job"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة وظيفة</button>
         <button class="btn btn-outline btn-sm" id="btn-run-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تحديث</button>
       </div>
@@ -2521,7 +2521,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
               <label for="aq">بحث (رقم تسلسلي / اسم / هاتف)</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="aq" placeholder="HRC-BC-000120 أو اسم الباحث">
+                <input type="search" id="aq" placeholder="7KQ4M9TR2X أو اسم الباحث">
               </div>
             </div>
             <div class="field">
@@ -4457,22 +4457,59 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
   /* ======================= الباحثون عن العمل والبطاقات ======================= */
 
-  /* بادئة البطاقة: HRC-BC-###### (BC = بطاقة توظيف) — الباركود هو هوية البطاقة.
-     ⚠️ قرار مقفل (2026-09-30): الباركود **عشوائي غير متسلسل** — لا نمط يُخمَّن
-     ولا رقمين متجاورين يتشابهان، لتفادي التزوير. كل باركود يُسجَّل بسجل دائم
-     (usedSerials) حتى لا يعود أبداً ولو حُذفت بطاقته. */
+  /* ===== صيغة باركود البطاقة (قرار الإدارة 2026-10-10) =====
+     10 خانات: أحرف إنجليزية كبيرة وأرقام مختلطة — بلا بادئة وبلا شرطة وبلا فاصل.
+     نستبعد الأشكال المتشابهة (0/O و1/I/L) حتى لا يخلط الكاتب اليدوي بينها.
+     الصيغة القديمة HRC-BC-###### تبقى مقبولة للبطاقات المطبوعة سابقاً.
+     التوليد عشوائي غير متسلسل (قرار 2026-09-30 محفوظ): لا نمط يُخمَّن ولا يُتتبَّع. */
+  var CARD_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  var CARD_LEN = 10;
+  var CARD_RE = /^[2-9A-HJKMNP-Z]{10}$/;
+  var LEGACY_CARD_RE = /^HRC-BC-\d{6}$/;
+
+  /* توحيد الإدخال: حروف كبيرة وبلا مسافات؛ والرقم القديم المجرّد (6 خانات) يُكمَّل بـ HRC-BC */
+  function normalizeCardSerial(v) {
+    var s = String(v == null ? '' : v).trim().toUpperCase().replace(/\s+/g, '');
+    var m = /^(?:HRC-?BC-?)?(\d{6})$/.exec(s);
+    if (m) return 'HRC-BC-' + m[1];
+    return s;
+  }
+
+  function isCardSerial(v) {
+    var s = normalizeCardSerial(v);
+    return CARD_RE.test(s) || LEGACY_CARD_RE.test(s);
+  }
+
+  function randomIndex(n) {
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      var a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n;
+    }
+    return Math.floor(Math.random() * n);
+  }
+
+  /* كود عشوائي من 10 خانات مختلطة (3 أرقام على الأقل و3 أحرف على الأقل) */
+  function randomCardCode() {
+    for (var g = 0; g < 200; g++) {
+      var s = '';
+      for (var i = 0; i < CARD_LEN; i++) s += CARD_ALPHABET.charAt(randomIndex(CARD_ALPHABET.length));
+      var digits = (s.match(/[2-9]/g) || []).length;
+      if (digits >= 3 && CARD_LEN - digits >= 3) return s;
+    }
+    return null;
+  }
+
   function randomSerial() {
     if (!db.usedSerials) db.usedSerials = [];
     var exists = {};
     db.applicants.forEach(function (a) { exists[a.serial] = 1; });
     for (var guard = 0; guard < 500; guard++) {
-      var serial = 'HRC-BC-' + String(100000 + Math.floor(Math.random() * 900000));
-      if (!exists[serial] && db.usedSerials.indexOf(serial) < 0) {
+      var serial = randomCardCode();
+      if (serial && !exists[serial] && db.usedSerials.indexOf(serial) < 0) {
         db.usedSerials.push(serial);
         return serial;
       }
     }
-    return null; /* مستحيل عملياً: 900 ألف احتمال */
+    return null; /* مستحيل عملياً: 31^10 احتمال */
   }
 
   function nextSerial() { return randomSerial(); }
@@ -4534,7 +4571,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
      ورمزي فرصتين — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
      والصلاحية (30 يوماً) لا تبدأ إلا عند تعبئة بيانات الزبون عند البيع. */
   function createCardBatch(count, notes) {
-    count = Math.max(1, Math.min(500, Number(count) || 0));
+    if (!isAdmin()) return [];           /* إصدار الدفعات للمدير فقط */
+    count = Math.max(1, Math.min(1000, Number(count) || 0));
     var made = [];
     for (var i = 0; i < count; i++) {
       var serial = randomSerial();
@@ -4564,10 +4602,10 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
      الكود بصيغة HRC-BC-###### (أو 6 أرقام فتُسبَق تلقائياً) ويجب أن يكون
      فريداً ولم يُستعمل أبداً — سجل usedSerials يمنع عودة أي باركود. */
   function createCardWithSerial(serial, notes) {
-    serial = String(serial || '').trim().toUpperCase();
-    if (/^\d{6}$/.test(serial)) serial = 'HRC-BC-' + serial;
-    if (!/^HRC-BC-\d{6}$/.test(serial))
-      return { ok: false, error: 'صيغة الكود غير صحيحة — اكتب 6 أرقام، أو الكود كاملاً بصيغة HRC-BC-######' };
+    if (!isAdmin()) return { ok: false, error: 'إضافة البطاقات صلاحية للمدير العام فقط' };
+    serial = normalizeCardSerial(serial);
+    if (!isCardSerial(serial))
+      return { ok: false, error: 'صيغة الباركود غير صحيحة — 10 خانات من حروف وأرقام بلا شرطة (مثال: 7KQ4M9TR2X)، أو اتركه فارغاً ليُولَّد تلقائياً' };
     if (!db.usedSerials || !Array.isArray(db.usedSerials)) db.usedSerials = [];
     if (getApplicant(serial))
       return { ok: false, error: 'هذا الباركود مسجَّل لبطاقة موجودة أصلاً — اختر كوداً آخر' };
@@ -4599,8 +4637,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     var exists = {};
     db.applicants.forEach(function (a) { exists[a.serial] = 1; });
     for (var guard = 0; guard < 500; guard++) {
-      var s = 'HRC-BC-' + String(100000 + Math.floor(Math.random() * 900000));
-      if (!exists[s] && db.usedSerials.indexOf(s) < 0) return s;
+      var s = randomCardCode();
+      if (s && !exists[s] && db.usedSerials.indexOf(s) < 0) return s;
     }
     return '';
   }
@@ -6191,6 +6229,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,
     createCardBatch: createCardBatch, createCardWithSerial: createCardWithSerial, suggestSerial: suggestSerial,
+    isCardSerial: isCardSerial, normalizeCardSerial: normalizeCardSerial,
     activateCard: activateCard, listBlankCards: listBlankCards, randomSerial: randomSerial,
     approveApplicant: approveApplicant, rejectApplicant: rejectApplicant,
     getAttempts: getAttempts, attemptsLeft: attemptsLeft, formStatus: formStatus, activeAttempt: activeAttempt,
@@ -6991,8 +7030,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       +       validLine
       +       '<div class="perms">فرصتان مستقلتان · للاستفسار: نقطة البيع أو مقر الشركة</div>'
       +     '</div>'
-      +     '<div class="qr"><div class="box hrc-qr-slot">' + qrSvg(cUrl, 132) + '</div>'
-      +       '<div class="cap">' + esc(app.serial) + '</div></div>'
+      +     '<div class="qr"><div class="box hrc-qr-slot">' + qrSvg(cUrl, 132) + '</div></div>'
       +   '</div>'
       + '</div>';
   }
@@ -7248,6 +7286,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     if (!app) return;
     var attempts = opts.attempts || Store.getAttempts(app.serial);
     var seq = ++printSeq;
+    setSheetCss(false);
     rootEl.innerHTML = '<div class="hrc-card-sheet">' + frontHtml(app, attempts) + backHtml(app, attempts) + '</div>';
     Store.markPrinted(app.serial);
     function after() { if (printSeq === seq) rootEl.innerHTML = ''; }
@@ -7262,6 +7301,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
     if (!apps || !apps.length) { UI.toast('err', 'تعذّرت الطباعة', 'لا توجد بطاقات بالدفعة'); return; }
     var seq = ++printSeq;
+    setSheetCss(false);
     rootEl.innerHTML = apps.map(function (app) {
       var attempts = Store.getAttempts(app.serial);
       return frontHtml(app, attempts) + backHtml(app, attempts);
@@ -7272,6 +7312,79 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     setTimeout(function () { window.print(); setTimeout(after, 1600); }, 160);
   }
 
+  /* ======================= طباعة الدفعات على ورق A4 ======================= */
+  /* 10 بطاقات بالصفحة (عمودان × 5 صفوف) بمقاسها الفعلي 86×54مم، والباقي على
+     الصفحات التالية. كل 10 بطاقات = صفحة أمامية ثم صفحة خلفية، والخلفية
+     مُبدَّلة أفقياً (العمود 1↔2) لتتطابق مع الأمامية عند الطباعة على الوجهين
+     بخيار «قلب على الحافة الطويلة» — وإن طُبعت وجهاً واحداً فكل صفحة مستقلة. */
+  var SHEET_COLS = 2, SHEET_ROWS = 5, SHEET_PER = SHEET_COLS * SHEET_ROWS;
+  var SHEET_CSS = '@media print{'
+    + '@page{size:A4;margin:0;}'
+    + '#print-root{display:block !important;}'
+    + '#print-root .hrc-sheet-page{width:210mm;height:297mm;box-sizing:border-box;padding:7.5mm 16mm;'
+    +   'display:grid;grid-template-columns:86mm 86mm;grid-auto-rows:54mm;column-gap:6mm;row-gap:3mm;'
+    +   'align-content:start;justify-content:start;overflow:hidden;background:#fff;'
+    +   'page-break-after:always;break-after:page;}'
+    + '#print-root .hrc-sheet-page:last-child{page-break-after:auto;break-after:auto;}'
+    + '#print-root .hrc-cell{width:86mm;height:54mm;overflow:hidden;}'
+    + '#print-root .hrc-cell .hrc-card{margin:0 !important;box-shadow:none !important;'
+    +   'page-break-after:auto !important;break-after:auto !important;}'
+    + '}';
+  var sheetStyleEl = null;
+  function setSheetCss(on) {
+    if (!sheetStyleEl) {
+      sheetStyleEl = document.getElementById('hrc-sheet-style');
+      if (!sheetStyleEl) {
+        sheetStyleEl = document.createElement('style');
+        sheetStyleEl.id = 'hrc-sheet-style';
+        document.head.appendChild(sheetStyleEl);
+      }
+    }
+    /* يُفعَّل فقط أثناء طباعة الورق: يبقى بقية الطباعة (بطاقة مفردة/استمارة) كما هي */
+    sheetStyleEl.textContent = on ? SHEET_CSS : '';
+  }
+
+  function sheetPage(slots) {
+    var cells = [];
+    for (var i = 0; i < SHEET_PER; i++) {
+      cells.push('<div class=\"hrc-cell\">' + (slots[i] || '') + '</div>');
+    }
+    return '<div class=\"hrc-sheet-page\">' + cells.join('') + '</div>';
+  }
+
+  function sheetHtml(apps) {
+    var out = '';
+    for (var p = 0; p < apps.length; p += SHEET_PER) {
+      var chunk = apps.slice(p, p + SHEET_PER);
+      var front = [], back = [];
+      for (var k = 0; k < SHEET_PER; k++) { front.push(''); back.push(''); }
+      chunk.forEach(function (app, i) {
+        var att = Store.getAttempts(app.serial);
+        front[i] = frontHtml(app, att);
+        back[i ^ 1] = backHtml(app, att);   /* تبديل العمودين للوجه الخلفي */
+      });
+      out += sheetPage(front) + sheetPage(back);
+    }
+    return out;
+  }
+
+  /* عدد أوراق A4 (كل ورقة بوجهين) لعدد بطاقات معيّن — للعرض في النافذة */
+  function sheetCount(n) { return Math.ceil((Number(n) || 0) / SHEET_PER); }
+
+  function printSheet(apps) {
+    ensureStyle();
+    var rootEl = document.getElementById('print-root');
+    if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
+    if (!apps || !apps.length) { UI.toast('err', 'تعذّرت الطباعة', 'لا توجد بطاقات للطباعة'); return; }
+    var seq = ++printSeq;
+    setSheetCss(true);
+    rootEl.innerHTML = sheetHtml(apps);
+    apps.forEach(function (app) { try { Store.markPrinted(app.serial); } catch (e) { } });
+    function after() { if (printSeq === seq) { rootEl.innerHTML = ''; setSheetCss(false); } }
+    window.addEventListener('afterprint', after, { once: true });
+    setTimeout(function () { window.print(); setTimeout(after, 2000); }, 160);
+  }
+
   /* معاينة داخل نافذة منبثقة */
   function preview(app) {
     return '<div style="background:#f3ecd9;border:1px solid var(--line-soft);border-radius:12px;padding:18px 20px">'
@@ -7279,7 +7392,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   }
 
   root.HRCVoucher = {
-    buildHtml: buildHtml, print: print, printBatch: printBatch, preview: preview,
+    buildHtml: buildHtml, print: print, printBatch: printBatch, printSheet: printSheet, sheetCount: sheetCount, preview: preview,
     formHtml: formHtml, printForm: printForm, previewForm: previewForm,
     DISCLAIMER: DISCLAIMER, qrSvg: qrSvg, verifyUrl: function (s) { return Store.verifyUrl(s); }
   };
@@ -7338,7 +7451,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   }
 
   function serialPattern(v) {
-    return /^HRC-BC-\d{4,8}$/i.test(String(v || '').trim());
+    return Store.isCardSerial(v);
   }
 
   /* صندوق عرض معلومات بسيط */
@@ -7410,8 +7523,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   /* ======================= 1) الدخول بالباركود ======================= */
   function renderEntry(host) {
     host.innerHTML = stepHead('بطاقتي', 'أدخل باركود بطاقتك المطبوع أسفل الوجه الأمامي — أو امسحه بكاميرة موبايلك من الرابط نفسه.', 'card') +
-      fieldHtml('serial', 'باركود البطاقة (HRC-BC-…)',
-        inputHtml('serial', 'text', 'مثال: HRC-BC-000123', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.04em" inputmode="latin"'),
+      fieldHtml('serial', 'باركود البطاقة (10 خانات)',
+        inputHtml('serial', 'text', 'مثال: 7KQ4M9TR2X', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.04em" inputmode="latin"'),
         'الرقم المطبوع تحت الباركود وعلى واجهة بطاقتك.') +
       '<div class="bk-info" style="margin-top:14px">' + UI.ic('alert') +
         ' <b>ما عندك بطاقة؟</b> بطاقة التوظيف تُشترى كاشاً من نقاط البيع المعتمدة ' +
@@ -7440,7 +7553,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   function doLookup() {
     var v = String(serial || '').trim().toUpperCase();
     if (!serialPattern(v)) {
-      setErr('serial', 'اكتب الباركود بصيغته الصحيحة — يبدأ بـ HRC-BC- يليه الرقم.');
+      setErr('serial', 'اكتب الباركود كما هو مطبوع على البطاقة — 10 خانات من حروف وأرقام.');
       return;
     }
     if (busy) return;
@@ -8653,10 +8766,16 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
     /* رمز بطاقة توظيف (HRC-BC-…): نفتح «بطاقتي» مباشرة بالباركود المعبّأ —
        الزبون يرى حالته المقنّعة، واستخدام الفرصة يتطلب رمزها السري. */
-    var serial = text.match(/HRC-BC-\d+/i);   // بادئة بطاقة التوظيف
+    /* الباركود الجديد (10 خانات بلا بادئة): يأتي داخل رابط apply.html?form=… أو نصاً مجرداً */
+    var cand = null;
+    var qm = /[?&#](?:form|card|bc|serial)=([A-Za-z0-9-]+)/i.exec(text);
+    if (qm) cand = qm[1];
+    else if (/^\s*[A-Za-z0-9-]+\s*$/.test(text)) cand = text.trim();
+    else { var legacy = text.match(/HRC-BC-\d+/i); if (legacy) cand = legacy[0]; }
+    var serial = cand && Store.isCardSerial(cand) ? [Store.normalizeCardSerial(cand)] : null;
     if (serial) {
       if (root.HRCBooking && root.HRCBooking.open) {
-        root.HRCBooking.open({ serial: serial[0].toUpperCase() });
+        root.HRCBooking.open({ serial: serial[0] });
       } else {
         UI.toast('info', 'بطاقة توظيف شركة الهدف',
           'افتح الموقع الرئيسي وأدخل باركود بطاقتك من نافذة «بطاقتي».', 8000);
@@ -8962,6 +9081,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     s = String(s || '').trim().toUpperCase();
     if (!s) return '';
     /* بادئة واحدة موحّدة HRC. الرقم المجرّد (6 خانات) يُكمَّل بها. */
+    if (/^[2-9A-HJKMNP-Z]{10}$/.test(s)) return s;               /* الصيغة الجديدة: 10 خانات بلا بادئة */
     if (!/^HRC-BC/i.test(s)) s = 'HRC-BC-' + s.replace(/[^0-9]/g, '').padStart(6, '0');
     return s;
   }
@@ -11019,9 +11139,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       if (!v) return;
       /* بادئة واحدة HRC، والرقم المجرّد (6 خانات) يُكمَّل بها — تدعم بطاقة HRC-BC القديمة بصيغة HRC-NO للبيانات التاريخية */
       var serial = null;
-      if (/^HRC-BC/i.test(v)) serial = v;
+      if (Store.isCardSerial(v)) serial = Store.normalizeCardSerial(v);
       else if (/^HRC-NO/i.test(v)) serial = v.replace(/^HRC-NO/i, 'HRC-BC');
-      else if (/^\d{6}$/.test(v)) serial = 'HRC-BC-' + v;
       if (serial && Store.getApplicant(serial)) { attemptsModal(serial); return; }
       var job = Store.getJob(v);
       if (job) { quickJobModal(job.code); return; }
@@ -11600,13 +11719,14 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
      المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة. */
   function newCardModal() {
+    if (!Store.isAdmin()) { UI.toast('err', 'صلاحية المدير فقط', 'إضافة البطاقات من صلاحيات المدير العام.'); return; }
     var body = '<form id="card1-form" onsubmit="return false">' +
       '<div class="field"><label for="c-code">كود البطاقة (الباركود) *</label>' +
         '<div style="display:flex;gap:8px;align-items:stretch">' +
-          '<input type="text" id="c-code" class="mono" dir="ltr" placeholder="HRC-BC-481926" required style="flex:1">' +
+          '<input type="text" id="c-code" class="mono" dir="ltr" placeholder="7KQ4M9TR2X" maxlength="10" autocomplete="off" required style="flex:1;letter-spacing:.14em;text-transform:uppercase">' +
           '<button type="button" class="btn btn-outline" id="c-gen" style="white-space:nowrap">' + UI.ic('refresh') + ' ولّد كوداً</button>' +
         '</div>' +
-        '<span class="tiny muted" style="display:block;margin-top:6px">اكتب <b>6 أرقام</b> أو الكود كاملاً بصيغة <b dir="ltr">HRC-BC-######</b> — يجب أن يكون فريداً ولم يُستعمل من قبل.</span>' +
+        '<span class="tiny muted" style="display:block;margin-top:6px">10 خانات من <b>حروف وأرقام</b> بلا شرطة ولا بادئة — يجب أن يكون فريداً ولم يُستعمل من قبل.</span>' +
         '<div class="tiny" id="c-err" style="display:none;color:#c0392b;background:#fdeeee;border:1px solid #f2c4c4;border-radius:8px;padding:6px 10px;margin-top:8px"></div>' +
       '</div>' +
       '<div class="field" style="margin-top:12px"><label for="c-notes">ملاحظة (اختياري)</label>' +
@@ -11625,6 +11745,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         var codeInp = box.querySelector('#c-code');
         var errBox = box.querySelector('#c-err');
         codeInp.value = Store.suggestSerial();
+        codeInp.addEventListener('input', function () { codeInp.value = codeInp.value.toUpperCase().replace(/\s+/g, ''); });
         box.querySelector('#c-gen').addEventListener('click', function () {
           codeInp.value = Store.suggestSerial();
           errBox.style.display = 'none';
@@ -11665,28 +11786,50 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   /* إصدار دفعة بطاقات فارغة (الإدارة): باركودات عشوائية فريدة لا تتشابه —
      تُطبع فارغة وتوزَّع على نقاط البيع، وتُعبّأ كل واحدة عند بيعها. */
   function newBatchModal() {
+    if (!Store.isAdmin()) { UI.toast('err', 'صلاحية المدير فقط', 'إصدار الدفعات من صلاحيات المدير العام.'); return; }
+    var presets = [10, 20, 30, 40, 50, 100];
+    var chips = presets.map(function (n) {
+      return '<button type="button" class="btn btn-outline btn-sm b-preset" data-n="' + n + '">' + n + '</button>';
+    }).join(' ');
     var body = '<form id="batch-form" class="grid grid-2" style="gap:14px">' +
-      '<div class="field"><label for="b-count">عدد البطاقات بالدفعة *</label>' +
-        '<input type="number" id="b-count" min="1" max="500" value="20" required></div>' +
-      '<div class="field"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
+      '<div class="field" style="grid-column:1/-1"><label for="b-count">عدد البطاقات بالدفعة *</label>' +
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+          '<input type="number" id="b-count" min="1" max="1000" value="30" required style="width:140px">' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div></div>' +
+        '<span class="tiny muted" id="b-est" style="display:block;margin-top:6px"></span></div>' +
+      '<div class="field" style="grid-column:1/-1"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
-        '<p class="mb-0 small">' + UI.ic('shield') + ' كل بطاقة تولد <b>بباركود عشوائي فريد</b> لا يتشابه مع أي بطاقة أخرى ولا يعود أبداً — ' +
+        '<p class="mb-0 small">' + UI.ic('shield') + ' كل بطاقة تولد <b>بكود عشوائي فريد</b> من 10 خانات (حروف وأرقام بلا شرطة) لا يتشابه مع أي بطاقة أخرى ولا يعود أبداً — ' +
         'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين مع رمزي الفرصتين بظهرها، ' +
         'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ من التعبئة لا من اليوم.</p></div></div>';
 
     UI.modal({
-      title: 'إصدار دفعة بطاقات فارغة', subtitle: 'باركودات عشوائية فريدة — للطبع والتوزيع على نقاط البيع', wide: true, body: body,
+      title: 'إصدار دفعة بطاقات فارغة', subtitle: 'أكواد عشوائية فريدة — تُطبع على ورق A4 (10 بطاقات بالصفحة) وتوزَّع على نقاط البيع', wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="b-save">' + UI.ic('card') + ' إصدار الدفعة</button>',
       onMount: function (box, close) {
+        var cnt = box.querySelector('#b-count');
+        var est = box.querySelector('#b-est');
+        function refresh() {
+          var n = Math.max(0, Math.min(1000, Number(cnt.value) || 0));
+          var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 10);
+          est.textContent = n
+            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 10 بطاقات بالورقة الواحدة')
+            : 'أدخل عدداً بين 1 و1000';
+        }
+        cnt.addEventListener('input', refresh);
+        box.querySelectorAll('.b-preset').forEach(function (b) {
+          b.addEventListener('click', function () { cnt.value = b.getAttribute('data-n'); refresh(); });
+        });
+        refresh();
         box.querySelector('#b-save').addEventListener('click', function () {
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
-          var count = Number(box.querySelector('#b-count').value) || 0;
+          var count = Number(cnt.value) || 0;
           var notes = box.querySelector('#b-notes').value.trim();
           var made = Store.createCardBatch(count, notes);
-          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد'); return; }
+          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (1 إلى 1000)'); return; }
           close();
           batchResultModal(made);
         });
@@ -11701,17 +11844,17 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     }).join(' ') + (made.length > 60 ? '<span class="tiny muted">… و' + (made.length - 60) + ' أخرى</span>' : '');
     UI.modal({
       title: 'صدرت الدفعة — ' + made.length + ' بطاقة فارغة',
-      subtitle: 'باركودات عشوائية فريدة — تُطبع الآن وتوزَّع على نقاط البيع',
+      subtitle: 'أكواد عشوائية فريدة — تُطبع الآن على A4 وتوزَّع على نقاط البيع',
       wide: true,
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
-          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها الآن على <b>ورق مقوى 300–350غم</b> بخيار «الحجم الفعلي» — ' +
-          'كل بطاقة صفحتان (وجه أمامي وخلفي) بمقاس 86×54مم، وتُغلَّف حرارياً بمكتب الاستنساخ.</p></div></div>' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>10 بطاقات بكل صفحة</b> بمقاسها الفعلي 86×54مم، ' +
+          'والباقي على الصفحات التالية. للطباعة على الوجهين اختر «قلب على الحافة الطويلة» وخيار «الحجم الفعلي» (100%)، ثم قصّ البطاقات وغلّفها حرارياً بمكتب الاستنساخ.</p></div></div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px;direction:ltr;justify-content:flex-end">' + chips + '</div>',
       footer: '<button class="btn btn-outline" data-close>لاحقاً</button>' +
-        '<button class="btn btn-gold" id="b-print">' + UI.ic('print') + ' طباعة الدفعة (' + made.length + ' بطاقة)</button>',
+        '<button class="btn btn-gold" id="b-print">' + UI.ic('print') + ' طباعة الدفعة على A4 (' + made.length + ' بطاقة)</button>',
       onMount: function (box) {
         box.querySelector('#b-print').addEventListener('click', function () {
-          V.printBatch(made);
+          V.printSheet(made);
         });
       }
     });

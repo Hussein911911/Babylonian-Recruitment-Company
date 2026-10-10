@@ -1746,9 +1746,8 @@
       if (!v) return;
       /* بادئة واحدة HRC، والرقم المجرّد (6 خانات) يُكمَّل بها — تدعم بطاقة HRC-BC القديمة بصيغة HRC-NO للبيانات التاريخية */
       var serial = null;
-      if (/^HRC-BC/i.test(v)) serial = v;
+      if (Store.isCardSerial(v)) serial = Store.normalizeCardSerial(v);
       else if (/^HRC-NO/i.test(v)) serial = v.replace(/^HRC-NO/i, 'HRC-BC');
-      else if (/^\d{6}$/.test(v)) serial = 'HRC-BC-' + v;
       if (serial && Store.getApplicant(serial)) { attemptsModal(serial); return; }
       var job = Store.getJob(v);
       if (job) { quickJobModal(job.code); return; }
@@ -2327,13 +2326,14 @@
   /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
      المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة. */
   function newCardModal() {
+    if (!Store.isAdmin()) { UI.toast('err', 'صلاحية المدير فقط', 'إضافة البطاقات من صلاحيات المدير العام.'); return; }
     var body = '<form id="card1-form" onsubmit="return false">' +
       '<div class="field"><label for="c-code">كود البطاقة (الباركود) *</label>' +
         '<div style="display:flex;gap:8px;align-items:stretch">' +
-          '<input type="text" id="c-code" class="mono" dir="ltr" placeholder="HRC-BC-481926" required style="flex:1">' +
+          '<input type="text" id="c-code" class="mono" dir="ltr" placeholder="7KQ4M9TR2X" maxlength="10" autocomplete="off" required style="flex:1;letter-spacing:.14em;text-transform:uppercase">' +
           '<button type="button" class="btn btn-outline" id="c-gen" style="white-space:nowrap">' + UI.ic('refresh') + ' ولّد كوداً</button>' +
         '</div>' +
-        '<span class="tiny muted" style="display:block;margin-top:6px">اكتب <b>6 أرقام</b> أو الكود كاملاً بصيغة <b dir="ltr">HRC-BC-######</b> — يجب أن يكون فريداً ولم يُستعمل من قبل.</span>' +
+        '<span class="tiny muted" style="display:block;margin-top:6px">10 خانات من <b>حروف وأرقام</b> بلا شرطة ولا بادئة — يجب أن يكون فريداً ولم يُستعمل من قبل.</span>' +
         '<div class="tiny" id="c-err" style="display:none;color:#c0392b;background:#fdeeee;border:1px solid #f2c4c4;border-radius:8px;padding:6px 10px;margin-top:8px"></div>' +
       '</div>' +
       '<div class="field" style="margin-top:12px"><label for="c-notes">ملاحظة (اختياري)</label>' +
@@ -2352,6 +2352,7 @@
         var codeInp = box.querySelector('#c-code');
         var errBox = box.querySelector('#c-err');
         codeInp.value = Store.suggestSerial();
+        codeInp.addEventListener('input', function () { codeInp.value = codeInp.value.toUpperCase().replace(/\s+/g, ''); });
         box.querySelector('#c-gen').addEventListener('click', function () {
           codeInp.value = Store.suggestSerial();
           errBox.style.display = 'none';
@@ -2392,28 +2393,50 @@
   /* إصدار دفعة بطاقات فارغة (الإدارة): باركودات عشوائية فريدة لا تتشابه —
      تُطبع فارغة وتوزَّع على نقاط البيع، وتُعبّأ كل واحدة عند بيعها. */
   function newBatchModal() {
+    if (!Store.isAdmin()) { UI.toast('err', 'صلاحية المدير فقط', 'إصدار الدفعات من صلاحيات المدير العام.'); return; }
+    var presets = [10, 20, 30, 40, 50, 100];
+    var chips = presets.map(function (n) {
+      return '<button type="button" class="btn btn-outline btn-sm b-preset" data-n="' + n + '">' + n + '</button>';
+    }).join(' ');
     var body = '<form id="batch-form" class="grid grid-2" style="gap:14px">' +
-      '<div class="field"><label for="b-count">عدد البطاقات بالدفعة *</label>' +
-        '<input type="number" id="b-count" min="1" max="500" value="20" required></div>' +
-      '<div class="field"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
+      '<div class="field" style="grid-column:1/-1"><label for="b-count">عدد البطاقات بالدفعة *</label>' +
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+          '<input type="number" id="b-count" min="1" max="1000" value="30" required style="width:140px">' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div></div>' +
+        '<span class="tiny muted" id="b-est" style="display:block;margin-top:6px"></span></div>' +
+      '<div class="field" style="grid-column:1/-1"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
-        '<p class="mb-0 small">' + UI.ic('shield') + ' كل بطاقة تولد <b>بباركود عشوائي فريد</b> لا يتشابه مع أي بطاقة أخرى ولا يعود أبداً — ' +
+        '<p class="mb-0 small">' + UI.ic('shield') + ' كل بطاقة تولد <b>بكود عشوائي فريد</b> من 10 خانات (حروف وأرقام بلا شرطة) لا يتشابه مع أي بطاقة أخرى ولا يعود أبداً — ' +
         'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين مع رمزي الفرصتين بظهرها، ' +
         'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ من التعبئة لا من اليوم.</p></div></div>';
 
     UI.modal({
-      title: 'إصدار دفعة بطاقات فارغة', subtitle: 'باركودات عشوائية فريدة — للطبع والتوزيع على نقاط البيع', wide: true, body: body,
+      title: 'إصدار دفعة بطاقات فارغة', subtitle: 'أكواد عشوائية فريدة — تُطبع على ورق A4 (10 بطاقات بالصفحة) وتوزَّع على نقاط البيع', wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="b-save">' + UI.ic('card') + ' إصدار الدفعة</button>',
       onMount: function (box, close) {
+        var cnt = box.querySelector('#b-count');
+        var est = box.querySelector('#b-est');
+        function refresh() {
+          var n = Math.max(0, Math.min(1000, Number(cnt.value) || 0));
+          var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 10);
+          est.textContent = n
+            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 10 بطاقات بالورقة الواحدة')
+            : 'أدخل عدداً بين 1 و1000';
+        }
+        cnt.addEventListener('input', refresh);
+        box.querySelectorAll('.b-preset').forEach(function (b) {
+          b.addEventListener('click', function () { cnt.value = b.getAttribute('data-n'); refresh(); });
+        });
+        refresh();
         box.querySelector('#b-save').addEventListener('click', function () {
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
-          var count = Number(box.querySelector('#b-count').value) || 0;
+          var count = Number(cnt.value) || 0;
           var notes = box.querySelector('#b-notes').value.trim();
           var made = Store.createCardBatch(count, notes);
-          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد'); return; }
+          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (1 إلى 1000)'); return; }
           close();
           batchResultModal(made);
         });
@@ -2428,17 +2451,17 @@
     }).join(' ') + (made.length > 60 ? '<span class="tiny muted">… و' + (made.length - 60) + ' أخرى</span>' : '');
     UI.modal({
       title: 'صدرت الدفعة — ' + made.length + ' بطاقة فارغة',
-      subtitle: 'باركودات عشوائية فريدة — تُطبع الآن وتوزَّع على نقاط البيع',
+      subtitle: 'أكواد عشوائية فريدة — تُطبع الآن على A4 وتوزَّع على نقاط البيع',
       wide: true,
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
-          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها الآن على <b>ورق مقوى 300–350غم</b> بخيار «الحجم الفعلي» — ' +
-          'كل بطاقة صفحتان (وجه أمامي وخلفي) بمقاس 86×54مم، وتُغلَّف حرارياً بمكتب الاستنساخ.</p></div></div>' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>10 بطاقات بكل صفحة</b> بمقاسها الفعلي 86×54مم، ' +
+          'والباقي على الصفحات التالية. للطباعة على الوجهين اختر «قلب على الحافة الطويلة» وخيار «الحجم الفعلي» (100%)، ثم قصّ البطاقات وغلّفها حرارياً بمكتب الاستنساخ.</p></div></div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px;direction:ltr;justify-content:flex-end">' + chips + '</div>',
       footer: '<button class="btn btn-outline" data-close>لاحقاً</button>' +
-        '<button class="btn btn-gold" id="b-print">' + UI.ic('print') + ' طباعة الدفعة (' + made.length + ' بطاقة)</button>',
+        '<button class="btn btn-gold" id="b-print">' + UI.ic('print') + ' طباعة الدفعة على A4 (' + made.length + ' بطاقة)</button>',
       onMount: function (box) {
         box.querySelector('#b-print').addEventListener('click', function () {
-          V.printBatch(made);
+          V.printSheet(made);
         });
       }
     });

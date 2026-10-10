@@ -441,7 +441,7 @@ console.log('\n=== 3) منطق الفرصتين والحجز 24 ساعة وال�
 const S = site.window.HRCStore;
 check('البطاقة الجديدة تُصدر بباركود HRC-BC وفرصتين برموز مستقلة', () => {
   const app = S.createApplicant({ fullName: 'فحص البطاقة', phone: '07711111110', address: 'الحلة', posName: 'مكتب فحص — شارع 40' });
-  if (!/^HRC-BC-\d{6}$/.test(app.serial)) return 'الباركود: ' + app.serial;
+  if (!/^[2-9A-HJKMNP-Z]{10}$/.test(app.serial)) return 'الباركود: ' + app.serial;
   if (app.feePaid !== true) return 'البطاقة تُباع كاشاً — يجب أن تكون مدفوعة عند الإصدار';
   if (!app.posName) return 'نقطة البيع غير مسجلة';
   const att = S.getAttempts(app.serial);
@@ -702,6 +702,7 @@ check('بيع وتعبئة بطاقة فارغة من المخزون (كاش + �
 });
 check('إصدار دفعة بطاقات فارغة: باركودات عشوائية فريدة لا تتشابه', () => {
   closeAllModals(dash.doc);
+  dash.window.HRCStore.login('admin', 'admin123');   /* إصدار الدفعات للمدير فقط */
   const btn = dash.doc.getElementById('btn-new-batch');
   if (!btn) return 'زر «إصدار دفعة فارغة» مفقود';
   if (!btn.classList.contains('hidden') === false && dash.window.HRCStore.isAdmin && dash.window.HRCStore.isAdmin()) {
@@ -720,9 +721,11 @@ check('إصدار دفعة بطاقات فارغة: باركودات عشوائ�
   const serials = blanks.map((b) => b.serial);
   const uniq = new Set(serials);
   if (uniq.size !== 5) return 'باركودات مكررة بالدفعة: ' + serials.join(',');
-  if (!serials.every((x) => /^HRC-BC-\d{6}$/.test(x))) return 'صيغة باركود خاطئة: ' + serials.join(',');
+  if (!serials.every((x) => /^[2-9A-HJKMNP-Z]{10}$/.test(x))) return 'صيغة باركود خاطئة: ' + serials.join(',');
+  /* مختلط: أرقام وأحرف معاً في كل باركود، بلا شرطة ولا بادئة */
+  if (!serials.every((x) => /[2-9]/.test(x) && /[A-Z]/.test(x))) return 'باركود غير مختلط: ' + serials.join(',');
   /* عشوائية لا تسلسل: لا يجوز أن تكون الأرقام متتالية أو متشابهة الترتيب */
-  const nums = serials.map((x) => Number(x.slice(7)));
+  const nums = serials.map((x) => parseInt(x, 36));
   const sorted = [...nums].sort((a, b) => a - b);
   const sequential = sorted.every((v, i) => i === 0 || v - sorted[i - 1] === 1);
   if (sequential) return 'الباركودات متسلسلة (قابلة للتخمين): ' + serials.join(',');
@@ -730,6 +733,23 @@ check('إصدار دفعة بطاقات فارغة: باركودات عشوائ�
     return 'بطاقة فارغة ببيانات زبون أو تواريخ';
   const codes = blanks.flatMap((b) => dash.window.HRCStore.getAttempts(b.serial).map((t) => t.code));
   if (codes.length !== 10 || new Set(codes).size !== 10) return 'رموز الفرص: ' + codes.length + ' منها فريد ' + new Set(codes).size;
+  return true;
+});
+check('إضافة البطاقات للمدير فقط: الموظف مرفوض في المتجر نفسه', () => {
+  dash.window.HRCStore.login('staff', 'staff123');
+  const r1 = dash.window.HRCStore.createCardWithSerial('', 'محاولة موظف');
+  const batch = dash.window.HRCStore.createCardBatch(3, 'محاولة موظف');
+  dash.window.HRCStore.login('admin', 'admin123');
+  if (r1.ok) return 'الموظف أضاف بطاقة بكودها';
+  if (batch.length) return 'الموظف أصدر دفعة';
+  return true;
+});
+check('صيغة الباركود: الجديدة (10 خانات) والقديمة (HRC-BC-######) مقبولتان، والمرفوضة مرفوضة', () => {
+  const S = dash.window.HRCStore;
+  if (!S.isCardSerial('7KQ4M9TR2X')) return 'الجديدة مرفوضة';
+  if (!S.isCardSerial('7kq4m9tr2x')) return 'الجديدة بحروف صغيرة مرفوضة';
+  if (!S.isCardSerial('HRC-BC-000120') || !S.isCardSerial('000120')) return 'القديمة مرفوضة';
+  if (S.isCardSerial('7KQ0M9TR2X') || S.isCardSerial('7KQIM9TR2X') || S.isCardSerial('7KQ4M9TR2')) return 'أبجدية/طول خاطئ مقبول';
   return true;
 });
 check('نموذج إضافة وظيفة يُنتج كود HRC-#### جديداً', () => {
