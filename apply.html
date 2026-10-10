@@ -389,10 +389,11 @@ body{
 .job-card{position:relative;cursor:pointer}
 .job-card.is-done{cursor:default;opacity:.72}
 .job-card.selected{
-  border-color:#c8a24a;background:linear-gradient(180deg,rgba(200,162,74,.12),rgba(200,162,74,.04));
-  box-shadow:0 0 0 1px rgba(200,162,74,.45),0 8px 26px rgba(200,162,74,.16);
+  border:2px solid #e8c766;background:linear-gradient(180deg,rgba(232,199,102,.32),rgba(200,162,74,.16));
+  box-shadow:0 0 0 2px rgba(232,199,102,.75),0 10px 32px rgba(232,199,102,.38);
   transform:translateY(-2px);
 }
+.job-card.selected .job-title,.job-card.selected h3{color:#f7e3a1;}
 .job-card .pick-mark{
   position:absolute;top:-9px;inset-inline-start:-9px;width:30px;height:30px;border-radius:50%;
   display:none;place-items:center;font-size:13pt;font-weight:900;color:#0b1a3a;
