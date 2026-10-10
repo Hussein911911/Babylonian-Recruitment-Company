@@ -38,6 +38,7 @@
     s = String(s || '').trim().toUpperCase();
     if (!s) return '';
     /* بادئة واحدة موحّدة HRC. الرقم المجرّد (6 خانات) يُكمَّل بها. */
+    if (/^[2-9A-HJKMNP-Z]{10}$/.test(s)) return s;               /* الصيغة الجديدة: 10 خانات بلا بادئة */
     if (!/^HRC-BC/i.test(s)) s = 'HRC-BC-' + s.replace(/[^0-9]/g, '').padStart(6, '0');
     return s;
   }

@@ -390,10 +390,7 @@ check('أقضية بابل تُملأ بعد اختيار المحافظة', dis
 setVal('f-dist', dists[0]);
 $('f-dist').dispatchEvent({ type: 'change', target: $('f-dist') });
 await tick(10);
-const subs = [...$('f-sub').children].map((o) => o.attrs.value).filter(Boolean);
-check('النواحي تُملأ بعد اختيار القضاء', subs.length > 0, subs.join(', '));
-
-setVal('f-sub', subs[0]);
+check('حقل الناحية أُزيل من النموذج', !$('f-sub'), '');
 setVal('f-lm', 'قرب مجمع الكرعاوي');
 click(findByOnclick('G.next()'));
 await tick(30);
@@ -563,7 +560,7 @@ check('الهاتف والميلاد والجنس والمحافظة مُرسل�
   sent.phone === '07712345678' && sent.dob === '1996-06-15' && sent.gender === 'أنثى' && sent.province === 'بابل',
   JSON.stringify({ p: sent.phone, d: sent.dob, g: sent.gender, pr: sent.province }));
 check('نقطة الدالة والحقول الأربعة للحقول المطلوبة موجودة',
-  !!sent.landmark && !!sent.district && !!sent.subdistrict, JSON.stringify(sent));
+  !!sent.landmark && !!sent.district && !sent.subdistrict, JSON.stringify(sent));
 
 /* ===========================================================================
  *  12) صفحة النتيجة: النجاح + الاستمارة + الباركود

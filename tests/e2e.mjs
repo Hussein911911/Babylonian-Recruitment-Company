@@ -194,7 +194,7 @@ await wait(200);
 {
   const box = lastModal(dash.doc);
   check('نافذة الدفعة: عدد + ملاحظة + تحذير التزوير', !!box.querySelector('#b-count') &&
-    /عشوائي فريد لا يتشابه/.test(box.textContent));
+    /عشوائي فريد/.test(box.textContent) && /لا يتشابه/.test(box.textContent));
   setVal(dash.w, box.querySelector('#b-count'), '3');
   setVal(dash.w, box.querySelector('#b-notes'), 'دفعة اختبار المسار');
   click(dash.w, box.querySelector('#b-save'));
@@ -215,7 +215,7 @@ check('المخزون الفارغ زاد (' + stockBefore + ' → ' + D.listBla
 check('البطاقات الفارغة بلا اسم وبلا تواريخ (بانتظار التعبئة)',
   BLANKS.every((b) => b.status === 'blank' && !b.fullName && !b.phone && !b.issueDate && !b.expiryDate));
 const blankSerials = BLANKS.map((b) => b.serial);
-check('الباركودات بصيغة HRC-BC-###### وفريدة', blankSerials.every((x) => /^HRC-BC-\d{6}$/.test(x)) &&
+check('الباركودات بصيغة 10 خانات (حروف وأرقام) وفريدة', blankSerials.every((x) => /^[2-9A-HJKMNP-Z]{10}$/.test(x)) &&
   new Set(blankSerials).size === 3, blankSerials.join('،'));
 {
   const nums = blankSerials.map((x) => Number(x.slice(7))).sort((a, b) => a - b);
@@ -246,13 +246,13 @@ await wait(200);
   const box = lastModal(dash.doc);
   check('نافذة «إضافة بطاقة بكودها»: كود مقترح + زر توليد + ملاحظة',
     !!box.querySelector('#c-code') && !!box.querySelector('#c-gen') && !!box.querySelector('#c-notes') &&
-    /^HRC-BC-\d{6}$/.test(box.querySelector('#c-code').value));
+    /^[2-9A-HJKMNP-Z]{10}$/.test(box.querySelector('#c-code').value));
   /* صيغة خاطئة ثم كود مكرر: يُرفضان برسالة داخل النافذة */
   setVal(dash.w, box.querySelector('#c-code'), 'A1B2C3');
   click(dash.w, box.querySelector('#c-save'));
   await wait(120);
   check('الصيغة الخاطئة مرفوضة داخل النافذة', box.querySelector('#c-err').style.display !== 'none' &&
-    /صيغة الكود غير صحيحة/.test(box.querySelector('#c-err').textContent));
+    /صيغة الباركود غير صحيحة/.test(box.querySelector('#c-err').textContent));
   setVal(dash.w, box.querySelector('#c-code'), blankSerials[0]);   /* باركود بطاقة الدفعة */
   click(dash.w, box.querySelector('#c-save'));
   await wait(120);
@@ -523,8 +523,8 @@ const D2 = dash2.w.HRCStore;
 D2.importJson(DB2B);
 dash2.w.HRCRefresh && dash2.w.HRCRefresh();
 await wait(250);
-check('زر «إضافة بطاقة» ظاهر للموظف أيضاً (الدفعات للإدارة وحدها)',
-  !dash2.doc.getElementById('btn-new-card').classList.contains('hidden') &&
+check('زرا «إضافة بطاقة» و«إصدار دفعة» مخفيان عن الموظف (للمدير وحده)',
+  dash2.doc.getElementById('btn-new-card').classList.contains('hidden') &&
   dash2.doc.getElementById('btn-new-batch').classList.contains('hidden'));
 
 /* تقديم ساعة حجز وظيفة نقطة البيع (الفرصة الأولى) للماضي ثم تشغيل الصيانة */
@@ -720,9 +720,14 @@ const DB5 = pub2.w.HRCStore.exportJson();
    ويتعافى الزبون باختيار وظيفة أخرى فوراً. */
 {
   const P2 = pub2.w.HRCStore, B2 = pub2.w.HRCBooking;
-  const sRace = P2.createCardWithSerial(P2.suggestSerial(), '').card.serial;
+  /* إنشاء البطاقات تجهيزاً للاختبار يتطلب جلسة مدير (قرار 2026-10-10) */
+  Object.defineProperty(pub2.w, 'sessionStorage', { configurable: true, value: staffStorage('admin') });
+  const dbgR = P2.createCardWithSerial(P2.suggestSerial(), '');
+  if (!dbgR.ok) throw new Error('إعداد الاختبار: ' + dbgR.error);
+  const sRace = dbgR.card.serial;
   const sOther = P2.createCardWithSerial(P2.suggestSerial(), '').card.serial;
   const sThird = P2.createCardWithSerial(P2.suggestSerial(), '').card.serial;
+  delete pub2.w.sessionStorage;   /* إعادة الزائر إلى حالته الطبيعية */
   B2.open({ serial: sRace, fromHash: true });
   await wait(350);
   const bx = () => lastModal(pub2.doc);

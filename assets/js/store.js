@@ -516,22 +516,59 @@
 
   /* ======================= الباحثون عن العمل والبطاقات ======================= */
 
-  /* بادئة البطاقة: HRC-BC-###### (BC = بطاقة توظيف) — الباركود هو هوية البطاقة.
-     ⚠️ قرار مقفل (2026-09-30): الباركود **عشوائي غير متسلسل** — لا نمط يُخمَّن
-     ولا رقمين متجاورين يتشابهان، لتفادي التزوير. كل باركود يُسجَّل بسجل دائم
-     (usedSerials) حتى لا يعود أبداً ولو حُذفت بطاقته. */
+  /* ===== صيغة باركود البطاقة (قرار الإدارة 2026-10-10) =====
+     10 خانات: أحرف إنجليزية كبيرة وأرقام مختلطة — بلا بادئة وبلا شرطة وبلا فاصل.
+     نستبعد الأشكال المتشابهة (0/O و1/I/L) حتى لا يخلط الكاتب اليدوي بينها.
+     الصيغة القديمة HRC-BC-###### تبقى مقبولة للبطاقات المطبوعة سابقاً.
+     التوليد عشوائي غير متسلسل (قرار 2026-09-30 محفوظ): لا نمط يُخمَّن ولا يُتتبَّع. */
+  var CARD_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  var CARD_LEN = 10;
+  var CARD_RE = /^[2-9A-HJKMNP-Z]{10}$/;
+  var LEGACY_CARD_RE = /^HRC-BC-\d{6}$/;
+
+  /* توحيد الإدخال: حروف كبيرة وبلا مسافات؛ والرقم القديم المجرّد (6 خانات) يُكمَّل بـ HRC-BC */
+  function normalizeCardSerial(v) {
+    var s = String(v == null ? '' : v).trim().toUpperCase().replace(/\s+/g, '');
+    var m = /^(?:HRC-?BC-?)?(\d{6})$/.exec(s);
+    if (m) return 'HRC-BC-' + m[1];
+    return s;
+  }
+
+  function isCardSerial(v) {
+    var s = normalizeCardSerial(v);
+    return CARD_RE.test(s) || LEGACY_CARD_RE.test(s);
+  }
+
+  function randomIndex(n) {
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      var a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n;
+    }
+    return Math.floor(Math.random() * n);
+  }
+
+  /* كود عشوائي من 10 خانات مختلطة (3 أرقام على الأقل و3 أحرف على الأقل) */
+  function randomCardCode() {
+    for (var g = 0; g < 200; g++) {
+      var s = '';
+      for (var i = 0; i < CARD_LEN; i++) s += CARD_ALPHABET.charAt(randomIndex(CARD_ALPHABET.length));
+      var digits = (s.match(/[2-9]/g) || []).length;
+      if (digits >= 3 && CARD_LEN - digits >= 3) return s;
+    }
+    return null;
+  }
+
   function randomSerial() {
     if (!db.usedSerials) db.usedSerials = [];
     var exists = {};
     db.applicants.forEach(function (a) { exists[a.serial] = 1; });
     for (var guard = 0; guard < 500; guard++) {
-      var serial = 'HRC-BC-' + String(100000 + Math.floor(Math.random() * 900000));
-      if (!exists[serial] && db.usedSerials.indexOf(serial) < 0) {
+      var serial = randomCardCode();
+      if (serial && !exists[serial] && db.usedSerials.indexOf(serial) < 0) {
         db.usedSerials.push(serial);
         return serial;
       }
     }
-    return null; /* مستحيل عملياً: 900 ألف احتمال */
+    return null; /* مستحيل عملياً: 31^10 احتمال */
   }
 
   function nextSerial() { return randomSerial(); }
@@ -593,7 +630,8 @@
      ورمزي فرصتين — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
      والصلاحية (30 يوماً) لا تبدأ إلا عند تعبئة بيانات الزبون عند البيع. */
   function createCardBatch(count, notes) {
-    count = Math.max(1, Math.min(500, Number(count) || 0));
+    if (!isAdmin()) return [];           /* إصدار الدفعات للمدير فقط */
+    count = Math.max(1, Math.min(1000, Number(count) || 0));
     var made = [];
     for (var i = 0; i < count; i++) {
       var serial = randomSerial();
@@ -620,13 +658,13 @@
 
   /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
      المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة.
-     الكود بصيغة HRC-BC-###### (أو 6 أرقام فتُسبَق تلقائياً) ويجب أن يكون
+     الكود 10 خانات حروف وأرقام (أو 6 أرقام للقديمة فتُسبَق بـ HRC-BC) ويجب أن يكون
      فريداً ولم يُستعمل أبداً — سجل usedSerials يمنع عودة أي باركود. */
   function createCardWithSerial(serial, notes) {
-    serial = String(serial || '').trim().toUpperCase();
-    if (/^\d{6}$/.test(serial)) serial = 'HRC-BC-' + serial;
-    if (!/^HRC-BC-\d{6}$/.test(serial))
-      return { ok: false, error: 'صيغة الكود غير صحيحة — اكتب 6 أرقام، أو الكود كاملاً بصيغة HRC-BC-######' };
+    if (!isAdmin()) return { ok: false, error: 'إضافة البطاقات صلاحية للمدير العام فقط' };
+    serial = normalizeCardSerial(serial);
+    if (!isCardSerial(serial))
+      return { ok: false, error: 'صيغة الباركود غير صحيحة — 10 خانات من حروف وأرقام بلا شرطة (مثال: 7KQ4M9TR2X)، أو اتركه فارغاً ليُولَّد تلقائياً' };
     if (!db.usedSerials || !Array.isArray(db.usedSerials)) db.usedSerials = [];
     if (getApplicant(serial))
       return { ok: false, error: 'هذا الباركود مسجَّل لبطاقة موجودة أصلاً — اختر كوداً آخر' };
@@ -658,8 +696,8 @@
     var exists = {};
     db.applicants.forEach(function (a) { exists[a.serial] = 1; });
     for (var guard = 0; guard < 500; guard++) {
-      var s = 'HRC-BC-' + String(100000 + Math.floor(Math.random() * 900000));
-      if (!exists[s] && db.usedSerials.indexOf(s) < 0) return s;
+      var s = randomCardCode();
+      if (s && !exists[s] && db.usedSerials.indexOf(s) < 0) return s;
     }
     return '';
   }
@@ -2250,6 +2288,7 @@
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,
     createCardBatch: createCardBatch, createCardWithSerial: createCardWithSerial, suggestSerial: suggestSerial,
+    isCardSerial: isCardSerial, normalizeCardSerial: normalizeCardSerial,
     activateCard: activateCard, listBlankCards: listBlankCards, randomSerial: randomSerial,
     approveApplicant: approveApplicant, rejectApplicant: rejectApplicant,
     getAttempts: getAttempts, attemptsLeft: attemptsLeft, formStatus: formStatus, activeAttempt: activeAttempt,

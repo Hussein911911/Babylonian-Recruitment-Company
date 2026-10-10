@@ -299,10 +299,16 @@
 
     /* رمز بطاقة توظيف (HRC-BC-…): نفتح «بطاقتي» مباشرة بالباركود المعبّأ —
        الزبون يرى حالته المقنّعة، واستخدام الفرصة يتطلب رمزها السري. */
-    var serial = text.match(/HRC-BC-\d+/i);   // بادئة بطاقة التوظيف
+    /* الباركود الجديد (10 خانات بلا بادئة): يأتي داخل رابط apply.html?form=… أو نصاً مجرداً */
+    var cand = null;
+    var qm = /[?&#](?:form|card|bc|serial)=([A-Za-z0-9-]+)/i.exec(text);
+    if (qm) cand = qm[1];
+    else if (/^\s*[A-Za-z0-9-]+\s*$/.test(text)) cand = text.trim();
+    else { var legacy = text.match(/HRC-BC-\d+/i); if (legacy) cand = legacy[0]; }
+    var serial = cand && Store.isCardSerial(cand) ? [Store.normalizeCardSerial(cand)] : null;
     if (serial) {
       if (root.HRCBooking && root.HRCBooking.open) {
-        root.HRCBooking.open({ serial: serial[0].toUpperCase() });
+        root.HRCBooking.open({ serial: serial[0] });
       } else {
         UI.toast('info', 'بطاقة توظيف شركة الهدف',
           'افتح الموقع الرئيسي وأدخل باركود بطاقتك من نافذة «بطاقتي».', 8000);
