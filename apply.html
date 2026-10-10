@@ -614,10 +614,6 @@ body{
           <select id="f-dist" disabled><option value="">اختر المحافظة أولاً</option></select>
         </div>
         <div class="form-group">
-          <label><span class="req">*</span> الناحية</label>
-          <select id="f-sub" disabled><option value="">اختر القضاء أولاً</option></select>
-        </div>
-        <div class="form-group">
           <label><span class="req">*</span> أقرب نقطة دالة</label>
           <input type="text" id="f-lm" placeholder="مثال: قرب مجمع الكرعاوي">
         </div>
@@ -1010,12 +1006,10 @@ var G={
         if(!el.value){setInvalid(el,'err-addr','📍','اختر المحافظة من القائمة');return false;}
         el=$('f-dist');
         if(!el.value){setInvalid(el,'err-addr','📍','اختر القضاء / المنطقة من القائمة');return false;}
-        el=$('f-sub');
-        if(!el.value){setInvalid(el,'err-addr','📍','اختر الناحية من القائمة');return false;}
         el=$('f-lm');
         if(!el.value.trim()){setInvalid(el,'err-addr','📍','اكتب أقرب نقطة دالة — مثال: قرب مجمع الكرعاوي أو مقابل مستشفى الحلة');return false;}
         if(el.value.trim().length<3){setInvalid(el,'err-addr','📍','نقطة الدالة قصيرة — اكتب وصفاً أوضح (3 أحرف على الأقل)');return false;}
-        setValid($('f-prov'));setValid($('f-dist'));setValid($('f-sub'));setValid($('f-lm'));
+        setValid($('f-prov'));setValid($('f-dist'));setValid($('f-lm'));
         clearErr('err-addr');
         return true;
       case 3: /* المواليد */
@@ -1048,7 +1042,7 @@ var G={
   readProfile:function(){
     var dob=$('f-yr').value+'-'+pad2($('f-mon').value)+'-'+pad2($('f-day').value);
     return{fullName:$('f-name').value.trim(),phone:$('f-phone').value.trim(),
-      province:$('f-prov').value,district:$('f-dist').value,subdistrict:$('f-sub').value,
+      province:$('f-prov').value,district:$('f-dist').value,
       landmark:$('f-lm').value.trim(),dob:dob,gender:selectedGender};
   },
 
@@ -1057,7 +1051,6 @@ var G={
     $('f-name').value=p.fullName||'';$('f-phone').value=p.phone||'';$('f-lm').value=p.landmark||'';
     if(p.province){$('f-prov').value=p.province;$('f-prov').dispatchEvent(new Event('change'));}
     if(p.district){$('f-dist').value=p.district;$('f-dist').dispatchEvent(new Event('change'));}
-    if(p.subdistrict)$('f-sub').value=p.subdistrict;
     if(p.gender){selectedGender=p.gender;document.querySelectorAll('.gender-opt').forEach(function(g){g.classList.toggle('selected',g.dataset.v===p.gender);});}
     if(p.dob){var bits=String(p.dob).slice(0,10).split('-');if(bits.length===3){$('f-yr').value=String(Number(bits[0]));$('f-mon').value=String(Number(bits[1]));$('f-day').value=String(Number(bits[2]));}}
   },
@@ -1239,7 +1232,7 @@ var G={
     var host=$('review-content');if(!host)return;
     var p=G.readProfile();
     var dobTxt=G.dobText();
-    var place=[p.province,p.district,p.subdistrict].filter(function(x){return !!x;}).join(' – ');
+    var place=[p.province,p.district].filter(function(x){return !!x;}).join(' – ');
 
     function row(k,v,step,ltr){
       return '<div class="rv-row"><div class="rv-k">'+k+'</div>'
@@ -1427,7 +1420,7 @@ var G={
     var empA=att.employerAddress||(att.employer&&att.employer.address)||jR.employer_address||(jR.employer&&jR.employer.address)||job.employer.address||'—';
     var empL=att.interviewLocation||(att.employer&&att.employer.interviewLocation)||jR.interview_location||job.interviewLocation||'—';
     var sal=money(job.salaryMin)+' – '+money(job.salaryMax);
-    var addr=$('f-prov').value+' - '+$('f-dist').value+' - '+$('f-sub').value;
+    var addr=$('f-prov').value+' - '+$('f-dist').value;
     var lm=$('f-lm').value.trim();if(lm)addr+=' ('+lm+')';
     var dob=$('f-day').value+'/'+$('f-mon').value+'/'+$('f-yr').value;
     var cUrl=(location.origin||'https://hrc-babil.com')+location.pathname.replace(/[^/]*$/,'')+'apply.html?form='+encodeURIComponent(cardSerial);
@@ -1641,17 +1634,11 @@ function initProvince(){
   var sel=$('f-prov');
   Object.keys(IRAQ).forEach(function(p){var o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);});
   sel.addEventListener('change',function(){
-    var dist=$('f-dist'),sub=$('f-sub');
-    dist.innerHTML='<option value="">اختر القضاء</option>';sub.innerHTML='<option value="">اختر القضاء أولاً</option>';sub.disabled=true;
+    var dist=$('f-dist');
+    dist.innerHTML='<option value="">اختر القضاء</option>';
     var pd=IRAQ[sel.value];
     if(pd){dist.disabled=false;Object.keys(pd).forEach(function(d){var o=document.createElement('option');o.value=d;o.textContent=d;dist.appendChild(o);});}
     else dist.disabled=true;
-  });
-  $('f-dist').addEventListener('change',function(){
-    var sub=$('f-sub');sub.innerHTML='<option value="">اختر الناحية</option>';
-    var pd=IRAQ[$('f-prov').value];var sd=pd&&pd[this.value];
-    if(sd&&sd.length){sub.disabled=false;sd.forEach(function(s){if(s==='中心')return;var o=document.createElement('option');o.value=s;o.textContent=s;sub.appendChild(o);});}
-    else sub.disabled=true;
   });
 }
 
@@ -1854,11 +1841,11 @@ function startApp(){
       var eid=errMap[id];if(eid)$(eid).innerHTML='';
     });
   });
-  ['f-prov','f-dist','f-sub','f-day','f-mon','f-yr'].forEach(function(id){
+  ['f-prov','f-dist','f-day','f-mon','f-yr'].forEach(function(id){
     var el=$(id);if(!el)return;
     el.addEventListener('change',function(){
       el.classList.remove('invalid');
-      var errMap={'f-prov':'err-addr','f-dist':'err-addr','f-sub':'err-addr','f-day':'err-dob','f-mon':'err-dob','f-yr':'err-dob'};
+      var errMap={'f-prov':'err-addr','f-dist':'err-addr','f-day':'err-dob','f-mon':'err-dob','f-yr':'err-dob'};
       var eid=errMap[id];if(eid)$(eid).innerHTML='';
     });
   });
