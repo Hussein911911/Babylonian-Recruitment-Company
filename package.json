@@ -9,7 +9,7 @@
     "test": "node tests/smoke.mjs",
     "test:backup": "node tests/backup.mjs",
     "test:apply": "node tests/apply-flow.mjs",
-    "test:all": "node tests/smoke.mjs && node tests/apply-flow.mjs && node tests/schema.mjs && node tests/cloud.mjs && node tests/cloud-http.mjs && node tests/cloud-sync.mjs && node tests/store-cloud.mjs && node tests/dashboard-cloud.mjs && node tests/perf.mjs && node tests/supabase-check.mjs && node tests/backup.mjs && node tests/e2e.mjs && node tests/audit.mjs",
+    "test:all": "node tests/smoke.mjs && node tests/apply-flow.mjs && node tests/schema.mjs && node tests/cloud.mjs && node tests/cloud-http.mjs && node tests/cloud-sync.mjs && node tests/store-cloud.mjs && node tests/dashboard-cloud.mjs && node tests/staff-accounts.mjs && node tests/dashboard-users.mjs && node tests/staff-admin-function.mjs && node tests/perf.mjs && node tests/supabase-check.mjs && node tests/backup.mjs && node tests/e2e.mjs && node tests/audit.mjs",
     "e2e": "node tests/e2e.mjs",
     "audit": "node tests/audit.mjs",
     "verify:qr": "node tests/qr-report.mjs",
@@ -23,6 +23,9 @@
     "test:sync": "node tests/cloud-sync.mjs",
     "test:store": "node tests/store-cloud.mjs",
     "test:dashboard-cloud": "node tests/dashboard-cloud.mjs",
+    "test:staff-accounts": "node tests/staff-accounts.mjs",
+    "test:dashboard-users": "node tests/dashboard-users.mjs",
+    "test:staff-fn": "node tests/staff-admin-function.mjs",
     "loadtest": "node tools/loadtest.mjs",
     "test:perf": "node tests/perf.mjs"
   },

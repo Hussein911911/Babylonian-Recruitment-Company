@@ -5254,12 +5254,17 @@ table.data tbody tr:hover { background: #faf8f3; }
 
   /* جلب قائمة المستخدمين: السحابيين + المحليين + الافتراضيين */
   function listUsers() {
-    var cloudStaff = (db.staff || []).filter(function (s) { return s.active !== false; });
+    var cloudStaff = (db.staff || []);
     var localUsers = (db.settings.users || []).concat(CFG.users || []);
     /* دمج: السحابي أولاً ثم المحلي (الأسبقية للمحلي) */
     var map = {};
     cloudStaff.forEach(function (s) {
-      map[s.username] = { username: s.username, name: s.name, role: s.role || 'staff', title: s.title || '', active: s.active !== false, source: 'cloud' };
+      /* id و authId يُحفظان مع العرض: بلا معرّف موظف القاعدة لا يمكن تعديله
+         ولا تعطيله ولا حذفه من اللوحة (تُنادى به دوال إدارة الحساب). */
+      map[s.username] = {
+        username: s.username, name: s.name, role: s.role || 'staff', title: s.title || '',
+        active: s.active !== false, source: 'cloud', id: s.id || null, authId: s.authId || null
+      };
     });
     var seen = {};
     localUsers.forEach(function (u) {
@@ -5273,13 +5278,41 @@ table.data tbody tr:hover { background: #faf8f3; }
     return Object.values(map);
   }
 
-  /* إضافة مستخدم جديد */
+  /* سطر الموظف السحابي (brc.staff) بالاسم — أو null */
+  function staffRowOf(username) {
+    var staff = db.staff || [];
+    for (var i = 0; i < staff.length; i++) if (staff[i].username === username) return staff[i];
+    return null;
+  }
+
+  /* إضافة مستخدم جديد.
+     ⚠️ تمييز مقصود: تكرار الاسم مع سطر **محلي** يُرفض دائماً (شخصان بنفس اسم
+     الدخول = خطأ). أما سطر في القاعدة فليس تكراراً بل نفس الحساب: الحساب أُنشئ
+     في القاعدة قبل لحظات (cloudLinked=true) وما نكتبه هنا هو نسخة الدخول المحلي
+     الاحتياطية له — وهي التي تُسند اسم موظف القاعدة إلى اسم دخول محلي عند
+     انقطاع الإنترنت في الوضع الانتقالي. */
   function addUser(data) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     if (!data.username || !data.password || !data.name) return { ok: false, error: 'الاسم واسم المستخدم وكلمة المرور مطلوبة' };
-    var all = listUsers();
-    var dup = all.filter(function (u) { return u.username === data.username; })[0];
-    if (dup) return { ok: false, error: 'اسم المستخدم «' + data.username + '» موجود مسبقاً' };
+    var dup = listUsers().filter(function (u) { return u.username === data.username; })[0];
+    var sameCloudAccount = !!(dup && dup.source === 'cloud' && data.cloudLinked);
+    if (dup && !sameCloudAccount) return { ok: false, error: 'اسم المستخدم «' + data.username + '» موجود مسبقاً' };
+    if (sameCloudAccount) {
+      /* الاسم موجود في القاعدة: نحدّث السطر المحلي إن وُجد بدل إضافة ثانٍ */
+      var locals = db.settings.users || [];
+      var li = -1;
+      for (var k = 0; k < locals.length; k++) if (locals[k].username === data.username) { li = k; break; }
+      if (li >= 0) {
+        locals[li].password = data.password;
+        locals[li].name = data.name;
+        locals[li].role = data.role || 'staff';
+        locals[li].title = data.title || '';
+        locals[li].active = true;
+        audit('إضافة مستخدم', 'user', data.username, 'ربط دخول محلي بحساب القاعدة: ' + data.name);
+        save(); emit();
+        return { ok: true, user: locals[li] };
+      }
+    }
     if (!db.settings.users) db.settings.users = [];
     var newUser = {
       username: data.username,
@@ -5295,24 +5328,40 @@ table.data tbody tr:hover { background: #faf8f3; }
     return { ok: true, user: newUser };
   }
 
-  /* تعديل مستخدم */
+  /* تعديل مستخدم — يعمل على المصدرين: السطر المحلي وسطر القاعدة (brc.staff).
+     ⚠️ علّة مُصلَحة: كان التعديل يفشل بـ«المستخدم غير موجود محلياً» لأي موظف
+     أُنشئ من جهاز آخر (سطر في القاعدة بلا نظير محلي)، فيظهر الموظف في الجدول
+     ولا يستطيع المدير تعديله ولا تعطيله. */
   function updateUser(username, data) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     var users = db.settings.users || [];
     var idx = -1;
     for (var i = 0; i < users.length; i++) { if (users[i].username === username) { idx = i; break; } }
-    if (idx < 0) return { ok: false, error: 'المستخدم غير موجود محلياً' };
-    if (data.name) users[idx].name = data.name;
-    if (data.role) users[idx].role = data.role;
-    if (data.title !== undefined) users[idx].title = data.title;
-    if (data.password) users[idx].password = data.password;
-    if (data.active !== undefined) users[idx].active = data.active;
+    var row = staffRowOf(username);
+
+    if (idx < 0 && !row) return { ok: false, error: 'الموظف غير موجود — لا محلياً ولا في القاعدة' };
+
+    if (idx >= 0) {
+      if (data.name) users[idx].name = data.name;
+      if (data.role) users[idx].role = data.role;
+      if (data.title !== undefined) users[idx].title = data.title;
+      if (data.password) users[idx].password = data.password;
+      if (data.active !== undefined) users[idx].active = data.active;
+    }
+    if (row) {
+      if (data.name) row.name = data.name;
+      if (data.role) row.role = data.role;
+      if (data.title !== undefined) row.title = data.title;
+      if (data.active !== undefined) row.active = data.active;
+      /* كلمة مرور سطر القاعدة لا تُحفظ هنا: كلمة مروره الحقيقية في Supabase Auth
+         وتُغيَّر بدالة إدارة الحساب بمفتاح الخدمة (setCloudUserPassword). */
+    }
     audit('تعديل مستخدم', 'user', username, JSON.stringify(data));
     save(); emit();
-    return { ok: true };
+    return { ok: true, cloud: !!row, local: idx >= 0 };
   }
 
-  /* حذف مستخدم */
+  /* حذف مستخدم (المصدران معاً) */
   function deleteUser(username) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     var cur = currentUser();
@@ -5320,25 +5369,41 @@ table.data tbody tr:hover { background: #faf8f3; }
     var users = db.settings.users || [];
     var before = users.length;
     db.settings.users = users.filter(function (u) { return u.username !== username; });
-    if (db.settings.users.length === before) return { ok: false, error: 'المستخدم غير موجود محلياً' };
-    audit('حذف مستخدم', 'user', username, 'تم حذف الحساب');
+    var localGone = db.settings.users.length !== before;
+
+    var row = staffRowOf(username);
+    if (row) db.staff = (db.staff || []).filter(function (s) { return s.username !== username; });
+
+    if (!localGone && !row) return { ok: false, error: 'الموظف غير موجود — لا محلياً ولا في القاعدة' };
+    audit('حذف مستخدم', 'user', username, 'تم حذف الحساب' + (row ? ' (مع سطر القاعدة)' : ''));
     save(); emit();
-    return { ok: true };
+    return { ok: true, local: localGone, cloud: !!row };
   }
 
-  /* تبديل حالة التنشيط */
+  /* تبديل حالة التنشيط (المصدران معاً) */
   function toggleUserActive(username) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     var users = db.settings.users || [];
+    var out = { ok: false };
     for (var i = 0; i < users.length; i++) {
       if (users[i].username === username) {
         users[i].active = !users[i].active;
-        audit(users[i].active ? 'تنشيط مستخدم' : 'تعطيل مستخدم', 'user', username, '');
-        save(); emit();
-        return { ok: true, active: users[i].active };
+        out = { ok: true, active: users[i].active, local: true };
+        break;
       }
     }
-    return { ok: false, error: 'المستخدم غير موجود محلياً' };
+    var row = staffRowOf(username);
+    if (row) {
+      row.active = !(row.active !== false);
+      out = { ok: true, active: row.active, cloud: true, local: out.local === true };
+    }
+    if (!out.ok) return { ok: false, error: 'الموظف غير موجود — لا محلياً ولا في القاعدة' };
+    /* ⚠️ تنبيه: التنشيط/التعطيل محلياً وحده **لا يمنع الدخول** — المنع الحقيقي
+       في القاعدة (brc.staff.active). اللوحة تُنجز ذلك بنداء صريح بمفتاح الخدمة
+       أو بجلسة المدير، وهذا ما يمنع حالة «موظف معطَّل في الشاشة وداخل فعلاً». */
+    audit(out.active ? 'تنشيط مستخدم' : 'تعطيل مستخدم', 'user', username, row ? 'سطر القاعدة + محلي' : 'محلي');
+    save(); emit();
+    return out;
   }
 
   /* ======================= التدقيق ======================= */
@@ -6790,6 +6855,16 @@ table.data tbody tr:hover { background: #faf8f3; }
     if (code === '42501' || /permission denied/i.test(msg)) {
       return { text: 'لا صلاحية كافية (RLS/منح مفقود)', hint: 'راجع سياسات ومنح §8 و§9 في docs/schema.sql' };
     }
+    /* ⚠️ 42703 «عمود مفقود»: أشهر سببه قاعدة أُنشئت قبل إضافة عمود إلى المخطط
+       (create table if not exists لا يُضيف أعمدة لجدول قائم). الواجهة تكتب
+       governorate في كل وظيفة، فقد تفشل «إضافة وظيفة» وحدها بينما كل شيء آخر
+       سليم — فيبدو العطل غامضاً. نُسمّي العمود ونعطي ملف الإصلاح بالاسم. */
+    if (code === '42703' || /column .* does not exist/i.test(msg)) {
+      return {
+        text: 'عمود مفقود في القاعدة' + (/jobs|governorate/i.test(msg) ? ' (governorate في brc.jobs)' : ''),
+        hint: 'نفّذ docs/UPDATE-2026-10-13-governorate.sql في SQL Editor ثم notify pgrst, \'reload schema\''
+      };
+    }
     if (code === 'PGRST301' || /JWT|token/i.test(msg)) {
       return { text: 'الجلسة منتهية — أعد الدخول', hint: '' };
     }
@@ -7129,12 +7204,92 @@ table.data tbody tr:hover { background: #faf8f3; }
     });
   }
 
+  /* تبني سطر موظف راجع من القاعدة (من إنشاء/تعديل حساب) في الذاكرة المحلية.
+     بلا هذا يبقى الجدول يقول «محلي» عن حساب هو فعلاً في القاعدة، فيظن المدير أن
+     الموظف لا يدخل من جهاز آخر — وهو الفرق الجوهري الذي يهمّ المدير. */
+  function absorbStaffRow(raw) {
+    if (!raw) return null;
+    var row = (root.HRCCloud && root.HRCCloud.staffFromDb) ? root.HRCCloud.staffFromDb(raw) : {
+      id: raw.id, authId: raw.auth_id || raw.authId || null, username: raw.username,
+      name: raw.full_name || raw.name, role: raw.role || 'staff',
+      title: raw.job_title || raw.title || '', phone: raw.phone || '', active: raw.active !== false
+    };
+    if (!row.id && !row.username) return null;
+    if (!db.staff) db.staff = [];
+    var idx = -1;
+    for (var i = 0; i < db.staff.length; i++) {
+      if ((row.id && db.staff[i].id === row.id) || (row.username && db.staff[i].username === row.username)) { idx = i; break; }
+    }
+    if (idx >= 0) db.staff[idx] = row; else db.staff.push(row);
+    saveLocal(); emit();
+    return row;
+  }
+
   /* إنشاء حساب موظف في Supabase (Auth + brc.staff) */
   function createCloudAccount(serviceKey, data) {
-    if (!cloudConfigured()) return Promise.resolve({ ok: false, error: 'لا يوجد إعداد سحابة' });
-    if (!cloud.client || !root.HRCCloudAuth) return Promise.resolve({ ok: false, error: 'مكتبة الدخول غير محمّلة' });
+    if (!cloudConfigured()) return Promise.resolve({ ok: false, code: 'no_cloud', error: 'لا يوجد إعداد سحابة في supabase-config.js' });
+    if (!cloud.client || !root.HRCCloudAuth) {
+      return Promise.resolve({ ok: false, code: 'no_client',
+        error: cloud.state === 'degraded'
+          ? 'تعذّر الاتصال بقاعدة الشركة — أصلح الاتصال ثم أعد المحاولة (لا شيء أُنشئ)'
+          : 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة ثم أعد المحاولة' });
+    }
     var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
-    return auth.createAccount(serviceKey, data);
+    return auth.createAccount(serviceKey, data).then(function (r) {
+      if (r && r.ok && r.staff) absorbStaffRow(r.staff);
+      return r;
+    });
+  }
+
+  /* إدارة حسابات الموظفين في القاعدة (تعديل/حذف/كلمة مرور).
+     تُنادى من لوحة المدير بعد نجاح العملية محلياً أو قبلها بحسب الاتجاه:
+       • الإنشاء: القاعدة أولاً ثم المحلي (فلا يبقى حساب نصف جاهز يُوعد به الموظف).
+       • التعديل/الحذف: القاعدة أولاً ثم المحلي (فلا تبقى شاشة تقول شيئاً والقاعدة غيره). */
+  function updateCloudAccount(serviceKey, data) {
+    if (!cloud.client || !root.HRCCloudAuth) {
+      return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
+    }
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    return auth.updateAccount(serviceKey, data).then(function (r) {
+      if (r && r.ok && r.row) absorbStaffRow(r.row);
+      return r;
+    });
+  }
+
+  function deleteCloudAccount(serviceKey, data) {
+    if (!cloud.client || !root.HRCCloudAuth) {
+      return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
+    }
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    return auth.deleteAccount(serviceKey, data);
+  }
+
+  function setCloudUserPassword(serviceKey, authId, newPassword) {
+    if (!cloud.client || !root.HRCCloudAuth) {
+      return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
+    }
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    return auth.setPassword(serviceKey, authId, newPassword);
+  }
+
+  /* ---------------------------------------------------------------------------
+   *  إدارة الحسابات عبر الدالة السحابية (hrc-staff-admin) — بلا أي مفتاح في المتصفح
+   *  ---------------------------------------------------------------------------
+   *  action: 'create' | 'update' | 'delete' | 'set-password' | 'whoami'
+   *  تعمل لأي مدير **مُسجَّل دخوله سحابياً** من أي متصفح: الدالة تتحقق من التوكن
+   *  ومن كونه مديراً نشطاً في brc.staff. وإن لم تكن منشورة تُرجع code='not_deployed'
+   *  فيسلك المستدعي مسار مفتاح الخدمة (إن وُجد).
+   * ------------------------------------------------------------------------- */
+  function staffAdmin(action, payload) {
+    if (!cloud.client || !root.HRCCloudAuth) {
+      return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
+    }
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    if (!auth.staffAdmin) return Promise.resolve({ ok: false, code: 'not_deployed', error: 'وحدة الدوال غير محمّلة' });
+    return auth.staffAdmin(action, payload).then(function (r) {
+      if (r && r.ok && r.staff) absorbStaffRow(r.staff);
+      return r;
+    });
   }
 
   function signOutCloud() {
@@ -7236,7 +7391,9 @@ table.data tbody tr:hover { background: #faf8f3; }
     listUsers: listUsers, addUser: addUser, updateUser: updateUser, deleteUser: deleteUser, toggleUserActive: toggleUserActive,
     // سحابة
     signIn: signIn, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
-    createCloudAccount: createCloudAccount,
+    createCloudAccount: createCloudAccount, updateCloudAccount: updateCloudAccount,
+    deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
+    staffAdmin: staffAdmin,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,
@@ -10601,6 +10758,120 @@ table.data tbody tr:hover { background: #faf8f3; }
 
   /* ======================= إدارة الموظفين ======================= */
 
+  /* مفتاح الخدمة المحفوظ في هذا المتصفح (يُدخله المدير مرة واحدة من «ربط السحابة»).
+     ⚠️ ليس المسار المفضّل: المفتاح سرّي، وحفظه في المتصفح يعني أن كل جهاز يعمل
+     عليه المدير يحتاجه. المسار المفضّل هو الدالة السحابية hrc-staff-admin التي
+     تحتفظ بالمفتاح في خوادم Supabase وحدها. */
+  function serviceKey() { try { return localStorage.getItem('hrc-service-key') || ''; } catch (e) { return ''; } }
+
+  /* ---------------------------------------------------------------------------
+   *  كتابة إدارة الحسابات — بأولوية الأمان:
+   *   ① الدالة السحابية: تعمل لأي مدير مُسجَّل سحابياً من أي متصفح بلا أي مفتاح.
+   *   ② مفتاح الخدمة المحفوظ هنا: للمشاريع التي لم تُنشر فيها الدالة بعد.
+   *   ③ الوضع المحلي: حساب في هذا المتصفح وحده (يُصرَّح بذلك للمدير).
+   *  النتيجة تحمل via: 'function' | 'key' | 'local' ليُقال للمدير أين وصل الحساب.
+   * ------------------------------------------------------------------------- */
+  function staffWrite(action, payload) {
+    var viaFn = Store.staffAdmin
+      ? Store.staffAdmin(action, payload)
+      : Promise.resolve({ ok: false, code: 'not_deployed' });
+
+    return viaFn.then(function (r) {
+      if (r && r.ok) { r.via = 'function'; return r; }
+      if (r && r.code !== 'not_deployed') { r.via = 'function'; return r; }
+
+      var key = serviceKey();
+      if (!key) {
+        return { ok: false, code: 'no_key', via: 'local', error: noChannelMsg(action) };
+      }
+      var p;
+      if (action === 'create') p = Store.createCloudAccount(key, payload);
+      else if (action === 'update') p = Store.updateCloudAccount(key, payload);
+      else if (action === 'delete') p = Store.deleteCloudAccount(key, payload);
+      else if (action === 'set-password') p = Store.setCloudUserPassword(key, payload.authId, payload.password);
+      else return Promise.resolve({ ok: false, error: 'إجراء غير معروف' });
+      return Promise.resolve(p).then(function (r2) { if (r2) r2.via = 'key'; return r2; });
+    });
+  }
+
+  /* ماذا نقول للمدير حين لا دالة منشورة ولا مفتاح محفوظ؟ نُسمّي له الخطوتين */
+  function noChannelMsg(action) {
+    var verb = action === 'delete' ? 'حذف' : (action === 'update' ? 'تعديل' : 'إنشاء');
+    return 'لا قناة للكتابة في قاعدة الشركة: انشر الدالة hrc-staff-admin (docs/staff-accounts-edge.md) '
+      + 'لتعمل إدارة الحسابات من أي متصفح بلا أي مفتاح، أو أضف مفتاح الخدمة من «ربط السحابة».';
+  }
+
+  /* هل القاعدة مُعدَّة ومتّصلة؟ (يُبنى عليه: هل نُحاول المسار السحابي أصلاً) */
+  function cloudReady() {
+    var st = Store.cloudStatus ? Store.cloudStatus() : null;
+    return !!(st && st.configured && (st.state === 'on' || st.state === 'connecting'));
+  }
+
+  /* الموظف كما تراه اللوحة (من القاعدة + المحلي) — بالاسم */
+  function userRow(username) {
+    return Store.listUsers().filter(function (u) { return u.username === username; })[0] || null;
+  }
+
+  /* توست موحّد لنتيجة الكتابة السحابية */
+  function cloudWriteFailed(cr, action) {
+    var verb = action === 'delete' ? 'الحذف' : (action === 'update' ? 'التعديل' : 'الإنشاء');
+    if (cr && cr.code === 'no_key') return false;   // يتولّاه المستدعي (وضع محلي)
+    UI.toast('err', 'لم يتم ' + verb + ' في القاعدة', (cr && cr.error) || '');
+    return true;
+  }
+
+  /* تنشيط/تعطيل — ⚠️ القاعدة أولاً: تعطيل الشاشة وحده لا يمنع الدخول إطلاقاً،
+     لأن المنع الحقيقي في brc.staff.active (يقرأه is_staff عند كل نداء). */
+  function setUserActive(username, nextActive) {
+    var t = userRow(username) || {};
+    var cloudFirst = (t.source === 'cloud' && cloudReady())
+      ? staffWrite('update', {
+        id: t.id, username: username, name: t.name, role: t.role, title: t.title, active: nextActive
+      })
+      : Promise.resolve({ ok: true, skipped: true });
+
+    cloudFirst.then(function (cr) {
+      if (!cr.ok && cr.code !== 'no_key') {
+        UI.toast('err', 'لم يتغيّر شيء — تعذّر التحديث في القاعدة', cr.error || '');
+        return;
+      }
+      var r = Store.updateUser(username, { active: nextActive });
+      if (!r.ok) { UI.toast('err', 'خطأ', r.error); return; }
+      if (!cr.ok) {
+        /* بلا قناة سحابية: التنشيط محلي — والمنع الحقيقي للدخول يحتاج القاعدة */
+        UI.toast('warn', nextActive ? 'نُشّط محلياً' : 'عُطّل محلياً',
+          username + ' — لم تصل القاعدة (' + (cr.code === 'no_key' ? 'لا دالة ولا مفتاح' : cr.error) + ')؛ الدخول من الأجهزة الأخرى قد يبقى ممكناً.');
+      } else {
+        UI.toast('ok', nextActive ? 'تم التنشيط' : 'تم التعطيل',
+          nextActive ? username + ' — يستطيع الدخول الآن' : username + ' — مُنع من الدخول فوراً (سطر القاعدة)');
+      }
+      renderUsersTable();
+    });
+  }
+
+  /* حذف — القاعدة أولاً (سطر الموظف ثم مستخدم الدخول) ثم الشاشة */
+  function removeUser(username) {
+    var t = userRow(username) || {};
+    var cloudFirst = (t.source === 'cloud' && cloudReady())
+      ? staffWrite('delete', { id: t.id, authId: t.authId, username: username })
+      : Promise.resolve({ ok: true, skipped: true });
+
+    cloudFirst.then(function (cr) {
+      if (!cr.ok && cr.code !== 'no_key') { UI.toast('err', 'لم يُحذف شيء — تعذّر الحذف في القاعدة', cr.error || ''); return; }
+      var r = Store.deleteUser(username);
+      if (!r.ok) { UI.toast('err', 'خطأ', r.error); return; }
+      if (!cr.ok) {
+        UI.toast('warn', 'حُذف من هذا المتصفح فقط', username + ' — تعذّر الحذف في القاعدة: ' + (cr.error || ''));
+        renderUsersTable();
+        return;
+      }
+      var extra = cr.authDeleted ? ' — حُذف مستخدم الدخول أيضاً'
+        : (cr.authKept ? ' — بقي مستخدم الدخول في Auth بلا صلاحيات' : '');
+      UI.toast('warn', 'تم الحذف', username + extra);
+      renderUsersTable();
+    });
+  }
+
   function renderUsersTable() {
     var tbl = document.getElementById('users-table-body');
     if (!tbl) return;
@@ -10611,7 +10882,8 @@ table.data tbody tr:hover { background: #faf8f3; }
       var isMe = cur && cur.username === u.username;
       return '<tr style="opacity:' + (isActive ? '1' : '.55') + '">' +
         '<td><b>' + UI.esc(u.name) + '</b>' + (isMe ? ' <span class="badge ok" style="font-size:.7rem">أنت</span>' : '') + '</td>' +
-        '<td><span class="mono" style="background:#eef1f7;padding:3px 8px;border-radius:6px;font-size:.84rem">' + UI.esc(u.username) + '</span></td>' +
+        '<td><span class="mono" style="background:#eef1f7;padding:3px 8px;border-radius:6px;font-size:.84rem">' + UI.esc(u.username) + '</span>' +
+          (u.source === 'cloud' ? ' <span class="badge info" style="font-size:.68rem" title="حساب في قاعدة الشركة — يدخل من أي جهاز">القاعدة</span>' : '') + '</td>' +
         '<td>' + (u.role === 'admin' ? '<span class="badge danger">مدير عام</span>' : '<span class="badge info">موظف</span>') + '</td>' +
         '<td class="tiny muted">' + UI.esc(u.title || '—') + '</td>' +
         '<td>' + (isActive ? '<span class="badge ok">نشط</span>' : '<span class="badge muted">معطّل</span>') + '</td>' +
@@ -10619,7 +10891,10 @@ table.data tbody tr:hover { background: #faf8f3; }
           '<button class="btn btn-outline btn-sm" data-user-edit="' + UI.esc(u.username) + '">' + UI.ic('edit') + ' تعديل</button>' +
           '<button class="btn btn-sm ' + (isActive ? 'btn-warn' : 'btn-ok') + '" data-user-toggle="' + UI.esc(u.username) + '">' +
             (isActive ? UI.ic('x-circle') + ' تعطيل' : UI.ic('check') + ' تنشيط') + '</button>' +
-          (isMe ? '' : '<button class="btn btn-danger btn-sm" data-user-del="' + UI.esc(u.username) + '">' + UI.ic('trash') + '</button>') +
+          /* زر الحذف أيقونة فقط — يحتاج اسماً مفهومًا لقارئ الشاشة (وفحص
+             الإتاحة tests/audit.mjs يرفض الأزرار الصامتة). */
+          (isMe ? '' : '<button class="btn btn-danger btn-sm" data-user-del="' + UI.esc(u.username) + '"' +
+            ' aria-label="حذف الموظف ' + UI.esc(u.name) + '" title="حذف نهائي">' + UI.ic('trash') + '</button>') +
         '</div></td></tr>';
     }).join('') || '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">لا يوجد موظفين مسجلين</td></tr>';
 
@@ -10630,30 +10905,20 @@ table.data tbody tr:hover { background: #faf8f3; }
     tbl.querySelectorAll('[data-user-toggle]').forEach(function (b) {
       b.addEventListener('click', function () {
         var username = b.getAttribute('data-user-toggle');
-        var r = Store.toggleUserActive(username);
-        if (r.ok) {
-          UI.toast('ok', 'تم التحديث', username);
-          renderUsersTable();
-        } else {
-          UI.toast('err', 'خطأ', r.error);
-        }
+        var t = userRow(username);
+        if (!t) { UI.toast('err', 'خطأ', 'لم يُعثر على الموظف'); return; }
+        setUserActive(username, !(t.active !== false));
       });
     });
     tbl.querySelectorAll('[data-user-del]').forEach(function (b) {
       b.addEventListener('click', function () {
         var username = b.getAttribute('data-user-del');
-        UI.confirm({ title: 'حذف الموظف', message: 'حذف حساب «' + username + '» نهائياً؟ لا يمكن التراجع.', confirmText: 'حذف نهائي', danger: true })
-          .then(function (ok) {
-            if (ok) {
-              var r = Store.deleteUser(username);
-              if (r.ok) {
-                UI.toast('warn', 'تم الحذف', username);
-                renderUsersTable();
-              } else {
-                UI.toast('err', 'خطأ', r.error);
-              }
-            }
-          });
+        var t = userRow(username) || {};
+        var msg = t.source === 'cloud'
+          ? 'حذف حساب «' + username + '» نهائياً من قاعدة الشركة؟ سيُمنع من الدخول ويُحذف سطر الموظف ومستخدم الدخول. لا يمكن التراجع.'
+          : 'حذف حساب «' + username + '» نهائياً من هذا المتصفح؟ لا يمكن التراجع.';
+        UI.confirm({ title: 'حذف الموظف', message: msg, confirmText: 'حذف نهائي', danger: true })
+          .then(function (ok) { if (ok) removeUser(username); });
       });
     });
   }
@@ -10663,14 +10928,17 @@ table.data tbody tr:hover { background: #faf8f3; }
     var existing = username ? Store.listUsers().filter(function (u) { return u.username === username; })[0] : null;
     var isEdit = !!existing;
     var title = isEdit ? 'تعديل الموظف: ' + existing.name : 'إضافة موظف جديد';
+    var cloudEdit = !!(isEdit && existing && existing.source === 'cloud');
+    var key = serviceKey();
 
     var body = '<form id="user-form" style="display:grid;gap:14px">' +
+      '<div id="user-form-err" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d;border-radius:10px;padding:10px 14px;font-size:.86rem"></div>' +
       '<div class="grid grid-2" style="gap:14px">' +
         '<div class="field"><label for="uf-name">الاسم الكامل *</label><input type="text" id="uf-name" required value="' + (isEdit ? UI.esc(existing.name) : '') + '" placeholder="مثال: أحمد محمد"></div>' +
         '<div class="field"><label for="uf-user">اسم المستخدم *</label><input type="text" id="uf-user" required ' + (isEdit ? 'disabled' : '') + ' value="' + (isEdit ? UI.esc(existing.username) : '') + '" placeholder="مثال: ahmed" dir="ltr" class="mono"></div>' +
       '</div>' +
       '<div class="grid grid-2" style="gap:14px">' +
-        '<div class="field"><label for="uf-pass">كلمة المرور *</label><input type="password" id="uf-pass" ' + (isEdit ? '' : 'required') + ' placeholder="' + (isEdit ? 'اتركها فارغة لعدم التغيير' : 'كلمة المرور') + '" dir="ltr"></div>' +
+        '<div class="field"><label for="uf-pass">كلمة المرور *</label><input type="password" id="uf-pass" ' + (isEdit ? '' : 'required') + ' placeholder="' + (isEdit ? 'اتركها فارغة لعدم التغيير' : '6 خانات على الأقل') + '" dir="ltr"></div>' +
         '<div class="field"><label for="uf-title">المسمى الوظيفي</label><input type="text" id="uf-title" value="' + (isEdit ? UI.esc(existing.title || '') : '') + '" placeholder="مثال: موظف توظيف"></div>' +
       '</div>' +
       '<div class="field"><label for="uf-role">الصلاحية</label>' +
@@ -10680,6 +10948,14 @@ table.data tbody tr:hover { background: #faf8f3; }
         '</select>' +
       '</div>' +
       (isEdit ? '<div class="field" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="uf-active" ' + (existing.active !== false ? 'checked' : '') + '><label for="uf-active" style="margin:0;cursor:pointer">الحساب نشط (يستطيع تسجيل الدخول)</label></div>' : '') +
+      /* توضيح للمدير: أين سيُنشأ الحساب فعلاً. بلا مفتاح خدمة الحساب محلي فقط
+         ولا يدخل صاحبه إلا من هذا المتصفح — وهذا فرق جوهري يجب أن يعرفه الآن
+         لا أن يكتشفه الموظف عند أول محاولة دخول. */
+      (!isEdit ? '<p class="tiny muted" style="margin:0">' +
+        (key
+          ? 'سيُنشأ الحساب في قاعدة الشركة (Supabase Auth + سطر brc.staff) — فيدخل الموظف من أي جهاز باسم المستخدم وكلمة المرور.'
+          : 'سيُحاول الإنشاء في قاعدة الشركة عبر الدالة السحابية hrc-staff-admin (بلا أي مفتاح في المتصفح) — فيدخل الموظف من أي جهاز. وإن لم تكن الدالة منشورة بعد، يُنشأ الحساب في هذا المتصفح فقط.') +
+        '</p>' : (cloudEdit ? '<p class="tiny muted" style="margin:0">هذا حساب في قاعدة الشركة — الحفظ يعدّل سطر الموظف في القاعدة.</p>' : '')) +
     '</form>';
 
     var footer = '<button class="btn btn-outline" data-close>إلغاء</button>' +
@@ -10689,6 +10965,21 @@ table.data tbody tr:hover { background: #faf8f3; }
     if (!m) return;
 
     var saveBtn = m.root.querySelector('#uf-save');
+    var baseLabel = saveBtn ? saveBtn.textContent : '';
+    function busy(on, txt) {
+      if (!saveBtn) return;
+      saveBtn.disabled = !!on;
+      if (txt) saveBtn.textContent = txt;
+      else saveBtn.textContent = baseLabel;
+    }
+    function formErr(msg) {
+      var el = m.root.querySelector('#user-form-err');
+      if (!el) return;
+      if (!msg) { el.className = 'hidden'; el.innerHTML = ''; return; }
+      el.className = '';
+      el.innerHTML = UI.ic('alert') + ' <span>' + UI.esc(msg) + '</span>';
+    }
+
     if (saveBtn) saveBtn.addEventListener('click', function () {
       var name = document.getElementById('uf-name').value.trim();
       var uname = document.getElementById('uf-user').value.trim();
@@ -10698,38 +10989,80 @@ table.data tbody tr:hover { background: #faf8f3; }
       var activeEl = document.getElementById('uf-active');
       var active = activeEl ? activeEl.checked : true;
 
+      formErr('');
       if (!name || !uname) { UI.toast('err', 'خطأ', 'الاسم واسم المستخدم مطلوبة'); return; }
       if (!isEdit && !pass) { UI.toast('err', 'خطأ', 'كلمة المرور مطلوبة للموظف الجديد'); return; }
 
-      /* حفظ محلي أولاً */
-      var r;
+      /* ============ تعديل موظف قائم ============ */
       if (isEdit) {
         var updateData = { name: name, role: role, title: utitle, active: active };
         if (pass) updateData.password = pass;
-        r = Store.updateUser(username, updateData);
-      } else {
-        r = Store.addUser({ username: uname, password: pass, name: name, role: role, title: utitle, active: true });
-      }
+        var cloudPatch = (cloudEdit && cloudReady())
+          ? staffWrite('update', { id: existing.id, username: username, name: name, role: role, title: utitle, active: active, phone: existing.phone })
+          : Promise.resolve({ ok: true, skipped: true });
 
-      if (!r.ok) {
-        UI.toast('err', 'خطأ', r.error);
+        busy(true, 'جارٍ الحفظ…');
+        cloudPatch.then(function (cr) {
+          if (!cr.ok && cr.code !== 'no_key') {
+            busy(false, '');
+            formErr(cr.error || 'تعذّر الحفظ في القاعدة');
+            return;
+          }
+          var r = Store.updateUser(username, updateData);
+          if (!r.ok) { busy(false, ''); formErr(r.error); return; }
+          if (!cr.ok) { busy(false, ''); formErr(cr.error || 'تعذّر الحفظ في القاعدة'); return; }
+          /* كلمة المرور: الحساب السحابي كلمة مروره في Auth — تُغيَّر عبر الدالة/المفتاح */
+          if (pass && cloudEdit && existing.authId) {
+            return staffWrite('set-password', { authId: existing.authId, password: pass }).then(function (pr) {
+              busy(false, '');
+              if (!pr.ok) {
+                UI.toast('warn', 'حُفظ التعديل — كلمة المرور لم تتغيّر في القاعدة', pr.error || '');
+              } else {
+                UI.toast('ok', 'تم التعديل', name + ' — وكلمة مروره صارت الجديدة');
+              }
+              renderUsersTable(); m.close();
+            });
+          }
+          busy(false, '');
+          UI.toast('ok', 'تم التعديل', name);
+          renderUsersTable(); m.close();
+        });
         return;
       }
 
-      /* تسجيل في Supabase أيضاً (إذا المفتاح موجود) */
-      var svcKey = null;
-      try { svcKey = localStorage.getItem('hrc-service-key'); } catch (e) {}
-      if (!isEdit && svcKey && Store.createCloudAccount) {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'جارٍ التسجيل في السحابة…';
-        Store.createCloudAccount(svcKey, { username: uname, password: pass, name: name, role: role, title: utitle })
+      /* ============ إنشاء حساب جديد ============ */
+      /* ⚠️ القاعدة أولاً ثم المحلي: لو أُنشئ محلياً ثم فشل في القاعدة، لبقي
+         «حساب» يُوعد به المدير والموظف ولا يدخل صاحبه من أي جهاز — وهو بالضبط
+         العطل الذي أُصلح هنا (كان يُنشأ في Auth ثم يفشل سطره في brc.staff).
+         والقناة المفضّلة هي الدالة السحابية: تعمل من أي متصفح بلا أي مفتاح. */
+      function createLocally() {
+        var lr = Store.addUser({ username: uname, password: pass, name: name, role: role, title: utitle, active: true });
+        if (!lr.ok) { formErr(lr.error); return; }
+        UI.toast('ok', 'تم الإنشاء محلياً', name + ' — محلي فقط: يدخل من هذا المتصفح. انشر الدالة السحابية (أو أضف مفتاح الخدمة) لينتقل إلى قاعدة الشركة.');
+        renderUsersTable();
+        m.close();
+      }
+
+      if (cloudReady()) {
+        busy(true, 'جارٍ إنشاء الحساب في القاعدة…');
+        staffWrite('create', { username: uname, password: pass, name: name, role: role, title: utitle })
           .then(function (cloudR) {
-            saveBtn.disabled = false;
-            saveBtn.textContent = isEdit ? 'حفظ التعديلات' : 'إنشاء الحساب';
-            if (cloudR.ok) {
-              UI.toast('ok', 'تم الإنشاء محلياً + في السحابة', name + ' — يكدر الموظف يدخل من أي جهاز');
+            busy(false, '');
+            /* لا قناة سحابية إطلاقاً (لا دالة منشورة ولا مفتاح): وضع محلي معلوم */
+            if (!cloudR.ok && cloudR.code === 'no_key') { createLocally(); return; }
+            if (!cloudR.ok) {
+              /* لا حساب محلي: لا نُبقى أثراً لحساب لا يستطيع صاحبه الدخول */
+              formErr((cloudR.error || 'تعذّر إنشاء الحساب في القاعدة') +
+                (cloudR.partial ? '' : ' — لم يُنشأ أي حساب، صحّح المُدخل وأعد المحاولة'));
+              UI.toast('err', 'لم يُنشأ الحساب', cloudR.error || '');
+              return;
+            }
+            var r = Store.addUser({ username: uname, password: pass, name: name, role: role, title: utitle, active: true, cloudLinked: true });
+            if (!r.ok) {
+              /* نادر: الحساب أُنشئ في القاعدة لكن تعذّر حفظ النسخة المحلية */
+              UI.toast('warn', 'أُنشئ في القاعدة', name + ' — الدخول يعمل من أي جهاز (نسخة هذا المتصفح لم تُحفظ: ' + r.error + ')');
             } else {
-              UI.toast('warn', 'تم محلياً — فشل السحابة', name + ' (محلي: ✅ / سحابة: ❌ ' + cloudR.error + ')');
+              UI.toast('ok', 'تم إنشاء الحساب', name + ' — يدخل من أي جهاز باسم: ' + uname + (cloudR.repaired ? ' (أُصلح ربط حساب سابق)' : ''));
             }
             renderUsersTable();
             m.close();
@@ -10737,9 +11070,8 @@ table.data tbody tr:hover { background: #faf8f3; }
         return;
       }
 
-      UI.toast('ok', isEdit ? 'تم التعديل' : 'تم الإنشاء', name + (isEdit ? '' : ' — محلي فقط'));
-      renderUsersTable();
-      m.close();
+      /* بلا قاعدة (نسخة مستقلة/بلا إنترنت) */
+      createLocally();
     });
   }
 
