@@ -402,12 +402,17 @@
 
   /* جلب قائمة المستخدمين: السحابيين + المحليين + الافتراضيين */
   function listUsers() {
-    var cloudStaff = (db.staff || []).filter(function (s) { return s.active !== false; });
+    var cloudStaff = (db.staff || []);
     var localUsers = (db.settings.users || []).concat(CFG.users || []);
     /* دمج: السحابي أولاً ثم المحلي (الأسبقية للمحلي) */
     var map = {};
     cloudStaff.forEach(function (s) {
-      map[s.username] = { username: s.username, name: s.name, role: s.role || 'staff', title: s.title || '', active: s.active !== false, source: 'cloud' };
+      /* id و authId يُحفظان مع العرض: بلا معرّف موظف القاعدة لا يمكن تعديله
+         ولا تعطيله ولا حذفه من اللوحة (تُنادى به دوال إدارة الحساب). */
+      map[s.username] = {
+        username: s.username, name: s.name, role: s.role || 'staff', title: s.title || '',
+        active: s.active !== false, source: 'cloud', id: s.id || null, authId: s.authId || null
+      };
     });
     var seen = {};
     localUsers.forEach(function (u) {
@@ -421,13 +426,41 @@
     return Object.values(map);
   }
 
-  /* إضافة مستخدم جديد */
+  /* سطر الموظف السحابي (brc.staff) بالاسم — أو null */
+  function staffRowOf(username) {
+    var staff = db.staff || [];
+    for (var i = 0; i < staff.length; i++) if (staff[i].username === username) return staff[i];
+    return null;
+  }
+
+  /* إضافة مستخدم جديد.
+     ⚠️ تمييز مقصود: تكرار الاسم مع سطر **محلي** يُرفض دائماً (شخصان بنفس اسم
+     الدخول = خطأ). أما سطر في القاعدة فليس تكراراً بل نفس الحساب: الحساب أُنشئ
+     في القاعدة قبل لحظات (cloudLinked=true) وما نكتبه هنا هو نسخة الدخول المحلي
+     الاحتياطية له — وهي التي تُسند اسم موظف القاعدة إلى اسم دخول محلي عند
+     انقطاع الإنترنت في الوضع الانتقالي. */
   function addUser(data) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     if (!data.username || !data.password || !data.name) return { ok: false, error: 'الاسم واسم المستخدم وكلمة المرور مطلوبة' };
-    var all = listUsers();
-    var dup = all.filter(function (u) { return u.username === data.username; })[0];
-    if (dup) return { ok: false, error: 'اسم المستخدم «' + data.username + '» موجود مسبقاً' };
+    var dup = listUsers().filter(function (u) { return u.username === data.username; })[0];
+    var sameCloudAccount = !!(dup && dup.source === 'cloud' && data.cloudLinked);
+    if (dup && !sameCloudAccount) return { ok: false, error: 'اسم المستخدم «' + data.username + '» موجود مسبقاً' };
+    if (sameCloudAccount) {
+      /* الاسم موجود في القاعدة: نحدّث السطر المحلي إن وُجد بدل إضافة ثانٍ */
+      var locals = db.settings.users || [];
+      var li = -1;
+      for (var k = 0; k < locals.length; k++) if (locals[k].username === data.username) { li = k; break; }
+      if (li >= 0) {
+        locals[li].password = data.password;
+        locals[li].name = data.name;
+        locals[li].role = data.role || 'staff';
+        locals[li].title = data.title || '';
+        locals[li].active = true;
+        audit('إضافة مستخدم', 'user', data.username, 'ربط دخول محلي بحساب القاعدة: ' + data.name);
+        save(); emit();
+        return { ok: true, user: locals[li] };
+      }
+    }
     if (!db.settings.users) db.settings.users = [];
     var newUser = {
       username: data.username,
@@ -443,24 +476,40 @@
     return { ok: true, user: newUser };
   }
 
-  /* تعديل مستخدم */
+  /* تعديل مستخدم — يعمل على المصدرين: السطر المحلي وسطر القاعدة (brc.staff).
+     ⚠️ علّة مُصلَحة: كان التعديل يفشل بـ«المستخدم غير موجود محلياً» لأي موظف
+     أُنشئ من جهاز آخر (سطر في القاعدة بلا نظير محلي)، فيظهر الموظف في الجدول
+     ولا يستطيع المدير تعديله ولا تعطيله. */
   function updateUser(username, data) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     var users = db.settings.users || [];
     var idx = -1;
     for (var i = 0; i < users.length; i++) { if (users[i].username === username) { idx = i; break; } }
-    if (idx < 0) return { ok: false, error: 'المستخدم غير موجود محلياً' };
-    if (data.name) users[idx].name = data.name;
-    if (data.role) users[idx].role = data.role;
-    if (data.title !== undefined) users[idx].title = data.title;
-    if (data.password) users[idx].password = data.password;
-    if (data.active !== undefined) users[idx].active = data.active;
+    var row = staffRowOf(username);
+
+    if (idx < 0 && !row) return { ok: false, error: 'الموظف غير موجود — لا محلياً ولا في القاعدة' };
+
+    if (idx >= 0) {
+      if (data.name) users[idx].name = data.name;
+      if (data.role) users[idx].role = data.role;
+      if (data.title !== undefined) users[idx].title = data.title;
+      if (data.password) users[idx].password = data.password;
+      if (data.active !== undefined) users[idx].active = data.active;
+    }
+    if (row) {
+      if (data.name) row.name = data.name;
+      if (data.role) row.role = data.role;
+      if (data.title !== undefined) row.title = data.title;
+      if (data.active !== undefined) row.active = data.active;
+      /* كلمة مرور سطر القاعدة لا تُحفظ هنا: كلمة مروره الحقيقية في Supabase Auth
+         وتُغيَّر بدالة إدارة الحساب بمفتاح الخدمة (setCloudUserPassword). */
+    }
     audit('تعديل مستخدم', 'user', username, JSON.stringify(data));
     save(); emit();
-    return { ok: true };
+    return { ok: true, cloud: !!row, local: idx >= 0 };
   }
 
-  /* حذف مستخدم */
+  /* حذف مستخدم (المصدران معاً) */
   function deleteUser(username) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     var cur = currentUser();
@@ -468,25 +517,41 @@
     var users = db.settings.users || [];
     var before = users.length;
     db.settings.users = users.filter(function (u) { return u.username !== username; });
-    if (db.settings.users.length === before) return { ok: false, error: 'المستخدم غير موجود محلياً' };
-    audit('حذف مستخدم', 'user', username, 'تم حذف الحساب');
+    var localGone = db.settings.users.length !== before;
+
+    var row = staffRowOf(username);
+    if (row) db.staff = (db.staff || []).filter(function (s) { return s.username !== username; });
+
+    if (!localGone && !row) return { ok: false, error: 'الموظف غير موجود — لا محلياً ولا في القاعدة' };
+    audit('حذف مستخدم', 'user', username, 'تم حذف الحساب' + (row ? ' (مع سطر القاعدة)' : ''));
     save(); emit();
-    return { ok: true };
+    return { ok: true, local: localGone, cloud: !!row };
   }
 
-  /* تبديل حالة التنشيط */
+  /* تبديل حالة التنشيط (المصدران معاً) */
   function toggleUserActive(username) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     var users = db.settings.users || [];
+    var out = { ok: false };
     for (var i = 0; i < users.length; i++) {
       if (users[i].username === username) {
         users[i].active = !users[i].active;
-        audit(users[i].active ? 'تنشيط مستخدم' : 'تعطيل مستخدم', 'user', username, '');
-        save(); emit();
-        return { ok: true, active: users[i].active };
+        out = { ok: true, active: users[i].active, local: true };
+        break;
       }
     }
-    return { ok: false, error: 'المستخدم غير موجود محلياً' };
+    var row = staffRowOf(username);
+    if (row) {
+      row.active = !(row.active !== false);
+      out = { ok: true, active: row.active, cloud: true, local: out.local === true };
+    }
+    if (!out.ok) return { ok: false, error: 'الموظف غير موجود — لا محلياً ولا في القاعدة' };
+    /* ⚠️ تنبيه: التنشيط/التعطيل محلياً وحده **لا يمنع الدخول** — المنع الحقيقي
+       في القاعدة (brc.staff.active). اللوحة تُنجز ذلك بنداء صريح بمفتاح الخدمة
+       أو بجلسة المدير، وهذا ما يمنع حالة «موظف معطَّل في الشاشة وداخل فعلاً». */
+    audit(out.active ? 'تنشيط مستخدم' : 'تعطيل مستخدم', 'user', username, row ? 'سطر القاعدة + محلي' : 'محلي');
+    save(); emit();
+    return out;
   }
 
   /* ======================= التدقيق ======================= */
@@ -2277,12 +2342,72 @@
     });
   }
 
+  /* تبني سطر موظف راجع من القاعدة (من إنشاء/تعديل حساب) في الذاكرة المحلية.
+     بلا هذا يبقى الجدول يقول «محلي» عن حساب هو فعلاً في القاعدة، فيظن المدير أن
+     الموظف لا يدخل من جهاز آخر — وهو الفرق الجوهري الذي يهمّ المدير. */
+  function absorbStaffRow(raw) {
+    if (!raw) return null;
+    var row = (root.HRCCloud && root.HRCCloud.staffFromDb) ? root.HRCCloud.staffFromDb(raw) : {
+      id: raw.id, authId: raw.auth_id || raw.authId || null, username: raw.username,
+      name: raw.full_name || raw.name, role: raw.role || 'staff',
+      title: raw.job_title || raw.title || '', phone: raw.phone || '', active: raw.active !== false
+    };
+    if (!row.id && !row.username) return null;
+    if (!db.staff) db.staff = [];
+    var idx = -1;
+    for (var i = 0; i < db.staff.length; i++) {
+      if ((row.id && db.staff[i].id === row.id) || (row.username && db.staff[i].username === row.username)) { idx = i; break; }
+    }
+    if (idx >= 0) db.staff[idx] = row; else db.staff.push(row);
+    saveLocal(); emit();
+    return row;
+  }
+
   /* إنشاء حساب موظف في Supabase (Auth + brc.staff) */
   function createCloudAccount(serviceKey, data) {
-    if (!cloudConfigured()) return Promise.resolve({ ok: false, error: 'لا يوجد إعداد سحابة' });
-    if (!cloud.client || !root.HRCCloudAuth) return Promise.resolve({ ok: false, error: 'مكتبة الدخول غير محمّلة' });
+    if (!cloudConfigured()) return Promise.resolve({ ok: false, code: 'no_cloud', error: 'لا يوجد إعداد سحابة في supabase-config.js' });
+    if (!cloud.client || !root.HRCCloudAuth) {
+      return Promise.resolve({ ok: false, code: 'no_client',
+        error: cloud.state === 'degraded'
+          ? 'تعذّر الاتصال بقاعدة الشركة — أصلح الاتصال ثم أعد المحاولة (لا شيء أُنشئ)'
+          : 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة ثم أعد المحاولة' });
+    }
     var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
-    return auth.createAccount(serviceKey, data);
+    return auth.createAccount(serviceKey, data).then(function (r) {
+      if (r && r.ok && r.staff) absorbStaffRow(r.staff);
+      return r;
+    });
+  }
+
+  /* إدارة حسابات الموظفين في القاعدة (تعديل/حذف/كلمة مرور).
+     تُنادى من لوحة المدير بعد نجاح العملية محلياً أو قبلها بحسب الاتجاه:
+       • الإنشاء: القاعدة أولاً ثم المحلي (فلا يبقى حساب نصف جاهز يُوعد به الموظف).
+       • التعديل/الحذف: القاعدة أولاً ثم المحلي (فلا تبقى شاشة تقول شيئاً والقاعدة غيره). */
+  function updateCloudAccount(serviceKey, data) {
+    if (!cloud.client || !root.HRCCloudAuth) {
+      return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
+    }
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    return auth.updateAccount(serviceKey, data).then(function (r) {
+      if (r && r.ok && r.row) absorbStaffRow(r.row);
+      return r;
+    });
+  }
+
+  function deleteCloudAccount(serviceKey, data) {
+    if (!cloud.client || !root.HRCCloudAuth) {
+      return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
+    }
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    return auth.deleteAccount(serviceKey, data);
+  }
+
+  function setCloudUserPassword(serviceKey, authId, newPassword) {
+    if (!cloud.client || !root.HRCCloudAuth) {
+      return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
+    }
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    return auth.setPassword(serviceKey, authId, newPassword);
   }
 
   function signOutCloud() {
@@ -2384,7 +2509,8 @@
     listUsers: listUsers, addUser: addUser, updateUser: updateUser, deleteUser: deleteUser, toggleUserActive: toggleUserActive,
     // سحابة
     signIn: signIn, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
-    createCloudAccount: createCloudAccount,
+    createCloudAccount: createCloudAccount, updateCloudAccount: updateCloudAccount,
+    deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,
