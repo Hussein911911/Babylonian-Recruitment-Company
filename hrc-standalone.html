@@ -1364,7 +1364,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .login-bg-pattern {
   position: absolute;
   inset: 0;
-  background-image: 
+  background-image:
     radial-gradient(circle at 20% 30%, rgba(200, 162, 74, 0.08) 0%, transparent 50%),
     radial-gradient(circle at 80% 70%, rgba(31, 143, 150, 0.08) 0%, transparent 50%),
     radial-gradient(circle at 50% 50%, rgba(200, 162, 74, 0.04) 0%, transparent 70%);
@@ -1374,6 +1374,17 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 @keyframes bgPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
+}
+
+/* شبكة بابل الزخرفية */
+.login-bg-pattern::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    radial-gradient(rgba(200, 162, 74, .12) 1px, transparent 1.6px);
+  background-size: 30px 30px;
+  -webkit-mask-image: radial-gradient(70% 70% at 50% 50%, #000 20%, transparent 80%);
+  mask-image: radial-gradient(70% 70% at 50% 50%, #000 20%, transparent 80%);
+  opacity: .5;
 }
 
 .login-container {
@@ -1402,13 +1413,36 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   display: grid;
   place-items: center;
   border: 2px solid rgba(200, 162, 74, 0.3);
-  box-shadow: 0 0 40px rgba(200, 162, 74, 0.2);
+  box-shadow:
+    0 0 40px rgba(200, 162, 74, 0.2),
+    0 0 80px rgba(200, 162, 74, 0.08);
   animation: logoGlow 3s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+/* حلقة ذهبية متحركة حول الشعار */
+.login-logo::before {
+  content: ''; position: absolute; inset: -4px; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent, rgba(200,162,74,.4), transparent, rgba(200,162,74,.2), transparent);
+  animation: logoSpin 6s linear infinite;
+  z-index: 0;
+}
+.login-logo::after {
+  content: ''; position: absolute; inset: 3px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--lapis), var(--lapis-2));
+  z-index: 0;
+}
+.login-logo .emblem { position: relative; z-index: 1; }
+
+@keyframes logoSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes logoGlow {
-  0%, 100% { box-shadow: 0 0 40px rgba(200, 162, 74, 0.2); }
-  50% { box-shadow: 0 0 60px rgba(200, 162, 74, 0.35); }
+  0%, 100% { box-shadow: 0 0 40px rgba(200, 162, 74, 0.2), 0 0 80px rgba(200, 162, 74, 0.08); }
+  50% { box-shadow: 0 0 60px rgba(200, 162, 74, 0.35), 0 0 100px rgba(200, 162, 74, 0.12); }
 }
 
 .login-logo .emblem {
@@ -1443,7 +1477,23 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   border: 1px solid rgba(200, 162, 74, 0.25);
   border-radius: 20px;
   padding: 36px 32px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255,255,255,.05);
+  position: relative;
+  overflow: hidden;
+}
+
+/* خط ذهبي متحرك أعلى النموذج */
+.login-form::before {
+  content: ''; position: absolute; top: 0; inset-inline: 0; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--gold), var(--turq-2), transparent);
+  animation: loginLine 3s ease-in-out infinite;
+}
+@keyframes loginLine {
+  0% { opacity: .4; }
+  50% { opacity: 1; }
+  100% { opacity: .4; }
 }
 
 .login-form-header {
@@ -1509,6 +1559,57 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   align-items: center;
   justify-content: center;
   gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* تأثير لمعان على زر الدخول */
+.login-submit::before {
+  content: ''; position: absolute; top: -50%; left: -60%; width: 40%; height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent);
+  transform: rotate(25deg);
+  animation: btnShine 3.5s ease-in-out infinite;
+}
+@keyframes btnShine {
+  0%, 80% { left: -60%; }
+  100% { left: 120%; }
+}
+
+.login-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(200, 162, 74, 0.4);
+}
+
+/* رسالة الخطأ في الدخول */
+.login-error {
+  background: rgba(168, 50, 47, .15);
+  border: 1px solid rgba(168, 50, 47, .35);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 12px;
+  color: #f5a3a0;
+  font-size: .88rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: loginErr .3s ease-out;
+}
+@keyframes loginErr {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+.login-error svg { color: #f1948a; flex-shrink: 0; width: 18px; height: 18px; }
+
+/* رسالة الحالة (سحابي/محلي) */
+.login-status {
+  background: rgba(200, 162, 74, .10);
+  border: 1px solid rgba(200, 162, 74, .25);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 12px;
+  color: #e8d089;
+  font-size: .82rem;
+  text-align: center;
 }
 
 .login-footer {
@@ -1523,11 +1624,14 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   gap: 8px;
   font-weight: 600;
   transition: all 0.3s;
+  padding: 8px 16px;
+  border-radius: 10px;
 }
 
 .login-back-link:hover {
   color: var(--gold);
   transform: translateX(-4px);
+  background: rgba(200, 162, 74, .08);
 }
 
 .login-back-link svg {
@@ -1624,6 +1728,735 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 /* على الشاشات الواسعة جداً: لا نمدّ النص بعرض مفرط (قراءة مرتاحة) */
 @media (min-width: 1440px) {
   .app-top h1 { font-size: 1.4rem; }
+}
+
+/* ===========================================================================
+ *  قسم البطاقات — تصميم احترافي فخم
+ * =========================================================================== */
+
+/* شريط الإحصائيات العلوي */
+.cards-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.cards-stat {
+  background: #fff;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: .2s;
+  position: relative;
+  overflow: hidden;
+}
+.cards-stat:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+.cards-stat .cs-icon {
+  width: 42px; height: 42px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.cards-stat .cs-icon svg { width: 20px; height: 20px; }
+.cards-stat .cs-icon.gold  { background: linear-gradient(135deg, #fdf1d8, #f7e4b4); color: #a07b1a; }
+.cards-stat .cs-icon.ok    { background: linear-gradient(135deg, #ddf5e7, #b8e6cb); color: #1a7a3a; }
+.cards-stat .cs-icon.info  { background: linear-gradient(135deg, #dde9f9, #b8d4f5); color: #1b4f8a; }
+.cards-stat .cs-icon.warn  { background: linear-gradient(135deg, #fdf1d8, #f0d9a3); color: #8a5c05; }
+.cards-stat .cs-icon.danger{ background: linear-gradient(135deg, #fbe6e5, #f0c3c1); color: #8f2724; }
+.cards-stat .cs-icon.purple{ background: linear-gradient(135deg, #ede5fb, #d4c4f5); color: #5b2ea8; }
+.cards-stat .cs-info { min-width: 0; }
+.cards-stat .cs-val {
+  font-size: 1.4rem; font-weight: 900; color: var(--lapis-2); line-height: 1.2;
+}
+.cards-stat .cs-lbl {
+  font-size: .78rem; color: var(--muted); font-weight: 600;
+}
+.cards-stat::after {
+  content: ''; position: absolute; inset-inline-end: -20px; top: -20px;
+  width: 70px; height: 70px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,162,74,.10), transparent 70%);
+  pointer-events: none;
+}
+/* بطاقة مميزة (المجموع) */
+.cards-stat.total {
+  background: linear-gradient(135deg, var(--lapis-2), var(--lapis-3));
+  border-color: transparent;
+}
+.cards-stat.total .cs-val { color: #fff; }
+.cards-stat.total .cs-lbl { color: #b0c4e8; }
+.cards-stat.total .cs-icon { background: rgba(255,255,255,.15); color: #e8d089; }
+
+/* صفوف الجدول المحسّنة */
+table.data tbody tr { transition: .15s; }
+table.data tbody tr:hover { background: #faf8f3; }
+
+/* شريط حالة البطاقة ملوّن */
+.row-status-bar {
+  width: 4px; border-radius: 4px; position: absolute;
+  inset-inline-start: 0; top: 6px; bottom: 6px;
+}
+.row-status-bar.s-available { background: var(--ok); }
+.row-status-bar.s-reserved  { background: var(--warn); }
+.row-status-bar.s-closed    { background: var(--muted); }
+
+/* خلية الباركود المميزة */
+.serial-cell {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.serial-cell .chip-code {
+  font-size: .82rem; padding: 3px 8px; letter-spacing: .8px;
+}
+
+/* خلية الحالة المحسّنة */
+.status-cell { display: flex; flex-direction: column; gap: 4px; }
+.status-cell .badge { font-size: .76rem; }
+
+/* خلية الإجراءات المحسّنة */
+.cell-actions { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.cell-actions .btn { font-size: .78rem; padding: 5px 9px; border-radius: 8px; }
+.cell-actions .btn svg { width: 13px; height: 13px; }
+
+/* شريط البحث المحسّن */
+.toolbar-enhanced {
+  background: linear-gradient(135deg, #fdfbf6, #f8f5ee);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  display: flex; gap: 10px; align-items: end; flex-wrap: wrap;
+}
+.toolbar-enhanced .field { min-width: 150px; }
+.toolbar-enhanced .field.grow { flex: 1 1 220px; }
+.toolbar-enhanced .field label {
+  font-size: .78rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; display: block;
+}
+.toolbar-enhanced .search-wrap {
+  background: #fff; border-radius: 10px; border: 1px solid var(--line);
+}
+.toolbar-enhanced .search-wrap input {
+  border: none; background: transparent; padding: 10px 12px 10px 36px;
+  font-size: .88rem; width: 100%;
+}
+.toolbar-enhanced select {
+  background: #fff; border-radius: 10px; border: 1px solid var(--line);
+  padding: 10px 12px; font-size: .85rem; min-width: 140px;
+}
+
+/* الملاحظة السفلية */
+.footnote-premium {
+  background: linear-gradient(135deg, #fdfbf6, #f8f5ee);
+  border-top: 1px solid var(--line-soft);
+  padding: 12px 18px;
+  font-size: .82rem;
+  color: var(--muted);
+  display: flex; align-items: center; gap: 8px;
+  border-radius: 0 0 14px 14px;
+}
+.footnote-premium svg { width: 15px; height: 15px; color: var(--gold-3); flex-shrink: 0; }
+
+/* تأثيرات حركية */
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.cards-stat { animation: cardSlideIn .3s ease both; }
+.cards-stat:nth-child(1) { animation-delay: 0s; }
+.cards-stat:nth-child(2) { animation-delay: .05s; }
+.cards-stat:nth-child(3) { animation-delay: .1s; }
+.cards-stat:nth-child(4) { animation-delay: .15s; }
+.cards-stat:nth-child(5) { animation-delay: .2s; }
+.cards-stat:nth-child(6) { animation-delay: .25s; }
+
+/* ===========================================================================
+ *  نظرة عامة — تصميم احترافي فخم
+ * =========================================================================== */
+
+/* بانر الترحيب */
+.ov-welcome {
+  background: linear-gradient(135deg, #0b1a3a 0%, #17376c 60%, #1b4287 100%);
+  border-radius: 16px;
+  padding: 22px 28px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+}
+.ov-welcome::before {
+  content: ''; position: absolute; inset-inline-end: -40px; top: -40px;
+  width: 180px; height: 180px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,162,74,.18), transparent 70%);
+  pointer-events: none;
+}
+.ov-welcome::after {
+  content: ''; position: absolute; inset-inline-start: 30%; bottom: -60px;
+  width: 120px; height: 120px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(73,184,255,.10), transparent 70%);
+  pointer-events: none;
+}
+.ov-welcome-text h2 {
+  margin: 0 0 4px 0; font-size: 1.2rem; color: #fff;
+}
+.ov-welcome-text p {
+  margin: 0; color: #b0c4e8; font-size: .88rem;
+}
+.ov-welcome-text .accent { color: #e8d089; font-weight: 800; }
+.ov-welcome-time {
+  text-align: center; color: #c6d3ec; font-size: .82rem;
+}
+.ov-welcome-time .time-big {
+  font-size: 1.8rem; font-weight: 900; color: #fff; line-height: 1.2;
+}
+.ov-welcome-time .date-sm {
+  font-size: .78rem; color: #8fa0c4;
+}
+
+/* شبكة الإحصائيات المحسّنة */
+.ov-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ov-stat {
+  background: #fff;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: .2s;
+}
+.ov-stat:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.08);
+}
+.ov-stat::after {
+  content: ''; position: absolute; inset-inline-end: -20px; top: -20px;
+  width: 80px; height: 80px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,162,74,.12), transparent 70%);
+  pointer-events: none;
+}
+.ov-stat .ov-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 10px;
+}
+.ov-stat .ov-icon svg { width: 22px; height: 22px; }
+.ov-stat .ov-icon.gold   { background: linear-gradient(135deg, #fdf1d8, #f7e4b4); color: #a07b1a; }
+.ov-stat .ov-icon.ok     { background: linear-gradient(135deg, #ddf5e7, #b8e6cb); color: #1a7a3a; }
+.ov-stat .ov-icon.info   { background: linear-gradient(135deg, #dde9f9, #b8d4f5); color: #1b4f8a; }
+.ov-stat .ov-icon.warn   { background: linear-gradient(135deg, #fdf1d8, #f0d9a3); color: #8a5c05; }
+.ov-stat .ov-icon.danger { background: linear-gradient(135deg, #fbe6e5, #f0c3c1); color: #8f2724; }
+.ov-stat .ov-icon.purple { background: linear-gradient(135deg, #ede5fb, #d4c4f5); color: #5b2ea8; }
+.ov-stat .ov-val {
+  font-size: 1.6rem; font-weight: 900; color: var(--lapis-2); line-height: 1.2;
+}
+.ov-stat .ov-lbl {
+  font-size: .82rem; color: var(--muted); font-weight: 600; margin-top: 2px;
+}
+.ov-stat .ov-hint {
+  font-size: .75rem; color: #a0aac4; margin-top: 4px;
+}
+/* بطاقة مميزة */
+.ov-stat.accent-stat {
+  background: linear-gradient(135deg, var(--lapis-2), var(--lapis-3));
+  border-color: transparent;
+}
+.ov-stat.accent-stat .ov-val { color: #fff; }
+.ov-stat.accent-stat .ov-lbl { color: #b0c4e8; }
+.ov-stat.accent-stat .ov-hint { color: #8fa0c4; }
+.ov-stat.accent-stat .ov-icon { background: rgba(255,255,255,.15); color: #e8d089; }
+
+/* قسم لوحة الأوامر (الإنذارات + الحجوزات) */
+.ov-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+@media (max-width: 900px) {
+  .ov-panels { grid-template-columns: 1fr; }
+}
+
+/* بطاقة إجراء محسّنة */
+.ov-action-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: .15s;
+}
+.ov-action-card:last-child { border-bottom: none; }
+.ov-action-card:hover { background: #faf8f3; }
+.ov-action-card .ov-ac-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ov-action-card .ov-ac-icon svg { width: 18px; height: 18px; }
+.ov-action-card .ov-ac-icon.critical { background: linear-gradient(135deg, #fbe6e5, #f0c3c1); color: #8f2724; }
+.ov-action-card .ov-ac-icon.hiring   { background: linear-gradient(135deg, #dde9f9, #b8d4f5); color: #1b4f8a; }
+.ov-action-card .ov-ac-icon.pending  { background: linear-gradient(135deg, #fdf1d8, #f0d9a3); color: #8a5c05; }
+.ov-action-card .ov-ac-icon.hold     { background: linear-gradient(135deg, #eef1f7, #d9dfeb); color: #5c6884; }
+.ov-action-card .ov-ac-body { flex: 1; min-width: 0; }
+.ov-action-card .ov-ac-title {
+  font-weight: 700; font-size: .88rem; color: var(--lapis-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ov-action-card .ov-ac-sub {
+  font-size: .78rem; color: var(--muted); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ov-action-card .ov-ac-right {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+
+/* بطاقة حجز محسّنة */
+.ov-hold-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: .15s;
+}
+.ov-hold-card:last-child { border-bottom: none; }
+.ov-hold-card:hover { background: #faf8f3; }
+.ov-hold-card .ov-hc-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: linear-gradient(135deg, #fdf1d8, #f0d9a3);
+  color: #8a5c05;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ov-hold-card .ov-hc-icon svg { width: 18px; height: 18px; }
+.ov-hold-card .ov-hc-body { flex: 1; min-width: 0; }
+.ov-hold-card .ov-hc-title {
+  font-weight: 700; font-size: .88rem; color: var(--lapis-2);
+}
+.ov-hold-card .ov-hc-sub {
+  font-size: .78rem; color: var(--muted); margin-top: 2px;
+}
+.ov-hold-card .ov-hc-timer { flex-shrink: 0; }
+
+/* سجل العمليات — بطاقة محسّنة */
+.ov-log-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: .15s;
+}
+.ov-log-row:last-child { border-bottom: none; }
+.ov-log-row:hover { background: #faf8f3; }
+.ov-log-row .ov-log-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gold-3); flex-shrink: 0;
+}
+.ov-log-row .ov-log-time {
+  font-size: .78rem; color: var(--muted); font-family: monospace;
+  min-width: 140px; flex-shrink: 0;
+}
+.ov-log-row .ov-log-user {
+  font-weight: 700; font-size: .85rem; color: var(--lapis-2);
+  min-width: 80px; flex-shrink: 0;
+}
+.ov-log-row .ov-log-action {
+  font-size: .85rem; color: #333; flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* حركات ظهور */
+@keyframes ovSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.ov-stat { animation: ovSlideIn .35s ease both; }
+.ov-stat:nth-child(1) { animation-delay: 0s; }
+.ov-stat:nth-child(2) { animation-delay: .06s; }
+.ov-stat:nth-child(3) { animation-delay: .12s; }
+.ov-stat:nth-child(4) { animation-delay: .18s; }
+.ov-stat:nth-child(5) { animation-delay: .24s; }
+.ov-stat:nth-child(6) { animation-delay: .30s; }
+
+/* ===========================================================================
+ *  قسم الوظائف — تصميم احترافي
+ * =========================================================================== */
+
+/* شريط إحصائيات الوظائف */
+.jobs-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.jobs-stat {
+  background: #fff;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: .2s;
+  position: relative;
+  overflow: hidden;
+}
+.jobs-stat:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.07); }
+.jobs-stat::after {
+  content: ''; position: absolute; inset-inline-end: -18px; top: -18px;
+  width: 65px; height: 65px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,162,74,.10), transparent 70%);
+  pointer-events: none;
+}
+.jobs-stat .js-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.jobs-stat .js-icon svg { width: 19px; height: 19px; }
+.jobs-stat .js-icon.gold   { background: linear-gradient(135deg, #fdf1d8, #f7e4b4); color: #a07b1a; }
+.jobs-stat .js-icon.ok     { background: linear-gradient(135deg, #ddf5e7, #b8e6cb); color: #1a7a3a; }
+.jobs-stat .js-icon.info   { background: linear-gradient(135deg, #dde9f9, #b8d4f5); color: #1b4f8a; }
+.jobs-stat .js-icon.warn   { background: linear-gradient(135deg, #fdf1d8, #f0d9a3); color: #8a5c05; }
+.jobs-stat .js-icon.danger { background: linear-gradient(135deg, #fbe6e5, #f0c3c1); color: #8f2724; }
+.jobs-stat .js-val { font-size: 1.35rem; font-weight: 900; color: var(--lapis-2); line-height: 1.2; }
+.jobs-stat .js-lbl { font-size: .78rem; color: var(--muted); font-weight: 600; }
+.jobs-stat.js-total {
+  background: linear-gradient(135deg, var(--lapis-2), var(--lapis-3));
+  border-color: transparent;
+}
+.jobs-stat.js-total .js-val { color: #fff; }
+.jobs-stat.js-total .js-lbl { color: #b0c4e8; }
+.jobs-stat.js-total .js-icon { background: rgba(255,255,255,.15); color: #e8d089; }
+
+/* حركات ظهور */
+.jobs-stat { animation: ovSlideIn .35s ease both; }
+.jobs-stat:nth-child(1) { animation-delay: 0s; }
+.jobs-stat:nth-child(2) { animation-delay: .06s; }
+.jobs-stat:nth-child(3) { animation-delay: .12s; }
+.jobs-stat:nth-child(4) { animation-delay: .18s; }
+.jobs-stat:nth-child(5) { animation-delay: .24s; }
+
+/* بطاقة وظيفة محسّنة في الجدول */
+.job-row-highlight { background: #fdf9ee; }
+
+/* ===========================================================================
+ *  تحسينات عامة فاخرة — الموقع العام
+ * =========================================================================== */
+
+/* === الترويسة: تأثير زجاجي محسّن + خط ذهبي سفلي === */
+.site-header::after {
+  content: ''; position: absolute; bottom: 0; inset-inline: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 5%, var(--gold) 35%, var(--turq-2) 65%, transparent 95%);
+  opacity: .55;
+}
+
+/* === تحسين التنقل === */
+.main-nav a {
+  position: relative;
+  padding: 10px 16px;
+  font-size: .95rem;
+  letter-spacing: .2px;
+}
+.main-nav a::after {
+  content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 2.5px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold-2), var(--gold));
+  transition: width .3s cubic-bezier(.22,.61,.36,1);
+}
+.main-nav a:hover::after, .main-nav a.active::after { width: 60%; }
+
+/* زر الحجز الذهبي */
+.nav-book {
+  background: linear-gradient(135deg, rgba(200,162,74,.25), rgba(200,162,74,.10)) !important;
+  border: 1px solid rgba(200,162,74,.45) !important;
+  color: var(--gold-2) !important;
+  padding: 9px 20px !important;
+}
+.nav-book:hover {
+  background: linear-gradient(135deg, rgba(200,162,74,.40), rgba(200,162,74,.20)) !important;
+  box-shadow: 0 0 18px rgba(200,162,74,.25);
+}
+
+/* === قسم الواجهة الرئيسية (Hero) محسّن === */
+.hero::after {
+  content: ''; position: absolute; bottom: 0; inset-inline: 0; height: 120px;
+  background: linear-gradient(0deg, var(--cream), transparent);
+  z-index: 1; pointer-events: none;
+}
+
+/* حركة نبض للشارة */
+.hero-badge {
+  animation: heroBadgePulse 3s ease-in-out infinite;
+}
+@keyframes heroBadgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200,162,74,.3); }
+  50% { box-shadow: 0 0 20px 4px rgba(200,162,74,.15); }
+}
+
+/* تحسين العنوان */
+.hero h1 .accent {
+  background: linear-gradient(120deg, var(--gold-2), #ffd97d, var(--gold), #b98f34);
+  background-size: 200% 200%;
+  animation: accentShimmer 4s ease-in-out infinite;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+@keyframes accentShimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* تحسين أزرار Hero */
+.hero-cta .btn-gold {
+  position: relative; overflow: hidden;
+}
+.hero-cta .btn-gold::before {
+  content: ''; position: absolute; top: -50%; left: -60%; width: 40%; height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
+  transform: rotate(25deg);
+  animation: btnShine 3.5s ease-in-out infinite;
+}
+@keyframes btnShine {
+  0%, 80% { left: -60%; }
+  100% { left: 120%; }
+}
+
+/* === إحصائيات Hero محسّنة === */
+.hero-stat {
+  position: relative; overflow: hidden;
+  transition: .3s ease;
+}
+.hero-stat::before {
+  content: ''; position: absolute; inset-inline-end: -20px; top: -20px;
+  width: 60px; height: 60px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,162,74,.15), transparent 70%);
+}
+.hero-stat:hover {
+  background: rgba(255,255,255,.12);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.2);
+}
+
+/* === حركات ظهور تدريجية للبطاقات === */
+@keyframes heroStatIn {
+  from { opacity: 0; transform: translateY(20px) scale(.95); }
+  to { opacity: 1; transform: none; }
+}
+.hero-stat { animation: heroStatIn .5s ease both; }
+.hero-stat:nth-child(1) { animation-delay: .3s; }
+.hero-stat:nth-child(2) { animation-delay: .45s; }
+.hero-stat:nth-child(3) { animation-delay: .6s; }
+.hero-stat:nth-child(4) { animation-delay: .75s; }
+
+/* === صورة أسد بابل محسّنة === */
+.hero-figure {
+  position: relative;
+  animation: heroFigIn .8s ease both .4s;
+}
+@keyframes heroFigIn {
+  from { opacity: 0; transform: translateY(30px) scale(.96); }
+  to { opacity: 1; transform: none; }
+}
+.hero-figure img {
+  border-radius: 20px;
+  box-shadow:
+    0 0 0 2px rgba(200,162,74,.3),
+    0 20px 50px rgba(0,0,0,.4),
+    0 0 80px rgba(200,162,74,.1);
+  transition: .4s ease;
+}
+.hero-figure:hover img {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow:
+    0 0 0 2px rgba(200,162,74,.5),
+    0 25px 60px rgba(0,0,0,.5),
+    0 0 100px rgba(200,162,74,.15);
+}
+
+/* === عناوين الأقسام محسّنة === */
+.section-head .eyebrow {
+  position: relative;
+  display: inline-flex;
+  padding: 0 0 8px;
+}
+.section-head .eyebrow::after {
+  content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 40px; height: 2.5px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold), var(--turq));
+}
+
+.eyebrow-line {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 10px;
+}
+.eyebrow-line::after {
+  content: ''; position: absolute; bottom: 0; right: 0;
+  width: 50px; height: 2.5px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+
+/* === بطاقة وظيفة عامة محسّنة === */
+.job-card {
+  transition: .3s cubic-bezier(.22,.61,.36,1);
+}
+.job-card::after {
+  content: ''; position: absolute; inset: 0; border-radius: var(--radius);
+  box-shadow: inset 0 0 0 1px rgba(200,162,74,.08);
+  pointer-events: none; transition: .3s;
+}
+.job-card:hover::after {
+  box-shadow: inset 0 0 0 1.5px rgba(200,162,74,.35);
+}
+
+/* === خطوات آلية العمل محسّنة === */
+.steps {
+  position: relative;
+}
+.step {
+  transition: .35s cubic-bezier(.22,.61,.36,1);
+}
+.step::after {
+  content: ''; position: absolute; inset: 0; border-radius: var(--radius);
+  box-shadow: inset 0 0 0 1px rgba(200,162,74,.05);
+  pointer-events: none; transition: .3s;
+}
+.step:hover::after {
+  box-shadow: inset 0 0 0 1.5px rgba(200,162,74,.3);
+}
+
+/* === الخدمات محسّنة === */
+.service {
+  transition: .35s cubic-bezier(.22,.61,.36,1);
+}
+.service::after {
+  content: ''; position: absolute; inset: 0; border-radius: var(--radius);
+  box-shadow: inset 0 0 0 1px rgba(200,162,74,.05);
+  pointer-events: none; transition: .3s;
+}
+.service:hover::after {
+  box-shadow: inset 0 0 0 1.5px rgba(200,162,74,.3);
+}
+
+/* === قسم التواصل محسّن === */
+.contact-card {
+  transition: .3s cubic-bezier(.22,.61,.36,1);
+  position: relative;
+  overflow: hidden;
+}
+.contact-card::before {
+  content: ''; position: absolute; top: 0; inset-inline: 0; height: 3px;
+  background: linear-gradient(90deg, var(--gold), var(--turq));
+  transform: scaleX(0); transform-origin: center;
+  transition: transform .4s cubic-bezier(.22,.61,.36,1);
+}
+.contact-card:hover::before { transform: scaleX(1); }
+.contact-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+  border-color: var(--line);
+}
+.contact-card .ic {
+  transition: .3s ease;
+}
+.contact-card:hover .ic {
+  transform: scale(1.08);
+  box-shadow: 0 8px 20px rgba(200,162,74,.2);
+}
+
+/* === لوحة CTA محسّنة === */
+.panel[style*="linear-gradient"] {
+  position: relative;
+  overflow: hidden;
+}
+.panel[style*="linear-gradient"]::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(200,162,74,.12) 1px, transparent 1.6px);
+  background-size: 24px 24px;
+  opacity: .4;
+}
+
+/* === التذييل محسّن === */
+.site-footer {
+  position: relative;
+}
+.site-footer::before {
+  content: ''; position: absolute; top: 0; inset-inline: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: .4;
+}
+.site-footer .foot-main {
+  position: relative;
+}
+.site-footer h4 {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 8px;
+}
+.site-footer h4::after {
+  content: ''; position: absolute; bottom: 0; right: 0;
+  width: 30px; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+.footer-phones a {
+  transition: .2s;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+.footer-phones a:hover {
+  background: rgba(200,162,74,.1);
+}
+
+/* === شريط الاقتباس محسّن === */
+.quote-band blockquote {
+  position: relative;
+  padding: 0 40px;
+}
+.quote-band blockquote::before,
+.quote-band blockquote::after {
+  content: '❝'; position: absolute; top: -10px;
+  font-size: 3rem; color: var(--gold); opacity: .4;
+  line-height: 1;
+}
+.quote-band blockquote::before { right: 0; }
+.quote-band blockquote::after { content: '❞'; left: 0; }
+
+/* === تحسين حركة التمرير السلسة === */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1);
+  }
+  .reveal.is-visible { opacity: 1; transform: none; }
+}
+
+/* === تحسينات للشاشات الصغيرة === */
+@media (max-width: 768px) {
+  .hero-inner { grid-template-columns: 1fr; text-align: center; }
+  .hero-cta { justify-content: center; }
+  .hero-stats { grid-template-columns: repeat(2, 1fr); }
+  .hero-figure { max-width: 340px; margin: 0 auto; }
+  .lion-grid { grid-template-columns: 1fr; }
+  .split-2 { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: repeat(2, 1fr); }
+  .contact-grid { grid-template-columns: 1fr; }
+  .site-footer .foot-main { grid-template-columns: 1fr 1fr; }
+  .quote-band blockquote::before,
+  .quote-band blockquote::after { display: none; }
+}
+
+@media (max-width: 480px) {
+  .steps { grid-template-columns: 1fr; }
+  .hero-stats { grid-template-columns: 1fr 1fr; }
+  .site-footer .foot-main { grid-template-columns: 1fr; }
+  .quick-search { flex-direction: column; }
+  .qs-field.qs-main, .qs-field.qs-region { flex: 1 1 100%; }
 }
 
 </style>
@@ -1984,6 +2817,10 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         <select id="filter-region" aria-label="المنطقة"><option value="all">كل المناطق</option></select>
       </div>
       <div class="f-field">
+        <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
+        <select id="filter-governorate" aria-label="المحافظة"><option value="all">كل المحافظات</option></select>
+      </div>
+      <div class="f-field">
         <svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg>
         <select id="filter-shift" aria-label="الدوام"><option value="all">كل الأوقات</option></select>
       </div>
@@ -2332,7 +3169,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           <svg class="ic" style="width:18px;height:18px"><use href="#i-user" xlink:href="#i-user"/></svg>
           اسم المستخدم
         </label>
-        <input type="text" id="login-user" autocomplete="username" required placeholder="admin أو staff">
+        <input type="text" id="login-user" autocomplete="username" required placeholder="اسم المستخدم" dir="ltr">
       </div>
       
       <div class="field mb-3">
@@ -2340,13 +3177,17 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           <svg class="ic" style="width:18px;height:18px"><use href="#i-lock" xlink:href="#i-lock"/></svg>
           كلمة المرور
         </label>
-        <input type="password" id="login-pass" autocomplete="current-password" required placeholder="••••••••">
+        <input type="password" id="login-pass" autocomplete="current-password" required placeholder="••••••••" dir="ltr">
       </div>
+      
+      <div id="login-error" class="hidden"></div>
       
       <button class="btn btn-gold btn-block btn-lg login-submit" type="submit" id="login-btn">
         <svg class="ic"><use href="#i-login" xlink:href="#i-login"/></svg>
         دخول المنظومة
       </button>
+      
+      <div id="login-cloud-status" class="hidden"></div>
     </form>
     
     <div class="login-footer">
@@ -2354,6 +3195,10 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         <svg class="ic"><use href="#i-arrow-left" xlink:href="#i-arrow-left"/></svg>
         العودة إلى الموقع العام
       </a>
+      <div style="margin-top:16px;color:#6b7793;font-size:.78rem;line-height:1.8">
+        <svg class="ic" style="width:14px;height:14px;vertical-align:-2px"><use href="#i-shield"/></svg>
+        الحسابات ينشئها المدير من لوحة التحكم — الدخول الأول: <b class="mono" style="color:#c8a24a">admin</b> / <b class="mono" style="color:#c8a24a">admin123</b>
+      </div>
     </div>
   </div>
 </div>
@@ -2377,7 +3222,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     <nav class="side-nav" id="side-nav">
       <button data-view="overview" class="active"><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg> نظرة عامة</button>
       <button data-view="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الوظائف <span class="badge-count hidden" id="nav-jobs-count">0</span></button>
-      <button data-view="applicants"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg> الباحثون والاستمارات <span class="badge-count hidden" id="nav-apps-count">0</span></button>
+      <button data-view="applicants" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> البطاقات <span class="badge-count hidden" id="nav-apps-count">0</span></button>
       <button data-view="holds"><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> متابعة الحجوزات (24 ساعة) <span class="badge-count hidden" id="nav-holds-count">0</span></button>
       <button data-view="audit" data-admin-only="true"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> سجل التدقيق</button>
       <button data-view="finance" data-admin-only="true"><svg class="ic"><use href="#i-chart" xlink:href="#i-chart"/></svg> اللوحة المالية</button>
@@ -2425,57 +3270,75 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
     <!-- ================= نظرة عامة ================= -->
     <section class="view active" id="view-overview">
-      <div class="stat-grid" id="ov-stats"></div>
-      <div class="grid grid-2">
-        <div class="panel">
-          <div class="panel-head">
-            <h3><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> إجراءات مطلوبة الآن</h3>
-            <span class="badge warn" id="ov-actions-count">0</span>
-          </div>
-          <div id="ov-actions"></div>
+      <!-- بانر الترحيب -->
+      <div class="ov-welcome">
+        <div class="ov-welcome-text">
+          <h2>مرحباً، <span class="accent" id="ov-user-name">—</span></h2>
+          <p>لوحة تحكم شركة الهدف للتوظيف — نظرة عامة على حالة النظام</p>
         </div>
-        <div class="panel">
-          <div class="panel-head">
-            <h3><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> حجوزات 24 ساعة الجارية</h3>
-            <button class="btn btn-outline btn-sm" data-goto="holds">عرض الكل</button>
-          </div>
-          <div id="ov-holds"></div>
+        <div class="ov-welcome-time">
+          <div class="time-big" id="ov-clock">--:--</div>
+          <div class="date-sm" id="ov-date">—</div>
         </div>
       </div>
+
+      <!-- إحصائيات سريعة -->
+      <div class="ov-stats" id="ov-stats"></div>
+
+      <!-- لوحة الأوامر -->
+      <div class="ov-panels">
+        <!-- إجراءات مطلوبة -->
+        <div class="panel">
+          <div class="panel-head" style="background:linear-gradient(135deg,#fdfbf6,#f8f5ee)">
+            <h3><svg class="ic" style="color:#d44"><use href="#i-alert" xlink:href="#i-alert"/></svg> إجراءات مطلوبة الآن</h3>
+            <span class="badge warn" id="ov-actions-count">0</span>
+          </div>
+          <div id="ov-actions" style="max-height:340px;overflow-y:auto"></div>
+        </div>
+        <!-- حجوزات جارية -->
+        <div class="panel">
+          <div class="panel-head" style="background:linear-gradient(135deg,#fdfbf6,#f8f5ee)">
+            <h3><svg class="ic" style="color:#c8a24a"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> حجوزات 24 ساعة الجارية</h3>
+            <button class="btn btn-outline btn-sm" data-goto="holds">عرض الكل</button>
+          </div>
+          <div id="ov-holds" style="max-height:340px;overflow-y:auto"></div>
+        </div>
+      </div>
+
+      <!-- آخر العمليات -->
       <div class="panel">
-        <div class="panel-head">
-          <h3><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> آخر العمليات في السجل</h3>
+        <div class="panel-head" style="background:linear-gradient(135deg,#fdfbf6,#f8f5ee)">
+          <h3><svg class="ic" style="color:#5b2ea8"><use href="#i-list" xlink:href="#i-list"/></svg> آخر العمليات في السجل</h3>
           <button class="btn btn-outline btn-sm" data-goto="audit">سجل التدقيق الكامل</button>
         </div>
-        <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll"><table class="data" style="min-width:640px">
-            <thead><tr><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>التفاصيل</th></tr></thead>
-            <tbody id="ov-recent"></tbody>
-          </table></div>
-        </div>
+        <div id="ov-recent"></div>
       </div>
     </section>
 
     <!-- ================= الوظائف ================= -->
     <section class="view" id="view-jobs">
+      <!-- إحصائيات الوظائف -->
+      <div class="jobs-stats" id="jobs-stats"></div>
+
       <div class="panel">
-        <div class="panel-head">
-          <h3><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> إدارة الوظائف</h3>
-          <span class="badge info" id="jobs-count-label">0 وظيفة</span>
+        <div class="panel-head" style="background:linear-gradient(135deg, #0b1a3a 0%, #17376c 100%);border-radius:14px 14px 0 0;border-color:transparent">
+          <h3 style="color:#fff"><svg class="ic" style="color:#e8d089"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> إدارة الوظائف</h3>
+          <span class="badge" style="background:rgba(232,208,137,.18);color:#e8d089;border-color:rgba(232,208,137,.35)" id="jobs-count-label">0 وظيفة</span>
         </div>
-        <div class="panel-body">
-          <div class="toolbar mb-3">
+        <div class="panel-body" style="padding:0">
+          <!-- شريط البحث والفلاتر -->
+          <div class="toolbar-enhanced">
             <div class="field grow">
-              <label for="jq">بحث (كود / عنوان / صاحب عمل)</label>
+              <label for="jq"><svg style="width:14px;height:14px;vertical-align:-2px"><use href="#i-search"/></svg> بحث</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="jq" placeholder="HRC-1042 أو سائق ...">
+                <input type="search" id="jq" placeholder="كود الوظيفة، العنوان، أو اسم صاحب العمل...">
               </div>
             </div>
             <div class="field">
               <label for="j-status">الحالة</label>
               <select id="j-status">
-                <option value="all">الكل</option>
+                <option value="all">كل الحالات</option>
                 <option value="available">متاحة</option>
                 <option value="reserved">محجوزة مؤقتاً</option>
                 <option value="closed">مغلقة</option>
@@ -2483,51 +3346,66 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
             </div>
             <div class="field">
               <label for="j-region">المنطقة</label>
-              <select id="j-region"><option value="all">الكل</option></select>
+              <select id="j-region"><option value="all">كل المناطق</option></select>
+            </div>
+            <div class="field">
+              <label for="j-governorate">المحافظة</label>
+              <select id="j-governorate"><option value="all">كل المحافظات</option></select>
             </div>
             <div class="field">
               <label for="j-shift">الدوام</label>
-              <select id="j-shift"><option value="all">الكل</option></select>
+              <select id="j-shift"><option value="all">كل الأوقات</option></select>
             </div>
           </div>
-        </div>
-        <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll">
-            <table class="data">
-              <thead>
-                <tr>
-                  <th>الصورة</th><th>الكود</th><th>الوظيفة</th><th>المنطقة</th><th>الأجر الشهري</th><th>الدوام</th>
-                  <th>الحالة</th><th>الحجز الحالي</th><th>صاحب العمل (داخلي)</th><th>إجراءات</th>
-                </tr>
-              </thead>
-              <tbody id="jobs-table-body"></tbody>
-            </table>
+
+          <!-- الجدول -->
+          <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
+            <div class="table-scroll">
+              <table class="data" style="margin:0">
+                <thead>
+                  <tr>
+                    <th>صورة</th><th>الكود</th><th>الوظيفة</th><th>المنطقة</th><th>الأجر الشهري</th>
+                    <th>الدوام</th><th>الحالة</th><th>الحجز</th><th>صاحب العمل (داخلي)</th><th>إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="jobs-table-body"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="tfoot-note">بيانات صاحب العمل (الاسم، الهاتف، العنوان) تظهر هنا للموظفين فقط — ولا تُعرض في الموقع العام أبداً.</div>
+
+          <!-- ملاحظة سفلية -->
+          <div class="footnote-premium">
+            <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
+            بيانات صاحب العمل (الاسم، الهاتف، العنوان) تظهر هنا للموظفين فقط — ولا تُعرض في الموقع العام أبداً.
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ================= الباحثون والاستمارات ================= -->
+    <!-- ================= البطاقات (المدير فقط) ================= -->
     <section class="view" id="view-applicants">
+      <!-- إحصائيات سريعة -->
+      <div class="cards-stats" id="cards-stats"></div>
+
       <div class="panel">
-        <div class="panel-head">
-          <h3><svg class="ic"><use href="#i-file" xlink:href="#i-file"/></svg> الاستمارات الصادرة</h3>
-          <span class="badge info" id="apps-count-label">0 بطاقة</span>
+        <div class="panel-head" style="background:linear-gradient(135deg, #0b1a3a 0%, #17376c 100%);border-radius:14px 14px 0 0;border-color:transparent">
+          <h3 style="color:#fff"><svg class="ic" style="color:#e8d089"><use href="#i-card" xlink:href="#i-card"/></svg> إدارة البطاقات</h3>
+          <span class="badge" style="background:rgba(232,208,137,.18);color:#e8d089;border-color:rgba(232,208,137,.35)" id="apps-count-label">0 بطاقة</span>
         </div>
-        <div class="panel-body">
-          <div class="toolbar">
+        <div class="panel-body" style="padding:0">
+          <!-- شريط البحث والفلاتر -->
+          <div class="toolbar-enhanced">
             <div class="field grow">
-              <label for="aq">بحث (رقم تسلسلي / اسم / هاتف)</label>
+              <label for="aq"><svg style="width:14px;height:14px;vertical-align:-2px"><use href="#i-search"/></svg> بحث</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="aq" placeholder="7KQ4M9TR2X أو اسم الباحث">
+                <input type="search" id="aq" placeholder="باركود، اسم الباحث، أو رقم الهاتف...">
               </div>
             </div>
             <div class="field">
-              <label for="a-status">حالة البطاقة</label>
+              <label for="a-status">الحالة</label>
               <select id="a-status">
-                <option value="all">الكل</option>
+                <option value="all">كل الحالات</option>
                 <option value="blank">فارغة — بالمخزن</option>
                 <option value="pending">قيد المراجعة</option>
                 <option value="active">سارية</option>
@@ -2537,24 +3415,39 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
               </select>
             </div>
             <div class="field">
-              <label for="a-user">الموظف المُصدر</label>
-              <select id="a-user"><option value="all">الكل</option></select>
+              <label for="a-user">الموظف</label>
+              <select id="a-user"><option value="all">كل الموظفين</option></select>
             </div>
           </div>
-        </div>
-        <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll">
-            <table class="data">
-              <thead>
-                <tr>
-                  <th>الرقم التسلسلي</th><th>اسم الباحث</th><th>الهاتف</th><th>الإصدار</th>
-                  <th>الانتهاء</th><th>المتبقي</th><th>الفرص</th><th>الحالة</th><th>إجراءات</th>
-                </tr>
-              </thead>
-              <tbody id="apps-table-body"></tbody>
-            </table>
+
+          <!-- الجدول -->
+          <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
+            <div class="table-scroll">
+              <table class="data" style="margin:0">
+                <thead>
+                  <tr>
+                    <th style="min-width:130px">الباركود</th>
+                    <th style="min-width:150px">اسم الباحث</th>
+                    <th>الهاتف</th>
+                    <th>نقطة البيع</th>
+                    <th>الإصدار</th>
+                    <th>الانتهاء</th>
+                    <th>المتبقي</th>
+                    <th>الفرص</th>
+                    <th>الحالة</th>
+                    <th style="min-width:200px">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="apps-table-body"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="tfoot-note">البطاقة صالحة 30 يوماً وفيها فرصتان مستقلتان — بعد استهلاك الفرصتين أو انتهاء المدة تتوقف صلاحية التقديم.</div>
+
+          <!-- ملاحظة سفلية -->
+          <div class="footnote-premium">
+            <svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg>
+            البطاقة صالحة 30 يوماً وفيها فرصتان مستقلتان — بعد استهلاك الفرصتين أو انتهاء المدة تتوقف صلاحية التقديم.
+          </div>
         </div>
       </div>
     </section>
@@ -2691,13 +3584,22 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
       <div class="grid grid-2">
         <div class="panel">
-          <div class="panel-head"><h3><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg> المستخدمون والصلاحيات</h3></div>
-          <div class="table-wrap" style="border:none;box-shadow:none">
-            <div class="table-scroll"><table class="data" style="min-width:520px">
-              <thead><tr><th>المستخدم</th><th>الاسم</th><th>الصلاحية</th><th>المسمى</th></tr></thead>
-              <tbody id="users-table-body"></tbody>
-            </table></div>
-            <div class="tfoot-note">في النسخة السحابية تُدار الحسابات عبر Supabase Auth مع سياسات RLS (انظر docs/schema.sql).</div>
+          <div class="panel-head" style="background:linear-gradient(135deg,#0b1a3a,#17376c);border-radius:14px 14px 0 0;border-color:transparent">
+            <h3 style="color:#fff"><svg class="ic" style="color:#e8d089"><use href="#i-users" xlink:href="#i-users"/></svg> إدارة الموظفين والصلاحيات</h3>
+            <button class="btn btn-gold btn-sm" id="btn-add-user"><svg class="ic"><use href="#i-plus"/></svg> إضافة موظف</button>
+            <button class="btn btn-outline btn-sm" id="btn-cloud-key" title="مفتاح Supabase للتسجيل في القاعدة"><svg class="ic"><use href="#i-server"/></svg> ربط السحابة</button>
+          </div>
+          <div class="panel-body" style="padding:0">
+            <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
+              <div class="table-scroll"><table class="data" style="min-width:520px;margin:0">
+                <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+                <tbody id="users-table-body"></tbody>
+              </table></div>
+            </div>
+            <div class="footnote-premium">
+              <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
+              فقط المدير العام يكدر يضيف وتعديل وحذف الموظفين. في النسخة السحابية تُدار الحسابات عبر Supabase Auth مع سياسات RLS.
+            </div>
           </div>
         </div>
         <div class="panel">
@@ -2934,12 +3836,21 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
      * المستخدمون (نظام تجريبي يعمل بالكامل داخل المتصفح)
      * في النسخة السحابية تُدار الحسابات والصلاحيات عبر Supabase Auth + RLS
      * -------------------------------------------------------------- */
-    users: [],
+    users: [
+      { username: 'admin', password: 'admin123', name: 'المدير العام', role: 'admin', title: 'مدير عام', active: true }
+    ],
 
     /* مناطق عمل الشركة */
     regions: [
       'الحلة', 'المحاويل', 'الكفل', 'الهاشمية', 'المسيب', 'الحمزة الشرقي',
       'الصويرة', 'الوردية', 'أبو غرق', 'الإسكندرية', 'النيل', 'سدة الهندية', 'بغداد'
+    ],
+
+    /* محافظات العراق */
+    governorates: [
+      'بغداد', 'البصرة', 'نينوى', 'أربيل', 'السليمانية', 'كركوك',
+      'بابل', 'كربلاء', 'النجف', 'ديالى', 'الأنبار', 'واسط',
+      'ميسان', 'ذي قار', 'المثنى', 'صلاح الدين', 'دهوك', 'حلبجة'
     ],
 
     shifts: ['صباحي', 'مسائي', 'ليلي', 'صباحي + مسائي', 'دوام كامل', 'نوبات'],
@@ -4288,8 +5199,15 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       saveLocal(); emit();
       return null;
     }
-    var u = (db.settings.users || CFG.users).filter(function (x) {
-      return x.username === username && x.password === password;
+    var allUsers = (db.settings.users || []).concat(CFG.users || []);
+    /* إزالة المكررات: db.settings.users لها الأسبقية */
+    var seen = {};
+    var merged = [];
+    allUsers.forEach(function (u) {
+      if (!seen[u.username]) { seen[u.username] = true; merged.push(u); }
+    });
+    var u = merged.filter(function (x) {
+      return x.username === username && x.password === password && x.active !== false;
     })[0];
     if (!u) { audit('محاولة دخول فاشلة', 'auth', username, 'اسم مستخدم أو كلمة مرور غير صحيحة'); save(); emit(); return null; }
     var session = { username: u.username, name: u.name, role: u.role, title: u.title, at: nowISO() };
@@ -4331,6 +5249,97 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   }
 
   function isAdmin() { var u = currentUser(); return !!(u && u.role === 'admin'); }
+
+  /* ======================= إدارة المستخدمين ======================= */
+
+  /* جلب قائمة المستخدمين: السحابيين + المحليين + الافتراضيين */
+  function listUsers() {
+    var cloudStaff = (db.staff || []).filter(function (s) { return s.active !== false; });
+    var localUsers = (db.settings.users || []).concat(CFG.users || []);
+    /* دمج: السحابي أولاً ثم المحلي (الأسبقية للمحلي) */
+    var map = {};
+    cloudStaff.forEach(function (s) {
+      map[s.username] = { username: s.username, name: s.name, role: s.role || 'staff', title: s.title || '', active: s.active !== false, source: 'cloud' };
+    });
+    var seen = {};
+    localUsers.forEach(function (u) {
+      if (!seen[u.username]) {
+        seen[u.username] = true;
+        if (!map[u.username]) {
+          map[u.username] = { username: u.username, name: u.name, role: u.role || 'staff', title: u.title || '', active: u.active !== false, source: 'local' };
+        }
+      }
+    });
+    return Object.values(map);
+  }
+
+  /* إضافة مستخدم جديد */
+  function addUser(data) {
+    if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
+    if (!data.username || !data.password || !data.name) return { ok: false, error: 'الاسم واسم المستخدم وكلمة المرور مطلوبة' };
+    var all = listUsers();
+    var dup = all.filter(function (u) { return u.username === data.username; })[0];
+    if (dup) return { ok: false, error: 'اسم المستخدم «' + data.username + '» موجود مسبقاً' };
+    if (!db.settings.users) db.settings.users = [];
+    var newUser = {
+      username: data.username,
+      password: data.password,
+      name: data.name,
+      role: data.role || 'staff',
+      title: data.title || '',
+      active: data.active !== false
+    };
+    db.settings.users.push(newUser);
+    audit('إضافة مستخدم', 'user', data.username, 'الاسم: ' + data.name + ' — الدور: ' + (data.role === 'admin' ? 'مدير عام' : 'موظف'));
+    save(); emit();
+    return { ok: true, user: newUser };
+  }
+
+  /* تعديل مستخدم */
+  function updateUser(username, data) {
+    if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
+    var users = db.settings.users || [];
+    var idx = -1;
+    for (var i = 0; i < users.length; i++) { if (users[i].username === username) { idx = i; break; } }
+    if (idx < 0) return { ok: false, error: 'المستخدم غير موجود محلياً' };
+    if (data.name) users[idx].name = data.name;
+    if (data.role) users[idx].role = data.role;
+    if (data.title !== undefined) users[idx].title = data.title;
+    if (data.password) users[idx].password = data.password;
+    if (data.active !== undefined) users[idx].active = data.active;
+    audit('تعديل مستخدم', 'user', username, JSON.stringify(data));
+    save(); emit();
+    return { ok: true };
+  }
+
+  /* حذف مستخدم */
+  function deleteUser(username) {
+    if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
+    var cur = currentUser();
+    if (cur && cur.username === username) return { ok: false, error: 'لا يمكنك حذف حسابك الحالي' };
+    var users = db.settings.users || [];
+    var before = users.length;
+    db.settings.users = users.filter(function (u) { return u.username !== username; });
+    if (db.settings.users.length === before) return { ok: false, error: 'المستخدم غير موجود محلياً' };
+    audit('حذف مستخدم', 'user', username, 'تم حذف الحساب');
+    save(); emit();
+    return { ok: true };
+  }
+
+  /* تبديل حالة التنشيط */
+  function toggleUserActive(username) {
+    if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
+    var users = db.settings.users || [];
+    for (var i = 0; i < users.length; i++) {
+      if (users[i].username === username) {
+        users[i].active = !users[i].active;
+        audit(users[i].active ? 'تنشيط مستخدم' : 'تعطيل مستخدم', 'user', username, '');
+        save(); emit();
+        return { ok: true, active: users[i].active };
+      }
+    }
+    return { ok: false, error: 'المستخدم غير موجود محلياً' };
+  }
 
   /* ======================= التدقيق ======================= */
 
@@ -4377,12 +5386,13 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     var rows = db.jobs.slice();
     if (f.status && f.status !== 'all') rows = rows.filter(function (j) { return j.status === f.status; });
     if (f.region && f.region !== 'all') rows = rows.filter(function (j) { return j.region === f.region; });
+    if (f.governorate && f.governorate !== 'all') rows = rows.filter(function (j) { return j.governorate === f.governorate; });
     if (f.shift && f.shift !== 'all') rows = rows.filter(function (j) { return j.shift === f.shift; });
     if (f.category && f.category !== 'all') rows = rows.filter(function (j) { return j.category === f.category; });
     if (f.q) {
       var q = f.q.trim().toLowerCase();
       rows = rows.filter(function (j) {
-        return (j.code + ' ' + j.title + ' ' + j.region + ' ' + j.category + ' ' + (j.employer ? j.employer.name : ''))
+        return (j.code + ' ' + j.title + ' ' + j.region + ' ' + (j.governorate || '') + ' ' + j.category + ' ' + (j.employer ? j.employer.name : ''))
           .toLowerCase().indexOf(q) >= 0;
       });
     }
@@ -4401,7 +5411,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   function createJob(data) {
     var job = {
       id: uid('job'), code: nextJobCode(), title: data.title, category: data.category || 'خدمات',
-      region: data.region, salaryMin: data.salaryMin, salaryMax: data.salaryMax, shift: data.shift,
+      region: data.region, governorate: data.governorate || 'بابل', salaryMin: data.salaryMin, salaryMax: data.salaryMax, shift: data.shift,
       gender: data.gender || 'لا فرق', description: data.description || '',
       requirements: (data.requirements || []).filter(Boolean),
       employer: { name: data.employerName, phone: data.employerPhone, address: data.employerAddress },
@@ -6119,6 +7129,14 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     });
   }
 
+  /* إنشاء حساب موظف في Supabase (Auth + brc.staff) */
+  function createCloudAccount(serviceKey, data) {
+    if (!cloudConfigured()) return Promise.resolve({ ok: false, error: 'لا يوجد إعداد سحابة' });
+    if (!cloud.client || !root.HRCCloudAuth) return Promise.resolve({ ok: false, error: 'مكتبة الدخول غير محمّلة' });
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    return auth.createAccount(serviceKey, data);
+  }
+
   function signOutCloud() {
     var out = (cloud.auth && cloud.auth.logout) ? cloud.auth.logout() : Promise.resolve({ ok: true });
     var unsub = cloud.unsubscribe;
@@ -6215,8 +7233,10 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     },
     // جلسة
     login: login, logout: logout, currentUser: currentUser, isAdmin: isAdmin,
+    listUsers: listUsers, addUser: addUser, updateUser: updateUser, deleteUser: deleteUser, toggleUserActive: toggleUserActive,
     // سحابة
     signIn: signIn, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
+    createCloudAccount: createCloudAccount,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,
@@ -8479,7 +9499,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   var CFG = root.HRC_CONFIG, Store = root.HRCStore, UI = root.HRCUI;
   if (!document.getElementById('jobs-grid')) return;
 
-  var filters = { q: '', region: 'all', shift: 'all', status: 'all' };
+  var filters = { q: '', region: 'all', governorate: 'all', shift: 'all', status: 'all' };
 
   /* -------------- وضع القاعدة العامة (Supabase مفعّل) --------------
    * لماذا هذا التمييز؟ مع enabled=true يجب ألا يرى الزائر **أي** بيانات من
@@ -8581,23 +9601,27 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   function fillSelects() {
     UI.fillSelect(document.getElementById('qs-region'), CFG.regions, 'كل مناطق بابل');
     UI.fillSelect(document.getElementById('filter-region'), CFG.regions, 'كل المناطق');
+    UI.fillSelect(document.getElementById('filter-governorate'), CFG.governorates, 'كل المحافظات');
     UI.fillSelect(document.getElementById('filter-shift'), CFG.shifts, 'كل الأوقات');
   }
 
   function bindEvents() {
     var q = document.getElementById('filter-q');
     var region = document.getElementById('filter-region');
+    var governorate = document.getElementById('filter-governorate');
     var shift = document.getElementById('filter-shift');
     var status = document.getElementById('filter-status');
 
     if (q) q.addEventListener('input', UI.debounce(function () { filters.q = q.value; renderJobs(); }));
     if (region) region.addEventListener('change', function () { filters.region = region.value; renderJobs(); });
+    if (governorate) governorate.addEventListener('change', function () { filters.governorate = governorate.value; renderJobs(); });
     if (shift) shift.addEventListener('change', function () { filters.shift = shift.value; renderJobs(); });
     if (status) status.addEventListener('change', function () { filters.status = status.value; renderJobs(); });
     var reset = document.getElementById('filter-reset');
     if (reset) reset.addEventListener('click', function () {
-      filters = { q: '', region: 'all', shift: 'all', status: 'all' };
+      filters = { q: '', region: 'all', governorate: 'all', shift: 'all', status: 'all' };
       if (q) q.value = ''; if (region) region.value = 'all';
+      if (governorate) governorate.value = 'all';
       if (shift) shift.value = 'all'; if (status) status.value = 'all';
       renderJobs();
     });
@@ -8964,7 +9988,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         '</div>' +
         '<div class="job-body">' +
           '<div class="job-meta">' +
-            '<div class="mi">' + UI.ic('pin') + '<span>' + UI.esc(j.region) + '</span></div>' +
+            '<div class="mi">' + UI.ic('pin') + '<span>' + UI.esc(j.region) + (j.governorate ? ' — ' + UI.esc(j.governorate) : '') + '</span></div>' +
             '<div class="mi">' + UI.ic('clock') + '<span>' + UI.esc(j.shift) + '</span></div>' +
             '<div class="mi">' + UI.ic('money') + '<span>' + Store.money(j.salaryMin) + ' – ' + Store.money(j.salaryMax) + '</span></div>' +
             '<div class="mi">' + UI.ic('users') + '<span>' + UI.esc(j.gender || 'لا فرق') + '</span></div>' +
@@ -8999,8 +10023,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         '</div>' +
         UI.jobBadge(j.status) +
       '</div>' +
-      '<div class="data-grid mb-3">' +
+        '<div class="data-grid mb-3">' +
         '<div class="data-item"><div class="k">المنطقة</div><div class="v">' + UI.esc(j.region) + '</div></div>' +
+        '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || 'بابل') + '</div></div>' +
         '<div class="data-item"><div class="k">الأجر الشهري</div><div class="v">' + Store.money(j.salaryMin) + ' – ' + Store.money(j.salaryMax) + '</div></div>' +
         '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
         '<div class="data-item"><div class="k">الجنس</div><div class="v">' + UI.esc(j.gender || 'لا فرق') + '</div></div>' +
@@ -9476,7 +10501,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
   var state = {
     view: 'overview',
-    j: { q: '', status: 'all', region: 'all', shift: 'all' },
+    j: { q: '', status: 'all', region: 'all', governorate: 'all', shift: 'all' },
     a: { q: '', status: 'all', user: 'all' },
     log: { q: '', user: 'all', role: 'all', from: '', to: '' },
     fin: { from: '', to: '' },
@@ -9564,17 +10589,158 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   function fillStatic() {
     // الوظائف
     UI.fillSelect(document.getElementById('j-region'), CFG.regions, 'كل المناطق');
+    UI.fillSelect(document.getElementById('j-governorate'), CFG.governorates, 'كل المحافظات');
     UI.fillSelect(document.getElementById('j-shift'), CFG.shifts, 'كل الأوقات');
     // المستخدمون في الفلاتر
-    var users = CFG.users.map(function (u) { return u.username; });
-    UI.fillSelect(document.getElementById('a-user'), users, 'كل الموظفين');
-    UI.fillSelect(document.getElementById('log-user'), users.concat(['system']), 'كل المستخدمين');
+    var allUsers = Store.listUsers();
+    var userNames = allUsers.map(function (u) { return u.username; });
+    UI.fillSelect(document.getElementById('a-user'), userNames, 'كل الموظفين');
+    UI.fillSelect(document.getElementById('log-user'), userNames.concat(['system']), 'كل المستخدمين');
+    renderUsersTable();
+  }
+
+  /* ======================= إدارة الموظفين ======================= */
+
+  function renderUsersTable() {
     var tbl = document.getElementById('users-table-body');
-    if (tbl) tbl.innerHTML = CFG.users.map(function (u) {
-      return '<tr><td class="mono">' + UI.esc(u.username) + '</td><td>' + UI.esc(u.name) + '</td>' +
+    if (!tbl) return;
+    var users = Store.listUsers();
+    var cur = Store.currentUser();
+    tbl.innerHTML = users.map(function (u) {
+      var isActive = u.active !== false;
+      var isMe = cur && cur.username === u.username;
+      return '<tr style="opacity:' + (isActive ? '1' : '.55') + '">' +
+        '<td><b>' + UI.esc(u.name) + '</b>' + (isMe ? ' <span class="badge ok" style="font-size:.7rem">أنت</span>' : '') + '</td>' +
+        '<td><span class="mono" style="background:#eef1f7;padding:3px 8px;border-radius:6px;font-size:.84rem">' + UI.esc(u.username) + '</span></td>' +
         '<td>' + (u.role === 'admin' ? '<span class="badge danger">مدير عام</span>' : '<span class="badge info">موظف</span>') + '</td>' +
-        '<td class="tiny muted">' + UI.esc(u.title) + '</td></tr>';
-    }).join('');
+        '<td class="tiny muted">' + UI.esc(u.title || '—') + '</td>' +
+        '<td>' + (isActive ? '<span class="badge ok">نشط</span>' : '<span class="badge muted">معطّل</span>') + '</td>' +
+        '<td><div class="cell-actions">' +
+          '<button class="btn btn-outline btn-sm" data-user-edit="' + UI.esc(u.username) + '">' + UI.ic('edit') + ' تعديل</button>' +
+          '<button class="btn btn-sm ' + (isActive ? 'btn-warn' : 'btn-ok') + '" data-user-toggle="' + UI.esc(u.username) + '">' +
+            (isActive ? UI.ic('x-circle') + ' تعطيل' : UI.ic('check') + ' تنشيط') + '</button>' +
+          (isMe ? '' : '<button class="btn btn-danger btn-sm" data-user-del="' + UI.esc(u.username) + '">' + UI.ic('trash') + '</button>') +
+        '</div></td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">لا يوجد موظفين مسجلين</td></tr>';
+
+    /* ربط الأحداث */
+    tbl.querySelectorAll('[data-user-edit]').forEach(function (b) {
+      b.addEventListener('click', function () { userModal(b.getAttribute('data-user-edit')); });
+    });
+    tbl.querySelectorAll('[data-user-toggle]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var username = b.getAttribute('data-user-toggle');
+        var r = Store.toggleUserActive(username);
+        if (r.ok) {
+          UI.toast('ok', 'تم التحديث', username);
+          renderUsersTable();
+        } else {
+          UI.toast('err', 'خطأ', r.error);
+        }
+      });
+    });
+    tbl.querySelectorAll('[data-user-del]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var username = b.getAttribute('data-user-del');
+        UI.confirm({ title: 'حذف الموظف', message: 'حذف حساب «' + username + '» نهائياً؟ لا يمكن التراجع.', confirmText: 'حذف نهائي', danger: true })
+          .then(function (ok) {
+            if (ok) {
+              var r = Store.deleteUser(username);
+              if (r.ok) {
+                UI.toast('warn', 'تم الحذف', username);
+                renderUsersTable();
+              } else {
+                UI.toast('err', 'خطأ', r.error);
+              }
+            }
+          });
+      });
+    });
+  }
+
+  /* نموذج إضافة/تعديل موظف */
+  function userModal(username) {
+    var existing = username ? Store.listUsers().filter(function (u) { return u.username === username; })[0] : null;
+    var isEdit = !!existing;
+    var title = isEdit ? 'تعديل الموظف: ' + existing.name : 'إضافة موظف جديد';
+
+    var body = '<form id="user-form" style="display:grid;gap:14px">' +
+      '<div class="grid grid-2" style="gap:14px">' +
+        '<div class="field"><label for="uf-name">الاسم الكامل *</label><input type="text" id="uf-name" required value="' + (isEdit ? UI.esc(existing.name) : '') + '" placeholder="مثال: أحمد محمد"></div>' +
+        '<div class="field"><label for="uf-user">اسم المستخدم *</label><input type="text" id="uf-user" required ' + (isEdit ? 'disabled' : '') + ' value="' + (isEdit ? UI.esc(existing.username) : '') + '" placeholder="مثال: ahmed" dir="ltr" class="mono"></div>' +
+      '</div>' +
+      '<div class="grid grid-2" style="gap:14px">' +
+        '<div class="field"><label for="uf-pass">كلمة المرور *</label><input type="password" id="uf-pass" ' + (isEdit ? '' : 'required') + ' placeholder="' + (isEdit ? 'اتركها فارغة لعدم التغيير' : 'كلمة المرور') + '" dir="ltr"></div>' +
+        '<div class="field"><label for="uf-title">المسمى الوظيفي</label><input type="text" id="uf-title" value="' + (isEdit ? UI.esc(existing.title || '') : '') + '" placeholder="مثال: موظف توظيف"></div>' +
+      '</div>' +
+      '<div class="field"><label for="uf-role">الصلاحية</label>' +
+        '<select id="uf-role">' +
+          '<option value="staff"' + (isEdit && existing.role === 'staff' ? ' selected' : '') + '>موظف — الصلاحيات الأساسية</option>' +
+          '<option value="admin"' + (isEdit && existing.role === 'admin' ? ' selected' : '') + '>مدير عام — كل الصلاحيات</option>' +
+        '</select>' +
+      '</div>' +
+      (isEdit ? '<div class="field" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="uf-active" ' + (existing.active !== false ? 'checked' : '') + '><label for="uf-active" style="margin:0;cursor:pointer">الحساب نشط (يستطيع تسجيل الدخول)</label></div>' : '') +
+    '</form>';
+
+    var footer = '<button class="btn btn-outline" data-close>إلغاء</button>' +
+      '<button class="btn btn-lapis" id="uf-save">' + UI.ic('check') + ' ' + (isEdit ? 'حفظ التعديلات' : 'إنشاء الحساب') + '</button>';
+
+    var m = UI.modal({ title: title, body: body, footer: footer });
+    if (!m) return;
+
+    var saveBtn = m.root.querySelector('#uf-save');
+    if (saveBtn) saveBtn.addEventListener('click', function () {
+      var name = document.getElementById('uf-name').value.trim();
+      var uname = document.getElementById('uf-user').value.trim();
+      var pass = document.getElementById('uf-pass').value;
+      var utitle = document.getElementById('uf-title').value.trim();
+      var role = document.getElementById('uf-role').value;
+      var activeEl = document.getElementById('uf-active');
+      var active = activeEl ? activeEl.checked : true;
+
+      if (!name || !uname) { UI.toast('err', 'خطأ', 'الاسم واسم المستخدم مطلوبة'); return; }
+      if (!isEdit && !pass) { UI.toast('err', 'خطأ', 'كلمة المرور مطلوبة للموظف الجديد'); return; }
+
+      /* حفظ محلي أولاً */
+      var r;
+      if (isEdit) {
+        var updateData = { name: name, role: role, title: utitle, active: active };
+        if (pass) updateData.password = pass;
+        r = Store.updateUser(username, updateData);
+      } else {
+        r = Store.addUser({ username: uname, password: pass, name: name, role: role, title: utitle, active: true });
+      }
+
+      if (!r.ok) {
+        UI.toast('err', 'خطأ', r.error);
+        return;
+      }
+
+      /* تسجيل في Supabase أيضاً (إذا المفتاح موجود) */
+      var svcKey = null;
+      try { svcKey = localStorage.getItem('hrc-service-key'); } catch (e) {}
+      if (!isEdit && svcKey && Store.createCloudAccount) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'جارٍ التسجيل في السحابة…';
+        Store.createCloudAccount(svcKey, { username: uname, password: pass, name: name, role: role, title: utitle })
+          .then(function (cloudR) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = isEdit ? 'حفظ التعديلات' : 'إنشاء الحساب';
+            if (cloudR.ok) {
+              UI.toast('ok', 'تم الإنشاء محلياً + في السحابة', name + ' — يكدر الموظف يدخل من أي جهاز');
+            } else {
+              UI.toast('warn', 'تم محلياً — فشل السحابة', name + ' (محلي: ✅ / سحابة: ❌ ' + cloudR.error + ')');
+            }
+            renderUsersTable();
+            m.close();
+          });
+        return;
+      }
+
+      UI.toast('ok', isEdit ? 'تم التعديل' : 'تم الإنشاء', name + (isEdit ? '' : ' — محلي فقط'));
+      renderUsersTable();
+      m.close();
+    });
   }
 
   /* ======================= الدخول ======================= */
@@ -9593,22 +10759,28 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         btn.disabled = !!on;
         btn.textContent = on ? txt : label;
       }
+      function showLoginErr(msg) {
+        var el = document.getElementById('login-error');
+        if (el) { el.className = 'login-error'; el.innerHTML = '<svg class="ic"><use href="#i-alert"/></svg><span>' + msg + '</span>'; }
+        UI.toast('err', 'فشل الدخول', msg);
+      }
+      function clearLoginErr() {
+        var el = document.getElementById('login-error');
+        if (el) { el.className = 'hidden'; el.innerHTML = ''; }
+      }
       function localLogin() {
+        clearLoginErr();
         var s = Store.login(u, p);
         if (!s) {
-          /* ⚠️ إن لم تكن هناك أي حسابات محلية (النظام مربوط بقاعدة الشركة عبر
-             Supabase Auth) فالسبب الحقيقي للفشل هو انقطاع الاتصال — لا خطأ في
-             كلمة المرور. إظهار «كلمة المرور غير صحيحة» هنا يضلّل الموظف ويجعله
-             يعيد المحاولة بلا داعٍ بدل أن يفحص الإنترنت. */
           var csLocal = Store.cloudStatus ? Store.cloudStatus() : null;
           if (csLocal && csLocal.enforceAuth && !csLocal.devAccountsActive) {
-            UI.toast('err', 'تعذّر الدخول — لا اتصال بقاعدة الشركة',
-              'حسابات الموظفين محفوظة في القاعدة، فيلزم اتصال بالإنترنت. تحقّق من الشبكة ثم أعد المحاولة.');
+            showLoginErr('لا اتصال بقاعدة الشركة');
             return;
           }
-          UI.toast('err', 'فشل الدخول', 'اسم المستخدم أو كلمة المرور غير صحيحة.');
+          showLoginErr('اسم المستخدم أو كلمة المرور غير صحيحة.');
           return;
         }
+        clearLoginErr();
         UI.toast('ok', 'مرحباً ' + s.name, s.role === 'admin' ? 'دخلت بصلاحية المدير العام.' : 'دخلت بصلاحية موظف.');
         enterApp();
       }
@@ -9640,25 +10812,26 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         busy(true, 'جارٍ التحقق…');
         Store.signIn(u, p).then(function (r) {
           busy(false, '');
+          /* ✅ نجح الدخول السحابي */
           if (r && r.ok) {
+            clearLoginErr();
             UI.toast('ok', 'مرحباً ' + (r.session ? r.session.name : u),
               r.session && r.session.role === 'admin' ? 'دخلت بصلاحية المدير العام.' : 'دخلت بصلاحية موظف.');
             enterApp();
             return;
           }
-          var transitional = !cs.enforceAuth && r && ['offline', 'bad_credentials', 'no_staff_row', 'no_user', 'inactive'].includes(r.code);
-          if (transitional) {
-            /* انقطاع، أو قاعدة لم تُهيّأ بعدُ بحسابات موظفين (enforceAuth=false):
-               نسمح بالوضع المحلي **بتنبيه صريح** حتى لا يتوقف العمل، مع بقاء
-               البانر معروضاً دائماً يشرح الوضع. أما متى كانت enforceAuth=true
-               فلا مسار محلي إطلاقاً — وهذا هو الوضع النهائي المقصود. */
-            UI.toast('warn', 'وضع محلي مؤقّت',
-              (r.code === 'offline' ? 'تعذّر الاتصال بالسحابة — ' : 'لا يوجد حساب موظف في القاعدة بعد — ') +
-              'الدخول محلي والبيانات غير مشتركة مع بقية الموظفين.');
-            localLogin();
-            return;
+          /* ❌ السحابة فشلة — إذا enforceAuth=false نجرب محلي فوراً بدون رسائل مزعجة */
+          if (!cs.enforceAuth) {
+            var localResult = Store.login(u, p, { forceLocal: true });
+            if (localResult) {
+              clearLoginErr();
+              UI.toast('ok', 'مرحباً ' + localResult.name, localResult.role === 'admin' ? 'دخلت بصلاحية المدير العام.' : 'دخلت بصلاحية موظف.');
+              enterApp();
+              return;
+            }
           }
-          UI.toast('err', 'فشل الدخول', (r && r.error) || 'اسم المستخدم أو كلمة المرور غير صحيحة.');
+          /* ❌ لا سحابي ولا محلي — خطأ */
+          showLoginErr((r && r.error) || 'اسم المستخدم أو كلمة المرور غير صحيحة.');
         });
       }
     });
@@ -9830,14 +11003,14 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       logUser.disabled = true;
       state.log.user = Store.currentUser().username;
     } else if (logUser) { logUser.disabled = false; }
-    if (!admin && (state.view === 'finance' || state.view === 'settings')) setView('overview');
+    if (!admin && (state.view === 'finance' || state.view === 'settings' || state.view === 'applicants')) setView('overview');
   }
 
   /* ======================= التنقل ======================= */
   var TITLES = {
     overview: ['نظرة عامة', 'ملخص لحظي لحالة الوظائف والاستمارات والحجوزات'],
     jobs: ['الوظائف', 'إدارة الوظائف، الحجز المؤقت، الإغلاق وإعادة التفعيل'],
-    applicants: ['الباحثون والبطاقات', 'بيع البطاقات، إدارة الفرصتين، الطباعة'],
+    applicants: ['البطاقات', 'إدارة البطاقات — بحث وفلترة وإصدار ومتابعة'],
     holds: ['متابعة الحجوزات', 'حجوزات 24 ساعة وتثبيت نتائج المقابلات'],
     audit: ['سجل التدقيق', 'كل عملية مسجّلة بالثانية مع المستخدم وعنوان الجلسة'],
     finance: ['اللوحة المالية', 'الاستمارات الصادرة والتحصيل المتوقع لكل موظف'],
@@ -9934,121 +11107,132 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     var s = Store.stats();
     var pa = Store.pendingActions();
     var fin = Store.financialTotals();
+
+    // ═══ بانر الترحيب + الساعة ═══
+    var user = Store.currentUser();
+    var userName = document.getElementById('ov-user-name');
+    if (userName) userName.textContent = user ? (user.name || user.username) : '—';
+    var clock = document.getElementById('ov-clock');
+    var dateEl = document.getElementById('ov-date');
+    if (clock) {
+      var now = new Date();
+      var h = String(now.getHours()), m = String(now.getMinutes());
+      clock.textContent = (h.length < 2 ? '0' : '') + h + ':' + (m.length < 2 ? '0' : '') + m;
+      if (dateEl) dateEl.textContent = now.toLocaleDateString('ar-IQ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
+    // ═══ إحصائيات ═══
     var stats = [
-      { icon: 'briefcase', label: 'وظائف متاحة', value: s.available, hint: 'من أصل ' + s.totalJobs + ' وظيفة' },
-      { icon: 'hourglass', label: 'حجوزات جارية', value: s.reserved, hint: 'مؤقتة لمدة 24 ساعة', accent: true },
-      { icon: 'card', label: 'بطاقات صادرة', value: s.forms, hint: s.activeForms + ' سارية الآن' },
-      { icon: 'card', label: 'بطاقات فارغة بالمخزن', value: s.blankForms, hint: 'بانتظار التعبئة عند نقاط البيع' },
-      { icon: 'check', label: 'توظيف ناجح', value: s.hires, hint: 'منذ بداية التشغيل' },
-      { icon: 'chart', label: 'التحصيل المتوقع', value: Store.money(fin.expected), hint: fin.printed + ' مرة طباعة' }
+      { icon: 'briefcase', cls: 'ok',     val: s.available,  lbl: 'وظائف متاحة', hint: 'من أصل ' + s.totalJobs + ' وظيفة' },
+      { icon: 'hourglass', cls: 'warn',   val: s.reserved,   lbl: 'حجوزات جارية', hint: 'مؤقتة 24 ساعة' },
+      { icon: 'card',      cls: 'info',   val: s.forms,      lbl: 'بطاقات صادرة', hint: s.activeForms + ' سارية' },
+      { icon: 'card',      cls: 'gold',   val: s.blankForms, lbl: 'فارغة بالمخزن', hint: 'بانتظار التعبئة' },
+      { icon: 'check',     cls: 'purple', val: s.hires,      lbl: 'توظيف ناجح', hint: 'منذ بداية التشغيل' },
+      { icon: 'chart',     cls: 'ok',     val: Store.money(fin.expected), lbl: 'التحصيل المتوقع', hint: fin.printed + ' مرة طباعة' }
     ];
     document.getElementById('ov-stats').innerHTML = stats.map(function (x) {
-      return '<div class="stat-card' + (x.accent ? ' accent' : '') + '">' +
-        '<div class="lbl">' + UI.ic(x.icon) + ' ' + UI.esc(x.label) + '</div>' +
-        '<div class="val">' + UI.esc(String(x.value)) + '</div>' +
-        '<div class="hint">' + UI.esc(x.hint) + '</div></div>';
+      return '<div class="ov-stat">' +
+        '<div class="ov-icon ' + x.cls + '"><svg class="ic"><use href="#i-' + x.icon + '" xlink:href="#i-' + x.icon + '"/></svg></div>' +
+        '<div class="ov-val">' + UI.esc(String(x.val)) + '</div>' +
+        '<div class="ov-lbl">' + UI.esc(x.lbl) + '</div>' +
+        '<div class="ov-hint">' + UI.esc(x.hint) + '</div>' +
+      '</div>';
     }).join('');
 
-    // إجراءات مطلوبة — طلبات صاحب العمل أولاً (جاري التوظيف بانتظار تثبيت الشركة)
+    // ═══ إجراءات مطلوبة ═══
     var actions = [];
     (pa.hiring || []).forEach(function (h) {
       actions.push({
-        title: '🔵 جاري التوظيف — الوظيفة ' + h.job.code,
-        sub: 'البطاقة ' + (h.serial || '—') + ' — طلب صاحب العمل: ' +
-          (h.decision === 'hire' ? 'تم التوظيف (بانتظار تثبيتك)' : 'لم يتم التوظيف (القرار بيدك)') +
-          ' · صاحب العمل: ' + h.job.employer.name,
+        icon: 'hiring', title: 'جاري التوظيف — ' + h.job.code,
+        sub: 'البطاقة ' + (h.serial || '—') + ' · صاحب العمل: ' + h.job.employer.name,
         badge: '<span class="badge info">تثبيت مطلوب</span>',
         act: { label: 'قرار', handler: function () { setView('holds'); } }
       });
     });
     pa.requests.forEach(function (r) {
       actions.push({
-        title: 'طلب بطاقة قيد المراجعة: ' + r.serial,
-        sub: r.fullName + ' — ' + (r.requestedCode ? 'يطلب الوظيفة ' + r.requestedCode : 'طلب عام') + ' · ' + r.phone,
+        icon: 'pending', title: 'طلب بطاقة: ' + r.serial,
+        sub: r.fullName + ' — ' + (r.requestedCode ? 'الوظيفة ' + r.requestedCode : 'طلب عام') + ' · ' + r.phone,
         badge: '<span class="badge warn">قيد المراجعة</span>',
         act: { label: 'مراجعة', handler: function () { setView('applicants'); reviewRequestModal(r.serial); } }
       });
     });
     (pa.critical || []).forEach(function (h) {
-      /* مصدران للحالة الحرجة: انتهاء مهلة 24 ساعة، أو رفض صاحب العمل بسبب
-         مكتوب (قرار 2026-10-06) — والثاني يُعرض بسببه لأن الموظف يقرؤه قبل أن
-         يقرر: إرجاع الوظيفة متاحة أو حذفها. */
       var byEmployer = h.decidedBy === 'employer';
       actions.push({
-        title: (byEmployer ? '🔴 رفض صاحب العمل — الوظيفة ' : '🔴 حالة حرجة — الوظيفة ') + h.job.code,
-        sub: 'البطاقة ' + (h.serial || '—') + (byEmployer
-          ? ' — سبب الرفض: ' + (h.reason || '—') + ' | قرارك: إرجاع الوظيفة متاحة أو حذفها'
-          : ' — انتهت مهلة 24 ساعة دون قرار: حدّد التوظيف أو الإرجاع أو الحذف'),
-        badge: byEmployer
-          ? '<span class="badge danger">رفض صاحب العمل — معلّقة</span>'
-          : '<span class="badge danger">قرار مطلوب</span>',
+        icon: 'critical', title: (byEmployer ? 'رفض صاحب العمل — ' : 'حالة حرجة — ') + h.job.code,
+        sub: 'البطاقة ' + (h.serial || '—') + (byEmployer ? ' · السبب: ' + (h.reason || '—') : ' · انتهت المهلة دون قرار'),
+        badge: '<span class="badge danger">' + (byEmployer ? 'معلّقة' : 'قرار مطلوب') + '</span>',
         act: { label: 'قرار', handler: function () { setView('holds'); } }
       });
     });
     pa.holds.forEach(function (h) {
       actions.push({
-        title: 'حجز جارٍ على الوظيفة ' + h.job.code,
-        sub: 'البطاقة ' + (h.serial || '—') + ' — المتبقي ' + UI.humanDuration(Math.max(0, h.hoursLeft * 3600000)),
+        icon: 'hold', title: 'حجز جارٍ — ' + h.job.code,
+        sub: 'البطاقة ' + (h.serial || '—') + ' · المتبقي ' + UI.humanDuration(Math.max(0, h.hoursLeft * 3600000)),
         badge: h.hoursLeft < 4 ? '<span class="badge danger">عاجل</span>' : '<span class="badge warn">متابعة</span>',
         act: { label: 'إدارة', handler: function () { setView('holds'); } }
       });
     });
     (pa.expired || []).forEach(function (a) {
-      actions.push({
-        title: 'بطاقة منتهية: ' + a.serial, sub: a.fullName + ' — انتهت الصلاحية (30 يوماً)',
-        badge: '<span class="badge danger">منتهية</span>',
-        act: { label: 'فتح', handler: function () { attemptsModal(a.serial); } }
-      });
+      actions.push({ icon: 'critical', title: 'بطاقة منتهية: ' + a.serial, sub: a.fullName, badge: '<span class="badge danger">منتهية</span>', act: { label: 'فتح', handler: function () { attemptsModal(a.serial); } } });
     });
     (pa.exhausted || []).forEach(function (a) {
-      actions.push({
-        title: 'استُهلكت الفرصتان: ' + a.serial, sub: a.fullName + ' — فرصتا البطاقة مستخدمتان',
-        badge: '<span class="badge warn">منتهية</span>',
-        act: { label: 'فتح', handler: function () { attemptsModal(a.serial); } }
-      });
-    });
-    (pa.rejected || []).forEach(function (r) {
-      actions.push({
-        title: 'مرشح مرفوض: ' + r.applicant.serial,
-        sub: r.applicant.fullName + ' — ' + r.count + ' فرصة مرفوضة (الوظيفة أُعيدت للسوق)',
-        badge: '<span class="badge muted">متابعة</span>',
-        act: { label: 'فتح', handler: function () { attemptsModal(r.applicant.serial); } }
-      });
+      actions.push({ icon: 'hold', title: 'فرصتان مستهلكتان: ' + a.serial, sub: a.fullName, badge: '<span class="badge warn">مستهلكة</span>', act: { label: 'فتح', handler: function () { attemptsModal(a.serial); } } });
     });
 
     var cEl = document.getElementById('ov-actions-count');
     if (cEl) cEl.textContent = String(actions.length);
-    document.getElementById('ov-actions').innerHTML = actions.length
-      ? actions.slice(0, 6).map(function (a, i) {
-        return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1fr) auto auto;border-radius:0;border-width:0 0 1px 0">' +
-          '<div><div class="job">' + UI.esc(a.title) + '</div><small class="muted">' + UI.esc(a.sub) + '</small></div>' +
-          '<div>' + a.badge + '</div>' +
-          '<button class="btn btn-outline btn-sm" data-act="' + i + '">' + UI.esc(a.act.label) + '</button>' +
+    var actionsHost = document.getElementById('ov-actions');
+    if (actionsHost) {
+      actionsHost.innerHTML = actions.length
+        ? actions.slice(0, 8).map(function (a, i) {
+          return '<div class="ov-action-card">' +
+            '<div class="ov-ac-icon ' + a.icon + '"><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg></div>' +
+            '<div class="ov-ac-body"><div class="ov-ac-title">' + UI.esc(a.title) + '</div><div class="ov-ac-sub">' + UI.esc(a.sub) + '</div></div>' +
+            '<div class="ov-ac-right">' + a.badge + '<button class="btn btn-outline btn-sm" data-act="' + i + '">' + UI.esc(a.act.label) + '</button></div>' +
           '</div>';
-      }).join('')
-      : '<div class="table-empty">' + UI.ic('check') + '<div class="mt-2">لا توجد إجراءات معلّقة — كل الحجوزات والاستمارات تحت السيطرة.</div></div>';
+        }).join('')
+        : '<div style="text-align:center;padding:32px;color:var(--muted)">' + UI.ic('check') + '<div style="margin-top:8px;font-weight:600">لا توجد إجراءات معلّقة</div><div style="font-size:.82rem;margin-top:4px">كل الحجوزات والاستمارات تحت السيطرة ✨</div></div>';
 
-    document.querySelectorAll('#ov-actions [data-act]').forEach(function (b) {
-      b.addEventListener('click', function () { actions[Number(b.getAttribute('data-act'))].act.handler(); });
-    });
+      actionsHost.querySelectorAll('[data-act]').forEach(function (b) {
+        b.addEventListener('click', function () { actions[Number(b.getAttribute('data-act'))].act.handler(); });
+      });
+    }
 
-    // حجوزات مصغّرة
-    var holds = pa.holds.slice(0, 5);
-    document.getElementById('ov-holds').innerHTML = holds.length
-      ? holds.map(function (h) {
-        return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1fr) auto;border-radius:0;border-width:0 0 1px 0">' +
-          '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) + '</div>' +
-          '<small class="muted">البطاقة ' + UI.esc(h.serial || '—') + ' · ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
-          '<div>' + UI.holdHtml(h.job.holdExpiresAt) + '</div></div>';
-      }).join('')
-      : '<div class="table-empty">' + UI.ic('hourglass') + '<div class="mt-2">لا توجد حجوزات مؤقتة جارية الآن.</div></div>';
+    // ═══ حجوزات جارية ═══
+    var holds = pa.holds.slice(0, 6);
+    var holdsHost = document.getElementById('ov-holds');
+    if (holdsHost) {
+      holdsHost.innerHTML = holds.length
+        ? holds.map(function (h) {
+          return '<div class="ov-hold-card">' +
+            '<div class="ov-hc-icon"><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg></div>' +
+            '<div class="ov-hc-body">' +
+              '<div class="ov-hc-title"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) + '</div>' +
+              '<div class="ov-hc-sub">البطاقة ' + UI.esc(h.serial || '—') + ' · ' + UI.esc(h.job.employer.name) + '</div>' +
+            '</div>' +
+            '<div class="ov-hc-timer">' + UI.holdHtml(h.job.holdExpiresAt) + '</div>' +
+          '</div>';
+        }).join('')
+        : '<div style="text-align:center;padding:32px;color:var(--muted)">' + UI.ic('hourglass') + '<div style="margin-top:8px;font-weight:600">لا توجد حجوزات مؤقتة</div></div>';
+    }
 
-    // آخر العمليات
-    document.getElementById('ov-recent').innerHTML = Store.listAudit({}).slice(0, 8).map(function (l) {
-      return '<tr><td class="mono tiny" dir="ltr">' + UI.esc(Store.fmtDateTime(l.ts)) + '</td>' +
-        '<td>' + UI.esc(l.name || l.user) + '</td><td>' + UI.esc(l.action) + '</td>' +
-        '<td class="tiny muted">' + UI.esc(l.details) + '</td></tr>';
-    }).join('') || '<tr><td colspan="4" class="table-empty">لا سجلات بعد</td></tr>';
+    // ═══ آخر العمليات ═══
+    var recent = Store.listAudit({}).slice(0, 10);
+    var recentHost = document.getElementById('ov-recent');
+    if (recentHost) {
+      recentHost.innerHTML = recent.length
+        ? recent.map(function (l) {
+          return '<div class="ov-log-row">' +
+            '<div class="ov-log-dot"></div>' +
+            '<div class="ov-log-time">' + UI.esc(Store.fmtDateTime(l.ts)) + '</div>' +
+            '<div class="ov-log-user">' + UI.esc(l.name || l.user) + '</div>' +
+            '<div class="ov-log-action">' + UI.esc(l.action) + (l.details ? ' — ' + UI.esc(l.details) : '') + '</div>' +
+          '</div>';
+        }).join('')
+        : '<div style="text-align:center;padding:32px;color:var(--muted)">' + UI.ic('list') + '<div style="margin-top:8px">لا سجلات بعد</div></div>';
+    }
   }
 
   /* ======================= الوظائف ======================= */
@@ -10057,6 +11241,32 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     var tbody = document.getElementById('jobs-table-body');
     var label = document.getElementById('jobs-count-label');
     if (label) label.textContent = rows.length + ' وظيفة';
+
+    // ═══ إحصائيات الوظائف ═══
+    var statsHost = document.getElementById('jobs-stats');
+    if (statsHost) {
+      var all = Store.listJobs({});
+      var avail = 0, resv = 0, closed = 0, hiring = 0;
+      all.forEach(function (j) {
+        if (j.status === 'available') avail++;
+        else if (j.status === 'reserved') resv++;
+        else if (j.status === 'closed') closed++;
+        if (j.status === 'hiring') hiring++;
+      });
+      var jstats = [
+        { icon: 'briefcase', cls: 'ok',     val: all.length, lbl: 'إجمالي الوظائف' },
+        { icon: 'check',     cls: 'ok',     val: avail,      lbl: 'متاحة' },
+        { icon: 'hourglass', cls: 'warn',   val: resv,       lbl: 'محجوزة مؤقتاً' },
+        { icon: 'check-circle', cls: 'info', val: hiring,    lbl: 'جاري التوظيف' },
+        { icon: 'x-circle',  cls: 'danger', val: closed,     lbl: 'مغلقة' }
+      ];
+      statsHost.innerHTML = jstats.map(function (s) {
+        return '<div class="jobs-stat">' +
+          '<div class="js-icon ' + s.cls + '"><svg class="ic"><use href="#i-' + s.icon + '" xlink:href="#i-' + s.icon + '"/></svg></div>' +
+          '<div><div class="js-val">' + s.val + '</div><div class="js-lbl">' + s.lbl + '</div></div>' +
+        '</div>';
+      }).join('');
+    }
 
     tbody.innerHTML = rows.map(function (j) {
       var holdCell = '—';
@@ -10073,19 +11283,19 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       } else if (j.status === 'reserved' && j.holdExpiresAt) {
         holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div>' + UI.holdHtml(j.holdExpiresAt, { withDate: false });
       }
-      var imageCell = j.imageUrl 
-        ? '<img src="' + UI.esc(j.imageUrl) + '" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #ddd" alt="' + UI.esc(j.title) + '">'
-        : '<span class="tiny muted">لا صورة</span>';
+      var imageCell = j.imageUrl
+        ? '<img src="' + UI.esc(j.imageUrl) + '" style="width:48px;height:48px;object-fit:cover;border-radius:10px;border:2px solid var(--line-soft)" alt="' + UI.esc(j.title) + '">'
+        : '<div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#eef1f7,#d9dfeb);display:flex;align-items:center;justify-content:center"><svg class="ic" style="width:20px;height:20px;color:#8fa0c4"><use href="#i-briefcase"/></svg></div>';
       return '<tr>' +
         '<td>' + imageCell + '</td>' +
-        '<td><span class="chip chip-code mono">' + UI.esc(j.code) + '</span></td>' +
-        '<td><b>' + UI.esc(j.title) + '</b><div class="tiny muted">' + UI.esc(j.category) + '</div></td>' +
-        '<td>' + UI.esc(j.region) + '</td>' +
-        '<td class="nowrap tiny">' + Store.money(j.salaryMin) + '<br><span class="muted">إلى ' + Store.money(j.salaryMax) + '</span></td>' +
-        '<td class="tiny">' + UI.esc(j.shift) + '</td>' +
+        '<td><span class="chip chip-code mono" style="font-size:.8rem">' + UI.esc(j.code) + '</span></td>' +
+        '<td><b style="color:var(--lapis-2)">' + UI.esc(j.title) + '</b><div class="tiny muted" style="margin-top:2px">' + UI.esc(j.category) + '</div></td>' +
+        '<td><span style="font-weight:600">' + UI.esc(j.region) + '</span>' + (j.governorate ? '<br><span class="tiny muted">' + UI.esc(j.governorate) + '</span>' : '') + '</td>' +
+        '<td class="nowrap tiny"><b>' + Store.money(j.salaryMin) + '</b><br><span class="muted">إلى ' + Store.money(j.salaryMax) + '</span></td>' +
+        '<td class="tiny"><span style="background:#eef1f7;padding:3px 8px;border-radius:6px;font-weight:600">' + UI.esc(j.shift) + '</span></td>' +
         '<td>' + UI.jobBadge(j.status) + '</td>' +
         '<td>' + holdCell + '</td>' +
-        '<td class="tiny">' + UI.esc(j.employer.name) + '<br><span class="mono" dir="ltr">' + UI.esc(j.employer.phone) + '</span><br><span class="muted">' + UI.esc(j.employer.address) + '</span></td>' +
+        '<td class="tiny"><b>' + UI.esc(j.employer.name) + '</b><br><span class="mono" dir="ltr">' + UI.esc(j.employer.phone) + '</span></td>' +
         '<td><div class="cell-actions">' +
           '<button class="btn btn-outline btn-sm" data-job-edit="' + UI.esc(j.code) + '">' + UI.ic('edit') + ' تعديل</button>' +
           (j.status === 'hiring'
@@ -10101,7 +11311,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           '<button class="btn btn-outline btn-sm" data-job-assign="' + UI.esc(j.code) + '">' + UI.ic('user-plus') + ' ترشيح</button>' +
           '<button class="btn btn-danger btn-sm" data-job-del="' + UI.esc(j.code) + '">' + UI.ic('trash') + '</button>' +
         '</div></td></tr>';
-    }).join('') || '<tr><td colspan="10" class="table-empty">لا توجد وظائف مطابقة</td></tr>';
+    }).join('') || '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted)"><svg class="ic" style="width:28px;height:28px;display:block;margin:0 auto 10px;opacity:.4"><use href="#i-briefcase"/></svg>لا توجد وظائف مطابقة</td></tr>';
 
     tbody.querySelectorAll('[data-job-edit]').forEach(function (b) {
       b.addEventListener('click', function () { jobModal(b.getAttribute('data-job-edit')); });
@@ -10144,6 +11354,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   function jobModal(code) {
     var j = code ? Store.getJob(code) : null;
     var regionsList = CFG.regions.map(function (r) { return '<option' + (j && j.region === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
+    var governoratesList = CFG.governorates.map(function (r) { return '<option' + (j && j.governorate === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
     var shiftsList = CFG.shifts.map(function (r) { return '<option' + (j && j.shift === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
     var cats = CFG.jobCategories.map(function (r) { return '<option' + (j && j.category === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
     var e = (j && j.employer) || { name: '', phone: '', address: '' };
@@ -10156,6 +11367,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
       '<div class="field"><label for="f-title">عنوان الوظيفة *</label><input type="text" id="f-title" required value="' + UI.esc(j ? j.title : '') + '"></div>' +
       '<div class="field"><label for="f-cat">التصنيف</label><select id="f-cat">' + cats + '</select></div>' +
       '<div class="field"><label for="f-region">المنطقة *</label><select id="f-region">' + regionsList + '</select></div>' +
+      '<div class="field"><label for="f-governorate">المحافظة</label><select id="f-governorate">' + governoratesList + '</select></div>' +
       '<div class="field"><label for="f-shift">الدوام</label><select id="f-shift">' + shiftsList + '</select></div>' +
       '<div class="field"><label for="f-min">الأجر الأدنى (د.ع)</label><input type="number" id="f-min" min="0" step="25000" value="' + (j ? j.salaryMin : 500000) + '"></div>' +
       '<div class="field"><label for="f-max">الأجر الأعلى (د.ع)</label><input type="number" id="f-max" min="0" step="25000" value="' + (j ? j.salaryMax : 750000) + '"></div>' +
@@ -10206,6 +11418,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
             title: box.querySelector('#f-title').value.trim(),
             category: box.querySelector('#f-cat').value,
             region: box.querySelector('#f-region').value,
+            governorate: box.querySelector('#f-governorate').value,
             shift: box.querySelector('#f-shift').value,
             salaryMin: Number(box.querySelector('#f-min').value),
             salaryMax: Number(box.querySelector('#f-max').value),
@@ -10220,7 +11433,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           };
           if (j) {
             Store.updateJob(j.code, {
-              title: data.title, category: data.category, region: data.region, shift: data.shift,
+              title: data.title, category: data.category, region: data.region, governorate: data.governorate, shift: data.shift,
               salaryMin: data.salaryMin, salaryMax: data.salaryMax, gender: data.gender,
               vacancies: data.vacancies, requirements: data.requirements,
               employer: { name: data.employerName, phone: data.employerPhone, address: data.employerAddress },
@@ -10282,6 +11495,38 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     var rows = Store.listApplicants(state.a);
     var label = document.getElementById('apps-count-label');
     if (label) label.textContent = rows.length + ' بطاقة';
+
+    // ═══ إحصائيات سريعة ═══
+    var statsHost = document.getElementById('cards-stats');
+    if (statsHost) {
+      var all = Store.listApplicants({});
+      var active = 0, blank = 0, pending = 0, expired = 0, exhausted = 0, reserved = 0;
+      all.forEach(function (a) {
+        var s = Store.formStatus(a);
+        if (s === 'active') active++;
+        else if (s === 'blank') blank++;
+        else if (s === 'pending') pending++;
+        else if (s === 'expired') expired++;
+        else if (s === 'exhausted') exhausted++;
+        if (a.holds) reserved++;
+      });
+      var stats = [
+        { icon: 'card', cls: 'total', val: all.length, lbl: 'إجمالي البطاقات' },
+        { icon: 'check-circle', cls: 'ok', val: active, lbl: 'سارية' },
+        { icon: 'card', cls: 'gold', val: blank, lbl: 'فارغة بالمخزن' },
+        { icon: 'clock', cls: 'info', val: pending, lbl: 'قيد المراجعة' },
+        { icon: 'hourglass', cls: 'warn', val: reserved, lbl: 'حجوزات جارية' },
+        { icon: 'alert', cls: 'danger', val: expired + exhausted, lbl: 'منتهية / مستهلكة' }
+      ];
+      statsHost.innerHTML = stats.map(function (s) {
+        return '<div class="cards-stat ' + s.cls + '">' +
+          '<div class="cs-icon ' + s.cls + '"><svg class="ic"><use href="#i-' + s.icon + '" xlink:href="#i-' + s.icon + '"/></svg></div>' +
+          '<div class="cs-info"><div class="cs-val">' + s.val + '</div><div class="cs-lbl">' + s.lbl + '</div></div>' +
+        '</div>';
+      }).join('');
+    }
+
+    // ═══ الجدول ═══
     var tbody = document.getElementById('apps-table-body');
 
     tbody.innerHTML = rows.map(function (a) {
@@ -10346,16 +11591,19 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
           '</div></td>';
       }
 
-      return '<tr>' +
-        '<td><span class="mono">' + UI.esc(a.serial) + '</span>' + requestChip + '</td>' +
+      var posCell = '<td class="tiny">' + (a.posName ? '<span style="font-weight:600">' + UI.esc(a.posName) + '</span>' : '<span class="muted">—</span>') + '</td>';
+
+      return '<tr style="position:relative">' +
+        '<td><div class="serial-cell"><span class="chip chip-code mono">' + UI.esc(a.serial) + '</span>' + requestChip + '</div></td>' +
         '<td>' + nameCell + '</td>' +
         '<td class="mono tiny" dir="ltr">' + UI.esc(a.phone) + '</td>' +
+        posCell +
         dateCells +
         attemptsCell +
         statusCell +
         actionsCell +
         '</tr>';
-    }).join('') || '<tr><td colspan="9" class="table-empty">لا توجد بطاقات مطابقة</td></tr>';
+    }).join('') || '<tr><td colspan="10" class="table-empty" style="padding:40px;text-align:center;color:var(--muted)"><svg class="ic" style="width:28px;height:28px;display:block;margin:0 auto 10px;opacity:.4"><use href="#i-card"/></svg>لا توجد بطاقات مطابقة</td></tr>';
 
     tbody.querySelectorAll('[data-app-fill]').forEach(function (b) {
       b.addEventListener('click', function () { newApplicantModal(b.getAttribute('data-app-fill')); });
@@ -11090,6 +12338,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     bindInput('jq', state.j, 'q', renderJobs);
     bindInput('j-status', state.j, 'status', renderJobs);
     bindInput('j-region', state.j, 'region', renderJobs);
+    bindInput('j-governorate', state.j, 'governorate', renderJobs);
     bindInput('j-shift', state.j, 'shift', renderJobs);
     bindInput('aq', state.a, 'q', renderApplicants);
     bindInput('a-status', state.a, 'status', renderApplicants);
@@ -11174,6 +12423,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     var body = '<div class="data-grid mb-3">' +
       '<div class="data-item"><div class="k">الحالة</div><div class="v">' + CFG.jobStatus[j.status].ar + '</div></div>' +
       '<div class="data-item"><div class="k">المنطقة</div><div class="v">' + UI.esc(j.region) + '</div></div>' +
+      '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || 'بابل') + '</div></div>' +
       '<div class="data-item"><div class="k">الأجر</div><div class="v">' + Store.money(j.salaryMin) + ' - ' + Store.money(j.salaryMax) + '</div></div>' +
       '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
       '<div class="data-item"><div class="k">صاحب العمل (داخلي)</div><div class="v">' + UI.esc(j.employer.name) + '</div></div>' +
@@ -11332,6 +12582,46 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
         if (!ok) return;
         Store.resetDemo(); renderCurrent(); snapshotStatuses();
         UI.toast('warn', 'أُعيد الضبط', 'النظام يعمل على البيانات التجريبية.');
+      });
+    });
+
+    /* زر إضافة موظف */
+    var addUserBtn = document.getElementById('btn-add-user');
+    if (addUserBtn) addUserBtn.addEventListener('click', function () { userModal(); });
+
+    /* زر ربط السحابة (Service Role Key) */
+    var cloudKeyBtn = document.getElementById('btn-cloud-key');
+    if (cloudKeyBtn) cloudKeyBtn.addEventListener('click', function () {
+      var current = '';
+      try { current = localStorage.getItem('hrc-service-key') || ''; } catch (e) {}
+      var body = '<div style="display:grid;gap:14px">' +
+        '<p style="margin:0;color:var(--muted);font-size:.9rem">مفتاح الخدمة (Service Role Key) يسمح بإنشاء حسابات الموظفين في Supabase Auth تلقائياً من هنا — بدون ما تفتح Supabase يدوياً.</p>' +
+        '<div class="field"><label for="svc-key">Service Role Key</label>' +
+          '<input type="password" id="svc-key" value="' + UI.esc(current) + '" placeholder="eyJhbGciOiJIUzI1NiIs..." dir="ltr" class="mono" style="font-size:.82rem">' +
+        '</div>' +
+        '<div style="background:#fdf1d8;border:1px solid #f0d9a3;border-radius:10px;padding:10px 14px;font-size:.82rem;color:#8a5c05">' +
+          '<b>⚠️ تنبيه:</b> هالمفتاح حساس — لا تشاركه مع أحد. يُحفظ في متصفحك فقط (localStorage) ولا يُرسل لأي جهة.' +
+        '</div>' +
+        '<p style="margin:0;font-size:.82rem;color:var(--muted)">تلاقيه في: Supabase Dashboard → ⚙️ Settings → API → service_role (secret)</p>' +
+      '</div>';
+      var footer = '<button class="btn btn-outline" data-close>إلغاء</button>' +
+        (current ? '<button class="btn btn-danger btn-sm" id="svc-clear">مسح المفتاح</button>' : '') +
+        '<button class="btn btn-lapis" id="svc-save">' + UI.ic('check') + ' حفظ</button>';
+      var m = UI.modal({ title: 'ربط السحابة — Service Role Key', body: body, footer: footer });
+      if (!m) return;
+      var saveBtn = m.root.querySelector('#svc-save');
+      if (saveBtn) saveBtn.addEventListener('click', function () {
+        var key = document.getElementById('svc-key').value.trim();
+        if (!key) { UI.toast('err', 'خطأ', 'أدخل المفتاح'); return; }
+        try { localStorage.setItem('hrc-service-key', key); } catch (e) {}
+        UI.toast('ok', 'تم الحفظ', 'الآن لما تنشئ موظف جديد يُسجّل في Supabase تلقائياً');
+        m.close();
+      });
+      var clearBtn = m.root.querySelector('#svc-clear');
+      if (clearBtn) clearBtn.addEventListener('click', function () {
+        try { localStorage.removeItem('hrc-service-key'); } catch (e) {}
+        UI.toast('warn', 'تم المسح', 'لن يُسجّل الموظفون الجدد في السحابة');
+        m.close();
       });
     });
 

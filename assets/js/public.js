@@ -12,7 +12,7 @@
   var CFG = root.HRC_CONFIG, Store = root.HRCStore, UI = root.HRCUI;
   if (!document.getElementById('jobs-grid')) return;
 
-  var filters = { q: '', region: 'all', shift: 'all', status: 'all' };
+  var filters = { q: '', region: 'all', governorate: 'all', shift: 'all', status: 'all' };
 
   /* -------------- وضع القاعدة العامة (Supabase مفعّل) --------------
    * لماذا هذا التمييز؟ مع enabled=true يجب ألا يرى الزائر **أي** بيانات من
@@ -114,23 +114,27 @@
   function fillSelects() {
     UI.fillSelect(document.getElementById('qs-region'), CFG.regions, 'كل مناطق بابل');
     UI.fillSelect(document.getElementById('filter-region'), CFG.regions, 'كل المناطق');
+    UI.fillSelect(document.getElementById('filter-governorate'), CFG.governorates, 'كل المحافظات');
     UI.fillSelect(document.getElementById('filter-shift'), CFG.shifts, 'كل الأوقات');
   }
 
   function bindEvents() {
     var q = document.getElementById('filter-q');
     var region = document.getElementById('filter-region');
+    var governorate = document.getElementById('filter-governorate');
     var shift = document.getElementById('filter-shift');
     var status = document.getElementById('filter-status');
 
     if (q) q.addEventListener('input', UI.debounce(function () { filters.q = q.value; renderJobs(); }));
     if (region) region.addEventListener('change', function () { filters.region = region.value; renderJobs(); });
+    if (governorate) governorate.addEventListener('change', function () { filters.governorate = governorate.value; renderJobs(); });
     if (shift) shift.addEventListener('change', function () { filters.shift = shift.value; renderJobs(); });
     if (status) status.addEventListener('change', function () { filters.status = status.value; renderJobs(); });
     var reset = document.getElementById('filter-reset');
     if (reset) reset.addEventListener('click', function () {
-      filters = { q: '', region: 'all', shift: 'all', status: 'all' };
+      filters = { q: '', region: 'all', governorate: 'all', shift: 'all', status: 'all' };
       if (q) q.value = ''; if (region) region.value = 'all';
+      if (governorate) governorate.value = 'all';
       if (shift) shift.value = 'all'; if (status) status.value = 'all';
       renderJobs();
     });
@@ -497,7 +501,7 @@
         '</div>' +
         '<div class="job-body">' +
           '<div class="job-meta">' +
-            '<div class="mi">' + UI.ic('pin') + '<span>' + UI.esc(j.region) + '</span></div>' +
+            '<div class="mi">' + UI.ic('pin') + '<span>' + UI.esc(j.region) + (j.governorate ? ' — ' + UI.esc(j.governorate) : '') + '</span></div>' +
             '<div class="mi">' + UI.ic('clock') + '<span>' + UI.esc(j.shift) + '</span></div>' +
             '<div class="mi">' + UI.ic('money') + '<span>' + Store.money(j.salaryMin) + ' – ' + Store.money(j.salaryMax) + '</span></div>' +
             '<div class="mi">' + UI.ic('users') + '<span>' + UI.esc(j.gender || 'لا فرق') + '</span></div>' +
@@ -532,8 +536,9 @@
         '</div>' +
         UI.jobBadge(j.status) +
       '</div>' +
-      '<div class="data-grid mb-3">' +
+        '<div class="data-grid mb-3">' +
         '<div class="data-item"><div class="k">المنطقة</div><div class="v">' + UI.esc(j.region) + '</div></div>' +
+        '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || 'بابل') + '</div></div>' +
         '<div class="data-item"><div class="k">الأجر الشهري</div><div class="v">' + Store.money(j.salaryMin) + ' – ' + Store.money(j.salaryMax) + '</div></div>' +
         '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
         '<div class="data-item"><div class="k">الجنس</div><div class="v">' + UI.esc(j.gender || 'لا فرق') + '</div></div>' +

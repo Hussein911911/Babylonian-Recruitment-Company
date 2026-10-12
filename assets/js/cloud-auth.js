@@ -155,9 +155,71 @@
         .catch(function (e) { return { ok: false, error: String(e && e.message || e) }; });
     }
 
+    /* ---------------------------- إنشاء حساب موظف ---------------------------- */
+    function createAccount(serviceKey, data) {
+      if (!serviceKey) return Promise.resolve({ ok: false, error: 'مفتاح الخدمة (Service Role Key) مطلوب — أضفه من الإعدادات' });
+      if (!data || !data.username || !data.password || !data.name) return Promise.resolve({ ok: false, error: 'الاسم واسم المستخدم وكلمة المرور مطلوبة' });
+
+      var email = toEmail(data.username);
+      if (!email) return Promise.resolve({ ok: false, error: 'تعذّر اشتقاق البريد من اسم المستخدم' });
+
+      var url = (client.supabaseUrl || '').replace(/\/+$/, '');
+      if (!url) return Promise.resolve({ ok: false, error: 'رابط Supabase غير مُعرّف' });
+
+      /* 1) إنشاء حساب Auth */
+      var authUrl = url + '/auth/v1/admin/users';
+      return fetch(authUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': serviceKey,
+          'Authorization': 'Bearer ' + serviceKey
+        },
+        body: JSON.stringify({
+          email: email,
+          password: data.password,
+          email_confirm: true,
+          user_metadata: { full_name: data.name, username: data.username }
+        })
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (authRes) {
+        if (authRes.error || authRes.msg) {
+          var msg = authRes.error_description || authRes.msg || authRes.error || 'خطأ غير معروف';
+          if (/already.*registered|already.*exists|user.*exists/i.test(msg)) {
+            return { ok: false, error: 'البريد مسجّل مسبقاً في Supabase Auth' };
+          }
+          return { ok: false, error: 'خطأ Auth: ' + msg };
+        }
+        var authId = authRes.id || (authRes.user && authRes.user.id);
+        if (!authId) return { ok: false, error: 'لم يُرجِع Auth معرّف المستخدم' };
+
+        /* 2) إدراج سطر في brc.staff */
+        return client.from('staff').insert({
+          auth_id: authId,
+          username: data.username,
+          full_name: data.name,
+          role: data.role || 'staff',
+          job_title: data.title || '',
+          phone: data.phone || '',
+          active: true
+        }).select().single()
+        .then(function (res) {
+          if (res && res.error) {
+            return { ok: false, error: 'تم إنشاء Auth لكن فشل إدراج staff: ' + (res.error.message || res.error.details) };
+          }
+          return { ok: true, authId: authId, staff: res.data };
+        });
+      })
+      .catch(function (e) {
+        return { ok: false, error: 'خطأ شبكي: ' + (e && e.message || e) };
+      });
+    }
+
     return {
       login: login, logout: logout, restore: restore,
-      changePassword: changePassword, toEmail: toEmail, loadProfile: loadProfile
+      changePassword: changePassword, toEmail: toEmail, loadProfile: loadProfile,
+      createAccount: createAccount
     };
   }
 
