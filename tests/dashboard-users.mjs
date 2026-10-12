@@ -62,6 +62,9 @@ window.__brcMock = (function () {
       invoke: function (name, o) {
         var body = (o && o.body) || {};
         window.__state.fnCalls = (window.__state.fnCalls || []).concat([{ name: name, body: body }]);
+        if (window.__state.fnOn === 'noSession') {
+          return Promise.resolve({ data: { ok: false, code: 'no_token', error: 'الجلسة مطلوبة — سجّل الدخول كمدير' }, error: null });
+        }
         if (!window.__state.fnOn) {
           return Promise.resolve({ data: null, error: { message: 'Edge Function returned a non-2xx status code',
             context: { status: 404, json: function () { return Promise.resolve({ code: 'NOT_FOUND', message: 'Requested function was not found' }); } } } });
@@ -451,6 +454,38 @@ check('الحذف وصل القاعدة عبر الدالة', !state3.staff.some
 check('الموظف اختفى من الجدول', !userRowEl(app3.doc, 'rand'));
 
 app3.dom.window.close && app3.dom.window.close();
+
+/* ===========================================================================
+ *  9) الدالة منشورة والمتصفح داخل محلياً: رسالة تقود للخطوة، ولا حساب وهمي
+ *     (أكثر ما يصطدم به المدير فعلاً في الوضع الانتقالي)
+ * =========================================================================== */
+step(9, 'دخول محلي + دالة منشورة: يُقال للمدير ما يفعل — بلا حساب وهمي');
+const state4 = makeState();
+state4.fnOn = 'noSession';               // الدالة منشورة لكن لا جلسة سحابية لهذا المتصفح
+const app4 = await open(state4);
+login(app4.window, app4.doc, 'admin', ADMIN_PASS);
+await sleep(250);
+check('الدخول المحلي نجح (الوضع الانتقالي)', shellsShown(app4.doc));
+app4.doc.querySelector('#side-nav button[data-view="settings"]').click();
+await sleep(100);
+
+app4.doc.getElementById('btn-add-user').click();
+await sleep(80);
+app4.doc.getElementById('uf-name').value = 'مروان';
+app4.doc.getElementById('uf-user').value = 'marwan';
+app4.doc.getElementById('uf-pass').value = 'Marwan@1234';
+app4.doc.getElementById('uf-save').click();
+await sleep(350);
+
+const errBox3 = app4.doc.getElementById('user-form-err');
+const errText = errBox3 ? errBox3.textContent : '';
+check('الخطأ ظاهر في النموذج', !!errBox3 && !errBox3.classList.contains('hidden'));
+check('الرسالة تقود للخطوة الصحيحة (الدخول بحسابك الرسمي)', /حسابك الرسمي|جلسة قاعدة/.test(errText), errText.slice(0, 120));
+check('لم يُنشأ سطر موظف في القاعدة', !state4.staff.some((s) => s.username === 'marwan'));
+check('لم يُنشأ حساب محلي يوهم المدير', !app4.window.HRCStore.listUsers().some((u) => u.username === 'marwan'));
+check('لم يُنشأ أي مستخدم Auth', !state4.authUsers.some((u) => u.email === 'marwan@hrc-babil.com'));
+
+app4.dom.window.close && app4.dom.window.close();
 
 app.dom.window.close && app.dom.window.close();
 app2.dom.window.close && app2.dom.window.close();
