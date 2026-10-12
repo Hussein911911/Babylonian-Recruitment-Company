@@ -196,6 +196,19 @@
    *   ③ الوضع المحلي: حساب في هذا المتصفح وحده (يُصرَّح بذلك للمدير).
    *  النتيجة تحمل via: 'function' | 'key' | 'local' ليُقال للمدير أين وصل الحساب.
    * ------------------------------------------------------------------------- */
+  /* رسالة الدالة تُترجم إلى **خطوة عملية**: أكثر ما يصطدم به المدير أنه داخل
+     بحساب محلي (الوضع الانتقالي) — فإدارة الحسابات تحتاج جلسة سحابية، ولا معنى
+     أن يبقى يجرّب ويرى «الجلسة مطلوبة» بلا أن يُقال له ما يفعل. */
+  function fnAuthHint(code) {
+    if (code === 'no_token' || code === 'bad_token') {
+      return 'الدخول الحالي محلي (بلا جلسة قاعدة) — اخرج ثم ادخل بحسابك الرسمي (اسم المستخدم السحابي وكلمة مروره) لإدارة الحسابات.';
+    }
+    if (code === 'no_staff_row') {
+      return 'حسابك موجود في Auth لكن بلا سطر في brc.staff — أنشئ السطر من SQL Editor (docs/binding-status.md §3أ) ثم أعد المحاولة.';
+    }
+    return '';
+  }
+
   function staffWrite(action, payload) {
     var viaFn = Store.staffAdmin
       ? Store.staffAdmin(action, payload)
@@ -203,12 +216,30 @@
 
     return viaFn.then(function (r) {
       if (r && r.ok) { r.via = 'function'; return r; }
-      if (r && r.code !== 'not_deployed') { r.via = 'function'; return r; }
+
+      /* 「لا توجد جلسة سحابية هنا」 ليس رفض صلاحية بل فجوة قدرة: الدالة غير منشورة،
+         أو هذا المتصفح داخل محلياً. في الحالتين يجوز السلوك بالمسار الاحتياطي
+         (مفتاح الخدمة المحفوظ). أما رفض الدور (not_admin / inactive) فلا يُتجاوز —
+         ذاك قرار صلاحية اتخذته القاعدة، ويجب أن يبقى نافذاً. */
+      var sessionGap = r && ['not_deployed', 'no_token', 'bad_token', 'no_staff_row'].indexOf(r.code) >= 0;
+      if (!sessionGap) {
+        if (r) r.via = 'function';
+        return r || { ok: false, error: 'تعذّر تنفيذ الإجراء' };
+      }
 
       var key = serviceKey();
       if (!key) {
-        return { ok: false, code: 'no_key', via: 'local', error: noChannelMsg(action) };
+        if (r.code === 'not_deployed') {
+          /* لا دالة ولا مفتاح: الوضع المحلي المعلوم (يتولّاه المستدعي) */
+          return { ok: false, code: 'no_key', via: 'local', error: noChannelMsg(action) };
+        }
+        /* الدالة موجودة لكن بلا صلاحية هنا: لا نُنشئ حساباً محلياً يبدو ناجحاً */
+        var hint = fnAuthHint(r.code);
+        r.via = 'function';
+        if (hint) r.error = (r.error ? r.error + ' — ' : '') + hint;
+        return r;
       }
+
       var p;
       if (action === 'create') p = Store.createCloudAccount(key, payload);
       else if (action === 'update') p = Store.updateCloudAccount(key, payload);
