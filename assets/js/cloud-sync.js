@@ -33,7 +33,7 @@
   /* التطبيع: نُسقط الحقول المحلية/المشتقّة التي لا وجود لها في SQL حتى لا
      تُنتج فروقاً وهمية تُطلق عمليات تعديل بلا داعٍ في كل مرة. */
   function normJobs(j) {
-    return JSON.stringify([j.code, j.title, j.category, j.region, j.salaryMin, j.salaryMax,
+    return JSON.stringify([j.code, j.title, j.category, j.region, j.governorate || '', j.salaryMin, j.salaryMax,
       j.shift, j.gender, j.vacancies, j.requirements, j.description,
       j.employer && j.employer.name, j.employer && j.employer.phone, j.employer && j.employer.address,
       j.interviewLocation, j.status, j.reservedBy, j.holdExpiresAt, j.closedAt, j.notes, j.imageUrl]);

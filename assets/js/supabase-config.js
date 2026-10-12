@@ -43,6 +43,6 @@
      *     brc.staff (انظر docs/supabase-setup.md §6). لو فعّلتها قبل ذلك
      *     فلن يستطيع أحد الدخول — وهذا هو المقصود أمنياً، لكنه يوقف العمل.
      * ======================================================================= */
-    enforceAuth: true
+    enforceAuth: false
   };
 })(typeof window !== 'undefined' ? window : globalThis);

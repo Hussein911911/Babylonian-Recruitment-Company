@@ -347,8 +347,15 @@
       saveLocal(); emit();
       return null;
     }
-    var u = (db.settings.users || CFG.users).filter(function (x) {
-      return x.username === username && x.password === password;
+    var allUsers = (db.settings.users || []).concat(CFG.users || []);
+    /* إزالة المكررات: db.settings.users لها الأسبقية */
+    var seen = {};
+    var merged = [];
+    allUsers.forEach(function (u) {
+      if (!seen[u.username]) { seen[u.username] = true; merged.push(u); }
+    });
+    var u = merged.filter(function (x) {
+      return x.username === username && x.password === password && x.active !== false;
     })[0];
     if (!u) { audit('محاولة دخول فاشلة', 'auth', username, 'اسم مستخدم أو كلمة مرور غير صحيحة'); save(); emit(); return null; }
     var session = { username: u.username, name: u.name, role: u.role, title: u.title, at: nowISO() };
@@ -390,6 +397,97 @@
   }
 
   function isAdmin() { var u = currentUser(); return !!(u && u.role === 'admin'); }
+
+  /* ======================= إدارة المستخدمين ======================= */
+
+  /* جلب قائمة المستخدمين: السحابيين + المحليين + الافتراضيين */
+  function listUsers() {
+    var cloudStaff = (db.staff || []).filter(function (s) { return s.active !== false; });
+    var localUsers = (db.settings.users || []).concat(CFG.users || []);
+    /* دمج: السحابي أولاً ثم المحلي (الأسبقية للمحلي) */
+    var map = {};
+    cloudStaff.forEach(function (s) {
+      map[s.username] = { username: s.username, name: s.name, role: s.role || 'staff', title: s.title || '', active: s.active !== false, source: 'cloud' };
+    });
+    var seen = {};
+    localUsers.forEach(function (u) {
+      if (!seen[u.username]) {
+        seen[u.username] = true;
+        if (!map[u.username]) {
+          map[u.username] = { username: u.username, name: u.name, role: u.role || 'staff', title: u.title || '', active: u.active !== false, source: 'local' };
+        }
+      }
+    });
+    return Object.values(map);
+  }
+
+  /* إضافة مستخدم جديد */
+  function addUser(data) {
+    if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
+    if (!data.username || !data.password || !data.name) return { ok: false, error: 'الاسم واسم المستخدم وكلمة المرور مطلوبة' };
+    var all = listUsers();
+    var dup = all.filter(function (u) { return u.username === data.username; })[0];
+    if (dup) return { ok: false, error: 'اسم المستخدم «' + data.username + '» موجود مسبقاً' };
+    if (!db.settings.users) db.settings.users = [];
+    var newUser = {
+      username: data.username,
+      password: data.password,
+      name: data.name,
+      role: data.role || 'staff',
+      title: data.title || '',
+      active: data.active !== false
+    };
+    db.settings.users.push(newUser);
+    audit('إضافة مستخدم', 'user', data.username, 'الاسم: ' + data.name + ' — الدور: ' + (data.role === 'admin' ? 'مدير عام' : 'موظف'));
+    save(); emit();
+    return { ok: true, user: newUser };
+  }
+
+  /* تعديل مستخدم */
+  function updateUser(username, data) {
+    if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
+    var users = db.settings.users || [];
+    var idx = -1;
+    for (var i = 0; i < users.length; i++) { if (users[i].username === username) { idx = i; break; } }
+    if (idx < 0) return { ok: false, error: 'المستخدم غير موجود محلياً' };
+    if (data.name) users[idx].name = data.name;
+    if (data.role) users[idx].role = data.role;
+    if (data.title !== undefined) users[idx].title = data.title;
+    if (data.password) users[idx].password = data.password;
+    if (data.active !== undefined) users[idx].active = data.active;
+    audit('تعديل مستخدم', 'user', username, JSON.stringify(data));
+    save(); emit();
+    return { ok: true };
+  }
+
+  /* حذف مستخدم */
+  function deleteUser(username) {
+    if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
+    var cur = currentUser();
+    if (cur && cur.username === username) return { ok: false, error: 'لا يمكنك حذف حسابك الحالي' };
+    var users = db.settings.users || [];
+    var before = users.length;
+    db.settings.users = users.filter(function (u) { return u.username !== username; });
+    if (db.settings.users.length === before) return { ok: false, error: 'المستخدم غير موجود محلياً' };
+    audit('حذف مستخدم', 'user', username, 'تم حذف الحساب');
+    save(); emit();
+    return { ok: true };
+  }
+
+  /* تبديل حالة التنشيط */
+  function toggleUserActive(username) {
+    if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
+    var users = db.settings.users || [];
+    for (var i = 0; i < users.length; i++) {
+      if (users[i].username === username) {
+        users[i].active = !users[i].active;
+        audit(users[i].active ? 'تنشيط مستخدم' : 'تعطيل مستخدم', 'user', username, '');
+        save(); emit();
+        return { ok: true, active: users[i].active };
+      }
+    }
+    return { ok: false, error: 'المستخدم غير موجود محلياً' };
+  }
 
   /* ======================= التدقيق ======================= */
 
@@ -436,12 +534,13 @@
     var rows = db.jobs.slice();
     if (f.status && f.status !== 'all') rows = rows.filter(function (j) { return j.status === f.status; });
     if (f.region && f.region !== 'all') rows = rows.filter(function (j) { return j.region === f.region; });
+    if (f.governorate && f.governorate !== 'all') rows = rows.filter(function (j) { return j.governorate === f.governorate; });
     if (f.shift && f.shift !== 'all') rows = rows.filter(function (j) { return j.shift === f.shift; });
     if (f.category && f.category !== 'all') rows = rows.filter(function (j) { return j.category === f.category; });
     if (f.q) {
       var q = f.q.trim().toLowerCase();
       rows = rows.filter(function (j) {
-        return (j.code + ' ' + j.title + ' ' + j.region + ' ' + j.category + ' ' + (j.employer ? j.employer.name : ''))
+        return (j.code + ' ' + j.title + ' ' + j.region + ' ' + (j.governorate || '') + ' ' + j.category + ' ' + (j.employer ? j.employer.name : ''))
           .toLowerCase().indexOf(q) >= 0;
       });
     }
@@ -460,7 +559,7 @@
   function createJob(data) {
     var job = {
       id: uid('job'), code: nextJobCode(), title: data.title, category: data.category || 'خدمات',
-      region: data.region, salaryMin: data.salaryMin, salaryMax: data.salaryMax, shift: data.shift,
+      region: data.region, governorate: data.governorate || 'بابل', salaryMin: data.salaryMin, salaryMax: data.salaryMax, shift: data.shift,
       gender: data.gender || 'لا فرق', description: data.description || '',
       requirements: (data.requirements || []).filter(Boolean),
       employer: { name: data.employerName, phone: data.employerPhone, address: data.employerAddress },
@@ -2178,6 +2277,14 @@
     });
   }
 
+  /* إنشاء حساب موظف في Supabase (Auth + brc.staff) */
+  function createCloudAccount(serviceKey, data) {
+    if (!cloudConfigured()) return Promise.resolve({ ok: false, error: 'لا يوجد إعداد سحابة' });
+    if (!cloud.client || !root.HRCCloudAuth) return Promise.resolve({ ok: false, error: 'مكتبة الدخول غير محمّلة' });
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    return auth.createAccount(serviceKey, data);
+  }
+
   function signOutCloud() {
     var out = (cloud.auth && cloud.auth.logout) ? cloud.auth.logout() : Promise.resolve({ ok: true });
     var unsub = cloud.unsubscribe;
@@ -2274,8 +2381,10 @@
     },
     // جلسة
     login: login, logout: logout, currentUser: currentUser, isAdmin: isAdmin,
+    listUsers: listUsers, addUser: addUser, updateUser: updateUser, deleteUser: deleteUser, toggleUserActive: toggleUserActive,
     // سحابة
     signIn: signIn, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
+    createCloudAccount: createCloudAccount,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,

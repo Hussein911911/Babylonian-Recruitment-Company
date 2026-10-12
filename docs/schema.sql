@@ -191,6 +191,7 @@ create table if not exists brc.jobs (
   title               text not null,
   category            text not null default 'خدمات',
   region              text not null,                             -- منطقة بابل
+  governorate         text not null default 'بابل',             -- المحافظة
   shift               text not null default 'صباحي',
   salary_min          integer not null default 0 check (salary_min >= 0),
   salary_max          integer not null default 0 check (salary_max >= salary_min),
@@ -663,7 +664,7 @@ end $$;
 -- 6.1 وظائف العرض العام: بلا أي بيانات لصاحب العمل
 create or replace view brc.public_jobs
 with (security_invoker = false) as
-  select code, title, category, region, shift, salary_min, salary_max, gender,
+  select code, title, category, region, governorate, shift, salary_min, salary_max, gender,
          vacancies, requirements, status,
          (status = 'reserved') as is_reserved,
          hold_expires_at,

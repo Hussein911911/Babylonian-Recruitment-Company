@@ -54,6 +54,7 @@
       title: r.title,
       category: r.category || 'خدمات',
       region: r.region,
+      governorate: r.governorate || 'بابل',
       salaryMin: n(r.salary_min),
       salaryMax: n(r.salary_max),
       shift: r.shift || 'صباحي',
@@ -81,7 +82,7 @@
 
   function jobToDb(o) {
     return {
-      code: o.code, title: o.title, category: o.category || 'خدمات', region: o.region,
+      code: o.code, title: o.title, category: o.category || 'خدمات', region: o.region, governorate: o.governorate || 'بابل',
       salary_min: n(o.salaryMin), salary_max: n(o.salaryMax),
       shift: o.shift || 'صباحي', gender: o.gender || 'لا فرق',
       vacancies: n(o.vacancies, 1),

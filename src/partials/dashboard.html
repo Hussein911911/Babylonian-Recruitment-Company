@@ -22,7 +22,7 @@
           <svg class="ic" style="width:18px;height:18px"><use href="#i-user" xlink:href="#i-user"/></svg>
           اسم المستخدم
         </label>
-        <input type="text" id="login-user" autocomplete="username" required placeholder="admin أو staff">
+        <input type="text" id="login-user" autocomplete="username" required placeholder="اسم المستخدم" dir="ltr">
       </div>
       
       <div class="field mb-3">
@@ -30,13 +30,17 @@
           <svg class="ic" style="width:18px;height:18px"><use href="#i-lock" xlink:href="#i-lock"/></svg>
           كلمة المرور
         </label>
-        <input type="password" id="login-pass" autocomplete="current-password" required placeholder="••••••••">
+        <input type="password" id="login-pass" autocomplete="current-password" required placeholder="••••••••" dir="ltr">
       </div>
+      
+      <div id="login-error" class="hidden"></div>
       
       <button class="btn btn-gold btn-block btn-lg login-submit" type="submit" id="login-btn">
         <svg class="ic"><use href="#i-login" xlink:href="#i-login"/></svg>
         دخول المنظومة
       </button>
+      
+      <div id="login-cloud-status" class="hidden"></div>
     </form>
     
     <div class="login-footer">
@@ -44,6 +48,10 @@
         <svg class="ic"><use href="#i-arrow-left" xlink:href="#i-arrow-left"/></svg>
         العودة إلى الموقع العام
       </a>
+      <div style="margin-top:16px;color:#6b7793;font-size:.78rem;line-height:1.8">
+        <svg class="ic" style="width:14px;height:14px;vertical-align:-2px"><use href="#i-shield"/></svg>
+        الحسابات ينشئها المدير من لوحة التحكم — الدخول الأول: <b class="mono" style="color:#c8a24a">admin</b> / <b class="mono" style="color:#c8a24a">admin123</b>
+      </div>
     </div>
   </div>
 </div>
@@ -67,7 +75,7 @@
     <nav class="side-nav" id="side-nav">
       <button data-view="overview" class="active"><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg> نظرة عامة</button>
       <button data-view="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الوظائف <span class="badge-count hidden" id="nav-jobs-count">0</span></button>
-      <button data-view="applicants"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg> الباحثون والاستمارات <span class="badge-count hidden" id="nav-apps-count">0</span></button>
+      <button data-view="applicants" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> البطاقات <span class="badge-count hidden" id="nav-apps-count">0</span></button>
       <button data-view="holds"><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> متابعة الحجوزات (24 ساعة) <span class="badge-count hidden" id="nav-holds-count">0</span></button>
       <button data-view="audit" data-admin-only="true"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> سجل التدقيق</button>
       <button data-view="finance" data-admin-only="true"><svg class="ic"><use href="#i-chart" xlink:href="#i-chart"/></svg> اللوحة المالية</button>
@@ -115,57 +123,75 @@
 
     <!-- ================= نظرة عامة ================= -->
     <section class="view active" id="view-overview">
-      <div class="stat-grid" id="ov-stats"></div>
-      <div class="grid grid-2">
-        <div class="panel">
-          <div class="panel-head">
-            <h3><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> إجراءات مطلوبة الآن</h3>
-            <span class="badge warn" id="ov-actions-count">0</span>
-          </div>
-          <div id="ov-actions"></div>
+      <!-- بانر الترحيب -->
+      <div class="ov-welcome">
+        <div class="ov-welcome-text">
+          <h2>مرحباً، <span class="accent" id="ov-user-name">—</span></h2>
+          <p>لوحة تحكم شركة الهدف للتوظيف — نظرة عامة على حالة النظام</p>
         </div>
-        <div class="panel">
-          <div class="panel-head">
-            <h3><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> حجوزات 24 ساعة الجارية</h3>
-            <button class="btn btn-outline btn-sm" data-goto="holds">عرض الكل</button>
-          </div>
-          <div id="ov-holds"></div>
+        <div class="ov-welcome-time">
+          <div class="time-big" id="ov-clock">--:--</div>
+          <div class="date-sm" id="ov-date">—</div>
         </div>
       </div>
+
+      <!-- إحصائيات سريعة -->
+      <div class="ov-stats" id="ov-stats"></div>
+
+      <!-- لوحة الأوامر -->
+      <div class="ov-panels">
+        <!-- إجراءات مطلوبة -->
+        <div class="panel">
+          <div class="panel-head" style="background:linear-gradient(135deg,#fdfbf6,#f8f5ee)">
+            <h3><svg class="ic" style="color:#d44"><use href="#i-alert" xlink:href="#i-alert"/></svg> إجراءات مطلوبة الآن</h3>
+            <span class="badge warn" id="ov-actions-count">0</span>
+          </div>
+          <div id="ov-actions" style="max-height:340px;overflow-y:auto"></div>
+        </div>
+        <!-- حجوزات جارية -->
+        <div class="panel">
+          <div class="panel-head" style="background:linear-gradient(135deg,#fdfbf6,#f8f5ee)">
+            <h3><svg class="ic" style="color:#c8a24a"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> حجوزات 24 ساعة الجارية</h3>
+            <button class="btn btn-outline btn-sm" data-goto="holds">عرض الكل</button>
+          </div>
+          <div id="ov-holds" style="max-height:340px;overflow-y:auto"></div>
+        </div>
+      </div>
+
+      <!-- آخر العمليات -->
       <div class="panel">
-        <div class="panel-head">
-          <h3><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> آخر العمليات في السجل</h3>
+        <div class="panel-head" style="background:linear-gradient(135deg,#fdfbf6,#f8f5ee)">
+          <h3><svg class="ic" style="color:#5b2ea8"><use href="#i-list" xlink:href="#i-list"/></svg> آخر العمليات في السجل</h3>
           <button class="btn btn-outline btn-sm" data-goto="audit">سجل التدقيق الكامل</button>
         </div>
-        <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll"><table class="data" style="min-width:640px">
-            <thead><tr><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>التفاصيل</th></tr></thead>
-            <tbody id="ov-recent"></tbody>
-          </table></div>
-        </div>
+        <div id="ov-recent"></div>
       </div>
     </section>
 
     <!-- ================= الوظائف ================= -->
     <section class="view" id="view-jobs">
+      <!-- إحصائيات الوظائف -->
+      <div class="jobs-stats" id="jobs-stats"></div>
+
       <div class="panel">
-        <div class="panel-head">
-          <h3><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> إدارة الوظائف</h3>
-          <span class="badge info" id="jobs-count-label">0 وظيفة</span>
+        <div class="panel-head" style="background:linear-gradient(135deg, #0b1a3a 0%, #17376c 100%);border-radius:14px 14px 0 0;border-color:transparent">
+          <h3 style="color:#fff"><svg class="ic" style="color:#e8d089"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> إدارة الوظائف</h3>
+          <span class="badge" style="background:rgba(232,208,137,.18);color:#e8d089;border-color:rgba(232,208,137,.35)" id="jobs-count-label">0 وظيفة</span>
         </div>
-        <div class="panel-body">
-          <div class="toolbar mb-3">
+        <div class="panel-body" style="padding:0">
+          <!-- شريط البحث والفلاتر -->
+          <div class="toolbar-enhanced">
             <div class="field grow">
-              <label for="jq">بحث (كود / عنوان / صاحب عمل)</label>
+              <label for="jq"><svg style="width:14px;height:14px;vertical-align:-2px"><use href="#i-search"/></svg> بحث</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="jq" placeholder="HRC-1042 أو سائق ...">
+                <input type="search" id="jq" placeholder="كود الوظيفة، العنوان، أو اسم صاحب العمل...">
               </div>
             </div>
             <div class="field">
               <label for="j-status">الحالة</label>
               <select id="j-status">
-                <option value="all">الكل</option>
+                <option value="all">كل الحالات</option>
                 <option value="available">متاحة</option>
                 <option value="reserved">محجوزة مؤقتاً</option>
                 <option value="closed">مغلقة</option>
@@ -173,51 +199,66 @@
             </div>
             <div class="field">
               <label for="j-region">المنطقة</label>
-              <select id="j-region"><option value="all">الكل</option></select>
+              <select id="j-region"><option value="all">كل المناطق</option></select>
+            </div>
+            <div class="field">
+              <label for="j-governorate">المحافظة</label>
+              <select id="j-governorate"><option value="all">كل المحافظات</option></select>
             </div>
             <div class="field">
               <label for="j-shift">الدوام</label>
-              <select id="j-shift"><option value="all">الكل</option></select>
+              <select id="j-shift"><option value="all">كل الأوقات</option></select>
             </div>
           </div>
-        </div>
-        <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll">
-            <table class="data">
-              <thead>
-                <tr>
-                  <th>الصورة</th><th>الكود</th><th>الوظيفة</th><th>المنطقة</th><th>الأجر الشهري</th><th>الدوام</th>
-                  <th>الحالة</th><th>الحجز الحالي</th><th>صاحب العمل (داخلي)</th><th>إجراءات</th>
-                </tr>
-              </thead>
-              <tbody id="jobs-table-body"></tbody>
-            </table>
+
+          <!-- الجدول -->
+          <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
+            <div class="table-scroll">
+              <table class="data" style="margin:0">
+                <thead>
+                  <tr>
+                    <th>صورة</th><th>الكود</th><th>الوظيفة</th><th>المنطقة</th><th>الأجر الشهري</th>
+                    <th>الدوام</th><th>الحالة</th><th>الحجز</th><th>صاحب العمل (داخلي)</th><th>إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="jobs-table-body"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="tfoot-note">بيانات صاحب العمل (الاسم، الهاتف، العنوان) تظهر هنا للموظفين فقط — ولا تُعرض في الموقع العام أبداً.</div>
+
+          <!-- ملاحظة سفلية -->
+          <div class="footnote-premium">
+            <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
+            بيانات صاحب العمل (الاسم، الهاتف، العنوان) تظهر هنا للموظفين فقط — ولا تُعرض في الموقع العام أبداً.
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ================= الباحثون والاستمارات ================= -->
+    <!-- ================= البطاقات (المدير فقط) ================= -->
     <section class="view" id="view-applicants">
+      <!-- إحصائيات سريعة -->
+      <div class="cards-stats" id="cards-stats"></div>
+
       <div class="panel">
-        <div class="panel-head">
-          <h3><svg class="ic"><use href="#i-file" xlink:href="#i-file"/></svg> الاستمارات الصادرة</h3>
-          <span class="badge info" id="apps-count-label">0 بطاقة</span>
+        <div class="panel-head" style="background:linear-gradient(135deg, #0b1a3a 0%, #17376c 100%);border-radius:14px 14px 0 0;border-color:transparent">
+          <h3 style="color:#fff"><svg class="ic" style="color:#e8d089"><use href="#i-card" xlink:href="#i-card"/></svg> إدارة البطاقات</h3>
+          <span class="badge" style="background:rgba(232,208,137,.18);color:#e8d089;border-color:rgba(232,208,137,.35)" id="apps-count-label">0 بطاقة</span>
         </div>
-        <div class="panel-body">
-          <div class="toolbar">
+        <div class="panel-body" style="padding:0">
+          <!-- شريط البحث والفلاتر -->
+          <div class="toolbar-enhanced">
             <div class="field grow">
-              <label for="aq">بحث (رقم تسلسلي / اسم / هاتف)</label>
+              <label for="aq"><svg style="width:14px;height:14px;vertical-align:-2px"><use href="#i-search"/></svg> بحث</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="aq" placeholder="7KQ4M9TR2X أو اسم الباحث">
+                <input type="search" id="aq" placeholder="باركود، اسم الباحث، أو رقم الهاتف...">
               </div>
             </div>
             <div class="field">
-              <label for="a-status">حالة البطاقة</label>
+              <label for="a-status">الحالة</label>
               <select id="a-status">
-                <option value="all">الكل</option>
+                <option value="all">كل الحالات</option>
                 <option value="blank">فارغة — بالمخزن</option>
                 <option value="pending">قيد المراجعة</option>
                 <option value="active">سارية</option>
@@ -227,24 +268,39 @@
               </select>
             </div>
             <div class="field">
-              <label for="a-user">الموظف المُصدر</label>
-              <select id="a-user"><option value="all">الكل</option></select>
+              <label for="a-user">الموظف</label>
+              <select id="a-user"><option value="all">كل الموظفين</option></select>
             </div>
           </div>
-        </div>
-        <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll">
-            <table class="data">
-              <thead>
-                <tr>
-                  <th>الرقم التسلسلي</th><th>اسم الباحث</th><th>الهاتف</th><th>الإصدار</th>
-                  <th>الانتهاء</th><th>المتبقي</th><th>الفرص</th><th>الحالة</th><th>إجراءات</th>
-                </tr>
-              </thead>
-              <tbody id="apps-table-body"></tbody>
-            </table>
+
+          <!-- الجدول -->
+          <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
+            <div class="table-scroll">
+              <table class="data" style="margin:0">
+                <thead>
+                  <tr>
+                    <th style="min-width:130px">الباركود</th>
+                    <th style="min-width:150px">اسم الباحث</th>
+                    <th>الهاتف</th>
+                    <th>نقطة البيع</th>
+                    <th>الإصدار</th>
+                    <th>الانتهاء</th>
+                    <th>المتبقي</th>
+                    <th>الفرص</th>
+                    <th>الحالة</th>
+                    <th style="min-width:200px">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="apps-table-body"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="tfoot-note">البطاقة صالحة 30 يوماً وفيها فرصتان مستقلتان — بعد استهلاك الفرصتين أو انتهاء المدة تتوقف صلاحية التقديم.</div>
+
+          <!-- ملاحظة سفلية -->
+          <div class="footnote-premium">
+            <svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg>
+            البطاقة صالحة 30 يوماً وفيها فرصتان مستقلتان — بعد استهلاك الفرصتين أو انتهاء المدة تتوقف صلاحية التقديم.
+          </div>
         </div>
       </div>
     </section>
@@ -381,13 +437,22 @@
 
       <div class="grid grid-2">
         <div class="panel">
-          <div class="panel-head"><h3><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg> المستخدمون والصلاحيات</h3></div>
-          <div class="table-wrap" style="border:none;box-shadow:none">
-            <div class="table-scroll"><table class="data" style="min-width:520px">
-              <thead><tr><th>المستخدم</th><th>الاسم</th><th>الصلاحية</th><th>المسمى</th></tr></thead>
-              <tbody id="users-table-body"></tbody>
-            </table></div>
-            <div class="tfoot-note">في النسخة السحابية تُدار الحسابات عبر Supabase Auth مع سياسات RLS (انظر docs/schema.sql).</div>
+          <div class="panel-head" style="background:linear-gradient(135deg,#0b1a3a,#17376c);border-radius:14px 14px 0 0;border-color:transparent">
+            <h3 style="color:#fff"><svg class="ic" style="color:#e8d089"><use href="#i-users" xlink:href="#i-users"/></svg> إدارة الموظفين والصلاحيات</h3>
+            <button class="btn btn-gold btn-sm" id="btn-add-user"><svg class="ic"><use href="#i-plus"/></svg> إضافة موظف</button>
+            <button class="btn btn-outline btn-sm" id="btn-cloud-key" title="مفتاح Supabase للتسجيل في القاعدة"><svg class="ic"><use href="#i-server"/></svg> ربط السحابة</button>
+          </div>
+          <div class="panel-body" style="padding:0">
+            <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
+              <div class="table-scroll"><table class="data" style="min-width:520px;margin:0">
+                <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+                <tbody id="users-table-body"></tbody>
+              </table></div>
+            </div>
+            <div class="footnote-premium">
+              <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
+              فقط المدير العام يكدر يضيف وتعديل وحذف الموظفين. في النسخة السحابية تُدار الحسابات عبر Supabase Auth مع سياسات RLS.
+            </div>
           </div>
         </div>
         <div class="panel">
