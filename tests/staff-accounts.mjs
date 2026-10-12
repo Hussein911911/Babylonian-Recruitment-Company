@@ -122,6 +122,21 @@ function makeMock(opts = {}) {
     __calls: calls, __state: state,
     supabaseUrl: URL_BASE,
     from: query,
+    /* الدالة السحابية hrc-staff-admin: المكتبة الحقيقية تُوفّر functions دائماً.
+       الافتراضي هنا «غير منشورة» (404) ليمرّ الاختبار بمسار مفتاح الخدمة،
+       وتمرّر الاختبارات التي تريدها اختيارياً adminFn لتحاكي الدالة المنشورة. */
+    functions: {
+      invoke(name, o) {
+        const body = (o && o.body) || {};
+        calls.push({ fn: name, body });
+        if (opts.adminFn) return Promise.resolve(opts.adminFn(body, { state, session: () => session }));
+        return Promise.resolve({
+          data: null,
+          error: { message: 'Edge Function returned a non-2xx status code',
+            context: { status: 404, json: () => Promise.resolve({ code: 'NOT_FOUND', message: 'Requested function was not found' }) } }
+        });
+      }
+    },
     rpc(name, args) { calls.push({ rpc: name, args }); return Promise.resolve({ data: null, error: { message: 'unknown rpc ' + name } }); },
     channel() { return ch; },
     removeChannel() { },
@@ -429,6 +444,97 @@ step(6, 'مفتاح خدمة خاطئ: يُبلَّغ عن الفشل ولا ي�
   });
   check('فشل مُعلَن', r && r.ok === false, JSON.stringify(r));
   check('لا سطر موظف وهمي في brc.staff', !mock.__state.staff.some((s) => s.username === 'layla'));
+}
+
+/* ===========================================================================
+ *  7) الدالة السحابية hrc-staff-admin — إنشاء بلا أي مفتاح في المتصفح
+ *     (هذا هو المسار الموصى به: المفتاح يبقى في خوادم Supabase وحدها)
+ * =========================================================================== */
+step(7, 'الدالة السحابية: المدير ينشئ حساباً بلا أي مفتاح في المتصفح');
+{
+  /* محاكاة الدالة: تتحقق من الجلسة ومن أن صاحبها مدير نشط — كما يفعل الملف الفعلي
+     (سلوك الملف نفسه مُختبَر في tests/staff-admin-function.mjs) */
+  const fnState = { staff: [Object.assign({}, ADMIN_STAFF)] };
+  const mock = makeMock({
+    rows: { staff: fnState.staff },
+    adminFn: (body, ctx) => {
+      const sess = ctx.session();
+      const who = sess && (ctx.state.staff || []).filter((s) => s.auth_id === sess.user.id && s.active !== false)[0];
+      if (!sess) return { data: { ok: false, code: 'no_token', error: 'الجلسة مطلوبة' }, error: null };
+      if (!who || who.role !== 'admin') return { data: { ok: false, code: 'not_admin', error: 'هذه الصلاحية للمدير العام فقط' }, error: null };
+      if (body.action !== 'create') return { data: { ok: true }, error: null };
+      const email = body.username + '@' + (body.domain || 'hrc-babil.com');
+      const u = { id: 'auth-fn-' + (ctx.state.staff.length + 1), email, password: body.password };
+      (ctx.state.__authUsers = ctx.state.__authUsers || []).push(u);
+      const row = { id: 'staff-fn-' + (ctx.state.staff.length + 1), auth_id: u.id, username: body.username,
+        full_name: body.name, role: body.role || 'staff', job_title: body.title || '', phone: body.phone || '', active: true };
+      ctx.state.staff.push(row);
+      return { data: { ok: true, authId: u.id, email, staff: row }, error: null };
+    }
+  });
+  /* جلسة مدير سحابية — في الإنتاج الدخول عبر Supabase Auth يعطيها تلقائياً */
+  mock.__setSession({ user: { id: 'auth-admin' } });
+  const { Store } = boot(mock);
+  Store.init();
+  await sleep(150);
+
+  const r = await Store.staffAdmin('create', { username: 'rand', password: 'Rand@1234', name: 'رند علي', role: 'staff', title: 'موظفة' });
+  check('الإنشاء عبر الدالة نجح بلا أي مفتاح', r && r.ok === true, JSON.stringify(r));
+
+  const row = fnState.staff.filter((s) => s.username === 'rand')[0];
+  check('سطر الموظف أُنشئ في القاعدة (يدخل من أي جهاز)', !!row, JSON.stringify(fnState.staff.map((s) => s.username)));
+  check('السطر ظهر في الذاكرة المحلية فوراً (بلا إعادة تحميل)',
+    Store.listUsers().some((u) => u.username === 'rand' && u.source === 'cloud'),
+    JSON.stringify(Store.listUsers().map((u) => u.username + ':' + u.source)));
+  const sent = mock.__calls.filter((c) => c.fn).pop();
+  check('النداء ذهب إلى الدالة باسمها الصحيح', !!sent && sent.fn === 'hrc-staff-admin', JSON.stringify(sent && sent.fn));
+  check('الطلب يحمل الإجراء والبريد المشتقّ (domain)', sent && sent.body.action === 'create' && !!sent.body.domain,
+    JSON.stringify(sent && sent.body));
+  check('لم يُستعمل أي مفتاح خدمة في هذا المسار', !mock.__calls.some((c) => c.fn === 'authAdminBypass'));
+}
+
+/* ===========================================================================
+ *  8) موظف عادي: الدالة ترفضه (الصلاحية في القاعدة لا في الواجهة)
+ * =========================================================================== */
+step(8, 'موظف غير مدير: الدالة ترفض ولا يُنشأ شيء');
+{
+  const fnState = { staff: [
+    Object.assign({}, ADMIN_STAFF),
+    { id: 'staff-e', auth_id: 'auth-e', username: 'ali', full_name: 'علي', role: 'staff', job_title: '', phone: '', active: true }
+  ] };
+  const mock = makeMock({
+    rows: { staff: fnState.staff },
+    adminFn: (body, ctx) => {
+      const sess = ctx.session();
+      const who = sess && (ctx.state.staff || []).filter((s) => s.auth_id === sess.user.id && s.active !== false)[0];
+      if (!who || who.role !== 'admin') return { data: { ok: false, code: 'not_admin', error: 'هذه الصلاحية للمدير العام فقط' }, error: null };
+      return { data: { ok: true }, error: null };
+    }
+  });
+  mock.__setSession({ user: { id: 'auth-e' } });
+  const { Store } = boot(mock);
+  Store.init();
+  await sleep(150);
+
+  const r = await Store.staffAdmin('create', { username: 'ghost', password: 'Ghost@123', name: 'متسلل' });
+  check('مرفوض برسالة المدير العام', r && r.ok === false && r.code === 'not_admin', JSON.stringify(r));
+  check('لم يُنشأ أي سطر موظف', !fnState.staff.some((s) => s.username === 'ghost'));
+}
+
+/* ===========================================================================
+ *  9) الدالة غير منشورة → not_deployed (ليتفرّع المتصفح للمسار الاحتياطي)
+ * =========================================================================== */
+step(9, 'الدالة غير منشورة: رمز صريح يسمح بالمسار الاحتياطي');
+{
+  const mock = makeMock({ rows: { staff: [Object.assign({}, ADMIN_STAFF)] } });
+  mock.__setSession({ user: { id: 'auth-admin' } });
+  const { Store } = boot(mock);
+  Store.init();
+  await sleep(150);
+
+  const r = await Store.staffAdmin('create', { username: 'x', password: 'Pass@1234', name: 'اسم' });
+  check('الرمز not_deployed (لا فشل غامض)', r && r.ok === false && r.code === 'not_deployed', JSON.stringify(r));
+  check('الرسالة مفهومة بالعربية', /[؀-ۿ]/.test(r.error || ''), r && r.error);
 }
 
 /* ===========================================================================

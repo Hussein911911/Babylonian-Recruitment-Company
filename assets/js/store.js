@@ -2420,6 +2420,26 @@
     return auth.setPassword(serviceKey, authId, newPassword);
   }
 
+  /* ---------------------------------------------------------------------------
+   *  إدارة الحسابات عبر الدالة السحابية (hrc-staff-admin) — بلا أي مفتاح في المتصفح
+   *  ---------------------------------------------------------------------------
+   *  action: 'create' | 'update' | 'delete' | 'set-password' | 'whoami'
+   *  تعمل لأي مدير **مُسجَّل دخوله سحابياً** من أي متصفح: الدالة تتحقق من التوكن
+   *  ومن كونه مديراً نشطاً في brc.staff. وإن لم تكن منشورة تُرجع code='not_deployed'
+   *  فيسلك المستدعي مسار مفتاح الخدمة (إن وُجد).
+   * ------------------------------------------------------------------------- */
+  function staffAdmin(action, payload) {
+    if (!cloud.client || !root.HRCCloudAuth) {
+      return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
+    }
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    if (!auth.staffAdmin) return Promise.resolve({ ok: false, code: 'not_deployed', error: 'وحدة الدوال غير محمّلة' });
+    return auth.staffAdmin(action, payload).then(function (r) {
+      if (r && r.ok && r.staff) absorbStaffRow(r.staff);
+      return r;
+    });
+  }
+
   function signOutCloud() {
     var out = (cloud.auth && cloud.auth.logout) ? cloud.auth.logout() : Promise.resolve({ ok: true });
     var unsub = cloud.unsubscribe;
@@ -2521,6 +2541,7 @@
     signIn: signIn, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
     createCloudAccount: createCloudAccount, updateCloudAccount: updateCloudAccount,
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
+    staffAdmin: staffAdmin,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,

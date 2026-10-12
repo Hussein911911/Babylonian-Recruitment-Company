@@ -55,6 +55,44 @@ window.__brcMock = (function () {
   return {
     supabaseUrl: '${URL_BASE}',
     from: q,
+    /* الدالة السحابية hrc-staff-admin: الافتراضي «غير منشورة» (404) كما في
+       مشروع لم تُنشر فيه بعد — فتمرّ الاختبارات بمسار مفتاح الخدمة. وتُشغَّل
+       بمحاكاة كاملة عند ضبط __state.fnOn (انظر القسم 8). */
+    functions: {
+      invoke: function (name, o) {
+        var body = (o && o.body) || {};
+        window.__state.fnCalls = (window.__state.fnCalls || []).concat([{ name: name, body: body }]);
+        if (!window.__state.fnOn) {
+          return Promise.resolve({ data: null, error: { message: 'Edge Function returned a non-2xx status code',
+            context: { status: 404, json: function () { return Promise.resolve({ code: 'NOT_FOUND', message: 'Requested function was not found' }); } } } });
+        }
+        var st = window.__state;
+        if (body.action === 'create') {
+          var email = body.username + '@' + (body.domain || 'hrc-babil.com');
+          var u = { id: 'auth-fn-' + (st.authUsers.length + 1), email: email, password: body.password };
+          st.authUsers.push(u);
+          var row = { id: 'staff-fn-' + (st.staff.length + 1), auth_id: u.id, username: body.username,
+            full_name: body.name, role: body.role || 'staff', job_title: body.title || '', phone: body.phone || '', active: true };
+          st.staff.push(row);
+          return Promise.resolve({ data: { ok: true, authId: u.id, email: email, staff: row }, error: null });
+        }
+        if (body.action === 'update') {
+          var t = st.staff.filter(function (x) { return x.id === body.id; })[0];
+          if (t) { t.full_name = body.name; t.role = body.role; t.job_title = body.title; t.active = body.active !== false; }
+          return Promise.resolve({ data: { ok: true, staff: t }, error: null });
+        }
+        if (body.action === 'delete') {
+          st.staff = st.staff.filter(function (x) { return x.id !== body.id; });
+          return Promise.resolve({ data: { ok: true, rowDeleted: true, authDeleted: true }, error: null });
+        }
+        if (body.action === 'set-password') {
+          var au = st.authUsers.filter(function (x) { return x.id === body.authId; })[0];
+          if (au) au.password = body.password;
+          return Promise.resolve({ data: { ok: true }, error: null });
+        }
+        return Promise.resolve({ data: { ok: false, code: 'bad_action', error: 'إجراء غير معروف' }, error: null });
+      }
+    },
     rpc: function () { return Promise.resolve({ data: null, error: { message: 'no rpc in mock' } }); },
     channel: function () { return ch; }, removeChannel: function () { },
     auth: {
@@ -355,6 +393,64 @@ const errBox2 = app2.doc.getElementById('user-form-err');
 check('الخطأ ظاهر داخل النموذج (لا يُغلق النافذة بصمت)', !!errBox2 && !errBox2.classList.contains('hidden'),
   errBox2 && errBox2.textContent.slice(0, 90));
 check('النافذة بقيت مفتوحة ليصحّح المدير المدخل', !!app2.doc.getElementById('user-form'));
+
+/* ===========================================================================
+ *  8) الدالة السحابية منشورة: إنشاء موظف **بلا أي مفتاح في المتصفح**
+ *     — هذا هو الوضع الموصى به: أي مدير، بأي متصفح، بلا لصق أي سرّ.
+ * =========================================================================== */
+step(8, 'بلا أي مفتاح في المتصفح: الإدارة تعمل عبر الدالة السحابية');
+const state3 = makeState();
+state3.fnOn = true;                       // الدالة منشورة ومتاحة
+const app3 = await open(state3);
+login(app3.window, app3.doc, 'admin', ADMIN_PASS);
+await sleep(250);
+app3.doc.querySelector('#side-nav button[data-view="settings"]').click();
+await sleep(100);
+
+check('لا مفتاح خدمة محفوظ في هذا المتصفح', !app3.window.localStorage.getItem('hrc-service-key'));
+
+app3.doc.getElementById('btn-add-user').click();
+await sleep(80);
+app3.doc.getElementById('uf-name').value = 'رند علي';
+app3.doc.getElementById('uf-user').value = 'rand';
+app3.doc.getElementById('uf-pass').value = 'Rand@1234';
+app3.doc.getElementById('uf-title').value = 'موظفة توظيف';
+app3.doc.getElementById('uf-save').click();
+await sleep(300);
+
+check('الحساب أُنشئ في القاعدة عبر الدالة', state3.staff.some((s) => s.username === 'rand'),
+  JSON.stringify(state3.staff.map((s) => s.username)));
+check('مستخدم Auth أُنشئ بالبريد المشتقّ', state3.authUsers.some((u) => u.email === 'rand@hrc-babil.com'),
+  JSON.stringify(state3.authUsers.map((u) => u.email)));
+check('النداء ذهب إلى الدالة hrc-staff-admin',
+  (state3.fnCalls || []).some((c) => c.name === 'hrc-staff-admin' && c.body.action === 'create'),
+  JSON.stringify((state3.fnCalls || []).map((c) => c.body.action)));
+check('الموظف ظهر في الجدول معلَّماً «القاعدة»',
+  /القاعدة/.test((userRowEl(app3.doc, 'rand') || {}).textContent || ''),
+  (userRowEl(app3.doc, 'rand') || {}).textContent);
+check('ما زال بلا أي مفتاح بعد الإنشاء (لم يُطلب أبداً)',
+  !app3.window.localStorage.getItem('hrc-service-key'));
+
+/* التعديل والحذف من نفس المتصفح بلا مفاتيح */
+[...app3.doc.querySelectorAll('#users-table-body [data-user-edit]')]
+  .filter((b) => b.getAttribute('data-user-edit') === 'rand')[0].click();
+await sleep(80);
+app3.doc.getElementById('uf-title').value = 'مشرفة';
+app3.doc.getElementById('uf-save').click();
+await sleep(300);
+check('التعديل وصل القاعدة عبر الدالة',
+  (state3.staff.filter((s) => s.username === 'rand')[0] || {}).job_title === 'مشرفة',
+  JSON.stringify(state3.staff.filter((s) => s.username === 'rand')[0]));
+
+[...app3.doc.querySelectorAll('#users-table-body [data-user-del]')]
+  .filter((b) => b.getAttribute('data-user-del') === 'rand')[0].click();
+await sleep(80);
+app3.doc.querySelector('#modal-root [data-ok]').click();
+await sleep(350);
+check('الحذف وصل القاعدة عبر الدالة', !state3.staff.some((s) => s.username === 'rand'));
+check('الموظف اختفى من الجدول', !userRowEl(app3.doc, 'rand'));
+
+app3.dom.window.close && app3.dom.window.close();
 
 app.dom.window.close && app.dom.window.close();
 app2.dom.window.close && app2.dom.window.close();

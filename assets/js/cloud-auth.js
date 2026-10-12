@@ -382,20 +382,36 @@
       var email = toEmail(username);
       if (!email) return Promise.resolve({ ok: false, code: 'no_email', error: 'تعذّر اشتقاق البريد من اسم المستخدم' });
 
-      return ensureAuthUser(serviceKey, email, password, name, username)
-        .then(function (ar) {
-          if (!ar.ok) return ar;
-          return linkStaffRow(serviceKey, ar.authId, { username: username, name: name, role: role, title: title, phone: phone })
-            .then(function (sr) {
-              if (!sr.ok) {
-                /* ماذا نقول للمدير؟ الخطوة الأولى نجحت والثانية لا: الحساب غير
-                   صالح للدخول بعد، وإعادة المحاولة من نفس النموذج ستُكمل الربط. */
-                return { ok: false, code: sr.code || 'staff_row_failed', authId: ar.authId, partial: true,
-                  error: sr.error + ' — أعد المحاولة من نفس النموذج لإكمال الربط' };
-              }
-              return { ok: true, authId: ar.authId, staff: sr.row, email: email,
-                existed: !!ar.existed, repaired: !!(ar.existed || sr.repaired), passwordReset: !!ar.passwordReset };
-            });
+      /* فحص مبكر لاسم المستخدم: قبل إنشاء أي مستخدم Auth — وإلا بقي مستخدم
+         Auth يتيم لا يدخل صاحبه ولا يُعاد استعمال اسمه. */
+      return staffRest(serviceKey, '?username=eq.' + encodeURIComponent(username) + '&select=id,auth_id,username')
+        .then(function (pre) {
+          if (pre.ok && (Array.isArray(pre.body) ? pre.body : []).length) {
+            var taken = pre.body[0];
+            /* إن كان مرتبطاً بمستخدم دخول آخر فهو حساب قائم فعلاً — لا يُخطف */
+            if (taken.auth_id) {
+              return { ok: false, code: 'username_taken',
+                error: 'اسم المستخدم «' + username + '» مسجّل لموظف آخر — اختر اسماً آخر' };
+            }
+          }
+          return ensureAuthUser(serviceKey, email, password, name, username).then(function (ar) {
+            if (!ar.ok) return ar;
+            return linkStaffRow(serviceKey, ar.authId, { username: username, name: name, role: role, title: title, phone: phone })
+              .then(function (sr) {
+                if (!sr.ok) {
+                  if (ar.existed === false) {
+                    /* تراجع: أزل مستخدم Auth الذي أنشأناه في هذه الدعوة فلا يبقى أثر */
+                    return adminApi(serviceKey, 'DELETE', '/auth/v1/admin/users/' + encodeURIComponent(ar.authId))
+                      .then(function () { return { ok: false, code: sr.code || 'staff_row_failed', error: sr.error }; });
+                  }
+                  /* الخطوة الأولى نجحت والثانية لا: إعادة المحاولة من نفس النموذج تُكمل الربط */
+                  return { ok: false, code: sr.code || 'staff_row_failed', authId: ar.authId, partial: true,
+                    error: sr.error + ' — أعد المحاولة من نفس النموذج لإكمال الربط' };
+                }
+                return { ok: true, authId: ar.authId, staff: sr.row, email: email,
+                  existed: !!ar.existed, repaired: !!(ar.existed || sr.repaired), passwordReset: !!ar.passwordReset };
+              });
+          });
         })
         .catch(function (e) {
           return { ok: false, code: 'network', error: 'خطأ شبكي: ' + (e && e.message || e) };
@@ -534,12 +550,70 @@
       } catch (e) { return false; }
     }
 
+    /* ==========================================================================
+     *  إدارة الحسابات عبر الدالة السحابية hrc-staff-admin — **بلا أي مفتاح في المتصفح**
+     *  --------------------------------------------------------------------------
+     *  ⚠️ لماذا لا يُوضع مفتاح الخدمة في الواجهة؟ لأن أي ملف تنزّله الصفحة يقرأه
+     *     صاحبها (أدوات المتصفح → المصادر)، ومفتاح الخدمة يتجاوز كل سياسات RLS:
+     *     من يحصل عليه يقرأ بيانات كل الباحثين ويحذف القاعدة وينشئ مديرين. ولا
+     *     يوجد في تطبيق يعمل كله في المتصفح ملفٌ «لا يُرى».
+     *     فالمفتاح يبقى في خوادم Supabase (بيئة الدالة)، والدالة تتحقق من أن
+     *     المُنادي **مدير نشط** في brc.staff قبل أن تفعل أي شيء.
+     *  ⇒ بهذا ينشئ أي مدير حسابات موظفيه من أي متصفح، وبلا لصق أي مفتاح.
+     *  إن لم تكن الدالة منشورة بعد نُبلّغ not_deployed فيسلك المستدعي مسار
+     *  مفتاح الخدمة إن وُجد (توافقية)، وإلا الوضع المحلي.
+     * ======================================================================== */
+    function fnErrorOf(err) {
+      var status = (err && err.context && err.context.status) || 0;
+      function done(body) {
+        /* ⚠️ الدالة غير المنشورة تُرجع 404 بالإنجليزية ("Requested function was
+           not found") — وهي أول ما يراه المدير على مشروع لم تُنشر فيه الدالة بعد.
+           نُترجمها إلى جملة عربية تُسمّي الخطوة بدل تسريب نص إنجليزي غامض. */
+        if (status === 404) {
+          return { ok: false, status: status, code: 'not_deployed',
+            error: 'الدالة السحابية hrc-staff-admin غير منشورة على مشروع Supabase — انظر docs/staff-accounts-edge.md' };
+        }
+        var msg = (body && (body.error || body.message)) || (err && err.message) || 'خطأ غير معروف';
+        var code = (body && body.code) || 'fn_error';
+        return { ok: false, status: status, code: code, error: msg };
+      }
+      var ctx = err && err.context;
+      if (ctx && typeof ctx.json === 'function') {
+        return Promise.resolve().then(function () { return ctx.json(); }).then(done).catch(function () { return done(null); });
+      }
+      return Promise.resolve(done(null));
+    }
+
+    function staffAdmin(action, payload) {
+      var fn = client && client.functions;
+      if (!fn || typeof fn.invoke !== 'function') {
+        return Promise.resolve({ ok: false, code: 'not_deployed', error: 'عميل الدوال غير متاح في هذه النسخة من المكتبة' });
+      }
+      var body = Object.assign({ action: action }, payload || {});
+      if (!body.domain) body.domain = cfg().domain;
+      return Promise.resolve(fn.invoke('hrc-staff-admin', { body: body }))
+        .then(function (res) {
+          var err = res && res.error;
+          if (err) return fnErrorOf(err);
+          var d = res && res.data;
+          if (d && typeof d === 'object') {
+            if (d.ok === false) return d;
+            return Object.assign({ ok: true }, d);
+          }
+          return { ok: false, code: 'empty', error: 'لا رد مفهوم من الدالة السحابية' };
+        })
+        .catch(function (e) {
+          return { ok: false, code: 'network', error: 'تعذّر الوصول إلى دالة الحسابات: ' + (e && e.message || e) };
+        });
+    }
+
     return {
       login: login, logout: logout, restore: restore,
       changePassword: changePassword, toEmail: toEmail, loadProfile: loadProfile,
       createAccount: createAccount, updateAccount: updateAccount,
       deleteAccount: deleteAccount, setPassword: setPassword,
-      findAuthUser: findAuthUser, looksUsable: looksUsable
+      findAuthUser: findAuthUser, looksUsable: looksUsable,
+      staffAdmin: staffAdmin
     };
   }
 

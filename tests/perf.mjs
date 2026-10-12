@@ -67,9 +67,12 @@ const BUDGET = {
      (cloud-auth.js + dashboard.js + store.js) فأصبحت 569/470/898.
      السقوف رُفعت بمقدار المقيس + هامش صغير 10KB، ويبقى الغرض الأصلي: التقاط
      القفزات الكبيرة (إعادة مكتبة سوبابيس 213KB إلى صفحة زائر مثلاً). */
+  /* +30KB للأخيرة (2026-10-13): إدارة حسابات الموظفين عبر الدالة السحابية
+     hrc-staff-admin — نداء الدوال في cloud-auth.js ومسارات staffWrite في
+     dashboard.js (تُقاس مقيسةً: 940KB خاماً). تبقى الرسالة: منع القفزات. */
   'index.html': { raw: 580, requests: 20 },
   'verify.html': { raw: 480, requests: 20 },
-  'dashboard.html': { raw: 910, requests: 20 }
+  'dashboard.html': { raw: 940, requests: 20 }
 };
 
 function payloadOf(page) {
