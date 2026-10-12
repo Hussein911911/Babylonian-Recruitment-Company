@@ -6855,6 +6855,16 @@ table.data tbody tr:hover { background: #faf8f3; }
     if (code === '42501' || /permission denied/i.test(msg)) {
       return { text: 'لا صلاحية كافية (RLS/منح مفقود)', hint: 'راجع سياسات ومنح §8 و§9 في docs/schema.sql' };
     }
+    /* ⚠️ 42703 «عمود مفقود»: أشهر سببه قاعدة أُنشئت قبل إضافة عمود إلى المخطط
+       (create table if not exists لا يُضيف أعمدة لجدول قائم). الواجهة تكتب
+       governorate في كل وظيفة، فقد تفشل «إضافة وظيفة» وحدها بينما كل شيء آخر
+       سليم — فيبدو العطل غامضاً. نُسمّي العمود ونعطي ملف الإصلاح بالاسم. */
+    if (code === '42703' || /column .* does not exist/i.test(msg)) {
+      return {
+        text: 'عمود مفقود في القاعدة' + (/jobs|governorate/i.test(msg) ? ' (governorate في brc.jobs)' : ''),
+        hint: 'نفّذ docs/UPDATE-2026-10-13-governorate.sql في SQL Editor ثم notify pgrst, \'reload schema\''
+      };
+    }
     if (code === 'PGRST301' || /JWT|token/i.test(msg)) {
       return { text: 'الجلسة منتهية — أعد الدخول', hint: '' };
     }
