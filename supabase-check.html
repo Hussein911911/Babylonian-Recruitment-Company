@@ -525,7 +525,7 @@
       } else if (fnErr && fnErr.context && fnErr.context.status === 404) {
         staffFnState = 'not_deployed';
         chip(staffBox, 'دالة إدارة الحسابات (hrc-staff-admin)', 'warn',
-          'غير منشورة بعد — Edge Functions ← Deploy a new function بالاسم hrc-staff-admin (docs/staff-accounts-edge.md). حتى ذلك الحين إدارة الحسابات تحتاج مفتاح الخدمة.');
+          'غير منشورة بعد — تُنشر تلقائياً مع أول دفع يشمل supabase/config.toml (بشرط تفعيل Deploy to production في تكاملة GitHub)، وإلا انشرها يدوياً: Edge Functions ← Deploy a new function بالاسم hrc-staff-admin (docs/staff-accounts-edge.md). حتى ذلك الحين إدارة الحسابات تحتاج مفتاح الخدمة.');
       } else if (fnData && fnData.code === 'not_admin') {
         staffFnState = 'not_admin';
         chip(staffBox, 'دالة إدارة الحسابات (hrc-staff-admin)', 'warn',
