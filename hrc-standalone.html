@@ -3590,6 +3590,12 @@ table.data tbody tr:hover { background: #faf8f3; }
             <button class="btn btn-outline btn-sm" id="btn-cloud-key" title="مفتاح Supabase للتسجيل في القاعدة"><svg class="ic"><use href="#i-server"/></svg> ربط السحابة</button>
           </div>
           <div class="panel-body" style="padding:0">
+            <!-- قناة إنشاء الحسابات: تُرسم من dashboard.js (renderUsersChannel) وتقول
+                 للمدير قبل فتح النموذج: أنشئ الحسابات ← ستُسجَّل في قاعدة الشركة، أم
+                 لا قناة بعد (مع الخطوة المطلوبة). بلا هذا الشريط يكتشف المدير الأمر
+                 عند أول «إنشاء الحساب» برسالة خطأ — أو الأسوأ: يُنشئ حساباً محلياً
+                 يُوهمه أن الموظف أُضيف بينما صاحبه لا يدخل من أي جهاز. -->
+            <div id="users-channel" style="margin:14px 14px 0"></div>
             <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
               <div class="table-scroll"><table class="data" style="min-width:520px;margin:0">
                 <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
@@ -7272,6 +7278,16 @@ table.data tbody tr:hover { background: #faf8f3; }
     return auth.setPassword(serviceKey, authId, newPassword);
   }
 
+  /* فحص مفتاح الخدمة قبل حفظه (انظر الشرح في cloud-auth.js) */
+  function probeServiceKey(serviceKey) {
+    if (!root.HRCCloudAuth || !cloud.client) {
+      return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
+    }
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    if (!auth.probeServiceKey) return Promise.resolve({ ok: true, unchecked: true });
+    return auth.probeServiceKey(serviceKey);
+  }
+
   /* ---------------------------------------------------------------------------
    *  إدارة الحسابات عبر الدالة السحابية (hrc-staff-admin) — بلا أي مفتاح في المتصفح
    *  ---------------------------------------------------------------------------
@@ -7393,6 +7409,7 @@ table.data tbody tr:hover { background: #faf8f3; }
     signIn: signIn, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
     createCloudAccount: createCloudAccount, updateCloudAccount: updateCloudAccount,
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
+    probeServiceKey: probeServiceKey,
     staffAdmin: staffAdmin,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
@@ -10671,7 +10688,12 @@ table.data tbody tr:hover { background: #faf8f3; }
     /* حالة السحابة تُعرض دائماً: على شاشة الدخول قبل الدخول، وفي أعلى المنظومة بعده */
     cloudBanner(Store.cloudStatus());
     cloudLoginNote(Store.cloudStatus());
-    if (Store.onCloudStatus) Store.onCloudStatus(function (st) { cloudBanner(st); cloudLoginNote(st); });
+    if (Store.onCloudStatus) Store.onCloudStatus(function (st) {
+      cloudBanner(st); cloudLoginNote(st);
+      /* شريط قناة الحسابات يتبع حالة الاتصال/الدور: لو اتصلت القاعدة بعد فتح
+         الإعدادات، يتغيّر الحكم من «لا قناة» إلى «جاهز» بلا إعادة تحميل. */
+      if (document.getElementById('users-channel')) renderUsersChannel();
+    });
     Store.runMaintenance();
     UI.startCountdowns();
     fillStatic();
@@ -10793,10 +10815,12 @@ table.data tbody tr:hover { background: #faf8f3; }
       if (r && r.ok) { r.via = 'function'; return r; }
 
       /* 「لا توجد جلسة سحابية هنا」 ليس رفض صلاحية بل فجوة قدرة: الدالة غير منشورة،
-         أو هذا المتصفح داخل محلياً. في الحالتين يجوز السلوك بالمسار الاحتياطي
-         (مفتاح الخدمة المحفوظ). أما رفض الدور (not_admin / inactive) فلا يُتجاوز —
-         ذاك قرار صلاحية اتخذته القاعدة، ويجب أن يبقى نافذاً. */
-      var sessionGap = r && ['not_deployed', 'no_token', 'bad_token', 'no_staff_row'].indexOf(r.code) >= 0;
+         أو هذا المتصفح داخل محلياً، أو الشبكة ساقطة. في الحالات كلها يجوز السلوك
+         بالمسار الاحتياطي (مفتاح الخدمة المحفوظ). أما رفض الدور (not_admin /
+         inactive) فلا يُتجاوز — ذاك قرار صلاحية اتخذته القاعدة، ويجب أن يبقى نافذاً.
+         ⚠️ 'network' مُدرَج عمداً: انقطاع الشبكة يعني «لم تصل الدعوة» لا «رُفضت»؛
+         بلا إدراجه يفشل الإنشاء برسالة إنجليزية من المكتبة ولا يُجرَّب المفتاح. */
+      var sessionGap = r && ['not_deployed', 'no_token', 'bad_token', 'no_staff_row', 'network'].indexOf(r.code) >= 0;
       if (!sessionGap) {
         if (r) r.via = 'function';
         return r || { ok: false, error: 'تعذّر تنفيذ الإجراء' };
@@ -10832,11 +10856,260 @@ table.data tbody tr:hover { background: #faf8f3; }
       + 'لتعمل إدارة الحسابات من أي متصفح بلا أي مفتاح، أو أضف مفتاح الخدمة من «ربط السحابة».';
   }
 
+  /* ---------------------------------------------------------------------------
+   *  نافذة مفتاح الخدمة — بفحص قبل الحفظ
+   *  ---------------------------------------------------------------------------
+   *  كان المفتاح يُحفظ كما هو ثم يُكتشف خطؤه عند أول إنشاء موظف برسالة غامضة.
+   *  الآن يُفحص فوراً بقراءة سطر واحد من brc.staff، ويُقال للمدير بالعربي:
+   *  مفتاح مرفوض / سكيما غير مكشوفة / لا اتصال — مع خيار الحفظ رغم الفشل
+   *  (لمن يعرف أن السبب مؤقّت)، فالمفتاح قراره لا قرار الشاشة.
+   * ------------------------------------------------------------------------ */
+  function cloudKeyModal() {
+    var current = serviceKey();
+    var body = '<div style="display:grid;gap:14px">' +
+      '<p style="margin:0;color:var(--muted);font-size:.9rem">مفتاح الخدمة (Service Role Key) يسمح بإنشاء حسابات الموظفين في Supabase Auth تلقائياً من هنا — بدون ما تفتح Supabase يدوياً. وهو <b>احتياطي</b>: الأفضل نشر الدالة السحابية.</p>' +
+      '<div class="field"><label for="svc-key">Service Role Key</label>' +
+        '<input type="password" id="svc-key" value="' + UI.esc(current) + '" placeholder="eyJhbGciOiJIUzI1NiIs..." dir="ltr" class="mono" style="font-size:.82rem">' +
+      '</div>' +
+      '<div id="svc-msg" class="hidden" style="border-radius:10px;padding:10px 14px;font-size:.84rem"></div>' +
+      '<div style="background:#fdf1d8;border:1px solid #f0d9a3;border-radius:10px;padding:10px 14px;font-size:.82rem;color:#8a5c05">' +
+        '<b>⚠️ تنبيه:</b> هالمفتاح حساس — لا تشاركه مع أحد. يُحفظ في متصفحك فقط (localStorage) ولا يُرسل لأي جهة.' +
+      '</div>' +
+      '<p style="margin:0;font-size:.82rem;color:var(--muted)">تلاقيه في: Supabase Dashboard → ⚙️ Settings → API Keys → service_role (secret)</p>' +
+    '</div>';
+    var footer = '<button class="btn btn-outline" data-close>إلغاء</button>' +
+      (current ? '<button class="btn btn-danger btn-sm" id="svc-clear">مسح المفتاح</button>' : '') +
+      '<button class="btn btn-lapis" id="svc-save">' + UI.ic('check') + ' فحص وحفظ</button>';
+    var m = UI.modal({ title: 'ربط السحابة — Service Role Key', body: body, footer: footer });
+    if (!m) return;
+
+    var msgEl = m.root.querySelector('#svc-msg');
+    function note(tone, text) {
+      if (!msgEl) return;
+      if (!text) { msgEl.className = 'hidden'; msgEl.innerHTML = ''; return; }
+      var pal = tone === 'ok' ? ['#f0fdf4', '#bbf7d0', '#166534']
+        : tone === 'err' ? ['#fef2f2', '#fecaca', '#7f1d1d'] : ['#fffbeb', '#fde68a', '#92400e'];
+      msgEl.className = '';
+      msgEl.setAttribute('style', 'background:' + pal[0] + ';border:1px solid ' + pal[1] + ';color:' + pal[2] +
+        ';border-radius:10px;padding:10px 14px;font-size:.84rem');
+      msgEl.innerHTML = text;
+    }
+
+    function save(key, warn) {
+      try { localStorage.setItem('hrc-service-key', key); } catch (e) {}
+      chanState.probe = 'unknown';
+      renderUsersChannel();
+      UI.toast(warn ? 'warn' : 'ok', warn ? 'حُفظ رغم تعذّر الفحص' : 'تم الحفظ',
+        warn ? 'أُنشئ موظف تجريبي للتأكد — وإن فشل فالفحص سيقول السبب.' : 'الآن لما تنشئ موظف جديد يُسجّل في قاعدة الشركة تلقائياً');
+      m.close();
+    }
+
+    var saveBtn = m.root.querySelector('#svc-save');
+    if (saveBtn) saveBtn.addEventListener('click', function () {
+      var key = document.getElementById('svc-key').value.trim();
+      if (!key) { UI.toast('err', 'خطأ', 'أدخل المفتاح'); return; }
+      var label = saveBtn.textContent;
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'جارٍ الفحص…';
+      note('warn', 'نتحقق من المفتاح بقراءة سطر واحد من جدول الموظفين…');
+      var probe = Store.probeServiceKey ? Store.probeServiceKey(key) : Promise.resolve({ ok: true, unchecked: true });
+      Promise.resolve(probe).then(function (r) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = label;
+        if (r && r.ok) { note('ok', '✅ المفتاح صحيح والقاعدة تستجيب — سيُحفظ في هذا المتصفح.'); save(key, false); return; }
+        if (r && r.unchecked) { save(key, true); return; }
+        note('err', '<b>⚠️ لم ينجح الفحص:</b> ' + UI.esc((r && r.error) || 'سبب غير معروف') +
+          '<div style="margin-top:8px"><button class="btn btn-outline btn-sm" id="svc-force">احفظ رغم ذلك</button></div>');
+        var force = m.root.querySelector('#svc-force');
+        if (force) force.addEventListener('click', function () { save(key, true); });
+      });
+    });
+
+    var clearBtn = m.root.querySelector('#svc-clear');
+    if (clearBtn) clearBtn.addEventListener('click', function () {
+      try { localStorage.removeItem('hrc-service-key'); } catch (e) {}
+      chanState.probe = 'unknown';
+      renderUsersChannel();
+      UI.toast('warn', 'تم المسح', 'لن تُسجَّل الحسابات الجديدة في القاعدة من هذا المتصفح — مسار الدالة السحابية يبقى متاحاً.');
+      m.close();
+    });
+  }
+
   /* هل القاعدة مُعدَّة ومتّصلة؟ (يُبنى عليه: هل نُحاول المسار السحابي أصلاً) */
   function cloudReady() {
     var st = Store.cloudStatus ? Store.cloudStatus() : null;
     return !!(st && st.configured && (st.state === 'on' || st.state === 'connecting'));
   }
+
+  /* ===========================================================================
+   *  قناة إنشاء الحسابات — الحالة معروضة دائماً
+   *  ---------------------------------------------------------------------------
+   *  لماذا؟ لأن إدارة الحسابات هي الشيء الوحيد في المنظومة الذي يعتمد على
+   *  القاعدة اعتماداً كاملاً: بلا قناة صالحة لا يمكن إنشاء حساب يدخل صاحبه من
+   *  أي جهاز. وكان المدير يكتشف ذلك عند «إنشاء الحساب» برسالة خطأ تشرح ما ينقص
+   *  — بعد أن يملأ النموذج. هنا تُعرض القناة قبل فتح النموذج أصلاً، ويتغيّر
+   *  الحكم تلقائياً مع حال الاتصال وحالة المفتاح.
+   * ======================================================================== */
+  var chanState = { probe: 'unknown' };   // unknown | checking | ok | offline | deployed_no_session } انظر probeChannel
+
+  function channelInfo() {
+    var st = Store.cloudStatus ? Store.cloudStatus() : null;
+    var key = serviceKey();
+    return {
+      st: st,
+      configured: !!(st && st.configured),
+      connected: !!(st && (st.state === 'on' || st.state === 'connecting')),
+      cloudAdmin: !!(st && st.state === 'on' && st.role === 'staff' && Store.isAdmin && Store.isAdmin()),
+      hasKey: !!key,
+      probe: chanState.probe
+    };
+  }
+
+  function renderUsersChannel() {
+    var host = document.getElementById('users-channel');
+    if (!host) return;
+    var c = channelInfo();
+    var dot = function (ok, warn) {
+      return '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' +
+        (ok ? '#16a34a' : (warn ? '#d97706' : '#dc2626')) + ';margin-inline-end:7px"></span>';
+    };
+    var item = function (ok, warn, label, note) {
+      return '<div style="display:flex;align-items:flex-start;gap:2px;min-width:190px">' +
+        '<div>' + dot(ok, warn) + '</div>' +
+        '<div><div style="font-weight:600">' + UI.esc(label) + '</div>' +
+        (note ? '<div class="tiny muted">' + note + '</div>' : '') + '</div></div>';
+    };
+
+    var rows = [];
+    /* ① الجلسة السحابية */
+    rows.push(item(c.cloudAdmin, c.connected,
+      'جلسة قاعدة الشركة',
+      c.cloudAdmin ? 'أنت داخل بحساب مدير رسمي — القناة الأفضل'
+        : (c.connected ? 'الدخول الحالي محلي — إدارة الحسابات تحتاج جلسة رسمية' : 'القاعدة غير متّصلة الآن')));
+
+    /* ② الدالة السحابية */
+    var fnOk = c.probe === 'ok';
+    var fnKnown = c.probe === 'ok' || c.probe === 'deployed_no_session' || c.probe === 'not_deployed' || c.probe === 'offline';
+    rows.push(item(fnOk, fnKnown && !fnOk,
+      'الدالة السحابية (بلا أي مفتاح)',
+      c.probe === 'checking' ? 'جارٍ الفحص…'
+        : c.probe === 'ok' ? 'منشورة وتعمل بجلسة مديرك — ينشئ الحسابات من أي متصفح'
+        : c.probe === 'deployed_no_session' ? 'منشورة، لكن هذا المتصفح بلا جلسة مدير — ادخل بحسابك الرسمي'
+        : c.probe === 'not_deployed' ? 'غير منشورة — انظر docs/staff-accounts-edge.md'
+        : c.probe === 'offline' ? 'تعذّر الفحص (لا اتصال)'
+        : 'لم تُفحص بعد — اضغط «فحص القناة»'));
+
+    /* ③ مفتاح الخدمة في هذا المتصفح */
+    rows.push(item(c.hasKey, false,
+      'مفتاح الخدمة (احتياطي)',
+      c.hasKey ? 'محفوظ في هذا المتصفح — الإدارة تعمل من هنا وحدها'
+        : 'غير محفوظ — يُستعمل فقط إن لم تُنشر الدالة'));
+
+    var verdict, tone;
+    if (!c.configured) {
+      verdict = 'القاعدة غير مُعدَّة في هذه النسخة — الحسابات تُنشأ في هذا المتصفح فقط.'; tone = 'warn';
+    } else if (c.cloudAdmin && (fnOk || c.probe === 'unknown')) {
+      verdict = 'جاهز: أنشئ الحسابات وستُسجَّل في قاعدة الشركة — يدخل الموظف من أي جهاز.'; tone = 'ok';
+    } else if (c.hasKey) {
+      verdict = 'جاهز عبر مفتاح الخدمة المحفوظ — أنشئ الحسابات وستُسجَّل في قاعدة الشركة.'; tone = 'ok';
+    } else if (fnOk) {
+      verdict = 'الدالة منشورة لكن هذا المتصفح داخل محلياً: اخرج ثم ادخل بحسابك الرسمي لإنشاء الحسابات — أو أضف مفتاح الخدمة مؤقتاً.'; tone = 'warn';
+    } else {
+      verdict = 'لا قناة بعد: انشر الدالة السحابية (مرة واحدة) أو أضف مفتاح الخدمة مؤقتاً — وبلا أحدهما لن يُنشأ حساب يدخل منه الموظف من أي جهاز.'; tone = 'warn';
+    }
+
+    host.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;' +
+        'background:' + (tone === 'ok' ? '#f0fdf4' : '#fffbeb') + ';border:1px solid ' +
+        (tone === 'ok' ? '#bbf7d0' : '#fde68a') + ';border-radius:12px;padding:12px 14px">' +
+      '<div style="flex:1 1 560px;display:flex;flex-wrap:wrap;gap:16px">' + rows.join('') + '</div>' +
+      '<div style="flex:1 1 100%;font-size:.86rem;color:' + (tone === 'ok' ? '#166534' : '#92400e') + '">' +
+        (tone === 'ok' ? UI.ic('check') + ' ' : UI.ic('alert') + ' ') + UI.esc(verdict) +
+      '</div>' +
+      '<div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px">' +
+        '<button class="btn btn-outline btn-sm" data-chan="probe">' + UI.ic('refresh') +
+          (chanState.probe === 'checking' ? ' جارٍ الفحص…' : ' فحص القناة') + '</button>' +
+        '<button class="btn btn-outline btn-sm" data-chan="key">' + UI.ic('lock') +
+          (c.hasKey ? ' مفتاح الخدمة (محفوظ)' : ' إضافة مفتاح الخدمة') + '</button>' +
+        '<button class="btn btn-outline btn-sm" data-chan="help">' + UI.ic('alert') + ' ما الذي ينقص؟</button>' +
+      '</div>' +
+    '</div>';
+
+    var btns = host.querySelectorAll('[data-chan]');
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var what = b.getAttribute('data-chan');
+        if (what === 'probe') { probeChannel(true); return; }
+        if (what === 'key') { cloudKeyModal(); return; }
+        if (what === 'help') { channelHelpModal(); return; }
+      });
+    });
+  }
+
+  /* فحص القناة: نداء whoami للدالة (إجراء تشخيصي موجود فيها بلا أي تعديل عليها).
+     لا يُنشئ شيئاً ولا يعدّل شيئاً — سؤال «من أنا؟» فقط. */
+  function probeChannel(announce) {
+    if (!cloudReady()) {
+      chanState.probe = 'offline';
+      renderUsersChannel();
+      if (announce) UI.toast('warn', 'تعذّر الفحص', 'قاعدة الشركة غير متّصلة الآن — تحقق من الإنترنت.');
+      return Promise.resolve(chanState.probe);
+    }
+    chanState.probe = 'checking';
+    renderUsersChannel();
+    var p = Store.staffAdmin ? Store.staffAdmin('whoami', {})
+      : Promise.resolve({ ok: false, code: 'no_client' });
+    return Promise.resolve(p).then(function (r) {
+      var code = r && r.code;
+      if (r && r.ok) chanState.probe = 'ok';
+      else if (code === 'not_deployed') chanState.probe = 'not_deployed';
+      else if (code === 'no_token' || code === 'bad_token' || code === 'no_staff_row') chanState.probe = 'deployed_no_session';
+      else if (code === 'network') chanState.probe = 'offline';
+      else chanState.probe = 'deployed_no_session';   // رفض دور أو خطأ داخلي: الدالة موجودة
+      renderUsersChannel();
+      if (announce) {
+        if (chanState.probe === 'ok') UI.toast('ok', 'القناة جاهزة', 'الدالة السحابية تعمل بجلسة مديرك — ينشئ الحسابات بلا أي مفتاح.');
+        else if (chanState.probe === 'not_deployed') UI.toast('warn', 'الدالة غير منشورة', 'انشرها مرة واحدة (docs/staff-accounts-edge.md) أو أضف مفتاح الخدمة مؤقتاً.');
+        else if (chanState.probe === 'deployed_no_session') UI.toast('warn', 'الدالة منشورة', (r && r.error) || 'لكن هذا المتصفح بلا جلسة مدير رسمية.');
+        else UI.toast('err', 'تعذّر الفحص', 'لا اتصال بقاعدة الشركة.');
+      }
+      return chanState.probe;
+    });
+  }
+
+  /* ماذا يفعل المدير حين لا قناة؟ نُعطيه الخطوتين بيده — لا رسالة خطأ تنتهي عنده.
+     المسار الأول (الدالة) هو الموصى به، والثاني (المفتاح) مؤقّت ومعلوم الخطورة،
+     والثالث (محلي) موجود لكن مكتوب عليه ما هو: يدخل من هذا المتصفح وحده. */
+  function channelHelpModal(onLocal) {
+    var body = '<div style="display:grid;gap:14px">' +
+      '<p style="margin:0">إنشاء حساب يدخل منه الموظف من أي جهاز يحتاج قناة كتابة في قاعدة الشركة. ' +
+      'هذه هي الخيارات المتاحة الآن — بالترتيب:</p>' +
+      '<div style="border:1px solid #d7e0ef;border-radius:12px;padding:12px 14px">' +
+        '<b>① الدالة السحابية <span class="badge ok" style="font-size:.68rem">الموصى به</span></b>' +
+        '<p class="tiny muted" style="margin:6px 0 0">تُنشر مرة واحدة على Supabase (Edge Functions → Deploy a new function → الاسم: ' +
+        '<span class="mono" dir="ltr">hrc-staff-admin</span>) ثم ينشئ أي مدير الحسابات من أي متصفح <b>بلا أي مفتاح</b>. ' +
+        'الخطوات بالتفصيل في <span class="mono" dir="ltr">docs/staff-accounts-edge.md</span>.</p>' +
+      '</div>' +
+      '<div style="border:1px solid #f0d9a3;background:#fdf1d8;border-radius:12px;padding:12px 14px">' +
+        '<b>② مفتاح الخدمة <span class="badge warn" style="font-size:.68rem">مؤقّت</span></b>' +
+        '<p class="tiny" style="margin:6px 0 10px;color:#8a5c05">يعمل فوراً بلا أي نشر، لكنه مفتاح حسّاس يُحفظ في متصفحك وحده — ' +
+        'استعمله لإكمال الحسابات ثم <b>امسحه</b> من الزر نفسه.</p>' +
+        '<button class="btn btn-warn btn-sm" data-chan="key">' + UI.ic('lock') + ' إضافة مفتاح الخدمة الآن</button>' +
+      '</div>' +
+      '<div style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px">' +
+        '<b>③ حساب محلي في هذا المتصفح <span class="badge muted" style="font-size:.68rem">لا يُنصح</span></b>' +
+        '<p class="tiny muted" style="margin:6px 0 10px">يُنشأ في هذا المتصفح وحده؛ لا يدخل منه الموظف من جهازه، ' +
+        'ويُرفض تماماً لحظة تشغيل <span class="mono" dir="ltr">enforceAuth: true</span>.</p>' +
+        '<button class="btn btn-outline btn-sm" data-chan="local">إنشاء محلياً رغم ذلك</button>' +
+      '</div>' +
+    '</div>';
+    var m = UI.modal({ title: 'لا قناة لإنشاء الحسابات بعد', body: body, footer: '<button class="btn btn-outline" data-close>إغلاق</button>' });
+    if (!m) return;
+    var k = m.root.querySelector('[data-chan="key"]');
+    if (k) k.addEventListener('click', function () { m.close(); cloudKeyModal(); });
+    var l = m.root.querySelector('[data-chan="local"]');
+    if (l) l.addEventListener('click', function () { m.close(); if (onLocal) onLocal(); });
+  }
+
 
   /* الموظف كما تراه اللوحة (من القاعدة + المحلي) — بالاسم */
   function userRow(username) {
@@ -10906,6 +11179,7 @@ table.data tbody tr:hover { background: #faf8f3; }
   function renderUsersTable() {
     var tbl = document.getElementById('users-table-body');
     if (!tbl) return;
+    renderUsersChannel();
     var users = Store.listUsers();
     var cur = Store.currentUser();
     tbl.innerHTML = users.map(function (u) {
@@ -11069,7 +11343,8 @@ table.data tbody tr:hover { background: #faf8f3; }
       function createLocally() {
         var lr = Store.addUser({ username: uname, password: pass, name: name, role: role, title: utitle, active: true });
         if (!lr.ok) { formErr(lr.error); return; }
-        UI.toast('ok', 'تم الإنشاء محلياً', name + ' — محلي فقط: يدخل من هذا المتصفح. انشر الدالة السحابية (أو أضف مفتاح الخدمة) لينتقل إلى قاعدة الشركة.');
+        UI.toast('warn', 'أُنشئ في هذا المتصفح فقط',
+          name + ' — لا يدخل من أي جهاز آخر. لإدخاله في القاعدة: أضف مفتاح الخدمة أو انشر الدالة السحابية ثم أعد الإنشاء بنفس اسم المستخدم.');
         renderUsersTable();
         m.close();
       }
@@ -11079,8 +11354,17 @@ table.data tbody tr:hover { background: #faf8f3; }
         staffWrite('create', { username: uname, password: pass, name: name, role: role, title: utitle })
           .then(function (cloudR) {
             busy(false, '');
-            /* لا قناة سحابية إطلاقاً (لا دالة منشورة ولا مفتاح): وضع محلي معلوم */
-            if (!cloudR.ok && cloudR.code === 'no_key') { createLocally(); return; }
+            /* لا قناة سحابية إطلاقاً (لا دالة منشورة ولا مفتاح): لا نُنشئ حساباً
+               محلياً بصمت — كان ذلك يُوهم المدير بأن الموظف أُضيف، بينما صاحبه لا
+               يدخل من أي جهاز. نعرض عليه الخطوتين بيده، والإنشاء المحلي يبقى
+               اختياراً صريحاً داخل النافذة. */
+            if (!cloudR.ok && cloudR.code === 'no_key') {
+              /* النموذج يبقى مفتوحاً خلفها: من يضيف المفتاح ثم يُغلق النافذة يجد
+                 بياناته كما كتبها فيضغط «إنشاء الحساب» مرة أخرى. */
+              probeChannel(false);
+              channelHelpModal(function () { createLocally(); });
+              return;
+            }
             if (!cloudR.ok) {
               /* لا حساب محلي: لا نُبقى أثراً لحساب لا يستطيع صاحبه الدخول */
               formErr((cloudR.error || 'تعذّر إنشاء الحساب في القاعدة') +
@@ -12954,39 +13238,7 @@ table.data tbody tr:hover { background: #faf8f3; }
 
     /* زر ربط السحابة (Service Role Key) */
     var cloudKeyBtn = document.getElementById('btn-cloud-key');
-    if (cloudKeyBtn) cloudKeyBtn.addEventListener('click', function () {
-      var current = '';
-      try { current = localStorage.getItem('hrc-service-key') || ''; } catch (e) {}
-      var body = '<div style="display:grid;gap:14px">' +
-        '<p style="margin:0;color:var(--muted);font-size:.9rem">مفتاح الخدمة (Service Role Key) يسمح بإنشاء حسابات الموظفين في Supabase Auth تلقائياً من هنا — بدون ما تفتح Supabase يدوياً.</p>' +
-        '<div class="field"><label for="svc-key">Service Role Key</label>' +
-          '<input type="password" id="svc-key" value="' + UI.esc(current) + '" placeholder="eyJhbGciOiJIUzI1NiIs..." dir="ltr" class="mono" style="font-size:.82rem">' +
-        '</div>' +
-        '<div style="background:#fdf1d8;border:1px solid #f0d9a3;border-radius:10px;padding:10px 14px;font-size:.82rem;color:#8a5c05">' +
-          '<b>⚠️ تنبيه:</b> هالمفتاح حساس — لا تشاركه مع أحد. يُحفظ في متصفحك فقط (localStorage) ولا يُرسل لأي جهة.' +
-        '</div>' +
-        '<p style="margin:0;font-size:.82rem;color:var(--muted)">تلاقيه في: Supabase Dashboard → ⚙️ Settings → API → service_role (secret)</p>' +
-      '</div>';
-      var footer = '<button class="btn btn-outline" data-close>إلغاء</button>' +
-        (current ? '<button class="btn btn-danger btn-sm" id="svc-clear">مسح المفتاح</button>' : '') +
-        '<button class="btn btn-lapis" id="svc-save">' + UI.ic('check') + ' حفظ</button>';
-      var m = UI.modal({ title: 'ربط السحابة — Service Role Key', body: body, footer: footer });
-      if (!m) return;
-      var saveBtn = m.root.querySelector('#svc-save');
-      if (saveBtn) saveBtn.addEventListener('click', function () {
-        var key = document.getElementById('svc-key').value.trim();
-        if (!key) { UI.toast('err', 'خطأ', 'أدخل المفتاح'); return; }
-        try { localStorage.setItem('hrc-service-key', key); } catch (e) {}
-        UI.toast('ok', 'تم الحفظ', 'الآن لما تنشئ موظف جديد يُسجّل في Supabase تلقائياً');
-        m.close();
-      });
-      var clearBtn = m.root.querySelector('#svc-clear');
-      if (clearBtn) clearBtn.addEventListener('click', function () {
-        try { localStorage.removeItem('hrc-service-key'); } catch (e) {}
-        UI.toast('warn', 'تم المسح', 'لن يُسجّل الموظفون الجدد في السحابة');
-        m.close();
-      });
-    });
+    if (cloudKeyBtn) cloudKeyBtn.addEventListener('click', function () { cloudKeyModal(); });
 
     var ea = document.getElementById('btn-export-audit');
     if (ea) ea.addEventListener('click', function () {

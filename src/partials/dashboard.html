@@ -443,6 +443,12 @@
             <button class="btn btn-outline btn-sm" id="btn-cloud-key" title="مفتاح Supabase للتسجيل في القاعدة"><svg class="ic"><use href="#i-server"/></svg> ربط السحابة</button>
           </div>
           <div class="panel-body" style="padding:0">
+            <!-- قناة إنشاء الحسابات: تُرسم من dashboard.js (renderUsersChannel) وتقول
+                 للمدير قبل فتح النموذج: أنشئ الحسابات ← ستُسجَّل في قاعدة الشركة، أم
+                 لا قناة بعد (مع الخطوة المطلوبة). بلا هذا الشريط يكتشف المدير الأمر
+                 عند أول «إنشاء الحساب» برسالة خطأ — أو الأسوأ: يُنشئ حساباً محلياً
+                 يُوهمه أن الموظف أُضيف بينما صاحبه لا يدخل من أي جهاز. -->
+            <div id="users-channel" style="margin:14px 14px 0"></div>
             <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
               <div class="table-scroll"><table class="data" style="min-width:520px;margin:0">
                 <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
