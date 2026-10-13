@@ -109,6 +109,22 @@ function makeFakeSupabase(scenario) {
         }
         return Promise.resolve({ data: { ok: true }, error: null, status: 200, statusText: 'OK' });
       },
+      /* الدالة السحابية hrc-staff-admin: الصفحة تفحصها بـ whoami.
+         scenario.staffFn: 'ok' | 'not_admin' | 'error' — وأي شيء آخر = غير منشورة (404). */
+      functions: {
+        invoke: (name, opts) => {
+          if (scenario.staffFn === 'ok') {
+            return Promise.resolve({ data: { ok: true, staff: { username: 'admin', full_name: 'المدير العام', role: 'admin', active: true } }, error: null });
+          }
+          if (scenario.staffFn === 'not_admin') {
+            return Promise.resolve({ data: { ok: false, code: 'not_admin', error: 'هذه الصلاحية للمدير العام فقط' }, error: null });
+          }
+          if (scenario.staffFn === 'error') {
+            return Promise.resolve({ data: null, error: { message: 'Edge Function returned a non-2xx status code', context: { status: 500 } } });
+          }
+          return Promise.resolve({ data: null, error: { message: 'Edge Function returned a non-2xx status code', context: { status: 404 } } });
+        }
+      },
       auth: {
         getSession: () => Promise.resolve({ data: { session: null } }),
         signInWithPassword: (creds) => Promise.resolve(
@@ -310,6 +326,7 @@ console.log('\n▌ فحص الجاهزية — مشروع مُعدّ بالكا�
     /* حساب موظف مُعدّ بالكامل: كل شيء يُقرأ (لا RLS مانعة) */
     tableState: () => 'ok',
     rows: (t) => (t === 'public_jobs' ? [{ code: 'HRC-1042' }] : (t === 'staff' ? [{ id: 's1', username: 'admin', role: 'admin' }] : [])),
+    staffFn: 'ok',
     rpc: (name) => (name === 'verify_form'
       ? { data: { ok: false, error: 'لا توجد استمارة بهذا الرقم' }, error: null }
       : (name === 'request_form' ? { data: { ok: false, error: 'الاسم غير صالح' }, error: null } : null))
@@ -328,6 +345,7 @@ console.log('\n▌ فحص الجاهزية — مشروع مُعدّ بالكا�
   check('حساب الموظف: السطر في brc.staff موجود والدور مقروء', /مرتبط بسطر في brc\.staff/.test(stf) && /admin/.test(stf), stf.slice(0, 200));
   check('حساب الموظف: الإدراج نجح', /الكتابة: إدراج وظيفة/.test(stf) && !/إدراج وظيفة[^|]*✗/.test(stf), stf.slice(0, 260));
   check('حساب الموظف: الحذف نجح (لا يبقى أثر للفحص)', /حذف الوظيفة الاختبارية/.test(stf) && /حُذفت/.test(stf), stf.slice(0, 320));
+  check('الدالة السحابية مُفحوصة وتعمل (whoami)', /دالة إدارة الحسابات \(hrc-staff-admin\)/.test(stf) && /منشورة وتعمل/.test(stf), stf.slice(0, 260));
   check('الخلاصة تقول: جاهز للتسليم', /جاهز للتسليم ✓/.test(stf), stf.slice(-200));
   check('الحكم النهائي أعلى الصفحة يقول جاهز للتسليم', /جاهز للتسليم/.test(doc.getElementById('verdict').textContent) &&
     !/الإعداد سليم/.test(doc.getElementById('verdict').textContent),
@@ -368,6 +386,37 @@ console.log('\n▌ فحص الجاهزية — الكتابة مرفوضة (نق
   check('التوجيه إلى منح §9 وسياسات §8', /schema\.sql/.test(stf));
   check('الخلاصة تقول: غير جاهز للتسليم', /غير جاهز للتسليم/.test(stf), stf.slice(-160));
   check('لا يُعلن الجاهزية في الحكم النهائي', !/جاهز للتسليم\./.test(doc.getElementById('verdict').textContent));
+}
+
+console.log('\n▌ فحص الجاهزية — الدالة السحابية منشورة لكن الحساب ليس مديراً');
+{
+  const { w, doc } = await loadPage({
+    reachable: true,
+    tableState: () => 'ok',
+    rows: (t) => (t === 'public_jobs' ? [{ code: 'HRC-1042' }] : (t === 'staff' ? [{ id: 's1', username: 'staff', role: 'staff' }] : [])),
+    staffFn: 'not_admin',
+    rpc: (name) => ({ data: { ok: false }, error: null })
+  });
+  await runStaffCheck(w, doc, 'staff');
+  const stf = chipsOf(doc, 'ready-staff').join(' | ');
+  check('يُقال إن الحساب ليس مديراً (إدارة الحسابات للمدير)', /دالة إدارة الحسابات \(hrc-staff-admin\)/.test(stf) && /ليس مديراً/.test(stf), stf.slice(0, 260));
+}
+
+console.log('\n▌ فحص الجاهزية — الدالة السحابية غير منشورة (404)');
+{
+  const { w, doc } = await loadPage({
+    reachable: true,
+    tableState: () => 'ok',
+    rows: (t) => (t === 'public_jobs' ? [] : (t === 'staff' ? [{ id: 's1', username: 'admin', role: 'admin' }] : [])),
+    rpc: (name) => ({ data: { ok: false }, error: null })
+  });
+  await runStaffCheck(w, doc);
+  const stf = chipsOf(doc, 'ready-staff').join(' | ');
+  check('يُرشد إلى نشر الدالة بالاسم الصحيح', /hrc-staff-admin/.test(stf) && /غير منشورة/.test(stf), stf.slice(0, 260));
+  check('تُذكر وثيقة النشر (staff-accounts-edge)', /staff-accounts-edge/.test(stf), stf.slice(0, 300));
+  check('الحكم النهائي يذكّر بنشر الدالة (لا «جاهز» ناقص)',
+    /hrc-staff-admin/.test(doc.getElementById('verdict').textContent) && /غير منشورة|staff-accounts-edge/.test(doc.getElementById('verdict').textContent),
+    doc.getElementById('verdict').textContent.replace(/\s+/g, ' ').slice(0, 200));
 }
 
 console.log('\n▌ فحص الجاهزية — كلمة مرور خاطئة');

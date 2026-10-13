@@ -505,6 +505,39 @@
       }
     } catch (e) { chip(staffBox, 'الحساب مرتبط بسطر في brc.staff', 'bad', String(e && e.message || e)); }
 
+    /* 2ب) الدالة السحابية hrc-staff-admin — عليها تُبنى إدارة حسابات الموظفين
+       بلا أي مفتاح خدمة في المتصفح. الفحص «whoami» فقط: لا يُنشئ ولا يعدّل
+       ولا يحذف شيئاً. النتائج الأربع الممكنة تشرح نفسها للمدير:
+         • منشورة وتعمل (وأنت مدير)   ← المطلوب
+         • غير منشورة (404)           ← انشرها: docs/staff-accounts-edge.md
+         • منشورة وحسابك ليس مديراً   ← إدارة الحسابات للمدير العام فقط
+         • خطأ آخر                    ← يُعرض نصّه كما هو */
+    var staffFnState = null;
+    try {
+      var fnRes = await withTimeout(staffSb.functions.invoke('hrc-staff-admin', { body: { action: 'whoami' } }), 'hrc-staff-admin');
+      var fnErr = fnRes && fnRes.error;
+      var fnData = (fnRes && fnRes.data) || {};
+      if (!fnErr && fnData && fnData.ok === true && fnData.staff) {
+        staffFnState = 'ok';
+        chip(staffBox, 'دالة إدارة الحسابات (hrc-staff-admin)', 'ok',
+          'منشورة وتعمل — أنت: ' + (fnData.staff.full_name || fnData.staff.username) +
+          ' (' + (fnData.staff.role === 'admin' ? 'مدير عام' : 'موظف') + ')');
+      } else if (fnErr && fnErr.context && fnErr.context.status === 404) {
+        staffFnState = 'not_deployed';
+        chip(staffBox, 'دالة إدارة الحسابات (hrc-staff-admin)', 'warn',
+          'غير منشورة بعد — Edge Functions ← Deploy a new function بالاسم hrc-staff-admin (docs/staff-accounts-edge.md). حتى ذلك الحين إدارة الحسابات تحتاج مفتاح الخدمة.');
+      } else if (fnData && fnData.code === 'not_admin') {
+        staffFnState = 'not_admin';
+        chip(staffBox, 'دالة إدارة الحسابات (hrc-staff-admin)', 'warn',
+          'منشورة وتعمل، لكن هذا الحساب ليس مديراً — إدارة حسابات الموظفين للمدير العام فقط.');
+      } else if (fnData && fnData.ok === false && fnData.error) {
+        chip(staffBox, 'دالة إدارة الحسابات (hrc-staff-admin)', 'bad', fnData.error);
+      } else {
+        chip(staffBox, 'دالة إدارة الحسابات (hrc-staff-admin)', 'bad',
+          (fnErr && fnErr.message) || 'رد غير متوقّع من الدالة');
+      }
+    } catch (e) { chip(staffBox, 'دالة إدارة الحسابات (hrc-staff-admin)', 'bad', String(e && e.message || e)); }
+
     /* 3) قراءة الإعدادات والوظائف (منح + سياسات) */
     try {
       var st2 = await withTimeout(staffSb.from('settings').select('*'), 'settings');
@@ -573,7 +606,7 @@
     try { await staffSb.auth.signOut(); } catch (e) { /* تجاهل */ }
 
     var badCount = window.__brcReadyBad || 0;
-    var done = summarize(staffBox, 8 - badCount, badCount,
+    var done = summarize(staffBox, 9 - badCount, badCount,
       'جاهز للتسليم ✓ — الدخول والقراءة والكتابة والحذف كلها تعمل من القاعدة.',
       'النظام غير جاهز للتسليم بعد: راجع البنود الفاشلة أعلاه. لا تُسلّم قبل أن تصير كلها ✓.');
     window.__brcStaffDone = true;
@@ -583,7 +616,12 @@
       v.innerHTML = '<b style="color:#10693a">✓ جاهز للتسليم.</b><br>' +
         'الاتصال سليم، ومسار الزائر يعمل، والدخول والكتابة يعملان من القاعدة بحساب موظف حقيقي.<br>' +
         '<span style="color:#5b6b85">الخطوة الأخيرة الموصى بها: اجعل <code>enforceAuth: true</code> في ' +
-        '<code>assets/js/supabase-config.js</code> لإغلاق الدخول بكلمات مرور الكود نهائياً.</span>';
+        '<code>assets/js/supabase-config.js</code> لإغلاق الدخول بكلمات مرور الكود نهائياً.</span>' +
+        (staffFnState === 'ok' ? '' :
+          '\n<span style="color:#8a5c05">⚠️ دالة إدارة الحسابات (hrc-staff-admin) ' +
+          (staffFnState === 'not_admin' ? 'تعمل لكن هذا الحساب ليس مديراً' : 'غير منشورة بعد') +
+          ' — بنشرها يدير أي مدير حسابات موظفيه من أي متصفح بلا أي مفتاح في المتصفح ' +
+          '(docs/staff-accounts-edge.md).</span>');
     }
   }
 
