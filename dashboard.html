@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=6a745b027f">
+<link rel="stylesheet" href="assets/css/style.css?v=cc79c0bcaf">
 </head>
 <body>
 <!-- ===========================================================================
@@ -724,6 +724,12 @@
             <button class="btn btn-outline btn-sm" id="btn-cloud-key" title="مفتاح Supabase للتسجيل في القاعدة"><svg class="ic"><use href="#i-server"/></svg> ربط السحابة</button>
           </div>
           <div class="panel-body" style="padding:0">
+            <!-- قناة إنشاء الحسابات: تُرسم من dashboard.js (renderUsersChannel) وتقول
+                 للمدير قبل فتح النموذج: أنشئ الحسابات ← ستُسجَّل في قاعدة الشركة، أم
+                 لا قناة بعد (مع الخطوة المطلوبة). بلا هذا الشريط يكتشف المدير الأمر
+                 عند أول «إنشاء الحساب» برسالة خطأ — أو الأسوأ: يُنشئ حساباً محلياً
+                 يُوهمه أن الموظف أُضيف بينما صاحبه لا يدخل من أي جهاز. -->
+            <div id="users-channel" style="margin:14px 14px 0"></div>
             <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
               <div class="table-scroll"><table class="data" style="min-width:520px;margin:0">
                 <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
@@ -909,17 +915,17 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=6a745b027f"></script>
-<script src="assets/vendor/supabase.js?v=6a745b027f"></script>
-<script src="assets/js/supabase-config.js?v=6a745b027f"></script>
-<script src="assets/js/qr.js?v=6a745b027f"></script>
-<script src="assets/js/cloud.js?v=6a745b027f"></script>
-<script src="assets/js/cloud-auth.js?v=6a745b027f"></script>
-<script src="assets/js/cloud-sync.js?v=6a745b027f"></script>
-<script src="assets/js/store.js?v=6a745b027f"></script>
-<script src="assets/js/ui.js?v=6a745b027f"></script>
-<script src="assets/js/nav.js?v=6a745b027f"></script>
-<script src="assets/js/voucher.js?v=6a745b027f"></script>
-<script src="assets/js/dashboard.js?v=6a745b027f"></script>
+<script src="assets/js/config.js?v=cc79c0bcaf"></script>
+<script src="assets/vendor/supabase.js?v=cc79c0bcaf"></script>
+<script src="assets/js/supabase-config.js?v=cc79c0bcaf"></script>
+<script src="assets/js/qr.js?v=cc79c0bcaf"></script>
+<script src="assets/js/cloud.js?v=cc79c0bcaf"></script>
+<script src="assets/js/cloud-auth.js?v=cc79c0bcaf"></script>
+<script src="assets/js/cloud-sync.js?v=cc79c0bcaf"></script>
+<script src="assets/js/store.js?v=cc79c0bcaf"></script>
+<script src="assets/js/ui.js?v=cc79c0bcaf"></script>
+<script src="assets/js/nav.js?v=cc79c0bcaf"></script>
+<script src="assets/js/voucher.js?v=cc79c0bcaf"></script>
+<script src="assets/js/dashboard.js?v=cc79c0bcaf"></script>
 </body>
 </html>

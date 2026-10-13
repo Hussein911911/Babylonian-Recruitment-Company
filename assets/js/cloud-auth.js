@@ -550,6 +550,35 @@
       } catch (e) { return false; }
     }
 
+    /* ---------------------------------------------------------------------------
+     *  فحص مفتاح الخدمة **قبل** حفظه
+     *  ---------------------------------------------------------------------------
+     *  لماذا؟ المفتاح يُحفظ في متصفح المدير ثم تُبنى عليه كل عمليات الحسابات؛ ولو
+     *  كان خاطئاً (مفتاح anon مثلاً، أو من مشروع آخر) فالخطأ لا يظهر إلا لحظة
+     *  إنشاء أول موظف — ويظهر غامضاً. هنا نقرأ سطراً واحداً من brc.staff بالمفتاح،
+     *  فنُميّز ثلاث حالات مختلفة العلاج: مفتاح مرفوض · سكيما غير مكشوفة · شبكة.
+     * ------------------------------------------------------------------------ */
+    function probeServiceKey(key) {
+      if (!key) return Promise.resolve({ ok: false, code: 'no_key', error: 'لم يُدخل أي مفتاح' });
+      return staffRest(key, '?select=id&limit=1').then(function (res) {
+        if (res && res.ok) return { ok: true };
+        var body = (res && res.body) || {};
+        var msg = String(body.message || body.error_description || (res && res.error) || '');
+        var pgCode = String(body.code || '');
+        if (res && (res.status === 401 || res.status === 403)) {
+          return { ok: false, code: 'bad_key', status: res.status,
+            error: 'المفتاح مرفوض من القاعدة — تأكد أنه «service_role» من نفس المشروع (Settings → API Keys)' };
+        }
+        if (pgCode === 'PGRST205' || /schema|does not exist/i.test(msg)) {
+          return { ok: false, code: 'schema', status: (res && res.status) || 0,
+            error: 'المفتاح يبدو صحيحاً لكن سكيما brc غير مكشوفة — أضفها في Project Settings → API → Exposed schemas' };
+        }
+        if (res && res.status === 0) return { ok: false, code: 'network', error: 'تعذّر الوصول إلى القاعدة — تحقق من الاتصال بالإنترنت' };
+        return { ok: false, code: 'probe_failed', status: (res && res.status) || 0,
+          error: 'تعذّر التحقق من المفتاح: ' + (msg || 'رد غير متوقع') };
+      });
+    }
+
     /* ==========================================================================
      *  إدارة الحسابات عبر الدالة السحابية hrc-staff-admin — **بلا أي مفتاح في المتصفح**
      *  --------------------------------------------------------------------------
@@ -563,6 +592,12 @@
      *  إن لم تكن الدالة منشورة بعد نُبلّغ not_deployed فيسلك المستدعي مسار
      *  مفتاح الخدمة إن وُجد (توافقية)، وإلا الوضع المحلي.
      * ======================================================================== */
+    /* ⚠️ نصوص المكتبة الإنجليزية التي تصل للمدير عند فشل النقل (لا عند رفض
+       الصلاحية): «Failed to send a request to the Edge Function» وغيرها. تُستبدل
+       بجملة عربية، لأنها تظهر في نموذج الموظف مباشرةً ولا معنى لها للمستخدم. */
+    var NET_FALLBACK = 'تعذّر الوصول إلى دالة الحسابات — تحقق من الاتصال بالإنترنت ثم أعد المحاولة';
+    function looksEnglish(s) { return !!s && !/[\u0600-\u06FF]/.test(s) && /[A-Za-z]{4}/.test(s); }
+
     function fnErrorOf(err) {
       var status = (err && err.context && err.context.status) || 0;
       function done(body) {
@@ -575,6 +610,13 @@
         }
         var msg = (body && (body.error || body.message)) || (err && err.message) || 'خطأ غير معروف';
         var code = (body && body.code) || 'fn_error';
+        /* لا جسم رد (فشل نقل) أو نص إنجليزي بلا جملة عربية → جملة عربية موحّدة،
+           وcode='network' ليعرف المستدعي أن هذا «لا وصول» لا «رفض صلاحية»:
+           الأول يجوز معه المسار الاحتياطي (مفتاح الخدمة)، والثاني لا يجوز. */
+        if (!body && (status === 0 || status >= 500)) {
+          return { ok: false, status: status, code: 'network', error: NET_FALLBACK };
+        }
+        if (looksEnglish(msg)) msg = NET_FALLBACK;
         return { ok: false, status: status, code: code, error: msg };
       }
       var ctx = err && err.context;
@@ -613,6 +655,7 @@
       createAccount: createAccount, updateAccount: updateAccount,
       deleteAccount: deleteAccount, setPassword: setPassword,
       findAuthUser: findAuthUser, looksUsable: looksUsable,
+      probeServiceKey: probeServiceKey,
       staffAdmin: staffAdmin
     };
   }

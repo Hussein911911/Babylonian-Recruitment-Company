@@ -2420,6 +2420,16 @@
     return auth.setPassword(serviceKey, authId, newPassword);
   }
 
+  /* فحص مفتاح الخدمة قبل حفظه (انظر الشرح في cloud-auth.js) */
+  function probeServiceKey(serviceKey) {
+    if (!root.HRCCloudAuth || !cloud.client) {
+      return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
+    }
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    if (!auth.probeServiceKey) return Promise.resolve({ ok: true, unchecked: true });
+    return auth.probeServiceKey(serviceKey);
+  }
+
   /* ---------------------------------------------------------------------------
    *  إدارة الحسابات عبر الدالة السحابية (hrc-staff-admin) — بلا أي مفتاح في المتصفح
    *  ---------------------------------------------------------------------------
@@ -2541,6 +2551,7 @@
     signIn: signIn, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
     createCloudAccount: createCloudAccount, updateCloudAccount: updateCloudAccount,
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
+    probeServiceKey: probeServiceKey,
     staffAdmin: staffAdmin,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,

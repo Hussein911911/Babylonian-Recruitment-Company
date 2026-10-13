@@ -62,6 +62,12 @@ window.__brcMock = (function () {
       invoke: function (name, o) {
         var body = (o && o.body) || {};
         window.__state.fnCalls = (window.__state.fnCalls || []).concat([{ name: name, body: body }]);
+        /* انقطاع الشبكة: نفس ما تنتجه المكتبة الحقيقية عند فشل النقل — خطأ بلا
+           context (FunctionsFetchError) برسالة إنجليزية. نُحاكيه لنثبت أن المستخدم
+           يرى عربية وأن المسار الاحتياطي (مفتاح الخدمة) يُجرَّب. */
+        if (window.__state.fnOn === 'network') {
+          return Promise.resolve({ data: null, error: { name: 'FunctionsFetchError', message: 'Failed to send a request to the Edge Function' } });
+        }
         if (window.__state.fnOn === 'noSession') {
           return Promise.resolve({ data: { ok: false, code: 'no_token', error: 'الجلسة مطلوبة — سجّل الدخول كمدير' }, error: null });
         }
@@ -92,6 +98,10 @@ window.__brcMock = (function () {
           var au = st.authUsers.filter(function (x) { return x.id === body.authId; })[0];
           if (au) au.password = body.password;
           return Promise.resolve({ data: { ok: true }, error: null });
+        }
+        /* إجراء تشخيصي: يُستعمل من «فحص القناة» في اللوحة — لا يعدّل شيئاً */
+        if (body.action === 'whoami') {
+          return Promise.resolve({ data: { ok: true, staff: st.staff[0] }, error: null });
         }
         return Promise.resolve({ data: { ok: false, code: 'bad_action', error: 'إجراء غير معروف' }, error: null });
       }
@@ -486,6 +496,101 @@ check('لم يُنشأ حساب محلي يوهم المدير', !app4.window.HR
 check('لم يُنشأ أي مستخدم Auth', !state4.authUsers.some((u) => u.email === 'marwan@hrc-babil.com'));
 
 app4.dom.window.close && app4.dom.window.close();
+
+/* ===========================================================================
+ *  10) لا دالة ولا مفتاح: المدير يُوجَّه إلى القناة — لا حساب محلي صامت
+ *      (كان النظام يُنشئ حساباً محلياً ويُخبر المدير بعدها؛ فيظن أن الموظف أُضيف
+ *       وهو لا يدخل من أي جهاز. الصواب: الخطوة المطلوبة تُعرض قبل الإنشاء)
+ * =========================================================================== */
+step(10, 'لا دالة ولا مفتاح: الخطوة المطلوبة تُعرض بدل حساب محلي صامت');
+const state5 = makeState();            // fnOn غير مفعّل = الدالة غير منشورة
+const app5 = await open(state5);
+login(app5.window, app5.doc, 'admin', ADMIN_PASS);
+await sleep(250);
+app5.doc.querySelector('#side-nav button[data-view="settings"]').click();
+await sleep(120);
+
+const chanStrip = app5.doc.getElementById('users-channel');
+check('شريط قناة الحسابات ظاهر في الإعدادات', !!chanStrip && chanStrip.textContent.trim().length > 0,
+  chanStrip && chanStrip.textContent.slice(0, 80));
+check('الشريط يصرّح بأنه لا قناة بعد (لا حساب يدخل من أي جهاز)',
+  /لا قناة/.test(chanStrip.textContent), chanStrip.textContent.slice(0, 160));
+check('الشريط يذكر مفتاح الخدمة كاحتياطي', /مفتاح الخدمة/.test(chanStrip.textContent));
+
+app5.doc.getElementById('btn-add-user').click();
+await sleep(80);
+app5.doc.getElementById('uf-name').value = 'علي حسن';
+app5.doc.getElementById('uf-user').value = 'ali';
+app5.doc.getElementById('uf-pass').value = 'Ali@12345';
+app5.doc.getElementById('uf-save').click();
+await sleep(350);
+
+/* آخر نافذة في الـDOM = نافذة القناة (نموذج الموظف يبقى مفتوحاً خلفها عمداً
+   ليجد المدير بياناته كما كتبها لو أضاف المفتاح وأعاد المحاولة) */
+const modals5 = [...app5.doc.querySelectorAll('#modal-root .modal')];
+const helpModal = modals5[modals5.length - 1];
+const helpText = helpModal ? helpModal.textContent : '';
+check('نافذة «لا قناة لإنشاء الحسابات» ظهرت', modals5.length === 2 && /لا قناة لإنشاء الحسابات/.test(helpText),
+  'عدد النوافذ: ' + modals5.length + ' | ' + helpText.slice(0, 120));
+check('تعرض خطوة الدالة السحابية (الموصى بها)', /الدالة السحابية/.test(helpText) && /hrc-staff-admin/.test(helpText));
+check('تعرض خطوة مفتاح الخدمة فوراً', /إضافة مفتاح الخدمة الآن/.test(helpText));
+check('تعرض الخيار المحلي صراحةً بتحذيره', /لا يُنصح/.test(helpText) && /إنشاء محلياً/.test(helpText));
+check('لم يُنشأ حساب محلي بصمت', !app5.window.HRCStore.listUsers().some((u) => u.username === 'ali'),
+  JSON.stringify(app5.window.HRCStore.listUsers().map((u) => u.username)));
+check('لم يُنشأ أي مستخدم Auth', !state5.authUsers.some((u) => u.email === 'ali@hrc-babil.com'));
+
+/* زر الدالة داخل النافذة يفتح نافذة المفتاح مباشرةً */
+helpModal.querySelector('[data-chan="key"]').click();
+await sleep(120);
+check('زر «إضافة مفتاح الخدمة الآن» يفتح نافذة المفتاح', !!app5.doc.getElementById('svc-key'));
+
+/* «فحص القناة»: نداء whoami للدالة — بلا إنشاء ولا تعديل */
+app5.doc.querySelector('#modal-root [data-close]').click();
+await sleep(60);
+const probeBtn = chanStrip.querySelector('[data-chan="probe"]');
+check('زر «فحص القناة» موجود', !!probeBtn);
+probeBtn.click();
+await sleep(200);
+check('الفحص نادى الدالة بإجراء whoami (تشخيص لا تعديل)',
+  (state5.fnCalls || []).some((c) => c.name === 'hrc-staff-admin' && c.body.action === 'whoami'),
+  JSON.stringify((state5.fnCalls || []).map((c) => c.body.action)));
+check('الفحص لم يُنشئ أي حساب', !state5.authUsers.length && !state5.staff.some((s) => s.username === 'ali'));
+check('الشريط يقول الآن إن الدالة غير منشورة',
+  /غير منشورة/.test(app5.doc.getElementById('users-channel').textContent),
+  app5.doc.getElementById('users-channel').textContent.slice(0, 200));
+
+app5.dom.window.close && app5.dom.window.close();
+
+/* ===========================================================================
+ *  11) انقطاع الشبكة: لا نص إنجليزي للمدير — ويُجرَّب المفتاح المحفوظ
+ * =========================================================================== */
+step(11, 'انقطاع الشبكة: رسالة عربية، والمسار الاحتياطي (المفتاح) يعمل');
+const state6 = makeState();
+state6.fnOn = 'network';               // كل نداء للدالة يفشل في النقل
+const app6 = await open(state6);
+login(app6.window, app6.doc, 'admin', ADMIN_PASS);
+await sleep(250);
+app6.doc.querySelector('#side-nav button[data-view="settings"]').click();
+await sleep(120);
+app6.window.localStorage.setItem('hrc-service-key', SERVICE_KEY);
+
+app6.doc.getElementById('btn-add-user').click();
+await sleep(80);
+app6.doc.getElementById('uf-name').value = 'سارة جواد';
+app6.doc.getElementById('uf-user').value = 'sara';
+app6.doc.getElementById('uf-pass').value = 'Sara@12345';
+app6.doc.getElementById('uf-save').click();
+await sleep(400);
+
+check('انقطاع الشبكة لا يمنع الإنشاء عبر المفتاح المحفوظ',
+  state6.staff.some((s) => s.username === 'sara'),
+  JSON.stringify(state6.staff.map((s) => s.username)));
+check('مستخدم Auth أُنشئ بالبريد المشتقّ', state6.authUsers.some((u) => u.email === 'sara@hrc-babil.com'));
+const errBox6 = app6.doc.getElementById('user-form-err');
+const shown6 = errBox6 && !errBox6.classList.contains('hidden') ? errBox6.textContent : '';
+check('لا نص إنجليزي ظاهر للمدير في أي رسالة', !/Failed|fetch|Function/i.test(shown6), shown6.slice(0, 120));
+
+app6.dom.window.close && app6.dom.window.close();
 
 app.dom.window.close && app.dom.window.close();
 app2.dom.window.close && app2.dom.window.close();
