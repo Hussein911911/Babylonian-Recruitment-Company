@@ -98,6 +98,7 @@
       +   'background:linear-gradient(180deg,rgba(239,231,214,.94),rgba(233,222,199,.94));}'
       + '.hc-codebox .clbl{font-size:3.7pt;font-weight:900;color:#6b5320;text-align:center;}'
       + '.hc-codebox .code{font-size:8.6pt;font-weight:900;letter-spacing:.18em;color:#231a06;direction:ltr;text-align:center;line-height:1.2;}'
+      + '.hc-codes.many{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7mm;}.hc-codes.many .hc-codebox{padding:.7mm .3mm;border-radius:1mm;}.hc-codes.many .code{font-size:4.8pt;letter-spacing:0;}.hc-codes.many .clbl{font-size:3pt;}'
       + '.hc-terms{list-style:none;margin:1.6mm 0 0;position:relative;z-index:2;display:flex;flex-direction:column;gap:.75mm;padding:0;}'
       + '.hc-terms li{font-size:3.7pt;line-height:1.55;color:rgba(249,246,239,.92);padding-inline-start:2.6mm;position:relative;}'
       + '.hc-terms li::before{content:"★";position:absolute;inset-inline-start:0;top:.2mm;font-size:3pt;color:#c8a24a;}'
@@ -202,8 +203,8 @@
       +       '<div class="name" style="font-size:4.6pt;line-height:1.7;letter-spacing:0">' + (blank
             ? 'بطاقة فارغة — تُفعّل عند البيع وتُعبّأ استمارة الزبون بنفس الباركود'
             : 'بيانات الزبون مطبوعة على استمارة التوظيف المرافقة — بنفس الباركود') + '</div>'
-      +     '<div class="lbl" style="margin-top:.8mm">الفرصتان</div>'
-      +       '<div class="name" style="font-size:4.6pt;line-height:1.7">فرصتان مستقلتان — رمز كل فرصة بظهر البطاقة</div></div>'
+      +     '<div class="lbl" style="margin-top:.8mm">فرص البطاقة</div>'
+      +       '<div class="name" style="font-size:4.6pt;line-height:1.7">' + (attempts.length === 2 ? 'فرصتان مستقلتان' : attempts.length + ' فرص مستقلة') + ' — رمز كل فرصة بظهر البطاقة</div></div>'
       +     CHIP
       +   '</div>'
       +   '<div class="hc-jobs">'
@@ -213,7 +214,7 @@
       +   '<div class="hc-bot">'
       +     '<div class="valid">'
       +       validLine
-      +       '<div class="perms">فرصتان مستقلتان · للاستفسار: نقطة البيع أو مقر الشركة</div>'
+      +       '<div class="perms">' + (attempts.length === 2 ? 'فرصتان مستقلتان' : attempts.length + ' فرص مستقلة') + ' · للاستفسار: نقطة البيع أو مقر الشركة</div>'
       +     '</div>'
       +     '<div class="qr"><div class="box hrc-qr-slot">' + qrSvg(cUrl, 132) + '</div></div>'
       +   '</div>'
@@ -222,8 +223,6 @@
 
   /* ======================= الوجه الخلفي ======================= */
   function backHtml(app, attempts) {
-    var c1 = attempts[0] ? attempts[0].code : '';
-    var c2 = attempts[1] ? attempts[1].code : '';
     return ''
       + '<div class="hrc-card">'
       +   '<div class="frame"></div><div class="shine"></div>'
@@ -232,13 +231,13 @@
       +     '<span class="txt">AL-HADAF RECRUITMENT COMPANY · BABEL — AL-HILLAH</span>'
       +     '<svg class="st" style="color:#c8a24a" viewBox="0 0 24 24"><use href="#i-star8" xlink:href="#i-star8"/></svg>'
       +   '</div>'
-      +   '<div class="hc-codes">'
-      +     '<div class="hc-codebox"><div class="clbl">رمز الفرصة الأولى</div>'
-      +       '<div class="code">' + esc(fmtCode(c1)) + '</div></div>'
-      +     '<div class="hc-codebox"><div class="clbl">رمز الفرصة الثانية</div>'
-      +       '<div class="code">' + esc(fmtCode(c2)) + '</div></div>'
+      +   '<div class="hc-codes' + (attempts.length > 2 ? ' many' : '') + '">'
+      +     attempts.map(function (t, i) {
+              return '<div class="hc-codebox"><div class="clbl">رمز الفرصة ' + (i + 1) + '</div>' +
+                '<div class="code">' + esc(fmtCode(t.code)) + '</div></div>';
+            }).join('')
       +   '</div>'
-      +   '<ul class="hc-terms">' + TERMS.map(function (n) { return '<li>' + n + '</li>'; }).join('') + '</ul>'
+      +   '<ul class="hc-terms">' + TERMS.map(function (n) { return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>'; }).join('') + '</ul>'
       +   '<div class="hc-bot2">'
       +     '<div class="phones">' + esc(CFG.company.phones[0]) + ' · ' + esc(CFG.company.phones[1]) + '</div>'
       +     '<div class="addr">' + esc(CFG.company.addressShort) + ' · ' + esc(CFG.company.branch || '') + '</div>'
@@ -348,7 +347,7 @@
       + (attempt.holdExpiresAt && attempt.slotStatus === 'reserved'
            ? '<div class="ff-note">⏳ الحجز مؤقت <b>24 ساعة</b> من وقت التقديم (' + esc(Store.fmtDateTime(attempt.selectedAt)) + ') — '
              + 'على صاحب العمل تسجيل قراره (توظيف/رفض) بمسح الباركود خلال هذه المهلة.</div>' : '')
-    ) : '<div class="ff-note">لم يُقدَّم على وظيفة بعد — الفرصتان متاحتان من «بطاقتي» على الموقع أو عند أي نقطة بيع.</div>';
+    ) : '<div class="ff-note">لم يُقدَّم على وظيفة بعد — فرص البطاقة متاحة من «بطاقتي» على الموقع أو عند أي نقطة بيع.</div>';
 
     return ''
       + '<div class="hrc-form">'
@@ -382,7 +381,7 @@
       +   '<h3>الوظيفة المطلوبة</h3>'
       +   applied
       +   '<h3>شروط البطاقة</h3>'
-      +   '<ul class="ff-terms">' + TERMS.map(function (n) { return '<li>' + n + '</li>'; }).join('') + '</ul>'
+      +   '<ul class="ff-terms">' + TERMS.map(function (n) { return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>'; }).join('') + '</ul>'
       +   '<div class="ff-employer-box">'
       +     '<h4>✦ لصاحب العمل — كيف تُكمل التوظيف؟</h4>'
       +     '<ol>'

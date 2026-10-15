@@ -1040,8 +1040,16 @@
       .sort(function (a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
   }
 
+  // Freeze each card's entitlement at issuance, independent of later settings.
+  function cardAttemptLimit(app) {
+    return Number(app.attemptLimit || getAttempts(app.serial).length || 2);
+  }
+
   function createAttempts(serial) {
-    for (var i = 1; i <= Number(db.settings.attemptLimit || 2); i++) {
+    var app = getApplicant(serial);
+    var limit = Number((app && app.attemptLimit) || db.settings.attemptLimit || 2);
+    if (app) app.attemptLimit = limit;
+    for (var i = 1; i <= limit; i++) {
       db.attempts.push({
         id: uid('att'), serial: serial, no: i, code: chanceCode(),
         jobId: null, jobCode: null, jobTitle: null,
@@ -1086,6 +1094,7 @@
     var rows = db.applicants.map(function (a) {
       var copy = Object.assign({}, a);
       copy.attempts = getAttempts(a.serial);
+      copy.attemptLimit = cardAttemptLimit(a);
       copy.attemptsUsed = copy.attempts.filter(function (t) { return t.slotStatus !== 'empty'; }).length;
       copy.daysLeft = a.expiryDate ? diffDays(a.expiryDate, new Date()) : null;
       copy.holds = copy.attempts.filter(function (t) { return t.slotStatus === 'reserved'; }).length;
@@ -1489,7 +1498,7 @@
       daysLeft: app.expiryDate ? diffDays(app.expiryDate, new Date()) : null,
       attemptsLeft: attemptsLeft(app.serial),
       attemptsUsed: getAttempts(app.serial).filter(function (x) { return x.slotStatus !== 'empty'; }).length,
-      attemptLimit: Number(db.settings.attemptLimit || 2),
+      attemptLimit: cardAttemptLimit(app),
       createdBy: app.createdBy,
       attempts: getAttempts(app.serial).map(function (x) {
         return {
@@ -1608,7 +1617,7 @@
       if (st === 'rejected') return;
       var used = getAttempts(a.serial).filter(function (t) { return t.slotStatus !== 'empty'; }).length;
       if (st === 'expired') out.expired.push(a);
-      else if (used >= Number(db.settings.attemptLimit || 2)) out.exhausted.push(a);
+      else if (used >= cardAttemptLimit(a)) out.exhausted.push(a);
       var rej = getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'rejected'; });
       if (rej.length) out.rejected.push({ applicant: a, count: rej.length });
     });
@@ -2541,6 +2550,13 @@
     db: function () { return db; },
     settings: function () { return db.settings; },
     updateSettings: function (patch) {
+      if (patch.attemptLimit != null) {
+        var limit = Number(patch.attemptLimit);
+        if (!Number.isInteger(limit) || limit < 1 || limit > 10) throw new Error('عدد الفرص يجب أن يكون عدداً صحيحاً من 1 إلى 10');
+        db.applicants.forEach(function (app) {
+          if (!app.attemptLimit) app.attemptLimit = cardAttemptLimit(app);
+        });
+      }
       Object.keys(patch).forEach(function (k) { db.settings[k] = patch[k]; });
       audit('تعديل إعدادات', 'settings', '—', JSON.stringify(patch));
       save(); emit();

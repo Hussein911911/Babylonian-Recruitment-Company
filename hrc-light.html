@@ -2799,7 +2799,7 @@ table.data tbody tr:hover { background: #faf8f3; }
     <div class="section-head">
       <span class="eyebrow">الفرص المتاحة الآن</span>
       <h2>لوحة الوظائف في بابل والفرات الأوسط</h2>
-      <p>تُحدَّث الحالات لحظياً: الوظيفة المحجوزة تظهر للعامة كـ «محجوزة مؤقتاً» لمدة 24 ساعة فقط، ثم تعود تلقائياً إلى «متاحة» إن لم تُثبَّت نتيجة المقابلة.</p>
+      <p>تُحدَّث الحالات لحظياً: تُحجز الوظيفة 24 ساعة بانتظار نتيجة المقابلة. إن انتهت المدة دون قرار تصبح «حرجة — بانتظار قرار الشركة»: توظيف أو إرجاع أو حذف، ولا تعود متاحة تلقائياً.</p>
       <svg class="ornament" viewBox="0 0 74 18" fill="none" aria-hidden="true">
         <path d="M0 9h22" stroke="url(#g-gold-line)" stroke-width="1.4"/>
         <path d="M52 9h22" stroke="url(#g-gold-line)" stroke-width="1.4"/>
@@ -2887,7 +2887,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       <div class="step reveal" data-d="480">
         <div class="num">5</div>
         <h3>تثبيت النتيجة</h3>
-        <p>نجاح: تُغلق الوظيفة ويُثبَّت التوظيف. رفض: تُعاد الوظيفة «متاحة» وتُفعَّل المحاولة التالية تلقائياً حتى الخامسة.</p>
+        <p>تُثبّت الشركة نتيجة المقابلة ومصير الوظيفة. ويستخدم الباحث فرص بطاقته المتبقية ضمن صلاحيتها، وفق العدد المعتمد عند إصدارها — حالياً فرصتان.</p>
       </div>
     </div>
   </div>
@@ -3554,7 +3554,7 @@ table.data tbody tr:hover { background: #faf8f3; }
           <div class="panel-head"><h3><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg> قواعد العمل</h3></div>
           <div class="panel-body">
             <form id="settings-form">
-              <div class="field mb-2"><label for="set-attempts-locked">الفرص لكل بطاقة</label><input type="number" id="set-attempts-locked" value="2" disabled title="مقفلة بقرار الشركة"></div>
+              <div class="field mb-2"><label for="set-attempts">الفرص لكل بطاقة جديدة</label><input type="number" id="set-attempts" value="2" min="1" max="10" step="1" required><small class="muted">يحددها المدير؛ الافتراضي حالياً 2. التغيير لا يمس فرص البطاقات الصادرة سابقاً.</small></div>
               <div class="field mb-2"><label for="set-days">صلاحية البطاقة (يوم)</label><input type="number" id="set-days" min="1" max="180"></div>
               <div class="field mb-2"><label for="set-hours">مدة الحجز المؤقت للوظيفة (ساعة)</label><input type="number" id="set-hours" min="1" max="168"></div>
               <div class="field mb-2"><label for="set-fee">سعر البطاقة (دينار — كاش)</label><input type="number" id="set-fee" min="0" step="500"></div>
@@ -5893,8 +5893,16 @@ table.data tbody tr:hover { background: #faf8f3; }
       .sort(function (a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
   }
 
+  // Freeze each card's entitlement at issuance, independent of later settings.
+  function cardAttemptLimit(app) {
+    return Number(app.attemptLimit || getAttempts(app.serial).length || 2);
+  }
+
   function createAttempts(serial) {
-    for (var i = 1; i <= Number(db.settings.attemptLimit || 2); i++) {
+    var app = getApplicant(serial);
+    var limit = Number((app && app.attemptLimit) || db.settings.attemptLimit || 2);
+    if (app) app.attemptLimit = limit;
+    for (var i = 1; i <= limit; i++) {
       db.attempts.push({
         id: uid('att'), serial: serial, no: i, code: chanceCode(),
         jobId: null, jobCode: null, jobTitle: null,
@@ -5939,6 +5947,7 @@ table.data tbody tr:hover { background: #faf8f3; }
     var rows = db.applicants.map(function (a) {
       var copy = Object.assign({}, a);
       copy.attempts = getAttempts(a.serial);
+      copy.attemptLimit = cardAttemptLimit(a);
       copy.attemptsUsed = copy.attempts.filter(function (t) { return t.slotStatus !== 'empty'; }).length;
       copy.daysLeft = a.expiryDate ? diffDays(a.expiryDate, new Date()) : null;
       copy.holds = copy.attempts.filter(function (t) { return t.slotStatus === 'reserved'; }).length;
@@ -6342,7 +6351,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       daysLeft: app.expiryDate ? diffDays(app.expiryDate, new Date()) : null,
       attemptsLeft: attemptsLeft(app.serial),
       attemptsUsed: getAttempts(app.serial).filter(function (x) { return x.slotStatus !== 'empty'; }).length,
-      attemptLimit: Number(db.settings.attemptLimit || 2),
+      attemptLimit: cardAttemptLimit(app),
       createdBy: app.createdBy,
       attempts: getAttempts(app.serial).map(function (x) {
         return {
@@ -6461,7 +6470,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       if (st === 'rejected') return;
       var used = getAttempts(a.serial).filter(function (t) { return t.slotStatus !== 'empty'; }).length;
       if (st === 'expired') out.expired.push(a);
-      else if (used >= Number(db.settings.attemptLimit || 2)) out.exhausted.push(a);
+      else if (used >= cardAttemptLimit(a)) out.exhausted.push(a);
       var rej = getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'rejected'; });
       if (rej.length) out.rejected.push({ applicant: a, count: rej.length });
     });
@@ -7394,6 +7403,13 @@ table.data tbody tr:hover { background: #faf8f3; }
     db: function () { return db; },
     settings: function () { return db.settings; },
     updateSettings: function (patch) {
+      if (patch.attemptLimit != null) {
+        var limit = Number(patch.attemptLimit);
+        if (!Number.isInteger(limit) || limit < 1 || limit > 10) throw new Error('عدد الفرص يجب أن يكون عدداً صحيحاً من 1 إلى 10');
+        db.applicants.forEach(function (app) {
+          if (!app.attemptLimit) app.attemptLimit = cardAttemptLimit(app);
+        });
+      }
       Object.keys(patch).forEach(function (k) { db.settings[k] = patch[k]; });
       audit('تعديل إعدادات', 'settings', '—', JSON.stringify(patch));
       save(); emit();
@@ -8103,6 +8119,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       +   'background:linear-gradient(180deg,rgba(239,231,214,.94),rgba(233,222,199,.94));}'
       + '.hc-codebox .clbl{font-size:3.7pt;font-weight:900;color:#6b5320;text-align:center;}'
       + '.hc-codebox .code{font-size:8.6pt;font-weight:900;letter-spacing:.18em;color:#231a06;direction:ltr;text-align:center;line-height:1.2;}'
+      + '.hc-codes.many{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7mm;}.hc-codes.many .hc-codebox{padding:.7mm .3mm;border-radius:1mm;}.hc-codes.many .code{font-size:4.8pt;letter-spacing:0;}.hc-codes.many .clbl{font-size:3pt;}'
       + '.hc-terms{list-style:none;margin:1.6mm 0 0;position:relative;z-index:2;display:flex;flex-direction:column;gap:.75mm;padding:0;}'
       + '.hc-terms li{font-size:3.7pt;line-height:1.55;color:rgba(249,246,239,.92);padding-inline-start:2.6mm;position:relative;}'
       + '.hc-terms li::before{content:"★";position:absolute;inset-inline-start:0;top:.2mm;font-size:3pt;color:#c8a24a;}'
@@ -8207,8 +8224,8 @@ table.data tbody tr:hover { background: #faf8f3; }
       +       '<div class="name" style="font-size:4.6pt;line-height:1.7;letter-spacing:0">' + (blank
             ? 'بطاقة فارغة — تُفعّل عند البيع وتُعبّأ استمارة الزبون بنفس الباركود'
             : 'بيانات الزبون مطبوعة على استمارة التوظيف المرافقة — بنفس الباركود') + '</div>'
-      +     '<div class="lbl" style="margin-top:.8mm">الفرصتان</div>'
-      +       '<div class="name" style="font-size:4.6pt;line-height:1.7">فرصتان مستقلتان — رمز كل فرصة بظهر البطاقة</div></div>'
+      +     '<div class="lbl" style="margin-top:.8mm">فرص البطاقة</div>'
+      +       '<div class="name" style="font-size:4.6pt;line-height:1.7">' + (attempts.length === 2 ? 'فرصتان مستقلتان' : attempts.length + ' فرص مستقلة') + ' — رمز كل فرصة بظهر البطاقة</div></div>'
       +     CHIP
       +   '</div>'
       +   '<div class="hc-jobs">'
@@ -8218,7 +8235,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       +   '<div class="hc-bot">'
       +     '<div class="valid">'
       +       validLine
-      +       '<div class="perms">فرصتان مستقلتان · للاستفسار: نقطة البيع أو مقر الشركة</div>'
+      +       '<div class="perms">' + (attempts.length === 2 ? 'فرصتان مستقلتان' : attempts.length + ' فرص مستقلة') + ' · للاستفسار: نقطة البيع أو مقر الشركة</div>'
       +     '</div>'
       +     '<div class="qr"><div class="box hrc-qr-slot">' + qrSvg(cUrl, 132) + '</div></div>'
       +   '</div>'
@@ -8227,8 +8244,6 @@ table.data tbody tr:hover { background: #faf8f3; }
 
   /* ======================= الوجه الخلفي ======================= */
   function backHtml(app, attempts) {
-    var c1 = attempts[0] ? attempts[0].code : '';
-    var c2 = attempts[1] ? attempts[1].code : '';
     return ''
       + '<div class="hrc-card">'
       +   '<div class="frame"></div><div class="shine"></div>'
@@ -8237,13 +8252,13 @@ table.data tbody tr:hover { background: #faf8f3; }
       +     '<span class="txt">AL-HADAF RECRUITMENT COMPANY · BABEL — AL-HILLAH</span>'
       +     '<svg class="st" style="color:#c8a24a" viewBox="0 0 24 24"><use href="#i-star8" xlink:href="#i-star8"/></svg>'
       +   '</div>'
-      +   '<div class="hc-codes">'
-      +     '<div class="hc-codebox"><div class="clbl">رمز الفرصة الأولى</div>'
-      +       '<div class="code">' + esc(fmtCode(c1)) + '</div></div>'
-      +     '<div class="hc-codebox"><div class="clbl">رمز الفرصة الثانية</div>'
-      +       '<div class="code">' + esc(fmtCode(c2)) + '</div></div>'
+      +   '<div class="hc-codes' + (attempts.length > 2 ? ' many' : '') + '">'
+      +     attempts.map(function (t, i) {
+              return '<div class="hc-codebox"><div class="clbl">رمز الفرصة ' + (i + 1) + '</div>' +
+                '<div class="code">' + esc(fmtCode(t.code)) + '</div></div>';
+            }).join('')
       +   '</div>'
-      +   '<ul class="hc-terms">' + TERMS.map(function (n) { return '<li>' + n + '</li>'; }).join('') + '</ul>'
+      +   '<ul class="hc-terms">' + TERMS.map(function (n) { return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>'; }).join('') + '</ul>'
       +   '<div class="hc-bot2">'
       +     '<div class="phones">' + esc(CFG.company.phones[0]) + ' · ' + esc(CFG.company.phones[1]) + '</div>'
       +     '<div class="addr">' + esc(CFG.company.addressShort) + ' · ' + esc(CFG.company.branch || '') + '</div>'
@@ -8353,7 +8368,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       + (attempt.holdExpiresAt && attempt.slotStatus === 'reserved'
            ? '<div class="ff-note">⏳ الحجز مؤقت <b>24 ساعة</b> من وقت التقديم (' + esc(Store.fmtDateTime(attempt.selectedAt)) + ') — '
              + 'على صاحب العمل تسجيل قراره (توظيف/رفض) بمسح الباركود خلال هذه المهلة.</div>' : '')
-    ) : '<div class="ff-note">لم يُقدَّم على وظيفة بعد — الفرصتان متاحتان من «بطاقتي» على الموقع أو عند أي نقطة بيع.</div>';
+    ) : '<div class="ff-note">لم يُقدَّم على وظيفة بعد — فرص البطاقة متاحة من «بطاقتي» على الموقع أو عند أي نقطة بيع.</div>';
 
     return ''
       + '<div class="hrc-form">'
@@ -8387,7 +8402,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       +   '<h3>الوظيفة المطلوبة</h3>'
       +   applied
       +   '<h3>شروط البطاقة</h3>'
-      +   '<ul class="ff-terms">' + TERMS.map(function (n) { return '<li>' + n + '</li>'; }).join('') + '</ul>'
+      +   '<ul class="ff-terms">' + TERMS.map(function (n) { return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>'; }).join('') + '</ul>'
       +   '<div class="ff-employer-box">'
       +     '<h4>✦ لصاحب العمل — كيف تُكمل التوظيف؟</h4>'
       +     '<ol>'
@@ -9388,7 +9403,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       '<div class="tiny muted">الاسم: <b>' + esc(card.fullName) + '</b> · الهاتف: <b dir="ltr">' + esc(card.phone) + '</b></div>' +
       '<div class="tiny muted">تنتهي الصلاحية: <b>' + esc(Store.fmtDate(card.expiryDate)) + '</b>' +
         ' · الفرص المتاحة: <b>' + esc(card.chancesLeft) + '</b></div>' +
-      (card.chances || []).slice(0, 2).map(function (c, i) { return chanceRow(c, i + 1); }).join('') +
+      (card.chances || []).map(function (c, i) { return chanceRow(c, i + 1); }).join('') +
       '<div class="bk-info" style="margin-top:12px">' + UI.ic('clock') +
         ' عند التقديم تُحجز الوظيفة لك <b>24 ساعة</b> بانتظار نتيجة المقابلة؛ وبعدها تقرر الشركة: التوظيف أو إرجاع الوظيفة أو حذفها — والفرصة تُستهلك بالتقديم ولا تعود.</div>' +
       btnRow(
@@ -12167,7 +12182,7 @@ table.data tbody tr:hover { background: #faf8f3; }
         var st = Store.formStatus(a);
         var left = Store.attemptsLeft(a.serial);
         return '<tr><td class="mono">' + UI.esc(a.serial) + '</td><td>' + UI.esc(a.fullName) + '<div class="tiny muted">' + UI.esc(a.phone) + '</div></td>' +
-          '<td>' + a.attemptsUsed + ' من ' + Store.settings().attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div></td>' +
+          '<td>' + a.attemptsUsed + ' من ' + a.attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div></td>' +
           '<td>' + UI.formBadge(st) + '</td>' +
           '<td>' + (st === 'active' && left > 0
             ? '<button class="btn btn-gold btn-sm" data-pick="' + UI.esc(a.serial) + '">ترشيح</button>'
@@ -12255,7 +12270,7 @@ table.data tbody tr:hover { background: #faf8f3; }
         ? '<td class="tiny muted">فرصتان جاهزتان — الصلاحية تبدأ عند التعبئة</td>'
         : (isPending || isRejected
         ? '<td class="tiny muted">—</td>'
-        : '<td>' + a.attemptsUsed + ' / ' + Store.settings().attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>');
+        : '<td>' + a.attemptsUsed + ' / ' + a.attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>');
 
       var statusCell = '<td>' + UI.formBadge(st);
       if (!isBlank && !isPending && !isRejected) {
@@ -12505,7 +12520,7 @@ table.data tbody tr:hover { background: #faf8f3; }
     if (!app) return;
     var attempts = Store.getAttempts(serial);
     var st = Store.formStatus(app);
-    var limit = Number(Store.settings().attemptLimit || 2);
+    var limit = Number(app.attemptLimit || attempts.length || 2);
     var active = Store.activeAttempt(serial);
 
     var slots = attempts.map(function (t) {
@@ -12974,10 +12989,10 @@ table.data tbody tr:hover { background: #faf8f3; }
       if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.tagName)) e.value = v;
       else e.textContent = v;
     };
+    set('set-attempts', s.attemptLimit);
     set('set-days', s.validityDays);
     set('set-hours', s.holdHours); set('set-fee', s.formFee);
-    /* قواعد مقفلة بنظام البطاقة (لا تُعدّل من الواجهة): فرصتان لكل بطاقة،
-       ولا إفراج تلقائي — انتهاء مهلة 24 ساعة يدخل الوظيفة حالة «حرجة». */
+    /* عدد الفرص قابل للتعديل للبطاقات الجديدة؛ لا إفراج تلقائي عن الحجز. */
     var db = Store.db();
     set('db-jobs', db.jobs.length); set('db-apps', db.applicants.length);
     set('db-attempts', db.attempts.length); set('db-audit', db.audit.length);
@@ -13106,8 +13121,13 @@ table.data tbody tr:hover { background: #faf8f3; }
     var sf = document.getElementById('settings-form');
     if (sf) sf.addEventListener('submit', function (e) {
       e.preventDefault();
+      if (!Store.isAdmin()) { UI.toast('err', 'غير مسموح', 'تعديل القواعد للمدير فقط.'); return; }
+      var limit = Number(document.getElementById('set-attempts').value);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 10) {
+        UI.toast('err', 'عدد فرص غير صالح', 'اختر عدداً صحيحاً من 1 إلى 10.'); return;
+      }
       var patch = {
-        attemptLimit: 2,                        // مقفلة: فرصتان لكل بطاقة
+        attemptLimit: limit,
         validityDays: Number(document.getElementById('set-days').value),
         holdHours: Number(document.getElementById('set-hours').value),
         formFee: Number(document.getElementById('set-fee').value),

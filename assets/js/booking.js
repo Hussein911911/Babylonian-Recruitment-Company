@@ -795,7 +795,7 @@
       '<div class="tiny muted">الاسم: <b>' + esc(card.fullName) + '</b> · الهاتف: <b dir="ltr">' + esc(card.phone) + '</b></div>' +
       '<div class="tiny muted">تنتهي الصلاحية: <b>' + esc(Store.fmtDate(card.expiryDate)) + '</b>' +
         ' · الفرص المتاحة: <b>' + esc(card.chancesLeft) + '</b></div>' +
-      (card.chances || []).slice(0, 2).map(function (c, i) { return chanceRow(c, i + 1); }).join('') +
+      (card.chances || []).map(function (c, i) { return chanceRow(c, i + 1); }).join('') +
       '<div class="bk-info" style="margin-top:12px">' + UI.ic('clock') +
         ' عند التقديم تُحجز الوظيفة لك <b>24 ساعة</b> بانتظار نتيجة المقابلة؛ وبعدها تقرر الشركة: التوظيف أو إرجاع الوظيفة أو حذفها — والفرصة تُستهلك بالتقديم ولا تعود.</div>' +
       btnRow(

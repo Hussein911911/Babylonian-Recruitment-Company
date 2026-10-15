@@ -802,10 +802,9 @@ check('البحث السريع بالكود يفتح بطاقة الوظيفة',
   const modal = lastModal(dash.doc);
   return (modal && modal.textContent.includes('HRC-1045') && modal.textContent.includes('بطاقة الوظيفة الداخلية')) || 'لم تُفتح البطاقة';
 });
-check('الإعدادات: الفرصتان والإفراج التلقائي مقفلان (لا يظهران كحقلي تحرير)', () => {
+check('الإعدادات: عدد الفرص قابل للتعديل والإفراج التلقائي مقفل', () => {
   const att = dash.doc.getElementById('set-attempts');
-  const auto = dash.doc.getElementById('set-auto');
-  return (!att && !auto) || 'حقل مقفل ما زال قابلاً للتحرير';
+  return (att && !att.disabled && att.min === '1' && att.max === '10' && !dash.doc.getElementById('set-auto')) || 'حقول القواعد غير صحيحة';
 });
 check('صلاحية المدير تُظهر اللوحة المالية وسجل التدقيق الكامل', () => {
   closeAllModals(dash.doc);
@@ -821,6 +820,28 @@ check('صلاحية المدير تُظهر اللوحة المالية وسجل
   const auditRows = dash.doc.querySelectorAll('#audit-table-body tr').length;
   return (navVisible && view.classList.contains('active') && bars > 0 && stats === 4) ||
     ('ظاهر: ' + navVisible + ' / نشط: ' + view.classList.contains('active') + ' / أعمدة: ' + bars + ' / بطاقات: ' + stats + ' / سجل: ' + auditRows);
+});
+check('تغيير عدد الفرص من إعدادات المدير يحفظ حقوق البطاقات القديمة', () => {
+  const store = dash.window.HRCStore;
+  const old = store.createApplicant({ fullName: 'بطاقة قبل التغيير', phone: '07711111111' });
+  const form = dash.doc.getElementById('settings-form');
+  const field = dash.doc.getElementById('set-attempts');
+  field.value = '3';
+  form.dispatchEvent(new dash.window.Event('submit', { bubbles: true, cancelable: true }));
+  const newer = store.createApplicant({ fullName: 'بطاقة بعد التغيير', phone: '07711111112' });
+  const valid = store.settings().attemptLimit === 3 && store.getAttempts(old.serial).length === 2 &&
+    old.attemptLimit === 2 && store.getAttempts(newer.serial).length === 3 && newer.attemptLimit === 3 &&
+    store.getAttempts(newer.serial).every((t) => dash.window.HRCVoucher.buildHtml(newer).includes(t.code));
+  field.value = '2';
+  form.dispatchEvent(new dash.window.Event('submit', { bubbles: true, cancelable: true }));
+  return (valid && newer.attemptLimit === 3 && store.settings().attemptLimit === 2) || 'تغيّرت حقوق البطاقات أو لم يُحفظ الإعداد';
+});
+check('الإعدادات ترفض أعداد الفرص غير الصالحة', () => {
+  const store = dash.window.HRCStore;
+  for (const value of [0, -1, 1.5, 11]) {
+    try { store.updateSettings({ attemptLimit: value }); return 'قُبل عدد غير صالح: ' + value; } catch (e) { }
+  }
+  return store.settings().attemptLimit === 2;
 });
 check('اللوحة المالية تحسب المتوقع تحصيله = البطاقات × السعر', () => {
   const fee = dash.window.HRCStore.settings().formFee;

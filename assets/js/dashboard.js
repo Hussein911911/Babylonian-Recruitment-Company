@@ -1579,7 +1579,7 @@
         var st = Store.formStatus(a);
         var left = Store.attemptsLeft(a.serial);
         return '<tr><td class="mono">' + UI.esc(a.serial) + '</td><td>' + UI.esc(a.fullName) + '<div class="tiny muted">' + UI.esc(a.phone) + '</div></td>' +
-          '<td>' + a.attemptsUsed + ' من ' + Store.settings().attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div></td>' +
+          '<td>' + a.attemptsUsed + ' من ' + a.attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div></td>' +
           '<td>' + UI.formBadge(st) + '</td>' +
           '<td>' + (st === 'active' && left > 0
             ? '<button class="btn btn-gold btn-sm" data-pick="' + UI.esc(a.serial) + '">ترشيح</button>'
@@ -1667,7 +1667,7 @@
         ? '<td class="tiny muted">فرصتان جاهزتان — الصلاحية تبدأ عند التعبئة</td>'
         : (isPending || isRejected
         ? '<td class="tiny muted">—</td>'
-        : '<td>' + a.attemptsUsed + ' / ' + Store.settings().attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>');
+        : '<td>' + a.attemptsUsed + ' / ' + a.attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>');
 
       var statusCell = '<td>' + UI.formBadge(st);
       if (!isBlank && !isPending && !isRejected) {
@@ -1917,7 +1917,7 @@
     if (!app) return;
     var attempts = Store.getAttempts(serial);
     var st = Store.formStatus(app);
-    var limit = Number(Store.settings().attemptLimit || 2);
+    var limit = Number(app.attemptLimit || attempts.length || 2);
     var active = Store.activeAttempt(serial);
 
     var slots = attempts.map(function (t) {
@@ -2386,10 +2386,10 @@
       if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.tagName)) e.value = v;
       else e.textContent = v;
     };
+    set('set-attempts', s.attemptLimit);
     set('set-days', s.validityDays);
     set('set-hours', s.holdHours); set('set-fee', s.formFee);
-    /* قواعد مقفلة بنظام البطاقة (لا تُعدّل من الواجهة): فرصتان لكل بطاقة،
-       ولا إفراج تلقائي — انتهاء مهلة 24 ساعة يدخل الوظيفة حالة «حرجة». */
+    /* عدد الفرص قابل للتعديل للبطاقات الجديدة؛ لا إفراج تلقائي عن الحجز. */
     var db = Store.db();
     set('db-jobs', db.jobs.length); set('db-apps', db.applicants.length);
     set('db-attempts', db.attempts.length); set('db-audit', db.audit.length);
@@ -2518,8 +2518,13 @@
     var sf = document.getElementById('settings-form');
     if (sf) sf.addEventListener('submit', function (e) {
       e.preventDefault();
+      if (!Store.isAdmin()) { UI.toast('err', 'غير مسموح', 'تعديل القواعد للمدير فقط.'); return; }
+      var limit = Number(document.getElementById('set-attempts').value);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 10) {
+        UI.toast('err', 'عدد فرص غير صالح', 'اختر عدداً صحيحاً من 1 إلى 10.'); return;
+      }
       var patch = {
-        attemptLimit: 2,                        // مقفلة: فرصتان لكل بطاقة
+        attemptLimit: limit,
         validityDays: Number(document.getElementById('set-days').value),
         holdHours: Number(document.getElementById('set-hours').value),
         formFee: Number(document.getElementById('set-fee').value),
