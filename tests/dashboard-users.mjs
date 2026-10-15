@@ -4,7 +4,7 @@
  *  ---------------------------------------------------------------------------
  *  يشغّل dashboard.html الفعلية بكل سكربتاتها، ويضغط الأزرار كما يضغطها المدير:
  *
- *    1. يدخل المدير (وضع انتقالي: حساب محلي) ويذهب إلى «الإعدادات والنسخ».
+ *    1. يدخل المدير بحساب Supabase Auth ويذهب إلى «الإعدادات والنسخ».
  *    2. يضغط «إضافة موظف» ← يملأ النموذج ← «إنشاء الحساب».
  *    3. يُصبح الحساب في قاعدة الشركة (Auth + brc.staff) ويظهر في الجدول معلَّماً
  *       «القاعدة» — أي أن الموظف يدخل من أي جهاز.
@@ -34,7 +34,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const URL_BASE = 'https://x.supabase.co';
 const SERVICE_KEY = 'sb_secret_test_service_role_key';
-const ADMIN_PASS = 'admin123';
+const ADMIN_PASS = 'CloudAdmin@Test123';
 
 /* ===========================================================================
  *  عميل سوبابيس وهمي داخل الصفحة (بديل vendor/supabase.js)
@@ -115,7 +115,12 @@ window.__brcMock = (function () {
     rpc: function () { return Promise.resolve({ data: null, error: { message: 'no rpc in mock' } }); },
     channel: function () { return ch; }, removeChannel: function () { },
     auth: {
-      signInWithPassword: function () { return Promise.resolve({ data: null, error: { message: 'Invalid login credentials' } }); },
+      signInWithPassword: function (credentials) {
+        if (credentials.email !== 'admin@hrc-babil.com' || credentials.password !== '${ADMIN_PASS}') {
+          return Promise.resolve({ data: null, error: { message: 'Invalid login credentials' } });
+        }
+        return Promise.resolve({ data: { user: { id: 'auth-admin', email: credentials.email }, session: { access_token: 'admin-test-token' } }, error: null });
+      },
       getSession: function () { return Promise.resolve({ data: { session: window.__state.cloudSession || null }, error: null }); },
       signOut: function () { return Promise.resolve({ error: null }); },
       updateUser: function () { return Promise.resolve({ error: null }); }

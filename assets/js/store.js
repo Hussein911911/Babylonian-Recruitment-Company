@@ -334,14 +334,11 @@
   var memSession = null;   // جلسة احتياطية في الذاكرة عند تعذّر sessionStorage
 
   function login(username, password, opts) {
-    /* الوضع السحابي: كلمات المرور المحلية (المنشورة في config.js) ليست باباً
-       للدخول. الدخول الفعلي: signIn ← Supabase Auth ← جدول brc.staff.
-       ⚠️ الاستثناء الوحيد مُعلَن في الإعداد لا مُستنتَج: متى أنشأ المسؤول حسابات
-       الموظفين ووضع enforceAuth=true في supabase-config.js يُغلق هذا الباب في
-       طبقة البيانات نفسها — لا في الواجهة فقط (لو كان الإغلاق في الواجهة وحدها
-       لكفى نداء واحد من طرف ثالث لتجاوزه). ما دام المفتاح false فالنظام في وضع
-       انتقالي معلوم، وتُعرض حالة الوضع بوضوح في أعلى الشاشة. */
-    if (cloud.state === 'on' && enforceAuth() && !(opts && opts.forceLocal)) {
+    /* الإنتاج مغلق: Supabase Auth + موظف فعّال في brc.staff حصراً.
+       القفل مستقل عن حالة الشبكة/العميل ولا يتجاوزه forceLocal.
+       المسار المحلي أدناه لمحاكاة fixtures التاريخية عند تعطيل القفل صراحةً
+       في بيئة الاختبار فقط، وليس خياراً لانقطاع الاتصال في الإنتاج. */
+    if (enforceAuth()) {
       audit('محاولة دخول محلي مرفوضة', 'auth', username || '—',
         'النظام في الوضع السحابي — الدخول عبر Supabase Auth فقط');
       saveLocal(); emit();
@@ -391,9 +388,13 @@
   function currentUser() {
     try {
       var raw = sessionStorage.getItem(SESSION_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        var session = JSON.parse(raw);
+        if (!enforceAuth() || (session && session.cloud)) return session;
+        sessionStorage.removeItem(SESSION_KEY);
+      }
     } catch (e) { /* لا جلسة تخزين متاحة */ }
-    return memSession;
+    return enforceAuth() && memSession && !memSession.cloud ? null : memSession;
   }
 
   function isAdmin() { var u = currentUser(); return !!(u && u.role === 'admin'); }

@@ -180,7 +180,8 @@ check('لا شيء يُدفع للقاعدة في الوضع الانتقالي 
  *  2) الوضع النهائي (enforceAuth=true): لا باب خلفي
  * =========================================================================== */
 step(2, 'الوضع النهائي — enforceAuth=true يمنع الدخول المحلي تماماً');
-const t2 = await open({ enforceAuth: true });
+const t2 = await open(); // production settings, without overriding the auth lock
+check('الإنتاج بلا حسابات محلية افتراضية', t2.window.HRC_CONFIG.users.length === 0);
 t2.window.HRCStore.logout();
 await new Promise((r) => setTimeout(r, 120));
 check('مفتاح enforceAuth مفعّل كما ضبطه المسؤول', t2.window.HRCStore.cloudStatus().enforceAuth === true);

@@ -94,6 +94,7 @@ try {
   /* حساب مدير fixture محلي: الإنتاج أغلق الدخول المحلي نهائياً (users: [] و
      enforceAuth: true — وهذا صحيح ولا يُخفض). jsdom بلا fetch فالوضع هنا محلي
      بحت، والاختبار يختبر النسخ الاحتياطي لا المصادقة — فنزرع حسابه الخاص. */
+  w.HRCSupabaseConfig.enforceAuth = false; // isolated backup fixture only
   w.HRC_CONFIG.users = [
     { username: 'admin', password: 'admin123', name: 'مدير الفحص', role: 'admin', title: 'مدير عام' }
   ];

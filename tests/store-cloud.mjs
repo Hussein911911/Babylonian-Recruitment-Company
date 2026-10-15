@@ -156,7 +156,7 @@ function bootStore(mock, extra = {}) {
   if (extra.noVendor) { /* بلا مكتبة سوبابيس */ } else {
     sandbox.supabase = { createClient: () => mock };
   }
-  const load = (f) => new Function('window', readFileSync(join(ROOT, 'assets/js/' + f), 'utf8'))(sandbox);
+  const load = (f) => new Function('window', 'localStorage', 'sessionStorage', readFileSync(join(ROOT, 'assets/js/' + f), 'utf8'))(sandbox, sandbox.localStorage, sandbox.sessionStorage);
   load('config.js');
   load('cloud.js');
   load('cloud-auth.js');
@@ -312,6 +312,26 @@ step(3, 'الجلسة — الدخول من القاعدة لا من config.js')
   const bad = await Store.signIn('hussein', 'wrong-password');
   check('كلمة مرور خاطئة تُرفض برسالة عربية', bad && bad.ok === false && bad.code === 'bad_credentials' && /غير صحيحة/.test(bad.error),
     JSON.stringify(bad));
+}
+
+step('3-final', 'القفل النهائي لا يعتمد على حالة الشبكة ولا يقبل forceLocal أو حسابات الكاش');
+for (const extra of [{}, { noFetch: true }, { noVendor: true }]) {
+  const { Store, sandbox } = bootStore(makeMock({ rows: cloudRows(), session: null }), { ...extra, enforceAuth: true });
+  // Historical accounts can remain in both config and browser cache after deployment.
+  sandbox.HRC_CONFIG.users = [{ username: 'admin', password: 'admin123', role: 'admin' }];
+  sandbox.localStorage.setItem('hrc_db_v2', JSON.stringify({
+    jobs: [], applicants: [], attempts: [], audit: [], usedSerials: [],
+    settings: { users: [{ username: 'cached-admin', password: 'old-password', role: 'admin' }] }
+  }));
+  Store.init();
+  check('حساب الكاش موجود فعلاً قبل محاولة الدخول: ' + JSON.stringify(extra),
+    Store.settings().users.some((u) => u.username === 'cached-admin'));
+  check('رفض الحساب المحلي حتى بلا عميل/شبكة: ' + JSON.stringify(extra), Store.login('admin', 'admin123') === null);
+  check('forceLocal لا يتجاوز القفل: ' + JSON.stringify(extra), Store.login('admin', 'admin123', { forceLocal: true }) === null);
+  check('رفض حساب محلي بديل: ' + JSON.stringify(extra), Store.login('cached-admin', 'old-password') === null);
+  sandbox.sessionStorage.setItem('hrc_session_v2', JSON.stringify({ username: 'admin', role: 'admin' }));
+  check('لا استعادة لجلسة محلية قديمة: ' + JSON.stringify(extra), Store.currentUser() === null && !Store.isAdmin());
+  check('لا تذكير انتقالي: ' + JSON.stringify(extra), !Store.cloudStatus().devAccountsActive);
 }
 
 step('3أ', 'الوضع الانتقالي — allow محلي معلَن، وبلا أي كتابة في القاعدة');

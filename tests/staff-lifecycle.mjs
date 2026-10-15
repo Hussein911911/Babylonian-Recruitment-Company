@@ -245,7 +245,7 @@ console.log('═'.repeat(74));
 const server = makeServer();
 
 /* ===========================================================================
- *  1) متصفح المدير: يدخل محلياً (الوضع المعلَن) ويصل إلى إدارة الموظفين
+ *  1) متصفح المدير: يدخل بحساب Supabase Auth الرسمي ويصل إلى إدارة الموظفين
  * =========================================================================== */
 step(1, 'متصفح المدير: دخول + الوصول إلى «إدارة الموظفين والصلاحيات»');
 const mgr = await openBrowser(server, 'manager');
@@ -254,7 +254,10 @@ check('المكتبة الحقيقية محمّلة (window.supabase)', !!(mgr.w
 check('عميل الدوال متاح (functions.invoke) — شرط قناة الدالة السحابية',
   !!(mgr.window.HRCStore && mgr.window.HRCStore.cloudStatus().configured));
 
-submitLogin(mgr.window, mgr.doc, 'admin', 'admin123');   // الحساب المعلَن في config.js
+submitLogin(mgr.window, mgr.doc, 'admin', 'admin123');
+await sleep(300);
+check('الحساب المحلي القديم مرفوض', !shellShown(mgr.doc) && !mgr.window.HRCStore.currentUser());
+submitLogin(mgr.window, mgr.doc, 'admin', 'Admin@12345'); // Supabase Auth fixture
 await sleep(400);
 check('الدخول نجح واللوحة ظاهرة', shellShown(mgr.doc), loginErrText(mgr.doc));
 

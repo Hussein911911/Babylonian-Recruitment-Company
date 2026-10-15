@@ -42,7 +42,7 @@ function staffStorage(role) {
   const SESSION = role === 'admin'
     ? { username: 'admin', name: 'مدير فحص', role: 'admin', title: 'مدير الشركة', at: new Date().toISOString() }
     : { username: 'staff', name: 'موظف فحص', role: 'staff', title: 'موظف توظيف', at: new Date().toISOString() };
-  const m = new Map([['hrc_session_v2', JSON.stringify(SESSION)]]);
+  const m = new Map([['hrc_session_v2', JSON.stringify({ ...SESSION, cloud: true })]]);
   return {
     getItem: (k) => (m.has(String(k)) ? m.get(String(k)) : null),
     setItem: (k, v) => m.set(String(k), String(v)),

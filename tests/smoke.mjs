@@ -71,7 +71,7 @@ async function load(file, { hash = '', search = '', waitMs = 260, session = null
          tests/fixtures/demo-seed.mjs). تُوضع قبل تنفيذ config.js. */
       window.__HRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
       if (!session) return;
-      const m = new Map([['hrc_session_v2', JSON.stringify(session)]]);
+      const m = new Map([['hrc_session_v2', JSON.stringify({ ...session, cloud: true })]]);
       Object.defineProperty(window, 'sessionStorage', {
         configurable: true,
         value: {
@@ -628,6 +628,7 @@ const dash = await load('dashboard.html');
    أمنياً ولا يُخفض للاختبارات. فاختبارات الواجهة الداخلية تزرع حساباتها في
    هذا المتصفح الافتراضي وحده (كما تُزرع جلسة الموظف أعلاه)، والدخول هنا
    محلي بحت لأن jsdom بلا fetch فلا سحابة أصلاً. */
+dash.window.HRCSupabaseConfig.enforceAuth = false; // isolated local UI fixture only
 dash.window.HRC_CONFIG.users = [
   { username: 'admin', password: 'admin123', name: 'مدير الفحص', role: 'admin', title: 'مدير عام' },
   { username: 'staff', password: 'staff123', name: 'موظف فحص', role: 'staff', title: 'موظف توظيف' }
