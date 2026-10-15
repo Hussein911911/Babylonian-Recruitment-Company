@@ -71,6 +71,12 @@ window.__brcMock = (function () {
         if (window.__state.fnOn === 'noSession') {
           return Promise.resolve({ data: { ok: false, code: 'no_token', error: 'الجلسة مطلوبة — سجّل الدخول كمدير' }, error: null });
         }
+        if (window.__state.fnOn === 'oldFn') {
+          return Promise.resolve({ data: { ok: false, code: 'bad_action', error: 'إجراء غير معروف: whoami' }, error: null });
+        }
+        if (window.__state.fnOn === 'notAdmin') {
+          return Promise.resolve({ data: { ok: false, code: 'not_admin', error: 'هذه الصلاحية للمدير العام فقط' }, error: null });
+        }
         if (!window.__state.fnOn) {
           return Promise.resolve({ data: null, error: { message: 'Edge Function returned a non-2xx status code',
             context: { status: 404, json: function () { return Promise.resolve({ code: 'NOT_FOUND', message: 'Requested function was not found' }); } } } });
@@ -110,7 +116,7 @@ window.__brcMock = (function () {
     channel: function () { return ch; }, removeChannel: function () { },
     auth: {
       signInWithPassword: function () { return Promise.resolve({ data: null, error: { message: 'Invalid login credentials' } }); },
-      getSession: function () { return Promise.resolve({ data: { session: null }, error: null }); },
+      getSession: function () { return Promise.resolve({ data: { session: window.__state.cloudSession || null }, error: null }); },
       signOut: function () { return Promise.resolve({ error: null }); },
       updateUser: function () { return Promise.resolve({ error: null }); }
     }
@@ -591,6 +597,67 @@ const shown6 = errBox6 && !errBox6.classList.contains('hidden') ? errBox6.textCo
 check('لا نص إنجليزي ظاهر للمدير في أي رسالة', !/Failed|fetch|Function/i.test(shown6), shown6.slice(0, 120));
 
 app6.dom.window.close && app6.dom.window.close();
+
+/* ===========================================================================
+ *  12) جلسة مدير سحابية: الفحص التلقائي يعلن الجاهزية — وكل رفض يُشرح بخطوته
+ *      (كانت الفشول تظهر بـ«لا قناة بعد: انشر الدالة» وهي منشورة — نص مضلِّل
+ *       لا يُصلح شيئاً. الآن: كل رفض له سببه المحدَّد وخطوته داخل الشريط.)
+ * =========================================================================== */
+step(12, 'جلسة مدير سحابية: أخضر عند السليم، وسبب محدد + خطوة عند كل رفض');
+const state7 = makeState();
+state7.fnOn = true;
+state7.cloudSession = {
+  user: { id: 'auth-admin', aud: 'authenticated', email: 'admin@hrc-babil.com' },
+  access_token: 'AT-admin-1', token_type: 'bearer', expires_in: 3600
+};
+const app7 = await open(state7);
+await sleep(350);
+check('الجلسة السحابية دخلت تلقائياً بلا شاشة دخول', shellsShown(app7.doc));
+const s7 = app7.window.HRCStore.currentUser();
+check('الجلسة بالمدير الرسمي وعلامتها سحابية', !!s7 && s7.role === 'admin' && s7.cloud === true, JSON.stringify(s7));
+
+app7.doc.querySelector('#side-nav button[data-view="settings"]').click();
+await sleep(350);   // رسم الشريط + فحص تلقائي (whoami)
+let strip7 = app7.doc.getElementById('users-channel');
+check('الفحص التلقائي نادى whoami عند فتح الشريط (بلا ضغط زر)',
+  (state7.fnCalls || []).some((c) => c.body.action === 'whoami'),
+  JSON.stringify((state7.fnCalls || []).map((c) => c.body.action)));
+check('الحكم أخضر: «جاهز: أنشئ الحسابات»', /جاهز: أنشئ الحسابات/.test(strip7.textContent),
+  strip7.textContent.slice(0, 240));
+check('بند الدالة أخضر: «تعمل بجلسة مديرك»', /تعمل بجلسة مديرك/.test(strip7.textContent),
+  strip7.textContent.slice(0, 240));
+check('بند الجلسة يؤكد القناة الأفضل', /القناة الأفضل/.test(strip7.textContent));
+
+/* رفض ١: نسخة قديمة من الدالة (السطر المكرر/النشر القديم — حادثة 2026-10-15) */
+state7.fnOn = 'oldFn';
+strip7.querySelector('[data-chan="probe"]').click();
+await sleep(250);
+strip7 = app7.doc.getElementById('users-channel');
+check('الرفض يشرح السبب: نسخة قديمة من الدالة', /نسخة قديمة/.test(strip7.textContent),
+  strip7.textContent.slice(0, 300));
+check('ويعطي الخطوة: أعد نشرها من المستودع', /أعد نشر/.test(strip7.textContent),
+  strip7.textContent.slice(0, 300));
+check('لم يعد يرى المدير «لا قناة بعد» وهي منشورة', !/لا قناة بعد/.test(strip7.textContent),
+  strip7.textContent.slice(0, 300));
+
+/* رفض ٢: لا جلسة مدير تصل الدالة — الخطوة: أخرج ثم ادخل بحسابك الرسمي */
+state7.fnOn = 'noSession';
+strip7.querySelector('[data-chan="probe"]').click();
+await sleep(250);
+strip7 = app7.doc.getElementById('users-channel');
+check('رفض الجلسة يقود للخطوة: أخرج ثم ادخل بحسابك الرسمي',
+  /أخرج ثم ادخل بحسابك الرسمي/.test(strip7.textContent), strip7.textContent.slice(0, 300));
+
+/* رفض ٣: الحساب ليس مديراً في brc.staff — الخطوة: بدّل الدور */
+state7.fnOn = 'notAdmin';
+strip7.querySelector('[data-chan="probe"]').click();
+await sleep(250);
+strip7 = app7.doc.getElementById('users-channel');
+check('رفض الدور يسمي السبب والخطوة: بدّل دوره إلى admin',
+  /ليس مديراً/.test(strip7.textContent) && /admin/.test(strip7.textContent),
+  strip7.textContent.slice(0, 300));
+
+app7.dom.window.close && app7.dom.window.close();
 
 app.dom.window.close && app.dom.window.close();
 app2.dom.window.close && app2.dom.window.close();
