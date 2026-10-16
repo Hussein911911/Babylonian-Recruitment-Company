@@ -1248,7 +1248,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 }
 .bk-foot-note { margin-inline-start: auto; align-self: center; }
 
-/* زر «احجز الآن» الذهبي في شريط التنقل */
+/* زر «بطاقتي» الذهبي في شريط التنقل */
 .main-nav a.nav-book {
   background: linear-gradient(135deg, var(--gold), #dcbf72); color: #241a05 !important;
   font-weight: 800; border-radius: 10px; box-shadow: 0 5px 14px rgba(200, 162, 74, .35);
@@ -2170,15 +2170,15 @@ table.data tbody tr:hover { background: #faf8f3; }
 }
 .main-nav a:hover::after, .main-nav a.active::after { width: 60%; }
 
-/* زر الحجز الذهبي */
-.nav-book {
-  background: linear-gradient(135deg, rgba(200,162,74,.25), rgba(200,162,74,.10)) !important;
-  border: 1px solid rgba(200,162,74,.45) !important;
-  color: var(--gold-2) !important;
+/* زر «بطاقتي»: ذهب مصمت وواضح على الترويسة الداكنة */
+.main-nav a.nav-book {
+  background: linear-gradient(135deg, #f3cf68, #d6a838) !important;
+  border: 1px solid #f5d983 !important;
+  color: #241a05 !important;
   padding: 9px 20px !important;
 }
-.nav-book:hover {
-  background: linear-gradient(135deg, rgba(200,162,74,.40), rgba(200,162,74,.20)) !important;
+.main-nav a.nav-book:hover {
+  background: linear-gradient(135deg, #ffe39a, #e8bc50) !important;
   box-shadow: 0 0 18px rgba(200,162,74,.25);
 }
 
@@ -2528,6 +2528,11 @@ table.data tbody tr:hover { background: #faf8f3; }
   .audit-pages { width:100%;justify-content:space-between; }
 }
 @media(max-width:420px) { #view-audit .toolbar { grid-template-columns:minmax(0,1fr); } }
+
+.main-nav a.nav-book:focus-visible {
+  outline: 3px solid var(--white);
+  outline-offset: 3px;
+}
 
 </style>
 </head>
