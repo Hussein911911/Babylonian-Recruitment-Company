@@ -1947,7 +1947,7 @@
     role: 'guest',         // staff | public | guest
     error: null, detail: null, failedTables: [],
     readOnly: false, applying: false, needsReload: false,
-    timer: null, pushing: false,
+    timer: null, pushing: false, pushPromise: null,
     lastPushAt: null, lastPush: null, lastError: null,
     unsubscribe: null, bootPromise: null, listeners: []
   };
@@ -2034,6 +2034,10 @@
     var e = err || {};
     var code = e.code || (e.error && e.error.code) || '';
     var msg = String(e.message || (e.error && e.error.message) || e || '');
+    if (/card_print_code/i.test(msg) && (code === '42703' || code === 'PGRST204' || /column|schema cache/i.test(msg))) {
+      return { text: 'تحديث رمز البطاقة غير مطبّق: العمود card_print_code مفقود',
+        hint: 'طبّق ترحيلي 20261016090000 و20261016103000 قبل إصدار البطاقات' };
+    }
     if (code === 'PGRST205' || /schema cache|does not exist/i.test(msg)) {
       return { text: 'المخطط غير مطبَّق على القاعدة (جدول مفقود)', hint: 'طبّق docs/schema.sql على المشروع' };
     }
@@ -2230,7 +2234,7 @@
       },
       onError: function (err, op) {
         var d = describeError(err);
-        cloud.lastError = d.text + ' — ' + op.op + ' ' + op.table + ' (' + op.key + ')';
+        cloud.lastError = d.text + (d.hint ? ' — ' + d.hint : '') + ' — ' + op.op + ' ' + op.table + ' (' + op.key + ')';
         console.warn('[HRC/sync] فشلت ' + op.op + ' ' + op.table + ': ' + cloud.lastError);
       },
       onFatal: function (err) {
@@ -2251,16 +2255,17 @@
   function pushCloud() {
     if (cloud.timer) { clearTimeout(cloud.timer); cloud.timer = null; }
     if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.sync) return Promise.resolve({ skipped: true });
-    if (cloud.pushing) return Promise.resolve({ skipped: true });
+    if (cloud.pushing) return cloud.pushPromise;
     cloud.pushing = true;
-    return cloud.sync.push(db).then(function (res) {
+    cloud.lastError = null;
+    cloud.pushPromise = cloud.sync.push(db).then(function (res) {
       cloud.pushing = false;
       cloud.lastPushAt = nowISO();
       cloud.lastPush = res;
       if (res && res.failed) {
         /* العملية الفاشلة تبقى معلّقة (لا تُوسم كمُزامَنة) وتُعاد في الدفعة
            التالية — انظر advanceSnapshot في cloud-sync.js. */
-        cloud.lastError = 'تعذّر دفع ' + res.failed + ' عملية — ستُعاد تلقائياً';
+        cloud.lastError = cloud.lastError || ('تعذّر دفع ' + res.failed + ' عملية — ستُعاد تلقائياً');
         console.warn('[HRC/sync] ' + cloud.lastError + ': ' + (res.pending || []).join(', '));
       }
       if (cloud.needsReload) { cloud.needsReload = false; return reloadFromCloud(); }
@@ -2271,6 +2276,51 @@
       cloud.lastError = cloud.error;
       return { error: e };
     });
+    return cloud.pushPromise;
+  }
+
+  /* Confirm the exact printed identity in the server, never local-only success. */
+  function confirmIssuedCards(cards) {
+    cards = cards || [];
+    if (!cards.length) return Promise.resolve({ ok: false, error: 'لا توجد بطاقات للتحقق' });
+    if (!cloudConfigured()) return Promise.resolve({ ok: true, localOnly: true });
+    if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client || !cloud.sync) {
+      return Promise.resolve({ ok: false, error: 'لم يُؤكَّد حفظ البطاقة بقاعدة الشركة — تحقق من الاتصال وجلسة الموظف. لا تطبعها للبيع بعد.' });
+    }
+    var expected = {};
+    cards.forEach(function (c) { expected[c.serial] = c; });
+    function fail(message) { throw new Error(message); }
+    return pushCloud().then(function () {
+      var pending = cloud.sync.diff(db).some(function (op) {
+        return (op.table === 'applicants' || op.table === 'job_attempts') &&
+          !!expected[op.local ? op.local.serial : String(op.key).split(':')[0]];
+      });
+      if (pending) fail(cloud.lastError || 'حفظ البطاقة أو فرصها ما زال معلقاً — أعد محاولة التأكيد دون إصدار بطاقة بديلة.');
+      var serials = Object.keys(expected), seen = {}, chain = Promise.resolve();
+      for (var i = 0; i < serials.length; i += 100) (function (part) {
+        chain = chain.then(function () {
+          return cloud.client.from('applicants').select('serial,card_print_code').in('serial', part);
+        }).then(function (res) {
+          if (!res || res.error) {
+            var info = describeError(res && res.error);
+            fail(info.text + (info.hint ? ' — ' + info.hint : ''));
+          }
+          (res.data || []).forEach(function (row) {
+            if (expected[row.serial] && (row.card_print_code || null) === (expected[row.serial].cardPrintCode || null)) seen[row.serial] = true;
+          });
+        });
+      })(serials.slice(i, i + 100));
+      return chain.then(function () {
+        if (serials.some(function (serial) { return !seen[serial]; })) fail('الباركود أو رمز ظهر البطاقة لا يطابق السجل المحفوظ بقاعدة الشركة — لا تطبعها للبيع، وأعد تحميل المخزون للتحقق.');
+        // Also prove that the public QR lookup function is installed and works.
+        return cloud.client.rpc('self_service_card', { p_serial: serials[0] });
+      }).then(function (res) {
+        if (!res || res.error || !res.data || res.data.ok === false) fail('حفظ البطاقة لا يكفي: صفحة الباركود لم تتعرف عليها. تحقق من دالة self_service_card وصلاحياتها في قاعدة الشركة.');
+        var card = res.data.card || res.data;
+        if (card.serial !== serials[0]) fail('نتيجة التحقق لا تطابق الباركود الصادر.');
+        return { ok: true, localOnly: false };
+      });
+    }).catch(function (e) { return { ok: false, error: e.message || 'تعذّر تأكيد حفظ البطاقة — لا تطبعها للبيع بعد.' }; });
   }
 
   /* إعادة قراءة كاملة — بعد تغيير من موظف آخر أو بعد استعادة الاتصال */
@@ -2600,6 +2650,7 @@
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     probeServiceKey: probeServiceKey,
     staffAdmin: staffAdmin,
+    confirmIssuedCards: confirmIssuedCards,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,

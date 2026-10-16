@@ -923,7 +923,7 @@
         }
       } else {
         if (!V || !V.print) { setErr('rcode', 'قالب الطباعة غير متوفر بهذه الصفحة.'); return; }
-        try { V.print(r.app, { attempts: r.attempts }); } catch (e) {
+        try { V.print(r.app, { attempts: r.attempts, verifiedReprint: true }); } catch (e) {
           setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
         }
       }

@@ -2989,8 +2989,33 @@
           var r = Store.createCardWithSerial(serial, notes);
           if (!r.ok) { errBox.textContent = r.error; errBox.style.display = 'block'; codeInp.focus(); return; }
           close();
-          cardResultModal(r.card);
+          confirmCardResult([r.card], function () { cardResultModal(r.card); });
         });
+      }
+    });
+  }
+
+  function confirmCardResult(cards, onReady) {
+    // Offline demo/test mode has no cloud configured; never describe it as online.
+    if (!Store.cloudStatus().configured) { onReady(); return; }
+    UI.modal({
+      title: 'تأكيد حفظ البطاقات بقاعدة الشركة',
+      body: '<div id="card-confirm-status" role="status">جارٍ حفظ الباركود ورمز التحقق وفحص إمكانية قراءة البطاقة…</div>',
+      footer: '<button class="btn btn-outline" data-close>إغلاق — تبقى بالمخزون</button><button class="btn btn-gold" id="card-confirm-retry">إعادة محاولة التأكيد</button>',
+      onMount: function (box, close) {
+        var btn = box.querySelector('#card-confirm-retry'), status = box.querySelector('#card-confirm-status');
+        function run() {
+          btn.disabled = true;
+          status.textContent = 'جارٍ تأكيد الحفظ وقراءة الباركود من قاعدة الشركة…';
+          Promise.resolve(Store.confirmIssuedCards(cards)).then(function (r) {
+            btn.disabled = false;
+            if (!r || !r.ok) { status.textContent = (r && r.error) || 'لم يتم تأكيد الحفظ — لا تطبع البطاقة للبيع.'; return; }
+            if (r.localOnly) { status.textContent = 'البطاقة محلية فقط، ولم يُؤكَّد توفرها على الموقع العام.'; return; }
+            if (!box.isConnected) return;
+            close(); onReady();
+          }).catch(function () { btn.disabled = false; status.textContent = 'تعذّر التأكيد — أعد المحاولة، ولا تُصدر بطاقة مكررة.'; });
+        }
+        btn.addEventListener('click', run); run();
       }
     });
   }
@@ -3062,7 +3087,7 @@
           var made = Store.createCardBatch(count, notes);
           if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (1 إلى 1000)'); return; }
           close();
-          batchResultModal(made);
+          confirmCardResult(made, function () { batchResultModal(made); });
         });
       }
     });

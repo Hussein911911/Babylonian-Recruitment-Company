@@ -6835,7 +6835,7 @@ table.data tbody tr:hover { background: #faf8f3; }
     role: 'guest',         // staff | public | guest
     error: null, detail: null, failedTables: [],
     readOnly: false, applying: false, needsReload: false,
-    timer: null, pushing: false,
+    timer: null, pushing: false, pushPromise: null,
     lastPushAt: null, lastPush: null, lastError: null,
     unsubscribe: null, bootPromise: null, listeners: []
   };
@@ -6922,6 +6922,10 @@ table.data tbody tr:hover { background: #faf8f3; }
     var e = err || {};
     var code = e.code || (e.error && e.error.code) || '';
     var msg = String(e.message || (e.error && e.error.message) || e || '');
+    if (/card_print_code/i.test(msg) && (code === '42703' || code === 'PGRST204' || /column|schema cache/i.test(msg))) {
+      return { text: 'تحديث رمز البطاقة غير مطبّق: العمود card_print_code مفقود',
+        hint: 'طبّق ترحيلي 20261016090000 و20261016103000 قبل إصدار البطاقات' };
+    }
     if (code === 'PGRST205' || /schema cache|does not exist/i.test(msg)) {
       return { text: 'المخطط غير مطبَّق على القاعدة (جدول مفقود)', hint: 'طبّق docs/schema.sql على المشروع' };
     }
@@ -7118,7 +7122,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       },
       onError: function (err, op) {
         var d = describeError(err);
-        cloud.lastError = d.text + ' — ' + op.op + ' ' + op.table + ' (' + op.key + ')';
+        cloud.lastError = d.text + (d.hint ? ' — ' + d.hint : '') + ' — ' + op.op + ' ' + op.table + ' (' + op.key + ')';
         console.warn('[HRC/sync] فشلت ' + op.op + ' ' + op.table + ': ' + cloud.lastError);
       },
       onFatal: function (err) {
@@ -7139,16 +7143,17 @@ table.data tbody tr:hover { background: #faf8f3; }
   function pushCloud() {
     if (cloud.timer) { clearTimeout(cloud.timer); cloud.timer = null; }
     if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.sync) return Promise.resolve({ skipped: true });
-    if (cloud.pushing) return Promise.resolve({ skipped: true });
+    if (cloud.pushing) return cloud.pushPromise;
     cloud.pushing = true;
-    return cloud.sync.push(db).then(function (res) {
+    cloud.lastError = null;
+    cloud.pushPromise = cloud.sync.push(db).then(function (res) {
       cloud.pushing = false;
       cloud.lastPushAt = nowISO();
       cloud.lastPush = res;
       if (res && res.failed) {
         /* العملية الفاشلة تبقى معلّقة (لا تُوسم كمُزامَنة) وتُعاد في الدفعة
            التالية — انظر advanceSnapshot في cloud-sync.js. */
-        cloud.lastError = 'تعذّر دفع ' + res.failed + ' عملية — ستُعاد تلقائياً';
+        cloud.lastError = cloud.lastError || ('تعذّر دفع ' + res.failed + ' عملية — ستُعاد تلقائياً');
         console.warn('[HRC/sync] ' + cloud.lastError + ': ' + (res.pending || []).join(', '));
       }
       if (cloud.needsReload) { cloud.needsReload = false; return reloadFromCloud(); }
@@ -7159,6 +7164,51 @@ table.data tbody tr:hover { background: #faf8f3; }
       cloud.lastError = cloud.error;
       return { error: e };
     });
+    return cloud.pushPromise;
+  }
+
+  /* Confirm the exact printed identity in the server, never local-only success. */
+  function confirmIssuedCards(cards) {
+    cards = cards || [];
+    if (!cards.length) return Promise.resolve({ ok: false, error: 'لا توجد بطاقات للتحقق' });
+    if (!cloudConfigured()) return Promise.resolve({ ok: true, localOnly: true });
+    if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client || !cloud.sync) {
+      return Promise.resolve({ ok: false, error: 'لم يُؤكَّد حفظ البطاقة بقاعدة الشركة — تحقق من الاتصال وجلسة الموظف. لا تطبعها للبيع بعد.' });
+    }
+    var expected = {};
+    cards.forEach(function (c) { expected[c.serial] = c; });
+    function fail(message) { throw new Error(message); }
+    return pushCloud().then(function () {
+      var pending = cloud.sync.diff(db).some(function (op) {
+        return (op.table === 'applicants' || op.table === 'job_attempts') &&
+          !!expected[op.local ? op.local.serial : String(op.key).split(':')[0]];
+      });
+      if (pending) fail(cloud.lastError || 'حفظ البطاقة أو فرصها ما زال معلقاً — أعد محاولة التأكيد دون إصدار بطاقة بديلة.');
+      var serials = Object.keys(expected), seen = {}, chain = Promise.resolve();
+      for (var i = 0; i < serials.length; i += 100) (function (part) {
+        chain = chain.then(function () {
+          return cloud.client.from('applicants').select('serial,card_print_code').in('serial', part);
+        }).then(function (res) {
+          if (!res || res.error) {
+            var info = describeError(res && res.error);
+            fail(info.text + (info.hint ? ' — ' + info.hint : ''));
+          }
+          (res.data || []).forEach(function (row) {
+            if (expected[row.serial] && (row.card_print_code || null) === (expected[row.serial].cardPrintCode || null)) seen[row.serial] = true;
+          });
+        });
+      })(serials.slice(i, i + 100));
+      return chain.then(function () {
+        if (serials.some(function (serial) { return !seen[serial]; })) fail('الباركود أو رمز ظهر البطاقة لا يطابق السجل المحفوظ بقاعدة الشركة — لا تطبعها للبيع، وأعد تحميل المخزون للتحقق.');
+        // Also prove that the public QR lookup function is installed and works.
+        return cloud.client.rpc('self_service_card', { p_serial: serials[0] });
+      }).then(function (res) {
+        if (!res || res.error || !res.data || res.data.ok === false) fail('حفظ البطاقة لا يكفي: صفحة الباركود لم تتعرف عليها. تحقق من دالة self_service_card وصلاحياتها في قاعدة الشركة.');
+        var card = res.data.card || res.data;
+        if (card.serial !== serials[0]) fail('نتيجة التحقق لا تطابق الباركود الصادر.');
+        return { ok: true, localOnly: false };
+      });
+    }).catch(function (e) { return { ok: false, error: e.message || 'تعذّر تأكيد حفظ البطاقة — لا تطبعها للبيع بعد.' }; });
   }
 
   /* إعادة قراءة كاملة — بعد تغيير من موظف آخر أو بعد استعادة الاتصال */
@@ -7488,6 +7538,7 @@ table.data tbody tr:hover { background: #faf8f3; }
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     probeServiceKey: probeServiceKey,
     staffAdmin: staffAdmin,
+    confirmIssuedCards: confirmIssuedCards,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,
@@ -8480,8 +8531,18 @@ table.data tbody tr:hover { background: #faf8f3; }
      فيمسح ورقتها بيضاء. التنظيف الآن لا يعمل إلا لآخر طباعة فقط. */
   var printSeq = 0;
 
+  function checkBeforeCardPrint(apps, resume) {
+    if (!Store.confirmIssuedCards || !Store.cloudStatus || !Store.cloudStatus().configured) return false;
+    Store.confirmIssuedCards(apps).then(function (r) {
+      if (r && r.ok && !r.localOnly) resume();
+      else if (UI && UI.toast) UI.toast('err', 'الطباعة متوقفة لحين تأكيد الحفظ', (r && r.error) || 'البطاقة غير مؤكدة في قاعدة الشركة');
+    }).catch(function () { if (UI && UI.toast) UI.toast('err', 'تعذّر تأكيد البطاقة', 'تحقق من الاتصال قبل الطباعة'); });
+    return true;
+  }
+
   function print(app, opts) {
     opts = opts || {};
+    if (!opts.verifiedReprint && !opts.confirmed && checkBeforeCardPrint([app], function () { print(app, Object.assign({}, opts, { confirmed: true })); })) return;
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّر الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
@@ -8497,7 +8558,8 @@ table.data tbody tr:hover { background: #faf8f3; }
   }
 
   /* طباعة دفعة بطاقات (الفارغة عند الإصدار): كل بطاقة بوجهيها وصفحة خاصة */
-  function printBatch(apps) {
+  function printBatch(apps, confirmed) {
+    if (!confirmed && checkBeforeCardPrint(apps, function () { printBatch(apps, true); })) return;
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
@@ -8573,7 +8635,8 @@ table.data tbody tr:hover { background: #faf8f3; }
   /* عدد أوراق A4 (كل ورقة بوجهين) لعدد بطاقات معيّن — للعرض في النافذة */
   function sheetCount(n) { return Math.ceil((Number(n) || 0) / SHEET_PER); }
 
-  function printSheet(apps) {
+  function printSheet(apps, confirmed) {
+    if (!confirmed && checkBeforeCardPrint(apps, function () { printSheet(apps, true); })) return;
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
@@ -9528,7 +9591,7 @@ table.data tbody tr:hover { background: #faf8f3; }
         }
       } else {
         if (!V || !V.print) { setErr('rcode', 'قالب الطباعة غير متوفر بهذه الصفحة.'); return; }
-        try { V.print(r.app, { attempts: r.attempts }); } catch (e) {
+        try { V.print(r.app, { attempts: r.attempts, verifiedReprint: true }); } catch (e) {
           setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
         }
       }
@@ -13577,8 +13640,33 @@ table.data tbody tr:hover { background: #faf8f3; }
           var r = Store.createCardWithSerial(serial, notes);
           if (!r.ok) { errBox.textContent = r.error; errBox.style.display = 'block'; codeInp.focus(); return; }
           close();
-          cardResultModal(r.card);
+          confirmCardResult([r.card], function () { cardResultModal(r.card); });
         });
+      }
+    });
+  }
+
+  function confirmCardResult(cards, onReady) {
+    // Offline demo/test mode has no cloud configured; never describe it as online.
+    if (!Store.cloudStatus().configured) { onReady(); return; }
+    UI.modal({
+      title: 'تأكيد حفظ البطاقات بقاعدة الشركة',
+      body: '<div id="card-confirm-status" role="status">جارٍ حفظ الباركود ورمز التحقق وفحص إمكانية قراءة البطاقة…</div>',
+      footer: '<button class="btn btn-outline" data-close>إغلاق — تبقى بالمخزون</button><button class="btn btn-gold" id="card-confirm-retry">إعادة محاولة التأكيد</button>',
+      onMount: function (box, close) {
+        var btn = box.querySelector('#card-confirm-retry'), status = box.querySelector('#card-confirm-status');
+        function run() {
+          btn.disabled = true;
+          status.textContent = 'جارٍ تأكيد الحفظ وقراءة الباركود من قاعدة الشركة…';
+          Promise.resolve(Store.confirmIssuedCards(cards)).then(function (r) {
+            btn.disabled = false;
+            if (!r || !r.ok) { status.textContent = (r && r.error) || 'لم يتم تأكيد الحفظ — لا تطبع البطاقة للبيع.'; return; }
+            if (r.localOnly) { status.textContent = 'البطاقة محلية فقط، ولم يُؤكَّد توفرها على الموقع العام.'; return; }
+            if (!box.isConnected) return;
+            close(); onReady();
+          }).catch(function () { btn.disabled = false; status.textContent = 'تعذّر التأكيد — أعد المحاولة، ولا تُصدر بطاقة مكررة.'; });
+        }
+        btn.addEventListener('click', run); run();
       }
     });
   }
@@ -13650,7 +13738,7 @@ table.data tbody tr:hover { background: #faf8f3; }
           var made = Store.createCardBatch(count, notes);
           if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (1 إلى 1000)'); return; }
           close();
-          batchResultModal(made);
+          confirmCardResult(made, function () { batchResultModal(made); });
         });
       }
     });

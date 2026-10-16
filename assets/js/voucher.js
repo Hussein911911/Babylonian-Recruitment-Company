@@ -394,8 +394,18 @@
      فيمسح ورقتها بيضاء. التنظيف الآن لا يعمل إلا لآخر طباعة فقط. */
   var printSeq = 0;
 
+  function checkBeforeCardPrint(apps, resume) {
+    if (!Store.confirmIssuedCards || !Store.cloudStatus || !Store.cloudStatus().configured) return false;
+    Store.confirmIssuedCards(apps).then(function (r) {
+      if (r && r.ok && !r.localOnly) resume();
+      else if (UI && UI.toast) UI.toast('err', 'الطباعة متوقفة لحين تأكيد الحفظ', (r && r.error) || 'البطاقة غير مؤكدة في قاعدة الشركة');
+    }).catch(function () { if (UI && UI.toast) UI.toast('err', 'تعذّر تأكيد البطاقة', 'تحقق من الاتصال قبل الطباعة'); });
+    return true;
+  }
+
   function print(app, opts) {
     opts = opts || {};
+    if (!opts.verifiedReprint && !opts.confirmed && checkBeforeCardPrint([app], function () { print(app, Object.assign({}, opts, { confirmed: true })); })) return;
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّر الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
@@ -411,7 +421,8 @@
   }
 
   /* طباعة دفعة بطاقات (الفارغة عند الإصدار): كل بطاقة بوجهيها وصفحة خاصة */
-  function printBatch(apps) {
+  function printBatch(apps, confirmed) {
+    if (!confirmed && checkBeforeCardPrint(apps, function () { printBatch(apps, true); })) return;
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
@@ -487,7 +498,8 @@
   /* عدد أوراق A4 (كل ورقة بوجهين) لعدد بطاقات معيّن — للعرض في النافذة */
   function sheetCount(n) { return Math.ceil((Number(n) || 0) / SHEET_PER); }
 
-  function printSheet(apps) {
+  function printSheet(apps, confirmed) {
+    if (!confirmed && checkBeforeCardPrint(apps, function () { printSheet(apps, true); })) return;
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }

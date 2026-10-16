@@ -94,6 +94,8 @@ async function load(file, { hash = '', search = '', waitMs = 260, session = null
   window.__printed = 0;
   if (!window.URL.createObjectURL) window.URL.createObjectURL = () => 'blob:test';
   await new Promise((r) => setTimeout(r, waitMs));
+  // This loader is the explicitly offline UI fixture; cloud fixtures use loadCloudSite.
+  if (window.HRCSupabaseConfig) window.HRCSupabaseConfig.enabled = false;
   if (window.location.hash !== hash && hash) window.location.hash = hash;
   window.dispatchEvent(new window.Event('hashchange'));
   await new Promise((r) => setTimeout(r, 120));

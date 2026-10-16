@@ -90,6 +90,8 @@ async function open(file, query, opts = {}) {
   });
   await new Promise((r) => { dom.window.addEventListener('load', r); setTimeout(r, 6000); });
   await wait(400);
+  // Historical end-to-end fixture is intentionally local; cloud suites stay enabled.
+  if (dom.window.HRCSupabaseConfig) dom.window.HRCSupabaseConfig.enabled = false;
   return { dom, w: dom.window, doc: dom.window.document, errors };
 }
 

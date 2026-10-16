@@ -256,7 +256,7 @@
       if (op.table === 'audit_log' && row.id != null) delete row.id;
       return finish(table.insert(row).select(), op, hooks)
         .catch(function (err) {
-          if (!isUniqueViolation(err)) throw err;
+          if (!isUniqueViolation(err) || op.table === 'applicants') throw err;
           /* تصادم مفتاح فريد: أعد المحاولة بلا المفتاح الطبيعي */
           var retry = Object.assign({}, row);
           delete retry.code; delete retry.serial;

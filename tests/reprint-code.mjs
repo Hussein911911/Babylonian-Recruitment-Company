@@ -173,6 +173,27 @@ try {
   check('cloud verifier never grants protected data on server rejection', !(await C.verifyCardCode(client, other.serial, other.cardPrintCode)).ok);
   client.rpc = async () => { throw new Error('offline'); };
   check('cloud verifier fails closed on network failure', !(await C.verifyCardCode(client, other.serial, other.cardPrintCode)).ok);
+  // Every stock-print entry point must fail closed until remote issuance confirms.
+  const originalStatus = S.cloudStatus, originalConfirm = S.confirmIssuedCards;
+  S.cloudStatus = () => ({ configured: true });
+  S.confirmIssuedCards = async () => ({ ok: false, error: 'حفظ البطاقة معلق' });
+  const beforeBlockedPrint = printed;
+  w.document.querySelector('#print-root').innerHTML = '';
+  w.HRCVoucher.print(other); w.HRCVoucher.printBatch([other]); w.HRCVoucher.printSheet([other]);
+  await pause(200);
+  check('all stock printing paths block unsaved cards without opening print', printed === beforeBlockedPrint && !w.document.querySelector('#print-root').innerHTML);
+  let completeConfirmation;
+  S.confirmIssuedCards = () => new Promise((resolve) => { completeConfirmation = resolve; });
+  w.HRCVoucher.print(other); await pause();
+  check('stock print waits for server confirmation before preparing a card', !w.document.querySelector('#print-root').innerHTML);
+  completeConfirmation({ ok: true, localOnly: false });
+  await waitForPrint(beforeBlockedPrint + 1);
+  check('confirmed stock print preserves its one saved independent secret', w.document.querySelector('#print-root').innerHTML.includes(other.cardPrintCode.match(/.{4}/g).join('-')));
+  S.confirmIssuedCards = async () => ({ ok: false, error: 'جلسة موظف مطلوبة' });
+  w.HRCVoucher.print(other, { attempts: S.getAttempts(other.serial), verifiedReprint: true });
+  await waitForPrint(beforeBlockedPrint + 2);
+  check('already-authorized public reprint does not incorrectly require staff issuance access', printed === beforeBlockedPrint + 2);
+  S.cloudStatus = originalStatus; S.confirmIssuedCards = originalConfirm;
   check('new-card legacy wizard routes to barcode-first application without asking for a chance code', /if \(card\.usesCardPrintCode\) \{ location\.assign\('apply\.html\?form='/.test(read('assets/js/booking.js')));
 } finally { dom.window.close(); }
 console.log(`\nIndependent reprint code: ${checks} checks passed.`);

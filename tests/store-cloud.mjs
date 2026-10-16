@@ -47,6 +47,7 @@ function makeMock(opts = {}) {
       update(p) { q._op = 'update'; q._payload = p; return api; },
       delete() { q._op = 'delete'; return api; },
       eq(c, v) { q._filters.push([c, v]); return api; },
+      in(c, v) { q._filters.push([c, v]); return api; },
       order() { return api; }, limit() { return api; }, single() { return api; },
       then(res, rej) {
         const rec = { table, op: q._op, payload: q._payload, filters: q._filters };
@@ -68,15 +69,15 @@ function makeMock(opts = {}) {
           return Promise.resolve({ data: [row], error: null }).then(res, rej);
         }
         if (q._op === 'update') {
-          const hit = (state[table] || []).filter((r) => q._filters.every(([c, v]) => String(r[c]) === String(v)));
+          const hit = (state[table] || []).filter((r) => q._filters.every(([c, v]) => (Array.isArray(v) ? v.includes(r[c]) : String(r[c]) === String(v))));
           hit.forEach((r) => Object.assign(r, q._payload));
           return Promise.resolve({ data: hit, error: null }).then(res, rej);
         }
         if (q._op === 'delete') {
-          state[table] = (state[table] || []).filter((r) => !q._filters.every(([c, v]) => String(r[c]) === String(v)));
+          state[table] = (state[table] || []).filter((r) => !q._filters.every(([c, v]) => (Array.isArray(v) ? v.includes(r[c]) : String(r[c]) === String(v))));
           return Promise.resolve({ data: null, error: null }).then(res, rej);
         }
-        const rows = (state[table] || []).filter((r) => q._filters.every(([c, v]) => String(r[c]) === String(v)));
+        const rows = (state[table] || []).filter((r) => q._filters.every(([c, v]) => (Array.isArray(v) ? v.includes(r[c]) : String(r[c]) === String(v))));
         return Promise.resolve({ data: rows, error: null }).then(res, rej);
       }
     };
@@ -560,6 +561,62 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
   const idxUpd = mock.__calls.findIndex((c) => c.table === 'applicants' && c.op === 'update');
   check('كل الإدراجات تُرسل قبل التعديلات في الدفعة', idxIns >= 0 && idxUpd > idxIns,
     `insert=${idxIns} update=${idxUpd}`);
+}
+
+/* Issuance must prove the exact printed card is saved and publicly readable. */
+step(13, 'تأكيد إصدار البطاقة — لا نجاح محلي زائف ولا طباعة قبل الحفظ');
+{
+  let blocked = false, readMode = 'ok', slow = false;
+  let mock;
+  mock = makeMock({ rows: cloudRows(),
+    onCall(call) {
+      if (call.table === 'applicants' && call.op === 'insert' && call.payload.serial === '9KQ4M9TR2Z')
+        return { data: null, error: { code: '23505', message: 'duplicate key on applicants serial' } };
+      if (call.table === 'applicants' && call.op === 'insert' && blocked)
+        return { data: null, error: { code: 'PGRST204', message: "Could not find the card_print_code column in the schema cache" } };
+      if (call.table === 'applicants' && call.op === 'insert' && slow) {
+        return new Promise((resolve) => setTimeout(() => { mock.__state.applicants.push({ ...call.payload }); resolve({ data: [call.payload], error: null }); }, 40));
+      }
+      if (call.table === 'applicants' && call.op === 'select' && call.filters.length && readMode === 'missing') return { data: [], error: null };
+      if (call.table === 'applicants' && call.op === 'select' && call.filters.length && readMode === 'mismatch') return { data: mock.__state.applicants.map((r) => ({ ...r, card_print_code: 'WRONG' })), error: null };
+    },
+    rpc: { self_service_card(args) {
+      if (readMode === 'rpc-error') return { ok: false, error: 'لا توجد بطاقة' };
+      return { ok: true, card: { serial: args.p_serial, status: 'blank', chances: [] } };
+    } }
+  });
+  const { Store } = bootStore(mock, { enforceAuth: true });
+  Store.init(); await sleep(120);
+  blocked = true;
+  const created = Store.createCardWithSerial('7KQ4M9TR2X', 'اختبار تأكيد الحفظ');
+  check('إنشاء بطاقة جديدة بكودها للاختبار', created.ok, created.error);
+  const failure = await Store.confirmIssuedCards([created.card]);
+  check('عمود رمز التحقق المفقود يمنع إعلان البطاقة جاهزة ويشرح التحديث المطلوب', !failure.ok && /card_print_code/.test(failure.error), failure.error);
+  check('فشل الحفظ لا يحذف البطاقة المحلية ولا يبدل باركودها', Store.getApplicant(created.card.serial) === created.card && !mock.__state.applicants.some((r) => r.serial === created.card.serial));
+  blocked = false;
+  const success = await Store.confirmIssuedCards([created.card]);
+  check('إعادة التأكيد تحفظ نفس البطاقة دون إصدار بديل وتفحص قراءة الباركود', success.ok && mock.__state.applicants.filter((r) => r.serial === created.card.serial).length === 1 && mock.__calls.some((c) => c.rpc === 'self_service_card' && c.args.p_serial === created.card.serial), success.error);
+  check('رمز الظهر المحفوظ هو نفسه الصادر وليس رمز فرصة', mock.__state.applicants.find((r) => r.serial === created.card.serial).card_print_code === created.card.cardPrintCode);
+  readMode = 'missing';
+  check('سجل غير موجود في القراءة البعيدة لا يمر كنجاح', !(await Store.confirmIssuedCards([created.card])).ok);
+  readMode = 'mismatch';
+  check('اختلاف رمز الظهر بين الورقة والقاعدة يمنع الطباعة', !(await Store.confirmIssuedCards([created.card])).ok);
+  readMode = 'rpc-error';
+  check('فشل تعرف صفحة الباركود يمنع تأكيد الإصدار رغم حفظ السجل', !(await Store.confirmIssuedCards([created.card])).ok);
+  readMode = 'ok'; slow = true;
+  const next = Store.createCardWithSerial('8KQ4M9TR2Y', 'دفع متزامن');
+  const firstPush = Store.pushCloud();
+  const confirm = Store.confirmIssuedCards([next.card]);
+  await firstPush;
+  check('التأكيد ينتظر الدفع الجاري ولا يعتبر skipped نجاحاً', (await confirm).ok);
+  const collision = Store.createCardWithSerial('9KQ4M9TR2Z', 'تعارض هوية');
+  const refusedCollision = await Store.confirmIssuedCards([collision.card]);
+  check('تصادم باركود البطاقة يفشل صراحة ولا يولّد رقماً بديلاً لا يطابق الورقة', !refusedCollision.ok && mock.__calls.filter((c) => c.table === 'applicants' && c.op === 'insert' && c.payload.serial === collision.card.serial).length === 1 && !mock.__calls.some((c) => c.table === 'applicants' && c.op === 'insert' && !c.payload.serial));
+}
+{
+  const { Store } = bootStore(makeMock({ rows: cloudRows(), session: null }), { enforceAuth: true });
+  Store.init(); await sleep(120);
+  check('الزائر بلا جلسة موظف لا يستطيع تأكيد إصدار بطاقة', !(await Store.confirmIssuedCards([{ serial: '7KQ4M9TR2X' }])).ok);
 }
 
 /* ===========================================================================
