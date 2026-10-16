@@ -2981,43 +2981,43 @@
           codeInp.value = Store.suggestSerial();
           errBox.style.display = 'none';
         });
+        var issuedCard = null;
         box.querySelector('#c-save').addEventListener('click', function () {
+          if (this.disabled) return;
           var serial = String(codeInp.value || '').trim();
           var notes = box.querySelector('#c-notes').value.trim();
           errBox.style.display = 'none';
           if (!serial) { codeInp.focus(); return; }
-          var r = Store.createCardWithSerial(serial, notes);
+          var r = issuedCard ? { ok: true, card: issuedCard } : Store.createCardWithSerial(serial, notes);
           if (!r.ok) { errBox.textContent = r.error; errBox.style.display = 'block'; codeInp.focus(); return; }
-          close();
-          confirmCardResult([r.card], function () { cardResultModal(r.card); });
+          issuedCard = r.card;
+          codeInp.disabled = true; box.querySelector('#c-gen').disabled = true;
+          finishCardIssuance([issuedCard], box, this, errBox, close, function () { cardResultModal(issuedCard); });
         });
       }
     });
   }
 
-  function confirmCardResult(cards, onReady) {
-    // Offline demo/test mode has no cloud configured; never describe it as online.
-    if (!Store.cloudStatus().configured) { onReady(); return; }
-    UI.modal({
-      title: 'تأكيد حفظ البطاقات بقاعدة الشركة',
-      body: '<div id="card-confirm-status" role="status">جارٍ حفظ الباركود ورمز التحقق وفحص إمكانية قراءة البطاقة…</div>',
-      footer: '<button class="btn btn-outline" data-close>إغلاق — تبقى بالمخزون</button><button class="btn btn-gold" id="card-confirm-retry">إعادة محاولة التأكيد</button>',
-      onMount: function (box, close) {
-        var btn = box.querySelector('#card-confirm-retry'), status = box.querySelector('#card-confirm-status');
-        function run() {
-          btn.disabled = true;
-          status.textContent = 'جارٍ تأكيد الحفظ وقراءة الباركود من قاعدة الشركة…';
-          Promise.resolve(Store.confirmIssuedCards(cards)).then(function (r) {
-            btn.disabled = false;
-            if (!r || !r.ok) { status.textContent = (r && r.error) || 'لم يتم تأكيد الحفظ — لا تطبع البطاقة للبيع.'; return; }
-            if (r.localOnly) { status.textContent = 'البطاقة محلية فقط، ولم يُؤكَّد توفرها على الموقع العام.'; return; }
-            if (!box.isConnected) return;
-            if (r.warnings && r.warnings.length) UI.toast('warn', 'تنبيه سجل التدقيق', r.warnings[0]);
-            close(); onReady();
-          }).catch(function () { btn.disabled = false; status.textContent = 'تعذّر التأكيد — أعد المحاولة، ولا تُصدر بطاقة مكررة.'; });
-        }
-        btn.addEventListener('click', run); run();
+  function finishCardIssuance(cards, box, button, status, close, onReady) {
+    if (!Store.cloudStatus().configured) { close(); onReady(); return; }
+    button.disabled = true;
+    button.textContent = 'جارٍ حفظ البطاقات وفحص الباركود…';
+    status.style.display = 'block';
+    status.textContent = 'جارٍ الحفظ والتحقق تلقائياً — لا تحتاج إلى إصدار بطاقات أخرى.';
+    Promise.resolve(Store.confirmIssuedCards(cards)).then(function (r) {
+      if (!box.isConnected) return;
+      button.disabled = false;
+      if (!r || !r.ok || r.localOnly) {
+        button.textContent = 'إعادة حفظ نفس البطاقات';
+        status.textContent = (r && r.error) || 'لم يكتمل الحفظ بقاعدة الشركة — تبقى البطاقات بالمخزون لإعادة المحاولة.';
+        return;
       }
+      if (r.warnings && r.warnings.length) UI.toast('warn', 'تنبيه سجل التدقيق', r.warnings[0]);
+      close(); onReady();
+    }).catch(function () {
+      if (!box.isConnected) return;
+      button.disabled = false; button.textContent = 'إعادة حفظ نفس البطاقات';
+      status.textContent = 'تعذّر الحفظ — أعد المحاولة بنفس البطاقات دون إصدار بديل.';
     });
   }
 
@@ -3056,6 +3056,7 @@
         '<span class="tiny muted" id="b-est" style="display:block;margin-top:6px"></span></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
       '</form>' +
+      '<div id="b-save-status" role="status" class="small mt-2" style="display:none"></div>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('shield') + ' كل بطاقة تولد <b>بكود عشوائي فريد</b> من 10 خانات (حروف وأرقام بلا شرطة) لا يتشابه مع أي بطاقة أخرى ولا يعود أبداً — ' +
         'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين مع رمز تحقق واحد بظهرها، ' +
@@ -3080,15 +3081,18 @@
           b.addEventListener('click', function () { cnt.value = b.getAttribute('data-n'); refresh(); });
         });
         refresh();
+        var issuedBatch = null;
         box.querySelector('#b-save').addEventListener('click', function () {
+          if (this.disabled) return;
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
           var count = Number(cnt.value) || 0;
           var notes = box.querySelector('#b-notes').value.trim();
-          var made = Store.createCardBatch(count, notes);
+          var made = issuedBatch || Store.createCardBatch(count, notes);
           if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (1 إلى 1000)'); return; }
-          close();
-          confirmCardResult(made, function () { batchResultModal(made); });
+          issuedBatch = made; cnt.disabled = true;
+          box.querySelectorAll('.b-preset').forEach(function (b) { b.disabled = true; });
+          finishCardIssuance(made, box, this, box.querySelector('#b-save-status'), close, function () { batchResultModal(made); });
         });
       }
     });

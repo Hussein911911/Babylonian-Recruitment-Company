@@ -2320,12 +2320,25 @@
       })(serials.slice(i, i + 100));
       return chain.then(function () {
         if (serials.some(function (serial) { return !seen[serial]; })) fail('الباركود أو رمز ظهر البطاقة لا يطابق السجل المحفوظ بقاعدة الشركة — لا تطبعها للبيع، وأعد تحميل المخزون للتحقق.');
-        // Also prove that the public QR lookup function is installed and works.
-        return cloud.client.rpc('self_service_card', { p_serial: serials[0] });
-      }).then(function (res) {
-        if (!res || res.error || !res.data || res.data.ok === false) fail('حفظ البطاقة لا يكفي: صفحة الباركود لم تتعرف عليها. تحقق من دالة self_service_card وصلاحياتها في قاعدة الشركة.');
-        var card = res.data.card || res.data;
-        if (card.serial !== serials[0]) fail('نتيجة التحقق لا تطابق الباركود الصادر.');
+        // Every card must be readable, not only the first card in a batch.
+        var next = 0, checked = 0;
+        function worker() {
+          if (next >= serials.length) return Promise.resolve();
+          var serial = serials[next++];
+          return cloud.client.rpc('self_service_card', { p_serial: serial }).then(function (res) {
+            if (!res || res.error || !res.data || res.data.ok === false) fail('لم تتعرف صفحة الباركود على البطاقة ' + serial + ' — تحقق من دالة self_service_card وصلاحياتها.');
+            var card = res.data.card || res.data;
+            if (card.serial !== serial) fail('نتيجة قراءة الباركود لا تطابق البطاقة ' + serial);
+            checked++;
+            return worker();
+          });
+        }
+        var workers = [];
+        for (var w = 0; w < Math.min(6, serials.length); w++) workers.push(worker());
+        return Promise.all(workers).then(function () {
+          if (checked !== serials.length) fail('لم يكتمل فحص جميع باركودات الدفعة.');
+        });
+      }).then(function () {
         return { ok: true, localOnly: false, warnings: failures.some(function (f) { return f.table === 'audit_log'; }) ? ['حُفظت البطاقة وتم التحقق منها، لكن بعض سجلات التدقيق لم تُحفظ. راجع تحديث صلاحيات سجل التدقيق؛ تبقى السجلات معلقة لإعادة المحاولة.'] : [] };
       });
     }).catch(function (e) { return { ok: false, error: e.message || 'تعذّر تأكيد حفظ البطاقة — لا تطبعها للبيع بعد.' }; });

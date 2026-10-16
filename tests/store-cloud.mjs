@@ -16,6 +16,7 @@
  *  التشغيل:  node tests/store-cloud.mjs
  * =========================================================================== */
 import { readFileSync } from 'node:fs';
+import jsQR from 'jsqr';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -620,6 +621,63 @@ step(13, 'تأكيد إصدار البطاقة — لا نجاح محلي زائ
   const { Store } = bootStore(makeMock({ rows: cloudRows(), session: null }), { enforceAuth: true });
   Store.init(); await sleep(120);
   check('الزائر بلا جلسة موظف لا يستطيع تأكيد إصدار بطاقة', !(await Store.confirmIssuedCards([{ serial: '7KQ4M9TR2X' }])).ok);
+}
+
+step(14, 'دفعة حقيقية المنطق — فحص كل باركود وليس أول بطاقة فقط');
+{
+  let mock, failSerial = '', active = 0, maxActive = 0, codeSeq = 7000;
+  mock = makeMock({ rows: cloudRows(), onCall(c) {
+    if (c.table === 'applicants' && c.op === 'insert') {
+      mock.__state.applicants.push({ ...c.payload });
+      // Model the production AFTER INSERT trigger creating canonical slots.
+      for (let no = 1; no <= c.payload.attempt_limit; no++) mock.__state.job_attempts.push({ serial: c.payload.serial, attempt_no: no, slot_status: 'empty', chance_code: (++codeSeq) + '-AB' });
+      return { data: [c.payload], error: null };
+    }
+    if (c.table === 'job_attempts' && c.op === 'insert' && mock.__state.job_attempts.some((a) => a.serial === c.payload.serial && a.attempt_no === c.payload.attempt_no))
+      return { data: null, error: { code: '23505', message: 'duplicate serial,attempt_no' } };
+  }, rpc: { self_service_card(args) {
+    active++; maxActive = Math.max(maxActive, active);
+    return new Promise((resolve) => setTimeout(() => {
+      active--;
+      const row = mock.__state.applicants.find((a) => a.serial === args.p_serial);
+      resolve(!row || args.p_serial === failSerial ? { ok: false, error: 'لا توجد بطاقة' } : { ok: true, card: { serial: row.serial, status: row.status } });
+    }, 1));
+  } } });
+  // Mock RPC supports asynchronous responses just as the real client does.
+  const realRpc = mock.rpc;
+  mock.rpc = (name, args) => realRpc(name, args).then(async (r) => ({ ...r, data: await r.data }));
+  const { Store, sandbox } = bootStore(mock, { enforceAuth: true });
+  Store.init(); await sleep(120);
+  const batch = Store.createCardBatch(101, 'اختبار دفعة بلا بيانات زبائن');
+  const result = await Store.confirmIssuedCards(batch);
+  check('حفظ 101 بطاقة مع فرصها يتجاوز تعارض مشغّل الإنشاء دون تكرار', result.ok && batch.length === 101 && batch.every((c) => mock.__state.job_attempts.filter((a) => a.serial === c.serial).length === c.attemptLimit), result.error);
+  check('كل بطاقة بالدفعة لها باركود ورمز ظهر فريدان', new Set(batch.map((c) => c.serial)).size === 101 && new Set(batch.map((c) => c.cardPrintCode)).size === 101);
+  check('كل بطاقات الدفعة بقيت فارغة وصلاحيتها تبدأ عند البيع، وليس عند الإصدار', batch.every((c) => c.status === 'blank' && !c.issueDate && !c.expiryDate));
+  const readCalls = mock.__calls.filter((c) => c.rpc === 'self_service_card');
+  check('مسار الباركود العام فحص كل الـ101 بطاقة وليس أول واحدة فقط', readCalls.length === 101 && batch.every((c) => readCalls.some((r) => r.args.p_serial === c.serial)));
+  check('فحص الدفعة لا يغرق الخادم بطلبات متزامنة بلا حد', maxActive > 1 && maxActive <= 6);
+  check('تطابق رمز الظهر المحفوظ لكل بطاقة بعد فحص الدفعة', batch.every((c) => mock.__state.applicants.find((r) => r.serial === c.serial).card_print_code === c.cardPrintCode));
+  new Function('self', 'module', readFileSync(join(ROOT, 'assets/js/qr.js'), 'utf8'))(sandbox, undefined);
+  let decoded = 0;
+  for (const card of batch) {
+    const url = Store.cardUrl(card.serial), matrix = sandbox.HRCQR.encode(url, 'M');
+    const n = matrix.getModuleCount(), size = (n + 8) * 4, pixels = new Uint8ClampedArray(size * size * 4);
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const row = Math.floor(y / 4) - 4, col = Math.floor(x / 4) - 4;
+      const dark = row >= 0 && row < n && col >= 0 && col < n && matrix.isDark(row, col);
+      const i = (y * size + x) * 4;
+      pixels[i] = pixels[i + 1] = pixels[i + 2] = dark ? 0 : 255; pixels[i + 3] = 255;
+    }
+    const scanned = jsQR(pixels, size, size);
+    if (scanned && scanned.data === url && new URL(scanned.data).searchParams.get('form') === card.serial && Store.isCardSerial(card.serial)) decoded++;
+  }
+  check('فك QR مستقل لكل 101 بطاقة يعيد رابط التقديم ورقم البطاقة الصحيحين', decoded === 101, String(decoded));
+  failSerial = batch[50].serial;
+  const partial = await Store.confirmIssuedCards(batch);
+  check('فشل بطاقة بوسط الدفعة يمنع إعلان نجاح الدفعة ويحدد باركودها', !partial.ok && partial.error.includes(failSerial), partial.error);
+  failSerial = '';
+  const retry = await Store.confirmIssuedCards(batch);
+  check('إعادة فحص الدفعة لا تنشئ بطاقات أو فرصاً مكررة', retry.ok && mock.__state.applicants.filter((a) => batch.some((c) => c.serial === a.serial)).length === 101);
 }
 
 /* ===========================================================================
