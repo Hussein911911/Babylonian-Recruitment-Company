@@ -802,6 +802,23 @@ check('البحث السريع بالكود يفتح بطاقة الوظيفة',
   const modal = lastModal(dash.doc);
   return (modal && modal.textContent.includes('HRC-1045') && modal.textContent.includes('بطاقة الوظيفة الداخلية')) || 'لم تُفتح البطاقة';
 });
+check('الإعدادات مختصرة والمتقدم مطوي دون حذف أدوات الإدارة', () => {
+  const doc = dash.doc;
+  const advanced = doc.getElementById('settings-advanced');
+  const main = doc.querySelector('#view-settings .settings-main');
+  const quick = doc.getElementById('btn-quick-backup');
+  return (!!advanced && !advanced.open && main.contains(doc.getElementById('settings-form')) &&
+    main.contains(doc.getElementById('users-table-body')) && !advanced.contains(quick) &&
+    ['users-channel', 'btn-cloud-key', 'btn-export', 'btn-import', 'btn-schedule-backup', 'btn-reset', 'set-verify-base']
+      .every((id) => advanced.contains(doc.getElementById(id)))) || 'اختل ترتيب الأساسيات أو اختفت أداة إدارية';
+});
+check('الإعدادات المتقدمة تُفتح وتُغلق بلوحة التحكم', () => {
+  const advanced = dash.doc.getElementById('settings-advanced');
+  advanced.querySelector('summary').click();
+  const opened = advanced.open;
+  advanced.querySelector('summary').click();
+  return (opened && !advanced.open) || 'القسم المتقدم لا يفتح ويغلق';
+});
 check('الإعدادات: عدد الفرص قابل للتعديل والإفراج التلقائي مقفل', () => {
   const att = dash.doc.getElementById('set-attempts');
   return (att && !att.disabled && att.min === '1' && att.max === '10' && !dash.doc.getElementById('set-auto')) || 'حقول القواعد غير صحيحة';

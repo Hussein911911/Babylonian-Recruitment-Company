@@ -2459,6 +2459,56 @@ table.data tbody tr:hover { background: #faf8f3; }
   .qs-field.qs-main, .qs-field.qs-region { flex: 1 1 100%; }
 }
 
+/* Settings: daily tasks first; technical and recovery tools stay opt-in. */
+#view-settings .settings-main {
+  display: grid;
+  grid-template-columns: minmax(260px, .85fr) minmax(0, 1.15fr);
+  align-items: start;
+  gap: 20px;
+}
+#view-settings .settings-main > .panel { margin: 0; }
+#view-settings .panel-head { flex-wrap: wrap; gap: 12px; }
+#view-settings #settings-users .panel-head { background: var(--lapis, #17376c); }
+#view-settings #settings-users .panel-head h3 { color: #fff; }
+#view-settings .settings-quick-backup {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px; padding: 22px; margin-top: 20px;
+}
+#view-settings .settings-quick-backup h3 { margin: 0 0 6px; }
+#view-settings .settings-quick-backup .btn { flex-shrink: 0; }
+#view-settings .settings-advanced {
+  border: 1px solid var(--line); border-radius: 14px;
+  background: var(--white); margin-top: 20px; overflow: hidden;
+}
+#view-settings .settings-advanced > summary {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 20px 22px; cursor: pointer; list-style: none; font-weight: 700;
+}
+#view-settings .settings-advanced > summary::-webkit-details-marker { display: none; }
+#view-settings .settings-advanced > summary small {
+  display: block; margin-top: 5px; font-size: .8rem; font-weight: 400; color: var(--muted);
+}
+#view-settings .settings-advanced > summary:focus-visible { outline: 3px solid #c8a24a; outline-offset: -4px; }
+#view-settings .settings-advanced[open] .settings-expand { transform: rotate(45deg); }
+#view-settings .settings-advanced-content { display: grid; gap: 18px; padding: 0 20px 20px; }
+#view-settings .settings-advanced-content > .panel { margin: 0; }
+#view-settings #btn-cloud-key { margin-top: 14px; }
+#view-settings input, #view-settings .data-item .v { overflow-wrap: anywhere; }
+@media (max-width: 1000px) {
+  #view-settings .settings-main { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  #view-settings .settings-main { padding: 10px 12px; gap: 14px; }
+  #view-settings .settings-quick-backup { flex-direction: column; align-items: stretch; margin: 4px 12px 14px; padding: 18px; }
+  #view-settings .settings-quick-backup .btn { width: 100%; justify-content: center; }
+  #view-settings .settings-advanced { margin: 0 12px 14px; padding: 0; }
+  #view-settings .settings-advanced > summary { padding: 18px 14px; }
+  #view-settings .settings-advanced-content { padding: 0 10px 10px; gap: 12px; }
+  #view-settings #settings-rules .panel-body, #view-settings #settings-company .panel-body { padding: 16px; }
+  #view-settings #settings-rules input { font-size: 16px; }
+  #view-settings #settings-rules button[type="submit"] { width: 100%; justify-content: center; }
+}
+
 </style>
 </head>
 <body>
@@ -3548,115 +3598,90 @@ table.data tbody tr:hover { background: #faf8f3; }
     </section>
 
     <!-- ================= الإعدادات ================= -->
-    <section class="view" id="view-settings">
-      <div class="grid grid-2">
-        <div class="panel">
-          <div class="panel-head"><h3><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg> قواعد العمل</h3></div>
-          <div class="panel-body">
-            <form id="settings-form">
-              <div class="field mb-2"><label for="set-attempts">الفرص لكل بطاقة جديدة</label><input type="number" id="set-attempts" value="2" min="1" max="10" step="1" required><small class="muted">يحددها المدير؛ الافتراضي حالياً 2. التغيير لا يمس فرص البطاقات الصادرة سابقاً.</small></div>
-              <div class="field mb-2"><label for="set-days">صلاحية البطاقة (يوم)</label><input type="number" id="set-days" min="1" max="180"></div>
-              <div class="field mb-2"><label for="set-hours">مدة الحجز المؤقت للوظيفة (ساعة)</label><input type="number" id="set-hours" min="1" max="168"></div>
-              <div class="field mb-2"><label for="set-fee">سعر البطاقة (دينار — كاش)</label><input type="number" id="set-fee" min="0" step="500"></div>
-              <button class="btn btn-lapis mt-3" type="submit"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg> حفظ الإعدادات</button>
-            </form>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panel-head"><h3><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg> بيانات الشركة (تظهر في البطاقة)</h3></div>
-          <div class="panel-body">
-            <div class="data-grid">
-              <div class="data-item"><div class="k">الاسم العربي</div><div class="v">شركة الهدف للتوظيف</div></div>
-              <div class="data-item"><div class="k">الاسم الإنجليزي</div><div class="v mono" dir="ltr">Al-Hadaf Recruitment Company</div></div>
-              <div class="data-item wide"><div class="k">العنوان</div><div class="v">حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي</div></div>
-              <div class="data-item"><div class="k">الهاتف 1</div><div class="v mono" dir="ltr">07760058007</div></div>
-              <div class="data-item"><div class="k">الهاتف 2</div><div class="v mono" dir="ltr">07715993271</div></div>
-              <div class="data-item wide"><div class="k">رابط التحقق المطبوع في الكيو آر كود</div><div class="v mono" dir="ltr" id="set-verify-base">—</div></div>
-            </div>
-            <p class="tiny muted mt-3 mb-0">
+    <section class="view" id="view-settings"><div class="settings-main"><div class="panel" id="settings-rules">
+<div class="panel-head"><h3><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"></use></svg> قواعد العمل</h3></div>
+<div class="panel-body">
+<form id="settings-form">
+<div class="field mb-2"><label for="set-attempts">الفرص لكل بطاقة جديدة</label><input type="number" id="set-attempts" value="2" min="1" max="10" step="1" required=""><small class="muted">يحددها المدير؛ الافتراضي حالياً 2. التغيير لا يمس فرص البطاقات الصادرة سابقاً.</small></div>
+<div class="field mb-2"><label for="set-days">صلاحية البطاقة (يوم)</label><input type="number" id="set-days" min="1" max="180"></div>
+<div class="field mb-2"><label for="set-hours">مدة الحجز المؤقت للوظيفة (ساعة)</label><input type="number" id="set-hours" min="1" max="168"></div>
+<div class="field mb-2"><label for="set-fee">سعر البطاقة (دينار — كاش)</label><input type="number" id="set-fee" min="0" step="500"></div>
+<button class="btn btn-lapis mt-3" type="submit"><svg class="ic"><use href="#i-check" xlink:href="#i-check"></use></svg> حفظ الإعدادات</button>
+</form>
+</div>
+</div><div class="panel" id="settings-users">
+<div class="panel-head">
+<h3><svg class="ic" style="color:#e8d089"><use href="#i-users" xlink:href="#i-users"></use></svg> إدارة الموظفين والصلاحيات</h3>
+<button class="btn btn-gold btn-sm" id="btn-add-user"><svg class="ic"><use href="#i-plus"></use></svg> إضافة موظف</button>
+</div>
+<div class="panel-body" style="padding:0">
+<div class="table-wrap" style="border:none;box-shadow:none;margin:0">
+<div class="table-scroll" tabindex="0" role="region" aria-label="جدول الموظفين — مرّر أفقياً لعرض بقية الأعمدة"><table class="data" style="min-width:520px;margin:0">
+<thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+<tbody id="users-table-body"></tbody>
+</table></div>
+</div>
+<div class="footnote-premium">إدارة الحسابات والصلاحيات متاحة للمدير فقط.</div>
+</div>
+</div></div><div class="panel settings-quick-backup"><div><h3>نسخة احتياطية</h3><p class="small muted mb-0">احفظ نسخة من بياناتك. خيارات الاسترداد والجدولة داخل الإعدادات المتقدمة.</p></div><button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> نسخة احتياطية سريعة</button></div><details id="settings-advanced" class="settings-advanced"><summary><span>إعدادات متقدمة<small>بيانات الشركة، فحص الاتصال، الاسترداد والصيانة</small></span><span class="settings-expand" aria-hidden="true">＋</span></summary><div class="settings-advanced-content"><div class="panel" id="settings-company">
+<div class="panel-head"><h3><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"></use></svg> بيانات الشركة (تظهر في البطاقة)</h3></div>
+<div class="panel-body">
+<div class="data-grid">
+<div class="data-item"><div class="k">الاسم العربي</div><div class="v">شركة الهدف للتوظيف</div></div>
+<div class="data-item"><div class="k">الاسم الإنجليزي</div><div class="v mono" dir="ltr">Al-Hadaf Recruitment Company</div></div>
+<div class="data-item wide"><div class="k">العنوان</div><div class="v">حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي</div></div>
+<div class="data-item"><div class="k">الهاتف 1</div><div class="v mono" dir="ltr">07760058007</div></div>
+<div class="data-item"><div class="k">الهاتف 2</div><div class="v mono" dir="ltr">07715993271</div></div>
+<div class="data-item wide"><div class="k">رابط التحقق المطبوع في الكيو آر كود</div><div class="v mono" dir="ltr" id="set-verify-base">—</div></div>
+</div>
+<p class="tiny muted mt-3 mb-0">
               نص الإخلاء القانوني المطبوع على ظهر كل بطاقة:
               «خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية.
               الشركة غير مسؤولة قانونياً وعشائياً عن الشخص المرسل وصاحب العمل.»
             </p>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-2">
-        <div class="panel">
-          <div class="panel-head" style="background:linear-gradient(135deg,#0b1a3a,#17376c);border-radius:14px 14px 0 0;border-color:transparent">
-            <h3 style="color:#fff"><svg class="ic" style="color:#e8d089"><use href="#i-users" xlink:href="#i-users"/></svg> إدارة الموظفين والصلاحيات</h3>
-            <button class="btn btn-gold btn-sm" id="btn-add-user"><svg class="ic"><use href="#i-plus"/></svg> إضافة موظف</button>
-            <button class="btn btn-outline btn-sm" id="btn-cloud-key" title="مفتاح Supabase للتسجيل في القاعدة"><svg class="ic"><use href="#i-server"/></svg> ربط السحابة</button>
-          </div>
-          <div class="panel-body" style="padding:0">
-            <!-- قناة إنشاء الحسابات: تُرسم من dashboard.js (renderUsersChannel) وتقول
-                 للمدير قبل فتح النموذج: أنشئ الحسابات ← ستُسجَّل في قاعدة الشركة، أم
-                 لا قناة بعد (مع الخطوة المطلوبة). بلا هذا الشريط يكتشف المدير الأمر
-                 عند أول «إنشاء الحساب» برسالة خطأ — أو الأسوأ: يُنشئ حساباً محلياً
-                 يُوهمه أن الموظف أُضيف بينما صاحبه لا يدخل من أي جهاز. -->
-            <div id="users-channel" style="margin:14px 14px 0"></div>
-            <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-              <div class="table-scroll"><table class="data" style="min-width:520px;margin:0">
-                <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
-                <tbody id="users-table-body"></tbody>
-              </table></div>
-            </div>
-            <div class="footnote-premium">
-              <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
-              فقط المدير العام يكدر يضيف وتعديل وحذف الموظفين. في النسخة السحابية تُدار الحسابات عبر Supabase Auth مع سياسات RLS.
-            </div>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panel-head"><h3><svg class="ic"><use href="#i-server" xlink:href="#i-server"/></svg> النسخ الاحتياطي والصيانة</h3></div>
-          <div class="panel-body">
-            <div class="flex flex-wrap" style="gap:8px">
-              <button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> نسخة احتياطية سريعة</button>
-              <button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير JSON</button>
-              <button class="btn btn-outline" id="btn-export-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg> نسخة مشفّرة للابتوب</button>
-              <button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"/></svg> استيراد نسخة</button>
-              <button class="btn btn-ok" id="btn-import-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg> استرداد نسخة مشفّرة</button>
-              <button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> جدولة النسخ التلقائي</button>
-              <button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> عرض النسخ الاحتياطية</button>
-              <button class="btn btn-warn" id="btn-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تشغيل قواعد الحجز التلقائي</button>
-              <button class="btn btn-danger" id="btn-reset"><svg class="ic"><use href="#i-trash" xlink:href="#i-trash"/></svg> إعادة ضبط البيانات التجريبية</button>
-            </div>
-            <input type="file" id="import-file" accept="application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية للاستيراد">
-            <input type="file" id="import-enc-file" accept=".json,.enc,application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية المشفّرة للاسترداد">
-            
-            <div class="panel mt-3" style="background:#f9f6ef;border:1px solid var(--line)">
-              <div class="panel-body">
-                <h4 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
-                  <svg class="ic" style="color:var(--gold-3)"><use href="#i-clock" xlink:href="#i-clock"/></svg>
+</div>
+</div><div class="panel" id="settings-connection"><div class="panel-head"><h3>الاتصال وإدارة القناة</h3></div><div class="panel-body"><div id="users-channel"></div><button class="btn btn-outline btn-sm" id="btn-cloud-key" title="مفتاح Supabase للتسجيل في القاعدة"><svg class="ic"><use href="#i-server"></use></svg> ربط السحابة</button></div></div><div class="panel" id="settings-backup-tools">
+<div class="panel-head"><h3><svg class="ic"><use href="#i-server" xlink:href="#i-server"></use></svg> النسخ الاحتياطي والصيانة</h3></div>
+<div class="panel-body">
+<div class="flex flex-wrap" style="gap:8px">
+<button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> تصدير JSON</button>
+<button class="btn btn-outline" id="btn-export-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"></use></svg> نسخة مشفّرة للابتوب</button>
+<button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"></use></svg> استيراد نسخة</button>
+<button class="btn btn-ok" id="btn-import-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"></use></svg> استرداد نسخة مشفّرة</button>
+<button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"></use></svg> جدولة النسخ التلقائي</button>
+<button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"></use></svg> عرض النسخ الاحتياطية</button>
+<button class="btn btn-warn" id="btn-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"></use></svg> فحص الحجوزات والحالات الحرجة</button>
+<button class="btn btn-danger" id="btn-reset"><svg class="ic"><use href="#i-trash" xlink:href="#i-trash"></use></svg> إعادة ضبط البيانات التجريبية</button>
+</div>
+<input type="file" id="import-file" accept="application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية للاستيراد">
+<input type="file" id="import-enc-file" accept=".json,.enc,application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية المشفّرة للاسترداد">
+<div class="panel mt-3" style="background:#f9f6ef;border:1px solid var(--line)">
+<div class="panel-body">
+<h4 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+<svg class="ic" style="color:var(--gold-3)"><use href="#i-clock" xlink:href="#i-clock"></use></svg>
                   النسخ الاحتياطي التلقائي المجدول
                 </h4>
-                <div id="schedule-status" class="tiny muted">لم يتم تفعيل الجدولة بعد</div>
-                <div class="flex flex-wrap mt-2" style="gap:8px">
-                  <button class="btn btn-outline btn-sm" id="btn-edit-schedule"><svg class="ic"><use href="#i-edit" xlink:href="#i-edit"/></svg> تعديل الجدولة</button>
-                  <button class="btn btn-gold btn-sm" id="btn-run-auto-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> نفّذ نسخة الآن</button>
-                  <button class="btn btn-outline btn-sm" id="btn-disable-schedule"><svg class="ic"><use href="#i-x" xlink:href="#i-x"/></svg> إيقاف الجدولة</button>
-                </div>
-                <p class="tiny muted mt-2 mb-0">
-                  الجدولة المحلية تعمل عند فتح لوحة المدير. للنسخ التلقائي خارج الموقع يجب تفعيل Backup/PITR في Supabase وربط مخزن خارجي خاص؛ لا تعتمد على المتصفح وحده.
-                </p>
-              </div>
-            </div>
-            
-            <div class="data-grid mt-3">
-              <div class="data-item"><div class="k">الوظائف المخزّنة</div><div class="v" id="db-jobs">0</div></div>
-              <div class="data-item"><div class="k">الاستمارات</div><div class="v" id="db-apps">0</div></div>
-              <div class="data-item"><div class="k">الفرص (خانات)</div><div class="v" id="db-attempts">0</div></div>
-              <div class="data-item"><div class="k">سجلات التدقيق</div><div class="v" id="db-audit">0</div></div>
-              <div class="data-item"><div class="k">النسخ الاحتياطية</div><div class="v" id="db-backups">0</div></div>
-            </div>
-            <p class="tiny muted mt-3 mb-0">
+<div id="schedule-status" class="tiny muted">لم يتم تفعيل الجدولة بعد</div>
+<div class="flex flex-wrap mt-2" style="gap:8px">
+<button class="btn btn-outline btn-sm" id="btn-edit-schedule"><svg class="ic"><use href="#i-edit" xlink:href="#i-edit"></use></svg> تعديل الجدولة</button>
+<button class="btn btn-gold btn-sm" id="btn-run-auto-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> نفّذ نسخة الآن</button>
+<button class="btn btn-outline btn-sm" id="btn-disable-schedule"><svg class="ic"><use href="#i-x" xlink:href="#i-x"></use></svg> إيقاف الجدولة</button>
+</div>
+<p class="tiny muted mt-2 mb-0">النسخ هنا تُحفظ على جهازك. قاعدة الشركة سحابية؛ النسخ المحلية لا تغني عن نسخ قاعدة البيانات على الخادم.</p>
+</div>
+</div>
+<div class="data-grid mt-3">
+<div class="data-item"><div class="k">الوظائف المخزّنة</div><div class="v" id="db-jobs">0</div></div>
+<div class="data-item"><div class="k">الاستمارات</div><div class="v" id="db-apps">0</div></div>
+<div class="data-item"><div class="k">الفرص (خانات)</div><div class="v" id="db-attempts">0</div></div>
+<div class="data-item"><div class="k">سجلات التدقيق</div><div class="v" id="db-audit">0</div></div>
+<div class="data-item"><div class="k">النسخ الاحتياطية</div><div class="v" id="db-backups">0</div></div>
+</div>
+<p class="tiny muted mt-3 mb-0">
               البيانات تُخزَّن في متصفحك (localStorage) — للحفظ الدائم على السيرفر راجع <span class="mono">docs/schema.sql</span>.
             </p>
-          </div>
-        </div>
-      </div>
-    </section>
+</div>
+</div></div></details></section>
   </main>
 </div>
 
