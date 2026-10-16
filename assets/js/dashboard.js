@@ -3012,6 +3012,7 @@
             if (!r || !r.ok) { status.textContent = (r && r.error) || 'لم يتم تأكيد الحفظ — لا تطبع البطاقة للبيع.'; return; }
             if (r.localOnly) { status.textContent = 'البطاقة محلية فقط، ولم يُؤكَّد توفرها على الموقع العام.'; return; }
             if (!box.isConnected) return;
+            if (r.warnings && r.warnings.length) UI.toast('warn', 'تنبيه سجل التدقيق', r.warnings[0]);
             close(); onReady();
           }).catch(function () { btn.disabled = false; status.textContent = 'تعذّر التأكيد — أعد المحاولة، ولا تُصدر بطاقة مكررة.'; });
         }

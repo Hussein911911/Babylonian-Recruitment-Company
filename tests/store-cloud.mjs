@@ -567,9 +567,11 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
 step(13, 'تأكيد إصدار البطاقة — لا نجاح محلي زائف ولا طباعة قبل الحفظ');
 {
   let blocked = false, readMode = 'ok', slow = false;
+  let auditBlocked = false;
   let mock;
   mock = makeMock({ rows: cloudRows(),
     onCall(call) {
+      if (auditBlocked && call.table === 'audit_log' && call.op === 'insert') return { data: null, error: { code: '42501', message: 'permission denied for audit_log' } };
       if (call.table === 'applicants' && call.op === 'insert' && call.payload.serial === '9KQ4M9TR2Z')
         return { data: null, error: { code: '23505', message: 'duplicate key on applicants serial' } };
       if (call.table === 'applicants' && call.op === 'insert' && blocked)
@@ -587,16 +589,17 @@ step(13, 'تأكيد إصدار البطاقة — لا نجاح محلي زائ
   });
   const { Store } = bootStore(mock, { enforceAuth: true });
   Store.init(); await sleep(120);
-  blocked = true;
+  blocked = true; auditBlocked = true;
   const created = Store.createCardWithSerial('7KQ4M9TR2X', 'اختبار تأكيد الحفظ');
   check('إنشاء بطاقة جديدة بكودها للاختبار', created.ok, created.error);
   const failure = await Store.confirmIssuedCards([created.card]);
-  check('عمود رمز التحقق المفقود يمنع إعلان البطاقة جاهزة ويشرح التحديث المطلوب', !failure.ok && /card_print_code/.test(failure.error), failure.error);
+  check('عمود رمز التحقق المفقود يمنع إعلان البطاقة جاهزة ويشرح التحديث المطلوب', !failure.ok && /card_print_code/.test(failure.error) && !/insert audit_log/.test(failure.error), failure.error);
   check('فشل الحفظ لا يحذف البطاقة المحلية ولا يبدل باركودها', Store.getApplicant(created.card.serial) === created.card && !mock.__state.applicants.some((r) => r.serial === created.card.serial));
   blocked = false;
   const success = await Store.confirmIssuedCards([created.card]);
-  check('إعادة التأكيد تحفظ نفس البطاقة دون إصدار بديل وتفحص قراءة الباركود', success.ok && mock.__state.applicants.filter((r) => r.serial === created.card.serial).length === 1 && mock.__calls.some((c) => c.rpc === 'self_service_card' && c.args.p_serial === created.card.serial), success.error);
+  check('إعادة التأكيد تحفظ نفس البطاقة دون إصدار بديل وتفحص قراءة الباركود', success.ok && success.warnings.length === 1 && Store.diffCloud().some((o) => o.table === 'audit_log') && mock.__state.applicants.filter((r) => r.serial === created.card.serial).length === 1 && mock.__calls.some((c) => c.rpc === 'self_service_card' && c.args.p_serial === created.card.serial), success.error);
   check('رمز الظهر المحفوظ هو نفسه الصادر وليس رمز فرصة', mock.__state.applicants.find((r) => r.serial === created.card.serial).card_print_code === created.card.cardPrintCode);
+  auditBlocked = false;
   readMode = 'missing';
   check('سجل غير موجود في القراءة البعيدة لا يمر كنجاح', !(await Store.confirmIssuedCards([created.card])).ok);
   readMode = 'mismatch';

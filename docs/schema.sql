@@ -1917,6 +1917,7 @@ grant select on brc.audit_log, brc.settings, brc.staff, brc.v_financials_by_staf
 --       • audit_log:    الإضافة باسم صاحب الجلسة أو 'system' (audit_insert)
 --       • delete jobs/applicants: للمدير فقط (jobs_admin_delete …)
 grant insert on brc.audit_log to authenticated;
+grant usage on sequence brc.audit_log_id_seq to authenticated;
 grant insert, update on brc.settings to authenticated;
 grant delete on brc.jobs, brc.applicants to authenticated;
 grant execute on function brc.select_attempt(text, text) to authenticated;

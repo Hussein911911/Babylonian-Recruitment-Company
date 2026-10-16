@@ -108,7 +108,7 @@
            نرفض أي مفتاح يحوي null/undefined في أي جزء منه. */
         if (k == null || k === '' || /(^|:)(null|undefined)($|:)/.test(String(k))) return;
         seen[k] = true;
-        if (!(k in snapshot[spec.table])) ops.push({ table: spec.table, op: 'insert', key: k, local: item });
+        if (!(k in snapshot[spec.table])) ops.push({ table: spec.table, op: 'insert', key: k, local: item, independentCard: spec.table === 'job_attempts' && (db.applicants || []).some(function (a) { return a.serial === item.serial && !!a.cardPrintCode; }) });
         else if (current[spec.table][k] !== snapshot[spec.table][k]) ops.push({ table: spec.table, op: 'update', key: k, local: item });
       });
       Object.keys(snapshot[spec.table]).forEach(function (k) {
@@ -254,9 +254,21 @@
     if (op.op === 'insert') {
       /* audit_log معرّفه bigserial — نُسقطه ليتولّاه الخادم */
       if (op.table === 'audit_log' && row.id != null) delete row.id;
-      return finish(table.insert(row).select(), op, hooks)
+      return finish(op.table === 'audit_log' ? table.insert(row) : table.insert(row).select(), op, hooks)
         .catch(function (err) {
-          if (!isUniqueViolation(err) || op.table === 'applicants') throw err;
+          if (!isUniqueViolation(err) || op.table === 'applicants' || op.table === 'audit_log') throw err;
+          if (op.table === 'job_attempts') {
+            // Applicant AFTER INSERT already creates the slots. Never regenerate
+            // their serial or overwrite an existing consumed/held opportunity.
+            if (!op.independentCard || row.slot_status !== 'empty') throw err;
+            return finish(client.from('job_attempts').select('*').eq('serial', row.serial).eq('attempt_no', row.attempt_no), op, null).then(function (res) {
+              var existing = res && res.data && res.data[0];
+              if (!existing || existing.serial !== row.serial || Number(existing.attempt_no) !== Number(row.attempt_no) || existing.slot_status !== 'empty' || !existing.chance_code) throw err;
+              op.local.code = existing.chance_code;
+              if (hooks && hooks.onOp) hooks.onOp(op, res);
+              return res;
+            });
+          }
           /* تصادم مفتاح فريد: أعد المحاولة بلا المفتاح الطبيعي */
           var retry = Object.assign({}, row);
           delete retry.code; delete retry.serial;
@@ -372,9 +384,11 @@
 
       var done = 0;
       var failedOps = [];
+      var failures = [];
 
       return ordered.reduce(function (chain, op) {
         return chain.then(function () {
+          if (op.table === 'job_attempts' && op.local && failures.some(function (f) { return f.table === 'applicants' && f.key === op.local.serial; })) throw Object.assign(new Error('لم يُحفظ سجل البطاقة الأصلي'), { __brc: { code: 'PARENT_NOT_SAVED' } });
           return executeOne(client, op, opts.hooks).then(function () {
             /* نجحت: نُقدّم اللقطة لهذه العملية وحدها */
             advanceSnapshot(snapshot, op);
@@ -384,6 +398,7 @@
           /* عملية فاشلة لا توقف البقية — لكنها **تبقى معلّقة** حتى تُعاد */
           var info = (err && err.__brc) || {};
           failedOps.push(op);
+          failures.push({ table: op.table, key: op.key, code: info.code || '', message: String(err && err.message || 'تعذّر الحفظ') });
           log('فشل ' + op.op + ' على ' + op.table + ' (' + op.key + '): ' + (err && err.message || err));
           if (opts.onError) opts.onError(err, op);
           if (info.code === '42P01' || info.code === 'PGRST205') {
@@ -395,7 +410,7 @@
         .then(function () {
           pushing = false;
           if (pendingAgain) { pendingAgain = false; return push(db); }
-          return { ops: done, failed: failedOps.length, pending: failedOps.map(function (o) { return o.table + ':' + o.key; }) };
+          return { ops: done, failed: failedOps.length, pending: failedOps.map(function (o) { return o.table + ':' + o.key; }), failures: failures };
         })
         .catch(function (err) {
           pushing = false;

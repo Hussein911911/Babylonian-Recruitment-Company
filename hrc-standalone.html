@@ -7178,12 +7178,20 @@ table.data tbody tr:hover { background: #faf8f3; }
     var expected = {};
     cards.forEach(function (c) { expected[c.serial] = c; });
     function fail(message) { throw new Error(message); }
-    return pushCloud().then(function () {
+    return pushCloud().then(function (pushResult) {
+      var failures = (pushResult && pushResult.failures) || [];
       var pending = cloud.sync.diff(db).some(function (op) {
         return (op.table === 'applicants' || op.table === 'job_attempts') &&
           !!expected[op.local ? op.local.serial : String(op.key).split(':')[0]];
       });
-      if (pending) fail(cloud.lastError || 'حفظ البطاقة أو فرصها ما زال معلقاً — أعد محاولة التأكيد دون إصدار بطاقة بديلة.');
+      if (pending) {
+        var cardFailure = failures.filter(function (f) { return (f.table === 'applicants' || f.table === 'job_attempts') && expected[String(f.key).split(':')[0]]; })[0];
+        if (cardFailure) {
+          var why = describeError(cardFailure);
+          fail('لم يكتمل حفظ البطاقة أو فرصها: ' + why.text + (why.hint ? ' — ' + why.hint : ''));
+        }
+        fail('حفظ البطاقة أو فرصها ما زال معلقاً — أعد محاولة التأكيد دون إصدار بطاقة بديلة.');
+      }
       var serials = Object.keys(expected), seen = {}, chain = Promise.resolve();
       for (var i = 0; i < serials.length; i += 100) (function (part) {
         chain = chain.then(function () {
@@ -7206,7 +7214,7 @@ table.data tbody tr:hover { background: #faf8f3; }
         if (!res || res.error || !res.data || res.data.ok === false) fail('حفظ البطاقة لا يكفي: صفحة الباركود لم تتعرف عليها. تحقق من دالة self_service_card وصلاحياتها في قاعدة الشركة.');
         var card = res.data.card || res.data;
         if (card.serial !== serials[0]) fail('نتيجة التحقق لا تطابق الباركود الصادر.');
-        return { ok: true, localOnly: false };
+        return { ok: true, localOnly: false, warnings: failures.some(function (f) { return f.table === 'audit_log'; }) ? ['حُفظت البطاقة وتم التحقق منها، لكن بعض سجلات التدقيق لم تُحفظ. راجع تحديث صلاحيات سجل التدقيق؛ تبقى السجلات معلقة لإعادة المحاولة.'] : [] };
       });
     }).catch(function (e) { return { ok: false, error: e.message || 'تعذّر تأكيد حفظ البطاقة — لا تطبعها للبيع بعد.' }; });
   }
@@ -13663,6 +13671,7 @@ table.data tbody tr:hover { background: #faf8f3; }
             if (!r || !r.ok) { status.textContent = (r && r.error) || 'لم يتم تأكيد الحفظ — لا تطبع البطاقة للبيع.'; return; }
             if (r.localOnly) { status.textContent = 'البطاقة محلية فقط، ولم يُؤكَّد توفرها على الموقع العام.'; return; }
             if (!box.isConnected) return;
+            if (r.warnings && r.warnings.length) UI.toast('warn', 'تنبيه سجل التدقيق', r.warnings[0]);
             close(); onReady();
           }).catch(function () { btn.disabled = false; status.textContent = 'تعذّر التأكيد — أعد المحاولة، ولا تُصدر بطاقة مكررة.'; });
         }

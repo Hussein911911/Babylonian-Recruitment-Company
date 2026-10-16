@@ -9,7 +9,7 @@
     "test": "node tests/smoke.mjs",
     "test:backup": "node tests/backup.mjs",
     "test:apply": "node tests/apply-flow.mjs",
-    "test:all": "node tests/reprint-code.mjs && node tests/smoke.mjs && node tests/audit-search.mjs && node tests/apply-flow.mjs && node tests/schema.mjs && node tests/cloud.mjs && node tests/cloud-http.mjs && node tests/cloud-sync.mjs && node tests/store-cloud.mjs && node tests/dashboard-cloud.mjs && node tests/staff-accounts.mjs && node tests/dashboard-users.mjs && node tests/staff-lifecycle.mjs && node tests/staff-admin-function.mjs && node tests/staff-admin-http.mjs && node tests/perf.mjs && node tests/supabase-check.mjs && node tests/backup.mjs && node tests/e2e.mjs && node tests/audit.mjs",
+    "test:all": "node tests/audit-write.mjs && node tests/reprint-code.mjs && node tests/smoke.mjs && node tests/audit-search.mjs && node tests/apply-flow.mjs && node tests/schema.mjs && node tests/cloud.mjs && node tests/cloud-http.mjs && node tests/cloud-sync.mjs && node tests/store-cloud.mjs && node tests/dashboard-cloud.mjs && node tests/staff-accounts.mjs && node tests/dashboard-users.mjs && node tests/staff-lifecycle.mjs && node tests/staff-admin-function.mjs && node tests/staff-admin-http.mjs && node tests/perf.mjs && node tests/supabase-check.mjs && node tests/backup.mjs && node tests/e2e.mjs && node tests/audit.mjs",
     "e2e": "node tests/e2e.mjs",
     "audit": "node tests/audit.mjs",
     "verify:qr": "node tests/qr-report.mjs",
@@ -33,7 +33,8 @@
     "test:audit-search": "node tests/audit-search.mjs",
     "build:card-preview": "node tools/build-wallet-preview.mjs",
     "test:reprint": "node tests/reprint-code.mjs",
-    "build:form-preview": "node tools/build-form-preview.mjs"
+    "build:form-preview": "node tools/build-form-preview.mjs",
+    "test:audit-write": "node tests/audit-write.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",
