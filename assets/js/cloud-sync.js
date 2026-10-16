@@ -256,6 +256,16 @@
       if (op.table === 'audit_log' && row.id != null) delete row.id;
       return finish(op.table === 'audit_log' ? table.insert(row) : table.insert(row).select(), op, hooks)
         .catch(function (err) {
+          var info = err && err.__brc;
+          var missingLegacyColumn = info && (info.code === '42703' || info.code === 'PGRST204') && /card_print_code/i.test(String(err.message || ''));
+          // Original two-code cards must also save against the original schema.
+          // Only omit a NULL compatibility field when the server proves it absent;
+          // never drop an actual printed secret or retry permission/validation errors.
+          if (op.table === 'applicants' && !op.local.cardPrintCode && row.card_print_code === null && missingLegacyColumn) {
+            var legacyRow = Object.assign({}, row);
+            delete legacyRow.card_print_code;
+            return finish(client.from('applicants').insert(legacyRow).select(), op, hooks);
+          }
           if (!isUniqueViolation(err) || op.table === 'applicants' || op.table === 'audit_log') throw err;
           if (op.table === 'job_attempts') {
             // Applicant AFTER INSERT already creates the slots. Never regenerate

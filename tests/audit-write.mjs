@@ -8,7 +8,7 @@ const check = (name, condition) => { assert.ok(condition, name); passed++; conso
 const db = new PGlite();
 const calls = [];
 const client = { from(table) {
-  assert.ok(['audit_log', 'job_attempts'].includes(table));
+  assert.ok(['audit_log', 'job_attempts', 'applicants'].includes(table));
   let op = 'select', row, returning = false;
   const filters = [];
   const q = {
@@ -113,5 +113,19 @@ try {
   check('legacy printed chance codes are never silently replaced during reconciliation', denied);
   await S.executeOne(client, { ...slot, independentCard: false, freshCard: true, local: { ...slot.local, code: '2468-CD' } });
   check('fresh original card keeps its printed chance code when the server trigger already made its slot', (await db.query("select chance_code from brc.job_attempts where serial='CARD'")).rows[0].chance_code === '2468-CD');
+  await db.exec(`reset role; drop trigger real_make_slots on brc.applicants;
+    alter table brc.applicants add column full_name text, add column phone text, add column address text,
+      add column dob date, add column gender text, add column nationality text, add column status text,
+      add column fee_amount integer, add column fee_paid boolean, add column printed_count integer,
+      add column notes text, add column reject_reason text, add column requested_code text;
+    grant insert,select on brc.applicants to authenticated; set role authenticated;`);
+  const originalCard = { serial: 'URTA92G6E8', fullName: '', phone: '', status: 'blank', attemptLimit: 2 };
+  await S.executeOne(client, { table: 'applicants', op: 'insert', key: originalCard.serial, local: originalCard });
+  check('original card saves against pre-single-code PostgreSQL schema without requiring a new column', (await db.query("select serial from brc.applicants where serial='URTA92G6E8'")).rows[0].serial === originalCard.serial);
+  check('old-schema compatibility retries keep the exact printed serial and only make one record', (await db.query("select count(*)::int as n from brc.applicants where serial='URTA92G6E8'")).rows[0].n === 1);
+  denied = false;
+  try { await S.executeOne(client, { table: 'applicants', op: 'insert', key: 'TRANSITION', local: { ...originalCard, serial: 'TRANSITION', cardPrintCode: '7A2C9E4B1D8F6C03' } }); } catch { denied = true; }
+  check('a real independently printed secret is never dropped by old-schema fallback', denied && (await db.query("select serial from brc.applicants where serial='TRANSITION'")).rows.length === 0);
+
 } finally { await db.close(); }
 console.log(`Audit/issuance PostgreSQL: ${passed} checks passed.`);
