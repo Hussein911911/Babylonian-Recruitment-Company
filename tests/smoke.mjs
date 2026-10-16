@@ -436,7 +436,7 @@ check('الطباعة تُخرج ورقة الاستمارة وحدها (بلا 
   const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
   const printBlock = page.slice(page.indexOf('@media print'));
   return printBlock.includes('#result-content .ok-hero') &&
-    printBlock.includes('#result-content .result-actions') &&
+    printBlock.includes('#pg-result > :not(#result-content)') &&
     printBlock.includes('break-inside:avoid') || 'كتلة الطباعة لا تخفي عناصر الواجهة';
 });
 check('كل خطوات الإدخال فيها زر رجوع، ومؤشر الهاتف يتحقق من 11 رقماً تبدأ بـ 07', () => {

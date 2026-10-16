@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>تقديم على وظيفة | شركة الهدف للتوظيف</title>
 <meta name="theme-color" content="#0b1a3a">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
@@ -23,7 +23,7 @@ body{
 }
 
 /* ── الحاوية ── */
-.app{max-width:480px;margin:0 auto;padding:12px 14px 28px;position:relative;min-height:100vh}
+.app{width:100%;max-width:none;margin:0;padding:clamp(16px,2.5vw,48px);position:relative;min-height:100vh;min-height:100dvh}
 
 /* ── الشريط العلوي ── */
 .topbar{
@@ -540,6 +540,28 @@ body{
 .form-sheet .fs-emp-box{background:#f4f6f9;color:#25364d;border:.25mm solid #cbd4df;padding:2.5mm 3mm;margin-top:3mm;}
 .form-sheet .fs-emp-box h5,.form-sheet .fs-emp-box b{color:#16294d;}
 .form-sheet .fs-emp-box ol{font-size:7.2pt;line-height:1.7;}
+
+/* Full-screen card journey. Screen rules never alter the A4 printing contract. */
+@media screen {
+  body{font-size:16px;line-height:1.7;background-color:#0b1730}
+  .topbar{padding:4px 0 20px;gap:14px;margin-bottom:20px}.topbar svg{width:46px;height:46px}.topbar .t1{font-size:clamp(20px,2vw,28px)}.topbar .t2{font-size:11px;color:#b5c2d9;letter-spacing:.08em}
+  .steps-bar{padding:18px 24px;border:1px solid #ffffff16;border-radius:16px;background:#ffffff04;margin-bottom:24px}.steps-track{gap:8px}.step-dot{flex:1 1 0;height:7px}.step-dot.active{flex:1.4 1 0}.step-label{font-size:16px;color:#c2ccdd}
+  .pages-wrap{overflow:clip}.page{min-width:0}.page.active{min-height:calc(100dvh - 240px)}
+  .profile-card{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:clamp(28px,5vw,90px);align-items:center;min-height:calc(100dvh - 340px);padding:clamp(24px,4vw,64px);border-radius:24px;background:linear-gradient(135deg,#162b4b,#10203b);border-color:#ffffff1c;box-shadow:0 20px 70px #00000020}
+  .step-intro{padding-inline-end:clamp(16px,3vw,48px);border-inline-end:1px solid #c8a24a38}.step-eyebrow{display:inline-block;font-size:14px;font-weight:800;color:#e6c878;margin-bottom:18px;letter-spacing:.03em}.step-intro h1{font-size:clamp(28px,3vw,44px);line-height:1.6;color:#faf5e8;margin-bottom:14px}.step-intro p{font-size:18px;line-height:2;color:#c5d0e2}.step-assurance{font-size:14px;color:#e3cb95;border-top:1px solid #ffffff15;padding-top:20px;margin-top:28px}
+  .step-fields{min-width:0}.section-title{font-size:22px;margin-bottom:20px}.section-title::before{height:24px;width:4px}.form-group{margin-bottom:22px}.form-group label{font-size:16px;color:#ead7a7;margin-bottom:10px}.form-group input,.form-group select{min-height:58px;font-size:18px!important;background:#0b1b32;border-color:#63738c;color:#fff;padding:14px 16px}.form-group input::placeholder{color:#a5b1c6}.form-group select:disabled{opacity:.65}.form-row3{gap:14px;grid-template-columns:repeat(3,minmax(0,1fr))}.form-row{grid-template-columns:repeat(2,minmax(0,1fr))}.form-row3 .form-group{min-width:0}
+  .btn{min-height:52px;font-size:17px}.btn-row{gap:16px;margin-top:22px}.btn-row .btn{min-width:0}.btn:focus-visible,.gender-opt:focus-visible,.job-remove:focus-visible{outline:3px solid #e6c878;outline-offset:4px}.gender-opt{font-size:20px;padding:30px 16px;min-height:160px}.gender-opt .icon{font-size:42px}.phone-meter .pc-of,.phone-meter .pc-state,.dob-meter{font-size:14px}.phone-meter .pc-num{font-size:20px}
+  .welcome{min-height:calc(100dvh - 150px);display:grid;align-content:center;justify-items:center;padding:40px 24px;border:1px solid #ffffff18;border-radius:24px;background:linear-gradient(140deg,#162b4b,#0d1e37)}.welcome .emblem{width:120px;height:120px}.welcome h1{font-size:clamp(28px,3.5vw,48px)}.welcome .sub{font-size:20px;color:#c5d0e2}.welcome .anim-fade-up2{width:min(100%,600px)}.welcome .gold-line{width:100%;margin:24px 0}.employer-link{font-size:16px;color:#c5d0e2}#welcome-status{font-size:16px!important;margin-bottom:20px}
+  .job-filters{padding:24px;border-radius:20px;background:#122540;border-color:#ffffff25}.jf-top{align-items:center;gap:24px}.jf-top b{font-size:24px}.jf-top p{font-size:16px;max-width:none;color:#c5d0e2}.jf-top>.btn{width:auto;flex-shrink:0}.jf-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}.jf-primary{grid-template-columns:minmax(220px,2fr) repeat(4,minmax(0,1fr))}.job-filters label{font-size:15px;margin-bottom:9px}.job-filters input:not([type=checkbox]),.job-filters select{min-height:52px;font-size:16px;padding:12px}.job-filters select:disabled{opacity:1;color:#90dfb4;border-color:#417b65;background:#13362f}.jf-note{font-size:14px;color:#b7c6da;margin-top:14px}.jf-advanced{margin-top:18px;padding-top:16px}.jf-advanced summary{font-size:16px}.jf-bottom{gap:20px;margin-top:20px}.jf-bottom>.btn{width:auto}.job-filters .jf-check{font-size:16px;gap:10px}.jf-check input{width:22px;height:22px}.job-filters #jobs-count{font-size:16px;margin-top:20px;padding-top:16px}.job-filters #jf-error{font-size:16px}
+  #jobs-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,325px),1fr));gap:20px;align-items:start;padding:10px 3px}.job-card{min-width:0;padding:24px;margin:0;border-radius:18px;border-color:#ffffff25;background:#142640;display:flex;flex-direction:column;overflow-wrap:anywhere}.job-head{align-items:flex-start;gap:12px}.job-head .title{font-size:21px;line-height:1.7;flex:1;min-width:0}.job-head .badge{font-size:13px;white-space:normal;flex:none;max-width:100px}.job-category{font-size:14px;flex-wrap:wrap;margin:8px 0 18px}.job-grid{grid-template-columns:1fr;gap:12px}.job-item{gap:10px}.job-item .k{font-size:15px;min-width:65px;color:#aebdd2}.job-item .v{font-size:17px;min-width:0}.job-details{font-size:16px}.job-actions{margin-top:22px;flex-wrap:wrap}.job-actions .btn{font-size:16px;padding:12px;min-width:100px}.chances-bar{font-size:17px;padding:16px 20px;flex-wrap:wrap;justify-content:flex-start}.jobs-hint{font-size:16px;text-align:start;padding:20px;line-height:2}.job-remove{font-size:14px;min-height:44px;padding:6px 12px}.jobs-foot{margin-top:24px}
+  .rv-card{padding:clamp(22px,3vw,48px);border-radius:24px}.rv-top{padding-bottom:24px;margin-bottom:24px}.rv-t{font-size:26px}.rv-s{font-size:16px;color:#becbe0}.rv-head{font-size:21px;margin-top:32px}.rv-sub{font-size:18px;margin-top:24px}.rv-row{padding:16px 0;gap:20px}.rv-k{font-size:16px;flex-basis:180px;color:#b9c6db}.rv-v{font-size:19px;min-width:0}.rv-edit{font-size:15px;min-height:44px;padding:10px 18px}.rv-chip,.rv-note{font-size:16px}.rv-chip{padding:10px 16px}.rv-note{padding:20px}.ok-title{font-size:28px}.ok-sub{font-size:17px}.result-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px;margin-top:24px}
+  #result-content>.form-sheet{margin-top:24px}#result-content .fs-head{padding:22px}#result-content .fs-body{padding:20px}#result-content .fs-head .n1,#result-content .fs-head .ttl{font-size:24px}#result-content .fs-head .n2,#result-content .fs-head .ttl2,#result-content .fs-qr .cap2{font-size:12px}#result-content .fs-meta{gap:24px}#result-content .fs-f .k,#result-content .fs-section .fs-td .k{font-size:15px;line-height:1.8}#result-content .fs-f .v,#result-content .fs-section .fs-td .v{font-size:18px;line-height:1.8}#result-content .fs-section .fs-h3{font-size:20px}#result-content .fs-qr-note,#result-content .fs-notes,#result-content .fs-foot{font-size:14px;line-height:1.9}
+  .footer{font-size:14px;color:#a5b4cc;padding-top:24px}.loading{min-height:65dvh;display:grid;align-content:center;justify-items:center;gap:16px}.loading p{font-size:18px;color:#c5d0e2}#error-msg{font-size:18px!important}.alert{font-size:16px}
+  @media(max-width:1100px){.jf-primary{grid-template-columns:repeat(3,minmax(0,1fr))}.jf-search{grid-column:span 2}.jf-grid:not(.jf-primary){grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:760px){.app{padding:16px}.profile-card{grid-template-columns:1fr;gap:28px;padding:24px;min-height:calc(100dvh - 330px)}.step-intro{border-inline-end:0;border-bottom:1px solid #c8a24a38;padding:0 0 24px}.step-intro h1{font-size:28px}.step-intro p{font-size:16px}.step-eyebrow{margin-bottom:10px}.step-assurance{display:none}.topbar .t2{font-size:10px;letter-spacing:0}.steps-bar{padding:16px}.welcome{padding:32px 20px}.job-filters{padding:20px}.jf-top{align-items:flex-start;flex-wrap:wrap}.jf-primary,.jf-grid:not(.jf-primary){grid-template-columns:repeat(2,minmax(0,1fr))}.jf-top>.btn{width:100%}.jf-search{grid-column:1/-1}.jf-bottom>.btn{width:100%}.rv-row{gap:10px;flex-wrap:wrap}.rv-k{flex-basis:100%;font-size:15px}.rv-v{font-size:18px}.rv-t{font-size:22px}.rv-top{align-items:flex-start}.rv-edit{padding:8px 12px}.form-group input,.form-group select{font-size:16px!important}.form-row3{gap:8px}.form-row3 select{padding:12px 7px}.form-row3 label{font-size:14px}#result-content .fs-meta{flex-wrap:wrap}#result-content .fs-fields{flex-basis:100%;grid-template-columns:repeat(2,minmax(0,1fr))}#result-content .fs-head{flex-wrap:wrap;gap:14px}#result-content .fs-f .v,#result-content .fs-section .fs-td .v{font-size:16px}}
+  @media(max-width:420px){.app{padding:12px}.profile-card{padding:20px}.jf-primary,.jf-grid:not(.jf-primary){grid-template-columns:1fr}.jf-search{grid-column:auto}.job-card{padding:20px}.job-head{flex-wrap:wrap}.btn-row{gap:10px}.btn-row .btn{padding:12px 10px;font-size:16px}.topbar .t1{font-size:20px}}
+}
+
 @media print{.form-sheet .fs-section{break-inside:avoid;page-break-inside:avoid;}}
 
 /* ── الطباعة: استمارة A4 وحدها بلا واجهة ── */
@@ -552,11 +574,11 @@ body{
   #result-content .form-sheet{
     position:static;inset:auto;width:100%;max-width:100%;margin:0 0 6mm;
     box-shadow:none;border-radius:0;overflow:visible;
-    break-after:page;page-break-after:always;
+    break-after:auto;page-break-after:auto;
   }
-  #result-content .form-sheet:last-child{break-after:auto;page-break-after:auto}
+  #result-content .form-sheet + .form-sheet{break-before:page;page-break-before:always}
   /* الورقة فقط تُطبع: بلا هيرو النجاح وبلا أزرار الصفحة وبلا بقية الصفحات */
-  #result-content .ok-hero,#result-content .result-actions{display:none!important}
+  #pg-result > :not(#result-content),#result-content .ok-hero{display:none!important}
   #app,#pages-wrap,.page,#pg-result,#result-content{padding:0!important;margin:0!important;border:0!important;min-height:0!important;background:none!important}
   .page:not(#pg-result),#result-content > *:not(.form-sheet),.topbar,.steps-bar,.footer{display:none!important}
   /* منع انقسام أي قسم بين صفحتين — الاستمارة كلها صفحة واحدة A4 */
@@ -615,13 +637,15 @@ body{
     </div>
 
     <!-- ═══ 2 — الاسم ═══ -->
-    <div class="page" id="pg-name">
-      <div class="card">
-        <div class="section-title">الاسم الثلاثي</div>
+    <div class="page profile-page" id="pg-name">
+      <div class="card profile-card">
+        <div class="step-intro"><span class="step-eyebrow">بيانات المتقدم / ٠١</span><h1>خلّينا نتعرّف عليك</h1><p>اكتب اسمك الكامل كما هو في مستمسكاتك، حتى تظهر بياناتك بصورة صحيحة في استمارة التقديم.</p><div class="step-assurance">بطاقتك نفسها · بياناتك تُراجع قبل الإتمام</div></div>
+        <div class="step-fields"><div class="section-title">الاسم الثلاثي</div>
         <div id="err-name"></div>
         <div class="form-group">
-          <label><span class="req">*</span> الاسم الثلاثي الكامل</label>
+          <label for="f-name"><span class="req">*</span> الاسم الثلاثي الكامل</label>
           <input type="text" id="f-name" placeholder="مثال: أحمد محمد علي" autocomplete="name">
+        </div>
         </div>
       </div>
       <div class="btn-row">
@@ -631,21 +655,23 @@ body{
     </div>
 
     <!-- ═══ 3 — السكن ═══ -->
-    <div class="page" id="pg-addr">
-      <div class="card">
-        <div class="section-title">السكن</div>
+    <div class="page profile-page" id="pg-addr">
+      <div class="card profile-card">
+        <div class="step-intro"><span class="step-eyebrow">بيانات المتقدم / ٠٢</span><h1>وين تسكن؟</h1><p>حدّد محافظتك ومنطقتك وأقرب نقطة دالة. بيانات السكن تساعدك على اختيار فرصة عمل قريبة منك.</p><div class="step-assurance">بطاقتك نفسها · بياناتك تُراجع قبل الإتمام</div></div>
+        <div class="step-fields"><div class="section-title">السكن</div>
         <div id="err-addr"></div>
         <div class="form-group">
-          <label><span class="req">*</span> المحافظة</label>
+          <label for="f-prov"><span class="req">*</span> المحافظة</label>
           <select id="f-prov"><option value="">اختر المحافظة</option></select>
         </div>
         <div class="form-group">
-          <label><span class="req">*</span> القضاء / المنطقة</label>
+          <label for="f-dist"><span class="req">*</span> القضاء / المنطقة</label>
           <select id="f-dist" disabled><option value="">اختر المحافظة أولاً</option></select>
         </div>
         <div class="form-group">
-          <label><span class="req">*</span> أقرب نقطة دالة</label>
+          <label for="f-lm"><span class="req">*</span> أقرب نقطة دالة</label>
           <input type="text" id="f-lm" placeholder="مثال: قرب مجمع الكرعاوي">
+        </div>
         </div>
       </div>
       <div class="btn-row">
@@ -655,23 +681,25 @@ body{
     </div>
 
     <!-- ═══ 4 — المواليد ═══ -->
-    <div class="page" id="pg-dob">
-      <div class="card">
-        <div class="section-title">تاريخ الميلاد</div>
+    <div class="page profile-page" id="pg-dob">
+      <div class="card profile-card">
+        <div class="step-intro"><span class="step-eyebrow">بيانات المتقدم / ٠٣</span><h1>تاريخ ميلادك</h1><p>اختر اليوم والشهر والسنة. راجع التاريخ قبل المتابعة حتى يُسجّل عمرك بصورة صحيحة.</p><div class="step-assurance">بطاقتك نفسها · بياناتك تُراجع قبل الإتمام</div></div>
+        <div class="step-fields"><div class="section-title">تاريخ الميلاد</div>
         <div id="err-dob"></div>
         <div class="form-row3">
           <div class="form-group">
-            <label><span class="req">*</span> اليوم</label>
+            <label for="f-day"><span class="req">*</span> اليوم</label>
             <select id="f-day"></select>
           </div>
           <div class="form-group">
-            <label><span class="req">*</span> الشهر</label>
+            <label for="f-mon"><span class="req">*</span> الشهر</label>
             <select id="f-mon"></select>
           </div>
           <div class="form-group">
-            <label><span class="req">*</span> السنة</label>
+            <label for="f-yr"><span class="req">*</span> السنة</label>
             <select id="f-yr"></select>
           </div>
+        </div>
         </div>
       </div>
       <div class="btn-row">
@@ -681,18 +709,20 @@ body{
     </div>
 
     <!-- ═══ 5 — الهاتف ═══ -->
-    <div class="page" id="pg-phone">
-      <div class="card">
-        <div class="section-title">رقم الهاتف</div>
+    <div class="page profile-page" id="pg-phone">
+      <div class="card profile-card">
+        <div class="step-intro"><span class="step-eyebrow">بيانات المتقدم / ٠٤</span><h1>خلّينا نبقى على تواصل</h1><p>أدخل رقم هاتفك العراقي المكوّن من 11 رقماً. تأكد أنه فعّال لتتمكن الشركة من التواصل معك.</p><div class="step-assurance">بطاقتك نفسها · بياناتك تُراجع قبل الإتمام</div></div>
+        <div class="step-fields"><div class="section-title">رقم الهاتف</div>
         <div id="err-phone"></div>
         <div class="form-group">
-          <label><span class="req">*</span> رقم الهاتف (11 رقم يبدأ بـ 07)</label>
+          <label for="f-phone"><span class="req">*</span> رقم الهاتف (11 رقم يبدأ بـ 07)</label>
           <input type="tel" id="f-phone" placeholder="07XXXXXXXXX" dir="ltr" maxlength="11" inputmode="numeric" pattern="[0-9]*" style="text-align:left;font-size:12pt;letter-spacing:1px" oninput="G.onPhone(this)">
           <div class="phone-meter">
             <span id="phone-count" class="pc-num">0</span><span class="pc-of">/ 11</span>
             <span class="pc-track"><i id="phone-bar"></i></span>
             <span id="phone-state" class="pc-state">ناقص</span>
           </div>
+        </div>
         </div>
       </div>
       <div class="btn-row">
@@ -702,13 +732,15 @@ body{
     </div>
 
     <!-- ═══ 6 — الجنس ═══ -->
-    <div class="page" id="pg-gender">
-      <div class="card">
-        <div class="section-title">نوع الجنس</div>
+    <div class="page profile-page" id="pg-gender">
+      <div class="card profile-card">
+        <div class="step-intro"><span class="step-eyebrow">بيانات المتقدم / ٠٥</span><h1>باقي خطوة للوظائف</h1><p>حدّد بياناتك ثم انتقل إلى الوظائف. تقدر تشوف كل الفرص المتاحة أو تستخدم الفلاتر المناسبة لك.</p><div class="step-assurance">بطاقتك نفسها · بياناتك تُراجع قبل الإتمام</div></div>
+        <div class="step-fields"><div class="section-title">نوع الجنس</div>
         <div id="err-gender"></div>
         <div class="gender-grid">
           <div class="gender-opt selected" data-v="ذكر" onclick="G.pickGender(this)"><span class="icon">👨</span>ذكر</div>
           <div class="gender-opt" data-v="أنثى" onclick="G.pickGender(this)"><span class="icon">👩</span>أنثى</div>
+        </div>
         </div>
       </div>
       <div class="btn-row">
@@ -722,18 +754,20 @@ body{
       <div id="chances-bar" class="chances-bar has2"></div>
       <div class="section-title">اختر الوظيفة المناسبة لك</div>
       <section class="job-filters" aria-label="فلترة الوظائف">
-        <div class="jf-top"><div><b>ابحث عن فرصتك</b><p>الترتيب المقترح يقرّب وظائف محافظتك؛ الفلاتر اختيارية ولا تستهلك أي فرصة.</p></div><button type="button" class="btn btn-outline btn-sm" onclick="G.resetJobFilters()">مسح الفلاتر</button></div>
-        <div class="jf-grid">
-          <div class="jf-search"><label for="jf-query">بحث بالاسم، الكود أو المهارة</label><input id="jf-query" type="search" placeholder="مثال: مبيعات، سائق، HRC-1042" autocomplete="off" oninput="G.setJobFilter('q',this.value)"></div>
-          <div><label for="jf-province">المحافظة</label><select id="jf-province" onchange="G.setJobFilter('province',this.value)"><option value="">كل المحافظات</option></select></div>
-        </div>
-        <details class="jf-advanced"><summary>تخصيص البحث — المنطقة، الدوام والأجر</summary><div class="jf-grid">
+        <div class="jf-top"><div><b>ابحث عن فرصتك</b><p>تصفّح الوظائف بنفس ترتيب الموقع، وحدّد ما يناسبك. البحث والفلترة لا يستهلكان أي فرصة.</p></div><button type="button" class="btn btn-outline btn-sm" onclick="G.resetJobFilters()">مسح الفلاتر</button></div>
+        <div class="jf-grid jf-primary">
+          <div class="jf-search"><label for="jf-query">بحث بالكود أو العنوان أو المهارة</label><input id="jf-query" type="search" placeholder="مثال: مبيعات، سائق، HRC-1042" autocomplete="off" oninput="G.setJobFilter('q',this.value)"></div>
           <div><label for="jf-region">المنطقة</label><select id="jf-region" onchange="G.setJobFilter('region',this.value)"><option value="">كل المناطق</option></select></div>
+          <div><label for="jf-province">المحافظة</label><select id="jf-province" onchange="G.setJobFilter('province',this.value)"><option value="">كل المحافظات</option></select></div>
+          <div><label for="jf-shift">الدوام</label><select id="jf-shift" onchange="G.setJobFilter('shift',this.value)"><option value="">كل الأوقات</option></select></div>
+          <div><label for="jf-status">الحالة</label><select id="jf-status" disabled aria-describedby="jf-availability"><option value="available">متاحة للتقديم</option></select></div>
+        </div>
+        <p id="jf-availability" class="jf-note">نفس ترتيب قسم الوظائف؛ تُعرض هنا الوظائف المتاحة للتقديم فقط، دون المحجوزة أو المغلقة.</p>
+        <details class="jf-advanced"><summary>فلاتر إضافية — نوع الوظيفة، الجنس والأجر والترتيب</summary><div class="jf-grid">
           <div><label for="jf-category">نوع الوظيفة</label><select id="jf-category" onchange="G.filter(this.value)"><option value="الكل">كل التخصصات</option></select></div>
-          <div><label for="jf-shift">الدوام</label><select id="jf-shift" onchange="G.setJobFilter('shift',this.value)"><option value="">كل أوقات الدوام</option></select></div>
           <div><label for="jf-gender">الجنس المطلوب بالإعلان</label><select id="jf-gender" onchange="G.setJobFilter('gender',this.value)"><option value="">الكل</option><option value="ذكر">ذكر أو لا فرق</option><option value="أنثى">أنثى أو لا فرق</option><option value="لا فرق">لا فرق فقط</option></select></div>
           <div><label for="jf-salary">بداية الأجر الشهري من (د.ع)</label><input id="jf-salary" type="text" inputmode="numeric" placeholder="مثال: 500000" oninput="G.setJobFilter('salary',this.value)"></div>
-          <div><label for="jf-sort">ترتيب النتائج</label><select id="jf-sort" onchange="G.setJobFilter('sort',this.value)"><option value="recommended">المقترح حسب بياناتي</option><option value="salary-desc">الأجر الأعلى أولاً</option><option value="salary-asc">الأجر الأقل أولاً</option><option value="newest">الأحدث أولاً</option></select></div>
+          <div><label for="jf-sort">ترتيب النتائج</label><select id="jf-sort" onchange="G.setJobFilter('sort',this.value)"><option value="site">مثل قسم الوظائف — الأحدث أولاً</option><option value="recommended">المقترح حسب بياناتي</option><option value="salary-desc">الأجر الأعلى أولاً</option><option value="salary-asc">الأجر الأقل أولاً</option><option value="newest">الأحدث أولاً</option></select></div>
         </div></details>
         <div class="jf-bottom"><button type="button" class="btn btn-outline btn-sm" onclick="G.useMyJobFilters()">وظائف محافظتي المناسبة لبياناتي</button><label class="jf-check"><input id="jf-picked" type="checkbox" onchange="G.setJobFilter('picked',this.checked)"> مختاراتي فقط</label></div>
         <p id="jf-error" role="alert" hidden></p><div id="jobs-count" role="status" aria-live="polite"></div>
@@ -836,7 +870,7 @@ var chancesLeft=2, appliedJobs=[], selectedGender='ذكر', currentFilter='ال�
 /* رجع الزبون من صفحة المراجعة ليعدّل خطوة: بعد «التالي» نرجع للمراجعة فوراً
    بدل أن نمشي به كل الخطوات من جديد — راحة واضحة وتقليل تعب. */
 var returnToReview=false;
-var jobFilters={q:'',province:'',region:'',shift:'',gender:'',salary:'',sort:'recommended',picked:false};
+var jobFilters={q:'',province:'',region:'',shift:'',gender:'',salary:'',sort:'site',picked:false};
 function jobNorm(value){return String(value==null?'':value).replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);}).replace(/[۰-۹]/g,function(c){return String(c.charCodeAt(0)-1776);}).toLowerCase().replace(/[ًٌٍَُِّْٰـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();}
 function jobProvince(value){var n=jobNorm(value);var alias={'اربيل':'أربيل','اربیل':'أربيل','انبار':'الأنبار','الانبار':'الأنبار','ذيقار':'ذي قار','ذي قار':'ذي قار','الديوانيه':'القادسية','ديوانيه':'القادسية','القادسيه':'القادسية','سليمانيه':'السليمانية','حلبجه':'حلبجة'};if(Object.prototype.hasOwnProperty.call(alias,n))return alias[n];var found=Object.keys(IRAQ).concat(['حلبجة']).filter(function(p){return jobNorm(p)===n;})[0];return found||String(value||'').trim();}
 function jobSalary(value){var text=jobNorm(value).replace(/[,،٬\s]/g,'');if(!text)return 0;return /^\d+$/.test(text)&&isFinite(Number(text))?Number(text):null;}
@@ -1178,7 +1212,7 @@ var G={
     G.renderJobs();
   },
   filter:function(c){currentFilter=c||'الكل';G.renderFilters();G.renderJobs();},
-  resetJobFilters:function(){jobFilters={q:'',province:'',region:'',shift:'',gender:'',salary:'',sort:'recommended',picked:false};currentFilter='الكل';G.renderFilters();G.renderJobs();},
+  resetJobFilters:function(){jobFilters={q:'',province:'',region:'',shift:'',gender:'',salary:'',sort:'site',picked:false};currentFilter='الكل';G.renderFilters();G.renderJobs();},
   useMyJobFilters:function(){jobFilters={q:'',province:jobProvince($('f-prov').value),region:'',shift:'',gender:selectedGender,salary:'',sort:'recommended',picked:false};currentFilter='الكل';G.renderFilters();G.renderJobs();},
   removePickedJob:function(index){if(index<0||index>=pickedJobs.length)return;pickedJobs.splice(index,1);G.renderChances();G.renderJobs();},
   filteredJobs:function(){
@@ -1195,7 +1229,7 @@ var G={
         (!jobFilters.picked||G.pickedIndex(j.code)>=0);
     });
     function score(j){return(jobProvince(j.governorate)&&jobProvince(j.governorate)===profileProvince?4:0)+(jobNorm(j.gender)===jobNorm(selectedGender)||['لا فرق','كلا الجنسين','الجنسين'].indexOf(jobNorm(j.gender))>=0?1:0);}
-    matching.sort(function(a,b){var d=0;if(jobFilters.sort==='salary-desc'||jobFilters.sort==='salary-asc'){var aKnown=Number(a.job.salaryMin)>0,bKnown=Number(b.job.salaryMin)>0;if(aKnown!==bKnown)return aKnown?-1:1;}if(jobFilters.sort==='salary-desc')d=Number(b.job.salaryMin)-Number(a.job.salaryMin);else if(jobFilters.sort==='salary-asc')d=Number(a.job.salaryMin)-Number(b.job.salaryMin);else if(jobFilters.sort==='newest')d=(Date.parse(b.job.createdAt)||0)-(Date.parse(a.job.createdAt)||0);else d=score(b.job)-score(a.job);return d||a.index-b.index;});
+    matching.sort(function(a,b){var d=0;if(jobFilters.sort==='salary-desc'||jobFilters.sort==='salary-asc'){var aKnown=Number(a.job.salaryMin)>0,bKnown=Number(b.job.salaryMin)>0;if(aKnown!==bKnown)return aKnown?-1:1;}if(jobFilters.sort==='salary-desc')d=Number(b.job.salaryMin)-Number(a.job.salaryMin);else if(jobFilters.sort==='salary-asc')d=Number(a.job.salaryMin)-Number(b.job.salaryMin);else if(jobFilters.sort==='site'||jobFilters.sort==='newest')d=(b.job.createdAt||'').localeCompare(a.job.createdAt||'');else d=score(b.job)-score(a.job);return d||a.index-b.index;});
     return matching.map(function(e){return e.job;});
   },
 
@@ -1224,9 +1258,9 @@ var G={
         +'<div class="badge badge-open">'+(done?'✓ تم التقديم':(picked?'★ الفرصة '+ar(slotNo+1):'🟢 متوفرة'))+'</div></div>'
         +'<div class="job-category">✦ '+esc(j.category)+' · '+esc(j.code)+'</div>'
         +'<div class="job-grid">'
-        +'<div class="job-item"><span class="k">الراتب:</span><span class="v">'+esc(sal)+'</span></div>'
+        +'<div class="job-item"><span class="k">المنطقة:</span><span class="v">'+esc([j.region,jobProvince(j.governorate)].filter(Boolean).join(' — '))+'</span></div>'
         +'<div class="job-item"><span class="k">الدوام:</span><span class="v">'+esc(j.shift)+'</span></div>'
-        +'<div class="job-item"><span class="k">المنطقة:</span><span class="v">'+esc([jobProvince(j.governorate),j.region].filter(Boolean).join(' — '))+'</span></div>'
+        +'<div class="job-item"><span class="k">الراتب:</span><span class="v">'+esc(sal)+'</span></div>'
         +'<div class="job-item"><span class="k">الجنس:</span><span class="v">'+esc(j.gender)+'</span></div>'
         +'<div class="job-item"><span class="k">الشواغر:</span><span class="v">'+ar(j.vacancies)+'</span></div>'
         +'</div>'
@@ -1759,7 +1793,7 @@ function fatal(msg,hintHtml){
     box.textContent=msg;
     if(hintHtml){
       var h=document.createElement('div');
-      h.style.cssText='margin-top:12px;font-size:9.5pt;color:#e8d089;line-height:2;text-align:right;max-width:340px';
+      h.style.cssText='margin-top:12px;font-size:16px;color:#e8d089;line-height:2;text-align:right;max-width:none;width:100%';
       h.innerHTML=hintHtml;
       box.parentNode.insertBefore(h,box.nextSibling);
     }
