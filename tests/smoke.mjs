@@ -352,6 +352,23 @@ check('قالب البطاقة يحوي الوجهين وكل بياناتها �
   const faces = (html.match(/class="hrc-card[" ]/g) || []).length;
   return faces === 2 || 'عدد الأوجه: ' + faces;
 });
+check('تصميم البطاقة يحافظ على المقاس والوجهين وكل الرموز من فرصة إلى عشر', () => {
+  for (const count of [1, 2, 3, 6, 10]) {
+    const app = { serial: 'DEMO-ONLY', status: 'blank', fullName: 'اسم لا يُطبع', phone: '07700000099' };
+    const attempts = Array.from({ length: count }, (_, i) => ({ no: i + 1, code: (1234 + i) + '-AB', slotStatus: 'empty' }));
+    const fragment = JSDOM.fragment(site.window.HRCVoucher.buildHtml(app, attempts));
+    if (fragment.querySelectorAll('.hrc-card').length !== 2 || fragment.querySelectorAll('.code').length !== count) return 'رموز ناقصة للعدد ' + count;
+    if (!attempts.every((t) => fragment.textContent.includes(t.code))) return 'تغير رمز مطبوع';
+    if (/اسم لا يُطبع|07700000099/.test(fragment.textContent)) return 'تسربت بيانات الزبون للبطاقة';
+    if (!fragment.querySelector('.hc-serial') || !fragment.querySelector('.hc-dates')) return 'تسلسل الهوية والتواريخ ناقص';
+    const model = site.window.HRCQR.encode(site.window.HRCStore.cardUrl(app.serial), 'M');
+    const svg = fragment.querySelector('.hrc-qr-slot svg');
+    const modules = model.size || model.moduleCount || model.matrix.length;
+    if (!svg || svg.getAttribute('viewBox') !== '0 0 ' + (modules + 8) + ' ' + (modules + 8)) return 'الهامش الأبيض للباركود غير كافٍ';
+  }
+  const style = site.doc.getElementById('hrc-card-style').textContent;
+  return (/box-sizing:border-box;width:86mm;height:54mm/.test(style) && /size:86mm 54mm/.test(style)) || 'تغير المقاس الفعلي';
+});
 check('ظهر البطاقة يعرض رمزي الفرصتين بصيغة NNNN-AA ويحمل التعليمات المقفلة', () => {
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
   const attempts = site.window.HRCStore.getAttempts('HRC-BC-000120');

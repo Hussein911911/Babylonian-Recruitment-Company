@@ -30,7 +30,8 @@
     "test:perf": "node tests/perf.mjs",
     "test:staff-http": "node tests/staff-admin-http.mjs",
     "test:staff-lifecycle": "node tests/staff-lifecycle.mjs",
-    "test:audit-search": "node tests/audit-search.mjs"
+    "test:audit-search": "node tests/audit-search.mjs",
+    "build:card-preview": "node tools/build-wallet-preview.mjs"
   },
   "devDependencies": {
     "jsdom": "^26.1.0",
