@@ -784,19 +784,11 @@
     return pad(Math.floor(1000 + Math.random() * 9000), 4) + '-XX';
   }
 
-  function newCardPrintCode() {
-    var cryptoApi = root.crypto || (typeof crypto !== 'undefined' ? crypto : null);
-    if (!cryptoApi || !cryptoApi.getRandomValues) throw new Error('المتصفح لا يدعم توليد رمز تحقق آمن');
-    var bytes = new Uint8Array(8);
-    cryptoApi.getRandomValues(bytes);
-    return Array.from(bytes).map(function (b) { return ('0' + b.toString(16)).slice(-2); }).join('').toUpperCase();
-  }
-
   function createApplicant(data) {
     var issue = new Date();
     var pending = !!data.pending;
     var app = {
-      id: uid('app'), serial: nextSerial(), cardPrintCode: newCardPrintCode(), fullName: data.fullName, phone: data.phone,
+      id: uid('app'), serial: nextSerial(), fullName: data.fullName, phone: data.phone,
       address: data.address, dob: data.dob || '', gender: data.gender || 'ذكر', nationality: data.nationality || 'عراقي',
       issueDate: pending ? null : issue.toISOString(),
       expiryDate: pending ? null : addDays(issue, Number(db.settings.validityDays || 30)).toISOString(),
@@ -821,7 +813,7 @@
   }
 
   /* إصدار دفعة بطاقات فارغة (الشركة/الإدارة): بطاقات بباركود عشوائي فريد
-     ورمز تحقق مستقل — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
+     ورمزي فرصتين — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
      والصلاحية (30 يوماً) لا تبدأ إلا عند تعبئة بيانات الزبون عند البيع. */
   function createCardBatch(count, notes) {
     if (!isAdmin()) return [];           /* إصدار الدفعات للمدير فقط */
@@ -831,7 +823,7 @@
       var serial = randomSerial();
       if (!serial) break;
       var card = {
-        id: uid('app'), serial: serial, cardPrintCode: newCardPrintCode(), fullName: '', phone: '', address: '',
+        id: uid('app'), serial: serial, fullName: '', phone: '', address: '',
         dob: '', gender: 'ذكر', nationality: 'عراقي',
         issueDate: null, expiryDate: null, status: 'blank',
         createdBy: currentUser() ? currentUser().username : 'system',
@@ -865,7 +857,7 @@
     if (db.usedSerials.indexOf(serial) >= 0)
       return { ok: false, error: 'هذا الباركود استُعمل سابقاً لبطاقة حُذفت ولا يعود أبداً (منع التزوير) — اختر كوداً آخر' };
     var card = {
-      id: uid('app'), serial: serial, cardPrintCode: newCardPrintCode(), fullName: '', phone: '', address: '',
+      id: uid('app'), serial: serial, fullName: '', phone: '', address: '',
       dob: '', gender: 'ذكر', nationality: 'عراقي',
       issueDate: null, expiryDate: null, status: 'blank',
       createdBy: currentUser() ? currentUser().username : 'system',
@@ -877,7 +869,7 @@
     createAttempts(serial);
     db.usedSerials.push(serial);
     audit('إضافة بطاقة بكودها', 'applicant', serial,
-      'بطاقة فارغة واحدة بكود يدوي مختار — فرصتان ورمز تحقق واحد — تُطبع الآن وتُعبّأ عند البيع' +
+      'بطاقة فارغة واحدة بكود يدوي مختار — فرصتان برمزين — تُطبع الآن وتُعبّأ عند البيع' +
       (notes ? ' | ' + notes : ''));
     save(); emit();
     return { ok: true, card: card };
@@ -2279,71 +2271,6 @@
     return cloud.pushPromise;
   }
 
-  /* Confirm the exact printed identity in the server, never local-only success. */
-  function confirmIssuedCards(cards) {
-    cards = cards || [];
-    if (!cards.length) return Promise.resolve({ ok: false, error: 'لا توجد بطاقات للتحقق' });
-    if (!cloudConfigured()) return Promise.resolve({ ok: true, localOnly: true });
-    if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client || !cloud.sync) {
-      return Promise.resolve({ ok: false, error: 'لم يُؤكَّد حفظ البطاقة بقاعدة الشركة — تحقق من الاتصال وجلسة الموظف. لا تطبعها للبيع بعد.' });
-    }
-    var expected = {};
-    cards.forEach(function (c) { expected[c.serial] = c; });
-    function fail(message) { throw new Error(message); }
-    return pushCloud().then(function (pushResult) {
-      var failures = (pushResult && pushResult.failures) || [];
-      var pending = cloud.sync.diff(db).some(function (op) {
-        return (op.table === 'applicants' || op.table === 'job_attempts') &&
-          !!expected[op.local ? op.local.serial : String(op.key).split(':')[0]];
-      });
-      if (pending) {
-        var cardFailure = failures.filter(function (f) { return (f.table === 'applicants' || f.table === 'job_attempts') && expected[String(f.key).split(':')[0]]; })[0];
-        if (cardFailure) {
-          var why = describeError(cardFailure);
-          fail('لم يكتمل حفظ البطاقة أو فرصها: ' + why.text + (why.hint ? ' — ' + why.hint : ''));
-        }
-        fail('حفظ البطاقة أو فرصها ما زال معلقاً — أعد محاولة التأكيد دون إصدار بطاقة بديلة.');
-      }
-      var serials = Object.keys(expected), seen = {}, chain = Promise.resolve();
-      for (var i = 0; i < serials.length; i += 100) (function (part) {
-        chain = chain.then(function () {
-          return cloud.client.from('applicants').select('serial,card_print_code').in('serial', part);
-        }).then(function (res) {
-          if (!res || res.error) {
-            var info = describeError(res && res.error);
-            fail(info.text + (info.hint ? ' — ' + info.hint : ''));
-          }
-          (res.data || []).forEach(function (row) {
-            if (expected[row.serial] && (row.card_print_code || null) === (expected[row.serial].cardPrintCode || null)) seen[row.serial] = true;
-          });
-        });
-      })(serials.slice(i, i + 100));
-      return chain.then(function () {
-        if (serials.some(function (serial) { return !seen[serial]; })) fail('الباركود أو رمز ظهر البطاقة لا يطابق السجل المحفوظ بقاعدة الشركة — لا تطبعها للبيع، وأعد تحميل المخزون للتحقق.');
-        // Every card must be readable, not only the first card in a batch.
-        var next = 0, checked = 0;
-        function worker() {
-          if (next >= serials.length) return Promise.resolve();
-          var serial = serials[next++];
-          return cloud.client.rpc('self_service_card', { p_serial: serial }).then(function (res) {
-            if (!res || res.error || !res.data || res.data.ok === false) fail('لم تتعرف صفحة الباركود على البطاقة ' + serial + ' — تحقق من دالة self_service_card وصلاحياتها.');
-            var card = res.data.card || res.data;
-            if (card.serial !== serial) fail('نتيجة قراءة الباركود لا تطابق البطاقة ' + serial);
-            checked++;
-            return worker();
-          });
-        }
-        var workers = [];
-        for (var w = 0; w < Math.min(6, serials.length); w++) workers.push(worker());
-        return Promise.all(workers).then(function () {
-          if (checked !== serials.length) fail('لم يكتمل فحص جميع باركودات الدفعة.');
-        });
-      }).then(function () {
-        return { ok: true, localOnly: false, warnings: failures.some(function (f) { return f.table === 'audit_log'; }) ? ['حُفظت البطاقة وتم التحقق منها، لكن بعض سجلات التدقيق لم تُحفظ. راجع تحديث صلاحيات سجل التدقيق؛ تبقى السجلات معلقة لإعادة المحاولة.'] : [] };
-      });
-    }).catch(function (e) { return { ok: false, error: e.message || 'تعذّر تأكيد حفظ البطاقة — لا تطبعها للبيع بعد.' }; });
-  }
-
   /* إعادة قراءة كاملة — بعد تغيير من موظف آخر أو بعد استعادة الاتصال */
   function reloadFromCloud() {
     if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client) return Promise.resolve(cloudStatus());
@@ -2671,7 +2598,6 @@
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     probeServiceKey: probeServiceKey,
     staffAdmin: staffAdmin,
-    confirmIssuedCards: confirmIssuedCards,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,

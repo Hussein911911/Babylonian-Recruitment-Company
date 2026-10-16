@@ -2908,7 +2908,7 @@
         '<span class="tiny muted">تُطبع بيانات الوظيفة وجهة العمل على استمارة A4 المسلَّمة للزبون.</span></div>' +
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
-        '<p class="mb-0 small">' + UI.ic('card') + ' البطاقة تبقى <b>فارغة الوجه</b> (باركود + رمز تحقق واحد) — وتبدأ صلاحية <b>' +
+        '<p class="mb-0 small">' + UI.ic('card') + ' البطاقة تبقى <b>فارغة الوجه</b> (باركود + رمزا الفرصتين) — وتبدأ صلاحية <b>' +
         Store.settings().validityDays + ' يوماً</b> وفرصتان مستقلتان <b>من لحظة البيع</b>. بعد التعبئة تُطبع <b>استمارة التوظيف A4</b> بنفس الباركود ' +
         'تحمل بيانات الزبون والوظيفة وبيانات صاحب العمل — تُسلَّم للزبون ليقدمها لصاحب العمل. البيع <b>كاش فقط</b>.</p></div></div>';
 
@@ -2964,7 +2964,7 @@
         '<input type="text" id="c-notes" placeholder="مثال: بطاقة تعويض للسيد أحمد — مكتب الحلة"></div>' +
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
-        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرصتين ورمز تحقق واحد، وتُطبع بوجهيها بمقاس 86×54مم — ' +
+        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرصتين ورمزين، وتُطبع بوجهيها بمقاس 86×54مم — ' +
         'وصلاحية 30 يوماً تبدأ عند تعبئتها عند البيع لا من الآن. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
 
     UI.modal({
@@ -2981,43 +2981,17 @@
           codeInp.value = Store.suggestSerial();
           errBox.style.display = 'none';
         });
-        var issuedCard = null;
         box.querySelector('#c-save').addEventListener('click', function () {
-          if (this.disabled) return;
           var serial = String(codeInp.value || '').trim();
           var notes = box.querySelector('#c-notes').value.trim();
           errBox.style.display = 'none';
           if (!serial) { codeInp.focus(); return; }
-          var r = issuedCard ? { ok: true, card: issuedCard } : Store.createCardWithSerial(serial, notes);
+          var r = Store.createCardWithSerial(serial, notes);
           if (!r.ok) { errBox.textContent = r.error; errBox.style.display = 'block'; codeInp.focus(); return; }
-          issuedCard = r.card;
-          codeInp.disabled = true; box.querySelector('#c-gen').disabled = true;
-          finishCardIssuance([issuedCard], box, this, errBox, close, function () { cardResultModal(issuedCard); });
+          close();
+          cardResultModal(r.card);
         });
       }
-    });
-  }
-
-  function finishCardIssuance(cards, box, button, status, close, onReady) {
-    if (!Store.cloudStatus().configured) { close(); onReady(); return; }
-    button.disabled = true;
-    button.textContent = 'جارٍ حفظ البطاقات وفحص الباركود…';
-    status.style.display = 'block';
-    status.textContent = 'جارٍ الحفظ والتحقق تلقائياً — لا تحتاج إلى إصدار بطاقات أخرى.';
-    Promise.resolve(Store.confirmIssuedCards(cards)).then(function (r) {
-      if (!box.isConnected) return;
-      button.disabled = false;
-      if (!r || !r.ok || r.localOnly) {
-        button.textContent = 'إعادة حفظ نفس البطاقات';
-        status.textContent = (r && r.error) || 'لم يكتمل الحفظ بقاعدة الشركة — تبقى البطاقات بالمخزون لإعادة المحاولة.';
-        return;
-      }
-      if (r.warnings && r.warnings.length) UI.toast('warn', 'تنبيه سجل التدقيق', r.warnings[0]);
-      close(); onReady();
-    }).catch(function () {
-      if (!box.isConnected) return;
-      button.disabled = false; button.textContent = 'إعادة حفظ نفس البطاقات';
-      status.textContent = 'تعذّر الحفظ — أعد المحاولة بنفس البطاقات دون إصدار بديل.';
     });
   }
 
@@ -3025,7 +2999,7 @@
   function cardResultModal(card) {
     UI.modal({
       title: 'أُضيفت البطاقة ' + card.serial,
-      subtitle: 'بطاقة فارغة واحدة بالمخزون — بفرصتين ورمز تحقق واحد',
+      subtitle: 'بطاقة فارغة واحدة بالمخزون — بفرصتين ورمزين',
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
           '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت البطاقة بالمخزون وجاهزة للبيع والتعبئة. ' +
           'اطبعها الآن على <b>ورق مقوى 300–350غم</b> بخيار «الحجم الفعلي» — صفحتان (وجه أمامي وخلفي) بمقاس 86×54مم، وتُغلَّف حرارياً بمكتب الاستنساخ.</p></div></div>' +
@@ -3056,10 +3030,9 @@
         '<span class="tiny muted" id="b-est" style="display:block;margin-top:6px"></span></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
       '</form>' +
-      '<div id="b-save-status" role="status" class="small mt-2" style="display:none"></div>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('shield') + ' كل بطاقة تولد <b>بكود عشوائي فريد</b> من 10 خانات (حروف وأرقام بلا شرطة) لا يتشابه مع أي بطاقة أخرى ولا يعود أبداً — ' +
-        'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين مع رمز تحقق واحد بظهرها، ' +
+        'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين مع رمزي الفرصتين بظهرها، ' +
         'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ من التعبئة لا من اليوم.</p></div></div>';
 
     UI.modal({
@@ -3081,18 +3054,15 @@
           b.addEventListener('click', function () { cnt.value = b.getAttribute('data-n'); refresh(); });
         });
         refresh();
-        var issuedBatch = null;
         box.querySelector('#b-save').addEventListener('click', function () {
-          if (this.disabled) return;
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
           var count = Number(cnt.value) || 0;
           var notes = box.querySelector('#b-notes').value.trim();
-          var made = issuedBatch || Store.createCardBatch(count, notes);
+          var made = Store.createCardBatch(count, notes);
           if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (1 إلى 1000)'); return; }
-          issuedBatch = made; cnt.disabled = true;
-          box.querySelectorAll('.b-preset').forEach(function (b) { b.disabled = true; });
-          finishCardIssuance(made, box, this, box.querySelector('#b-save-status'), close, function () { batchResultModal(made); });
+          close();
+          batchResultModal(made);
         });
       }
     });

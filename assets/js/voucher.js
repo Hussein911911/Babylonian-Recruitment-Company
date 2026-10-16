@@ -97,6 +97,8 @@
 
   function esc(v) { return UI ? UI.esc(String(v == null ? '' : v)) : String(v == null ? '' : v); }
 
+  function fmtCode(code) { return String(code || '————'); }
+
   /* الوجه الأمامي بلا بيانات شخصية؛ الصلاحية تبدأ عند البيع. */
   function isBlank(app) {
     /* البطاقة لا تحمل بيانات زبون أبداً (قرار 2026-10-01): «فارغة» تعني
@@ -121,7 +123,7 @@
       '<div class="hc-date"><span>الصلاحية</span><b>' + (blank ? '30 يوماً من البيع' : esc(Store.fmtDate(app.expiryDate))) + '</b></div></div></div>';
   }
 
-  function backHtml(app, attempts) {
+  function independentBackHtml(app, attempts) {
     // Legacy cards print one of their existing codes; both old codes still verify.
     var secret = app.cardPrintCode || (attempts[0] && attempts[0].code) || '';
     var printed = app.cardPrintCode ? secret.match(/.{1,4}/g).join('-') : secret;
@@ -129,6 +131,21 @@
       '<div class="hc-back-head"><b>رمز التحقق من البطاقة</b><span>خاص بإعادة الطباعة</span></div>' +
       '<div class="hc-codes single"><div class="hc-codebox"><div class="clbl">احتفظ بهذا الرمز ولا تشاركه</div>' +
       '<div class="code">' + esc(printed || 'راجع الإدارة قبل الطباعة') + '</div></div></div>' +
+      '<ul class="hc-terms">' + TERMS.map(function (n) {
+        return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>';
+      }).join('') + '</ul>' +
+      '<div class="hc-bot2"><div class="hc-contact"><span class="phones">' + esc(CFG.company.phones.join(' · ')) + '</span>' +
+      '<span class="addr">' + esc(CFG.company.addressShort) + '</span></div><div class="disc">' + esc(DISCLAIMER) + '</div></div></div>';
+  }
+
+  function backHtml(app, attempts) {
+    if (app.cardPrintCode) return independentBackHtml(app, attempts);
+    var layout = attempts.length === 1 ? ' single' : attempts.length > 6 ? ' many dense' : attempts.length > 2 ? ' many' : '';
+    return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف"><div class="frame"></div>' +
+      '<div class="hc-back-head"><b>رموز فرص البطاقة</b><span>احتفظ بالبطاقة ورموزها</span></div>' +
+      '<div class="hc-codes' + layout + '">' + attempts.map(function (t, i) {
+        return '<div class="hc-codebox"><div class="clbl">رمز الفرصة ' + (i + 1) + '</div><div class="code">' + esc(fmtCode(t.code)) + '</div></div>';
+      }).join('') + '</div>' +
       '<ul class="hc-terms">' + TERMS.map(function (n) {
         return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>';
       }).join('') + '</ul>' +
@@ -394,18 +411,8 @@
      فيمسح ورقتها بيضاء. التنظيف الآن لا يعمل إلا لآخر طباعة فقط. */
   var printSeq = 0;
 
-  function checkBeforeCardPrint(apps, resume) {
-    if (!Store.confirmIssuedCards || !Store.cloudStatus || !Store.cloudStatus().configured) return false;
-    Store.confirmIssuedCards(apps).then(function (r) {
-      if (r && r.ok && !r.localOnly) resume();
-      else if (UI && UI.toast) UI.toast('err', 'الطباعة متوقفة لحين تأكيد الحفظ', (r && r.error) || 'البطاقة غير مؤكدة في قاعدة الشركة');
-    }).catch(function () { if (UI && UI.toast) UI.toast('err', 'تعذّر تأكيد البطاقة', 'تحقق من الاتصال قبل الطباعة'); });
-    return true;
-  }
-
   function print(app, opts) {
     opts = opts || {};
-    if (!opts.verifiedReprint && !opts.confirmed && checkBeforeCardPrint([app], function () { print(app, Object.assign({}, opts, { confirmed: true })); })) return;
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّر الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
@@ -421,8 +428,7 @@
   }
 
   /* طباعة دفعة بطاقات (الفارغة عند الإصدار): كل بطاقة بوجهيها وصفحة خاصة */
-  function printBatch(apps, confirmed) {
-    if (!confirmed && checkBeforeCardPrint(apps, function () { printBatch(apps, true); })) return;
+  function printBatch(apps) {
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
@@ -498,8 +504,7 @@
   /* عدد أوراق A4 (كل ورقة بوجهين) لعدد بطاقات معيّن — للعرض في النافذة */
   function sheetCount(n) { return Math.ceil((Number(n) || 0) / SHEET_PER); }
 
-  function printSheet(apps, confirmed) {
-    if (!confirmed && checkBeforeCardPrint(apps, function () { printSheet(apps, true); })) return;
+  function printSheet(apps) {
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }

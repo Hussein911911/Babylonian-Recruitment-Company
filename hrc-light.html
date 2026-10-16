@@ -5672,19 +5672,11 @@ table.data tbody tr:hover { background: #faf8f3; }
     return pad(Math.floor(1000 + Math.random() * 9000), 4) + '-XX';
   }
 
-  function newCardPrintCode() {
-    var cryptoApi = root.crypto || (typeof crypto !== 'undefined' ? crypto : null);
-    if (!cryptoApi || !cryptoApi.getRandomValues) throw new Error('المتصفح لا يدعم توليد رمز تحقق آمن');
-    var bytes = new Uint8Array(8);
-    cryptoApi.getRandomValues(bytes);
-    return Array.from(bytes).map(function (b) { return ('0' + b.toString(16)).slice(-2); }).join('').toUpperCase();
-  }
-
   function createApplicant(data) {
     var issue = new Date();
     var pending = !!data.pending;
     var app = {
-      id: uid('app'), serial: nextSerial(), cardPrintCode: newCardPrintCode(), fullName: data.fullName, phone: data.phone,
+      id: uid('app'), serial: nextSerial(), fullName: data.fullName, phone: data.phone,
       address: data.address, dob: data.dob || '', gender: data.gender || 'ذكر', nationality: data.nationality || 'عراقي',
       issueDate: pending ? null : issue.toISOString(),
       expiryDate: pending ? null : addDays(issue, Number(db.settings.validityDays || 30)).toISOString(),
@@ -5709,7 +5701,7 @@ table.data tbody tr:hover { background: #faf8f3; }
   }
 
   /* إصدار دفعة بطاقات فارغة (الشركة/الإدارة): بطاقات بباركود عشوائي فريد
-     ورمز تحقق مستقل — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
+     ورمزي فرصتين — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
      والصلاحية (30 يوماً) لا تبدأ إلا عند تعبئة بيانات الزبون عند البيع. */
   function createCardBatch(count, notes) {
     if (!isAdmin()) return [];           /* إصدار الدفعات للمدير فقط */
@@ -5719,7 +5711,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       var serial = randomSerial();
       if (!serial) break;
       var card = {
-        id: uid('app'), serial: serial, cardPrintCode: newCardPrintCode(), fullName: '', phone: '', address: '',
+        id: uid('app'), serial: serial, fullName: '', phone: '', address: '',
         dob: '', gender: 'ذكر', nationality: 'عراقي',
         issueDate: null, expiryDate: null, status: 'blank',
         createdBy: currentUser() ? currentUser().username : 'system',
@@ -5753,7 +5745,7 @@ table.data tbody tr:hover { background: #faf8f3; }
     if (db.usedSerials.indexOf(serial) >= 0)
       return { ok: false, error: 'هذا الباركود استُعمل سابقاً لبطاقة حُذفت ولا يعود أبداً (منع التزوير) — اختر كوداً آخر' };
     var card = {
-      id: uid('app'), serial: serial, cardPrintCode: newCardPrintCode(), fullName: '', phone: '', address: '',
+      id: uid('app'), serial: serial, fullName: '', phone: '', address: '',
       dob: '', gender: 'ذكر', nationality: 'عراقي',
       issueDate: null, expiryDate: null, status: 'blank',
       createdBy: currentUser() ? currentUser().username : 'system',
@@ -5765,7 +5757,7 @@ table.data tbody tr:hover { background: #faf8f3; }
     createAttempts(serial);
     db.usedSerials.push(serial);
     audit('إضافة بطاقة بكودها', 'applicant', serial,
-      'بطاقة فارغة واحدة بكود يدوي مختار — فرصتان ورمز تحقق واحد — تُطبع الآن وتُعبّأ عند البيع' +
+      'بطاقة فارغة واحدة بكود يدوي مختار — فرصتان برمزين — تُطبع الآن وتُعبّأ عند البيع' +
       (notes ? ' | ' + notes : ''));
     save(); emit();
     return { ok: true, card: card };
@@ -7167,71 +7159,6 @@ table.data tbody tr:hover { background: #faf8f3; }
     return cloud.pushPromise;
   }
 
-  /* Confirm the exact printed identity in the server, never local-only success. */
-  function confirmIssuedCards(cards) {
-    cards = cards || [];
-    if (!cards.length) return Promise.resolve({ ok: false, error: 'لا توجد بطاقات للتحقق' });
-    if (!cloudConfigured()) return Promise.resolve({ ok: true, localOnly: true });
-    if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client || !cloud.sync) {
-      return Promise.resolve({ ok: false, error: 'لم يُؤكَّد حفظ البطاقة بقاعدة الشركة — تحقق من الاتصال وجلسة الموظف. لا تطبعها للبيع بعد.' });
-    }
-    var expected = {};
-    cards.forEach(function (c) { expected[c.serial] = c; });
-    function fail(message) { throw new Error(message); }
-    return pushCloud().then(function (pushResult) {
-      var failures = (pushResult && pushResult.failures) || [];
-      var pending = cloud.sync.diff(db).some(function (op) {
-        return (op.table === 'applicants' || op.table === 'job_attempts') &&
-          !!expected[op.local ? op.local.serial : String(op.key).split(':')[0]];
-      });
-      if (pending) {
-        var cardFailure = failures.filter(function (f) { return (f.table === 'applicants' || f.table === 'job_attempts') && expected[String(f.key).split(':')[0]]; })[0];
-        if (cardFailure) {
-          var why = describeError(cardFailure);
-          fail('لم يكتمل حفظ البطاقة أو فرصها: ' + why.text + (why.hint ? ' — ' + why.hint : ''));
-        }
-        fail('حفظ البطاقة أو فرصها ما زال معلقاً — أعد محاولة التأكيد دون إصدار بطاقة بديلة.');
-      }
-      var serials = Object.keys(expected), seen = {}, chain = Promise.resolve();
-      for (var i = 0; i < serials.length; i += 100) (function (part) {
-        chain = chain.then(function () {
-          return cloud.client.from('applicants').select('serial,card_print_code').in('serial', part);
-        }).then(function (res) {
-          if (!res || res.error) {
-            var info = describeError(res && res.error);
-            fail(info.text + (info.hint ? ' — ' + info.hint : ''));
-          }
-          (res.data || []).forEach(function (row) {
-            if (expected[row.serial] && (row.card_print_code || null) === (expected[row.serial].cardPrintCode || null)) seen[row.serial] = true;
-          });
-        });
-      })(serials.slice(i, i + 100));
-      return chain.then(function () {
-        if (serials.some(function (serial) { return !seen[serial]; })) fail('الباركود أو رمز ظهر البطاقة لا يطابق السجل المحفوظ بقاعدة الشركة — لا تطبعها للبيع، وأعد تحميل المخزون للتحقق.');
-        // Every card must be readable, not only the first card in a batch.
-        var next = 0, checked = 0;
-        function worker() {
-          if (next >= serials.length) return Promise.resolve();
-          var serial = serials[next++];
-          return cloud.client.rpc('self_service_card', { p_serial: serial }).then(function (res) {
-            if (!res || res.error || !res.data || res.data.ok === false) fail('لم تتعرف صفحة الباركود على البطاقة ' + serial + ' — تحقق من دالة self_service_card وصلاحياتها.');
-            var card = res.data.card || res.data;
-            if (card.serial !== serial) fail('نتيجة قراءة الباركود لا تطابق البطاقة ' + serial);
-            checked++;
-            return worker();
-          });
-        }
-        var workers = [];
-        for (var w = 0; w < Math.min(6, serials.length); w++) workers.push(worker());
-        return Promise.all(workers).then(function () {
-          if (checked !== serials.length) fail('لم يكتمل فحص جميع باركودات الدفعة.');
-        });
-      }).then(function () {
-        return { ok: true, localOnly: false, warnings: failures.some(function (f) { return f.table === 'audit_log'; }) ? ['حُفظت البطاقة وتم التحقق منها، لكن بعض سجلات التدقيق لم تُحفظ. راجع تحديث صلاحيات سجل التدقيق؛ تبقى السجلات معلقة لإعادة المحاولة.'] : [] };
-      });
-    }).catch(function (e) { return { ok: false, error: e.message || 'تعذّر تأكيد حفظ البطاقة — لا تطبعها للبيع بعد.' }; });
-  }
-
   /* إعادة قراءة كاملة — بعد تغيير من موظف آخر أو بعد استعادة الاتصال */
   function reloadFromCloud() {
     if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client) return Promise.resolve(cloudStatus());
@@ -7559,7 +7486,6 @@ table.data tbody tr:hover { background: #faf8f3; }
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     probeServiceKey: probeServiceKey,
     staffAdmin: staffAdmin,
-    confirmIssuedCards: confirmIssuedCards,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,
@@ -8255,6 +8181,8 @@ table.data tbody tr:hover { background: #faf8f3; }
 
   function esc(v) { return UI ? UI.esc(String(v == null ? '' : v)) : String(v == null ? '' : v); }
 
+  function fmtCode(code) { return String(code || '————'); }
+
   /* الوجه الأمامي بلا بيانات شخصية؛ الصلاحية تبدأ عند البيع. */
   function isBlank(app) {
     /* البطاقة لا تحمل بيانات زبون أبداً (قرار 2026-10-01): «فارغة» تعني
@@ -8279,7 +8207,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       '<div class="hc-date"><span>الصلاحية</span><b>' + (blank ? '30 يوماً من البيع' : esc(Store.fmtDate(app.expiryDate))) + '</b></div></div></div>';
   }
 
-  function backHtml(app, attempts) {
+  function independentBackHtml(app, attempts) {
     // Legacy cards print one of their existing codes; both old codes still verify.
     var secret = app.cardPrintCode || (attempts[0] && attempts[0].code) || '';
     var printed = app.cardPrintCode ? secret.match(/.{1,4}/g).join('-') : secret;
@@ -8287,6 +8215,21 @@ table.data tbody tr:hover { background: #faf8f3; }
       '<div class="hc-back-head"><b>رمز التحقق من البطاقة</b><span>خاص بإعادة الطباعة</span></div>' +
       '<div class="hc-codes single"><div class="hc-codebox"><div class="clbl">احتفظ بهذا الرمز ولا تشاركه</div>' +
       '<div class="code">' + esc(printed || 'راجع الإدارة قبل الطباعة') + '</div></div></div>' +
+      '<ul class="hc-terms">' + TERMS.map(function (n) {
+        return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>';
+      }).join('') + '</ul>' +
+      '<div class="hc-bot2"><div class="hc-contact"><span class="phones">' + esc(CFG.company.phones.join(' · ')) + '</span>' +
+      '<span class="addr">' + esc(CFG.company.addressShort) + '</span></div><div class="disc">' + esc(DISCLAIMER) + '</div></div></div>';
+  }
+
+  function backHtml(app, attempts) {
+    if (app.cardPrintCode) return independentBackHtml(app, attempts);
+    var layout = attempts.length === 1 ? ' single' : attempts.length > 6 ? ' many dense' : attempts.length > 2 ? ' many' : '';
+    return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف"><div class="frame"></div>' +
+      '<div class="hc-back-head"><b>رموز فرص البطاقة</b><span>احتفظ بالبطاقة ورموزها</span></div>' +
+      '<div class="hc-codes' + layout + '">' + attempts.map(function (t, i) {
+        return '<div class="hc-codebox"><div class="clbl">رمز الفرصة ' + (i + 1) + '</div><div class="code">' + esc(fmtCode(t.code)) + '</div></div>';
+      }).join('') + '</div>' +
       '<ul class="hc-terms">' + TERMS.map(function (n) {
         return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>';
       }).join('') + '</ul>' +
@@ -8552,18 +8495,8 @@ table.data tbody tr:hover { background: #faf8f3; }
      فيمسح ورقتها بيضاء. التنظيف الآن لا يعمل إلا لآخر طباعة فقط. */
   var printSeq = 0;
 
-  function checkBeforeCardPrint(apps, resume) {
-    if (!Store.confirmIssuedCards || !Store.cloudStatus || !Store.cloudStatus().configured) return false;
-    Store.confirmIssuedCards(apps).then(function (r) {
-      if (r && r.ok && !r.localOnly) resume();
-      else if (UI && UI.toast) UI.toast('err', 'الطباعة متوقفة لحين تأكيد الحفظ', (r && r.error) || 'البطاقة غير مؤكدة في قاعدة الشركة');
-    }).catch(function () { if (UI && UI.toast) UI.toast('err', 'تعذّر تأكيد البطاقة', 'تحقق من الاتصال قبل الطباعة'); });
-    return true;
-  }
-
   function print(app, opts) {
     opts = opts || {};
-    if (!opts.verifiedReprint && !opts.confirmed && checkBeforeCardPrint([app], function () { print(app, Object.assign({}, opts, { confirmed: true })); })) return;
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّر الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
@@ -8579,8 +8512,7 @@ table.data tbody tr:hover { background: #faf8f3; }
   }
 
   /* طباعة دفعة بطاقات (الفارغة عند الإصدار): كل بطاقة بوجهيها وصفحة خاصة */
-  function printBatch(apps, confirmed) {
-    if (!confirmed && checkBeforeCardPrint(apps, function () { printBatch(apps, true); })) return;
+  function printBatch(apps) {
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
@@ -8656,8 +8588,7 @@ table.data tbody tr:hover { background: #faf8f3; }
   /* عدد أوراق A4 (كل ورقة بوجهين) لعدد بطاقات معيّن — للعرض في النافذة */
   function sheetCount(n) { return Math.ceil((Number(n) || 0) / SHEET_PER); }
 
-  function printSheet(apps, confirmed) {
-    if (!confirmed && checkBeforeCardPrint(apps, function () { printSheet(apps, true); })) return;
+  function printSheet(apps) {
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
@@ -13580,7 +13511,7 @@ table.data tbody tr:hover { background: #faf8f3; }
         '<span class="tiny muted">تُطبع بيانات الوظيفة وجهة العمل على استمارة A4 المسلَّمة للزبون.</span></div>' +
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
-        '<p class="mb-0 small">' + UI.ic('card') + ' البطاقة تبقى <b>فارغة الوجه</b> (باركود + رمز تحقق واحد) — وتبدأ صلاحية <b>' +
+        '<p class="mb-0 small">' + UI.ic('card') + ' البطاقة تبقى <b>فارغة الوجه</b> (باركود + رمزا الفرصتين) — وتبدأ صلاحية <b>' +
         Store.settings().validityDays + ' يوماً</b> وفرصتان مستقلتان <b>من لحظة البيع</b>. بعد التعبئة تُطبع <b>استمارة التوظيف A4</b> بنفس الباركود ' +
         'تحمل بيانات الزبون والوظيفة وبيانات صاحب العمل — تُسلَّم للزبون ليقدمها لصاحب العمل. البيع <b>كاش فقط</b>.</p></div></div>';
 
@@ -13636,7 +13567,7 @@ table.data tbody tr:hover { background: #faf8f3; }
         '<input type="text" id="c-notes" placeholder="مثال: بطاقة تعويض للسيد أحمد — مكتب الحلة"></div>' +
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
-        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرصتين ورمز تحقق واحد، وتُطبع بوجهيها بمقاس 86×54مم — ' +
+        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرصتين ورمزين، وتُطبع بوجهيها بمقاس 86×54مم — ' +
         'وصلاحية 30 يوماً تبدأ عند تعبئتها عند البيع لا من الآن. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
 
     UI.modal({
@@ -13653,43 +13584,17 @@ table.data tbody tr:hover { background: #faf8f3; }
           codeInp.value = Store.suggestSerial();
           errBox.style.display = 'none';
         });
-        var issuedCard = null;
         box.querySelector('#c-save').addEventListener('click', function () {
-          if (this.disabled) return;
           var serial = String(codeInp.value || '').trim();
           var notes = box.querySelector('#c-notes').value.trim();
           errBox.style.display = 'none';
           if (!serial) { codeInp.focus(); return; }
-          var r = issuedCard ? { ok: true, card: issuedCard } : Store.createCardWithSerial(serial, notes);
+          var r = Store.createCardWithSerial(serial, notes);
           if (!r.ok) { errBox.textContent = r.error; errBox.style.display = 'block'; codeInp.focus(); return; }
-          issuedCard = r.card;
-          codeInp.disabled = true; box.querySelector('#c-gen').disabled = true;
-          finishCardIssuance([issuedCard], box, this, errBox, close, function () { cardResultModal(issuedCard); });
+          close();
+          cardResultModal(r.card);
         });
       }
-    });
-  }
-
-  function finishCardIssuance(cards, box, button, status, close, onReady) {
-    if (!Store.cloudStatus().configured) { close(); onReady(); return; }
-    button.disabled = true;
-    button.textContent = 'جارٍ حفظ البطاقات وفحص الباركود…';
-    status.style.display = 'block';
-    status.textContent = 'جارٍ الحفظ والتحقق تلقائياً — لا تحتاج إلى إصدار بطاقات أخرى.';
-    Promise.resolve(Store.confirmIssuedCards(cards)).then(function (r) {
-      if (!box.isConnected) return;
-      button.disabled = false;
-      if (!r || !r.ok || r.localOnly) {
-        button.textContent = 'إعادة حفظ نفس البطاقات';
-        status.textContent = (r && r.error) || 'لم يكتمل الحفظ بقاعدة الشركة — تبقى البطاقات بالمخزون لإعادة المحاولة.';
-        return;
-      }
-      if (r.warnings && r.warnings.length) UI.toast('warn', 'تنبيه سجل التدقيق', r.warnings[0]);
-      close(); onReady();
-    }).catch(function () {
-      if (!box.isConnected) return;
-      button.disabled = false; button.textContent = 'إعادة حفظ نفس البطاقات';
-      status.textContent = 'تعذّر الحفظ — أعد المحاولة بنفس البطاقات دون إصدار بديل.';
     });
   }
 
@@ -13697,7 +13602,7 @@ table.data tbody tr:hover { background: #faf8f3; }
   function cardResultModal(card) {
     UI.modal({
       title: 'أُضيفت البطاقة ' + card.serial,
-      subtitle: 'بطاقة فارغة واحدة بالمخزون — بفرصتين ورمز تحقق واحد',
+      subtitle: 'بطاقة فارغة واحدة بالمخزون — بفرصتين ورمزين',
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
           '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت البطاقة بالمخزون وجاهزة للبيع والتعبئة. ' +
           'اطبعها الآن على <b>ورق مقوى 300–350غم</b> بخيار «الحجم الفعلي» — صفحتان (وجه أمامي وخلفي) بمقاس 86×54مم، وتُغلَّف حرارياً بمكتب الاستنساخ.</p></div></div>' +
@@ -13728,10 +13633,9 @@ table.data tbody tr:hover { background: #faf8f3; }
         '<span class="tiny muted" id="b-est" style="display:block;margin-top:6px"></span></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
       '</form>' +
-      '<div id="b-save-status" role="status" class="small mt-2" style="display:none"></div>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('shield') + ' كل بطاقة تولد <b>بكود عشوائي فريد</b> من 10 خانات (حروف وأرقام بلا شرطة) لا يتشابه مع أي بطاقة أخرى ولا يعود أبداً — ' +
-        'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين مع رمز تحقق واحد بظهرها، ' +
+        'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين مع رمزي الفرصتين بظهرها، ' +
         'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ من التعبئة لا من اليوم.</p></div></div>';
 
     UI.modal({
@@ -13753,18 +13657,15 @@ table.data tbody tr:hover { background: #faf8f3; }
           b.addEventListener('click', function () { cnt.value = b.getAttribute('data-n'); refresh(); });
         });
         refresh();
-        var issuedBatch = null;
         box.querySelector('#b-save').addEventListener('click', function () {
-          if (this.disabled) return;
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
           var count = Number(cnt.value) || 0;
           var notes = box.querySelector('#b-notes').value.trim();
-          var made = issuedBatch || Store.createCardBatch(count, notes);
+          var made = Store.createCardBatch(count, notes);
           if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (1 إلى 1000)'); return; }
-          issuedBatch = made; cnt.disabled = true;
-          box.querySelectorAll('.b-preset').forEach(function (b) { b.disabled = true; });
-          finishCardIssuance(made, box, this, box.querySelector('#b-save-status'), close, function () { batchResultModal(made); });
+          close();
+          batchResultModal(made);
         });
       }
     });

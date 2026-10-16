@@ -14,6 +14,7 @@ const client = { from(table) {
   const q = {
     insert(r) { op = 'insert'; row = r; return q; },
     select() { returning = true; return q; },
+    update(r) { op = 'update'; row = r; return q; },
     eq(k, v) { filters.push([k, v]); return q; },
     then(resolve, reject) {
       calls.push({ table, op, returning });
@@ -25,6 +26,10 @@ const client = { from(table) {
             keys.forEach((k) => assert.match(k, /^[a-z_]+$/));
             params = keys.map((k) => row[k]);
             sql = `insert into brc.${table} (${keys.join(',')}) values (${keys.map((_, i) => '$' + (i + 1)).join(',')})` + (returning ? ' returning *' : '');
+          } else if (op === 'update') {
+            const keys = Object.keys(row);
+            params = [...keys.map((k) => row[k]), ...filters.map(([,v]) => v)];
+            sql = `update brc.${table} set ` + keys.map((k,i) => `${k}=$${i+1}`).join(',') + ' where ' + filters.map(([k],i) => `${k}=$${keys.length+i+1}`).join(' and ') + (returning ? ' returning *' : '');
           } else {
             filters.forEach(([k]) => assert.match(k, /^[a-z_]+$/));
             params = filters.map(([, v]) => v);
@@ -90,7 +95,7 @@ try {
       chance_code text default '9876-AB' unique,slot_status text default 'empty',job_id uuid,job_code text,
       selected_at timestamptz,hold_expires_at timestamptz,closed_at timestamptz,outcome_note text,
       employer_decision text,decision_at timestamptz,employer_reason text,unique(serial,attempt_no));
-    grant select,insert on brc.job_attempts to authenticated;`);
+    grant select,insert,update on brc.job_attempts to authenticated;`);
   const makeSlots = schema.match(/create or replace function brc\.trg_make_attempts\(\)[\s\S]*?end \$\$;/)[0];
   await db.exec(makeSlots + `create trigger real_make_slots after insert on brc.applicants for each row execute function brc.trg_make_attempts();
     insert into brc.applicants values ('CARD',1); set role authenticated;`);
@@ -106,5 +111,7 @@ try {
   denied = false;
   try { await S.executeOne(client, { ...slot, independentCard: false }); } catch { denied = true; }
   check('legacy printed chance codes are never silently replaced during reconciliation', denied);
+  await S.executeOne(client, { ...slot, independentCard: false, freshCard: true, local: { ...slot.local, code: '2468-CD' } });
+  check('fresh original card keeps its printed chance code when the server trigger already made its slot', (await db.query("select chance_code from brc.job_attempts where serial='CARD'")).rows[0].chance_code === '2468-CD');
 } finally { await db.close(); }
 console.log(`Audit/issuance PostgreSQL: ${passed} checks passed.`);

@@ -212,12 +212,6 @@ await wait(200);
   await wait(450);
 }
 const BLANKS = D.listBlankCards().slice(0, 3);
-check('البطاقات الصادرة حديثاً لها رموز تحقق مستقلة وفريدة',
-  BLANKS.every((card) => /^[A-F0-9]{16}$/.test(card.cardPrintCode)) &&
-  new Set(BLANKS.map((card) => card.cardPrintCode)).size === BLANKS.length);
-// This historical wizard suite covers already-printed legacy cards.
-// Independent-code cards are covered by reprint-code.mjs (including real SQL).
-BLANKS.forEach((card) => { card.cardPrintCode = null; });
 check('المخزون الفارغ زاد (' + stockBefore + ' → ' + D.listBlankCards().length + ')',
   D.listBlankCards().length === stockBefore + 3);
 check('البطاقات الفارغة بلا اسم وبلا تواريخ (بانتظار التعبئة)',
@@ -364,7 +358,7 @@ const mustPrint = [
   ['الشركة', /شركة الهدف للتوظيف|Al-Hadaf/.test(printHtml)],
   ['الباركود QR', /<svg[\s\S]*<path/.test(printHtml)],
   ['الرقم التسلسلي', printHtml.includes(SERIAL)],
-  ['رمز تحقق واحد للبطاقة القديمة', printHtml.includes(CHANCES[0].code) && !printHtml.includes(CHANCES[1].code)],
+  ['رمزا الفرصتين الأصليان', printHtml.includes(CHANCES[0].code) && printHtml.includes(CHANCES[1].code)],
   ['الإخلاء القانوني', /غير مسؤولة قانون/.test(printHtml)]
 ];
 const missPrint = mustPrint.filter(([, c]) => !c).map(([k]) => k);
@@ -1010,9 +1004,9 @@ await wait(150);
   await wait(450);
 }
 const reprintHtml = pubCard.doc.getElementById('print-root').innerHTML;
-check('إعادة طباعة البطاقة القديمة نجحت: وجهان وباركود ورمز واحد — وبلا اسم زبون',
+check('إعادة طباعة البطاقة القديمة نجحت: وجهان وباركود ورمزا الفرصتين — وبلا اسم زبون',
   (reprintHtml.match(/class="hrc-card[" ]/g) || []).length === 2 && reprintHtml.includes(SERIAL) &&
-  reprintHtml.includes(CHANCES[0].code) && !reprintHtml.includes(CHANCES[1].code) &&
+  reprintHtml.includes(CHANCES[0].code) && reprintHtml.includes(CHANCES[1].code) &&
   !reprintHtml.includes('مرتضى كريم جبر'));
 check('نافذة الطباعة استُدعيت لإعادة الطباعة', pubCard.w.__printed > 0, 'عدد الاستدعاءات ' + pubCard.w.__printed);
 check('عدّاد طباعة البطاقة زاد (' + printedBefore + ' → ' + P3C.getApplicant(SERIAL).printedCount + ')',
@@ -1048,45 +1042,6 @@ await wait(450);
   check('المسار #!verify عرض قسم التحقق', !!verifyVisible);
   check('الملف المستقل يعرض بيانات نفس البطاقة', stext.includes(SERIAL) || stext.includes('مرتضى كريم جبر'));
   check('لا أخطاء في الملف المستقل', solo.errors.length === 0, solo.errors[0]);
-}
-
-/* The normal issue action saves in-place: no additional confirmation dialog. */
-step(10, 'إصدار طبيعي بضغطة واحدة وإعادة محاولة لا تكرر البطاقات');
-const issueUI = await open('dashboard.html', undefined, { session: 'admin' });
-{
-  const { w, doc } = issueUI, store = w.HRCStore;
-  click(w, doc.querySelector('#side-nav button[data-view="applicants"]')); await wait(100);
-  const actualStatus = store.cloudStatus;
-  store.cloudStatus = () => ({ ...actualStatus(), configured: true });
-  let finish, submitted, attempts = 0;
-  store.confirmIssuedCards = (cards) => { submitted = cards; attempts++; return new Promise((resolve) => { finish = resolve; }); };
-  const before = store.listBlankCards().length;
-  click(w, doc.getElementById('btn-new-batch')); await wait(50);
-  let box = lastModal(doc);
-  setVal(w, box.querySelector('#b-count'), '3');
-  const save = box.querySelector('#b-save');
-  click(w, save); click(w, save);
-  check('إصدار الدفعة يفحص الحفظ داخل نفس النافذة ولا يطلب تأكيداً إضافياً', save.disabled && lastModal(doc) === box && !!box.querySelector('#b-save-status') && attempts === 1);
-  const issuedSerials = submitted.map((c) => c.serial).join(',');
-  check('النقر المتكرر أثناء الحفظ لا يصدر دفعة ثانية', store.listBlankCards().length === before + 3);
-  finish({ ok: false, error: 'عطل شبكة تجريبي' }); await wait(20);
-  check('فشل مؤقت يعرض إعادة الحفظ مع بقاء أرقام الدفعة', !save.disabled && /عطل شبكة/.test(box.querySelector('#b-save-status').textContent));
-  click(w, save);
-  check('إعادة حفظ الدفعة تستعمل البطاقات نفسها دون تكرار', submitted.map((c) => c.serial).join(',') === issuedSerials && store.listBlankCards().length === before + 3);
-  finish({ ok: true, localOnly: false, warnings: [] }); await wait(20);
-  check('نجاح الحفظ يفتح الطباعة مباشرة دون نافذة تأكيد أخرى', !!lastModal(doc).querySelector('#b-print') && !doc.querySelector('#card-confirm-retry'));
-  lastModal(doc).querySelector('[data-close]').click();
-  click(w, doc.getElementById('btn-new-card')); await wait(30);
-  box = lastModal(doc);
-  const singleSave = box.querySelector('#c-save');
-  click(w, singleSave);
-  const oneSerial = submitted[0].serial;
-  finish({ ok: false, error: 'عطل مؤقت' }); await wait(20);
-  click(w, singleSave);
-  check('إعادة إصدار المفردة بعد فشل الشبكة تحافظ على نفس الباركود', submitted[0].serial === oneSerial && store.listBlankCards().length === before + 4 && box.querySelector('#c-code').disabled);
-  finish({ ok: true, localOnly: false, warnings: [] }); await wait(20);
-  check('البطاقة المفردة المؤكدة تصل مباشرة إلى زر الطباعة', !!lastModal(doc).querySelector('#c-print'));
-  issueUI.dom.window.close();
 }
 
 /* ═══ الخلاصة ═══════════════════════════════════════════════════════════ */

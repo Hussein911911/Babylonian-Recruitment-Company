@@ -831,8 +831,8 @@ section('10) بطاقة التوظيف المطبوعة (86×54مم) — الب�
 
   const codeBoxes = (html.match(/class="code"/g) || []).length;
   const faces = (html.match(/class="hrc-card[" ]/g) || []).length;
-  if (codeBoxes !== 1 || faces !== 2) bad('البطاقة تعرض وجهين ورمز تحقق واحد', 'أوجه ' + faces + ' / صناديق رموز ' + codeBoxes);
-  else ok('البطاقة تعرض وجهين (أمامي/خلفي) وصندوق رمز تحقق واحد');
+  if (codeBoxes !== 2 || faces !== 2) bad('البطاقة تعرض وجهين ورمزي الفرصتين', 'أوجه ' + faces + ' / صناديق رموز ' + codeBoxes);
+  else ok('البطاقة تعرض وجهين (أمامي/خلفي) وصندوق رمزي الفرصتين');
 
   const svgCount = (html.match(/<svg/g) || []).length;
   const hasQrPath = /<path[^>]+d="M[\d. ]/.test(html);

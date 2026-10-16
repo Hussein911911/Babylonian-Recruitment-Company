@@ -965,7 +965,7 @@ as $$ select upper(substr(u, 1, 12) || substr(u, 21, 4))
       from (select replace(gen_random_uuid()::text, '-', '') as u) s $$;
 
 alter table brc.applicants add column if not exists card_print_code text;
-alter table brc.applicants alter column card_print_code set default brc.new_card_print_code();
+alter table brc.applicants alter column card_print_code drop default;
 
 -- Remove only secret keys from existing before/after diffs; preserve all other evidence.
 update brc.audit_log

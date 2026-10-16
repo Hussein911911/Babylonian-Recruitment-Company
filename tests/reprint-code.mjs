@@ -101,6 +101,9 @@ try {
   await db.exec('set role authenticated');
   check('authenticated callers can reprint after the lockout expires', (await rpc('NEW', secret)).ok);
   await db.exec('reset role');
+  await db.exec(read('supabase/migrations/20261016140000_restore_original_card_issuance.sql'));
+  await db.exec("insert into brc.applicants(serial) values ('RESTORED-DEFAULT')");
+  check('rollback restores NULL default without rotating existing printed secrets', (await query("select card_print_code from brc.applicants where serial='RESTORED-DEFAULT'"))[0].card_print_code === null && (await query("select card_print_code from brc.applicants where serial='NEW'"))[0].card_print_code === secret);
   check('verifier has no implicit PUBLIC execute privilege', !(await query("select has_function_privilege('public','brc.verify_card_code(text,text)','execute') as allowed"))[0].allowed);
 } finally { await db.close(); }
 
@@ -112,8 +115,9 @@ try {
   const S = w.HRCStore;
   const app = S.createApplicant({ fullName: 'اسم خاص للاختبار', phone: '07700000002' });
   const other = S.createApplicant({ fullName: 'اسم آخر للاختبار', phone: '07700000003' });
+  app.cardPrintCode = '7A2C9E4B1D8F6C03'; other.cardPrintCode = '8B3DAF5C2E906D14'; // Already-printed transition cards.
   const attempts = S.getAttempts(app.serial);
-  check('local issuance generates an independent, unique secure secret', /^[A-F0-9]{16}$/.test(app.cardPrintCode) && app.cardPrintCode !== other.cardPrintCode && attempts.every((a) => a.code !== app.cardPrintCode));
+  check('already-issued independent-code fixtures retain their distinct verification codes', /^[A-F0-9]{16}$/.test(app.cardPrintCode) && app.cardPrintCode !== other.cardPrintCode && attempts.every((a) => a.code !== app.cardPrintCode));
   check('local new cards reject every chance code and another card secret', attempts.every((a) => !S.cardVerifyCode(app.serial, a.code).ok) && !S.cardVerifyCode(app.serial, other.cardPrintCode).ok);
   check('local formatted independent code authorizes reprint', S.cardVerifyCode(app.serial, app.cardPrintCode.toLowerCase().match(/.{4}/g).join('-')).ok);
   const safe = S.lookupCard(app.serial).card;
@@ -154,6 +158,11 @@ try {
   w.HRCBooking.close();
   app.cardPrintCode = null;
   check('local legacy cards accept either previously printed opportunity code', attempts.every((a) => S.cardVerifyCode(app.serial, a.code).ok));
+  const restored = S.createApplicant({ fullName: 'إصدار أصلي', phone: '07700000004' });
+  const restoredAttempts = S.getAttempts(restored.serial);
+  const restoredHtml = w.HRCVoucher.buildHtml(restored);
+  check('new issuance uses the original opportunity codes, not an independent code', !restored.cardPrintCode && restoredAttempts.length === 2 && restoredAttempts.every((a) => restoredHtml.includes(a.code)));
+  check('both original printed codes authorize reprint', restoredAttempts.every((a) => S.cardVerifyCode(restored.serial, a.code).ok));
   const C = w.HRCCloud;
   const row = C.applicantToDb(other);
   check('cloud write/read round trip retains the independent code', row.card_print_code === other.cardPrintCode && C.applicantFromDb(row).cardPrintCode === other.cardPrintCode);
@@ -164,7 +173,7 @@ try {
   check('legacy backup/import INSERT explicitly preserves NULL instead of invoking the new-code default', Object.hasOwn(oldInsert, 'card_print_code') && oldInsert.card_print_code === null);
   check('an absent code on UPDATE cannot clear an existing remote secret', !Object.hasOwn(oldUpdate, 'card_print_code'));
   check('new-card synchronization INSERT retains the already printed independent code', newInsert.card_print_code === other.cardPrintCode);
-  check('dashboard issuance copy no longer promises two printed codes', !/رمزا الفرصتين|بفرصتين ورمزين|رمزي الفرصتين بظهرها/.test(read('assets/js/dashboard.js')));
+  check('original issuance UI has no confirmation gate', !/confirmIssuedCards|finishCardIssuance|confirmCardResult/.test(read('assets/js/dashboard.js')));
   const payload = { serial: other.serial, fullName: other.fullName, cardPrintCode: other.cardPrintCode, attempts: [] };
   const client = { rpc: async () => ({ data: { ok: true, data: payload } }) };
   const result = await C.verifyCardCode(client, other.serial, other.cardPrintCode);
@@ -173,27 +182,6 @@ try {
   check('cloud verifier never grants protected data on server rejection', !(await C.verifyCardCode(client, other.serial, other.cardPrintCode)).ok);
   client.rpc = async () => { throw new Error('offline'); };
   check('cloud verifier fails closed on network failure', !(await C.verifyCardCode(client, other.serial, other.cardPrintCode)).ok);
-  // Every stock-print entry point must fail closed until remote issuance confirms.
-  const originalStatus = S.cloudStatus, originalConfirm = S.confirmIssuedCards;
-  S.cloudStatus = () => ({ configured: true });
-  S.confirmIssuedCards = async () => ({ ok: false, error: 'حفظ البطاقة معلق' });
-  const beforeBlockedPrint = printed;
-  w.document.querySelector('#print-root').innerHTML = '';
-  w.HRCVoucher.print(other); w.HRCVoucher.printBatch([other]); w.HRCVoucher.printSheet([other]);
-  await pause(200);
-  check('all stock printing paths block unsaved cards without opening print', printed === beforeBlockedPrint && !w.document.querySelector('#print-root').innerHTML);
-  let completeConfirmation;
-  S.confirmIssuedCards = () => new Promise((resolve) => { completeConfirmation = resolve; });
-  w.HRCVoucher.print(other); await pause();
-  check('stock print waits for server confirmation before preparing a card', !w.document.querySelector('#print-root').innerHTML);
-  completeConfirmation({ ok: true, localOnly: false });
-  await waitForPrint(beforeBlockedPrint + 1);
-  check('confirmed stock print preserves its one saved independent secret', w.document.querySelector('#print-root').innerHTML.includes(other.cardPrintCode.match(/.{4}/g).join('-')));
-  S.confirmIssuedCards = async () => ({ ok: false, error: 'جلسة موظف مطلوبة' });
-  w.HRCVoucher.print(other, { attempts: S.getAttempts(other.serial), verifiedReprint: true });
-  await waitForPrint(beforeBlockedPrint + 2);
-  check('already-authorized public reprint does not incorrectly require staff issuance access', printed === beforeBlockedPrint + 2);
-  S.cloudStatus = originalStatus; S.confirmIssuedCards = originalConfirm;
   check('new-card legacy wizard routes to barcode-first application without asking for a chance code', /if \(card\.usesCardPrintCode\) \{ location\.assign\('apply\.html\?form='/.test(read('assets/js/booking.js')));
 } finally { dom.window.close(); }
 console.log(`\nIndependent reprint code: ${checks} checks passed.`);

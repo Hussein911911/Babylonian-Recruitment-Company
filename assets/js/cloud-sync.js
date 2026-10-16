@@ -260,13 +260,24 @@
           if (op.table === 'job_attempts') {
             // Applicant AFTER INSERT already creates the slots. Never regenerate
             // their serial or overwrite an existing consumed/held opportunity.
-            if (!op.independentCard || row.slot_status !== 'empty') throw err;
+            if ((!op.independentCard && !op.freshCard) || row.slot_status !== 'empty') throw err;
             return finish(client.from('job_attempts').select('*').eq('serial', row.serial).eq('attempt_no', row.attempt_no), op, null).then(function (res) {
               var existing = res && res.data && res.data[0];
               if (!existing || existing.serial !== row.serial || Number(existing.attempt_no) !== Number(row.attempt_no) || existing.slot_status !== 'empty' || !existing.chance_code) throw err;
-              op.local.code = existing.chance_code;
-              if (hooks && hooks.onOp) hooks.onOp(op, res);
-              return res;
+              if (op.independentCard) {
+                op.local.code = existing.chance_code;
+                if (hooks && hooks.onOp) hooks.onOp(op, res);
+                return res;
+              }
+              // For an original card just created by THIS sync, retain exactly
+              // the two codes sent to the printer. Never edit an older card.
+              return finish(client.from('job_attempts').update({ chance_code: row.chance_code })
+                .eq('serial', row.serial).eq('attempt_no', row.attempt_no)
+                .eq('slot_status', 'empty').eq('chance_code', existing.chance_code).select(), op, hooks)
+                .then(function (updated) {
+                  if (!updated || !updated.data || updated.data.length !== 1) throw err;
+                  return updated;
+                });
             });
           }
           /* تصادم مفتاح فريد: أعد المحاولة بلا المفتاح الطبيعي */
@@ -338,6 +349,7 @@
     var snapshot = cloneSnapshot(opts.snapshot || snapshotOf({}));
     var pushing = false;
     var pendingAgain = false;
+    var freshParents = {};
 
     function setSnapshot(db) { snapshot = snapshotOf(db); }
     function getSnapshot() { return snapshot; }
@@ -389,7 +401,9 @@
       return ordered.reduce(function (chain, op) {
         return chain.then(function () {
           if (op.table === 'job_attempts' && op.local && failures.some(function (f) { return f.table === 'applicants' && f.key === op.local.serial; })) throw Object.assign(new Error('لم يُحفظ سجل البطاقة الأصلي'), { __brc: { code: 'PARENT_NOT_SAVED' } });
+          if (op.table === 'job_attempts' && op.local) op.freshCard = !!freshParents[op.local.serial];
           return executeOne(client, op, opts.hooks).then(function () {
+            if (op.table === 'applicants' && op.op === 'insert') freshParents[op.key] = true;
             /* نجحت: نُقدّم اللقطة لهذه العملية وحدها */
             advanceSnapshot(snapshot, op);
             done++;

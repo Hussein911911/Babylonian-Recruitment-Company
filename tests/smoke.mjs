@@ -371,13 +371,13 @@ check('تصميم البطاقة يعرض رمز تحقق واحداً مستق�
   const style = site.doc.getElementById('hrc-card-style').textContent;
   return (/box-sizing:border-box;width:86mm;height:54mm/.test(style) && /size:86mm 54mm/.test(style)) || 'تغير المقاس الفعلي';
 });
-check('البطاقة القديمة تُطبع برمز تحقق واحد مع حفظ الشروط', () => {
+check('البطاقة الأصلية تُطبع برمزي الفرصتين مع حفظ الشروط', () => {
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
   const attempts = site.window.HRCStore.getAttempts('HRC-BC-000120');
   const html = site.window.HRCVoucher.buildHtml(app);
   const codes = attempts.map((t) => t.code);
   if (!codes.every((c) => /^\d{4}-[A-HJ-NP-Z]{2}$/.test(c || ''))) return 'رمز فرصة بصيغة خاطئة: ' + codes.join(',');
-  if (!html.includes(codes[0]) || html.includes(codes[1])) return 'لم تُختصر البطاقة القديمة إلى رمز واحد';
+  if (!codes.every((code) => html.includes(code))) return 'لم تُسترجع رموز الفرص الأصلية';
   const rules = ['فرصتين مستقلتين', '24 ساعة', 'ولا تعود', 'مكتب استنساخ'];
   const miss = rules.filter((r) => !html.includes(r));
   return miss.length === 0 || 'تعليمات ناقصة بالظهر: ' + miss.join(' , ');
@@ -510,7 +510,7 @@ await (async () => {
 })();
 check('رمز التحقق المستقل يكشف بيانات الطباعة بعد إثبات الحيازة', () => {
   const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
-  const code = S.getApplicant(serial).cardPrintCode;
+  const code = S.getAttempts(serial)[0].code;
   const r = S.cardVerifyCode(serial, code);
   const bad1 = !r.ok || !r.app || r.app.serial !== serial || !r.attempts || r.attempts.length !== 2;
   if (bad1) return 'شكل الرد: ' + JSON.stringify({ ok: r.ok, app: r.app && r.app.serial });
@@ -884,7 +884,7 @@ check('تغيير عدد الفرص من إعدادات المدير يحفظ ح
   const newer = store.createApplicant({ fullName: 'بطاقة بعد التغيير', phone: '07711111112' });
   const valid = store.settings().attemptLimit === 3 && store.getAttempts(old.serial).length === 2 &&
     old.attemptLimit === 2 && store.getAttempts(newer.serial).length === 3 && newer.attemptLimit === 3 &&
-    dash.window.HRCVoucher.buildHtml(newer).includes(newer.cardPrintCode.match(/.{1,4}/g).join('-'));
+    store.getAttempts(newer.serial).every((t) => dash.window.HRCVoucher.buildHtml(newer).includes(t.code));
   field.value = '2';
   form.dispatchEvent(new dash.window.Event('submit', { bubbles: true, cancelable: true }));
   return (valid && newer.attemptLimit === 3 && store.settings().attemptLimit === 2) || 'تغيّرت حقوق البطاقات أو لم يُحفظ الإعداد';
