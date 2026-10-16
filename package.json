@@ -32,7 +32,8 @@
     "test:staff-lifecycle": "node tests/staff-lifecycle.mjs",
     "test:audit-search": "node tests/audit-search.mjs",
     "build:card-preview": "node tools/build-wallet-preview.mjs",
-    "test:reprint": "node tests/reprint-code.mjs"
+    "test:reprint": "node tests/reprint-code.mjs",
+    "build:form-preview": "node tools/build-form-preview.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",

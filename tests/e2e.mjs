@@ -346,7 +346,7 @@ const mustForm = [
   ['نفس باركود البطاقة', formHtmlPrinted.includes(SERIAL)],
   ['اسم الزبون', formHtmlPrinted.includes('مرتضى كريم جبر')],
   ['الوظيفة المختارة', formHtmlPrinted.includes('HRC-1043')],
-  ['بيانات صاحب العمل', /بيانات التواصل بصاحب العمل/.test(formHtmlPrinted) && formHtmlPrinted.includes('07811234567')],
+  ['بيانات صاحب العمل', /بيانات صاحب العمل/.test(formHtmlPrinted) && formHtmlPrinted.includes('07811234567')],
   ['باركود QR', /<svg[\s\S]*<path/.test(formHtmlPrinted)]
 ];
 const missForm = mustForm.filter(([, c]) => !c).map(([k]) => k);

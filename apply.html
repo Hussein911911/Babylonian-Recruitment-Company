@@ -512,6 +512,31 @@ body{
 }
 @keyframes btnShine{0%{left:-70%}55%{left:125%}100%{left:125%}}
 
+/* أقسام A4 المستقلة: واضحة بالألوان وكذلك بالطباعة بالأبيض والأسود. */
+.form-sheet .fs-body{padding:4mm 5mm;}
+.form-sheet .fs-section{margin-top:3mm;border:.3mm solid #cbd4df;border-radius:2mm;overflow:hidden;break-inside:avoid;page-break-inside:avoid;}
+.form-sheet .fs-section .fs-h3{margin:0;padding:2mm 3mm;background:#eef2f7;border-bottom:.25mm solid #cbd4df;font-size:11pt;line-height:1.4;gap:2mm;}
+.form-sheet .fs-section .fs-h3::before{display:none;}
+.fs-section-no{display:inline-flex;align-items:center;justify-content:center;width:6mm;height:6mm;border:.25mm solid currentColor;border-radius:1mm;font:700 8pt 'Segoe UI',sans-serif;direction:ltr;flex:none;}
+.form-sheet .fs-customer{border-inline-start:1mm solid #16294d;}
+.form-sheet .fs-job{border-inline-start:1mm solid #ac7d27;}
+.form-sheet .fs-job .fs-h3{background:#faf5e9;}
+.form-sheet .fs-employer{border-inline-start:1mm solid #356b6a;}
+.form-sheet .fs-employer .fs-h3{background:#edf5f3;color:#254f50;}
+.form-sheet .fs-section .fs-tbl{border:0;border-radius:0;padding:1mm 2mm;}
+.form-sheet .fs-section .fs-td{display:block;padding:1.5mm 2mm;background:#fff;border-bottom:.2mm solid #e4e8ed;}
+.form-sheet .fs-section .fs-td .k{display:block;font-size:7.5pt;color:#596575;line-height:1.5;}
+.form-sheet .fs-section .fs-td .v{display:block;font-size:10pt;color:#142640;line-height:1.65;white-space:pre-wrap;}
+.form-sheet .fs-section .fs-td.mono .v{unicode-bidi:isolate;font-variant-numeric:tabular-nums;}
+.form-sheet .fs-section .fs-h3 .en{font-size:6pt;color:#596575;}
+.form-sheet .fs-meta .fs-f .k{font-size:7pt;color:#596575;}
+.form-sheet .fs-meta .fs-f .v{font-size:9pt;line-height:1.5;}
+.form-sheet .fs-terms li{font-size:7.5pt;line-height:1.7;}
+.form-sheet .fs-emp-box{background:#f4f6f9;color:#25364d;border:.25mm solid #cbd4df;padding:2.5mm 3mm;margin-top:3mm;}
+.form-sheet .fs-emp-box h5,.form-sheet .fs-emp-box b{color:#16294d;}
+.form-sheet .fs-emp-box ol{font-size:7.2pt;line-height:1.7;}
+@media print{.form-sheet .fs-section{break-inside:avoid;page-break-inside:avoid;}}
+
 /* ── الطباعة: استمارة A4 وحدها بلا واجهة ── */
 @media print{
   @page{size:A4;margin:8mm}
@@ -1461,7 +1486,7 @@ var G={
       +'</div></div>'
 
       /* ── بيانات المتقدم ── */
-      +'<div class="fs-h3">بيانات المتقدم<span class="en">APPLICANT</span></div>'
+      +'<section class="fs-section fs-customer" aria-label="بيانات الزبون"><h3 class="fs-h3"><span class="fs-section-no">01</span>بيانات الزبون<span class="en">APPLICANT</span></h3>'
       +'<div class="fs-tbl">'
       +'<div class="fs-td"><span class="k">الاسم الثلاثي:</span><span class="v">'+esc(app.fullName||$('f-name').value)+'</span></div>'
       +'<div class="fs-td mono"><span class="k">الهاتف:</span><span class="v">'+esc(app.phone||$('f-phone').value)+'</span></div>'
@@ -1471,7 +1496,7 @@ var G={
       +'</div>'
 
       /* ── الوظيفة المطلوبة ── */
-      +'<div class="fs-h3">الوظيفة المطلوبة<span class="en">JOB</span></div>'
+      +'</section><section class="fs-section fs-job" aria-label="تفاصيل الوظيفة"><h3 class="fs-h3"><span class="fs-section-no">02</span>تفاصيل الوظيفة<span class="en">JOB</span></h3>'
       +'<div class="fs-tbl">'
       +'<div class="fs-td"><span class="k">الوظيفة:</span><span class="v">'+esc(job.title)+'</span></div>'
       +'<div class="fs-td mono"><span class="k">الكود:</span><span class="v">'+esc(job.code)+'</span></div>'
@@ -1482,14 +1507,14 @@ var G={
       +'</div>'
 
       /* ── صاحب العمل ── */
-      +'<div class="fs-emp">'
-      +'<div class="fs-emp-hd">✦ بيانات التواصل مع صاحب العمل<span class="en" style="margin-inline-start:auto;color:#c0ab7c;font-size:4.6pt;letter-spacing:.1em;direction:ltr">EMPLOYER</span></div>'
+      +'</section><section class="fs-section fs-employer" aria-label="بيانات صاحب العمل">'
+      +'<h3 class="fs-h3"><span class="fs-section-no">03</span>بيانات صاحب العمل<span class="en">EMPLOYER</span></h3>'
       +'<div class="fs-tbl">'
       +'<div class="fs-td"><span class="k">جهة العمل:</span><span class="v">'+esc(empN)+'</span></div>'
       +'<div class="fs-td mono"><span class="k">الهاتف:</span><span class="v">'+esc(empP)+'</span></div>'
       +'<div class="fs-td"><span class="k">العنوان:</span><span class="v">'+esc(empA)+'</span></div>'
       +'<div class="fs-td"><span class="k">مكان المقابلة:</span><span class="v">'+esc(empL)+'</span></div>'
-      +'</div></div>'
+      +'</div></section>'
 
       /* ── شروط البطاقة ── */
       +'<div class="fs-h3">شروط البطاقة<span class="en">TERMS</span></div>'

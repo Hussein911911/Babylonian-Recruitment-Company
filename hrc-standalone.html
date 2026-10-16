@@ -8277,6 +8277,48 @@ table.data tbody tr:hover { background: #faf8f3; }
       +   '.hrc-form, .hrc-form *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}'
       + '}';
 
+    st.textContent += `
+.hrc-form{color:#17263b;padding:7mm 9mm;line-height:1.5;}
+.hrc-form,.hrc-form *{box-sizing:border-box;}
+.hrc-form .ff-head{gap:4mm;padding-bottom:3mm;}
+.hrc-form .ff-brand .ar{font-size:14pt;}
+.hrc-form .ff-title .t1{font-size:15pt;}
+.hrc-form .ff-meta{gap:5mm;margin:3mm 0 1mm;align-items:center;}
+.hrc-form .ff-meta .ff-f{padding:0 0 1mm;border-bottom:.2mm solid #dce2e9;background:none;}
+.hrc-form .ff-qr .box svg{display:block;width:23mm;height:23mm;}
+.hrc-form .ff-fields{gap:1.5mm 4mm;}
+.hrc-form .ff-section{margin-top:3mm;border:.3mm solid #cbd4df;border-radius:2mm;overflow:hidden;break-inside:avoid;page-break-inside:avoid;}
+.hrc-form .ff-section h3{margin:0;padding:1.7mm 3mm;background:#eef2f7;border-bottom:.25mm solid #cbd4df;color:#16294d;font-size:11pt;line-height:1.4;gap:2mm;}
+.hrc-form .ff-section h3::before{display:none;}
+.hrc-form .ff-section-no{display:inline-flex;align-items:center;justify-content:center;width:6mm;height:6mm;border:.25mm solid currentColor;border-radius:1mm;font:700 8pt 'Segoe UI',sans-serif;direction:ltr;flex:none;}
+.hrc-form .ff-customer{border-inline-start:1mm solid #16294d;}
+.hrc-form .ff-job{border-inline-start:1mm solid #ac7d27;}
+.hrc-form .ff-job h3{background:#faf5e9;}
+.hrc-form .ff-employer{border-inline-start:1mm solid #356b6a;}
+.hrc-form .ff-employer h3{background:#edf5f3;color:#254f50;}
+.hrc-form .ff-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:1mm 2mm;}
+.hrc-form .ff-grid-two{grid-template-columns:repeat(2,minmax(0,1fr));}
+.hrc-form .ff-section .ff-f{min-width:0;padding:1.3mm 2mm;border:0;border-bottom:.2mm solid #e4e8ed;}
+.hrc-form .ff-f .k{font-size:7.2pt;font-weight:700;color:#596575;line-height:1.5;}
+.hrc-form .ff-f .v{font-size:10pt;font-weight:800;color:#142640;line-height:1.65;overflow-wrap:anywhere;white-space:pre-wrap;}
+.hrc-form .ff-wide{grid-column:span 2;}
+.hrc-form .ff-full{grid-column:1/-1;}
+.hrc-form .ff-ltr .v{direction:ltr;unicode-bidi:isolate;text-align:right;font-family:'Segoe UI',Tahoma,sans-serif;font-variant-numeric:tabular-nums;}
+.hrc-form .ff-empty{padding:3mm 4mm;color:#596575;font-size:9pt;}
+.hrc-form .ff-note{padding:2mm 3mm;margin-top:2mm;font-size:8pt;line-height:1.7;background:#fffdf7;break-inside:avoid;}
+.hrc-form h3{margin:3mm 0 1.5mm;font-size:10pt;}
+.hrc-form ul.ff-terms{gap:.5mm;}
+.hrc-form ul.ff-terms li{font-size:7.5pt;line-height:1.65;}
+.hrc-form .ff-employer-box{padding:2.5mm 3.5mm;margin-top:2.5mm;background:#f4f6f9;color:#25364d;border:.25mm solid #cbd4df;border-radius:2mm;break-inside:avoid;}
+.hrc-form .ff-employer-box h4{font-size:9pt;color:#16294d;margin:0 0 1mm;}
+.hrc-form .ff-employer-box ol{font-size:7.5pt;line-height:1.7;}
+.hrc-form .ff-sign{gap:7mm;margin:3mm 0;break-inside:avoid;}
+.hrc-form .ff-sign .l{height:7mm;}
+.hrc-form .ff-sign .s{font-size:8pt;}
+.hrc-form .ff-foot{font-size:6.8pt;padding-top:2mm;line-height:1.6;}
+@media print{.hrc-form{width:190mm;min-height:277mm;margin:0 auto;padding:6mm 8mm;}.hrc-form .ff-head,.hrc-form .ff-meta,.hrc-form .ff-foot{break-inside:avoid;}}
+`;
+
     document.head.appendChild(st);
   }
 
@@ -8304,26 +8346,34 @@ table.data tbody tr:hover { background: #faf8f3; }
     var cUrl = Store.cardUrl(app.serial);
     var st = (CFG.formStatus || {})[formStatusOf(app)] || { ar: '—' };
 
-    var applied = attempt ? (
-      '<div class="ff-grid">'
-      + '<div class="ff-f"><div class="k">الوظيفة</div><div class="v">' + esc(attempt.jobTitle || '—') + '</div></div>'
-      + '<div class="ff-f"><div class="k">كود الوظيفة</div><div class="v mono" style="direction:ltr">' + esc(attempt.jobCode || '—') + '</div></div>'
-      + '<div class="ff-f"><div class="k">المنطقة</div><div class="v">' + esc(attempt.location || '—') + '</div></div>'
-      + '<div class="ff-f"><div class="k">الأجر الشهري</div><div class="v">' + (job ? esc(Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax)) : '—') + '</div></div>'
-      + '<div class="ff-f"><div class="k">الدوام</div><div class="v">' + (job ? esc(job.shift) : '—') + '</div></div>'
-      + '<div class="ff-f"><div class="k">حالة التقديم</div><div class="v">' + esc(slotText(attempt)) + '</div></div>'
-      + '</div>'
-      + '<div class="ff-emp">'
-      + '<div class="ff-f" style="grid-column:1/-1"><div class="k" style="font-size:9pt;color:#a8781a;font-weight:900">✦ بيانات التواصل بصاحب العمل</div></div>'
-      + '<div class="ff-f"><div class="k">اسم جهة العمل</div><div class="v">' + esc(attempt.employerName || (job ? job.employer.name : '—')) + '</div></div>'
-      + '<div class="ff-f"><div class="k">هاتف جهة العمل</div><div class="v mono" style="direction:ltr">' + esc(attempt.employerPhone || (job ? job.employer.phone : '—')) + '</div></div>'
-      + '<div class="ff-f"><div class="k">عنوان جهة العمل</div><div class="v">' + esc(job ? job.employer.address : '—') + '</div></div>'
-      + '<div class="ff-f"><div class="k">مكان المقابلة</div><div class="v">' + esc(job ? job.interviewLocation : '—') + '</div></div>'
-      + '</div>'
-      + (attempt.holdExpiresAt && attempt.slotStatus === 'reserved'
-           ? '<div class="ff-note">⏳ الحجز مؤقت <b>24 ساعة</b> من وقت التقديم (' + esc(Store.fmtDateTime(attempt.selectedAt)) + ') — '
-             + 'على صاحب العمل تسجيل قراره (توظيف/رفض) بمسح الباركود خلال هذه المهلة.</div>' : '')
-    ) : '<div class="ff-note">لم يُقدَّم على وظيفة بعد — فرص البطاقة متاحة من «بطاقتي» على الموقع أو عند أي نقطة بيع.</div>';
+    function field(label, value, extra) {
+      return '<div class="ff-f' + (extra ? ' ' + extra : '') + '"><div class="k">' + esc(label) +
+        '</div><div class="v">' + esc(value == null || value === '' ? '—' : value) + '</div></div>';
+    }
+    function section(kind, number, title, content) {
+      return '<section class="ff-section ff-' + kind + '" aria-labelledby="ff-' + kind + '-title">' +
+        '<h3 id="ff-' + kind + '-title"><span class="ff-section-no">' + number + '</span>' + title + '</h3>' + content + '</section>';
+    }
+    var employer = (job && job.employer) || {};
+    var customer = section('customer', '01', 'بيانات الزبون', '<div class="ff-grid">' +
+      field('الاسم الكامل', app.fullName, 'ff-wide') + field('رقم الهاتف', app.phone, 'ff-ltr') +
+      field('عنوان السكن', app.address, 'ff-full') + field('الجنس', app.gender) +
+      field('تاريخ الميلاد', app.dob ? Store.fmtDate(app.dob) : '') + field('الجنسية', app.nationality) + '</div>');
+    var jobDetails = section('job', '02', 'تفاصيل الوظيفة', attempt ? '<div class="ff-grid">' +
+      field('الوظيفة المطلوبة', attempt.jobTitle || (job && job.title), 'ff-wide') + field('كود الوظيفة', attempt.jobCode, 'ff-ltr') +
+      field('المنطقة', attempt.location || (job && job.region)) +
+      field('الأجر الشهري', job ? Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) : '') +
+      field('الدوام', job && job.shift) + field('حالة التقديم', slotText(attempt)) +
+      field('تاريخ التقديم', attempt.selectedAt ? Store.fmtDateTime(attempt.selectedAt) : '', 'ff-wide') + '</div>' :
+      '<div class="ff-empty">لم يُقدَّم على وظيفة بعد — فرص البطاقة متاحة من «بطاقتي» على الموقع أو عند أي نقطة بيع.</div>');
+    var employerDetails = section('employer', '03', 'بيانات صاحب العمل', attempt ? '<div class="ff-grid ff-grid-two">' +
+      field('اسم جهة العمل', attempt.employerName || employer.name) +
+      field('هاتف جهة العمل', attempt.employerPhone || employer.phone, 'ff-ltr') +
+      field('عنوان جهة العمل', employer.address) + field('مكان المقابلة', job && job.interviewLocation) + '</div>' :
+      '<div class="ff-empty">تظهر بيانات جهة العمل بعد التقديم على وظيفة.</div>');
+    var holdNote = attempt && attempt.holdExpiresAt && attempt.slotStatus === 'reserved'
+      ? '<div class="ff-note">الحجز مؤقت <b>24 ساعة</b> من وقت التقديم (' + esc(Store.fmtDateTime(attempt.selectedAt)) +
+        ') — يسجّل صاحب العمل قراره بمسح الباركود؛ وبعد المهلة تصبح الوظيفة حرجة وتقرر الشركة.</div>' : '';
 
     return ''
       + '<div class="hrc-form">'
@@ -8347,15 +8397,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       +       (app.posName ? '<div class="ff-f" style="grid-column:1/-1"><div class="k">نقطة البيع</div><div class="v">' + esc(app.posName) + '</div></div>' : '')
       +     '</div>'
       +   '</div>'
-      +   '<h3>بيانات الزبون</h3>'
-      +   '<div class="ff-grid">'
-      +     '<div class="ff-f"><div class="k">الاسم الكامل</div><div class="v">' + esc(app.fullName || '—') + '</div></div>'
-      +     '<div class="ff-f"><div class="k">رقم الهاتف</div><div class="v mono" style="direction:ltr">' + esc(app.phone || '—') + '</div></div>'
-      +     '<div class="ff-f"><div class="k">العنوان</div><div class="v">' + esc(app.address || '—') + '</div></div>'
-      +     '<div class="ff-f"><div class="k">الجنس · تاريخ الميلاد</div><div class="v">' + esc(app.gender || '—') + (app.dob ? ' · ' + esc(Store.fmtDate(app.dob)) : '') + '</div></div>'
-      +   '</div>'
-      +   '<h3>الوظيفة المطلوبة</h3>'
-      +   applied
+      +   customer + jobDetails + employerDetails + holdNote
       +   '<h3>شروط البطاقة</h3>'
       +   '<ul class="ff-terms">' + TERMS.map(function (n) { return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>'; }).join('') + '</ul>'
       +   '<div class="ff-employer-box">'

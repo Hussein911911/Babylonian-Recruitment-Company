@@ -571,6 +571,12 @@ const res = $('result-content').innerHTML;
 check('علامة النجاح المرسومة (SVG) موجودة', res.includes('ok-check') && res.includes('ok-title'));
 check('ورقتان A4 — استمارة لكل وظيفة اختارها الزبون', (res.match(/class="form-sheet"/g) || []).length === 2,
   String((res.match(/class="form-sheet"/g) || []).length));
+check('كل استمارة تقسم البيانات إلى ثلاثة أقسام مستقلة ومرقمة',
+  (res.match(/class="fs-section fs-customer"/g) || []).length === 2 &&
+  (res.match(/class="fs-section fs-job"/g) || []).length === 2 &&
+  (res.match(/class="fs-section fs-employer"/g) || []).length === 2 &&
+  (res.match(/class="fs-section-no"/g) || []).length === 6 &&
+  (res.match(/<section/g) || []).length === (res.match(/<\/section>/g) || []).length);
 check('الاستمارتان تحملان رقم الباركود', (res.match(/HRC-BC-000120/g) || []).length >= 4, String((res.match(/HRC-BC-000120/g) || []).length));
 check('الاستمارتان تُعيدان بيانات الزبون المطبوعة', res.includes('أحمد محمد علي حسن') && res.includes('07712345678'));
 check('كل استمارة تحمل وظيفتها وكودها',

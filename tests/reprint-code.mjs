@@ -116,6 +116,14 @@ try {
   check('the same independent code protects A4 data as well', printed === 2 && w.document.querySelector('#print-root').innerHTML.includes(app.fullName));
   // RPC-only visitors have no private attempt cache. Use the verified attempts.
   const a4 = w.HRCVoucher.formHtml(other, null, [{ no: 1, slotStatus: 'reserved', jobCode: 'TEST-JOB', jobTitle: 'وظيفة من الخادم', location: 'بغداد' }]);
+  const fragment = JSDOM.fragment(a4);
+  const sections = [...fragment.querySelectorAll('.ff-section')];
+  check('A4 has three independent numbered data sections in the right order', sections.length === 3 && sections.every((el, i) => el.querySelector('.ff-section-no').textContent === ['01', '02', '03'][i]) && sections[0].classList.contains('ff-customer') && sections[1].classList.contains('ff-job') && sections[2].classList.contains('ff-employer'));
+  check('customer, job and employer fields are not mixed between sections', sections[0].textContent.includes(other.fullName) && !sections[1].textContent.includes(other.fullName) && sections[1].textContent.includes('TEST-JOB') && !sections[2].textContent.includes('TEST-JOB'));
+  check('missing job and employer retain separately labelled empty sections', JSDOM.fragment(w.HRCVoucher.formHtml({ ...other, serial: 'MISSING' }, null, [])).querySelectorAll('.ff-section .ff-empty').length === 2);
+  const unsafe = w.HRCVoucher.formHtml({ ...other, fullName: '<img src=x onerror=alert(1)>', address: 'عنوان '.repeat(100) }, null, []);
+  check('long values wrap without truncation and user HTML stays escaped', !unsafe.includes('<img') && unsafe.includes('&lt;img') && unsafe.includes('عنوان '.repeat(100)));
+
   check('A4 uses verified server attempts without requiring a staff/private cache', a4.includes('وظيفة من الخادم') && a4.includes('TEST-JOB') && !a4.includes(other.cardPrintCode));
   w.HRCBooking.close();
   app.cardPrintCode = null;
