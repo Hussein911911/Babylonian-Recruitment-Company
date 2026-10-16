@@ -100,6 +100,20 @@ async function load(file, { hash = '', search = '', waitMs = 260, session = null
   return { dom, window, doc: window.document, errors };
 }
 
+/* Content cleanup must not remove safety information or reintroduce stale setup copy. */
+check('نصوص التشغيل لا تدّعي أن النظام محلي أو غير مربوط', () => {
+  const partial = readFileSync(resolve(ROOT, 'src/partials/dashboard.html'), 'utf8');
+  return !/نظام محلي يعمل داخل المتصفح|جاهز للربط بـ|للحفظ الدائم على السيرفر راجع/.test(partial);
+});
+check('الاختصار يحافظ على شروط الحجز وحقوق البطاقة والتنبيه القانوني', () => {
+  const home = readFileSync(resolve(ROOT, 'src/partials/public.html'), 'utf8');
+  const footer = readFileSync(resolve(ROOT, 'src/partials/footer.html'), 'utf8');
+  const verifyCopy = readFileSync(resolve(ROOT, 'src/partials/verify.html'), 'utf8');
+  return /24 ساعة/.test(home) && /حرجة/.test(home) && /لا تعود متاحة تلقائياً/.test(home) &&
+    /30 يوماً/.test(home) && /الدفع كاش/.test(home) && /الفرصة المستهلكة لا تعود/.test(home) &&
+    /الشركة غير مسؤولة قانونياً وعشائرياً/.test(footer) && /للموظفين والإدارة فقط/.test(verifyCopy);
+});
+
 /* ======================= 1) الموقع العام ======================= */
 console.log('\n=== 1) الموقع العام (index.html) ===');
 const site = await load('index.html');

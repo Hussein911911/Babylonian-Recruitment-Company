@@ -86,9 +86,6 @@
       <button class="btn btn-ghost btn-block btn-sm" id="btn-logout">
         <svg class="ic"><use href="#i-logout" xlink:href="#i-logout"/></svg> تسجيل الخروج
       </button>
-      <p class="tiny mt-2 mb-0" style="color:#8fa0c4">
-        نظام محلي يعمل داخل المتصفح (localStorage) — جاهز للربط بـ PostgreSQL/Supabase كما في ملف المخطط.
-      </p>
     </div>
   </aside>
 
@@ -229,7 +226,7 @@
           <!-- ملاحظة سفلية -->
           <div class="footnote-premium">
             <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
-            بيانات صاحب العمل (الاسم، الهاتف، العنوان) تظهر هنا للموظفين فقط — ولا تُعرض في الموقع العام أبداً.
+            بيانات صاحب العمل خاصة بالموظفين ولا تظهر للعامة.
           </div>
         </div>
       </div>
@@ -299,7 +296,7 @@
           <!-- ملاحظة سفلية -->
           <div class="footnote-premium">
             <svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg>
-            البطاقة صالحة 30 يوماً وفيها فرصتان مستقلتان — بعد استهلاك الفرصتين أو انتهاء المدة تتوقف صلاحية التقديم.
+            يتوقف التقديم عند انتهاء صلاحية البطاقة أو استهلاك فرصها.
           </div>
         </div>
       </div>
@@ -384,7 +381,7 @@
             <label for="log-sort">الترتيب <select id="log-sort"><option value="newest">الأحدث أولاً</option><option value="oldest">الأقدم أولاً</option></select></label>
             <div class="audit-pages"><button type="button" class="btn btn-outline btn-sm" id="log-prev">السابق</button><span id="log-page-info" aria-live="polite"></span><button type="button" class="btn btn-outline btn-sm" id="log-next">التالي</button></div>
           </div>
-          <div class="tfoot-note">البحث والتصدير يشملان السجلات المحمّلة في هذه الجلسة. التواريخ حسب التوقيت المحلي لجهازك، وتصدير CSV يشمل كل النتائج المفلترة.</div>
+          <div class="tfoot-note">السجل المحمّل فقط · توقيت جهازك · CSV يشمل كل النتائج المفلترة.</div>
         </div>
       </div>
     </section>
@@ -411,7 +408,7 @@
               <tbody id="fin-table-body"></tbody>
             </table>
           </div>
-          <div class="tfoot-note">المبالغ وفق سعر البطاقة المُعرّف في الإعدادات — البيع كاش عند نقاط البيع فقط، وتُحدَّث تلقائياً مع كل إصدار.</div>
+          <div class="tfoot-note">التحصيل وفق سعر البطاقة في الإعدادات — الدفع كاش.</div>
         </div>
       </div>
     </section>
@@ -421,7 +418,7 @@
 <div class="panel-head"><h3><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"></use></svg> قواعد العمل</h3></div>
 <div class="panel-body">
 <form id="settings-form">
-<div class="field mb-2"><label for="set-attempts">الفرص لكل بطاقة جديدة</label><input type="number" id="set-attempts" value="2" min="1" max="10" step="1" required=""><small class="muted">يحددها المدير؛ الافتراضي حالياً 2. التغيير لا يمس فرص البطاقات الصادرة سابقاً.</small></div>
+<div class="field mb-2"><label for="set-attempts">الفرص لكل بطاقة جديدة</label><input type="number" id="set-attempts" value="2" min="1" max="10" step="1" required=""><small class="muted">للإصدارات الجديدة فقط؛ لا تتغير فرص البطاقات السابقة.</small></div>
 <div class="field mb-2"><label for="set-days">صلاحية البطاقة (يوم)</label><input type="number" id="set-days" min="1" max="180"></div>
 <div class="field mb-2"><label for="set-hours">مدة الحجز المؤقت للوظيفة (ساعة)</label><input type="number" id="set-hours" min="1" max="168"></div>
 <div class="field mb-2"><label for="set-fee">سعر البطاقة (دينار — كاش)</label><input type="number" id="set-fee" min="0" step="500"></div>
@@ -442,7 +439,7 @@
 </div>
 <div class="footnote-premium">إدارة الحسابات والصلاحيات متاحة للمدير فقط.</div>
 </div>
-</div></div><div class="panel settings-quick-backup"><div><h3>نسخة احتياطية</h3><p class="small muted mb-0">احفظ نسخة من بياناتك. خيارات الاسترداد والجدولة داخل الإعدادات المتقدمة.</p></div><button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> نسخة احتياطية سريعة</button></div><details id="settings-advanced" class="settings-advanced"><summary><span>إعدادات متقدمة<small>بيانات الشركة، الاسترداد والنسخ الاحتياطي والصيانة</small></span><span class="settings-expand" aria-hidden="true">＋</span></summary><div class="settings-advanced-content"><div class="panel" id="settings-company">
+</div></div><div class="panel settings-quick-backup"><div><h3>نسخة احتياطية</h3><p class="small muted mb-0">الاسترداد والجدولة ضمن الإعدادات المتقدمة.</p></div><button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> نسخة احتياطية سريعة</button></div><details id="settings-advanced" class="settings-advanced"><summary><span>إعدادات متقدمة<small>بيانات الشركة، الاسترداد والنسخ الاحتياطي والصيانة</small></span><span class="settings-expand" aria-hidden="true">＋</span></summary><div class="settings-advanced-content"><div class="panel" id="settings-company">
 <div class="panel-head"><h3><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"></use></svg> بيانات الشركة (تظهر في البطاقة)</h3></div>
 <div class="panel-body">
 <div class="data-grid">
@@ -496,9 +493,6 @@
 <div class="data-item"><div class="k">سجلات التدقيق</div><div class="v" id="db-audit">0</div></div>
 <div class="data-item"><div class="k">النسخ الاحتياطية</div><div class="v" id="db-backups">0</div></div>
 </div>
-<p class="tiny muted mt-3 mb-0">
-              البيانات تُخزَّن في متصفحك (localStorage) — للحفظ الدائم على السيرفر راجع <span class="mono">docs/schema.sql</span>.
-            </p>
 </div>
 </div></div></details></section>
   </main>
