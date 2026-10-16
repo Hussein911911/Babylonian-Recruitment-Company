@@ -1419,7 +1419,11 @@ begin
       'serial', f.serial,
       'status', f.status::text,
       'chancesLeft', (select count(*) from brc.job_attempts a where a.serial=f.serial and a.slot_status='empty'),
-      'profile', coalesce(f.self_application_data, '{}'::jsonb),
+      'profileLocked', f.status <> 'blank',
+      'profile', case when f.status = 'blank' then coalesce(f.self_application_data, '{}'::jsonb)
+        else coalesce(f.self_application_data, '{}'::jsonb) || jsonb_build_object(
+          'fullName', f.full_name, 'phone', f.phone, 'address', f.address,
+          'dob', f.dob, 'gender', f.gender) end,
       'chances', (select coalesce(jsonb_agg(jsonb_build_object(
           'no', a.attempt_no, 'slotStatus', a.slot_status::text,
           'jobCode', a.job_code, 'jobTitle', j.title
@@ -1458,6 +1462,13 @@ begin
     return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود');
   end if;
 
+  -- The row lock above serializes first/second submissions. Once activated,
+  -- identity is taken only from the stored card, never from caller p_data.
+  if f.status <> 'blank' then
+    v_profile := coalesce(f.self_application_data, '{}'::jsonb) || jsonb_build_object(
+      'fullName', f.full_name, 'phone', f.phone, 'address', f.address,
+      'dob', f.dob, 'gender', f.gender);
+  else
   v_name := btrim(coalesce(p_data->>'fullName', ''));
   v_phone := btrim(coalesce(p_data->>'phone', ''));
   v_gender := btrim(coalesce(p_data->>'gender', ''));
@@ -1468,7 +1479,7 @@ begin
     return jsonb_build_object('ok', false, 'error', 'رقم الهاتف يجب أن يتكون من 11 رقماً ويبدأ بـ 07');
   end if;
   if coalesce(p_data->>'province', '') = '' or coalesce(p_data->>'district', '') = ''
-     or coalesce(p_data->>'subdistrict', '') = '' or coalesce(p_data->>'landmark', '') = '' then
+     or coalesce(p_data->>'landmark', '') = '' then
     return jsonb_build_object('ok', false, 'error', 'جميع حقول السكن مطلوبة');
   end if;
   if v_gender not in ('ذكر', 'أنثى') then
@@ -1484,13 +1495,15 @@ begin
   end;
 
   v_address := concat_ws(' — ', p_data->>'province', p_data->>'district',
-                         p_data->>'subdistrict', p_data->>'landmark');
+                         nullif(p_data->>'subdistrict', ''), p_data->>'landmark');
   v_profile := jsonb_build_object(
     'fullName', v_name, 'phone', v_phone, 'province', p_data->>'province',
     'district', p_data->>'district', 'subdistrict', p_data->>'subdistrict',
     'landmark', p_data->>'landmark', 'address', v_address,
     'dob', v_dob, 'gender', v_gender
   );
+
+  end if;
 
   if f.status = 'blank' then
     -- أول تقديم يُفعّل البطاقة الفارغة ويستهلك فرصتها الأولى (بيع ذاتي بالباركود)
@@ -1515,10 +1528,14 @@ begin
     return v_result;
   end if;
 
-  update brc.applicants
-     set full_name=v_name, phone=v_phone, address=v_address,
-         dob=v_dob, gender=v_gender, self_application_data=v_profile
-   where serial=f.serial;
+  -- Only a successful FIRST application persists identity. Failed requests
+  -- and later applications cannot rewrite either canonical fields or metadata.
+  if f.status = 'blank' then
+    update brc.applicants
+       set full_name=v_name, phone=v_phone, address=v_address,
+           dob=v_dob, gender=v_gender, self_application_data=v_profile
+     where serial=f.serial;
+  end if;
 
   -- بيانات صاحب العمل تبقى محجوبة عن قائمة الوظائف العامة، وتُعاد فقط بعد نجاح
   -- التقديم على الوظيفة المختارة (تظهر للباحث في استمارته).

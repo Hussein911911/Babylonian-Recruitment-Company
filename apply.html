@@ -564,6 +564,19 @@ body{
 
 @media print{.form-sheet .fs-section{break-inside:avoid;page-break-inside:avoid;}}
 
+
+/* Journey polish: restrained motion, clear stage identity and locked-owner state. */
+[hidden]{display:none!important}
+@media screen {
+  .app{isolation:isolate}.topbar{position:relative}.topbar::after{content:'رحلتك إلى فرصة جديدة';margin-inline-start:auto;font-size:14px;color:#b6c8df;border:1px solid #b5cae125;padding:8px 16px;border-radius:999px;background:#ffffff05}
+  .step-intro h1{letter-spacing:-.03em}.step-eyebrow{padding:6px 12px;border:1px solid #d7b96535;border-radius:8px;background:#d7b96509}.profile-card{box-shadow:0 16px 56px #00000024,inset 0 1px 0 #ffffff0c}.profile-card::after{display:none}.step-fields{padding:clamp(8px,1.4vw,24px);background:#07162b30;border:1px solid #ffffff0a;border-radius:18px}.form-group label{transition:color .2s}.form-group:focus-within label{color:#fff2c6}.form-group input:focus,.form-group select:focus{border-color:#7aaef5;box-shadow:0 0 0 4px #659cf01f}.btn-primary{background:linear-gradient(120deg,#2379d4,#1858a2);box-shadow:0 8px 24px #0a6dd52b}.btn:not(:disabled):hover{filter:brightness(1.09)}.btn:not(:disabled):active{transform:translateY(1px) scale(.99)}
+  .identity-notice{padding:18px 22px;margin-bottom:20px;border:1px solid #d9bd724f;border-inline-start:4px solid #dfc27c;border-radius:14px;background:linear-gradient(110deg,#d0b46512,#182b43);color:#f2dfb3;font-size:16px;line-height:1.9}.profile-locked .step-dot:nth-child(-n+5){display:none}.profile-locked .steps-bar{border-color:#dcc27c30}.profile-locked .rv-top{border-color:#dcc27c40}.profile-locked #btn-jobs-next{flex-basis:100%}
+  .job-card{transition:border-color .2s,box-shadow .2s,background .2s,translate .2s}.job-card:hover{translate:0 -3px;box-shadow:0 14px 32px #00000024}.job-card.selected{border-color:#f1d99c;box-shadow:0 0 0 1px #f1d99c80,0 14px 34px #c8a24a20}.job-filters:focus-within{border-color:#c8a24a65}.page.active .job-filters{animation:stageReveal .4s both}.page.active .step-intro{animation:stageReveal .5s both}.page.active .step-fields{animation:stageReveal .5s .08s both}.page.active #jobs-list .job-card{animation-duration:.4s}.page.active #jobs-list .job-card:nth-child(2){animation-delay:.04s}.page.active #jobs-list .job-card:nth-child(3){animation-delay:.08s}.page.active #jobs-list .job-card:nth-child(n+4){animation-delay:.12s}
+  @keyframes stageReveal{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  @media(max-width:760px){.topbar::after{display:none}.step-fields{padding:16px}.profile-card{padding:20px;gap:22px}.identity-notice{padding:16px;font-size:16px}.step-intro p{line-height:1.9}.step-intro{padding-bottom:20px}}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.job-card:hover{translate:none}}
+}
+
 /* ── الطباعة: استمارة A4 وحدها بلا واجهة ── */
 @media print{
   @page{size:A4;margin:8mm}
@@ -751,6 +764,7 @@ body{
 
     <!-- ═══ 7 — الوظائف ═══ -->
     <div class="page" id="pg-jobs">
+      <div id="profile-lock-notice" class="identity-notice" role="status" hidden></div>
       <div id="chances-bar" class="chances-bar has2"></div>
       <div class="section-title">اختر الوظيفة المناسبة لك</div>
       <section class="job-filters" aria-label="فلترة الوظائف">
@@ -779,7 +793,7 @@ body{
       <div class="jobs-foot">
         <div class="jobs-hint" id="jobs-hint">اضغط على أي وظيفة لاختيارها ثم «التالي»</div>
         <div class="btn-row">
-          <button class="btn btn-outline btn-sm" onclick="G.go(-1)">← رجوع</button>
+          <button id="btn-jobs-back" class="btn btn-outline btn-sm" onclick="G.go(-1)">← رجوع</button>
           <button class="btn btn-primary btn-sm" id="btn-jobs-next" onclick="G.next()" disabled>التالي →</button>
         </div>
       </div>
@@ -870,6 +884,7 @@ var chancesLeft=2, appliedJobs=[], selectedGender='ذكر', currentFilter='ال�
 /* رجع الزبون من صفحة المراجعة ليعدّل خطوة: بعد «التالي» نرجع للمراجعة فوراً
    بدل أن نمشي به كل الخطوات من جديد — راحة واضحة وتقليل تعب. */
 var returnToReview=false;
+var lockedProfile=null;
 var jobFilters={q:'',province:'',region:'',shift:'',gender:'',salary:'',sort:'site',picked:false};
 function jobNorm(value){return String(value==null?'':value).replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);}).replace(/[۰-۹]/g,function(c){return String(c.charCodeAt(0)-1776);}).toLowerCase().replace(/[ًٌٍَُِّْٰـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();}
 function jobProvince(value){var n=jobNorm(value);var alias={'اربيل':'أربيل','اربیل':'أربيل','انبار':'الأنبار','الانبار':'الأنبار','ذيقار':'ذي قار','ذي قار':'ذي قار','الديوانيه':'القادسية','ديوانيه':'القادسية','القادسيه':'القادسية','سليمانيه':'السليمانية','حلبجه':'حلبجة'};if(Object.prototype.hasOwnProperty.call(alias,n))return alias[n];var found=Object.keys(IRAQ).concat(['حلبجة']).filter(function(p){return jobNorm(p)===n;})[0];return found||String(value||'').trim();}
@@ -926,7 +941,7 @@ var G={
 
   start:function(){
     if(!dataReady){$('welcome-status').textContent='جارٍ التحقق من البطاقة وتحميل الوظائف…';return;}
-    if(cardData&&cardData.chancesLeft===1&&cardData.profile&&cardData.profile.fullName){G.go(6);return;}
+    if(lockedProfile){G.go(6);return;}
     G.go(1);
   },
 
@@ -941,6 +956,7 @@ var G={
     var target=typeof dir==='number'&&dir<0?curPage+dir:dir;
     if(dir<0)returnToReview=false;   /* رجوع صريح = إلغاء العودة التلقائية للمراجعة */
     if(target<0||target>=STEP_IDS.length)return;
+    if(lockedProfile&&target<6)target=6;
     if(target===curPage)return;
     var prev=curPage;
     curPage=target;
@@ -1003,6 +1019,7 @@ var G={
   /* وصف الخطوة الحالية أسفل شريط التقدم */
   setStepLabel:function(step){
     var el=$('step-label');if(!el)return;
+    if(lockedProfile){el.textContent=step===6?'بياناتك مثبتة · اختيار الوظيفة':(step===7?'بياناتك مثبتة · مراجعة الوظيفة':'تم التقديم');return;}
     if(step>STEP_TOTAL){
       var t=step===STEP_TOTAL+1?'مراجعة الطلب':'تم التقديم';
       el.innerHTML='<b>'+t+'</b> · <span class="pct">'+ar(100)+'%</span>';
@@ -1070,6 +1087,7 @@ var G={
 
   /* «تعديل» من صفحة المراجعة */
   editStep:function(step){
+    if(lockedProfile&&step<6)return;
     returnToReview=true;
     G.go(step);
   },
@@ -1125,22 +1143,35 @@ var G={
   },
 
   readProfile:function(){
+    if(lockedProfile)return JSON.parse(JSON.stringify(lockedProfile));
     var dob=$('f-yr').value+'-'+pad2($('f-mon').value)+'-'+pad2($('f-day').value);
     return{fullName:$('f-name').value.trim(),phone:$('f-phone').value.trim(),
       province:$('f-prov').value,district:$('f-dist').value,
       landmark:$('f-lm').value.trim(),dob:dob,gender:selectedGender};
   },
 
+  lockProfile:function(profile){
+    if(!lockedProfile)lockedProfile=Object.freeze(JSON.parse(JSON.stringify(profile||{})));
+    G.fillProfile(lockedProfile);
+    document.body.classList.add('profile-locked');
+    document.querySelectorAll('.step-fields input,.step-fields select').forEach(function(el){el.disabled=true;});
+    var back=$('btn-jobs-back');if(back)back.hidden=true;
+    var notice=$('profile-lock-notice');if(notice){notice.hidden=false;notice.textContent='بيانات صاحب البطاقة مثبتة من التقديم الأول. هذه الفرصة لاختيار وظيفة فقط؛ تعديل البيانات يكون بمراجعة الشركة.';}
+  },
+
   fillProfile:function(p){
+    if(lockedProfile){p=lockedProfile;['f-prov','f-dist','f-day','f-mon','f-yr'].forEach(function(id){$(id).value='';});selectedGender=p.gender||'';}
     if(!p)return;
     $('f-name').value=p.fullName||'';$('f-phone').value=p.phone||'';$('f-lm').value=p.landmark||'';
     if(p.province){$('f-prov').value=p.province;$('f-prov').dispatchEvent(new Event('change'));}
     if(p.district){$('f-dist').value=p.district;$('f-dist').dispatchEvent(new Event('change'));}
     if(p.gender){selectedGender=p.gender;document.querySelectorAll('.gender-opt').forEach(function(g){g.classList.toggle('selected',g.dataset.v===p.gender);});}
     if(p.dob){var bits=String(p.dob).slice(0,10).split('-');if(bits.length===3){$('f-yr').value=String(Number(bits[0]));$('f-mon').value=String(Number(bits[1]));$('f-day').value=String(Number(bits[2]));}}
+    if(lockedProfile)document.querySelectorAll('.step-fields input,.step-fields select').forEach(function(el){el.disabled=true;});
   },
 
   pickGender:function(el){
+    if(lockedProfile)return;
     document.querySelectorAll('.gender-opt').forEach(function(g){g.classList.remove('selected');});
     el.classList.add('selected');
     selectedGender=el.dataset.v;
@@ -1154,6 +1185,7 @@ var G={
      يمكنه تعيين وظيفتين معاً في هذه الجلسة أو وظيفة واحدة والثانية لاحقاً
      بنفس الباركود ما دامت الصلاحية سارية. */
   maxPick:function(){return Math.max(0,Math.min(2,chancesLeft));},
+  chanceNumber:function(index){var empty=(cardData&&cardData.chances||[]).filter(function(ch){return ch.slotStatus==='empty';}).sort(function(a,b){return a.no-b.no;});return empty[index]?Number(empty[index].no):index+1;},
 
   pickedIndex:function(code){
     for(var i=0;i<pickedJobs.length;i++){if(pickedJobs[i].code===code)return i;}
@@ -1236,6 +1268,7 @@ var G={
   toggleDetails:function(code){var box=$('details-'+code);if(box)box.hidden=!box.hidden;},
 
   renderJobs:function(){
+    if(lockedProfile)G.fillProfile(lockedProfile);
     var f=G.filteredJobs();
     var invalidSalary=jobSalary(jobFilters.salary)===null;
     $('jf-error').hidden=!invalidSalary;
@@ -1253,9 +1286,9 @@ var G={
       var reqs=j.requirements.map(function(r){return'<li>'+esc(r)+'</li>';}).join('');
       h+='<div class="job-card'+(picked?' selected':'')+(done?' is-done':'')+'" data-job="'+esc(j.code)+'"'
         +(done?'':' onclick="G.pickJob(\''+esc(j.code)+'\')"')+'>'
-        +'<div class="pick-mark">'+(picked?ar(slotNo+1):'✓')+'</div>'
+        +'<div class="pick-mark">'+(picked?ar(G.chanceNumber(slotNo)):'✓')+'</div>'
         +'<div class="job-head"><div class="title">'+esc(j.title)+'</div>'
-        +'<div class="badge badge-open">'+(done?'✓ تم التقديم':(picked?'★ الفرصة '+ar(slotNo+1):'🟢 متوفرة'))+'</div></div>'
+        +'<div class="badge badge-open">'+(done?'✓ تم التقديم':(picked?'★ الفرصة '+ar(G.chanceNumber(slotNo)):'🟢 متوفرة'))+'</div></div>'
         +'<div class="job-category">✦ '+esc(j.category)+' · '+esc(j.code)+'</div>'
         +'<div class="job-grid">'
         +'<div class="job-item"><span class="k">المنطقة:</span><span class="v">'+esc([j.region,jobProvince(j.governorate)].filter(Boolean).join(' — '))+'</span></div>'
@@ -1273,7 +1306,7 @@ var G={
       if(done){h+='<button class="btn btn-outline btn-sm" disabled>✓ تم التقديم</button>';}
       else if(chancesLeft<=0){h+='<button class="btn btn-outline btn-sm" disabled>انتهت الفرص</button>';}
       else if(picked){
-        h+='<button class="btn btn-success btn-sm" onclick="event.stopPropagation();G.next()">✓ مختارة (فرصة '+ar(slotNo+1)+') — متابعة</button>';
+        h+='<button class="btn btn-success btn-sm" onclick="event.stopPropagation();G.next()">✓ مختارة (فرصة '+ar(G.chanceNumber(slotNo))+') — متابعة</button>';
         h+='<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();G.pickJob(\''+esc(j.code)+'\')">↺ إلغاء</button>';
       }
       else{h+='<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();G.pickJob(\''+esc(j.code)+'\')">تعيين للفرصة '+ar(Math.min(pickedJobs.length+1,2))+'</button>';}
@@ -1344,6 +1377,7 @@ var G={
      (بدلاً من نافذة التأكيد القديمة: صفحة كاملة يُراجعها الزبون)
      ═══════════════════════════════════════════════════════════ */
   dobText:function(){
+    if(lockedProfile)return lockedProfile.dob?String(lockedProfile.dob).slice(0,10).split('-').reverse().join('/'):'';
     var d=$('f-day').value,m=$('f-mon').value,y=$('f-yr').value;
     if(!d||!m||!y)return '';
     return pad2(d)+'/'+pad2(m)+'/'+y;
@@ -1351,6 +1385,7 @@ var G={
 
   renderReview:function(){
     var host=$('review-content');if(!host)return;
+    if(lockedProfile)G.fillProfile(lockedProfile);
     var p=G.readProfile();
     var dobTxt=G.dobText();
     var place=[p.province,p.district].filter(function(x){return !!x;}).join(' – ');
@@ -1358,7 +1393,7 @@ var G={
     function row(k,v,step,ltr){
       return '<div class="rv-row"><div class="rv-k">'+k+'</div>'
         +'<div class="rv-v'+(ltr?' mono':'')+'"'+(ltr?' dir="ltr"':'')+'>'+esc(v||'—')+'</div>'
-        +(step?'<button class="rv-edit" type="button" onclick="G.editStep('+step+')">تعديل</button>':'')+'</div>';
+        +(step&&(!lockedProfile||step===6)?'<button class="rv-edit" type="button" onclick="G.editStep('+step+')">تعديل</button>':'')+'</div>';
     }
 
     var h='<div class="rv-card">'
@@ -1372,14 +1407,14 @@ var G={
       +row('رقم الهاتف',p.phone,4,1)
       +row('تاريخ الميلاد',dobTxt,3,1)
       +row('الجنس',p.gender,5)
-      +row('السكن',(place||'')+(p.landmark?' — '+p.landmark:''),2);
+      +row('السكن',p.address||((place||'')+(p.landmark?' — '+p.landmark:'')),2);
 
     /* الوظائف المختارة — وظيفة لكل فرصة */
-    h+='<div class="rv-head">وظائفك المختارة (الفرصتان)</div>';
+    h+='<div class="rv-head">'+(lockedProfile?'وظيفة الفرصة المتبقية':'وظائفك المختارة (الفرصتان)')+'</div>';
     if(pickedJobs.length){
       pickedJobs.forEach(function(j,i){
         var sal=money(j.salaryMin)+' – '+money(j.salaryMax);
-        h+='<div class="rv-sub">الفرصة '+ar(i+1)+'</div>'
+        h+='<div class="rv-sub">الفرصة '+ar(G.chanceNumber(i))+'</div>'
           +row('الوظيفة',j.title,6)
           +row('الكود',j.code,6,1)
           +row('المنطقة',j.region,6)
@@ -1435,7 +1470,7 @@ var G={
     if(!ensureClient()){G.rvError('لا يوجد اتصال بالخادم — تحقق من الإنترنت.');return;}
 
     /* إعادة التحقق من كل الخطوات: الزبون قد يكون رجع وعدّل شيئاً */
-    for(var s=1;s<=5;s++){
+    for(var s=1;!lockedProfile&&s<=5;s++){
       if(!G.validateStep(s)){returnToReview=true;G.go(s);return;}
     }
 
@@ -1465,6 +1500,7 @@ var G={
           outcomes.push({job:job,data:d,index:i});
           /* تحديث حالة البطاقة في الواجهة فوراً */
           cardData.profile=d.profile||d.app||profile;
+          G.lockProfile(cardData.profile);
           chancesLeft=Math.max(0,chancesLeft-1);
           appliedJobs.push({jobCode:job.code,jobTitle:job.title});
           var empty=null;
@@ -1533,7 +1569,9 @@ var G={
      ورقة الاستمارة (A4) لتقديم واحد — تُبنى لكل وظيفة قدّم عليها الزبون
      ═══════════════════════════════════════════════════════════ */
   buildForm:function(data,job,attemptNo){
+    if(lockedProfile)G.fillProfile(lockedProfile);
     var att=data.attempt||{};
+    attemptNo=Number(att.no)||attemptNo;
     var jR=data.job||{};
     var app=data.app||{};
     var empN=att.employerName||(att.employer&&att.employer.name)||jR.employer_name||(jR.employer&&jR.employer.name)||job.employer.name||'—';
@@ -1541,9 +1579,10 @@ var G={
     var empA=att.employerAddress||(att.employer&&att.employer.address)||jR.employer_address||(jR.employer&&jR.employer.address)||job.employer.address||'—';
     var empL=att.interviewLocation||(att.employer&&att.employer.interviewLocation)||jR.interview_location||job.interviewLocation||'—';
     var sal=money(job.salaryMin)+' – '+money(job.salaryMax);
-    var addr=$('f-prov').value+' - '+$('f-dist').value;
-    var lm=$('f-lm').value.trim();if(lm)addr+=' ('+lm+')';
-    var dob=$('f-day').value+'/'+$('f-mon').value+'/'+$('f-yr').value;
+    var savedProfile=G.readProfile();
+    var addr=savedProfile.address||[savedProfile.province,savedProfile.district].filter(Boolean).join(' - ');
+    var lm=savedProfile.landmark||'';if(lm&&!savedProfile.address)addr+=' ('+lm+')';
+    var dob=savedProfile.dob?String(savedProfile.dob).slice(0,10).split('-').reverse().join('/'):'—';
     var cUrl=(location.origin||'https://hrc-babil.com')+location.pathname.replace(/[^/]*$/,'')+'apply.html?form='+encodeURIComponent(cardSerial);
 
     /* تاريخان يهمّان صاحب العمل: مهلة الحجز (24 ساعة) وانتهاء صلاحية البطاقة */
@@ -1884,6 +1923,7 @@ function loadData(){
     };
     chancesLeft=cardData.chancesLeft;
     if(cardData.profile.fullName)G.fillProfile(cardData.profile);
+    if(c.profileLocked===true||(c.status&&c.status!=='blank')||(c.chances||[]).some(function(ch){return ch.slotStatus!=='empty'&&!!ch.jobCode;}))G.lockProfile(cardData.profile);
 
     /* إذا البطاقة فيها تقديم سابق — نعّرف الوظائف المقدّم عليها */
     cardData.chances.forEach(function(ch){
