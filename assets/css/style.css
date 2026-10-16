@@ -2475,7 +2475,6 @@ table.data tbody tr:hover { background: #faf8f3; }
 #view-settings .settings-advanced[open] .settings-expand { transform: rotate(45deg); }
 #view-settings .settings-advanced-content { display: grid; gap: 18px; padding: 0 20px 20px; }
 #view-settings .settings-advanced-content > .panel { margin: 0; }
-#view-settings #btn-cloud-key { margin-top: 14px; }
 #view-settings input, #view-settings .data-item .v { overflow-wrap: anywhere; }
 @media (max-width: 1000px) {
   #view-settings .settings-main { grid-template-columns: minmax(0, 1fr); }

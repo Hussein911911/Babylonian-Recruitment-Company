@@ -521,12 +521,8 @@ await sleep(250);
 app5.doc.querySelector('#side-nav button[data-view="settings"]').click();
 await sleep(120);
 
-const chanStrip = app5.doc.getElementById('users-channel');
-check('شريط قناة الحسابات ظاهر في الإعدادات', !!chanStrip && chanStrip.textContent.trim().length > 0,
-  chanStrip && chanStrip.textContent.slice(0, 80));
-check('الشريط يصرّح بأنه لا قناة بعد (لا حساب يدخل من أي جهاز)',
-  /لا قناة/.test(chanStrip.textContent), chanStrip.textContent.slice(0, 160));
-check('الشريط يذكر مفتاح الخدمة كاحتياطي', /مفتاح الخدمة/.test(chanStrip.textContent));
+check('أدوات القناة محذوفة من الإعدادات',
+  !app5.doc.getElementById('users-channel') && !app5.doc.getElementById('btn-cloud-key') && !app5.doc.getElementById('settings-connection'));
 
 app5.doc.getElementById('btn-add-user').click();
 await sleep(80);
@@ -555,20 +551,9 @@ helpModal.querySelector('[data-chan="key"]').click();
 await sleep(120);
 check('زر «إضافة مفتاح الخدمة الآن» يفتح نافذة المفتاح', !!app5.doc.getElementById('svc-key'));
 
-/* «فحص القناة»: نداء whoami للدالة — بلا إنشاء ولا تعديل */
-app5.doc.querySelector('#modal-root [data-close]').click();
-await sleep(60);
-const probeBtn = chanStrip.querySelector('[data-chan="probe"]');
-check('زر «فحص القناة» موجود', !!probeBtn);
-probeBtn.click();
-await sleep(200);
-check('الفحص نادى الدالة بإجراء whoami (تشخيص لا تعديل)',
-  (state5.fnCalls || []).some((c) => c.name === 'hrc-staff-admin' && c.body.action === 'whoami'),
-  JSON.stringify((state5.fnCalls || []).map((c) => c.body.action)));
-check('الفحص لم يُنشئ أي حساب', !state5.authUsers.length && !state5.staff.some((s) => s.username === 'ali'));
-check('الشريط يقول الآن إن الدالة غير منشورة',
-  /غير منشورة/.test(app5.doc.getElementById('users-channel').textContent),
-  app5.doc.getElementById('users-channel').textContent.slice(0, 200));
+// Diagnostics remain testable at the service layer, not as a settings panel.
+const probe5 = await app5.window.HRCStore.staffAdmin('whoami', {});
+check('الدالة غير المنشورة تُرفض دون إنشاء حساب', !probe5.ok && !state5.authUsers.length);
 
 app5.dom.window.close && app5.dom.window.close();
 
@@ -608,7 +593,7 @@ app6.dom.window.close && app6.dom.window.close();
  *      (كانت الفشول تظهر بـ«لا قناة بعد: انشر الدالة» وهي منشورة — نص مضلِّل
  *       لا يُصلح شيئاً. الآن: كل رفض له سببه المحدَّد وخطوته داخل الشريط.)
  * =========================================================================== */
-step(12, 'جلسة مدير سحابية: أخضر عند السليم، وسبب محدد + خطوة عند كل رفض');
+step(12, 'جلسة مدير سحابية: اتصال الدالة مستمر دون واجهة تشخيص');
 const state7 = makeState();
 state7.fnOn = true;
 state7.cloudSession = {
@@ -622,45 +607,19 @@ const s7 = app7.window.HRCStore.currentUser();
 check('الجلسة بالمدير الرسمي وعلامتها سحابية', !!s7 && s7.role === 'admin' && s7.cloud === true, JSON.stringify(s7));
 
 app7.doc.querySelector('#side-nav button[data-view="settings"]').click();
-await sleep(350);   // رسم الشريط + فحص تلقائي (whoami)
-let strip7 = app7.doc.getElementById('users-channel');
-check('الفحص التلقائي نادى whoami عند فتح الشريط (بلا ضغط زر)',
-  (state7.fnCalls || []).some((c) => c.body.action === 'whoami'),
-  JSON.stringify((state7.fnCalls || []).map((c) => c.body.action)));
-check('الحكم أخضر: «جاهز: أنشئ الحسابات»', /جاهز: أنشئ الحسابات/.test(strip7.textContent),
-  strip7.textContent.slice(0, 240));
-check('بند الدالة أخضر: «تعمل بجلسة مديرك»', /تعمل بجلسة مديرك/.test(strip7.textContent),
-  strip7.textContent.slice(0, 240));
-check('بند الجلسة يؤكد القناة الأفضل', /القناة الأفضل/.test(strip7.textContent));
-
-/* رفض ١: نسخة قديمة من الدالة (السطر المكرر/النشر القديم — حادثة 2026-10-15) */
-state7.fnOn = 'oldFn';
-strip7.querySelector('[data-chan="probe"]').click();
-await sleep(250);
-strip7 = app7.doc.getElementById('users-channel');
-check('الرفض يشرح السبب: نسخة قديمة من الدالة', /نسخة قديمة/.test(strip7.textContent),
-  strip7.textContent.slice(0, 300));
-check('ويعطي الخطوة: أعد نشرها من المستودع', /أعد نشر/.test(strip7.textContent),
-  strip7.textContent.slice(0, 300));
-check('لم يعد يرى المدير «لا قناة بعد» وهي منشورة', !/لا قناة بعد/.test(strip7.textContent),
-  strip7.textContent.slice(0, 300));
-
-/* رفض ٢: لا جلسة مدير تصل الدالة — الخطوة: أخرج ثم ادخل بحسابك الرسمي */
-state7.fnOn = 'noSession';
-strip7.querySelector('[data-chan="probe"]').click();
-await sleep(250);
-strip7 = app7.doc.getElementById('users-channel');
-check('رفض الجلسة يقود للخطوة: أخرج ثم ادخل بحسابك الرسمي',
-  /أخرج ثم ادخل بحسابك الرسمي/.test(strip7.textContent), strip7.textContent.slice(0, 300));
-
-/* رفض ٣: الحساب ليس مديراً في brc.staff — الخطوة: بدّل الدور */
-state7.fnOn = 'notAdmin';
-strip7.querySelector('[data-chan="probe"]').click();
-await sleep(250);
-strip7 = app7.doc.getElementById('users-channel');
-check('رفض الدور يسمي السبب والخطوة: بدّل دوره إلى admin',
-  /ليس مديراً/.test(strip7.textContent) && /admin/.test(strip7.textContent),
-  strip7.textContent.slice(0, 300));
+await sleep(150);
+check('الإعدادات خالية من قسم الاتصال حتى مع جلسة المدير السحابية',
+  !app7.doc.getElementById('users-channel') && !app7.doc.getElementById('settings-connection'));
+check('فتح الإعدادات لا يشغّل فحص قناة تلقائياً',
+  !(state7.fnCalls || []).some((c) => c.body.action === 'whoami'));
+const who7 = await app7.window.HRCStore.staffAdmin('whoami', {});
+check('الدالة السحابية ما زالت تعمل بجلسة المدير', who7 && who7.ok);
+// Keep service-level error coverage after removing the diagnostic UI.
+for (const [mode, code] of [['oldFn', 'bad_action'], ['noSession', 'no_token'], ['notAdmin', 'not_admin']]) {
+  state7.fnOn = mode;
+  const result = await app7.window.HRCStore.staffAdmin('whoami', {});
+  check('رفض الدالة محفوظ في طبقة الخدمة: ' + mode, result && !result.ok && result.code === code, JSON.stringify(result));
+}
 
 app7.dom.window.close && app7.dom.window.close();
 

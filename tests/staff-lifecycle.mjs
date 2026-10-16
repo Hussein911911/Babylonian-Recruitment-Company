@@ -264,9 +264,8 @@ check('الدخول نجح واللوحة ظاهرة', shellShown(mgr.doc), logi
 mgr.doc.querySelector('#side-nav button[data-view="settings"]').click();
 await sleep(150);
 check('قسم الإعدادات ظاهر', !mgr.doc.getElementById('view-settings').classList.contains('hidden'));
-const strip = mgr.doc.getElementById('users-channel');
-check('شريط «قناة إنشاء الحسابات» ظاهر', !!strip && /قناة|لا قناة|جاهز/.test(strip.textContent),
-  strip && strip.textContent.slice(0, 120));
+check('لا قسم قناة أو ربط سحابة في الإعدادات',
+  !mgr.doc.getElementById('settings-connection') && !mgr.doc.getElementById('users-channel') && !mgr.doc.getElementById('btn-cloud-key'));
 
 /* ===========================================================================
  *  2) المدير يُنشئ حساب موظف من النموذج (عبر مفتاح الخدمة المفحوص)

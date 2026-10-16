@@ -809,8 +809,11 @@ check('الإعدادات مختصرة والمتقدم مطوي دون حذف �
   const quick = doc.getElementById('btn-quick-backup');
   return (!!advanced && !advanced.open && main.contains(doc.getElementById('settings-form')) &&
     main.contains(doc.getElementById('users-table-body')) && !advanced.contains(quick) &&
-    ['users-channel', 'btn-cloud-key', 'btn-export', 'btn-import', 'btn-schedule-backup', 'btn-reset', 'set-verify-base']
+    ['btn-export', 'btn-import', 'btn-schedule-backup', 'btn-reset', 'set-verify-base']
       .every((id) => advanced.contains(doc.getElementById(id)))) || 'اختل ترتيب الأساسيات أو اختفت أداة إدارية';
+});
+check('قسم الاتصال وإدارة القناة محذوف من الصفحة وليس مخفياً', () => {
+  return ['settings-connection', 'users-channel', 'btn-cloud-key'].every((id) => !dash.doc.getElementById(id)) || 'بقيت أدوات القناة في الصفحة';
 });
 check('الإعدادات المتقدمة تُفتح وتُغلق بلوحة التحكم', () => {
   const advanced = dash.doc.getElementById('settings-advanced');

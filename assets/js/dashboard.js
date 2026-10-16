@@ -98,9 +98,6 @@
     cloudLoginNote(Store.cloudStatus());
     if (Store.onCloudStatus) Store.onCloudStatus(function (st) {
       cloudBanner(st); cloudLoginNote(st);
-      /* شريط قناة الحسابات يتبع حالة الاتصال/الدور: لو اتصلت القاعدة بعد فتح
-         الإعدادات، يتغيّر الحكم من «لا قناة» إلى «جاهز» بلا إعادة تحميل. */
-      if (document.getElementById('users-channel')) renderUsersChannel();
     });
     Store.runMaintenance();
     UI.startCountdowns();
@@ -305,8 +302,6 @@
 
     function save(key, warn) {
       try { localStorage.setItem('hrc-service-key', key); } catch (e) {}
-      chanState.probe = 'unknown'; chanState.code = ''; chanState.detail = '';
-      renderUsersChannel();
       UI.toast(warn ? 'warn' : 'ok', warn ? 'حُفظ رغم تعذّر الفحص' : 'تم الحفظ',
         warn ? 'أُنشئ موظف تجريبي للتأكد — وإن فشل فالفحص سيقول السبب.' : 'الآن لما تنشئ موظف جديد يُسجّل في قاعدة الشركة تلقائياً');
       m.close();
@@ -336,8 +331,6 @@
     var clearBtn = m.root.querySelector('#svc-clear');
     if (clearBtn) clearBtn.addEventListener('click', function () {
       try { localStorage.removeItem('hrc-service-key'); } catch (e) {}
-      chanState.probe = 'unknown'; chanState.code = ''; chanState.detail = '';
-      renderUsersChannel();
       UI.toast('warn', 'تم المسح', 'لن تُسجَّل الحسابات الجديدة في القاعدة من هذا المتصفح — مسار الدالة السحابية يبقى متاحاً.');
       m.close();
     });
@@ -347,200 +340,6 @@
   function cloudReady() {
     var st = Store.cloudStatus ? Store.cloudStatus() : null;
     return !!(st && st.configured && (st.state === 'on' || st.state === 'connecting'));
-  }
-
-  /* ===========================================================================
-   *  قناة إنشاء الحسابات — الحالة معروضة دائماً
-   *  ---------------------------------------------------------------------------
-   *  لماذا؟ لأن إدارة الحسابات هي الشيء الوحيد في المنظومة الذي يعتمد على
-   *  القاعدة اعتماداً كاملاً: بلا قناة صالحة لا يمكن إنشاء حساب يدخل صاحبه من
-   *  أي جهاز. وكان المدير يكتشف ذلك عند «إنشاء الحساب» برسالة خطأ تشرح ما ينقص
-   *  — بعد أن يملأ النموذج. هنا تُعرض القناة قبل فتح النموذج أصلاً، ويتغيّر
-   *  الحكم تلقائياً مع حال الاتصال وحالة المفتاح.
-   * ======================================================================== */
-  /* حالة فحص القناة: probe يحدد لون البند، وcode/detail يحفظان سبب الرفض
-     كما جاء من الدالة نفسها (جملة عربية) ليُعرض في الشريط — لا في توست يزول. */
-  var chanState = { probe: 'unknown', code: '', detail: '' };   // unknown | checking | ok | offline | not_deployed | deployed_no_session  انظر probeChannel
-
-  function channelInfo() {
-    var st = Store.cloudStatus ? Store.cloudStatus() : null;
-    var key = serviceKey();
-    return {
-      st: st,
-      configured: !!(st && st.configured),
-      connected: !!(st && (st.state === 'on' || st.state === 'connecting')),
-      cloudAdmin: !!(st && st.state === 'on' && st.role === 'staff' && Store.isAdmin && Store.isAdmin()),
-      hasKey: !!key,
-      probe: chanState.probe,
-      fnCode: chanState.code,
-      fnDetail: chanState.detail
-    };
-  }
-
-  /* سبب رفض الدالة — يُعرض كما جاء منها (عربي) مع خطوة تنفيذية واحدة.
-     الغرض: أن لا يرى المدير «انشر الدالة» وهي منشورة، ولا «لا قناة» والقناة
-     قائمة لكنها رُفضت — لكل رفض سببه المحدَّد وخطوته، داخل الشريط نفسه. */
-  function fnReject(c) {
-    var code = c.fnCode || '', d = c.fnDetail || '';
-    if (code === 'bad_action') return {
-      note: 'منشورة، لكنها بنسخة قديمة لا تعرف هذا الإجراء — أعد نشرها من المستودع ثم أعد الفحص',
-      verdict: 'الدالة منشورة بنسخة قديمة لا تعرف إجراء whoami — أعد نشرها من ملف المستودع (supabase/functions/hrc-staff-admin/index.ts) ثم أعد «فحص القناة».'
-    };
-    if (code === 'no_token' || code === 'UNAUTHORIZED_NO_AUTH_HEADER') return {
-      note: 'منشورة، لكن هذا المتصفح نادتها بلا جلسة مدير صالحة — أخرج ثم ادخل بحسابك الرسمي',
-      verdict: 'الدالة منشورة لكن هذا المتصفح بلا جلسة مدير صالحة — أخرج ثم ادخل بحسابك الرسمي ثم أعد «فحص القناة».'
-    };
-    if (code === 'bad_token') return {
-      note: 'منشورة، لكن الجلسة منتهية أو غير صالحة — أخرج وأعد الدخول بحسابك الرسمي',
-      verdict: 'الدالة منشورة لكن جلسة هذه الصفحة منتهية — أخرج ثم ادخل بحسابك الرسمي، ثم أعد «فحص القناة».'
-    };
-    if (code === 'no_staff_row') return {
-      note: 'منشورة، لكن الحساب غير مرتبط بسطر في brc.staff — نفّذ سطر الربط (docs/supabase-setup.md §6)',
-      verdict: 'الدالة منشورة لكن حسابك غير مرتبط بسطر في brc.staff — نفّذ سطر الربط في docs/supabase-setup.md §6 ثم أعد الدخول.'
-    };
-    if (code === 'not_admin') return {
-      note: 'منشورة، لكن هذا الحساب ليس مديراً في brc.staff — بدّل دوره إلى admin ثم أعد الفحص',
-      verdict: 'الدالة منشورة لكن دور حسابك في brc.staff ليس admin — بدّله إلى admin من SQL Editor ثم أعد «فحص القناة».'
-    };
-    if (code === 'inactive') return {
-      note: 'منشورة، لكن الحساب موقوف — نشّطه في brc.staff ثم أعد الفحص',
-      verdict: 'الدالة منشورة لكن حسابك موقوف في brc.staff — نشّطه (active = true) ثم أعد «فحص القناة».'
-    };
-    if (code === 'check_failed' || code === 'unexpected') return {
-      note: 'منشورة، لكنها ردّت بخطأ داخلي — راجع سجل الدالة في لوحة Supabase',
-      verdict: 'الدالة منشورة لكنها ردّت بخطأ داخلي — راجع سجلها في Supabase ← Edge Functions ← hrc-staff-admin ثم أعد «فحص القناة».'
-    };
-    return {
-      note: d ? ('منشورة، لكنها رفضت النداء: ' + d) : 'منشورة، لكن هذا المتصفح بلا جلسة مدير — ادخل بحسابك الرسمي',
-      verdict: d ? ('الدالة منشورة لكنها رفضت النداء: ' + d + ' — صحّح السبب ثم أعد «فحص القناة».')
-                 : 'الدالة منشورة لكنها رفضت الجلسة الحالية — أخرج ثم ادخل بحسابك الرسمي ثم أعد «فحص القناة».'
-    };
-  }
-
-  function renderUsersChannel() {
-    var host = document.getElementById('users-channel');
-    if (!host) return;
-    var c = channelInfo();
-    var dot = function (ok, warn) {
-      return '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' +
-        (ok ? '#16a34a' : (warn ? '#d97706' : '#dc2626')) + ';margin-inline-end:7px"></span>';
-    };
-    var item = function (ok, warn, label, note) {
-      return '<div style="display:flex;align-items:flex-start;gap:2px;min-width:190px">' +
-        '<div>' + dot(ok, warn) + '</div>' +
-        '<div><div style="font-weight:600">' + UI.esc(label) + '</div>' +
-        (note ? '<div class="tiny muted">' + note + '</div>' : '') + '</div></div>';
-    };
-
-    var rows = [];
-    /* ① الجلسة السحابية */
-    rows.push(item(c.cloudAdmin, c.connected,
-      'جلسة قاعدة الشركة',
-      c.cloudAdmin ? 'أنت داخل بحساب مدير رسمي — القناة الأفضل'
-        : (c.connected ? 'الدخول الحالي محلي — إدارة الحسابات تحتاج جلسة رسمية' : 'القاعدة غير متّصلة الآن')));
-
-    /* ② الدالة السحابية */
-    var fnOk = c.probe === 'ok';
-    var fnKnown = c.probe === 'ok' || c.probe === 'deployed_no_session' || c.probe === 'not_deployed' || c.probe === 'offline';
-    rows.push(item(fnOk, fnKnown && !fnOk,
-      'الدالة السحابية (بلا أي مفتاح)',
-      c.probe === 'checking' ? 'جارٍ الفحص…'
-        : c.probe === 'ok' ? 'منشورة وتعمل بجلسة مديرك — ينشئ الحسابات من أي متصفح'
-        : c.probe === 'deployed_no_session' ? fnReject(c).note
-        : c.probe === 'not_deployed' ? 'غير منشورة — انظر docs/staff-accounts-edge.md'
-        : c.probe === 'offline' ? 'تعذّر الفحص (لا اتصال)'
-        : 'لم تُفحص بعد — اضغط «فحص القناة»'));
-
-    /* ③ مفتاح الخدمة في هذا المتصفح */
-    rows.push(item(c.hasKey, false,
-      'مفتاح الخدمة (احتياطي)',
-      c.hasKey ? 'محفوظ في هذا المتصفح — الإدارة تعمل من هنا وحدها'
-        : 'غير محفوظ — يُستعمل فقط إن لم تُنشر الدالة'));
-
-    var verdict, tone;
-    if (!c.configured) {
-      verdict = 'القاعدة غير مُعدَّة في هذه النسخة — الحسابات تُنشأ في هذا المتصفح فقط.'; tone = 'warn';
-    } else if (c.cloudAdmin && (fnOk || c.probe === 'unknown')) {
-      verdict = 'جاهز: أنشئ الحسابات وستُسجَّل في قاعدة الشركة — يدخل الموظف من أي جهاز.'; tone = 'ok';
-    } else if (c.hasKey) {
-      verdict = 'جاهز عبر مفتاح الخدمة المحفوظ — أنشئ الحسابات وستُسجَّل في قاعدة الشركة.'; tone = 'ok';
-    } else if (c.probe === 'checking' && c.cloudAdmin) {
-      verdict = 'جارٍ فحص القناة…'; tone = 'warn';
-    } else if (c.probe === 'deployed_no_session') {
-      verdict = fnReject(c).verdict; tone = 'warn';
-    } else if (c.probe === 'offline') {
-      verdict = 'تعذّر فحص القناة الآن (لا اتصال) — أعد «فحص القناة» عند عودة الشبكة، فالدالة تبقى منشورة.'; tone = 'warn';
-    } else if (fnOk) {
-      verdict = 'الدالة منشورة لكن هذا المتصفح داخل محلياً: اخرج ثم ادخل بحسابك الرسمي لإنشاء الحسابات — أو أضف مفتاح الخدمة مؤقتاً.'; tone = 'warn';
-    } else {
-      verdict = 'لا قناة بعد: انشر الدالة السحابية (مرة واحدة) أو أضف مفتاح الخدمة مؤقتاً — وبلا أحدهما لن يُنشأ حساب يدخل منه الموظف من أي جهاز.'; tone = 'warn';
-    }
-
-    host.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;' +
-        'background:' + (tone === 'ok' ? '#f0fdf4' : '#fffbeb') + ';border:1px solid ' +
-        (tone === 'ok' ? '#bbf7d0' : '#fde68a') + ';border-radius:12px;padding:12px 14px">' +
-      '<div style="flex:1 1 560px;display:flex;flex-wrap:wrap;gap:16px">' + rows.join('') + '</div>' +
-      '<div style="flex:1 1 100%;font-size:.86rem;color:' + (tone === 'ok' ? '#166534' : '#92400e') + '">' +
-        (tone === 'ok' ? UI.ic('check') + ' ' : UI.ic('alert') + ' ') + UI.esc(verdict) +
-      '</div>' +
-      '<div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px">' +
-        '<button class="btn btn-outline btn-sm" data-chan="probe">' + UI.ic('refresh') +
-          (chanState.probe === 'checking' ? ' جارٍ الفحص…' : ' فحص القناة') + '</button>' +
-        '<button class="btn btn-outline btn-sm" data-chan="key">' + UI.ic('lock') +
-          (c.hasKey ? ' مفتاح الخدمة (محفوظ)' : ' إضافة مفتاح الخدمة') + '</button>' +
-        '<button class="btn btn-outline btn-sm" data-chan="help">' + UI.ic('alert') + ' ما الذي ينقص؟</button>' +
-      '</div>' +
-    '</div>';
-
-    var btns = host.querySelectorAll('[data-chan]');
-    btns.forEach(function (b) {
-      b.addEventListener('click', function () {
-        var what = b.getAttribute('data-chan');
-        if (what === 'probe') { probeChannel(true); return; }
-        if (what === 'key') { cloudKeyModal(); return; }
-        if (what === 'help') { channelHelpModal(); return; }
-      });
-    });
-
-    /* فحص تلقائي عند العرض بجلسة مدير: الحالة تُعلن فوراً بلا انتظار زر —
-       النداء whoami إجراء تشخيصي لا ينشئ شيئاً ولا يعدّل ولا يلمس المفاتيح.
-       يمرّ الشريط بحالة checking قبل الحل، فلا يُستدعى مجدداً (probe !== unknown). */
-    if (c.cloudAdmin && chanState.probe === 'unknown') probeChannel(false);
-  }
-
-  /* فحص القناة: نداء whoami للدالة (إجراء تشخيصي موجود فيها بلا أي تعديل عليها).
-     لا يُنشئ شيئاً ولا يعدّل شيئاً — سؤال «من أنا؟» فقط. */
-  function probeChannel(announce) {
-    if (!cloudReady()) {
-      chanState.probe = 'offline';
-      renderUsersChannel();
-      if (announce) UI.toast('warn', 'تعذّر الفحص', 'قاعدة الشركة غير متّصلة الآن — تحقق من الإنترنت.');
-      return Promise.resolve(chanState.probe);
-    }
-    chanState.probe = 'checking';
-    renderUsersChannel();
-    var p = Store.staffAdmin ? Store.staffAdmin('whoami', {})
-      : Promise.resolve({ ok: false, code: 'no_client' });
-    return Promise.resolve(p).then(function (r) {
-      var code = r && r.code;
-      /* نحفظ السبب كما جاء من الدالة ليُعرض داخل الشريط نفسه (لا توست يزول):
-         الفحص تشخيص — وكل رفض يُنقل بخطوته التنفيذية، لا بنص عام مضلِّل. */
-      chanState.code = r && r.ok ? '' : (code || '');
-      chanState.detail = r && r.ok ? '' : ((r && r.error) || '');
-      if (r && r.ok) chanState.probe = 'ok';
-      else if (code === 'not_deployed') chanState.probe = 'not_deployed';
-      else if (code === 'no_token' || code === 'bad_token' || code === 'no_staff_row') chanState.probe = 'deployed_no_session';
-      else if (code === 'network') chanState.probe = 'offline';
-      else chanState.probe = 'deployed_no_session';   // رفض دور أو خطأ داخلي: الدالة موجودة
-      renderUsersChannel();
-      if (announce) {
-        if (chanState.probe === 'ok') UI.toast('ok', 'القناة جاهزة', 'الدالة السحابية تعمل بجلسة مديرك — ينشئ الحسابات بلا أي مفتاح.');
-        else if (chanState.probe === 'not_deployed') UI.toast('warn', 'الدالة غير منشورة', 'انشرها مرة واحدة (docs/staff-accounts-edge.md) أو أضف مفتاح الخدمة مؤقتاً.');
-        else if (chanState.probe === 'deployed_no_session') UI.toast('warn', 'الدالة منشورة', (r && r.error) || 'لكن هذا المتصفح بلا جلسة مدير رسمية.');
-        else UI.toast('err', 'تعذّر الفحص', 'لا اتصال بقاعدة الشركة.');
-      }
-      return chanState.probe;
-    });
   }
 
   /* ماذا يفعل المدير حين لا قناة؟ نُعطيه الخطوتين بيده — لا رسالة خطأ تنتهي عنده.
@@ -646,7 +445,6 @@
   function renderUsersTable() {
     var tbl = document.getElementById('users-table-body');
     if (!tbl) return;
-    renderUsersChannel();
     var users = Store.listUsers();
     var cur = Store.currentUser();
     tbl.innerHTML = users.map(function (u) {
@@ -828,7 +626,6 @@
             if (!cloudR.ok && cloudR.code === 'no_key') {
               /* النموذج يبقى مفتوحاً خلفها: من يضيف المفتاح ثم يُغلق النافذة يجد
                  بياناته كما كتبها فيضغط «إنشاء الحساب» مرة أخرى. */
-              probeChannel(false);
               channelHelpModal(function () { createLocally(); });
               return;
             }
@@ -2707,10 +2504,6 @@
     /* زر إضافة موظف */
     var addUserBtn = document.getElementById('btn-add-user');
     if (addUserBtn) addUserBtn.addEventListener('click', function () { userModal(); });
-
-    /* زر ربط السحابة (Service Role Key) */
-    var cloudKeyBtn = document.getElementById('btn-cloud-key');
-    if (cloudKeyBtn) cloudKeyBtn.addEventListener('click', function () { cloudKeyModal(); });
 
     var ea = document.getElementById('btn-export-audit');
     if (ea) ea.addEventListener('click', function () {
