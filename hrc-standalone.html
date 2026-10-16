@@ -2508,6 +2508,27 @@ table.data tbody tr:hover { background: #faf8f3; }
   #view-settings #settings-rules button[type="submit"] { width: 100%; justify-content: center; }
 }
 
+/* Audit explorer: filters wrap without widening the page. */
+#view-audit .toolbar { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px; }
+#view-audit .toolbar .grow { grid-column:1/-1; }
+#view-audit .search-wrap { width:100%; }
+#view-audit .panel-head { flex-wrap:wrap;gap:12px; }
+.audit-quick,.audit-pagination,.audit-pages { display:flex;align-items:center;flex-wrap:wrap;gap:8px; }
+.audit-quick { margin-top:14px; }
+.audit-quick [aria-pressed="true"] { background:var(--lapis);color:var(--white); }
+.audit-pagination { justify-content:space-between;padding:16px;border-top:1px solid var(--line-soft); }
+.audit-pagination label { display:flex;align-items:center;gap:8px;font-size:.85rem; }
+.audit-pagination select { width:auto;min-width:70px; }
+#log-date-error { color:var(--danger); }
+#view-audit .btn:disabled { opacity:.45;cursor:not-allowed; }
+@media(max-width:720px) {
+  #view-audit .toolbar { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #view-audit .panel-body { padding:14px; }
+  #view-audit input,#view-audit select { font-size:16px; }
+  .audit-pages { width:100%;justify-content:space-between; }
+}
+@media(max-width:420px) { #view-audit .toolbar { grid-template-columns:minmax(0,1fr); } }
+
 </style>
 </head>
 <body>
@@ -3534,10 +3555,10 @@ table.data tbody tr:hover { background: #faf8f3; }
         <div class="panel-body">
           <div class="toolbar">
             <div class="field grow">
-              <label for="log-q">بحث في التفاصيل</label>
+              <label for="log-q">بحث شامل في السجل</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="log-q" placeholder="حالة حرجة ، HRC-1042 ، اسم مستخدم ...">
+                <input type="search" id="log-q" placeholder="اسم الموظف، العملية، الباركود أو كود الوظيفة…">
               </div>
             </div>
             <div class="field">
@@ -3553,9 +3574,20 @@ table.data tbody tr:hover { background: #faf8f3; }
                 <option value="system">النظام</option>
               </select>
             </div>
+            <div class="field"><label for="log-action">نوع العملية</label><select id="log-action"><option value="all">كل العمليات</option></select></div>
+            <div class="field"><label for="log-entity">نوع السجل</label><select id="log-entity"><option value="all">كل الأنواع</option></select></div>
             <div class="field"><label for="log-from"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>من تاريخ</label><input type="date" id="log-from"></div>
             <div class="field"><label for="log-to"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>إلى تاريخ</label><input type="date" id="log-to"></div>
           </div>
+          <div class="audit-quick" role="group" aria-label="فترات السجل السريعة">
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="today">اليوم</button>
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="yesterday">أمس</button>
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="week">آخر 7 أيام</button>
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="month">آخر 30 يوماً</button>
+            <button type="button" class="btn btn-outline btn-sm" id="log-reset">تصفير الفلاتر</button>
+          </div>
+          <p class="tiny muted mt-2 mb-0" id="log-filter-summary" aria-live="polite"></p>
+          <p class="tiny hidden" id="log-date-error" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.</p>
         </div>
         <div class="table-wrap" style="border:none;box-shadow:none">
           <div class="table-scroll">
@@ -3564,7 +3596,12 @@ table.data tbody tr:hover { background: #faf8f3; }
               <tbody id="audit-table-body"></tbody>
             </table>
           </div>
-          <div class="tfoot-note">كل تغيير في النظام يُسجّل تلقائياً بالثانية مع المستخدم وعنوان الجلسة والعملية والتفاصيل.</div>
+          <div class="audit-pagination">
+            <label for="log-page-size">سجل بالصفحة <select id="log-page-size"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></label>
+            <label for="log-sort">الترتيب <select id="log-sort"><option value="newest">الأحدث أولاً</option><option value="oldest">الأقدم أولاً</option></select></label>
+            <div class="audit-pages"><button type="button" class="btn btn-outline btn-sm" id="log-prev">السابق</button><span id="log-page-info" aria-live="polite"></span><button type="button" class="btn btn-outline btn-sm" id="log-next">التالي</button></div>
+          </div>
+          <div class="tfoot-note">البحث والتصدير يشملان السجلات المحمّلة في هذه الجلسة. التواريخ حسب التوقيت المحلي لجهازك، وتصدير CSV يشمل كل النتائج المفلترة.</div>
         </div>
       </div>
     </section>
@@ -5447,20 +5484,41 @@ table.data tbody tr:hover { background: #faf8f3; }
     if (db.audit.length > 2000) db.audit.length = 2000;
   }
 
+  // Arabic-friendly search without changing the original audit evidence.
+  function auditSearchText(value) {
+    return String(value == null ? '' : value).toLowerCase()
+      .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+      .replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي')
+      .replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 1632); })
+      .replace(/[۰-۹]/g, function (c) { return String(c.charCodeAt(0) - 1776); });
+  }
+
   function listAudit(f) {
     f = f || {};
     var rows = db.audit.slice();
+    var viewer = currentUser();
+    // A staff member cannot widen their own audit view with a filter or export.
+    if (viewer && viewer.role !== 'admin') rows = rows.filter(function (r) { return r.user === viewer.username; });
     if (f.role && f.role !== 'all') rows = rows.filter(function (r) { return r.role === f.role; });
     if (f.user && f.user !== 'all') rows = rows.filter(function (r) { return r.user === f.user; });
-    if (f.q) {
-      var q = f.q.toLowerCase();
-      rows = rows.filter(function (r) {
-        return (r.action + ' ' + r.details + ' ' + r.entityId + ' ' + r.user).toLowerCase().indexOf(q) >= 0;
-      });
-    }
-    if (f.from) rows = rows.filter(function (r) { return r.ts >= f.from; });
-    if (f.to) rows = rows.filter(function (r) { return r.ts <= f.to + 'T23:59:59'; });
-    return rows;
+    if (f.action && f.action !== 'all') rows = rows.filter(function (r) { return r.action === f.action; });
+    if (f.entity && f.entity !== 'all') rows = rows.filter(function (r) { return r.entity === f.entity; });
+    var words = auditSearchText(f.q || '').trim().split(/\s+/).filter(Boolean);
+    if (words.length) rows = rows.filter(function (r) {
+      var text = auditSearchText([r.action, r.details, r.entityId, r.entity, r.user, r.name, r.ip].join(' '));
+      return words.every(function (word) { return text.indexOf(word) >= 0; });
+    });
+    // Calendar days use the browser's local timezone; the end is exclusive.
+    var from = f.from ? new Date(f.from + 'T00:00:00') : null;
+    var to = f.to ? new Date(f.to + 'T00:00:00') : null;
+    if ((from && isNaN(from.getTime())) || (to && isNaN(to.getTime())) || (from && to && from > to)) return [];
+    if (to) to.setDate(to.getDate() + 1);
+    if (from) rows = rows.filter(function (r) { return new Date(r.ts).getTime() >= from.getTime(); });
+    if (to) rows = rows.filter(function (r) { return new Date(r.ts).getTime() < to.getTime(); });
+    return rows.sort(function (a, b) {
+      var delta = new Date(b.ts).getTime() - new Date(a.ts).getTime();
+      return f.sort === 'oldest' ? -delta : delta;
+    });
   }
 
   /* ======================= الوظائف ======================= */
@@ -10712,7 +10770,8 @@ table.data tbody tr:hover { background: #faf8f3; }
     view: 'overview',
     j: { q: '', status: 'all', region: 'all', governorate: 'all', shift: 'all' },
     a: { q: '', status: 'all', user: 'all' },
-    log: { q: '', user: 'all', role: 'all', from: '', to: '' },
+    log: { q: '', user: 'all', role: 'all', action: 'all', entity: 'all', from: '', to: '', sort: 'newest' },
+    logPage: 1, logPageSize: 25,
     fin: { from: '', to: '' },
     lastStatuses: {}
   };
@@ -12710,11 +12769,44 @@ table.data tbody tr:hover { background: #faf8f3; }
   }
 
   /* ======================= سجل التدقيق ======================= */
+  function readAuditFilters() {
+    ['q', 'user', 'role', 'action', 'entity', 'from', 'to', 'sort'].forEach(function (key) {
+      var input = document.getElementById('log-' + key);
+      if (input) state.log[key] = input.value;
+    });
+    if (!Store.isAdmin() && Store.currentUser()) state.log.user = Store.currentUser().username;
+  }
+
   function renderAudit() {
-    var rows = Store.listAudit(state.log);
+    var available = Store.listAudit({});
+    [['user', 'user', 'كل المستخدمين'], ['action', 'action', 'كل العمليات'], ['entity', 'entity', 'كل الأنواع']].forEach(function (spec) {
+      var select = document.getElementById('log-' + spec[0]);
+      var values = available.map(function (r) { return r[spec[1]]; }).filter(Boolean);
+      values = Array.from(new Set(values)).sort();
+      if (state.log[spec[0]] !== 'all' && values.indexOf(state.log[spec[0]]) < 0) values.push(state.log[spec[0]]);
+      if (select) { UI.fillSelect(select, values, spec[2]); select.value = state.log[spec[0]]; }
+    });
+    var invalid = !!(state.log.from && state.log.to && state.log.from > state.log.to);
+    var error = document.getElementById('log-date-error');
+    if (error) error.classList.toggle('hidden', !invalid);
+    var rows = invalid ? [] : Store.listAudit(state.log);
+    var pages = Math.max(1, Math.ceil(rows.length / state.logPageSize));
+    state.logPage = Math.max(1, Math.min(state.logPage, pages));
+    var start = (state.logPage - 1) * state.logPageSize;
+    var info = document.getElementById('log-page-info');
+    if (info) info.textContent = state.logPage + ' / ' + pages;
+    document.getElementById('log-prev').disabled = state.logPage <= 1;
+    document.getElementById('log-next').disabled = state.logPage >= pages;
+    document.getElementById('btn-export-audit').disabled = invalid || !rows.length;
+    var summary = document.getElementById('log-filter-summary');
+    if (summary) summary.textContent = 'عرض ' + (rows.length ? start + 1 : 0) + '–' + Math.min(start + state.logPageSize, rows.length) +
+      ' من ' + rows.length + ' نتيجة — إجمالي السجل المحمّل: ' + available.length;
+    document.querySelectorAll('[data-audit-range]').forEach(function (button) {
+      button.setAttribute('aria-pressed', 'false');
+    });
     var label = document.getElementById('audit-count-label');
     if (label) label.textContent = rows.length + ' سجل';
-    document.getElementById('audit-table-body').innerHTML = rows.slice(0, 400).map(function (l) {
+    document.getElementById('audit-table-body').innerHTML = rows.slice(start, start + state.logPageSize).map(function (l) {
       var roleBadge = l.role === 'admin' ? '<span class="badge danger">مدير عام</span>'
         : (l.role === 'staff' ? '<span class="badge info">موظف</span>' : '<span class="badge muted">النظام</span>');
       return '<tr>' +
@@ -12881,11 +12973,32 @@ table.data tbody tr:hover { background: #faf8f3; }
     bindInput('aq', state.a, 'q', renderApplicants);
     bindInput('a-status', state.a, 'status', renderApplicants);
     bindInput('a-user', state.a, 'user', renderApplicants);
-    bindInput('log-q', state.log, 'q', renderAudit);
-    bindInput('log-user', state.log, 'user', renderAudit);
-    bindInput('log-role', state.log, 'role', renderAudit);
-    bindInput('log-from', state.log, 'from', renderAudit);
-    bindInput('log-to', state.log, 'to', renderAudit);
+    var refreshAuditFilters = function () { readAuditFilters(); state.logPage = 1; renderAudit(); };
+    var delayedAuditSearch = UI.debounce(refreshAuditFilters, 180);
+    document.getElementById('log-q').addEventListener('input', delayedAuditSearch);
+    ['user', 'role', 'action', 'entity', 'from', 'to', 'sort'].forEach(function (key) {
+      document.getElementById('log-' + key).addEventListener('change', refreshAuditFilters);
+    });
+    document.getElementById('log-page-size').addEventListener('change', function () {
+      state.logPageSize = Number(this.value); state.logPage = 1; readAuditFilters(); renderAudit();
+    });
+    document.getElementById('log-prev').addEventListener('click', function () { state.logPage--; readAuditFilters(); renderAudit(); });
+    document.getElementById('log-next').addEventListener('click', function () { state.logPage++; readAuditFilters(); renderAudit(); });
+    document.getElementById('log-reset').addEventListener('click', function () {
+      ['q', 'from', 'to'].forEach(function (key) { document.getElementById('log-' + key).value = ''; });
+      ['user', 'role', 'action', 'entity'].forEach(function (key) { document.getElementById('log-' + key).value = 'all'; });
+      document.getElementById('log-sort').value = 'newest';
+      refreshAuditFilters();
+    });
+    document.querySelectorAll('[data-audit-range]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var range = button.getAttribute('data-audit-range');
+        var offset = range === 'yesterday' ? -1 : range === 'week' ? -6 : range === 'month' ? -29 : 0;
+        document.getElementById('log-from').value = dayOffset(offset);
+        document.getElementById('log-to').value = dayOffset(range === 'yesterday' ? -1 : 0);
+        refreshAuditFilters(); button.setAttribute('aria-pressed', 'true');
+      });
+    });
     bindInput('fin-from', state.fin, 'from', renderFinance);
     bindInput('fin-to', state.fin, 'to', renderFinance);
 
@@ -13134,10 +13247,16 @@ table.data tbody tr:hover { background: #faf8f3; }
 
     var ea = document.getElementById('btn-export-audit');
     if (ea) ea.addEventListener('click', function () {
+      readAuditFilters();
+      if (state.log.from && state.log.to && state.log.from > state.log.to) { renderAudit(); return; }
       var rows = Store.listAudit(state.log);
       var csv = 'ts,user,name,role,ip,action,entity,entityId,details\n' + rows.map(function (l) {
-        return [Store.fmtDateTime(l.ts), l.user, l.name, l.role, l.ip, l.action, l.entity, l.entityId, (l.details || '').replace(/"/g, '""')]
-          .map(function (x) { return '"' + String(x == null ? '' : x) + '"'; }).join(',');
+        return [Store.fmtDateTime(l.ts), l.user, l.name, l.role, l.ip, l.action, l.entity, l.entityId, l.details || '']
+          .map(function (x) {
+            var value = String(x == null ? '' : x);
+            if (/^[\s]*[=+@-]/.test(value) || /^[\t\r\n]/.test(value)) value = "'" + value;
+            return '"' + value.replace(/"/g, '""') + '"';
+          }).join(',');
       }).join('\n');
       UI.download('hrc-audit-' + Store.fmtDate(new Date()) + '.csv', '\ufeff' + csv, 'text/csv;charset=utf-8');
       UI.toast('ok', 'تصدير السجل', rows.length + ' سجل بصيغة CSV.');

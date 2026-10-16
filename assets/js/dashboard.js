@@ -85,7 +85,8 @@
     view: 'overview',
     j: { q: '', status: 'all', region: 'all', governorate: 'all', shift: 'all' },
     a: { q: '', status: 'all', user: 'all' },
-    log: { q: '', user: 'all', role: 'all', from: '', to: '' },
+    log: { q: '', user: 'all', role: 'all', action: 'all', entity: 'all', from: '', to: '', sort: 'newest' },
+    logPage: 1, logPageSize: 25,
     fin: { from: '', to: '' },
     lastStatuses: {}
   };
@@ -2083,11 +2084,44 @@
   }
 
   /* ======================= سجل التدقيق ======================= */
+  function readAuditFilters() {
+    ['q', 'user', 'role', 'action', 'entity', 'from', 'to', 'sort'].forEach(function (key) {
+      var input = document.getElementById('log-' + key);
+      if (input) state.log[key] = input.value;
+    });
+    if (!Store.isAdmin() && Store.currentUser()) state.log.user = Store.currentUser().username;
+  }
+
   function renderAudit() {
-    var rows = Store.listAudit(state.log);
+    var available = Store.listAudit({});
+    [['user', 'user', 'كل المستخدمين'], ['action', 'action', 'كل العمليات'], ['entity', 'entity', 'كل الأنواع']].forEach(function (spec) {
+      var select = document.getElementById('log-' + spec[0]);
+      var values = available.map(function (r) { return r[spec[1]]; }).filter(Boolean);
+      values = Array.from(new Set(values)).sort();
+      if (state.log[spec[0]] !== 'all' && values.indexOf(state.log[spec[0]]) < 0) values.push(state.log[spec[0]]);
+      if (select) { UI.fillSelect(select, values, spec[2]); select.value = state.log[spec[0]]; }
+    });
+    var invalid = !!(state.log.from && state.log.to && state.log.from > state.log.to);
+    var error = document.getElementById('log-date-error');
+    if (error) error.classList.toggle('hidden', !invalid);
+    var rows = invalid ? [] : Store.listAudit(state.log);
+    var pages = Math.max(1, Math.ceil(rows.length / state.logPageSize));
+    state.logPage = Math.max(1, Math.min(state.logPage, pages));
+    var start = (state.logPage - 1) * state.logPageSize;
+    var info = document.getElementById('log-page-info');
+    if (info) info.textContent = state.logPage + ' / ' + pages;
+    document.getElementById('log-prev').disabled = state.logPage <= 1;
+    document.getElementById('log-next').disabled = state.logPage >= pages;
+    document.getElementById('btn-export-audit').disabled = invalid || !rows.length;
+    var summary = document.getElementById('log-filter-summary');
+    if (summary) summary.textContent = 'عرض ' + (rows.length ? start + 1 : 0) + '–' + Math.min(start + state.logPageSize, rows.length) +
+      ' من ' + rows.length + ' نتيجة — إجمالي السجل المحمّل: ' + available.length;
+    document.querySelectorAll('[data-audit-range]').forEach(function (button) {
+      button.setAttribute('aria-pressed', 'false');
+    });
     var label = document.getElementById('audit-count-label');
     if (label) label.textContent = rows.length + ' سجل';
-    document.getElementById('audit-table-body').innerHTML = rows.slice(0, 400).map(function (l) {
+    document.getElementById('audit-table-body').innerHTML = rows.slice(start, start + state.logPageSize).map(function (l) {
       var roleBadge = l.role === 'admin' ? '<span class="badge danger">مدير عام</span>'
         : (l.role === 'staff' ? '<span class="badge info">موظف</span>' : '<span class="badge muted">النظام</span>');
       return '<tr>' +
@@ -2254,11 +2288,32 @@
     bindInput('aq', state.a, 'q', renderApplicants);
     bindInput('a-status', state.a, 'status', renderApplicants);
     bindInput('a-user', state.a, 'user', renderApplicants);
-    bindInput('log-q', state.log, 'q', renderAudit);
-    bindInput('log-user', state.log, 'user', renderAudit);
-    bindInput('log-role', state.log, 'role', renderAudit);
-    bindInput('log-from', state.log, 'from', renderAudit);
-    bindInput('log-to', state.log, 'to', renderAudit);
+    var refreshAuditFilters = function () { readAuditFilters(); state.logPage = 1; renderAudit(); };
+    var delayedAuditSearch = UI.debounce(refreshAuditFilters, 180);
+    document.getElementById('log-q').addEventListener('input', delayedAuditSearch);
+    ['user', 'role', 'action', 'entity', 'from', 'to', 'sort'].forEach(function (key) {
+      document.getElementById('log-' + key).addEventListener('change', refreshAuditFilters);
+    });
+    document.getElementById('log-page-size').addEventListener('change', function () {
+      state.logPageSize = Number(this.value); state.logPage = 1; readAuditFilters(); renderAudit();
+    });
+    document.getElementById('log-prev').addEventListener('click', function () { state.logPage--; readAuditFilters(); renderAudit(); });
+    document.getElementById('log-next').addEventListener('click', function () { state.logPage++; readAuditFilters(); renderAudit(); });
+    document.getElementById('log-reset').addEventListener('click', function () {
+      ['q', 'from', 'to'].forEach(function (key) { document.getElementById('log-' + key).value = ''; });
+      ['user', 'role', 'action', 'entity'].forEach(function (key) { document.getElementById('log-' + key).value = 'all'; });
+      document.getElementById('log-sort').value = 'newest';
+      refreshAuditFilters();
+    });
+    document.querySelectorAll('[data-audit-range]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var range = button.getAttribute('data-audit-range');
+        var offset = range === 'yesterday' ? -1 : range === 'week' ? -6 : range === 'month' ? -29 : 0;
+        document.getElementById('log-from').value = dayOffset(offset);
+        document.getElementById('log-to').value = dayOffset(range === 'yesterday' ? -1 : 0);
+        refreshAuditFilters(); button.setAttribute('aria-pressed', 'true');
+      });
+    });
     bindInput('fin-from', state.fin, 'from', renderFinance);
     bindInput('fin-to', state.fin, 'to', renderFinance);
 
@@ -2507,10 +2562,16 @@
 
     var ea = document.getElementById('btn-export-audit');
     if (ea) ea.addEventListener('click', function () {
+      readAuditFilters();
+      if (state.log.from && state.log.to && state.log.from > state.log.to) { renderAudit(); return; }
       var rows = Store.listAudit(state.log);
       var csv = 'ts,user,name,role,ip,action,entity,entityId,details\n' + rows.map(function (l) {
-        return [Store.fmtDateTime(l.ts), l.user, l.name, l.role, l.ip, l.action, l.entity, l.entityId, (l.details || '').replace(/"/g, '""')]
-          .map(function (x) { return '"' + String(x == null ? '' : x) + '"'; }).join(',');
+        return [Store.fmtDateTime(l.ts), l.user, l.name, l.role, l.ip, l.action, l.entity, l.entityId, l.details || '']
+          .map(function (x) {
+            var value = String(x == null ? '' : x);
+            if (/^[\s]*[=+@-]/.test(value) || /^[\t\r\n]/.test(value)) value = "'" + value;
+            return '"' + value.replace(/"/g, '""') + '"';
+          }).join(',');
       }).join('\n');
       UI.download('hrc-audit-' + Store.fmtDate(new Date()) + '.csv', '\ufeff' + csv, 'text/csv;charset=utf-8');
       UI.toast('ok', 'تصدير السجل', rows.length + ' سجل بصيغة CSV.');

@@ -570,20 +570,41 @@
     if (db.audit.length > 2000) db.audit.length = 2000;
   }
 
+  // Arabic-friendly search without changing the original audit evidence.
+  function auditSearchText(value) {
+    return String(value == null ? '' : value).toLowerCase()
+      .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+      .replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي')
+      .replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 1632); })
+      .replace(/[۰-۹]/g, function (c) { return String(c.charCodeAt(0) - 1776); });
+  }
+
   function listAudit(f) {
     f = f || {};
     var rows = db.audit.slice();
+    var viewer = currentUser();
+    // A staff member cannot widen their own audit view with a filter or export.
+    if (viewer && viewer.role !== 'admin') rows = rows.filter(function (r) { return r.user === viewer.username; });
     if (f.role && f.role !== 'all') rows = rows.filter(function (r) { return r.role === f.role; });
     if (f.user && f.user !== 'all') rows = rows.filter(function (r) { return r.user === f.user; });
-    if (f.q) {
-      var q = f.q.toLowerCase();
-      rows = rows.filter(function (r) {
-        return (r.action + ' ' + r.details + ' ' + r.entityId + ' ' + r.user).toLowerCase().indexOf(q) >= 0;
-      });
-    }
-    if (f.from) rows = rows.filter(function (r) { return r.ts >= f.from; });
-    if (f.to) rows = rows.filter(function (r) { return r.ts <= f.to + 'T23:59:59'; });
-    return rows;
+    if (f.action && f.action !== 'all') rows = rows.filter(function (r) { return r.action === f.action; });
+    if (f.entity && f.entity !== 'all') rows = rows.filter(function (r) { return r.entity === f.entity; });
+    var words = auditSearchText(f.q || '').trim().split(/\s+/).filter(Boolean);
+    if (words.length) rows = rows.filter(function (r) {
+      var text = auditSearchText([r.action, r.details, r.entityId, r.entity, r.user, r.name, r.ip].join(' '));
+      return words.every(function (word) { return text.indexOf(word) >= 0; });
+    });
+    // Calendar days use the browser's local timezone; the end is exclusive.
+    var from = f.from ? new Date(f.from + 'T00:00:00') : null;
+    var to = f.to ? new Date(f.to + 'T00:00:00') : null;
+    if ((from && isNaN(from.getTime())) || (to && isNaN(to.getTime())) || (from && to && from > to)) return [];
+    if (to) to.setDate(to.getDate() + 1);
+    if (from) rows = rows.filter(function (r) { return new Date(r.ts).getTime() >= from.getTime(); });
+    if (to) rows = rows.filter(function (r) { return new Date(r.ts).getTime() < to.getTime(); });
+    return rows.sort(function (a, b) {
+      var delta = new Date(b.ts).getTime() - new Date(a.ts).getTime();
+      return f.sort === 'oldest' ? -delta : delta;
+    });
   }
 
   /* ======================= الوظائف ======================= */

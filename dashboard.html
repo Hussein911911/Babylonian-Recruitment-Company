@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=498c5d64c1">
+<link rel="stylesheet" href="assets/css/style.css?v=a63284d589">
 </head>
 <body>
 <!-- ===========================================================================
@@ -619,10 +619,10 @@
         <div class="panel-body">
           <div class="toolbar">
             <div class="field grow">
-              <label for="log-q">بحث في التفاصيل</label>
+              <label for="log-q">بحث شامل في السجل</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="log-q" placeholder="حالة حرجة ، HRC-1042 ، اسم مستخدم ...">
+                <input type="search" id="log-q" placeholder="اسم الموظف، العملية، الباركود أو كود الوظيفة…">
               </div>
             </div>
             <div class="field">
@@ -638,9 +638,20 @@
                 <option value="system">النظام</option>
               </select>
             </div>
+            <div class="field"><label for="log-action">نوع العملية</label><select id="log-action"><option value="all">كل العمليات</option></select></div>
+            <div class="field"><label for="log-entity">نوع السجل</label><select id="log-entity"><option value="all">كل الأنواع</option></select></div>
             <div class="field"><label for="log-from"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>من تاريخ</label><input type="date" id="log-from"></div>
             <div class="field"><label for="log-to"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>إلى تاريخ</label><input type="date" id="log-to"></div>
           </div>
+          <div class="audit-quick" role="group" aria-label="فترات السجل السريعة">
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="today">اليوم</button>
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="yesterday">أمس</button>
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="week">آخر 7 أيام</button>
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="month">آخر 30 يوماً</button>
+            <button type="button" class="btn btn-outline btn-sm" id="log-reset">تصفير الفلاتر</button>
+          </div>
+          <p class="tiny muted mt-2 mb-0" id="log-filter-summary" aria-live="polite"></p>
+          <p class="tiny hidden" id="log-date-error" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.</p>
         </div>
         <div class="table-wrap" style="border:none;box-shadow:none">
           <div class="table-scroll">
@@ -649,7 +660,12 @@
               <tbody id="audit-table-body"></tbody>
             </table>
           </div>
-          <div class="tfoot-note">كل تغيير في النظام يُسجّل تلقائياً بالثانية مع المستخدم وعنوان الجلسة والعملية والتفاصيل.</div>
+          <div class="audit-pagination">
+            <label for="log-page-size">سجل بالصفحة <select id="log-page-size"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></label>
+            <label for="log-sort">الترتيب <select id="log-sort"><option value="newest">الأحدث أولاً</option><option value="oldest">الأقدم أولاً</option></select></label>
+            <div class="audit-pages"><button type="button" class="btn btn-outline btn-sm" id="log-prev">السابق</button><span id="log-page-info" aria-live="polite"></span><button type="button" class="btn btn-outline btn-sm" id="log-next">التالي</button></div>
+          </div>
+          <div class="tfoot-note">البحث والتصدير يشملان السجلات المحمّلة في هذه الجلسة. التواريخ حسب التوقيت المحلي لجهازك، وتصدير CSV يشمل كل النتائج المفلترة.</div>
         </div>
       </div>
     </section>
@@ -890,17 +906,17 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=498c5d64c1"></script>
-<script src="assets/vendor/supabase.js?v=498c5d64c1"></script>
-<script src="assets/js/supabase-config.js?v=498c5d64c1"></script>
-<script src="assets/js/qr.js?v=498c5d64c1"></script>
-<script src="assets/js/cloud.js?v=498c5d64c1"></script>
-<script src="assets/js/cloud-auth.js?v=498c5d64c1"></script>
-<script src="assets/js/cloud-sync.js?v=498c5d64c1"></script>
-<script src="assets/js/store.js?v=498c5d64c1"></script>
-<script src="assets/js/ui.js?v=498c5d64c1"></script>
-<script src="assets/js/nav.js?v=498c5d64c1"></script>
-<script src="assets/js/voucher.js?v=498c5d64c1"></script>
-<script src="assets/js/dashboard.js?v=498c5d64c1"></script>
+<script src="assets/js/config.js?v=a63284d589"></script>
+<script src="assets/vendor/supabase.js?v=a63284d589"></script>
+<script src="assets/js/supabase-config.js?v=a63284d589"></script>
+<script src="assets/js/qr.js?v=a63284d589"></script>
+<script src="assets/js/cloud.js?v=a63284d589"></script>
+<script src="assets/js/cloud-auth.js?v=a63284d589"></script>
+<script src="assets/js/cloud-sync.js?v=a63284d589"></script>
+<script src="assets/js/store.js?v=a63284d589"></script>
+<script src="assets/js/ui.js?v=a63284d589"></script>
+<script src="assets/js/nav.js?v=a63284d589"></script>
+<script src="assets/js/voucher.js?v=a63284d589"></script>
+<script src="assets/js/dashboard.js?v=a63284d589"></script>
 </body>
 </html>
