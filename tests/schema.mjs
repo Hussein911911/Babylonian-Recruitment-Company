@@ -77,7 +77,7 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 /* 30 = 29 السابقة + إصلاح 2026-10-06: ترميم خانات الفرص الناقصة
    (ensure_card_attempts) — بطاقة جديدة كانت تظهر «انتهت فرصك» بلا أي تقديم
    لأن مزامنة لوحة الموظفين كانت تحذف خاناتها من القاعدة. */
-check('عدد الدوال المتوقّع (30)', funcs.length === 30, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+check('عدد الدوال المتوقّع (31)', funcs.length === 31, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
 const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',

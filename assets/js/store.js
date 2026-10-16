@@ -784,11 +784,19 @@
     return pad(Math.floor(1000 + Math.random() * 9000), 4) + '-XX';
   }
 
+  function newCardPrintCode() {
+    var cryptoApi = root.crypto || (typeof crypto !== 'undefined' ? crypto : null);
+    if (!cryptoApi || !cryptoApi.getRandomValues) throw new Error('المتصفح لا يدعم توليد رمز تحقق آمن');
+    var bytes = new Uint8Array(8);
+    cryptoApi.getRandomValues(bytes);
+    return Array.from(bytes).map(function (b) { return ('0' + b.toString(16)).slice(-2); }).join('').toUpperCase();
+  }
+
   function createApplicant(data) {
     var issue = new Date();
     var pending = !!data.pending;
     var app = {
-      id: uid('app'), serial: nextSerial(), fullName: data.fullName, phone: data.phone,
+      id: uid('app'), serial: nextSerial(), cardPrintCode: newCardPrintCode(), fullName: data.fullName, phone: data.phone,
       address: data.address, dob: data.dob || '', gender: data.gender || 'ذكر', nationality: data.nationality || 'عراقي',
       issueDate: pending ? null : issue.toISOString(),
       expiryDate: pending ? null : addDays(issue, Number(db.settings.validityDays || 30)).toISOString(),
@@ -823,7 +831,7 @@
       var serial = randomSerial();
       if (!serial) break;
       var card = {
-        id: uid('app'), serial: serial, fullName: '', phone: '', address: '',
+        id: uid('app'), serial: serial, cardPrintCode: newCardPrintCode(), fullName: '', phone: '', address: '',
         dob: '', gender: 'ذكر', nationality: 'عراقي',
         issueDate: null, expiryDate: null, status: 'blank',
         createdBy: currentUser() ? currentUser().username : 'system',
@@ -857,7 +865,7 @@
     if (db.usedSerials.indexOf(serial) >= 0)
       return { ok: false, error: 'هذا الباركود استُعمل سابقاً لبطاقة حُذفت ولا يعود أبداً (منع التزوير) — اختر كوداً آخر' };
     var card = {
-      id: uid('app'), serial: serial, fullName: '', phone: '', address: '',
+      id: uid('app'), serial: serial, cardPrintCode: newCardPrintCode(), fullName: '', phone: '', address: '',
       dob: '', gender: 'ذكر', nationality: 'عراقي',
       issueDate: null, expiryDate: null, status: 'blank',
       createdBy: currentUser() ? currentUser().username : 'system',
@@ -1205,18 +1213,17 @@
   }
 
   /* ======================= بطاقتي: واجهة الزبون العامة ======================= */
-  /* إثبات حيازة البطاقة: الباركود + رمز إحدى الفرصتين — يُرجع الحمولة
-     الكاملة للطباعة (الاسم والهاتف ورمزا الفرصتين). الرمز سرّي على ظهر
-     الورقة، فمن يملكه يملك البطاقة (نموذج الحيازة المعتمد). */
+  /* إثبات الحيازة للطباعة: رمز مستقل للبطاقات الجديدة، ورمز فرصة للقديمة فقط. */
   function cardVerifyCode(serial, code) {
     serial = String(serial || '').trim().toUpperCase();
     code = String(code || '').trim().toUpperCase();
     var app = getApplicant(serial);
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود' };
-    var slot = getAttempts(serial).filter(function (t) {
-      return String(t.code || '').toUpperCase() === code;
-    })[0];
-    if (!slot) return { ok: false, error: 'رمز الفرصة غير صحيح — انسخه كما هو من ظهر بطاقتك' };
+    var normalized = code.replace(/[^A-Z0-9]/g, '');
+    var valid = !!normalized && (app.cardPrintCode
+      ? normalized === app.cardPrintCode
+      : getAttempts(serial).some(function (t) { return String(t.code || '').replace(/[^A-Z0-9]/g, '') === normalized; }));
+    if (!valid) return { ok: false, error: 'رمز التحقق غير صحيح — انسخه من ظهر البطاقة' };
     return { ok: true, app: app, attempts: getAttempts(serial) };
   }
 
@@ -1247,6 +1254,7 @@
         issueDate: app.issueDate,
         expiryDate: app.expiryDate,
         chancesLeft: attemptsLeft(app.serial),
+        usesCardPrintCode: !!app.cardPrintCode,
         chances: attempts,
         succeeded: attempts.some(function (t) { return t.slotStatus === 'succeeded'; })
       }
@@ -1333,7 +1341,8 @@
           ok: true,
           app: {
             id: d.id || null, serial: d.serial, fullName: d.fullName, phone: d.phone,
-            issueDate: d.issueDate, expiryDate: d.expiryDate, posName: d.posName || ''
+            address: d.address || '', dob: d.dob || '', gender: d.gender || '', nationality: d.nationality || '',
+            issueDate: d.issueDate, expiryDate: d.expiryDate, posName: d.posName || '', status: d.status || 'active', cardPrintCode: d.cardPrintCode || null
           },
           attempts: (d.attempts || []).map(function (a) {
             return {

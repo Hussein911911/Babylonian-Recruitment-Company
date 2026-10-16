@@ -5672,11 +5672,19 @@ table.data tbody tr:hover { background: #faf8f3; }
     return pad(Math.floor(1000 + Math.random() * 9000), 4) + '-XX';
   }
 
+  function newCardPrintCode() {
+    var cryptoApi = root.crypto || (typeof crypto !== 'undefined' ? crypto : null);
+    if (!cryptoApi || !cryptoApi.getRandomValues) throw new Error('المتصفح لا يدعم توليد رمز تحقق آمن');
+    var bytes = new Uint8Array(8);
+    cryptoApi.getRandomValues(bytes);
+    return Array.from(bytes).map(function (b) { return ('0' + b.toString(16)).slice(-2); }).join('').toUpperCase();
+  }
+
   function createApplicant(data) {
     var issue = new Date();
     var pending = !!data.pending;
     var app = {
-      id: uid('app'), serial: nextSerial(), fullName: data.fullName, phone: data.phone,
+      id: uid('app'), serial: nextSerial(), cardPrintCode: newCardPrintCode(), fullName: data.fullName, phone: data.phone,
       address: data.address, dob: data.dob || '', gender: data.gender || 'ذكر', nationality: data.nationality || 'عراقي',
       issueDate: pending ? null : issue.toISOString(),
       expiryDate: pending ? null : addDays(issue, Number(db.settings.validityDays || 30)).toISOString(),
@@ -5711,7 +5719,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       var serial = randomSerial();
       if (!serial) break;
       var card = {
-        id: uid('app'), serial: serial, fullName: '', phone: '', address: '',
+        id: uid('app'), serial: serial, cardPrintCode: newCardPrintCode(), fullName: '', phone: '', address: '',
         dob: '', gender: 'ذكر', nationality: 'عراقي',
         issueDate: null, expiryDate: null, status: 'blank',
         createdBy: currentUser() ? currentUser().username : 'system',
@@ -5745,7 +5753,7 @@ table.data tbody tr:hover { background: #faf8f3; }
     if (db.usedSerials.indexOf(serial) >= 0)
       return { ok: false, error: 'هذا الباركود استُعمل سابقاً لبطاقة حُذفت ولا يعود أبداً (منع التزوير) — اختر كوداً آخر' };
     var card = {
-      id: uid('app'), serial: serial, fullName: '', phone: '', address: '',
+      id: uid('app'), serial: serial, cardPrintCode: newCardPrintCode(), fullName: '', phone: '', address: '',
       dob: '', gender: 'ذكر', nationality: 'عراقي',
       issueDate: null, expiryDate: null, status: 'blank',
       createdBy: currentUser() ? currentUser().username : 'system',
@@ -6093,18 +6101,17 @@ table.data tbody tr:hover { background: #faf8f3; }
   }
 
   /* ======================= بطاقتي: واجهة الزبون العامة ======================= */
-  /* إثبات حيازة البطاقة: الباركود + رمز إحدى الفرصتين — يُرجع الحمولة
-     الكاملة للطباعة (الاسم والهاتف ورمزا الفرصتين). الرمز سرّي على ظهر
-     الورقة، فمن يملكه يملك البطاقة (نموذج الحيازة المعتمد). */
+  /* إثبات الحيازة للطباعة: رمز مستقل للبطاقات الجديدة، ورمز فرصة للقديمة فقط. */
   function cardVerifyCode(serial, code) {
     serial = String(serial || '').trim().toUpperCase();
     code = String(code || '').trim().toUpperCase();
     var app = getApplicant(serial);
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود' };
-    var slot = getAttempts(serial).filter(function (t) {
-      return String(t.code || '').toUpperCase() === code;
-    })[0];
-    if (!slot) return { ok: false, error: 'رمز الفرصة غير صحيح — انسخه كما هو من ظهر بطاقتك' };
+    var normalized = code.replace(/[^A-Z0-9]/g, '');
+    var valid = !!normalized && (app.cardPrintCode
+      ? normalized === app.cardPrintCode
+      : getAttempts(serial).some(function (t) { return String(t.code || '').replace(/[^A-Z0-9]/g, '') === normalized; }));
+    if (!valid) return { ok: false, error: 'رمز التحقق غير صحيح — انسخه من ظهر البطاقة' };
     return { ok: true, app: app, attempts: getAttempts(serial) };
   }
 
@@ -6135,6 +6142,7 @@ table.data tbody tr:hover { background: #faf8f3; }
         issueDate: app.issueDate,
         expiryDate: app.expiryDate,
         chancesLeft: attemptsLeft(app.serial),
+        usesCardPrintCode: !!app.cardPrintCode,
         chances: attempts,
         succeeded: attempts.some(function (t) { return t.slotStatus === 'succeeded'; })
       }
@@ -6221,7 +6229,8 @@ table.data tbody tr:hover { background: #faf8f3; }
           ok: true,
           app: {
             id: d.id || null, serial: d.serial, fullName: d.fullName, phone: d.phone,
-            issueDate: d.issueDate, expiryDate: d.expiryDate, posName: d.posName || ''
+            address: d.address || '', dob: d.dob || '', gender: d.gender || '', nationality: d.nationality || '',
+            issueDate: d.issueDate, expiryDate: d.expiryDate, posName: d.posName || '', status: d.status || 'active', cardPrintCode: d.cardPrintCode || null
           },
           attempts: (d.attempts || []).map(function (a) {
             return {
@@ -8075,22 +8084,8 @@ table.data tbody tr:hover { background: #faf8f3; }
 
 ;
 /* ===================== voucher.js ===================== */
-/* ===========================================================================
- *  HRC — قالب «بطاقة التوظيف» المطبوعة (86×54 مم — بحجم البطاقة المصرفية)
- *  ---------------------------------------------------------------------------
- *  التصميم المعتمد «بطاقة بوابة عشتار» (2026-09-30): لابيس ليلي + ذهب بابلي
- *  + ختم بوابة عشتار ونجمة عشتار الثمانية وخط Cairo — نفس هوية الموقع.
- *
- *  الوجه الأمامي: الشعار والاسم · اسم الزبون ورقمه · وظيفته الحالية بحالة
- *  فرصتيه · باركود QR (يفتح «بطاقتي» بالباركود معبّأً) · تاريخا الإصدار
- *  والانتهاء (30 يوماً).
- *  الوجه الخلفي: رمزا الفرصتين (مكشوفان — قرار الإدارة) · الشريط البابلي ·
- *  التعليمات (فرصتان مستقلتان · حجز 24 ساعة · الفرصة تُستهلك ولا تعود ·
- *  إعادة الطباعة بأي مكتب استنساخ) · أرقام التواصل والإخلاء القانوني.
- *
- *  الطباعة: صفحتان 86×54مم (الأمامية ثم الخلفية) — تُطبع على ورق مقوى
- *  300–350غم بخيار «الحجم الفعلي» ثم تُغلَّف حرارياً بمكتب الاستنساخ.
- * =========================================================================== */
+/* بطاقة توظيف 86×54 مم: وجه للهوية والباركود، وظهر برمز تحقق واحد.
+   لا بيانات زبون على البطاقة؛ الاستمارة A4 منفصلة. طباعة بالحجم الفعلي. */
 (function (root) {
   'use strict';
   var CFG = root.HRC_CONFIG;
@@ -8144,7 +8139,7 @@ table.data tbody tr:hover { background: #faf8f3; }
 .hc-codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2mm;}
 .hc-codebox{border:.2mm solid #e1c16b;border-radius:1.8mm;padding:.9mm 1.2mm;background:#f7f0df;color:#14203a;text-align:center;}
 .hc-codebox .clbl{font-size:4.5pt;font-weight:700;line-height:1.4;}
-.hc-codebox .code{font-family:'Courier New',monospace;font-size:11pt;font-weight:900;letter-spacing:.07em;direction:ltr;line-height:1.4;}
+.hc-codebox .code{font-family:'Courier New',monospace;font-size:10pt;font-weight:900;letter-spacing:.03em;direction:ltr;line-height:1.4;}
 .hc-codes.single{grid-template-columns:1fr;}
 .hc-codes.many{grid-template-columns:repeat(3,minmax(0,1fr));gap:.8mm;}
 .hc-codes.many .hc-codebox{padding:.5mm;}
@@ -8188,14 +8183,7 @@ table.data tbody tr:hover { background: #faf8f3; }
 
   function esc(v) { return UI ? UI.esc(String(v == null ? '' : v)) : String(v == null ? '' : v); }
 
-  function fmtCode(code) {
-    /* يُطبع الرمز بشرطته نفسها (NNNN-AA) ليطابق حرفياً ما يكتبه الزبون عند التقديم */
-    return String(code || '————');
-  }
-
-  /* ======================= الوجه الأمامي ======================= */
-  /* البطاقة الفارغة (قبل البيع): بلا اسم وبلا هاتف — خطّان للتعبئة، والباركود
-     ورمزا الفرصتين موجودان لأنهما هوية البطاقة. الصلاحية تبدأ عند التعبئة. */
+  /* الوجه الأمامي بلا بيانات شخصية؛ الصلاحية تبدأ عند البيع. */
   function isBlank(app) {
     /* البطاقة لا تحمل بيانات زبون أبداً (قرار 2026-10-01): «فارغة» تعني
        لم تُبع ولم تُفعّل بعد — البيانات تعيش على استمارة A4 بنفس الباركود. */
@@ -8220,12 +8208,13 @@ table.data tbody tr:hover { background: #faf8f3; }
   }
 
   function backHtml(app, attempts) {
-    var layout = attempts.length === 1 ? ' single' : attempts.length > 6 ? ' many dense' : attempts.length > 2 ? ' many' : '';
+    // Legacy cards print one of their existing codes; both old codes still verify.
+    var secret = app.cardPrintCode || (attempts[0] && attempts[0].code) || '';
+    var printed = app.cardPrintCode ? secret.match(/.{1,4}/g).join('-') : secret;
     return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف"><div class="frame"></div>' +
-      '<div class="hc-back-head"><b>رموز فرص البطاقة</b><span>احتفظ بالبطاقة ورموزها</span></div>' +
-      '<div class="hc-codes' + layout + '">' + attempts.map(function (t, i) {
-        return '<div class="hc-codebox"><div class="clbl">رمز الفرصة ' + (i + 1) + '</div><div class="code">' + esc(fmtCode(t.code)) + '</div></div>';
-      }).join('') + '</div>' +
+      '<div class="hc-back-head"><b>رمز التحقق من البطاقة</b><span>خاص بإعادة الطباعة</span></div>' +
+      '<div class="hc-codes single"><div class="hc-codebox"><div class="clbl">احتفظ بهذا الرمز ولا تشاركه</div>' +
+      '<div class="code">' + esc(printed || 'راجع الإدارة قبل الطباعة') + '</div></div></div>' +
       '<ul class="hc-terms">' + TERMS.map(function (n) {
         return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>';
       }).join('') + '</ul>' +
@@ -8292,10 +8281,10 @@ table.data tbody tr:hover { background: #faf8f3; }
   }
 
   /* بناء الاستمارة — attempt اختيارية (التقديم الجاري أو آخر تقديم) */
-  function formHtml(app, attempt) {
+  function formHtml(app, attempt, verifiedAttempts) {
     if (!app) return '<div class="hrc-form">لا توجد بيانات</div>';
     ensureFormStyle();
-    var attempts = Store.getAttempts(app.serial);
+    var attempts = verifiedAttempts || Store.getAttempts(app.serial);
     if (!attempt) {
       /* أحدث تقديم قيد اللعب أولاً (هو المطبوع لصاحب العمل)، وإلا آخر فرصة مستخدمة */
       var inPlay = attempts.filter(function (t) {
@@ -8400,7 +8389,7 @@ table.data tbody tr:hover { background: #faf8f3; }
   }
 
   /* طباعة الاستمارة A4: تبديل مقاس الصفحة (آخر <style> يغلب قاعدة 86×54) */
-  function printForm(app, attempt) {
+  function printForm(app, attempt, verifiedAttempts) {
     ensureStyle();
     ensureFormStyle();
     var rootEl = document.getElementById('print-root');
@@ -8414,7 +8403,7 @@ table.data tbody tr:hover { background: #faf8f3; }
     }
     pageStyle.textContent = '@media print { @page { size: A4; margin: 0; } }';
     var seq = ++printSeq;
-    rootEl.innerHTML = formHtml(app, attempt);
+    rootEl.innerHTML = formHtml(app, attempt, verifiedAttempts);
     try { Store.audit('طباعة استمارة توظيف', 'applicant', app.serial,
       'طباعة استمارة توظيف A4 بنفس باركود البطاقة — للزبون ' + app.fullName); } catch (e) { }
     function after() {
@@ -8572,23 +8561,8 @@ table.data tbody tr:hover { background: #faf8f3; }
 
 ;
 /* ===================== booking.js ===================== */
-/* ===========================================================================
- *  HRC — نافذة «بطاقتي» (بطاقة التوظيف) — واجهة الزبون العامة
- *  ---------------------------------------------------------------------------
- *  نظام بطاقة التوظيف (2026-09-30): التقديم على الوظائف يتم ببطاقة تُشترى
- *  كاشاً من نقاط البيع (مكاتب الاستنساخ) — لا دفع إلكتروني نهائياً (أُلغيت
- *  فيزا/ماستر كارد مع الاستمارة القديمة بخطواتها وبيانات بطاقتها).
- *
- *  هذه النافذة تفتح من أي زر «بطاقتي» (data-action="open-booking") أو بمسح
- *  باركود QR المطبوع على البطاقة (رابط ‎#card=<الباركود 10 خانات>) وتتيح:
- *    1) عرض حالة البطاقة: الفرصتان ووظيفته الحالية وتواريخ الصلاحية
- *    2) استخدام فرصة على وظيفة متاحة: الباركود + رمز الفرصة + اختيار الوظيفة
- *    3) إعادة طباعة البطاقة (86×54مم) من أي مكتب استنساخ — بإثبات الحيازة
- *
- *  ⚠️ أمان: عرض البطاقة يحتاج الباركود فقط (بيانات مقنّعة)، أما استهلاك فرصة
- *  أو إعادة الطباعة فيتطلب **رمز الفرصة** السري المطبوع على ظهر الورقة —
- *  فمن يملك الورقة يملك البطاقة (نموذج الحيازة المعتمد من الإدارة).
- * =========================================================================== */
+/* بطاقتي: عرض مقنّع بالباركود، وتقديم عبر apply.html للبطاقات الجديدة.
+   إعادة طباعة البطاقة وA4 تتطلب رمز تحقق مستقل؛ القديمة تقبل رمز فرصة سابقاً. */
 (function (root) {
   'use strict';
   var CFG = root.HRC_CONFIG, UI = root.HRCUI, Store = root.HRCStore;
@@ -9378,7 +9352,10 @@ table.data tbody tr:hover { background: #faf8f3; }
         '<button class="btn btn-outline" id="bk-emp-open">' + UI.ic('briefcase') + ' أنا صاحب العمل</button>' +
         '<button class="btn btn-ghost" id="bk-back">' + UI.ic('arrow-right') + ' بطاقة أخرى</button>');
     var b;
-    if ((b = document.getElementById('bk-use'))) b.addEventListener('click', function () { view = 'use'; render(); });
+    if ((b = document.getElementById('bk-use'))) b.addEventListener('click', function () {
+      if (card.usesCardPrintCode) { location.assign('apply.html?form=' + encodeURIComponent(serial)); return; }
+      view = 'use'; render();
+    });
     if ((b = document.getElementById('bk-reprint'))) b.addEventListener('click', function () { view = 'reprint'; render(); });
     if ((b = document.getElementById('bk-emp-open'))) b.addEventListener('click', employerRoute);
     if ((b = document.getElementById('bk-back'))) b.addEventListener('click', function () { card = null; serial = ''; view = 'entry'; render(); });
@@ -9460,10 +9437,10 @@ table.data tbody tr:hover { background: #faf8f3; }
 
   /* ======================= 4) إعادة الطباعة ======================= */
   function renderReprint(host) {
-    host.innerHTML = stepHead('إعادة طباعة البطاقة', 'لإثبات أن الورقة بيدك، أدخل رمز إحدى فرصتي بطاقتك — ثم اطبعها بأي مكتب استنساخ.', 'print') +
-      fieldHtml('rcode', 'رمز الفرصة (من ظهر بطاقتك)',
-        inputHtml('rcode', 'text', 'مثال: 7429-KQ', '', 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.08em" inputmode="latin"'),
-        'أي واحد من الرمزين يكفي — يبقى كما هو في النسخة الجديدة.') +
+    host.innerHTML = stepHead('إعادة طباعة البطاقة', 'أدخل رمز التحقق من ظهر البطاقة لإعادة الطباعة.', 'print') +
+      fieldHtml('rcode', 'رمز التحقق (من ظهر البطاقة)',
+        inputHtml('rcode', 'text', 'مثال: 7A2C-9E4B-1D8F-6C03', '', 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.08em" inputmode="latin"'),
+        'البطاقات القديمة: يُقبل أحد رمزي الفرص المطبوعين عليها.') +
       '<div class="bk-info">' + UI.ic('alert') +
         ' <b>البطاقة:</b> صفحتان بحجم البطاقة المصرفية (86×54مم) — ورق مقوى 300–350غم + تغليف حراري وخيار «الحجم الفعلي» دون تحجيم.<br>' +
         UI.ic('file') + ' <b>استمارة التوظيف A4:</b> تحمل بياناتك وبيانات الوظيفة وصاحب العمل — تُسلَّم لصاحب العمل عند المقابلة.</div>' +
@@ -9486,8 +9463,8 @@ table.data tbody tr:hover { background: #faf8f3; }
   function doReprint(mode) {
     var inp = document.getElementById('bk-rcode');
     var code = String(inp ? inp.value : '').trim().toUpperCase();
-    if (!/^\d{4}-[A-Z]{2}$/.test(code)) {
-      setErr('rcode', 'الرمز بصيغة 4 أرقام وشرطة وحرفين — مثل 7429-KQ.');
+    if (!/^(?:[A-F0-9]{16}|[0-9]{4}[A-Z]{2})$/.test(code.replace(/[^A-Z0-9]/g, ''))) {
+      setErr('rcode', 'أدخل رمز التحقق كاملاً؛ يُقبل أيضاً رمز فرصة من بطاقة قديمة.');
       return;
     }
     if (busy) return;
@@ -9498,13 +9475,13 @@ table.data tbody tr:hover { background: #faf8f3; }
       busy = false;
       if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('print') + ' تحقق واطبع'; }
       if (!r || !r.ok) {
-        setErr('rcode', (r && r.error) || 'رمز الفرصة غير صحيح.');
+        setErr('rcode', (r && r.error) || 'رمز التحقق غير صحيح.');
         return;
       }
       var V = root.HRCVoucher;
       if (mode === 'form') {
         if (!V || !V.printForm) { setErr('rcode', 'قالب طباعة الاستمارة غير متوفر بهذه الصفحة.'); return; }
-        try { V.printForm(r.app, null); } catch (e) {
+        try { V.printForm(r.app, null, r.attempts); } catch (e) {
           setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
         }
       } else {

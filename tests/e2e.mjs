@@ -210,6 +210,12 @@ await wait(200);
   await wait(450);
 }
 const BLANKS = D.listBlankCards().slice(0, 3);
+check('البطاقات الصادرة حديثاً لها رموز تحقق مستقلة وفريدة',
+  BLANKS.every((card) => /^[A-F0-9]{16}$/.test(card.cardPrintCode)) &&
+  new Set(BLANKS.map((card) => card.cardPrintCode)).size === BLANKS.length);
+// This historical wizard suite covers already-printed legacy cards.
+// Independent-code cards are covered by reprint-code.mjs (including real SQL).
+BLANKS.forEach((card) => { card.cardPrintCode = null; });
 check('المخزون الفارغ زاد (' + stockBefore + ' → ' + D.listBlankCards().length + ')',
   D.listBlankCards().length === stockBefore + 3);
 check('البطاقات الفارغة بلا اسم وبلا تواريخ (بانتظار التعبئة)',
@@ -315,7 +321,7 @@ check('البطاقة سارية والفرصة الأولى استُهلكت ب
   D.getJob('HRC-1043').status === 'reserved',
   'المتبقي ' + D.attemptsLeft(SERIAL) + ' / ' + (D.getAttempts(SERIAL)[0] || {}).slotStatus);
 const CHANCES = D.getAttempts(SERIAL);
-check('رمزا فرصتي البطاقة هما نفسيهما المطبوعين على الورقة الفارغة',
+check('رموز فرص البطاقة القديمة لا تتغير عند تعبئتها',
   CHANCES.every((t) => blankCodes.indexOf(t.code) >= 0));
 console.log('   ℹ  البطاقة: ' + SERIAL + ' | الفرصة ١: ' + (CHANCES[0] || {}).code + ' | الفرصة ٢: ' + (CHANCES[1] || {}).code);
 
@@ -356,7 +362,7 @@ const mustPrint = [
   ['الشركة', /شركة الهدف للتوظيف|Al-Hadaf/.test(printHtml)],
   ['الباركود QR', /<svg[\s\S]*<path/.test(printHtml)],
   ['الرقم التسلسلي', printHtml.includes(SERIAL)],
-  ['رمزا الفرصتين', printHtml.includes(CHANCES[0].code) && printHtml.includes(CHANCES[1].code)],
+  ['رمز تحقق واحد للبطاقة القديمة', printHtml.includes(CHANCES[0].code) && !printHtml.includes(CHANCES[1].code)],
   ['الإخلاء القانوني', /غير مسؤولة قانون/.test(printHtml)]
 ];
 const missPrint = mustPrint.filter(([, c]) => !c).map(([k]) => k);
@@ -994,7 +1000,7 @@ await wait(150);
   click(pubCard.w, box.querySelector('#bk-print'));
   await wait(300);
   const errHost = pubCard.doc.querySelector('[data-bk-err="rcode"]');
-  check('إعادة الطباعة برمز خاطئ مرفوضة', !!errHost && /رمز الفرصة/.test(errHost.textContent) &&
+  check('إعادة الطباعة برمز خاطئ مرفوضة', !!errHost && /رمز التحقق/.test(errHost.textContent) &&
     errHost.style.display !== 'none', 'لم يظهر خطأ الرمز');
 
   setVal(pubCard.w, box.querySelector('#bk-rcode'), CHANCES[1].code);
@@ -1002,9 +1008,9 @@ await wait(150);
   await wait(450);
 }
 const reprintHtml = pubCard.doc.getElementById('print-root').innerHTML;
-check('إعادة طباعة البطاقة نجحت: الوجهان بالباركود والرمزين — وبلا اسم زبون',
+check('إعادة طباعة البطاقة القديمة نجحت: وجهان وباركود ورمز واحد — وبلا اسم زبون',
   (reprintHtml.match(/class="hrc-card[" ]/g) || []).length === 2 && reprintHtml.includes(SERIAL) &&
-  reprintHtml.includes(CHANCES[0].code) && reprintHtml.includes(CHANCES[1].code) &&
+  reprintHtml.includes(CHANCES[0].code) && !reprintHtml.includes(CHANCES[1].code) &&
   !reprintHtml.includes('مرتضى كريم جبر'));
 check('نافذة الطباعة استُدعيت لإعادة الطباعة', pubCard.w.__printed > 0, 'عدد الاستدعاءات ' + pubCard.w.__printed);
 check('عدّاد طباعة البطاقة زاد (' + printedBefore + ' → ' + P3C.getApplicant(SERIAL).printedCount + ')',

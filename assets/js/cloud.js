@@ -106,6 +106,7 @@
     return {
       id: r.id,
       serial: r.serial,
+      cardPrintCode: r.card_print_code || null,
       fullName: r.full_name,
       phone: r.phone,
       address: r.address || '',
@@ -157,6 +158,7 @@
          الطلب وانتهت الصلاحية 30 يوماً من لحظة الطلب لا من لحظة الإصدار. */
     if (o.issueDate) row.issue_date = o.issueDate;
     if (o.expiryDate) row.expiry_date = o.expiryDate;
+    if (o.cardPrintCode) row.card_print_code = o.cardPrintCode;
     if (o.attemptLimit != null) row.attempt_limit = n(o.attemptLimit, 5);
     return row;
   }
@@ -570,6 +572,7 @@
           card: {
             serial: c.serial, fullName: c.fullName, phone: c.phone,
             status: c.status, issueDate: c.issueDate, expiryDate: c.expiryDate,
+            usesCardPrintCode: c.usesCardPrintCode === true,
             chancesLeft: c.chancesLeft, succeeded: c.succeeded === true,
             chances: (c.chances || []).map(function (ch) {
               return {
@@ -607,10 +610,9 @@
       });
   }
 
-  /* إثبات حيازة البطاقة لإعادة الطباعة: الباركود + رمز إحدى الفرصتين
-     يُرجع الحمولة الكاملة للطباعة (الاسم والهاتف ورمزا الفرصتين) */
+  /* حمولة الطباعة المحمية برمز مستقل، أو رمز فرصة للبطاقات القديمة فقط. */
   function verifyCardCodeRpc(client, serial, code) {
-    if (!serial || !code) return Promise.resolve({ ok: false, error: 'أدخل الباركود ورمز الفرصة' });
+    if (!serial || !code) return Promise.resolve({ ok: false, error: 'أدخل الباركود ورمز التحقق' });
     return rpcCall(client, 'verify_card_code', { p_serial: String(serial).trim(), p_code: String(code).trim() })
       .then(function (res) {
         if (res && res.error) {
@@ -618,8 +620,8 @@
         }
         var data = res && res.data;
         if (!data || typeof data !== 'object') return { ok: false, code: 'empty', error: 'لا نتيجة من الخادم' };
-        if (data.ok === false) return { ok: false, code: 'bad_code', error: data.error || 'رمز الفرصة غير صحيح' };
-        return { ok: true, data: data };
+        if (data.ok === false) return { ok: false, code: 'bad_code', error: data.error || 'رمز التحقق غير صحيح' };
+        return { ok: true, data: data.data || data };
       })
       .catch(function (e) {
         return { ok: false, code: 'network', error: 'تعذّر الاتصال: ' + (e && e.message || e) };

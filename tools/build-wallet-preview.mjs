@@ -10,7 +10,7 @@ w.eval(fs.readFileSync(root+'assets/js/qr.js','utf8'));
 w.HRCUI={esc: s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))};
 w.HRCStore={cardUrl:()=> 'https://babylonian-recruitment-company.pages.dev/apply?form=DEMO-ONLY',fmtDate:s=>s?String(s).slice(0,10):'—'};
 w.eval(fs.readFileSync(root+'assets/js/voucher.js','utf8'));
-const app={serial:'DEMO-ONLY',status:'blank'};
+const app={serial:'DEMO-ONLY',status:'blank',cardPrintCode:'7A2C9E4B1D8F6C03'};
 const attempts=[{no:1,code:'1234-AB',slotStatus:'empty'},{no:2,code:'5678-CD',slotStatus:'empty'}];
 const html=w.HRCVoucher.buildHtml(app,attempts);
 const style=w.document.getElementById('hrc-card-style').textContent;

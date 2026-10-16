@@ -45,7 +45,7 @@
   function normApplicants(a) {
     return JSON.stringify([a.serial, a.fullName, a.phone, a.address, a.dob, a.gender,
       a.nationality, a.status, a.fee, a.feePaid, a.printedCount, a.notes, a.requestedCode,
-      a.issueDate, a.expiryDate, a.attemptLimit, a.rejectReason]);
+      a.issueDate, a.expiryDate, a.attemptLimit, a.rejectReason, a.cardPrintCode]);
   }
   function normAttempts(t) {
     return JSON.stringify([t.serial, t.no, t.jobCode, t.slotStatus, t.selectedAt,

@@ -1,19 +1,5 @@
-/* ===========================================================================
- *  HRC — قالب «بطاقة التوظيف» المطبوعة (86×54 مم — بحجم البطاقة المصرفية)
- *  ---------------------------------------------------------------------------
- *  التصميم المعتمد «بطاقة بوابة عشتار» (2026-09-30): لابيس ليلي + ذهب بابلي
- *  + ختم بوابة عشتار ونجمة عشتار الثمانية وخط Cairo — نفس هوية الموقع.
- *
- *  الوجه الأمامي: الشعار والاسم · اسم الزبون ورقمه · وظيفته الحالية بحالة
- *  فرصتيه · باركود QR (يفتح «بطاقتي» بالباركود معبّأً) · تاريخا الإصدار
- *  والانتهاء (30 يوماً).
- *  الوجه الخلفي: رمزا الفرصتين (مكشوفان — قرار الإدارة) · الشريط البابلي ·
- *  التعليمات (فرصتان مستقلتان · حجز 24 ساعة · الفرصة تُستهلك ولا تعود ·
- *  إعادة الطباعة بأي مكتب استنساخ) · أرقام التواصل والإخلاء القانوني.
- *
- *  الطباعة: صفحتان 86×54مم (الأمامية ثم الخلفية) — تُطبع على ورق مقوى
- *  300–350غم بخيار «الحجم الفعلي» ثم تُغلَّف حرارياً بمكتب الاستنساخ.
- * =========================================================================== */
+/* بطاقة توظيف 86×54 مم: وجه للهوية والباركود، وظهر برمز تحقق واحد.
+   لا بيانات زبون على البطاقة؛ الاستمارة A4 منفصلة. طباعة بالحجم الفعلي. */
 (function (root) {
   'use strict';
   var CFG = root.HRC_CONFIG;
@@ -67,7 +53,7 @@
 .hc-codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2mm;}
 .hc-codebox{border:.2mm solid #e1c16b;border-radius:1.8mm;padding:.9mm 1.2mm;background:#f7f0df;color:#14203a;text-align:center;}
 .hc-codebox .clbl{font-size:4.5pt;font-weight:700;line-height:1.4;}
-.hc-codebox .code{font-family:'Courier New',monospace;font-size:11pt;font-weight:900;letter-spacing:.07em;direction:ltr;line-height:1.4;}
+.hc-codebox .code{font-family:'Courier New',monospace;font-size:10pt;font-weight:900;letter-spacing:.03em;direction:ltr;line-height:1.4;}
 .hc-codes.single{grid-template-columns:1fr;}
 .hc-codes.many{grid-template-columns:repeat(3,minmax(0,1fr));gap:.8mm;}
 .hc-codes.many .hc-codebox{padding:.5mm;}
@@ -111,14 +97,7 @@
 
   function esc(v) { return UI ? UI.esc(String(v == null ? '' : v)) : String(v == null ? '' : v); }
 
-  function fmtCode(code) {
-    /* يُطبع الرمز بشرطته نفسها (NNNN-AA) ليطابق حرفياً ما يكتبه الزبون عند التقديم */
-    return String(code || '————');
-  }
-
-  /* ======================= الوجه الأمامي ======================= */
-  /* البطاقة الفارغة (قبل البيع): بلا اسم وبلا هاتف — خطّان للتعبئة، والباركود
-     ورمزا الفرصتين موجودان لأنهما هوية البطاقة. الصلاحية تبدأ عند التعبئة. */
+  /* الوجه الأمامي بلا بيانات شخصية؛ الصلاحية تبدأ عند البيع. */
   function isBlank(app) {
     /* البطاقة لا تحمل بيانات زبون أبداً (قرار 2026-10-01): «فارغة» تعني
        لم تُبع ولم تُفعّل بعد — البيانات تعيش على استمارة A4 بنفس الباركود. */
@@ -143,12 +122,13 @@
   }
 
   function backHtml(app, attempts) {
-    var layout = attempts.length === 1 ? ' single' : attempts.length > 6 ? ' many dense' : attempts.length > 2 ? ' many' : '';
+    // Legacy cards print one of their existing codes; both old codes still verify.
+    var secret = app.cardPrintCode || (attempts[0] && attempts[0].code) || '';
+    var printed = app.cardPrintCode ? secret.match(/.{1,4}/g).join('-') : secret;
     return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف"><div class="frame"></div>' +
-      '<div class="hc-back-head"><b>رموز فرص البطاقة</b><span>احتفظ بالبطاقة ورموزها</span></div>' +
-      '<div class="hc-codes' + layout + '">' + attempts.map(function (t, i) {
-        return '<div class="hc-codebox"><div class="clbl">رمز الفرصة ' + (i + 1) + '</div><div class="code">' + esc(fmtCode(t.code)) + '</div></div>';
-      }).join('') + '</div>' +
+      '<div class="hc-back-head"><b>رمز التحقق من البطاقة</b><span>خاص بإعادة الطباعة</span></div>' +
+      '<div class="hc-codes single"><div class="hc-codebox"><div class="clbl">احتفظ بهذا الرمز ولا تشاركه</div>' +
+      '<div class="code">' + esc(printed || 'راجع الإدارة قبل الطباعة') + '</div></div></div>' +
       '<ul class="hc-terms">' + TERMS.map(function (n) {
         return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>';
       }).join('') + '</ul>' +
@@ -215,10 +195,10 @@
   }
 
   /* بناء الاستمارة — attempt اختيارية (التقديم الجاري أو آخر تقديم) */
-  function formHtml(app, attempt) {
+  function formHtml(app, attempt, verifiedAttempts) {
     if (!app) return '<div class="hrc-form">لا توجد بيانات</div>';
     ensureFormStyle();
-    var attempts = Store.getAttempts(app.serial);
+    var attempts = verifiedAttempts || Store.getAttempts(app.serial);
     if (!attempt) {
       /* أحدث تقديم قيد اللعب أولاً (هو المطبوع لصاحب العمل)، وإلا آخر فرصة مستخدمة */
       var inPlay = attempts.filter(function (t) {
@@ -323,7 +303,7 @@
   }
 
   /* طباعة الاستمارة A4: تبديل مقاس الصفحة (آخر <style> يغلب قاعدة 86×54) */
-  function printForm(app, attempt) {
+  function printForm(app, attempt, verifiedAttempts) {
     ensureStyle();
     ensureFormStyle();
     var rootEl = document.getElementById('print-root');
@@ -337,7 +317,7 @@
     }
     pageStyle.textContent = '@media print { @page { size: A4; margin: 0; } }';
     var seq = ++printSeq;
-    rootEl.innerHTML = formHtml(app, attempt);
+    rootEl.innerHTML = formHtml(app, attempt, verifiedAttempts);
     try { Store.audit('طباعة استمارة توظيف', 'applicant', app.serial,
       'طباعة استمارة توظيف A4 بنفس باركود البطاقة — للزبون ' + app.fullName); } catch (e) { }
     function after() {

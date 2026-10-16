@@ -1,20 +1,5 @@
-/* ===========================================================================
- *  HRC — نافذة «بطاقتي» (بطاقة التوظيف) — واجهة الزبون العامة
- *  ---------------------------------------------------------------------------
- *  نظام بطاقة التوظيف (2026-09-30): التقديم على الوظائف يتم ببطاقة تُشترى
- *  كاشاً من نقاط البيع (مكاتب الاستنساخ) — لا دفع إلكتروني نهائياً (أُلغيت
- *  فيزا/ماستر كارد مع الاستمارة القديمة بخطواتها وبيانات بطاقتها).
- *
- *  هذه النافذة تفتح من أي زر «بطاقتي» (data-action="open-booking") أو بمسح
- *  باركود QR المطبوع على البطاقة (رابط ‎#card=<الباركود 10 خانات>) وتتيح:
- *    1) عرض حالة البطاقة: الفرصتان ووظيفته الحالية وتواريخ الصلاحية
- *    2) استخدام فرصة على وظيفة متاحة: الباركود + رمز الفرصة + اختيار الوظيفة
- *    3) إعادة طباعة البطاقة (86×54مم) من أي مكتب استنساخ — بإثبات الحيازة
- *
- *  ⚠️ أمان: عرض البطاقة يحتاج الباركود فقط (بيانات مقنّعة)، أما استهلاك فرصة
- *  أو إعادة الطباعة فيتطلب **رمز الفرصة** السري المطبوع على ظهر الورقة —
- *  فمن يملك الورقة يملك البطاقة (نموذج الحيازة المعتمد من الإدارة).
- * =========================================================================== */
+/* بطاقتي: عرض مقنّع بالباركود، وتقديم عبر apply.html للبطاقات الجديدة.
+   إعادة طباعة البطاقة وA4 تتطلب رمز تحقق مستقل؛ القديمة تقبل رمز فرصة سابقاً. */
 (function (root) {
   'use strict';
   var CFG = root.HRC_CONFIG, UI = root.HRCUI, Store = root.HRCStore;
@@ -804,7 +789,10 @@
         '<button class="btn btn-outline" id="bk-emp-open">' + UI.ic('briefcase') + ' أنا صاحب العمل</button>' +
         '<button class="btn btn-ghost" id="bk-back">' + UI.ic('arrow-right') + ' بطاقة أخرى</button>');
     var b;
-    if ((b = document.getElementById('bk-use'))) b.addEventListener('click', function () { view = 'use'; render(); });
+    if ((b = document.getElementById('bk-use'))) b.addEventListener('click', function () {
+      if (card.usesCardPrintCode) { location.assign('apply.html?form=' + encodeURIComponent(serial)); return; }
+      view = 'use'; render();
+    });
     if ((b = document.getElementById('bk-reprint'))) b.addEventListener('click', function () { view = 'reprint'; render(); });
     if ((b = document.getElementById('bk-emp-open'))) b.addEventListener('click', employerRoute);
     if ((b = document.getElementById('bk-back'))) b.addEventListener('click', function () { card = null; serial = ''; view = 'entry'; render(); });
@@ -886,10 +874,10 @@
 
   /* ======================= 4) إعادة الطباعة ======================= */
   function renderReprint(host) {
-    host.innerHTML = stepHead('إعادة طباعة البطاقة', 'لإثبات أن الورقة بيدك، أدخل رمز إحدى فرصتي بطاقتك — ثم اطبعها بأي مكتب استنساخ.', 'print') +
-      fieldHtml('rcode', 'رمز الفرصة (من ظهر بطاقتك)',
-        inputHtml('rcode', 'text', 'مثال: 7429-KQ', '', 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.08em" inputmode="latin"'),
-        'أي واحد من الرمزين يكفي — يبقى كما هو في النسخة الجديدة.') +
+    host.innerHTML = stepHead('إعادة طباعة البطاقة', 'أدخل رمز التحقق من ظهر البطاقة لإعادة الطباعة.', 'print') +
+      fieldHtml('rcode', 'رمز التحقق (من ظهر البطاقة)',
+        inputHtml('rcode', 'text', 'مثال: 7A2C-9E4B-1D8F-6C03', '', 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.08em" inputmode="latin"'),
+        'البطاقات القديمة: يُقبل أحد رمزي الفرص المطبوعين عليها.') +
       '<div class="bk-info">' + UI.ic('alert') +
         ' <b>البطاقة:</b> صفحتان بحجم البطاقة المصرفية (86×54مم) — ورق مقوى 300–350غم + تغليف حراري وخيار «الحجم الفعلي» دون تحجيم.<br>' +
         UI.ic('file') + ' <b>استمارة التوظيف A4:</b> تحمل بياناتك وبيانات الوظيفة وصاحب العمل — تُسلَّم لصاحب العمل عند المقابلة.</div>' +
@@ -912,8 +900,8 @@
   function doReprint(mode) {
     var inp = document.getElementById('bk-rcode');
     var code = String(inp ? inp.value : '').trim().toUpperCase();
-    if (!/^\d{4}-[A-Z]{2}$/.test(code)) {
-      setErr('rcode', 'الرمز بصيغة 4 أرقام وشرطة وحرفين — مثل 7429-KQ.');
+    if (!/^(?:[A-F0-9]{16}|[0-9]{4}[A-Z]{2})$/.test(code.replace(/[^A-Z0-9]/g, ''))) {
+      setErr('rcode', 'أدخل رمز التحقق كاملاً؛ يُقبل أيضاً رمز فرصة من بطاقة قديمة.');
       return;
     }
     if (busy) return;
@@ -924,13 +912,13 @@
       busy = false;
       if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('print') + ' تحقق واطبع'; }
       if (!r || !r.ok) {
-        setErr('rcode', (r && r.error) || 'رمز الفرصة غير صحيح.');
+        setErr('rcode', (r && r.error) || 'رمز التحقق غير صحيح.');
         return;
       }
       var V = root.HRCVoucher;
       if (mode === 'form') {
         if (!V || !V.printForm) { setErr('rcode', 'قالب طباعة الاستمارة غير متوفر بهذه الصفحة.'); return; }
-        try { V.printForm(r.app, null); } catch (e) {
+        try { V.printForm(r.app, null, r.attempts); } catch (e) {
           setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
         }
       } else {
