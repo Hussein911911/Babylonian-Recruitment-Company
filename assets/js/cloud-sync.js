@@ -205,7 +205,14 @@
         { __brc: { op: op.op, table: op.table, code: 'HRC_NO_ROW' } });
     }
     if (op.table === 'jobs') return C.jobToDb(op.local);
-    if (op.table === 'applicants') return C.applicantToDb(op.local);
+    if (op.table === 'applicants') {
+      var row = C.applicantToDb(op.local);
+      /* Legacy imports need explicit NULL, otherwise the server default
+         silently invalidates their already-printed opportunity codes.
+         Updates still omit an absent secret rather than clearing a remote one. */
+      if (op.op === 'insert' && !op.local.cardPrintCode) row.card_print_code = null;
+      return row;
+    }
     if (op.table === 'job_attempts') return C.attemptToDb(op.local);
     if (op.table === 'audit_log') return C.auditToDb(op.local);
     if (op.table === 'settings') return { key: op.local.key, value: op.local.value };

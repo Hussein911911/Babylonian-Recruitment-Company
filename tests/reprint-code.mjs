@@ -19,7 +19,7 @@ try {
     );
     create table brc.audit_log (
       ts timestamptz default now(), username text, role text, action text,
-      entity text, entity_id text, details text
+      entity text, entity_id text, details text, ip text, diff jsonb
     );
     create table brc.jobs (id uuid, title text, region text);
     create table brc.job_attempts (
@@ -38,6 +38,22 @@ try {
   }
   const migration = read('supabase/migrations/20261016090000_card_print_verification_code.sql');
   await db.exec(migration);
+
+  // Reproduce the real automatic audit trigger, not just the RPC's manual logs.
+  const auditFn = schema.match(/create or replace function brc\.trg_audit\(\)[\s\S]*?end \$\$;/)[0];
+  const oldAuditFn = auditFn.replace("  before_row := before_row - 'card_print_code' - 'chance_code';", '')
+    .replace("  after_row := after_row - 'card_print_code' - 'chance_code';", '');
+  await db.exec(oldAuditFn + `
+    create trigger test_audit_applicants after insert or update or delete on brc.applicants for each row execute function brc.trg_audit();
+    create trigger test_audit_attempts after insert or update or delete on brc.job_attempts for each row execute function brc.trg_audit();
+    insert into brc.applicants(serial,full_name,card_print_code) values ('HISTORY','تاريخ يجب حفظه','A1B2C3D4E5F6789');
+    insert into brc.job_attempts(serial,attempt_no,chance_code) values ('HISTORY',1,'9876-ZZ');
+  `);
+  const correction = read('supabase/migrations/20261016103000_card_print_code_audit_privacy.sql');
+  check('regression fixture reproduces historical audit secret leakage', JSON.stringify((await db.query("select diff from brc.audit_log where entity_id='HISTORY'")).rows).includes('A1B2C3D4E5F6789'));
+  await db.exec(correction); await db.exec(correction);
+  const history = JSON.stringify((await db.query("select diff from brc.audit_log where entity_id='HISTORY'")).rows);
+  check('corrective migration is repeatable and redacts historical secrets only', !history.includes('A1B2C3D4E5F6789') && !history.includes('9876-ZZ') && history.includes('تاريخ يجب حفظه') && history.includes('HISTORY'));
   const query = async (sql, params = []) => (await db.query(sql, params)).rows;
   const rpc = async (serial, code) => (await query('select brc.verify_card_code($1, $2) as r', [serial, code]))[0].r;
   check('migration does not invalidate any previously printed card', (await query("select card_print_code from brc.applicants where serial='LEGACY'"))[0].card_print_code === null);
@@ -50,6 +66,14 @@ try {
   check('new server-issued cards receive distinct 64-bit random codes', /^[A-F0-9]{16}$/.test(secret) && secret !== cards[1].card_print_code);
   await db.exec(migration);
   check('reapplying migration does not rotate existing new or old codes', (await query("select card_print_code from brc.applicants where serial='NEW'"))[0].card_print_code === secret && (await query("select card_print_code from brc.applicants where serial='LEGACY'"))[0].card_print_code === null);
+  await db.exec(`insert into brc.applicants(serial, full_name, card_print_code) values ('RESTORED','بطاقة مسترجعة',null);
+    insert into brc.job_attempts(serial,attempt_no,chance_code) values ('RESTORED',1,'8888-AB');
+    insert into brc.applicants(serial,full_name) values ('AUDIT','قبل التعديل');
+    update brc.applicants set full_name='بعد التعديل' where serial='AUDIT';
+    delete from brc.applicants where serial='AUDIT';`);
+  const auditChanges = await query("select action, diff from brc.audit_log where entity_id='AUDIT' order by ts");
+  check('insert/update/delete audit diffs retain evidence without secret keys', auditChanges.length === 3 && !JSON.stringify(auditChanges).includes('card_print_code') && JSON.stringify(auditChanges).includes('قبل التعديل') && JSON.stringify(auditChanges).includes('بعد التعديل'));
+  check('restoring legacy cards with explicit NULL preserves their printed code', (await rpc('RESTORED','8888-AB')).ok);
   await db.exec('set role anon');
   let denied = false;
   try { await query('select * from brc.applicants'); } catch (e) { denied = e.message.includes('permission denied'); }
@@ -59,13 +83,15 @@ try {
   check('another card secret cannot authorize a reprint', !(await rpc('NEW', cards[1].card_print_code)).ok);
   const verified = await rpc(' new ', secret.toLowerCase().match(/.{4}/g).join('-'));
   check('normalized independent code unlocks the protected print payload', verified.ok && verified.data.fullName === 'اسم خاص بالزبون' && verified.data.cardPrintCode === secret && verified.data.attempts.length === 2 && verified.data.address === 'عنوان خاص');
+  await db.exec("reset role; update brc.job_attempts set slot_status='rejected' where serial='NEW' and attempt_no=1; set role anon");
+  check('consuming an opportunity neither rotates nor invalidates the independent reprint code', (await rpc('NEW',secret)).ok && !(await rpc('NEW','2468-EF')).ok);
   const lookup = (await query("select brc.lookup_card('NEW') as r"))[0].r;
   check('public barcode lookup exposes capability but no secret or full PII', lookup.usesCardPrintCode === true && !JSON.stringify(lookup).includes(secret) && !JSON.stringify(lookup).includes('2468-EF') && lookup.fullName !== verified.data.fullName && lookup.phone !== verified.data.phone);
   const bad = await rpc('NEW', '0000000000000000');
   check('wrong code returns no protected payload', !bad.ok && !bad.data && !JSON.stringify(bad).includes(secret));
   check('unknown serial fails without protected payload', !(await rpc('MISSING', secret)).ok);
-  // NEW has four failures above; four more reach the shared eight-attempt cap.
-  for (let i = 0; i < 4; i++) await rpc('NEW', 'FFFFFFFFFFFFFFFF');
+  // NEW has five failures above; three more reach the shared eight-attempt cap.
+  for (let i = 0; i < 3; i++) await rpc('NEW', 'FFFFFFFFFFFFFFFF');
   const locked = await rpc('NEW', secret);
   check('eight failed attempts lock even a correct code for ten minutes', !locked.ok && /10/.test(locked.error));
   await db.exec('reset role');
@@ -81,7 +107,7 @@ try {
 const dom = new JSDOM('<html><head></head><body><div id="modal-root"></div><div id="jobs-grid"></div><div id="print-root"></div></body></html>', { url: 'https://test.invalid/', runScripts: 'outside-only' });
 try {
   const w = dom.window;
-  for (const file of ['config', 'store', 'cloud', 'qr', 'ui', 'voucher', 'booking']) w.eval(read('assets/js/' + file + '.js'));
+  for (const file of ['config', 'store', 'cloud', 'cloud-sync', 'qr', 'ui', 'voucher', 'booking']) w.eval(read('assets/js/' + file + '.js'));
   await w.HRCStore.init({ cloud: false });
   const S = w.HRCStore;
   const app = S.createApplicant({ fullName: 'اسم خاص للاختبار', phone: '07700000002' });
@@ -132,6 +158,13 @@ try {
   const row = C.applicantToDb(other);
   check('cloud write/read round trip retains the independent code', row.card_print_code === other.cardPrintCode && C.applicantFromDb(row).cardPrintCode === other.cardPrintCode);
   check('legacy updates omit secret, never silently rotate existing printed cards', !Object.hasOwn(C.applicantToDb(app), 'card_print_code'));
+  const oldInsert = w.HRCSync.toRow({ table: 'applicants', op: 'insert', local: app });
+  const oldUpdate = w.HRCSync.toRow({ table: 'applicants', op: 'update', local: app });
+  const newInsert = w.HRCSync.toRow({ table: 'applicants', op: 'insert', local: other });
+  check('legacy backup/import INSERT explicitly preserves NULL instead of invoking the new-code default', Object.hasOwn(oldInsert, 'card_print_code') && oldInsert.card_print_code === null);
+  check('an absent code on UPDATE cannot clear an existing remote secret', !Object.hasOwn(oldUpdate, 'card_print_code'));
+  check('new-card synchronization INSERT retains the already printed independent code', newInsert.card_print_code === other.cardPrintCode);
+  check('dashboard issuance copy no longer promises two printed codes', !/رمزا الفرصتين|بفرصتين ورمزين|رمزي الفرصتين بظهرها/.test(read('assets/js/dashboard.js')));
   const payload = { serial: other.serial, fullName: other.fullName, cardPrintCode: other.cardPrintCode, attempts: [] };
   const client = { rpc: async () => ({ data: { ok: true, data: payload } }) };
   const result = await C.verifyCardCode(client, other.serial, other.cardPrintCode);

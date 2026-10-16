@@ -555,6 +555,10 @@ begin
   else before_row := to_jsonb(old); after_row := null;
   end if;
 
+  -- Reprint secrets must never become exportable audit history.
+  before_row := before_row - 'card_print_code' - 'chance_code';
+  after_row := after_row - 'card_print_code' - 'chance_code';
+
   insert into brc.audit_log (username, role, ip, action, entity, entity_id, details, diff)
   values (
     uname, rname,
@@ -962,6 +966,14 @@ as $$ select upper(substr(u, 1, 12) || substr(u, 21, 4))
 
 alter table brc.applicants add column if not exists card_print_code text;
 alter table brc.applicants alter column card_print_code set default brc.new_card_print_code();
+
+-- Remove only secret keys from existing before/after diffs; preserve all other evidence.
+update brc.audit_log
+   set diff = diff #- '{before,card_print_code}' #- '{after,card_print_code}'
+                   #- '{before,chance_code}' #- '{after,chance_code}'
+ where (diff->'before') ?| array['card_print_code','chance_code']
+    or (diff->'after') ?| array['card_print_code','chance_code'];
+
 
 create or replace function brc.verify_card_code(p_serial text, p_code text) returns jsonb
 language plpgsql security definer
