@@ -204,6 +204,11 @@ body{
 .filter-chip.active{background:rgba(29,107,196,.15);border-color:rgba(29,107,196,.5);color:#6db8ff}
 .filter-chip:hover{border-color:rgba(200,162,74,.35)}
 
+.job-filters{padding:16px;margin-bottom:16px;border:1px solid #c8a24a45;border-radius:16px;background:#ffffff05;}
+.jf-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}.jf-top b{font-size:12pt;color:#ecd89d}.jf-top p{font-size:8pt;line-height:1.8;color:#bec9dc;margin:4px 0 0;max-width:390px}
+.jf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.jf-grid>div{min-width:0}.job-filters label{display:block;font-size:9pt;color:#e8e9ee;margin:0 0 5px}.job-filters input:not([type=checkbox]),.job-filters select{width:100%;min-height:44px;box-sizing:border-box;background:#10223d;color:#f9f6ef;border:1px solid #58657a;border-radius:9px;padding:9px;font:inherit;font-size:10pt}.job-filters input::placeholder{color:#9caac1}.job-filters input:focus,.job-filters select:focus{outline:2px solid #d8b65c;outline-offset:2px}.job-filters option{background:#10223d;color:#fff}.jf-advanced{margin-top:12px;border-top:1px solid #ffffff15;padding-top:10px}.jf-advanced summary{cursor:pointer;color:#dbc587;font-size:9pt;padding:5px 0}.jf-advanced .jf-grid{margin-top:10px}.jf-bottom{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}.job-filters .jf-check{display:flex;align-items:center;gap:6px;margin:0;font-size:9pt}.jf-check input{width:18px;height:18px;accent-color:#c8a24a}.job-filters #jobs-count{font-size:9pt;color:#c9d4e5;border-top:1px solid #ffffff12;padding-top:10px;margin-top:12px}.job-filters #jf-error{color:#ffb7ad;font-size:9pt}.job-filters .btn{white-space:normal}.job-remove{margin-inline-start:5px;background:none;border:1px solid #c8a24a70;border-radius:6px;color:#ead9ae;font:inherit;font-size:8pt;cursor:pointer}
+@media(max-width:420px){.jf-grid{grid-template-columns:1fr}.jf-top{flex-wrap:wrap}.job-filters{padding:12px}.jf-bottom .btn{width:100%}}
+
 /* ── بطاقة الوظيفة ── */
 .job-card{
   background:rgba(255,255,255,.035);border:1px solid rgba(200,162,74,.1);
@@ -716,10 +721,26 @@ body{
     <div class="page" id="pg-jobs">
       <div id="chances-bar" class="chances-bar has2"></div>
       <div class="section-title">اختر الوظيفة المناسبة لك</div>
-      <div class="filter-row" id="filter-row"></div>
+      <section class="job-filters" aria-label="فلترة الوظائف">
+        <div class="jf-top"><div><b>ابحث عن فرصتك</b><p>الترتيب المقترح يقرّب وظائف محافظتك؛ الفلاتر اختيارية ولا تستهلك أي فرصة.</p></div><button type="button" class="btn btn-outline btn-sm" onclick="G.resetJobFilters()">مسح الفلاتر</button></div>
+        <div class="jf-grid">
+          <div class="jf-search"><label for="jf-query">بحث بالاسم، الكود أو المهارة</label><input id="jf-query" type="search" placeholder="مثال: مبيعات، سائق، HRC-1042" autocomplete="off" oninput="G.setJobFilter('q',this.value)"></div>
+          <div><label for="jf-province">المحافظة</label><select id="jf-province" onchange="G.setJobFilter('province',this.value)"><option value="">كل المحافظات</option></select></div>
+        </div>
+        <details class="jf-advanced"><summary>تخصيص البحث — المنطقة، الدوام والأجر</summary><div class="jf-grid">
+          <div><label for="jf-region">المنطقة</label><select id="jf-region" onchange="G.setJobFilter('region',this.value)"><option value="">كل المناطق</option></select></div>
+          <div><label for="jf-category">نوع الوظيفة</label><select id="jf-category" onchange="G.filter(this.value)"><option value="الكل">كل التخصصات</option></select></div>
+          <div><label for="jf-shift">الدوام</label><select id="jf-shift" onchange="G.setJobFilter('shift',this.value)"><option value="">كل أوقات الدوام</option></select></div>
+          <div><label for="jf-gender">الجنس المطلوب بالإعلان</label><select id="jf-gender" onchange="G.setJobFilter('gender',this.value)"><option value="">الكل</option><option value="ذكر">ذكر أو لا فرق</option><option value="أنثى">أنثى أو لا فرق</option><option value="لا فرق">لا فرق فقط</option></select></div>
+          <div><label for="jf-salary">بداية الأجر الشهري من (د.ع)</label><input id="jf-salary" type="text" inputmode="numeric" placeholder="مثال: 500000" oninput="G.setJobFilter('salary',this.value)"></div>
+          <div><label for="jf-sort">ترتيب النتائج</label><select id="jf-sort" onchange="G.setJobFilter('sort',this.value)"><option value="recommended">المقترح حسب بياناتي</option><option value="salary-desc">الأجر الأعلى أولاً</option><option value="salary-asc">الأجر الأقل أولاً</option><option value="newest">الأحدث أولاً</option></select></div>
+        </div></details>
+        <div class="jf-bottom"><button type="button" class="btn btn-outline btn-sm" onclick="G.useMyJobFilters()">وظائف محافظتي المناسبة لبياناتي</button><label class="jf-check"><input id="jf-picked" type="checkbox" onchange="G.setJobFilter('picked',this.checked)"> مختاراتي فقط</label></div>
+        <p id="jf-error" role="alert" hidden></p><div id="jobs-count" role="status" aria-live="polite"></div>
+      </section>
       <div id="jobs-list"></div>
-      <div id="jobs-empty" style="display:none;text-align:center;padding:24px;color:rgba(249,246,239,.35)">
-        <p style="font-size:20pt;margin-bottom:4px">😔</p><p>لا توجد وظائف في هذا القسم</p>
+      <div id="jobs-empty" style="display:none;text-align:center;padding:24px;color:#c4cbd7">
+        <p style="font-size:20pt;margin-bottom:4px">⌕</p><p>لا توجد وظائف مطابقة حالياً. جرّب توسيع البحث أو مسح الفلاتر.</p><button type="button" class="btn btn-outline btn-sm" onclick="G.resetJobFilters()">عرض كل الوظائف</button>
       </div>
       <div class="jobs-foot">
         <div class="jobs-hint" id="jobs-hint">اضغط على أي وظيفة لاختيارها ثم «التالي»</div>
@@ -815,6 +836,11 @@ var chancesLeft=2, appliedJobs=[], selectedGender='ذكر', currentFilter='ال�
 /* رجع الزبون من صفحة المراجعة ليعدّل خطوة: بعد «التالي» نرجع للمراجعة فوراً
    بدل أن نمشي به كل الخطوات من جديد — راحة واضحة وتقليل تعب. */
 var returnToReview=false;
+var jobFilters={q:'',province:'',region:'',shift:'',gender:'',salary:'',sort:'recommended',picked:false};
+function jobNorm(value){return String(value==null?'':value).replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);}).replace(/[۰-۹]/g,function(c){return String(c.charCodeAt(0)-1776);}).toLowerCase().replace(/[ًٌٍَُِّْٰـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();}
+function jobProvince(value){var n=jobNorm(value);var alias={'اربيل':'أربيل','اربیل':'أربيل','انبار':'الأنبار','الانبار':'الأنبار','ذيقار':'ذي قار','ذي قار':'ذي قار','الديوانيه':'القادسية','ديوانيه':'القادسية','القادسيه':'القادسية','سليمانيه':'السليمانية','حلبجه':'حلبجة'};if(Object.prototype.hasOwnProperty.call(alias,n))return alias[n];var found=Object.keys(IRAQ).concat(['حلبجة']).filter(function(p){return jobNorm(p)===n;})[0];return found||String(value||'').trim();}
+function jobSalary(value){var text=jobNorm(value).replace(/[,،٬\s]/g,'');if(!text)return 0;return /^\d+$/.test(text)&&isFinite(Number(text))?Number(text):null;}
+
 
 /* ═══════════════════════════════════════════════════════════════
    أدوات مساعدة
@@ -1130,21 +1156,57 @@ var G={
   },
 
   renderFilters:function(){
-    var cats={};jobs.forEach(function(j){cats[j.category]=true;});
-    var sorted=Object.keys(cats).sort();sorted.unshift('الكل');
-    var h='';
-    sorted.forEach(function(c){
-      h+='<div class="filter-chip '+(c===currentFilter?'active':'')+'" onclick="G.filter(\''+esc(c)+'\')">'+esc(c)+'</div>';
-    });
-    $('filter-row').innerHTML=h;
+    function options(id,values,all,value){var el=$(id);if(!el)return;el.innerHTML='<option value="'+esc(all==='كل التخصصات'?'الكل':'')+'">'+all+'</option>'+values.map(function(v){return'<option value="'+esc(v)+'">'+esc(v||'المحافظة غير مذكورة')+'</option>';}).join('');el.value=value;}
+    var provinces=Object.keys(IRAQ).concat(['حلبجة']);
+    jobs.forEach(function(j){var p=jobProvince(j.governorate);if(p&&provinces.indexOf(p)<0)provinces.push(p);});
+    options('jf-province',provinces.sort(function(a,b){return a.localeCompare(b,'ar');}),'كل المحافظات',jobFilters.province);
+    function distinct(field,subset){var seen=Object.create(null);return (subset||jobs).map(function(j){return String(j[field]||'').trim();}).filter(function(v){if(!v||seen[v])return false;seen[v]=true;return true;}).sort(function(a,b){return a.localeCompare(b,'ar');});}
+    var local=jobs.filter(function(j){return !jobFilters.province||jobProvince(j.governorate)===jobFilters.province;});
+    var regions=distinct('region',local);
+    if(jobFilters.region&&regions.indexOf(jobFilters.region)<0)jobFilters.region='';
+    options('jf-region',regions,'كل المناطق',jobFilters.region);
+    options('jf-category',distinct('category'),'كل التخصصات',currentFilter);
+    options('jf-shift',distinct('shift'),'كل أوقات الدوام',jobFilters.shift);
+    $('jf-gender').value=jobFilters.gender;$('jf-sort').value=jobFilters.sort;
+    $('jf-query').value=jobFilters.q;$('jf-salary').value=jobFilters.salary;$('jf-picked').checked=jobFilters.picked;
   },
 
-  filter:function(c){currentFilter=c;G.renderFilters();G.renderJobs();},
+  setJobFilter:function(key,value){
+    if(!Object.prototype.hasOwnProperty.call(jobFilters,key))return;
+    jobFilters[key]=key==='picked'?!!value:String(value||'');
+    if(key==='province'){jobFilters.province=jobProvince(jobFilters.province);jobFilters.region='';G.renderFilters();}
+    G.renderJobs();
+  },
+  filter:function(c){currentFilter=c||'الكل';G.renderFilters();G.renderJobs();},
+  resetJobFilters:function(){jobFilters={q:'',province:'',region:'',shift:'',gender:'',salary:'',sort:'recommended',picked:false};currentFilter='الكل';G.renderFilters();G.renderJobs();},
+  useMyJobFilters:function(){jobFilters={q:'',province:jobProvince($('f-prov').value),region:'',shift:'',gender:selectedGender,salary:'',sort:'recommended',picked:false};currentFilter='الكل';G.renderFilters();G.renderJobs();},
+  removePickedJob:function(index){if(index<0||index>=pickedJobs.length)return;pickedJobs.splice(index,1);G.renderChances();G.renderJobs();},
+  filteredJobs:function(){
+    var min=jobSalary(jobFilters.salary),terms=jobNorm(jobFilters.q).split(' ').filter(Boolean);
+    var province=jobFilters.province,profileProvince=jobProvince($('f-prov').value);
+    var matching=jobs.map(function(j,index){return{job:j,index:index};}).filter(function(entry){
+      var j=entry.job,g=jobNorm(j.gender),any=g==='لا فرق'||g==='كلا الجنسين'||g==='الجنسين';
+      var text=jobNorm([j.code,j.title,j.category,j.governorate,j.region,j.shift,j.description].concat(j.requirements||[]).join(' '));
+      return min!==null && (!province||jobProvince(j.governorate)===province) &&
+        (!jobFilters.region||j.region===jobFilters.region) && (currentFilter==='الكل'||j.category===currentFilter) &&
+        (!jobFilters.shift||j.shift===jobFilters.shift) &&
+        (!jobFilters.gender||(jobFilters.gender==='لا فرق'?any:(any||g===jobNorm(jobFilters.gender)))) &&
+        (!min||Number(j.salaryMin)>=min) && terms.every(function(t){return text.indexOf(t)>=0;}) &&
+        (!jobFilters.picked||G.pickedIndex(j.code)>=0);
+    });
+    function score(j){return(jobProvince(j.governorate)&&jobProvince(j.governorate)===profileProvince?4:0)+(jobNorm(j.gender)===jobNorm(selectedGender)||['لا فرق','كلا الجنسين','الجنسين'].indexOf(jobNorm(j.gender))>=0?1:0);}
+    matching.sort(function(a,b){var d=0;if(jobFilters.sort==='salary-desc'||jobFilters.sort==='salary-asc'){var aKnown=Number(a.job.salaryMin)>0,bKnown=Number(b.job.salaryMin)>0;if(aKnown!==bKnown)return aKnown?-1:1;}if(jobFilters.sort==='salary-desc')d=Number(b.job.salaryMin)-Number(a.job.salaryMin);else if(jobFilters.sort==='salary-asc')d=Number(a.job.salaryMin)-Number(b.job.salaryMin);else if(jobFilters.sort==='newest')d=(Date.parse(b.job.createdAt)||0)-(Date.parse(a.job.createdAt)||0);else d=score(b.job)-score(a.job);return d||a.index-b.index;});
+    return matching.map(function(e){return e.job;});
+  },
 
   toggleDetails:function(code){var box=$('details-'+code);if(box)box.hidden=!box.hidden;},
 
   renderJobs:function(){
-    var f=currentFilter==='الكل'?jobs:jobs.filter(function(j){return j.category===currentFilter;});
+    var f=G.filteredJobs();
+    var invalidSalary=jobSalary(jobFilters.salary)===null;
+    $('jf-error').hidden=!invalidSalary;
+    $('jf-error').textContent=invalidSalary?'أدخل الأجر بالأرقام فقط، مثل 500000؛ الأجر بالدينار العراقي.':'';
+    $('jobs-count').textContent='عرض '+ar(f.length)+' من '+ar(jobs.length)+' وظيفة — المختارة: '+ar(pickedJobs.length)+' (تغيير الفلاتر لا يلغي الاختيارات)';
     var c=$('jobs-list'),e=$('jobs-empty');
     if(!f.length){c.innerHTML='';e.style.display='block';G.syncJobsFooter();return;}
     e.style.display='none';
@@ -1164,7 +1226,7 @@ var G={
         +'<div class="job-grid">'
         +'<div class="job-item"><span class="k">الراتب:</span><span class="v">'+esc(sal)+'</span></div>'
         +'<div class="job-item"><span class="k">الدوام:</span><span class="v">'+esc(j.shift)+'</span></div>'
-        +'<div class="job-item"><span class="k">المنطقة:</span><span class="v">'+esc(j.region)+'</span></div>'
+        +'<div class="job-item"><span class="k">المنطقة:</span><span class="v">'+esc([jobProvince(j.governorate),j.region].filter(Boolean).join(' — '))+'</span></div>'
         +'<div class="job-item"><span class="k">الجنس:</span><span class="v">'+esc(j.gender)+'</span></div>'
         +'<div class="job-item"><span class="k">الشواغر:</span><span class="v">'+ar(j.vacancies)+'</span></div>'
         +'</div>'
@@ -1219,7 +1281,7 @@ var G={
     }else if(okSel){
       h.className='jobs-hint picked';
       h.innerHTML='وظائفك المختارة (<b>'+ar(pickedJobs.length)+'</b> من <b>'+ar(max)+'</b>): '+
-        pickedJobs.map(function(j,i){return '<b>'+esc(j.title)+'</b> <span class="mono" dir="ltr">('+esc(j.code)+')</span> — فرصة '+ar(i+1);}).join(' · ')+
+        pickedJobs.map(function(j,i){return '<b>'+esc(j.title)+'</b> <span class="mono" dir="ltr">('+esc(j.code)+')</span> — فرصة '+ar(i+1)+'<button type="button" class="job-remove" onclick="G.removePickedJob('+i+')">إلغاء اختيار '+ar(i+1)+'</button>';}).join(' · ')+
         (pickedJobs.length<max
           ? ' — يمكنك تعيين وظيفة أخرى لفرصتك الثانية قبل «التالي»'
           : ' — اضغط «التالي» لمراجعة الطلب');
@@ -1804,7 +1866,7 @@ function loadData(){
       return;
     }
     jobs=(jr.data||[]).map(function(r){
-      return{id:r.id,code:r.code,title:r.title,category:r.category||'خدمات',region:r.region||'',
+      return{id:r.id,code:r.code,title:r.title,category:r.category||'خدمات',region:r.region||'',governorate:jobProvince(r.governorate||''),createdAt:r.created_at||'',
         salaryMin:r.salary_min||0,salaryMax:r.salary_max||0,shift:r.shift||'صباحي',description:r.description||'',
         requirements:Array.isArray(r.requirements)?r.requirements:[],vacancies:r.vacancies||1,imageUrl:r.image_url||'',
         gender:r.gender||'لا فرق',employer:{name:r.employer_name||'',phone:r.employer_phone||'',address:r.employer_address||''},
