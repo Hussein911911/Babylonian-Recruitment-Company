@@ -577,6 +577,18 @@ body{
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.job-card:hover{translate:none}}
 }
 
+
+/* Large navigation below the fields; keyboard docking is progressive enhancement. */
+@media screen {
+  .profile-page > .btn-row .btn,.jobs-foot > .btn-row .btn,#pg-review > .btn-row .btn{min-height:64px;font-size:20px;font-weight:900;padding:16px 24px;border-radius:15px}
+  #keyboard-navigation{position:fixed;inset-inline:12px;z-index:1000;padding:12px 12px calc(12px + env(safe-area-inset-bottom,0px));border:1px solid #8298ba55;border-radius:20px 20px 0 0;background:#10213bf5;box-shadow:0 -8px 32px #00000040;backdrop-filter:blur(16px)}
+  #keyboard-navigation .btn-row{margin:0!important;gap:12px}
+  #keyboard-navigation .btn{min-height:60px;padding:14px 12px;font-size:19px;font-weight:900;border-radius:13px;touch-action:manipulation}
+  .keyboard-navigation-open .app{padding-bottom:calc(var(--keyboard-nav-height,88px) + 24px)}
+  @media(max-width:420px){.profile-page > .btn-row .btn,.jobs-foot > .btn-row .btn,#pg-review > .btn-row .btn{min-height:60px;font-size:18px;padding:14px 12px}}
+}
+@media print{#keyboard-navigation{display:none!important}}
+
 /* ── الطباعة: استمارة A4 وحدها بلا واجهة ── */
 @media print{
   @page{size:A4;margin:8mm}
@@ -845,6 +857,7 @@ body{
           الدالة موجودة في brc (نفس العطل المُصلَح سابقاً في cloud-http.js).
      عميل HRCHttp المحلي يعلن الترويستين معاً ولا يترك الصفحة رهينة طرف خارجي. ── -->
 <script src="assets/js/cloud-http.js"></script>
+<script src="assets/js/apply-navigation.js"></script>
 <script>
 (function(){
 'use strict';
@@ -958,6 +971,7 @@ var G={
     if(target<0||target>=STEP_IDS.length)return;
     if(lockedProfile&&target<6)target=6;
     if(target===curPage)return;
+    if(window.HRCApplyNavigation)window.HRCApplyNavigation.reset();
     var prev=curPage;
     curPage=target;
     transitioning=true;
