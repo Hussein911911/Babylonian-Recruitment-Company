@@ -66,35 +66,8 @@ try{
  await db.query("insert into brc.employer_otp(id,attempt_id,phone,ip_hash,code_hash) select gen_random_uuid(),$1,'budget-'||n,md5(n::text)||md5(n::text),$2 from generate_series(1,200)n",[a1,hash]);
  check('global daily budget cannot be bypassed using a fresh IP',(await rpc('employer_otp_issue',[randomUUID(),'CARD-TEST','HRC-100',hash,'9'.repeat(64)])).code==='rate_limit');
 }finally{await db.close();}
-// Execute TypeScript handler with real HTTP objects and crypto, mocked database/provider transport.
-const settings={SUPABASE_URL:'https://db.test',SUPABASE_SERVICE_ROLE_KEY:'server-only-test-key',EMPLOYER_OTP_SECRET:'test-pepper-32-characters-not-real-secret',EMPLOYER_ALLOWED_ORIGINS:'https://app.test',WHATSAPP_ACCESS_TOKEN:'provider-test-token',WHATSAPP_PHONE_NUMBER_ID:'12345',WHATSAPP_OTP_TEMPLATE:'test_auth'};
-let sends=0,dbCalls=[],providerOK=true;
-const ctx=vm.createContext({Request,Response,TextEncoder,TextDecoder,AbortSignal,crypto:webcrypto,Uint8Array,Uint32Array,Deno:{env:{get:k=>settings[k]},serve:fn=>{ctx.handler=fn;}},fetch:async(url,opts)=>{
- const body=JSON.parse(opts.body);if(url.startsWith('https://graph.facebook.com/')){sends++;assert.match(body.template.components[0].parameters[0].text,/^\d{6}$/);assert.equal(body.to,'9647712345678');return new Response(JSON.stringify(providerOK?{messages:[{id:'accepted'}]}:{error:{message:'sensitive-provider-error'}}),{status:providerOK?200:500});}
- dbCalls.push({url,body});if(url.endsWith('employer_otp_issue'))return new Response(JSON.stringify({ok:true,phone:'9647712345678'}));if(url.endsWith('employer_otp_delivery'))return new Response('null');if(url.endsWith('employer_otp_verify'))return new Response(JSON.stringify({ok:true}));return new Response(JSON.stringify({ok:false,code:'session_expired'}));
-}});
+// Cached WhatsApp clients are explicitly retired, without network calls or secrets.
+let calls=0;const ctx=vm.createContext({Request,Response,Deno:{serve:fn=>{ctx.handler=fn;}},fetch:()=>{calls++;throw new Error('no network');}});
 vm.runInContext(stripTypeScriptTypes(read('supabase/functions/hrc-employer-otp/index.ts').replace('export async function handler','async function handler')),ctx);
-async function call(body,origin='https://app.test'){return ctx.handler(new Request('https://edge.test',{method:'POST',headers:{origin,'content-type':'application/json','x-forwarded-for':'1.2.3.4'},body:JSON.stringify(body)}));}
-delete settings.WHATSAPP_ACCESS_TOKEN;let response=await call({action:'request',serial:'CARD-TEST',job:'HRC-100'});check('unconfigured provider fails honestly before database reservation or sending',response.status===503&&sends===0&&dbCalls.length===0);settings.WHATSAPP_ACCESS_TOKEN='provider-test-token';
-response=await call({action:'request',serial:'CARD-TEST',job:'HRC-100'},'https://evil.test');check('unapproved browser origin cannot request codes',response.status===403&&sends===0);
-response=await call({action:'request',serial:'CARD-TEST',job:'HRC-100',phone:'07999999999'});let result=await response.json();check('successful response contains challenge only, never code/phone/secrets',result.ok&&result.challenge&&!JSON.stringify(result).includes('96477')&&!JSON.stringify(result).includes('test-token'));
-check('code and IP reach SQL as HMAC hashes',/^[a-f0-9]{64}$/.test(dbCalls[0].body.p_hash)&&/^[a-f0-9]{64}$/.test(dbCalls[0].body.p_ip));
-providerOK=false;response=await call({action:'request',serial:'CARD-TEST',job:'HRC-100'});result=await response.json();check('provider failure never claims successful sending or exposes provider detail',response.status===502&&!result.ok&&!JSON.stringify(result).includes('sensitive-provider-error')&&dbCalls.at(-1).body.p_success===false);
-response=await call({action:'view',token:'not-valid'});check('invalid session token cannot reach SQL action',response.status===401);
-response=await call({action:'verify',challenge:randomUUID(),code:'123456'});result=await response.json();check('successful verify returns unpredictable 256-bit session token',result.ok&&/^[a-f0-9]{64}$/.test(result.token));
-// UI: failed provider keeps step 1; successful verification exposes only returned scoped record.
-const html=read('employer.html');const dom=new JSDOM(html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,''),{url:'https://app.test/employer.html?form=CARD-TEST',runScripts:'outside-only'});
-try{
- const w=dom.window,$=id=>w.document.getElementById(id);let configured=false;const calls=[];
- w.HRCSupabaseConfig={enabled:true,url:'https://db.test',publishableKey:'public-key'};w.AbortSignal=AbortSignal;
- w.fetch=async(url,opts)=>{const b=JSON.parse(opts.body);calls.push(b);if(!configured)return new Response(JSON.stringify({ok:false,error:'خدمة الإرسال لم تُفعّل بعد'}),{status:503});if(b.action==='request')return new Response(JSON.stringify({ok:true,challenge:randomUUID(),expiresIn:300,resendAfter:60}));if(b.action==='verify')return new Response(JSON.stringify({ok:true,token:'a'.repeat(64)}));return new Response(JSON.stringify({ok:true,job:{title:'<img onerror=alert(1)>',code:'HRC-100',region:'الحلة'},applicant:{name:'صاحب الطلب',phone:'07700000000',address:'عنوان',gender:'ذكر'}}));};
- w.eval(read('assets/js/employer.js'));$('job').value='HRC-100';const submit=id=>$(id).dispatchEvent(new w.Event('submit',{cancelable:true}));const tick=()=>new Promise(r=>setTimeout(r,10));
- submit('job-form');await tick();check('unconfigured UI shows real error without fake OTP step',$('code-form').hidden&&!$('message').hidden&&$('details').children.length===0);
- configured=true;submit('job-form');await tick();check('successful send shows numeric six-digit input and cooldown',!$('code-form').hidden&&$('resend').disabled&&$('code').getAttribute('autocomplete')==='one-time-code');
- $('code').value='١٢٣٤٥٦';$('code').dispatchEvent(new w.Event('input'));check('OTP input normalizes Arabic digits',$('code').value==='123456');submit('code-form');await tick();
- check('after verification frontend requests scoped view with in-memory token',calls.at(-1).action==='view'&&!!calls.at(-1).token&&!$('application').hidden);
- check('returned text is rendered without markup injection',!w.document.querySelector('#job-title img')&&$('job-title').textContent.includes('<img'));
- check('no session token written to local/session storage',w.localStorage.length===0&&w.sessionStorage.length===0);
- dom.window.dispatchEvent(new dom.window.Event('pagehide'));check('leaving page clears private applicant DOM',dom.window.document.getElementById('details').textContent===''&&dom.window.document.getElementById('job-title').textContent==='');
-}finally{dom.window.close();}
-console.log(`\nEmployer OTP: ${checks} checks passed.`);
+for(const action of ['request','verify','view','decide']){const response=await ctx.handler(new Request('https://edge.test',{method:'POST',body:JSON.stringify({action})}));check('retired WhatsApp gateway blocks '+action,response.status===410&&calls===0);}
+console.log(`\nEmployer OTP historical SQL/retirement: ${checks} checks passed.`);

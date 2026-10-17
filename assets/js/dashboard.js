@@ -1200,7 +1200,7 @@
         : '<div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#eef1f7,#d9dfeb);display:flex;align-items:center;justify-content:center"><svg class="ic" style="width:20px;height:20px;color:#8fa0c4"><use href="#i-briefcase"/></svg></div>';
       return '<tr>' +
         '<td>' + imageCell + '</td>' +
-        '<td><span class="chip chip-code mono" style="font-size:.8rem">' + UI.esc(j.code) + '</span></td>' +
+        '<td><span class="chip chip-code mono" style="font-size:.8rem">' + UI.esc(j.code) + '</span><div class="tiny muted" style="margin-top:5px">' + (j.employerPinSet ? '🔒 رمز صاحب العمل مفعّل' : '⚠ يحتاج تعيين رمز صاحب العمل') + '</div></td>' +
         '<td><b style="color:var(--lapis-2)">' + UI.esc(j.title) + '</b><div class="tiny muted" style="margin-top:2px">' + UI.esc(j.category) + '</div></td>' +
         '<td><span style="font-weight:600">' + UI.esc(j.region) + '</span>' + (j.governorate ? '<br><span class="tiny muted">' + UI.esc(j.governorate) + '</span>' : '') + '</td>' +
         '<td class="nowrap tiny"><b>' + Store.money(j.salaryMin) + '</b><br><span class="muted">إلى ' + Store.money(j.salaryMax) + '</span></td>' +
@@ -1265,6 +1265,7 @@
   /* نموذج إضافة/تعديل وظيفة */
   function jobModal(code) {
     var j = code ? Store.getJob(code) : null;
+    var pinCloud=Store.cloudStatus().state==='on'&&Store.cloudStatus().role==='staff';
     var regionsList = CFG.regions.map(function (r) { return '<option' + (j && j.region === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
     var governoratesList = CFG.governorates.map(function (r) { return '<option' + (j && j.governorate === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
     var shiftsList = CFG.shifts.map(function (r) { return '<option' + (j && j.shift === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
@@ -1289,6 +1290,8 @@
       '<div class="field" style="grid-column:1/-1"><label for="f-req">الشروط (نقطة لكل شرط)</label><textarea id="f-req" placeholder="خبرة سنة&#10;شهادة جنسية">' + UI.esc(j ? (j.requirements || []).join('\n') : '') + '</textarea></div>' +
       '<div class="field"><label for="f-ename">اسم صاحب العمل (داخلي) *</label><input type="text" id="f-ename" required value="' + UI.esc(e.name) + '"></div>' +
       '<div class="field"><label for="f-ephone">هاتف صاحب العمل *</label><input type="tel" id="f-ephone" required dir="ltr" value="' + UI.esc(e.phone) + '"></div>' +
+      '<div class="field"><label for="f-epin">الرمز السري لصاحب العمل · ٦ أرقام'+(!j||!j.employerPinSet?' *':'')+'</label><input type="password" id="f-epin" inputmode="numeric" autocomplete="new-password" maxlength="6" pattern="[0-9]{6}" dir="ltr" '+(pinCloud?(!j||!j.employerPinSet?'required':''):'disabled')+' placeholder="'+(j&&j.employerPinSet?'اتركه فارغاً للإبقاء على الرمز':'يختاره صاحب العمل')+'"><small class="muted">'+(pinCloud?'لا يظهر للمتقدم ولا يمكن استرجاعه. تغييره ينهي جلسات هذه الوظيفة.':'تعيين الرمز متاح عند اتصال الموظف بقاعدة الشركة فقط.')+'</small></div>' +
+      '<div class="field"><label for="f-epin-confirm">تأكيد الرمز السري</label><input type="password" id="f-epin-confirm" inputmode="numeric" autocomplete="new-password" maxlength="6" dir="ltr" '+(pinCloud?'':'disabled')+'></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="f-eaddr">عنوان صاحب العمل (داخلي)</label><input type="text" id="f-eaddr" value="' + UI.esc(e.address) + '"></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="f-interview">مكان المقابلة</label><input type="text" id="f-interview" value="' + UI.esc(j ? j.interviewLocation : 'مقر الشركة - الحلة') + '"></div>' +
       '</form>' +
@@ -1323,6 +1326,7 @@
           reader.readAsDataURL(file);
         });
         
+        ['f-epin','f-epin-confirm'].forEach(function(id){box.querySelector('#'+id).addEventListener('input',function(){this.value=this.value.replace(/[٠-٩۰-۹]/g,function(c){return String(c.charCodeAt(0)-(c<='٩'?1632:1776));}).replace(/\D/g,'').slice(0,6);});});
         box.querySelector('#job-save').addEventListener('click', function () {
           var f = box.querySelector('#job-form');
           if (!f.reportValidity()) return;
@@ -1343,6 +1347,16 @@
             interviewLocation: box.querySelector('#f-interview').value.trim(),
             imageUrl: imageData
           };
+          if(pinCloud){
+            var pin=box.querySelector('#f-epin').value,confirmation=box.querySelector('#f-epin-confirm').value;
+            if(pin!==confirmation){UI.toast('err','الرمزان غير متطابقين','أعد كتابة الرمز السري وتأكيده.');return;}
+            var button=box.querySelector('#job-save');if(button.disabled)return;button.disabled=true;
+            Store.saveJobWithPin(j?j.code:'',data,pin).then(function(result){
+              if(!result.ok){UI.toast('err','لم يُؤكَّد الحفظ',result.error);button.disabled=false;return;}
+              box.querySelector('#f-epin').value='';box.querySelector('#f-epin-confirm').value='';
+              UI.toast('ok','حُفظت الوظيفة بأمان',result.job.code+' — الرمز السري لا يُعرض بعد الحفظ.');close();
+            });return;
+          }
           if (j) {
             Store.updateJob(j.code, {
               title: data.title, category: data.category, region: data.region, governorate: data.governorate, shift: data.shift,

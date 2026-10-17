@@ -802,6 +802,19 @@ check('نموذج إضافة وظيفة يُنتج كود HRC-#### جديداً'
   const newJob = dash.window.HRCStore.listJobs({}).find((j) => j.title === 'فني تبريد');
   return (after === before + 1 && newJob && /^HRC-\d{4}$/.test(newJob.code)) || ('عدد ' + after + ' / كود ' + (newJob && newJob.code));
 });
+check('نموذج رمز صاحب العمل: ست خانات مقنّعة، تطبيع عربي، تأكيد، وحفظ منفصل عن بيانات الوظيفة', () => {
+  closeAllModals(dash.doc);const S=dash.window.HRCStore,originalStatus=S.cloudStatus,originalSave=S.saveJobWithPin;
+  let captured=null;S.cloudStatus=()=>({state:'on',role:'staff'});S.saveJobWithPin=(code,data,pin)=>{captured={code,data,pin};return Promise.resolve({ok:false,error:'فشل اختباري بلا كتابة'});};
+  try{
+    dash.doc.getElementById('btn-new-job').click();const box=lastModal(dash.doc),pin=box.querySelector('#f-epin'),confirmation=box.querySelector('#f-epin-confirm');
+    if(!pin.required||pin.type!=='password'||pin.value!==''||!confirmation)return 'الرمز ليس مطلوباً ومقنّعاً وفارغاً';
+    box.querySelector('#f-title').value='وظيفة اختبار آمن';box.querySelector('#f-ename').value='صاحب عمل';box.querySelector('#f-ephone').value='07700000000';
+    pin.value='٠٥٨٢٩٧';pin.dispatchEvent(new dash.window.Event('input'));if(pin.value!=='058297')return 'فشل تطبيع الرمز';
+    confirmation.value='123456';box.querySelector('#job-save').click();if(captured)return 'قبل رمزين غير متطابقين';
+    confirmation.value='058297';box.querySelector('#job-save').click();
+    return !!captured&&captured.pin==='058297'&&!JSON.stringify(captured.data).includes('058297')||'الرمز لم يرسل منفصلاً إلى RPC';
+  }finally{S.cloudStatus=originalStatus;S.saveJobWithPin=originalSave;closeAllModals(dash.doc);}
+});
 check('شاشة الحجوزات تعرض الحجوزات الجارية مع العدّاد التنازلي', () => {
   const r = dash.window.HRCStore.selectAttempt('HRC-BC-000117', 'HRC-1049');
   // HRC-1049 مغلقة → نتوقع فشلاً، ثم نجرّب وظيفة متاحة

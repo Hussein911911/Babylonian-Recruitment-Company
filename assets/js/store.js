@@ -662,6 +662,17 @@
     return job;
   }
 
+  // Credential never enters db, audit details, localStorage or the cloud sync queue.
+  function saveJobWithPin(code, data, pin) {
+    if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client) return Promise.resolve({ok:false,error:'حفظ الرمز السري يتطلب اتصال الموظف بقاعدة الشركة.'});
+    return cloud.client.rpc('staff_save_job_pin',{p_code:code||'',p_data:data,p_pin:pin||''}).then(function(res){
+      if(res.error||!res.data||!res.data.ok)return {ok:false,error:res.data&&res.data.error||'تعذّر حفظ الوظيفة والرمز. تأكد من تطبيق تحديث قاعدة البيانات.'};
+      var job=root.HRCCloud.jobFromDb(res.data.job);
+      db.jobs=db.jobs.filter(function(j){return j.code!==job.code;});db.jobs.unshift(job);save();emit();
+      return {ok:true,job:job};
+    }).catch(function(){return {ok:false,error:'تعذّر تأكيد الحفظ. أعد تحميل الوظائف قبل إعادة المحاولة.'};});
+  }
+
   function updateJob(code, patch) {
     var job = getJob(code); if (!job) return null;
     var before = JSON.stringify({ t: job.title, r: job.region, s: job.status });
@@ -2605,7 +2616,7 @@
     /* العمليات المعلّقة الآن (للتشخيص والعرض) — لا تُرسل شيئاً */
     diffCloud: function () { return (cloud.sync && cloud.state === 'on') ? cloud.sync.diff(db) : []; },
     // وظائف
-    listJobs: listJobs, getJob: getJob, createJob: createJob, updateJob: updateJob,
+    listJobs: listJobs, getJob: getJob, createJob: createJob, updateJob: updateJob, saveJobWithPin: saveJobWithPin,
     setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'HRC-' + (db.counters.jobCode + 1); },
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,

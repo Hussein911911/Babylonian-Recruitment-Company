@@ -49,7 +49,7 @@ const order = {};
 tables.forEach((t, i) => { if (!(t.name in order)) order[t.name] = i; });
 
 /* 8 = الستة + سجل الباركودات issued_serials + جدول التحقق الخاص employer_otp. */
-check('المخطط يعرّف الجداول الثمانية المتوقّعة', tables.length === 8,
+check('المخطط يعرّف الجداول العشرة المتوقّعة', tables.length === 10,
   tables.length + ': ' + tables.map((t) => t.name).join(', '));
 
 const SYSTEM = new Set(['auth.users', 'auth.identities', 'storage.objects']);
@@ -77,7 +77,7 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 /* 30 = 29 السابقة + إصلاح 2026-10-06: ترميم خانات الفرص الناقصة
    (ensure_card_attempts) — بطاقة جديدة كانت تظهر «انتهت فرصك» بلا أي تقديم
    لأن مزامنة لوحة الموظفين كانت تحذف خاناتها من القاعدة. */
-check('عدد الدوال المتوقّع (35)', funcs.length === 35, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+check('عدد الدوال المتوقّع (38)', funcs.length === 38, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
 const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
@@ -86,7 +86,7 @@ const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
   'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold',
   'brc.activate_card', 'brc.employer_view', 'brc.employer_decide',
-  'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts', 'brc.employer_otp_issue', 'brc.employer_otp_delivery', 'brc.employer_otp_verify', 'brc.employer_otp_action'];
+  'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts', 'brc.employer_otp_issue', 'brc.employer_otp_delivery', 'brc.employer_otp_verify', 'brc.employer_otp_action', 'brc.staff_save_job_pin', 'brc.employer_pin_login', 'brc.employer_pin_action'];
 check('كل الدوال المتوقّعة موجودة بالاسم', EXPECTED_FUNCS.every((n) => funcs.some((x) => x.name === n)),
   'المفقود: ' + EXPECTED_FUNCS.filter((n) => !funcs.some((x) => x.name === n)).join(', '));
 

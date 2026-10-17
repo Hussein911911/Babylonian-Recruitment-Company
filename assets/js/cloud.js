@@ -49,6 +49,7 @@
   /* ------------------------- تحويل الوظائف (jobs) ------------------------- */
   function jobFromDb(r) {
     return {
+      employerPinSet: r.employer_pin_set === true,
       id: r.id,
       code: r.code,
       title: r.title,
