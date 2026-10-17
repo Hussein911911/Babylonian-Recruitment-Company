@@ -47,3 +47,8 @@ verify_jwt = true
 # حاويات Storage: لا نستخدمها (الصور ثابتة داخل المستودع)
 
 # deploy-trigger: 2026-10-14 — publish hrc-staff-admin via GitHub integration
+
+# Public OTP bootstrap; all privileged RPCs remain service-only.
+[functions.hrc-employer-otp]
+enabled = true
+verify_jwt = false

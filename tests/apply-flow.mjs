@@ -341,8 +341,8 @@ const empLink = findByOnclick('G.openEmployer()');
 check('جملة «صاحب العمل؟» ظاهرة أسفل «ابدأ الآن» في صفحة الترحيب',
   !!empLink && /صاحب العمل؟/.test(empLink.textContent), empLink ? empLink.textContent : 'غير موجودة');
 vm.runInContext('G.openEmployer()', ctx);
-check('الضغط عليها يفتح صفحة صاحب العمل بنفس الباركود (role=employer)',
-  /index\.html\?role=employer#card=HRC-BC-000120$/.test(String(sandbox.location.href)),
+check('الضغط عليها يفتح بوابة تحقق صاحب العمل بنفس الباركود',
+  /employer\.html\?form=HRC-BC-000120$/.test(String(sandbox.location.href)),
   String(sandbox.location.href));
 sandbox.location.href = '';
 

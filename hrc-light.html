@@ -8856,6 +8856,8 @@ table.data tbody tr:hover { background: #faf8f3; }
   /* فتح صفحة صاحب العمل من بطاقتي (مسار يدوي) */
   var directEmployer = false;   /* فُتحت صفحة صاحب العمل من رابط role=employer بلا بوابة */
   function employerRoute(fromLink) {
+    // File-only standalone demos have no backend. Every deployed cloud entry uses OTP.
+    if (Store.cloudStatus().configured && location.protocol !== 'file:') { location.assign('employer.html?form=' + encodeURIComponent(serial)); return; }
     if (fromLink) directEmployer = true;
     view = 'routewait';
     render();

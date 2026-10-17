@@ -578,6 +578,7 @@ body{
 }
 
 
+@media screen{.welcome .employer-link{display:flex;align-items:center;justify-content:center;min-height:56px;width:min(100%,600px);padding:12px 20px;margin-top:20px;border:1px solid #d8ba6b55;background:#152c49;color:#f2dca3;border-radius:14px;text-decoration:none;font-weight:800;font-size:18px}.welcome .employer-link:hover{border-color:#e2c77f;background:#1b3658}.welcome .employer-link:focus-visible{outline:3px solid #e2c77f;outline-offset:4px}}
 /* Large navigation below the fields; keyboard docking is progressive enhancement. */
 @media screen {
   .profile-page > .btn-row .btn,.jobs-foot > .btn-row .btn,#pg-review > .btn-row .btn{min-height:64px;font-size:20px;font-weight:900;padding:16px 24px;border-radius:15px}
@@ -657,7 +658,7 @@ body{
         <div class="gold-line anim-fade-up"></div>
         <div id="welcome-status" aria-live="polite" style="min-height:1.5em;color:#e8d089;font-size:9pt"></div>
         <div class="anim-fade-up2"><button class="btn btn-primary" id="btn-start" onclick="G.start()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>ابدأ الآن</button></div>
-        <button type="button" class="employer-link" onclick="G.openEmployer()">صاحب العمل؟ متابعة طلب توظيف</button>
+        <button type="button" class="employer-link" onclick="G.openEmployer()">صاحب العمل؟ دخول آمن برمز واتساب</button>
       </div>
     </div>
 
@@ -949,7 +950,7 @@ var pickedJobs=[];       /* وظائف الزبون المعيَّنة لفرص�
 var G={
   openEmployer:function(){
     var base=location.pathname.replace(/[^/]*$/,'');
-    location.href=base+'index.html?role=employer#card='+encodeURIComponent(cardSerial||'');
+    location.href=base+'employer.html?form='+encodeURIComponent(cardSerial||'');
   },
 
   start:function(){
@@ -1882,10 +1883,8 @@ function isMissingFunction(err){
     /could not find the function/i.test(msg)||/function\s+\S+\s+does not exist/i.test(msg);
 }
 
-var DB_UPDATE_HINT='افتح صفحة تحديث القاعدة على نفس الموقع: '+
-  '<a href="db-update.html" style="color:#f0d98a;text-decoration:underline">db-update.html</a>'+
-  ' ونفّذ <b>الجزء 5</b> ثم <b>الجزء الأخير</b> (إعادة تحميل ذاكرة المخطط) في محرر SQL، ثم أعد فتح هذا الرابط.<br>'+
-  'للإدارة: النص الكامل في <b dir="ltr">docs/UPDATE-2026-10-06.sql</b> — الشرح في <b>ملاحظات التحديث</b>.';
+var DB_UPDATE_HINT='للإدارة: طبّق الهجرات الحديثة من مستودع المشروع بالترتيب، أو راجع <b dir="ltr">docs/schema.sql</b>، ثم أعد تحميل ذاكرة المخطط. لا تعِد تطبيق تحديثات الباركود القديمة بعد تحديث بوابة صاحب العمل.<br>'+
+  '<a href="index.html#contact" style="color:#f0d98a;text-decoration:underline">تواصل مع الشركة للمساعدة</a>';
 
 /* ═══════════════════════════════════════════════════════════════
    تحميل البيانات
