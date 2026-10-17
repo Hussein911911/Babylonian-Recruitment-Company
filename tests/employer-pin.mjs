@@ -20,6 +20,8 @@ try{
  const schema=read('docs/schema.sql');let a=schema.indexOf('create or replace function brc.next_job_code()');await db.exec(schema.slice(a,schema.indexOf('end $$;',a)+7));
  await db.exec(read('supabase/migrations/20261017150000_employer_whatsapp_otp.sql'));
  const migration=read('supabase/migrations/20261017190000_employer_job_pin.sql');await db.exec(migration);await db.exec(migration);
+ const activation=read('supabase/migrations/20261017232710_activate_employer_job_pin_retire_whatsapp.sql');await db.exec(activation);await db.exec(activation);
+ check('recorded production activation is idempotent with real pgcrypto',true);
  check('PIN migration is idempotent and canonical',schema.includes(migration));
  check('old WhatsApp gateway cannot issue or verify even using service role',(await db.query("select count(*)::int n from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='brc' and p.proname like 'employer_otp_%' and has_function_privilege('service_role',p.oid,'execute')")).rows[0].n===0);
  check('inactive staff cannot set a PIN',!(await rpc('staff_save_job_pin',['',JSON.stringify(data),'012345'])).ok);
