@@ -328,7 +328,10 @@ try {
   check('عنصر اختيار ملف الاستيراد موجود', !!imf);
   const snapshot = S.exportJson();
   const trimmed = JSON.parse(snapshot); trimmed.jobs = trimmed.jobs.slice(0, 2);
+  trimmed.applicants = []; trimmed.attempts = []; // valid isolated fixture, no dangling active reservations
   setFile(imf, 'hrc-backup.json', JSON.stringify(trimmed)); await wait(600);
+  check('معاينة الاستيراد تسبق أي تعديل', !!(lastModal() && lastModal().querySelector('[data-ok]')) && S.db().jobs.length === jobsNow);
+  click(lastModal() && lastModal().querySelector('[data-ok]')); await wait(400);
   check('زر «استيراد نسخة» استورد البيانات فعلاً', S.db().jobs.length === 2, S.db().jobs.length + ' مقابل 2');
   check('الاستيراد سُجّل في سجل التدقيق', S.listAudit({}).some((l) => /استيراد/.test(l.action)));
 
@@ -339,6 +342,7 @@ try {
 
   // (د) استعادة البيانات الأصلية عبر الاستيراد
   setFile(imf, 'hrc-backup.json', snapshot); await wait(600);
+  click(lastModal() && lastModal().querySelector('[data-ok]')); await wait(400);
   check('استعادة البيانات الأصلية عبر الاستيراد نجحت', S.db().jobs.length === jobsNow, S.db().jobs.length + ' مقابل ' + jobsNow);
 
   // (هـ) تشغيل قواعد الحجز التلقائي
@@ -485,7 +489,7 @@ try {
       check('النظام اعتمد النسخة المشفّرة (الوظيفة الزائدة اختفت)',
         S.db().jobs.length === jobsBeforeRestore, S.db().jobs.length + ' مقابل ' + jobsBeforeRestore);
       check('حُفظت نسخة أمان قبل الاسترداد', S.listBackupMeta().length > backupsBefore &&
-        S.listBackupMeta().some((b) => /قبل استرداد نسخة مشفّرة/.test(b.name)));
+        S.listBackupMeta().some((b) => /قبل الاستيراد/.test(b.name)));
       check('الاسترداد سُجّل في سجل التدقيق', S.listAudit({}).some((l) => /استيراد/.test(l.action)));
       check('النافذة أُغلقت بعد الاعتماد', !modalOpen());
     }

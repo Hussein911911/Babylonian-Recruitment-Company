@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Synthetic cross-device transfer: inject fixtures in test memory, NOT through
+// the restore API (now admin-only). Production Auth/security checks stay intact.
+function injectFixture(store,json){const db=store.db();for(const k of Object.keys(db))delete db[k];Object.assign(db,JSON.parse(json));store.emit();}
 /* ===========================================================================
  *  HRC — اختبارات دخانية وظيفية (jsdom)
  *  ---------------------------------------------------------------------------
@@ -1132,8 +1135,8 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
 console.log('\n=== 8) أدوات الموظف — التحقق من المنظومة الداخلية (بجلسة موظف) ===');
 {
   const dash = await load('dashboard.html', { session: STAFF_SESSION });
-  const DB = site.window.HRCStore.exportJson();
-  dash.window.HRCStore.importJson(DB);
+  const DB = JSON.stringify(site.window.HRCStore.db());
+  injectFixture(dash.window.HRCStore,DB);
   dash.window.HRCStore.emit && dash.window.HRCStore.emit();
   dash.window.HRCRefresh && dash.window.HRCRefresh();
   await new Promise((r) => setTimeout(r, 200));
@@ -1166,7 +1169,7 @@ console.log('\n=== 8) أدوات الموظف — التحقق من المنظو
 
   /* المدير: نفس الأدوات + الصلاحيات الإدارية قائمة */
   const admin = await load('dashboard.html', { session: { username: 'admin', name: 'مدير فحص', role: 'admin', title: 'مدير عام', at: new Date().toISOString() } });
-  admin.window.HRCStore.importJson(DB);
+  injectFixture(admin.window.HRCStore,DB);
   admin.window.HRCStore.emit && admin.window.HRCStore.emit();
   await new Promise((r) => setTimeout(r, 150));
   check('لوحة المدير تفتح وتُظهر أدوات الإدارة (اللوحة المالية)', () => {

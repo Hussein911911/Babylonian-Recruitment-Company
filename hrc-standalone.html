@@ -2679,6 +2679,9 @@ to{opacity:1;transform:none}
 .notice-item:not(.notice-unread) .notice-icon{background:#dfe9e6;color:#46635d}
 .notice-unread .notice-actions .btn-outline{background:#ead29d;border-color:#ead29d;color:#172e50}
 
+/* Staff-only backup assurance panel; public/print styles are unaffected. */
+.backup-assurance{padding:22px;border:1px solid #c8b077;border-radius:16px;background:linear-gradient(130deg,#152c48,#254866);color:#f2f5fa;margin-bottom:18px}.backup-eyebrow{font-size:11px;color:#e6cb8f;letter-spacing:.03em}.backup-assurance h4{font-size:19px;color:#fff;margin:7px 0 18px}.backup-layers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.backup-layers article{background:#ffffff0a;border:1px solid #ffffff24;border-radius:12px;padding:16px;min-width:0}.backup-layers b{font-size:13px;color:#f2dba6}.backup-layers p{font-size:12px;line-height:1.9;margin:10px 0;color:#f1f4f8}.backup-layers small{font-size:10px;line-height:1.9;display:block;color:#d4dfed;overflow-wrap:anywhere}#backup-legacy-warning{padding:12px;background:#fff3df;border:1px solid #e5cb93;border-radius:10px;color:#74531a}@media(max-width:800px){.backup-layers{grid-template-columns:1fr}.backup-assurance{padding:17px}}
+
 </style>
 </head>
 <body>
@@ -3786,7 +3789,7 @@ to{opacity:1;transform:none}
 </div>
 <div class="footnote-premium">إدارة الحسابات والصلاحيات متاحة للمدير فقط.</div>
 </div>
-</div></div><div class="panel settings-quick-backup"><div><h3>نسخة احتياطية</h3><p class="small muted mb-0">الاسترداد والجدولة ضمن الإعدادات المتقدمة.</p></div><button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> نسخة احتياطية سريعة</button></div><details id="settings-advanced" class="settings-advanced"><summary><span>إعدادات متقدمة<small>بيانات الشركة، الاسترداد والنسخ الاحتياطي والصيانة</small></span><span class="settings-expand" aria-hidden="true">＋</span></summary><div class="settings-advanced-content"><div class="panel" id="settings-company">
+</div></div><div class="panel settings-quick-backup"><div><h3>نسخة احتياطية</h3><p class="small muted mb-0">تنزيل لقطة مشفّرة بكلمة مرور؛ لا تعادل نسخة كاملة من قاعدة الموقع.</p></div><button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> تنزيل نسخة مشفّرة</button></div><details id="settings-advanced" class="settings-advanced"><summary><span>إعدادات متقدمة<small>بيانات الشركة، الاسترداد والنسخ الاحتياطي والصيانة</small></span><span class="settings-expand" aria-hidden="true">＋</span></summary><div class="settings-advanced-content"><div class="panel" id="settings-company">
 <div class="panel-head"><h3><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"></use></svg> بيانات الشركة (تظهر في البطاقة)</h3></div>
 <div class="panel-body">
 <div class="data-grid">
@@ -3806,13 +3809,15 @@ to{opacity:1;transform:none}
 </div><div class="panel" id="settings-backup-tools">
 <div class="panel-head"><h3><svg class="ic"><use href="#i-server" xlink:href="#i-server"></use></svg> النسخ الاحتياطي والصيانة</h3></div>
 <div class="panel-body">
+<div class="backup-assurance"><span class="backup-eyebrow">حماية البيانات · بدون وعود مضللة</span><h4>ثلاث طبقات، لكل واحدة دور واضح</h4><div class="backup-layers"><article><b>01 · نسخة المتصفح</b><p>تصدير مشفّر للبيانات المحملة فقط؛ ليست نسخة PostgreSQL ولا تشمل ملفات المشروع.</p><small id="backup-last-export">لم يجهز ملف على هذا الجهاز بعد</small></article><article><b>02 · قاعدة الشركة</b><p>وكيل مستقل مشفّر + مهمة ويندوز. يحتاج إعداد اللابتوب ومفتاح استرداد منفصل.</p><small>التشغيل وآخر نجاح غير متحققين في هذه الصفحة</small></article><article><b>03 · عمل المكتب المحلي</b><p>طلبات مشتركة أثناء الانقطاع، ثم تحقق ومزامنة؛ ليست حجوزات نهائية قبل الاعتماد.</p><small>يتطلب تثبيت بوابة المكتب وHTTPS على شبكة الشركة</small></article></div></div>
+<p id="backup-legacy-warning" class="tiny muted" hidden></p>
 <div class="flex flex-wrap" style="gap:8px">
-<button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> تصدير JSON</button>
+<button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> تصدير آمن</button>
 <button class="btn btn-outline" id="btn-export-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"></use></svg> نسخة مشفّرة للابتوب</button>
-<button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"></use></svg> استيراد نسخة</button>
-<button class="btn btn-ok" id="btn-import-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"></use></svg> استرداد نسخة مشفّرة</button>
-<button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"></use></svg> جدولة النسخ التلقائي</button>
-<button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"></use></svg> عرض النسخ الاحتياطية</button>
+<button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"></use></svg> معاينة ملف نسخة</button>
+<button class="btn btn-ok" id="btn-import-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"></use></svg> فك تشفير ومعاينة</button>
+<button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"></use></svg> خيارات الجدولة</button>
+<button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"></use></svg> عرض اللقطات القديمة</button>
 <button class="btn btn-warn" id="btn-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"></use></svg> فحص الحجوزات والحالات الحرجة</button>
 <button class="btn btn-danger" id="btn-reset"><svg class="ic"><use href="#i-trash" xlink:href="#i-trash"></use></svg> إعادة ضبط البيانات التجريبية</button>
 </div>
@@ -3822,7 +3827,7 @@ to{opacity:1;transform:none}
 <div class="panel-body">
 <h4 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
 <svg class="ic" style="color:var(--gold-3)"><use href="#i-clock" xlink:href="#i-clock"></use></svg>
-                  النسخ الاحتياطي التلقائي المجدول
+                  حالة النسخ والجدولة المستقلة
                 </h4>
 <div id="schedule-status" class="tiny muted">لم يتم تفعيل الجدولة بعد</div>
 <div class="flex flex-wrap mt-2" style="gap:8px">
@@ -3830,7 +3835,7 @@ to{opacity:1;transform:none}
 <button class="btn btn-gold btn-sm" id="btn-run-auto-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> نفّذ نسخة الآن</button>
 <button class="btn btn-outline btn-sm" id="btn-disable-schedule"><svg class="ic"><use href="#i-x" xlink:href="#i-x"></use></svg> إيقاف الجدولة</button>
 </div>
-<p class="tiny muted mt-2 mb-0">النسخ هنا تُحفظ على جهازك. قاعدة الشركة سحابية؛ النسخ المحلية لا تغني عن نسخ قاعدة البيانات على الخادم.</p>
+<p class="tiny muted mt-2 mb-0">الاستعادة على الموقع السحابي محظورة من المتصفح حتى للمدير. فحص سلامة الملف لا يعني نجاح استعادته؛ تجربة قاعدة منفصلة لازمة. اللقطات القديمة لا تحذف تلقائياً.</p>
 </div>
 </div>
 <div class="data-grid mt-3">
@@ -3862,7 +3867,7 @@ to{opacity:1;transform:none}
   const offlineIndicator = document.createElement('div');
   offlineIndicator.id = 'offline-indicator';
   offlineIndicator.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#a8322f;color:#fff;padding:10px;text-align:center;z-index:9999;display:none;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.2);';
-  offlineIndicator.innerHTML = '⚠️ أنت تعمل بدون اتصال — سيتم المزامنة تلقائياً عند العودة للاتصال';
+  offlineIndicator.innerHTML = '⚠️ انقطع الإنترنت — استخدم بوابة المكتب المحلية المجهزة؛ بيانات المتصفح ليست سجلاً مشتركاً مضمون المزامنة';
   document.body.appendChild(offlineIndicator);
 
   window.addEventListener('online', () => {
@@ -3873,7 +3878,7 @@ to{opacity:1;transform:none}
       window.HRCStore.syncOfflineChanges();
     }
     if (window.HRCUI) {
-      window.HRCUI.toast('ok', 'تم الاتصال', 'تم استعادة الاتصال بنجاح — البيانات محدثة');
+      window.HRCUI.toast('ok', 'تم الاتصال', 'عاد الاتصال؛ انتظر اكتمال التحقق من بيانات الموقع وحالات الطلبات');
     }
   });
 
@@ -3881,7 +3886,7 @@ to{opacity:1;transform:none}
     isOnline = false;
     offlineIndicator.style.display = 'block';
     if (window.HRCUI) {
-      window.HRCUI.toast('warn', 'انقطع الاتصال', 'أنت تعمل بدون اتصال — التغييرات تُحفظ محلياً');
+      window.HRCUI.toast('warn', 'انقطع الاتصال', 'للعمل المشترك أثناء الانقطاع استخدم بوابة لابتوب الشركة بعد تجهيزها');
     }
   });
 </script>
@@ -5048,34 +5053,10 @@ to{opacity:1;transform:none}
 
 ;
 /* ===================== store.js ===================== */
-/* ===========================================================================
- *  HRC — محرّك البيانات ومنطق العمل
- *  ---------------------------------------------------------------------------
- *  نسختان في ملف واحد — والفرق بينهما فرق ثقة لا فرق شيفرة:
- *
- *   1) الوضع السحابي (الافتراضي عند وجود إعداد Supabase):
- *      • القراءة من الذاكرة فوراً (تُملأ من سوبابيس عند الإقلاع) فلا تتغيّر
- *        أي نقطة استدعاء من النقاط الـ222 — وكلها متزامنة.
- *      • الكتابة: تُحدَّث الذاكرة فوراً ثم تُدفع لسوبابيس في الخلفية عبر فرق
- *        مركزي واحد (cloud-sync.js)، ويُبلَّغ باقي الموظفين عبر Realtime.
- *      • الدخول عبر Supabase Auth والدور من brc.staff: لا كلمات مرور في كود
- *        الواجهة، ولا قاعدة بيانات منفصلة لكل متصفح.
- *      • إن تعذّر الوصول للسحابة يعمل النظام محلياً **بتنبيه صريح دائم**
- *        (وضع مؤقّت لا تُعتمد عليه البيانات المشتركة).
- *
- *   2) الوضع المحلي (بلا إعداد سحابة، أو عبر init({cloud:false})):
- *      كل شيء في localStorage — للطباعة والتشغيل بلا إنترنت والتجارب.
- *
- *  نفس المنطق مُنفّذ في PostgreSQL + Supabase (docs/schema.sql: المشغلات
- *  triggers وسياسات RLS ودوال select_attempt/set_outcome/verify_form).
- *
- *  المنطق المطبّق هنا مطابق للمواصفات:
- *   • استمارة لكل باحث عن عمل، صالحة 30 يوماً، وتحتوي 5 محاولات.
- *   • عند اختيار محاولة: تُحجز الوظيفة مؤقتاً 24 ساعة (بانتظار المقابلة).
- *   • إن لم تُثبّت النتيجة خلال 24 ساعة: تُفرج الوظيفة تلقائياً وتُوسم
- *     المحاولة بـ "انتهت المهلة / تتطلب إجراء".
- *   • عند الرفض: تُعاد الوظيفة إلى "متاحة" وتُفعّل المحاولة التالية تلقائياً.
- * =========================================================================== */
+/* HRC data engine. Cloud: official Auth + RLS; office offline drafts use office/.
+ * Cards default to two configurable chances; 24h expiry is critical, never
+ * automatic release. Company confirmation remains authoritative.
+ */
 (function (root) {
   'use strict';
 
@@ -5334,15 +5315,7 @@ to{opacity:1;transform:none}
   function saveLocal() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-      // حفظ في قائمة التغييرات الأوفلاين
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        var queue = [];
-        try { queue = JSON.parse(localStorage.getItem('hrc-offline-queue') || '[]'); } catch(e) {}
-        queue.push({ ts: nowISO(), data: JSON.parse(JSON.stringify(db)) });
-        // احتفظ بآخر 50 نسخة فقط
-        if (queue.length > 50) queue = queue.slice(-50);
-        try { localStorage.setItem('hrc-offline-queue', JSON.stringify(queue)); } catch(e) {}
-      }
+
     } catch (e) { /* لا تخزين متاح أو المساحة ممتلئة — البيانات تبقى في الذاكرة */ }
   }
 
@@ -5354,26 +5327,9 @@ to{opacity:1;transform:none}
     schedulePush();
   }
 
-  function syncOfflineChanges() {
-    // مزامنة التغييرات عند العودة للاتصال
-    var queue = [];
-    try { queue = JSON.parse(localStorage.getItem('hrc-offline-queue') || '[]'); } catch(e) {}
-    if (queue.length > 0) {
-      audit('مزامنة أوفلاين', 'system', '—', 'تم استعادة الاتصال — تم حفظ ' + queue.length + ' نسخة من التغييرات');
-      // حفظ آخر نسخة كاحتياط
-      try {
-        var lastSync = queue[queue.length - 1];
-        localStorage.setItem('hrc-last-offline-sync', JSON.stringify({
-          ts: nowISO(),
-          data: lastSync.data
-        }));
-      } catch(e) {}
-      // مسح قائمة الانتظار
-      try { localStorage.removeItem('hrc-offline-queue'); } catch(e) {}
-      save();
-    }
-    return queue.length;
-  }
+  // Legacy browser snapshots are NOT an operational outbox. Preserve them for
+  // review, never clear/replay a stale snapshot as proof of synchronization.
+  function syncOfflineChanges() { return pendingQueueLength(); }
 
   function emit() { sub.version++; sub.listeners.forEach(function (fn) { try { fn(db, sub.version); } catch (e) { } }); }
 
@@ -6745,26 +6701,51 @@ to{opacity:1;transform:none}
     /* ⚠️ في الوضع السحابي «إعادة الضبط» تعني: حذف كل وظائف القاعدة واستماراتها
        وإدراج البيانات التجريبية مكانها — عملية تدميرية للمشروع كله. ممنوعة هنا
        بحسم؛ من يحتاجها فعلاً يُفرغ الجداول من Supabase مباشرةً. */
-    if (cloud.state === 'on' && cloud.role === 'staff') {
+    if (enforceAuth() || !isAdmin() || (cloud.state === 'on' && cloud.role === 'staff')) {
       console.warn('[HRC] إعادة الضبط مرفوضة في الوضع السحابي');
       return false;
     }
+    if (!saveScheduledBackup('قبل إعادة ضبط التجربة', null)) return false;
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
     db = seedDb(); save();
     audit('إعادة ضبط البيانات', 'system', '—', 'إعادة تهيئة قاعدة البيانات المحلية إلى البيانات التجريبية');
-    save(); emit();
+    save(); emit(); return true;
   }
 
-  function exportJson() { return JSON.stringify(db, null, 2); }
+  function exportJson() {
+    if (enforceAuth() && !isAdmin()) throw new Error('التصدير السحابي للمدير فقط');
+    return JSON.stringify(db, null, 2);
+  }
+
+  function previewBackup(text) {
+    if (typeof text !== 'string' || text.length > 32 * 1024 * 1024) throw new Error('حجم النسخة غير صالح');
+    var p = JSON.parse(text);
+    if (!p || !p.meta || p.meta.version !== 2 || !p.settings || !p.counters) throw new Error('إصدار نسخة غير مدعوم');
+    ['jobs', 'applicants', 'attempts', 'audit'].forEach(function (k) {
+      if (!Array.isArray(p[k]) || p[k].length > 100000) throw new Error('جدول غير صالح: ' + k);
+    });
+    var jobs = Object.create(null), apps = Object.create(null), slots = Object.create(null);
+    p.jobs.forEach(function (j) { if (!j || typeof j.code !== 'string' || !j.code || jobs[j.code]) throw new Error('وظائف مكررة أو غير صالحة'); jobs[j.code] = true; });
+    p.applicants.forEach(function (a) { if (!a || typeof a.serial !== 'string' || !a.serial || apps[a.serial]) throw new Error('بطاقات مكررة أو غير صالحة'); apps[a.serial] = true; });
+    p.attempts.forEach(function (t) {
+      var key = t && (t.serial + ':' + t.no);
+      if (!t || !apps[t.serial] || !Number.isInteger(t.no) || t.no < 1 || slots[key] ||
+          (['reserved', 'critical'].indexOf(t.slotStatus) >= 0 && !jobs[t.jobCode])) throw new Error('علاقات الفرص غير صالحة');
+      slots[key] = true;
+    });
+    return { jobs: p.jobs.length, applicants: p.applicants.length, attempts: p.attempts.length, version: 2 };
+  }
+
+  function assertLocalRestore() {
+    if (enforceAuth() || (cloud.state === 'on' && cloud.role === 'staff')) throw new Error('الاستعادة مرفوضة في الموقع السحابي؛ استخدم بيئة اختبار معزولة');
+    if (!isAdmin()) throw new Error('الاستعادة للمدير فقط');
+  }
 
   function importJson(text) {
-    /* نفس منطق إعادة الضبط: الاستيراد يستبدل كل البيانات، ولو مرّ في الوضع
-       السحابي لمحا ما في القاعدة ودفع الملف المحلي مكانه. */
-    if (cloud.state === 'on' && cloud.role === 'staff') {
-      throw new Error('الاستيراد مرفوض في الوضع السحابي — البيانات مرجعها القاعدة');
-    }
+    assertLocalRestore();
+    previewBackup(text);
     var parsed = JSON.parse(text);
-    if (!parsed.jobs || !parsed.applicants) throw new Error('ملف غير صالح');
+    if (!saveScheduledBackup('قبل الاستيراد - ' + fmtDateTime(new Date()), null)) throw new Error(lastBackupError || 'تعذر حفظ نسخة أمان؛ لم تتغير البيانات');
     db = parsed; save();
     normalizeSerialLog();
     audit('استيراد بيانات', 'system', '—', 'استيراد نسخة احتياطية تحتوي ' + parsed.jobs.length + ' وظيفة و' + parsed.applicants.length + ' استمارة');
@@ -6797,6 +6778,7 @@ to{opacity:1;transform:none}
   }
 
   function getScheduledBackups() {
+    if (!isAdmin()) return [];
     var list = readJson(BACKUP_KEY, []);
     return Array.isArray(list) ? list : [];
   }
@@ -6850,6 +6832,7 @@ to{opacity:1;transform:none}
   }
 
   function saveScheduledBackup(name, dateRange, opts) {
+    if (!isAdmin() || enforceAuth()) { lastBackupError = 'الحفظ غير المشفر في المتصفح متوقف؛ استخدم التصدير المشفر أو وكيل النسخ المستقل'; return null; }
     opts = opts || {};
     if (!db) load();
     var snapshot = JSON.parse(JSON.stringify(db));
@@ -6882,6 +6865,7 @@ to{opacity:1;transform:none}
   }
 
   function deleteScheduledBackup(id) {
+    if (!isAdmin()) return false;
     var backups = getScheduledBackups();
     var next = backups.filter(function (b) { return b.id !== id; });
     if (next.length === backups.length) return false;
@@ -6894,10 +6878,13 @@ to{opacity:1;transform:none}
   /* استعادة: النسخة الكاملة تُستبدل بالكامل، والنسخة الجزئية (نطاق مخصص)
      تُدمَج حتى لا نفقد الوظائف أو الاستمارات الأخرى الموجودة حالياً. */
   function restoreScheduledBackup(id) {
+    try { assertLocalRestore(); if (!isAdmin()) throw new Error('الاستعادة للمدير فقط'); }
+    catch (e) { lastBackupError = e.message; return false; }
     var backup = getScheduledBackups().filter(function (b) { return b.id === id; })[0];
     if (!backup || !backup.data) return false;
     try {
-      saveScheduledBackup('قبل الاستعادة - ' + fmtDateTime(new Date()), null);
+      previewBackup(JSON.stringify(backup.data));
+      if (!saveScheduledBackup('قبل الاستعادة - ' + fmtDateTime(new Date()), null)) return false;
       if (backup.partial) {
         var cur = JSON.parse(JSON.stringify(db));
         var have = {};
@@ -6937,6 +6924,7 @@ to{opacity:1;transform:none}
   }
 
   function saveAutoSchedule(days, time) {
+    if (!isAdmin() || enforceAuth()) { lastBackupError = 'جدولة المتصفح غير متاحة للسحابة؛ استخدم مهمة ويندوز المستقلة'; return null; }
     var s = { days: (days || []).map(Number).filter(function (n) { return n >= 0 && n <= 6; }), time: time || '23:00', createdAt: nowISO() };
     if (!s.days.length) return null;
     if (!writeJson(SCHEDULE_KEY, s)) { lastBackupError = 'تعذّر حفظ الجدولة — مساحة التخزين ممتلئة.'; return null; }
@@ -6946,6 +6934,7 @@ to{opacity:1;transform:none}
   }
 
   function clearAutoSchedule() {
+    if (!isAdmin()) return false;
     try { localStorage.removeItem(SCHEDULE_KEY); localStorage.removeItem(AUTO_RUN_KEY); } catch (e) { }
     audit('إيقاف النسخ الاحتياطي المجدول', 'backup', '—', 'أُوقفت الجدولة التلقائية');
     save();
@@ -6958,6 +6947,7 @@ to{opacity:1;transform:none}
      يُنشئ نسخة واحدة فقط لكل "خانة زمنية" (يوم + وقت) حتى لو فُتحت الصفحة
      عدة مرات، ويلتقط النسخة الفائتة في نفس اليوم إذا كان المتصفح مغلقاً. */
   function checkAutoBackup(now) {
+    if (!isAdmin() || enforceAuth()) return null;
     var s = getAutoSchedule();
     if (!s) return null;
     var d = now ? new Date(now) : new Date();
@@ -6973,26 +6963,9 @@ to{opacity:1;transform:none}
     emit();
     return backup;
   }
-  /* =========================================================================
-   *  طبقة السحابة (Supabase) — الإقلاع، والدفع، والجلسة
-   *  -------------------------------------------------------------------------
-   *  ثلاث مسؤوليات فقط، وكلها في هذا الموضع وحده:
-   *    1) الإقلاع: نجلب الحالة من القاعدة و«نتبنّاها» — نستبدل محتوى كائن db
-   *       نفسه (لا نُعيد إسناده) فتبقى كل المراجع في الواجهة صالحة، ثم emit()
-   *       ليُعاد الرسم. القراءة بعدها كلها من الذاكرة وبلا انتظار.
-   *    2) الدفع: كل save() تُجدول دفعة واحدة مؤجَّلة (debounce) تستدعي
-   *       HRCSync.push(db) الذي يشتقّ الفرق المركزي ويرسله.
-   *    3) الجلسة: الدخول عبر Supabase Auth والدور من brc.staff، مع استعادة
-   *       الجلسة عند تحديث الصفحة.
-   *
-   *  لماذا لا نمنع العمل عند تعذّر الاتصال؟ لأن المنع يعني «المنظومة متوقفة»
-   *  عند أي انقطاع. لذلك نعمل محلياً **بتنبيه صريح** (بانر أحمر دائم يخبر
-   *  الموظف أن البيانات غير مشتركة وأن هذا وضع مؤقّت) — والفرق بين وضعين
-   *  معروضين بوضوح خير من صمت يظنّ الموظف معه أن عمله محفوظ للجميع.
-   * ======================================================================= */
-
+  /* Cloud boot/fetch, diff push and official sessions. Never replay full snapshots. */
   var CORE_TABLES = ['jobs', 'applicants', 'job_attempts'];
-  var PUSH_DELAY = 700;   // تجميع الحفظ المتلاحق في دفعة واحدة
+  var PUSH_DELAY = 700;
 
   var cloud = {
     client: null, sync: null, auth: null,
@@ -7701,7 +7674,7 @@ to{opacity:1;transform:none}
     clearAutoSchedule: clearAutoSchedule, lastAutoRun: lastAutoRun, checkAutoBackup: checkAutoBackup,
     // أدوات
     fmtDate: fmtDate, fmtDateTime: fmtDateTime, money: money, diffDays: diffDays, diffHours: diffHours,
-    addDays: addDays, addHours: addHours, resetDemo: resetDemo, exportJson: exportJson, importJson: importJson,
+    addDays: addDays, addHours: addHours, resetDemo: resetDemo, exportJson: exportJson, importJson: importJson, previewBackup: previewBackup,
     token_for: token, uid: uid
   };
 
@@ -10776,13 +10749,7 @@ to{opacity:1;transform:none}
 
 ;
 /* ===================== dashboard.js ===================== */
-/* ===========================================================================
- *  HRC — المنظومة الداخلية (لوحة الموظفين والإدارة)
- *  ---------------------------------------------------------------------------
- *  • الموظف: بحث سريع بالكود، إدارة الوظائف والباحثين، إصدار الاستمارات،
- *    إدارة فرصتي البطاقة، الحجز المؤقت 24 ساعة، طباعة البطاقة 86×54مم.
- *  • المدير العام: كل ما سبق + اللوحة المالية + سجل التدقيق الكامل + الإعدادات.
- * =========================================================================== */
+/* HRC staff dashboard; official Auth and company decisions remain authoritative. */
 (function (root) {
   'use strict';
   var CFG = root.HRC_CONFIG, Store = root.HRCStore, UI = root.HRCUI, V = root.HRCVoucher;
@@ -10807,12 +10774,7 @@ to{opacity:1;transform:none}
       });
   }
 
-  /* ---------------------------------------------------------------------------
-   *  فك تشفير النسخة الخارجية — الوجه المقابل لـ encryptedBackup().
-   *  الملف يُنتَج على أي جهاز (لابتوب أو هاتف) ويُسترد هنا: لا شيء يُرسل لخادم،
-   *  وكلمة المرور لا تُخزَّن. عدد الدورات يُقرأ من الملف نفسه حتى تبقى النسخ
-   *  القديمة قابلة للاسترداد لو تغيّر الرقم مستقبلاً.
-   * ------------------------------------------------------------------------- */
+  /* Versioned, bounded PBKDF2 + authenticated AES-GCM decryption. */
   function ub64(s) {
     var bin = atob(String(s || '')), out = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
@@ -10835,7 +10797,8 @@ to{opacity:1;transform:none}
     var salt, iv, data;
     try { salt = ub64(pkg.salt); iv = ub64(pkg.iv); data = ub64(pkg.data); }
     catch (e) { return Promise.reject(new Error('ملف النسخة المشفّرة تالف')); }
-    var iters = Number(pkg.iterations) > 0 ? Number(pkg.iterations) : 250000;
+    var iters = Number(pkg.iterations);
+    if (!Number.isInteger(iters) || iters < 100000 || iters > 1000000 || salt.length !== 16 || iv.length !== 12 || data.length < 16) return Promise.reject(new Error('معايير تشفير غير مدعومة'));
     var enc = new TextEncoder();
     return crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey'])
       .then(function (base) { return crypto.subtle.deriveKey(
@@ -10844,6 +10807,18 @@ to{opacity:1;transform:none}
       .then(function (key) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data); })
       .catch(function () { throw new Error('كلمة المرور غير صحيحة أو الملف معدَّل'); })
       .then(function (buf) { return new TextDecoder().decode(buf); });
+  }
+
+  function reviewImportedBackup(text) {
+    var p = Store.previewBackup(text), cloud = Store.cloudStatus();
+    var summary = p.jobs + ' وظيفة و' + p.applicants + ' بطاقة و' + p.attempts + ' فرصة.';
+    if (cloud.enforceAuth || (cloud.state === 'on' && cloud.role === 'staff')) {
+      UI.modal({ title: 'معاينة فقط — لا استعادة على الموقع', body: '<p>' + UI.esc(summary) + '</p><p>الملف نسخة متصفح وليس قاعدة PostgreSQL كاملة. الاستعادة تختبر في بيئة معزولة؛ بيانات الموقع لم تتغير.</p>', footer: '<button class="btn btn-outline" data-close>إغلاق</button>' });
+      return Promise.resolve(false);
+    }
+    return UI.confirm({ title: 'معاينة واعتماد النسخة', danger: true, confirmText: 'اعتماد محلي',
+      message: summary + ' سيجري الاستبدال محلياً فقط بعد نجاح حفظ نسخة أمان. هل تعتمد؟'
+    }).then(function (ok) { if (!ok) return false; Store.importJson(text); UI.toast('ok', 'تم الاستيراد المحلي', 'حُفظت نسخة أمان واستعيدت بيانات الاختبار.'); renderCurrent(); return true; });
   }
 
   /* مفتاح الجلسة: يُستخدم لرصد الدخول/الخروج وإعادة ضبط الواجهة والصلاحيات */
@@ -11552,15 +11527,7 @@ to{opacity:1;transform:none}
     });
   }
 
-  /* ==========================================================================
-   *  حالة الاتصال بالسحابة — معروضة دائماً لا مخفية
-   *  ---------------------------------------------------------------------------
-   *  لماذا بانر دائم؟ لأن النظام يعمل في وضعين مختلفين تماماً: قاعدة مشتركة،
-   *  أو قاعدة في هذا المتصفح وحده. الفرق بينهما **فارق في الثقة**: في الوضع
-   *  المحلي قد يبدو كل شيء طبيعياً (استمارات، وظائف، تدقيق) بينما موظف آخر
-   *  يرى شيئاً مختلفاً تماماً — أو لا يرى ما أُصدر هنا أبداً. إخفاء هذا الفرق
-   *  وراء «يعمل بلا أخطاء» أخطر من إظهاره.
-   * ========================================================================== */
+  /* Cloud connectivity is always visible, including before login. */
   function cloudBanner(st) {
     var el = document.getElementById('hrc-cloud-banner');
     if (!st || !st.configured) { if (el) el.remove(); return; }
@@ -13060,8 +13027,15 @@ to{opacity:1;transform:none}
       }
       var lastAuto = backups.filter(function (b) { return b.auto; }).slice(-1)[0];
       if (lastAuto) html += '<br>آخر نسخة تلقائية محفوظة: ' + UI.esc(lastAuto.name) + ' — ' + UI.esc(Store.fmtDateTime(lastAuto.createdAt));
+      if (Store.cloudStatus().enforceAuth) html = '<b>جدولة المتصفح متوقفة لحماية الخصوصية.</b><br>وكيل PostgreSQL: لم يربط بهذا الموقع؛ آخر نجاح والموعد التالي غير متحققين هنا. حالته الفعلية تظهر من لابتوب المكتب بعد إعداده.';
       scheduleStatus.innerHTML = html;
+      var prepared = document.getElementById('backup-last-export');
+      if (prepared) { var stamp = null; try { stamp = localStorage.getItem('hrc-encrypted-export-prepared'); } catch (e) {} prepared.textContent = stamp ? Store.fmtDateTime(stamp) + ' — جهز للتنزيل، تأكد من حفظه' : 'لم يجهز ملف على هذا الجهاز بعد'; }
+      var legacy = document.getElementById('backup-legacy-warning');
+      if (legacy) { legacy.hidden = !backups.length; legacy.textContent = 'توجد ' + backups.length + ' لقطات قديمة غير مشفرة في هذا المتصفح. للمدير فقط: صدّرها مشفرة ثم احذفها من «عرض اللقطات القديمة» إذا لم تعد مطلوبة.'; }
     }
+
+    ['btn-reset', 'btn-export'].forEach(function (id) { var button = document.getElementById(id); if (button) button.classList.toggle('hidden', Store.cloudStatus().enforceAuth); });
 
     // إخفاء أزرار الجدولة إن لم تكن مفعّلة (تعديل/إيقاف/نفّذ الآن)
     var hasSchedule = !!Store.getAutoSchedule();
@@ -13268,11 +13242,14 @@ to{opacity:1;transform:none}
 
     var ex = document.getElementById('btn-export');
     if (ex) ex.addEventListener('click', function () {
+      if (!Store.isAdmin()) return;
+      if (Store.cloudStatus().enforceAuth) { document.getElementById('btn-export-encrypted').click(); return; }
       UI.download('hrc-backup-' + Store.fmtDate(new Date()) + '.json', Store.exportJson(), 'application/json');
       UI.toast('ok', 'تصدير النسخة', 'حُفظ ملف JSON يحتوي كل البيانات والسجلات.');
     });
     var exEncrypted = document.getElementById('btn-export-encrypted');
     if (exEncrypted) exEncrypted.addEventListener('click', function () {
+      if (!Store.isAdmin()) return;
       var p1 = window.prompt('اكتب كلمة مرور قوية للنسخة المشفّرة:');
       if (!p1 || p1.length < 10) { UI.toast('warn', 'كلمة المرور قصيرة', 'استخدم 10 أحرف أو أكثر واحفظها خارج الموقع.'); return; }
       var p2 = window.prompt('أعد كتابة كلمة المرور:');
@@ -13280,7 +13257,9 @@ to{opacity:1;transform:none}
       exEncrypted.disabled = true;
       encryptedBackup(Store.exportJson(), p1).then(function (data) {
         UI.download('HRC-backup-' + Store.fmtDate(new Date()) + '.brc.enc.json', data, 'application/json');
-        UI.toast('ok', 'تم إنشاء النسخة المشفّرة', 'احفظ الملف وكلمة المرور في مكانين آمنين.');
+        try { localStorage.setItem('hrc-encrypted-export-prepared', new Date().toISOString()); } catch (e) {}
+        UI.toast('ok', 'جُهّز الملف المشفّر للتنزيل', 'لقطة بيانات المتصفح فقط؛ تأكد من حفظ الملف وكلمة المرور بمكانين آمنين.');
+        renderSettings();
       }).catch(function (e) { UI.toast('err', 'فشل التشفير', e.message); }).then(function () { exEncrypted.disabled = false; });
     });
 
@@ -13289,7 +13268,8 @@ to{opacity:1;transform:none}
     if (im && imf) {
       im.addEventListener('click', function () { imf.click(); });
       imf.addEventListener('change', function () {
-        var f = imf.files[0]; if (!f) return;
+        var f = imf.files[0]; if (!f || !Store.isAdmin()) return;
+        if (f.size > 32 * 1024 * 1024) { UI.toast('err', 'ملف كبير', 'الحد 32 ميغابايت'); return; }
         var r = new FileReader();
         r.onload = function () {
           var text = String(r.result);
@@ -13298,7 +13278,7 @@ to{opacity:1;transform:none}
             UI.toast('warn', 'هذه نسخة مشفّرة', 'استخدم زر «استرداد نسخة مشفّرة» وأدخل كلمة المرور.');
             imf.value = ''; return;
           }
-          try { Store.importJson(text); UI.toast('ok', 'تم الاستيراد', 'استُعيدت البيانات من النسخة الاحتياطية.'); renderCurrent(); }
+          try { reviewImportedBackup(text).catch(function (e) { UI.toast('err', 'فشل الاستيراد', e.message); }); }
           catch (e) { UI.toast('err', 'فشل الاستيراد', 'الملف غير صالح: ' + e.message); }
           imf.value = '';
         };
@@ -13306,52 +13286,25 @@ to{opacity:1;transform:none}
       });
     }
 
-    /* ------------- استرداد النسخة المشفّرة (من الهاتف أو اللابتوب) -------------
-     *  الملف يُقرأ محلياً، تُطلب كلمة المرور، يُفكّ التشفير في المتصفح، ثم
-     *  تُحفظ نسخة أمان من الحالة الراهنة قبل الاعتماد — فلا يمكن خسارة البيانات
-     *  الحالية حتى لو كانت النسخة المستردة ناقصة. */
-    var ime = document.getElementById('btn-import-encrypted');
-    var imef = document.getElementById('import-enc-file');
+    var ime = document.getElementById('btn-import-encrypted'), imef = document.getElementById('import-enc-file');
     if (ime && imef) {
-      ime.addEventListener('click', function () { imef.click(); });
+      ime.addEventListener('click', function () { if (Store.isAdmin()) imef.click(); });
       imef.addEventListener('change', function () {
-        var f = imef.files[0]; if (!f) return;
+        var f = imef.files[0]; if (!f || !Store.isAdmin()) return;
+        if (f.size > 32 * 1024 * 1024) { UI.toast('err', 'ملف كبير', 'الحد 32 ميغابايت'); return; }
         var r = new FileReader();
         r.onload = function () {
-          var text = String(r.result);
-          imef.value = '';
-          if (!isEncryptedBackup(text)) {
-            /* ملف عادي غير مشفّر: نقبله عبر المسار العادي بدل رفضه */
-            try {
-              Store.saveScheduledBackup('قبل استرداد نسخة خارجية - ' + Store.fmtDateTime(new Date()), null);
-              Store.importJson(text);
-              UI.toast('ok', 'تم الاسترداد', 'الملف غير مشفّر — استُورد مباشرةً واعتمده النظام.');
-              renderCurrent();
-            } catch (e) { UI.toast('err', 'فشل الاسترداد', 'الملف غير صالح: ' + e.message); }
-            return;
+          var text = String(r.result); imef.value = '';
+          var job;
+          if (!isEncryptedBackup(text)) job = Promise.resolve(text);
+          else {
+            var pw = window.prompt('أدخل كلمة مرور النسخة المشفّرة:');
+            if (!pw) return;
+            job = decryptBackup(text, pw);
           }
-          var pw = window.prompt('أدخل كلمة مرور النسخة المشفّرة:');
-          if (!pw) { UI.toast('info', 'أُلغي الاسترداد', 'لم تُدخل كلمة المرور.'); return; }
           ime.disabled = true;
-          decryptBackup(text, pw).then(function (json) {
-            var parsed = JSON.parse(json);
-            if (!parsed || !parsed.jobs || !parsed.applicants) throw new Error('النسخة المفكوكة لا تحتوي بيانات النظام');
-            var jobs = parsed.jobs.length, apps = parsed.applicants.length;
-            return UI.confirm({
-              title: 'اعتماد النسخة المشفّرة',
-              confirmText: 'اعتماد النسخة',
-              message: 'فُكّ التشفير بنجاح: ' + jobs + ' وظيفة و' + apps + ' بطاقة. ' +
-                'سيستبدل النظام بياناته الحالية بهذه النسخة (تُحفظ نسخة أمان قبلها). هل تعتمدها؟'
-            }).then(function (ok) {
-              if (!ok) { UI.toast('info', 'أُلغي الاعتماد', 'البيانات الحالية لم تتغيّر.'); return; }
-              Store.saveScheduledBackup('قبل استرداد نسخة مشفّرة - ' + Store.fmtDateTime(new Date()), null);
-              Store.importJson(json);
-              UI.toast('ok', 'اعتُمدت النسخة المشفّرة', 'استُردت ' + apps + ' بطاقة و' + jobs + ' وظيفة، والنظام يعمل عليها الآن.');
-              renderCurrent();
-            });
-          }).catch(function (e) {
-            UI.toast('err', 'فشل الاسترداد', e.message || 'تعذّر فك التشفير');
-          }).then(function () { ime.disabled = false; });
+          job.then(reviewImportedBackup).catch(function (e) { UI.toast('err', 'فشل الاسترداد', e.message); })
+            .then(function () { ime.disabled = false; });
         };
         r.readAsText(f);
       });
@@ -13402,6 +13355,8 @@ to{opacity:1;transform:none}
     bindOnce(document.getElementById('btn-view-backups'), 'click', viewBackupsModal);
 
     bindOnce(document.getElementById('btn-quick-backup'), 'click', function () {
+      if (!Store.isAdmin()) return;
+      if (Store.cloudStatus().enforceAuth) { document.getElementById('btn-export-encrypted').click(); return; }
       var name = 'نسخة سريعة - ' + Store.fmtDateTime(new Date());
       var backup = Store.saveScheduledBackup(name, null);
       if (backup) {
@@ -13436,6 +13391,7 @@ to{opacity:1;transform:none}
 
   /* نافذة جدولة النسخ الاحتياطي */
   function scheduleBackupModal() {
+    if (Store.cloudStatus().enforceAuth) { UI.toast('info', 'الجدولة مستقلة عن المتصفح', 'جهّز وكيل PostgreSQL ومهمة ويندوز؛ لا توجد جدولة خادم مفعلة من هذا الزر.'); return; }
     var schedule = Store.getAutoSchedule();
 
     var days = [
@@ -13584,19 +13540,19 @@ to{opacity:1;transform:none}
             '<td><b>' + UI.esc(b.name) + '</b>' + tags + '</td>' +
             '<td class="tiny">' + UI.esc(Store.fmtDateTime(b.createdAt)) + '</td>' +
             '<td class="tiny">' + (b.dateRange ? UI.esc(b.dateRange.from + ' إلى ' + b.dateRange.to) : 'كل البيانات') +
-              (b.records ? '<br><span class="muted">' + b.records.applicants + ' بطاقة · ' + b.records.audit + ' سجل</span>' : '') + '</td>' +
+              (b.records ? '<br><span class="muted">' + UI.esc(b.records.applicants) + ' بطاقة · ' + UI.esc(b.records.audit) + ' سجل</span>' : '') + '</td>' +
             '<td class="tiny">' + ((b.size || 0) / 1024).toFixed(1) + ' ك.ب</td>' +
             '<td><div class="cell-actions">' +
-            '<button class="btn btn-outline btn-sm" data-backup-export="' + b.id + '">' + UI.ic('download') + ' تصدير</button>' +
-            '<button class="btn btn-ok btn-sm" data-backup-restore="' + b.id + '">' + UI.ic('refresh') + ' استعادة</button>' +
-            '<button class="btn btn-danger btn-sm" data-backup-delete="' + b.id + '" aria-label="حذف النسخة">' + UI.ic('trash') + '</button>' +
+            '<button class="btn btn-outline btn-sm" data-backup-export="' + UI.esc(b.id) + '">' + UI.ic('download') + ' تصدير</button>' +
+            '<button class="btn btn-ok btn-sm" data-backup-restore="' + UI.esc(b.id) + '">' + UI.ic('refresh') + ' استعادة</button>' +
+            '<button class="btn btn-danger btn-sm" data-backup-delete="' + UI.esc(b.id) + '" aria-label="حذف النسخة">' + UI.ic('trash') + '</button>' +
             '</div></td></tr>';
         }).join('')) +
       '</tbody></table></div></div>';
 
     UI.modal({
       title: 'النسخ الاحتياطية',
-      subtitle: backups.length + ' نسخة احتياطية (يُحتفظ بآخر 20 نسخة في المتصفح)',
+      subtitle: backups.length + ' لقطة متصفح قديمة غير مشفرة — لا تغني عن قاعدة البيانات. صدّرها بأمان واحذفها من الجهاز المشترك عند الحاجة.',
       wide: true,
       body: body,
       footer: '<button class="btn btn-outline" data-close>إغلاق</button>',
@@ -13606,6 +13562,12 @@ to{opacity:1;transform:none}
             var id = btn.getAttribute('data-backup-export');
             var data = Store.exportScheduledBackup(id);
             if (data) {
+              if (Store.cloudStatus().enforceAuth) {
+                var pw = window.prompt('كلمة مرور 10 أحرف أو أكثر لتشفير اللقطة القديمة:');
+                if (!pw || pw.length < 10 || window.prompt('أعد كتابة كلمة مرور اللقطة:') !== pw) return;
+                encryptedBackup(data, pw).then(function (encrypted) { UI.download('HRC-legacy.brc.enc.json', encrypted, 'application/json'); }).catch(function (e) { UI.toast('err', 'فشل التشفير', e.message); });
+                return;
+              }
               UI.download('hrc-backup-' + Store.fmtDate(new Date()) + '.json', data, 'application/json');
               UI.toast('ok', 'تم التصدير', 'حُفظ ملف النسخة الاحتياطية');
             } else {
@@ -13617,6 +13579,7 @@ to{opacity:1;transform:none}
         box.querySelectorAll('[data-backup-restore]').forEach(function(btn) {
           btn.addEventListener('click', function() {
             var id = btn.getAttribute('data-backup-restore');
+            if (Store.cloudStatus().enforceAuth) { reviewImportedBackup(Store.exportScheduledBackup(id)); return; }
             var meta = Store.listBackupMeta().filter(function (b) { return b.id === id; })[0] || {};
             UI.confirm({
               title: 'استعادة النسخة الاحتياطية',

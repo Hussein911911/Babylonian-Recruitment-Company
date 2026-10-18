@@ -49,7 +49,7 @@ const order = {};
 tables.forEach((t, i) => { if (!(t.name in order)) order[t.name] = i; });
 
 /* 8 = الستة + سجل الباركودات issued_serials + جدول التحقق الخاص employer_otp. */
-check('المخطط يعرّف الجداول العشرة المتوقّعة', tables.length === 10,
+check('المخطط يعرّف 11 جدولاً بما فيها إيصالات المكتب الخاصة', tables.length === 11,
   tables.length + ': ' + tables.map((t) => t.name).join(', '));
 
 const SYSTEM = new Set(['auth.users', 'auth.identities', 'storage.objects']);
@@ -77,10 +77,10 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 /* 30 = 29 السابقة + إصلاح 2026-10-06: ترميم خانات الفرص الناقصة
    (ensure_card_attempts) — بطاقة جديدة كانت تظهر «انتهت فرصك» بلا أي تقديم
    لأن مزامنة لوحة الموظفين كانت تحذف خاناتها من القاعدة. */
-check('عدد الدوال المتوقّع (38)', funcs.length === 38, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+check('عدد الدوال المتوقّع (39)', funcs.length === 39, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
-const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
+const EXPECTED_FUNCS = ['brc.office_submit', 'brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
   'brc.trg_defaults', 'brc.trg_attempt_hold', 'brc.trg_no_duplicate_job', 'brc.trg_audit',
   'brc.run_auto_release', 'brc.is_staff', 'brc.is_admin', 'brc.current_staff_id',
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
@@ -152,6 +152,8 @@ check('الزائر يستطيع نداء brc.apply_with_card (تقديم ذات
 check('دالتا التقديم الذاتي مُبطَلتان من public قبل المنح',
   /revoke\s+all\s+on\s+function\s+brc\.self_service_card\(text\)\s+from\s+public/i.test(stripped(RAW)) &&
   /revoke\s+all\s+on\s+function\s+brc\.apply_with_card\(text,\s*text,\s*jsonb\)\s+from\s+public/i.test(stripped(RAW)));
+check('لا منح لمسار المكتب إلى الزائر', !/office_submit/.test(anonTargets));
+check('سجل إيصالات المكتب معزول بـRLS وسحب المنح', /alter table brc\.office_receipts enable row level security/.test(RAW) && /revoke all on brc\.office_receipts from public,anon,authenticated/.test(RAW));
 const authGrants = grantLines.filter((l) => /\bauthenticated\b/i.test(l)).join(' ');
 check('الموظف المسجَّل يستطيع نداء brc.verify_form', /verify_form/i.test(authGrants));
 check('لا جدول حساس ممنوح للزائر مباشرة',

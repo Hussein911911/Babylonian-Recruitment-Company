@@ -443,7 +443,7 @@
 </div>
 <div class="footnote-premium">إدارة الحسابات والصلاحيات متاحة للمدير فقط.</div>
 </div>
-</div></div><div class="panel settings-quick-backup"><div><h3>نسخة احتياطية</h3><p class="small muted mb-0">الاسترداد والجدولة ضمن الإعدادات المتقدمة.</p></div><button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> نسخة احتياطية سريعة</button></div><details id="settings-advanced" class="settings-advanced"><summary><span>إعدادات متقدمة<small>بيانات الشركة، الاسترداد والنسخ الاحتياطي والصيانة</small></span><span class="settings-expand" aria-hidden="true">＋</span></summary><div class="settings-advanced-content"><div class="panel" id="settings-company">
+</div></div><div class="panel settings-quick-backup"><div><h3>نسخة احتياطية</h3><p class="small muted mb-0">تنزيل لقطة مشفّرة بكلمة مرور؛ لا تعادل نسخة كاملة من قاعدة الموقع.</p></div><button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> تنزيل نسخة مشفّرة</button></div><details id="settings-advanced" class="settings-advanced"><summary><span>إعدادات متقدمة<small>بيانات الشركة، الاسترداد والنسخ الاحتياطي والصيانة</small></span><span class="settings-expand" aria-hidden="true">＋</span></summary><div class="settings-advanced-content"><div class="panel" id="settings-company">
 <div class="panel-head"><h3><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"></use></svg> بيانات الشركة (تظهر في البطاقة)</h3></div>
 <div class="panel-body">
 <div class="data-grid">
@@ -463,13 +463,15 @@
 </div><div class="panel" id="settings-backup-tools">
 <div class="panel-head"><h3><svg class="ic"><use href="#i-server" xlink:href="#i-server"></use></svg> النسخ الاحتياطي والصيانة</h3></div>
 <div class="panel-body">
+<div class="backup-assurance"><span class="backup-eyebrow">حماية البيانات · بدون وعود مضللة</span><h4>ثلاث طبقات، لكل واحدة دور واضح</h4><div class="backup-layers"><article><b>01 · نسخة المتصفح</b><p>تصدير مشفّر للبيانات المحملة فقط؛ ليست نسخة PostgreSQL ولا تشمل ملفات المشروع.</p><small id="backup-last-export">لم يجهز ملف على هذا الجهاز بعد</small></article><article><b>02 · قاعدة الشركة</b><p>وكيل مستقل مشفّر + مهمة ويندوز. يحتاج إعداد اللابتوب ومفتاح استرداد منفصل.</p><small>التشغيل وآخر نجاح غير متحققين في هذه الصفحة</small></article><article><b>03 · عمل المكتب المحلي</b><p>طلبات مشتركة أثناء الانقطاع، ثم تحقق ومزامنة؛ ليست حجوزات نهائية قبل الاعتماد.</p><small>يتطلب تثبيت بوابة المكتب وHTTPS على شبكة الشركة</small></article></div></div>
+<p id="backup-legacy-warning" class="tiny muted" hidden></p>
 <div class="flex flex-wrap" style="gap:8px">
-<button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> تصدير JSON</button>
+<button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> تصدير آمن</button>
 <button class="btn btn-outline" id="btn-export-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"></use></svg> نسخة مشفّرة للابتوب</button>
-<button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"></use></svg> استيراد نسخة</button>
-<button class="btn btn-ok" id="btn-import-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"></use></svg> استرداد نسخة مشفّرة</button>
-<button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"></use></svg> جدولة النسخ التلقائي</button>
-<button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"></use></svg> عرض النسخ الاحتياطية</button>
+<button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"></use></svg> معاينة ملف نسخة</button>
+<button class="btn btn-ok" id="btn-import-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"></use></svg> فك تشفير ومعاينة</button>
+<button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"></use></svg> خيارات الجدولة</button>
+<button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"></use></svg> عرض اللقطات القديمة</button>
 <button class="btn btn-warn" id="btn-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"></use></svg> فحص الحجوزات والحالات الحرجة</button>
 <button class="btn btn-danger" id="btn-reset"><svg class="ic"><use href="#i-trash" xlink:href="#i-trash"></use></svg> إعادة ضبط البيانات التجريبية</button>
 </div>
@@ -479,7 +481,7 @@
 <div class="panel-body">
 <h4 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
 <svg class="ic" style="color:var(--gold-3)"><use href="#i-clock" xlink:href="#i-clock"></use></svg>
-                  النسخ الاحتياطي التلقائي المجدول
+                  حالة النسخ والجدولة المستقلة
                 </h4>
 <div id="schedule-status" class="tiny muted">لم يتم تفعيل الجدولة بعد</div>
 <div class="flex flex-wrap mt-2" style="gap:8px">
@@ -487,7 +489,7 @@
 <button class="btn btn-gold btn-sm" id="btn-run-auto-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> نفّذ نسخة الآن</button>
 <button class="btn btn-outline btn-sm" id="btn-disable-schedule"><svg class="ic"><use href="#i-x" xlink:href="#i-x"></use></svg> إيقاف الجدولة</button>
 </div>
-<p class="tiny muted mt-2 mb-0">النسخ هنا تُحفظ على جهازك. قاعدة الشركة سحابية؛ النسخ المحلية لا تغني عن نسخ قاعدة البيانات على الخادم.</p>
+<p class="tiny muted mt-2 mb-0">الاستعادة على الموقع السحابي محظورة من المتصفح حتى للمدير. فحص سلامة الملف لا يعني نجاح استعادته؛ تجربة قاعدة منفصلة لازمة. اللقطات القديمة لا تحذف تلقائياً.</p>
 </div>
 </div>
 <div class="data-grid mt-3">
@@ -519,7 +521,7 @@
   const offlineIndicator = document.createElement('div');
   offlineIndicator.id = 'offline-indicator';
   offlineIndicator.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#a8322f;color:#fff;padding:10px;text-align:center;z-index:9999;display:none;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.2);';
-  offlineIndicator.innerHTML = '⚠️ أنت تعمل بدون اتصال — سيتم المزامنة تلقائياً عند العودة للاتصال';
+  offlineIndicator.innerHTML = '⚠️ انقطع الإنترنت — استخدم بوابة المكتب المحلية المجهزة؛ بيانات المتصفح ليست سجلاً مشتركاً مضمون المزامنة';
   document.body.appendChild(offlineIndicator);
 
   window.addEventListener('online', () => {
@@ -530,7 +532,7 @@
       window.HRCStore.syncOfflineChanges();
     }
     if (window.HRCUI) {
-      window.HRCUI.toast('ok', 'تم الاتصال', 'تم استعادة الاتصال بنجاح — البيانات محدثة');
+      window.HRCUI.toast('ok', 'تم الاتصال', 'عاد الاتصال؛ انتظر اكتمال التحقق من بيانات الموقع وحالات الطلبات');
     }
   });
 
@@ -538,7 +540,7 @@
     isOnline = false;
     offlineIndicator.style.display = 'block';
     if (window.HRCUI) {
-      window.HRCUI.toast('warn', 'انقطع الاتصال', 'أنت تعمل بدون اتصال — التغييرات تُحفظ محلياً');
+      window.HRCUI.toast('warn', 'انقطع الاتصال', 'للعمل المشترك أثناء الانقطاع استخدم بوابة لابتوب الشركة بعد تجهيزها');
     }
   });
 </script>

@@ -1,0 +1,11 @@
+{
+  "databaseUrl": "postgresql://BACKUP_READONLY_USER@DATABASE_HOST:5432/postgres?sslmode=verify-full&connect_timeout=15",
+  "pgpassFile": "C:/HRC-Private/database.pgpass",
+  "pgBin": "C:/Program Files/PostgreSQL/17/bin",
+  "destination": "D:/HRC-Database-Backups",
+  "recipientPublicKey": "C:/HRC-Private/backup-public.pem",
+  "recipientPrivateKey": "E:/HRC-Recovery/backup.private.pem",
+  "privateKeyPasswordFile": "F:/HRC-Recovery/recovery-password.txt",
+  "restoreUrl": "postgresql://DRILL_USER@127.0.0.1:5434/brc_restore_drill_20261019",
+  "keep": 30
+}

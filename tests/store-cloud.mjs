@@ -423,7 +423,7 @@ step(4, 'الحرّاس — إعادة الضبط والاستيراد ممنو�
   await sleep(120);
   check('إعادة الضبط مرفوضة وتُرجع false', Store.resetDemo() === false);
   let threw = null;
-  try { Store.importJson(Store.exportJson()); } catch (e) { threw = e; }
+  try { Store.importJson(JSON.stringify(Store.db())); } catch (e) { threw = e; }
   check('الاستيراد مرفوض برسالة واضحة', !!threw && /سحاب/.test(threw.message), threw && threw.message);
   await sleep(300);
   check('لم يُرسل أي حذف أو إدراج جماعي إلى القاعدة',

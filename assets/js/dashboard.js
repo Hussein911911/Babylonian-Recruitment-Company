@@ -1,10 +1,4 @@
-/* ===========================================================================
- *  HRC — المنظومة الداخلية (لوحة الموظفين والإدارة)
- *  ---------------------------------------------------------------------------
- *  • الموظف: بحث سريع بالكود، إدارة الوظائف والباحثين، إصدار الاستمارات،
- *    إدارة فرصتي البطاقة، الحجز المؤقت 24 ساعة، طباعة البطاقة 86×54مم.
- *  • المدير العام: كل ما سبق + اللوحة المالية + سجل التدقيق الكامل + الإعدادات.
- * =========================================================================== */
+/* HRC staff dashboard; official Auth and company decisions remain authoritative. */
 (function (root) {
   'use strict';
   var CFG = root.HRC_CONFIG, Store = root.HRCStore, UI = root.HRCUI, V = root.HRCVoucher;
@@ -29,12 +23,7 @@
       });
   }
 
-  /* ---------------------------------------------------------------------------
-   *  فك تشفير النسخة الخارجية — الوجه المقابل لـ encryptedBackup().
-   *  الملف يُنتَج على أي جهاز (لابتوب أو هاتف) ويُسترد هنا: لا شيء يُرسل لخادم،
-   *  وكلمة المرور لا تُخزَّن. عدد الدورات يُقرأ من الملف نفسه حتى تبقى النسخ
-   *  القديمة قابلة للاسترداد لو تغيّر الرقم مستقبلاً.
-   * ------------------------------------------------------------------------- */
+  /* Versioned, bounded PBKDF2 + authenticated AES-GCM decryption. */
   function ub64(s) {
     var bin = atob(String(s || '')), out = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
@@ -57,7 +46,8 @@
     var salt, iv, data;
     try { salt = ub64(pkg.salt); iv = ub64(pkg.iv); data = ub64(pkg.data); }
     catch (e) { return Promise.reject(new Error('ملف النسخة المشفّرة تالف')); }
-    var iters = Number(pkg.iterations) > 0 ? Number(pkg.iterations) : 250000;
+    var iters = Number(pkg.iterations);
+    if (!Number.isInteger(iters) || iters < 100000 || iters > 1000000 || salt.length !== 16 || iv.length !== 12 || data.length < 16) return Promise.reject(new Error('معايير تشفير غير مدعومة'));
     var enc = new TextEncoder();
     return crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey'])
       .then(function (base) { return crypto.subtle.deriveKey(
@@ -66,6 +56,18 @@
       .then(function (key) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data); })
       .catch(function () { throw new Error('كلمة المرور غير صحيحة أو الملف معدَّل'); })
       .then(function (buf) { return new TextDecoder().decode(buf); });
+  }
+
+  function reviewImportedBackup(text) {
+    var p = Store.previewBackup(text), cloud = Store.cloudStatus();
+    var summary = p.jobs + ' وظيفة و' + p.applicants + ' بطاقة و' + p.attempts + ' فرصة.';
+    if (cloud.enforceAuth || (cloud.state === 'on' && cloud.role === 'staff')) {
+      UI.modal({ title: 'معاينة فقط — لا استعادة على الموقع', body: '<p>' + UI.esc(summary) + '</p><p>الملف نسخة متصفح وليس قاعدة PostgreSQL كاملة. الاستعادة تختبر في بيئة معزولة؛ بيانات الموقع لم تتغير.</p>', footer: '<button class="btn btn-outline" data-close>إغلاق</button>' });
+      return Promise.resolve(false);
+    }
+    return UI.confirm({ title: 'معاينة واعتماد النسخة', danger: true, confirmText: 'اعتماد محلي',
+      message: summary + ' سيجري الاستبدال محلياً فقط بعد نجاح حفظ نسخة أمان. هل تعتمد؟'
+    }).then(function (ok) { if (!ok) return false; Store.importJson(text); UI.toast('ok', 'تم الاستيراد المحلي', 'حُفظت نسخة أمان واستعيدت بيانات الاختبار.'); renderCurrent(); return true; });
   }
 
   /* مفتاح الجلسة: يُستخدم لرصد الدخول/الخروج وإعادة ضبط الواجهة والصلاحيات */
@@ -774,15 +776,7 @@
     });
   }
 
-  /* ==========================================================================
-   *  حالة الاتصال بالسحابة — معروضة دائماً لا مخفية
-   *  ---------------------------------------------------------------------------
-   *  لماذا بانر دائم؟ لأن النظام يعمل في وضعين مختلفين تماماً: قاعدة مشتركة،
-   *  أو قاعدة في هذا المتصفح وحده. الفرق بينهما **فارق في الثقة**: في الوضع
-   *  المحلي قد يبدو كل شيء طبيعياً (استمارات، وظائف، تدقيق) بينما موظف آخر
-   *  يرى شيئاً مختلفاً تماماً — أو لا يرى ما أُصدر هنا أبداً. إخفاء هذا الفرق
-   *  وراء «يعمل بلا أخطاء» أخطر من إظهاره.
-   * ========================================================================== */
+  /* Cloud connectivity is always visible, including before login. */
   function cloudBanner(st) {
     var el = document.getElementById('hrc-cloud-banner');
     if (!st || !st.configured) { if (el) el.remove(); return; }
@@ -2282,8 +2276,15 @@
       }
       var lastAuto = backups.filter(function (b) { return b.auto; }).slice(-1)[0];
       if (lastAuto) html += '<br>آخر نسخة تلقائية محفوظة: ' + UI.esc(lastAuto.name) + ' — ' + UI.esc(Store.fmtDateTime(lastAuto.createdAt));
+      if (Store.cloudStatus().enforceAuth) html = '<b>جدولة المتصفح متوقفة لحماية الخصوصية.</b><br>وكيل PostgreSQL: لم يربط بهذا الموقع؛ آخر نجاح والموعد التالي غير متحققين هنا. حالته الفعلية تظهر من لابتوب المكتب بعد إعداده.';
       scheduleStatus.innerHTML = html;
+      var prepared = document.getElementById('backup-last-export');
+      if (prepared) { var stamp = null; try { stamp = localStorage.getItem('hrc-encrypted-export-prepared'); } catch (e) {} prepared.textContent = stamp ? Store.fmtDateTime(stamp) + ' — جهز للتنزيل، تأكد من حفظه' : 'لم يجهز ملف على هذا الجهاز بعد'; }
+      var legacy = document.getElementById('backup-legacy-warning');
+      if (legacy) { legacy.hidden = !backups.length; legacy.textContent = 'توجد ' + backups.length + ' لقطات قديمة غير مشفرة في هذا المتصفح. للمدير فقط: صدّرها مشفرة ثم احذفها من «عرض اللقطات القديمة» إذا لم تعد مطلوبة.'; }
     }
+
+    ['btn-reset', 'btn-export'].forEach(function (id) { var button = document.getElementById(id); if (button) button.classList.toggle('hidden', Store.cloudStatus().enforceAuth); });
 
     // إخفاء أزرار الجدولة إن لم تكن مفعّلة (تعديل/إيقاف/نفّذ الآن)
     var hasSchedule = !!Store.getAutoSchedule();
@@ -2490,11 +2491,14 @@
 
     var ex = document.getElementById('btn-export');
     if (ex) ex.addEventListener('click', function () {
+      if (!Store.isAdmin()) return;
+      if (Store.cloudStatus().enforceAuth) { document.getElementById('btn-export-encrypted').click(); return; }
       UI.download('hrc-backup-' + Store.fmtDate(new Date()) + '.json', Store.exportJson(), 'application/json');
       UI.toast('ok', 'تصدير النسخة', 'حُفظ ملف JSON يحتوي كل البيانات والسجلات.');
     });
     var exEncrypted = document.getElementById('btn-export-encrypted');
     if (exEncrypted) exEncrypted.addEventListener('click', function () {
+      if (!Store.isAdmin()) return;
       var p1 = window.prompt('اكتب كلمة مرور قوية للنسخة المشفّرة:');
       if (!p1 || p1.length < 10) { UI.toast('warn', 'كلمة المرور قصيرة', 'استخدم 10 أحرف أو أكثر واحفظها خارج الموقع.'); return; }
       var p2 = window.prompt('أعد كتابة كلمة المرور:');
@@ -2502,7 +2506,9 @@
       exEncrypted.disabled = true;
       encryptedBackup(Store.exportJson(), p1).then(function (data) {
         UI.download('HRC-backup-' + Store.fmtDate(new Date()) + '.brc.enc.json', data, 'application/json');
-        UI.toast('ok', 'تم إنشاء النسخة المشفّرة', 'احفظ الملف وكلمة المرور في مكانين آمنين.');
+        try { localStorage.setItem('hrc-encrypted-export-prepared', new Date().toISOString()); } catch (e) {}
+        UI.toast('ok', 'جُهّز الملف المشفّر للتنزيل', 'لقطة بيانات المتصفح فقط؛ تأكد من حفظ الملف وكلمة المرور بمكانين آمنين.');
+        renderSettings();
       }).catch(function (e) { UI.toast('err', 'فشل التشفير', e.message); }).then(function () { exEncrypted.disabled = false; });
     });
 
@@ -2511,7 +2517,8 @@
     if (im && imf) {
       im.addEventListener('click', function () { imf.click(); });
       imf.addEventListener('change', function () {
-        var f = imf.files[0]; if (!f) return;
+        var f = imf.files[0]; if (!f || !Store.isAdmin()) return;
+        if (f.size > 32 * 1024 * 1024) { UI.toast('err', 'ملف كبير', 'الحد 32 ميغابايت'); return; }
         var r = new FileReader();
         r.onload = function () {
           var text = String(r.result);
@@ -2520,7 +2527,7 @@
             UI.toast('warn', 'هذه نسخة مشفّرة', 'استخدم زر «استرداد نسخة مشفّرة» وأدخل كلمة المرور.');
             imf.value = ''; return;
           }
-          try { Store.importJson(text); UI.toast('ok', 'تم الاستيراد', 'استُعيدت البيانات من النسخة الاحتياطية.'); renderCurrent(); }
+          try { reviewImportedBackup(text).catch(function (e) { UI.toast('err', 'فشل الاستيراد', e.message); }); }
           catch (e) { UI.toast('err', 'فشل الاستيراد', 'الملف غير صالح: ' + e.message); }
           imf.value = '';
         };
@@ -2528,52 +2535,25 @@
       });
     }
 
-    /* ------------- استرداد النسخة المشفّرة (من الهاتف أو اللابتوب) -------------
-     *  الملف يُقرأ محلياً، تُطلب كلمة المرور، يُفكّ التشفير في المتصفح، ثم
-     *  تُحفظ نسخة أمان من الحالة الراهنة قبل الاعتماد — فلا يمكن خسارة البيانات
-     *  الحالية حتى لو كانت النسخة المستردة ناقصة. */
-    var ime = document.getElementById('btn-import-encrypted');
-    var imef = document.getElementById('import-enc-file');
+    var ime = document.getElementById('btn-import-encrypted'), imef = document.getElementById('import-enc-file');
     if (ime && imef) {
-      ime.addEventListener('click', function () { imef.click(); });
+      ime.addEventListener('click', function () { if (Store.isAdmin()) imef.click(); });
       imef.addEventListener('change', function () {
-        var f = imef.files[0]; if (!f) return;
+        var f = imef.files[0]; if (!f || !Store.isAdmin()) return;
+        if (f.size > 32 * 1024 * 1024) { UI.toast('err', 'ملف كبير', 'الحد 32 ميغابايت'); return; }
         var r = new FileReader();
         r.onload = function () {
-          var text = String(r.result);
-          imef.value = '';
-          if (!isEncryptedBackup(text)) {
-            /* ملف عادي غير مشفّر: نقبله عبر المسار العادي بدل رفضه */
-            try {
-              Store.saveScheduledBackup('قبل استرداد نسخة خارجية - ' + Store.fmtDateTime(new Date()), null);
-              Store.importJson(text);
-              UI.toast('ok', 'تم الاسترداد', 'الملف غير مشفّر — استُورد مباشرةً واعتمده النظام.');
-              renderCurrent();
-            } catch (e) { UI.toast('err', 'فشل الاسترداد', 'الملف غير صالح: ' + e.message); }
-            return;
+          var text = String(r.result); imef.value = '';
+          var job;
+          if (!isEncryptedBackup(text)) job = Promise.resolve(text);
+          else {
+            var pw = window.prompt('أدخل كلمة مرور النسخة المشفّرة:');
+            if (!pw) return;
+            job = decryptBackup(text, pw);
           }
-          var pw = window.prompt('أدخل كلمة مرور النسخة المشفّرة:');
-          if (!pw) { UI.toast('info', 'أُلغي الاسترداد', 'لم تُدخل كلمة المرور.'); return; }
           ime.disabled = true;
-          decryptBackup(text, pw).then(function (json) {
-            var parsed = JSON.parse(json);
-            if (!parsed || !parsed.jobs || !parsed.applicants) throw new Error('النسخة المفكوكة لا تحتوي بيانات النظام');
-            var jobs = parsed.jobs.length, apps = parsed.applicants.length;
-            return UI.confirm({
-              title: 'اعتماد النسخة المشفّرة',
-              confirmText: 'اعتماد النسخة',
-              message: 'فُكّ التشفير بنجاح: ' + jobs + ' وظيفة و' + apps + ' بطاقة. ' +
-                'سيستبدل النظام بياناته الحالية بهذه النسخة (تُحفظ نسخة أمان قبلها). هل تعتمدها؟'
-            }).then(function (ok) {
-              if (!ok) { UI.toast('info', 'أُلغي الاعتماد', 'البيانات الحالية لم تتغيّر.'); return; }
-              Store.saveScheduledBackup('قبل استرداد نسخة مشفّرة - ' + Store.fmtDateTime(new Date()), null);
-              Store.importJson(json);
-              UI.toast('ok', 'اعتُمدت النسخة المشفّرة', 'استُردت ' + apps + ' بطاقة و' + jobs + ' وظيفة، والنظام يعمل عليها الآن.');
-              renderCurrent();
-            });
-          }).catch(function (e) {
-            UI.toast('err', 'فشل الاسترداد', e.message || 'تعذّر فك التشفير');
-          }).then(function () { ime.disabled = false; });
+          job.then(reviewImportedBackup).catch(function (e) { UI.toast('err', 'فشل الاسترداد', e.message); })
+            .then(function () { ime.disabled = false; });
         };
         r.readAsText(f);
       });
@@ -2624,6 +2604,8 @@
     bindOnce(document.getElementById('btn-view-backups'), 'click', viewBackupsModal);
 
     bindOnce(document.getElementById('btn-quick-backup'), 'click', function () {
+      if (!Store.isAdmin()) return;
+      if (Store.cloudStatus().enforceAuth) { document.getElementById('btn-export-encrypted').click(); return; }
       var name = 'نسخة سريعة - ' + Store.fmtDateTime(new Date());
       var backup = Store.saveScheduledBackup(name, null);
       if (backup) {
@@ -2658,6 +2640,7 @@
 
   /* نافذة جدولة النسخ الاحتياطي */
   function scheduleBackupModal() {
+    if (Store.cloudStatus().enforceAuth) { UI.toast('info', 'الجدولة مستقلة عن المتصفح', 'جهّز وكيل PostgreSQL ومهمة ويندوز؛ لا توجد جدولة خادم مفعلة من هذا الزر.'); return; }
     var schedule = Store.getAutoSchedule();
 
     var days = [
@@ -2806,19 +2789,19 @@
             '<td><b>' + UI.esc(b.name) + '</b>' + tags + '</td>' +
             '<td class="tiny">' + UI.esc(Store.fmtDateTime(b.createdAt)) + '</td>' +
             '<td class="tiny">' + (b.dateRange ? UI.esc(b.dateRange.from + ' إلى ' + b.dateRange.to) : 'كل البيانات') +
-              (b.records ? '<br><span class="muted">' + b.records.applicants + ' بطاقة · ' + b.records.audit + ' سجل</span>' : '') + '</td>' +
+              (b.records ? '<br><span class="muted">' + UI.esc(b.records.applicants) + ' بطاقة · ' + UI.esc(b.records.audit) + ' سجل</span>' : '') + '</td>' +
             '<td class="tiny">' + ((b.size || 0) / 1024).toFixed(1) + ' ك.ب</td>' +
             '<td><div class="cell-actions">' +
-            '<button class="btn btn-outline btn-sm" data-backup-export="' + b.id + '">' + UI.ic('download') + ' تصدير</button>' +
-            '<button class="btn btn-ok btn-sm" data-backup-restore="' + b.id + '">' + UI.ic('refresh') + ' استعادة</button>' +
-            '<button class="btn btn-danger btn-sm" data-backup-delete="' + b.id + '" aria-label="حذف النسخة">' + UI.ic('trash') + '</button>' +
+            '<button class="btn btn-outline btn-sm" data-backup-export="' + UI.esc(b.id) + '">' + UI.ic('download') + ' تصدير</button>' +
+            '<button class="btn btn-ok btn-sm" data-backup-restore="' + UI.esc(b.id) + '">' + UI.ic('refresh') + ' استعادة</button>' +
+            '<button class="btn btn-danger btn-sm" data-backup-delete="' + UI.esc(b.id) + '" aria-label="حذف النسخة">' + UI.ic('trash') + '</button>' +
             '</div></td></tr>';
         }).join('')) +
       '</tbody></table></div></div>';
 
     UI.modal({
       title: 'النسخ الاحتياطية',
-      subtitle: backups.length + ' نسخة احتياطية (يُحتفظ بآخر 20 نسخة في المتصفح)',
+      subtitle: backups.length + ' لقطة متصفح قديمة غير مشفرة — لا تغني عن قاعدة البيانات. صدّرها بأمان واحذفها من الجهاز المشترك عند الحاجة.',
       wide: true,
       body: body,
       footer: '<button class="btn btn-outline" data-close>إغلاق</button>',
@@ -2828,6 +2811,12 @@
             var id = btn.getAttribute('data-backup-export');
             var data = Store.exportScheduledBackup(id);
             if (data) {
+              if (Store.cloudStatus().enforceAuth) {
+                var pw = window.prompt('كلمة مرور 10 أحرف أو أكثر لتشفير اللقطة القديمة:');
+                if (!pw || pw.length < 10 || window.prompt('أعد كتابة كلمة مرور اللقطة:') !== pw) return;
+                encryptedBackup(data, pw).then(function (encrypted) { UI.download('HRC-legacy.brc.enc.json', encrypted, 'application/json'); }).catch(function (e) { UI.toast('err', 'فشل التشفير', e.message); });
+                return;
+              }
               UI.download('hrc-backup-' + Store.fmtDate(new Date()) + '.json', data, 'application/json');
               UI.toast('ok', 'تم التصدير', 'حُفظ ملف النسخة الاحتياطية');
             } else {
@@ -2839,6 +2828,7 @@
         box.querySelectorAll('[data-backup-restore]').forEach(function(btn) {
           btn.addEventListener('click', function() {
             var id = btn.getAttribute('data-backup-restore');
+            if (Store.cloudStatus().enforceAuth) { reviewImportedBackup(Store.exportScheduledBackup(id)); return; }
             var meta = Store.listBackupMeta().filter(function (b) { return b.id === id; })[0] || {};
             UI.confirm({
               title: 'استعادة النسخة الاحتياطية',

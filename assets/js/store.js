@@ -1,31 +1,7 @@
-/* ===========================================================================
- *  HRC — محرّك البيانات ومنطق العمل
- *  ---------------------------------------------------------------------------
- *  نسختان في ملف واحد — والفرق بينهما فرق ثقة لا فرق شيفرة:
- *
- *   1) الوضع السحابي (الافتراضي عند وجود إعداد Supabase):
- *      • القراءة من الذاكرة فوراً (تُملأ من سوبابيس عند الإقلاع) فلا تتغيّر
- *        أي نقطة استدعاء من النقاط الـ222 — وكلها متزامنة.
- *      • الكتابة: تُحدَّث الذاكرة فوراً ثم تُدفع لسوبابيس في الخلفية عبر فرق
- *        مركزي واحد (cloud-sync.js)، ويُبلَّغ باقي الموظفين عبر Realtime.
- *      • الدخول عبر Supabase Auth والدور من brc.staff: لا كلمات مرور في كود
- *        الواجهة، ولا قاعدة بيانات منفصلة لكل متصفح.
- *      • إن تعذّر الوصول للسحابة يعمل النظام محلياً **بتنبيه صريح دائم**
- *        (وضع مؤقّت لا تُعتمد عليه البيانات المشتركة).
- *
- *   2) الوضع المحلي (بلا إعداد سحابة، أو عبر init({cloud:false})):
- *      كل شيء في localStorage — للطباعة والتشغيل بلا إنترنت والتجارب.
- *
- *  نفس المنطق مُنفّذ في PostgreSQL + Supabase (docs/schema.sql: المشغلات
- *  triggers وسياسات RLS ودوال select_attempt/set_outcome/verify_form).
- *
- *  المنطق المطبّق هنا مطابق للمواصفات:
- *   • استمارة لكل باحث عن عمل، صالحة 30 يوماً، وتحتوي 5 محاولات.
- *   • عند اختيار محاولة: تُحجز الوظيفة مؤقتاً 24 ساعة (بانتظار المقابلة).
- *   • إن لم تُثبّت النتيجة خلال 24 ساعة: تُفرج الوظيفة تلقائياً وتُوسم
- *     المحاولة بـ "انتهت المهلة / تتطلب إجراء".
- *   • عند الرفض: تُعاد الوظيفة إلى "متاحة" وتُفعّل المحاولة التالية تلقائياً.
- * =========================================================================== */
+/* HRC data engine. Cloud: official Auth + RLS; office offline drafts use office/.
+ * Cards default to two configurable chances; 24h expiry is critical, never
+ * automatic release. Company confirmation remains authoritative.
+ */
 (function (root) {
   'use strict';
 
@@ -284,15 +260,7 @@
   function saveLocal() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-      // حفظ في قائمة التغييرات الأوفلاين
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        var queue = [];
-        try { queue = JSON.parse(localStorage.getItem('hrc-offline-queue') || '[]'); } catch(e) {}
-        queue.push({ ts: nowISO(), data: JSON.parse(JSON.stringify(db)) });
-        // احتفظ بآخر 50 نسخة فقط
-        if (queue.length > 50) queue = queue.slice(-50);
-        try { localStorage.setItem('hrc-offline-queue', JSON.stringify(queue)); } catch(e) {}
-      }
+
     } catch (e) { /* لا تخزين متاح أو المساحة ممتلئة — البيانات تبقى في الذاكرة */ }
   }
 
@@ -304,26 +272,9 @@
     schedulePush();
   }
 
-  function syncOfflineChanges() {
-    // مزامنة التغييرات عند العودة للاتصال
-    var queue = [];
-    try { queue = JSON.parse(localStorage.getItem('hrc-offline-queue') || '[]'); } catch(e) {}
-    if (queue.length > 0) {
-      audit('مزامنة أوفلاين', 'system', '—', 'تم استعادة الاتصال — تم حفظ ' + queue.length + ' نسخة من التغييرات');
-      // حفظ آخر نسخة كاحتياط
-      try {
-        var lastSync = queue[queue.length - 1];
-        localStorage.setItem('hrc-last-offline-sync', JSON.stringify({
-          ts: nowISO(),
-          data: lastSync.data
-        }));
-      } catch(e) {}
-      // مسح قائمة الانتظار
-      try { localStorage.removeItem('hrc-offline-queue'); } catch(e) {}
-      save();
-    }
-    return queue.length;
-  }
+  // Legacy browser snapshots are NOT an operational outbox. Preserve them for
+  // review, never clear/replay a stale snapshot as proof of synchronization.
+  function syncOfflineChanges() { return pendingQueueLength(); }
 
   function emit() { sub.version++; sub.listeners.forEach(function (fn) { try { fn(db, sub.version); } catch (e) { } }); }
 
@@ -1695,26 +1646,51 @@
     /* ⚠️ في الوضع السحابي «إعادة الضبط» تعني: حذف كل وظائف القاعدة واستماراتها
        وإدراج البيانات التجريبية مكانها — عملية تدميرية للمشروع كله. ممنوعة هنا
        بحسم؛ من يحتاجها فعلاً يُفرغ الجداول من Supabase مباشرةً. */
-    if (cloud.state === 'on' && cloud.role === 'staff') {
+    if (enforceAuth() || !isAdmin() || (cloud.state === 'on' && cloud.role === 'staff')) {
       console.warn('[HRC] إعادة الضبط مرفوضة في الوضع السحابي');
       return false;
     }
+    if (!saveScheduledBackup('قبل إعادة ضبط التجربة', null)) return false;
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
     db = seedDb(); save();
     audit('إعادة ضبط البيانات', 'system', '—', 'إعادة تهيئة قاعدة البيانات المحلية إلى البيانات التجريبية');
-    save(); emit();
+    save(); emit(); return true;
   }
 
-  function exportJson() { return JSON.stringify(db, null, 2); }
+  function exportJson() {
+    if (enforceAuth() && !isAdmin()) throw new Error('التصدير السحابي للمدير فقط');
+    return JSON.stringify(db, null, 2);
+  }
+
+  function previewBackup(text) {
+    if (typeof text !== 'string' || text.length > 32 * 1024 * 1024) throw new Error('حجم النسخة غير صالح');
+    var p = JSON.parse(text);
+    if (!p || !p.meta || p.meta.version !== 2 || !p.settings || !p.counters) throw new Error('إصدار نسخة غير مدعوم');
+    ['jobs', 'applicants', 'attempts', 'audit'].forEach(function (k) {
+      if (!Array.isArray(p[k]) || p[k].length > 100000) throw new Error('جدول غير صالح: ' + k);
+    });
+    var jobs = Object.create(null), apps = Object.create(null), slots = Object.create(null);
+    p.jobs.forEach(function (j) { if (!j || typeof j.code !== 'string' || !j.code || jobs[j.code]) throw new Error('وظائف مكررة أو غير صالحة'); jobs[j.code] = true; });
+    p.applicants.forEach(function (a) { if (!a || typeof a.serial !== 'string' || !a.serial || apps[a.serial]) throw new Error('بطاقات مكررة أو غير صالحة'); apps[a.serial] = true; });
+    p.attempts.forEach(function (t) {
+      var key = t && (t.serial + ':' + t.no);
+      if (!t || !apps[t.serial] || !Number.isInteger(t.no) || t.no < 1 || slots[key] ||
+          (['reserved', 'critical'].indexOf(t.slotStatus) >= 0 && !jobs[t.jobCode])) throw new Error('علاقات الفرص غير صالحة');
+      slots[key] = true;
+    });
+    return { jobs: p.jobs.length, applicants: p.applicants.length, attempts: p.attempts.length, version: 2 };
+  }
+
+  function assertLocalRestore() {
+    if (enforceAuth() || (cloud.state === 'on' && cloud.role === 'staff')) throw new Error('الاستعادة مرفوضة في الموقع السحابي؛ استخدم بيئة اختبار معزولة');
+    if (!isAdmin()) throw new Error('الاستعادة للمدير فقط');
+  }
 
   function importJson(text) {
-    /* نفس منطق إعادة الضبط: الاستيراد يستبدل كل البيانات، ولو مرّ في الوضع
-       السحابي لمحا ما في القاعدة ودفع الملف المحلي مكانه. */
-    if (cloud.state === 'on' && cloud.role === 'staff') {
-      throw new Error('الاستيراد مرفوض في الوضع السحابي — البيانات مرجعها القاعدة');
-    }
+    assertLocalRestore();
+    previewBackup(text);
     var parsed = JSON.parse(text);
-    if (!parsed.jobs || !parsed.applicants) throw new Error('ملف غير صالح');
+    if (!saveScheduledBackup('قبل الاستيراد - ' + fmtDateTime(new Date()), null)) throw new Error(lastBackupError || 'تعذر حفظ نسخة أمان؛ لم تتغير البيانات');
     db = parsed; save();
     normalizeSerialLog();
     audit('استيراد بيانات', 'system', '—', 'استيراد نسخة احتياطية تحتوي ' + parsed.jobs.length + ' وظيفة و' + parsed.applicants.length + ' استمارة');
@@ -1747,6 +1723,7 @@
   }
 
   function getScheduledBackups() {
+    if (!isAdmin()) return [];
     var list = readJson(BACKUP_KEY, []);
     return Array.isArray(list) ? list : [];
   }
@@ -1800,6 +1777,7 @@
   }
 
   function saveScheduledBackup(name, dateRange, opts) {
+    if (!isAdmin() || enforceAuth()) { lastBackupError = 'الحفظ غير المشفر في المتصفح متوقف؛ استخدم التصدير المشفر أو وكيل النسخ المستقل'; return null; }
     opts = opts || {};
     if (!db) load();
     var snapshot = JSON.parse(JSON.stringify(db));
@@ -1832,6 +1810,7 @@
   }
 
   function deleteScheduledBackup(id) {
+    if (!isAdmin()) return false;
     var backups = getScheduledBackups();
     var next = backups.filter(function (b) { return b.id !== id; });
     if (next.length === backups.length) return false;
@@ -1844,10 +1823,13 @@
   /* استعادة: النسخة الكاملة تُستبدل بالكامل، والنسخة الجزئية (نطاق مخصص)
      تُدمَج حتى لا نفقد الوظائف أو الاستمارات الأخرى الموجودة حالياً. */
   function restoreScheduledBackup(id) {
+    try { assertLocalRestore(); if (!isAdmin()) throw new Error('الاستعادة للمدير فقط'); }
+    catch (e) { lastBackupError = e.message; return false; }
     var backup = getScheduledBackups().filter(function (b) { return b.id === id; })[0];
     if (!backup || !backup.data) return false;
     try {
-      saveScheduledBackup('قبل الاستعادة - ' + fmtDateTime(new Date()), null);
+      previewBackup(JSON.stringify(backup.data));
+      if (!saveScheduledBackup('قبل الاستعادة - ' + fmtDateTime(new Date()), null)) return false;
       if (backup.partial) {
         var cur = JSON.parse(JSON.stringify(db));
         var have = {};
@@ -1887,6 +1869,7 @@
   }
 
   function saveAutoSchedule(days, time) {
+    if (!isAdmin() || enforceAuth()) { lastBackupError = 'جدولة المتصفح غير متاحة للسحابة؛ استخدم مهمة ويندوز المستقلة'; return null; }
     var s = { days: (days || []).map(Number).filter(function (n) { return n >= 0 && n <= 6; }), time: time || '23:00', createdAt: nowISO() };
     if (!s.days.length) return null;
     if (!writeJson(SCHEDULE_KEY, s)) { lastBackupError = 'تعذّر حفظ الجدولة — مساحة التخزين ممتلئة.'; return null; }
@@ -1896,6 +1879,7 @@
   }
 
   function clearAutoSchedule() {
+    if (!isAdmin()) return false;
     try { localStorage.removeItem(SCHEDULE_KEY); localStorage.removeItem(AUTO_RUN_KEY); } catch (e) { }
     audit('إيقاف النسخ الاحتياطي المجدول', 'backup', '—', 'أُوقفت الجدولة التلقائية');
     save();
@@ -1908,6 +1892,7 @@
      يُنشئ نسخة واحدة فقط لكل "خانة زمنية" (يوم + وقت) حتى لو فُتحت الصفحة
      عدة مرات، ويلتقط النسخة الفائتة في نفس اليوم إذا كان المتصفح مغلقاً. */
   function checkAutoBackup(now) {
+    if (!isAdmin() || enforceAuth()) return null;
     var s = getAutoSchedule();
     if (!s) return null;
     var d = now ? new Date(now) : new Date();
@@ -1923,26 +1908,9 @@
     emit();
     return backup;
   }
-  /* =========================================================================
-   *  طبقة السحابة (Supabase) — الإقلاع، والدفع، والجلسة
-   *  -------------------------------------------------------------------------
-   *  ثلاث مسؤوليات فقط، وكلها في هذا الموضع وحده:
-   *    1) الإقلاع: نجلب الحالة من القاعدة و«نتبنّاها» — نستبدل محتوى كائن db
-   *       نفسه (لا نُعيد إسناده) فتبقى كل المراجع في الواجهة صالحة، ثم emit()
-   *       ليُعاد الرسم. القراءة بعدها كلها من الذاكرة وبلا انتظار.
-   *    2) الدفع: كل save() تُجدول دفعة واحدة مؤجَّلة (debounce) تستدعي
-   *       HRCSync.push(db) الذي يشتقّ الفرق المركزي ويرسله.
-   *    3) الجلسة: الدخول عبر Supabase Auth والدور من brc.staff، مع استعادة
-   *       الجلسة عند تحديث الصفحة.
-   *
-   *  لماذا لا نمنع العمل عند تعذّر الاتصال؟ لأن المنع يعني «المنظومة متوقفة»
-   *  عند أي انقطاع. لذلك نعمل محلياً **بتنبيه صريح** (بانر أحمر دائم يخبر
-   *  الموظف أن البيانات غير مشتركة وأن هذا وضع مؤقّت) — والفرق بين وضعين
-   *  معروضين بوضوح خير من صمت يظنّ الموظف معه أن عمله محفوظ للجميع.
-   * ======================================================================= */
-
+  /* Cloud boot/fetch, diff push and official sessions. Never replay full snapshots. */
   var CORE_TABLES = ['jobs', 'applicants', 'job_attempts'];
-  var PUSH_DELAY = 700;   // تجميع الحفظ المتلاحق في دفعة واحدة
+  var PUSH_DELAY = 700;
 
   var cloud = {
     client: null, sync: null, auth: null,
@@ -2651,7 +2619,7 @@
     clearAutoSchedule: clearAutoSchedule, lastAutoRun: lastAutoRun, checkAutoBackup: checkAutoBackup,
     // أدوات
     fmtDate: fmtDate, fmtDateTime: fmtDateTime, money: money, diffDays: diffDays, diffHours: diffHours,
-    addDays: addDays, addHours: addHours, resetDemo: resetDemo, exportJson: exportJson, importJson: importJson,
+    addDays: addDays, addHours: addHours, resetDemo: resetDemo, exportJson: exportJson, importJson: importJson, previewBackup: previewBackup,
     token_for: token, uid: uid
   };
 
