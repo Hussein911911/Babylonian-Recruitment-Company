@@ -138,7 +138,7 @@
       list.innerHTML = visible.length ? visible.map(function (n) {
         var icon = n.kind === 'booking' ? 'hourglass' : n.kind === 'decision' ? 'briefcase' : n.kind === 'alert' ? 'alert' : 'refresh';
         return '<li class="notice-item ' + (read[hashes[n.id]] ? '' : 'notice-unread') + '"><div class="notice-icon">' + UI.ic(icon) + '</div><div class="notice-content">' +
-          '<div class="notice-heading"><h3>' + UI.esc(n.title) + '</h3>' + (!read[hashes[n.id]] ? '<span class="notice-dot" title="غير مقروء"></span>' : '') + '</div>' +
+          '<div class="notice-heading"><h3>' + UI.esc(n.title) + '</h3>' + ('<span class="notice-state">' + (read[hashes[n.id]] ? 'مقروء' : '<span class="notice-dot" aria-hidden="true"></span>غير مقروء') + '</span>') + '</div>' +
           (n.jobCode ? '<p class="notice-job"><bdi>' + UI.esc(n.jobCode) + '</bdi> · ' + UI.esc(n.jobTitle) + '</p>' : '') +
           '<p>' + UI.esc(n.body) + '</p>' + (n.reason ? '<p class="notice-reason"><strong>السبب:</strong> ' + UI.esc(n.reason) + '</p>' : '') +
           '<time datetime="' + UI.esc(n.at) + '">' + UI.esc(Store.fmtDateTime(n.at)) + '</time><div class="notice-actions">' +

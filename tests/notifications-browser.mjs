@@ -86,11 +86,26 @@ try {
     });
     await page.locator('#notification-toggle').click();
     check(await page.locator('#notification-center').isVisible(), 'Drawer opens');
+    const unread = page.locator('.notice-unread').first();
+    check(await unread.locator('.notice-state').textContent() === 'غير مقروء', 'Unread has explicit state label');
+    const unreadPaint = await unread.evaluate(el => ({ background: getComputedStyle(el).backgroundImage, color: getComputedStyle(el.querySelector('h3')).color }));
     check(await page.evaluate(() => document.getElementById('app-shell').inert), 'Background is inert');
     await page.keyboard.press('Shift+Tab');
     check(await page.evaluate(() => document.querySelector('.notification-drawer').contains(document.activeElement)), 'Keyboard focus trapped');
     await page.locator('#notification-read-all').click();
     check(await page.locator('#notification-count').isHidden(), 'Read all clears counter');
+    const readCard = page.locator('.notice-item').first();
+    check(await readCard.locator('.notice-state').textContent() === 'مقروء', 'Read has explicit state label');
+    const readPaint = await readCard.evaluate(el => ({ background: getComputedStyle(el).backgroundImage, color: getComputedStyle(el.querySelector('h3')).color }));
+    check(readPaint.background !== unreadPaint.background && readPaint.color !== unreadPaint.color, 'Read/unread backgrounds and title colors differ');
+    // Real computed title contrast: both states must remain readable.
+    function contrast(hex, rgb) {
+      const a = hex.match(/[a-f\d]{2}/gi).map(c => parseInt(c, 16));
+      const b = rgb.match(/[\d.]+/g).slice(0, 3).map(Number);
+      const luminance = x => x.map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }).reduce((n, v, i) => n + v * [.2126, .7152, .0722][i], 0);
+      const x = luminance(a), y = luminance(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
+    }
+    check(contrast('203e65', unreadPaint.color) >= 4.5 && contrast('f0f3f7', readPaint.color) >= 4.5, 'Title contrast passes 4.5:1 in both states');
     await page.keyboard.press('Escape');
     check(await page.locator('#notification-toggle').evaluate(el => el === document.activeElement), 'Escape restores trigger focus');
     check(!await page.evaluate(() => document.getElementById('app-shell').inert), 'Background restored');
@@ -121,9 +136,16 @@ try {
     await page.locator('[data-filter="decision"]').click();
     const notice = page.locator('.notice-item').filter({ hasText: reason }).first();
     check(await notice.isVisible(), 'Employer rejection and exact reason visible');
+    const detailStyle = await notice.locator('[data-notice-open]').evaluate(el => ({ color: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor }));
+    check(contrast('ead29d', detailStyle.color) >= 4.5 && detailStyle.background === 'rgb(234, 210, 157)', 'Unread details button has a legible gold surface');
     check(await notice.locator('img').count() === 0 && !await page.evaluate(() => window.__noticeXss), 'Reason HTML is escaped');
     await contentFits(page, '.notice-heading h3,.notice-content>p,.notice-content time');
     if ([375, 1440].includes(width)) await page.screenshot({ path: join(output, `notifications-${width}.png`) });
+    if ([375, 1440].includes(width)) {
+      await page.locator('[data-filter="all"]').click();
+      await page.screenshot({ path: join(output, `notification-states-${width}.png`) });
+      await page.locator('[data-filter="decision"]').click();
+    }
     await notice.locator('[data-notice-read]').click();
     check(await page.locator('#notification-count').isHidden(), 'Mark individual decision read');
     await page.locator('[data-filter="unread"]').click();
