@@ -67,6 +67,7 @@ const partials = {
   dashboard: read('src/partials/dashboard.html')
 };
 const CSS = read('assets/css/style.css');
+const PUBLIC_CSS = read('assets/css/public-polish.css');
 /* ---------------------------------------------------------------------------
  *  بذرة العرض للملف المستقل
  *  ---------------------------------------------------------------------------
@@ -116,7 +117,7 @@ const scriptPath = (n) => n.startsWith('vendor/')
    تعديل cloud-sync.js — فيبقى المتصفح على نسخة قديمة **بصمت**، وهو أسوأ أنواع
    الأخطاء لأن الكود الجديد لا يصل أصلاً. */
 const ASSET_VER = process.env.HRC_ASSET_VER || createHash('sha1')
-  .update([CSS, ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
+  .update([CSS, PUBLIC_CSS, ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
            ...CLOUD_ORDER.map((n) => read(scriptPath(n)))].join('\u0000'))
   .digest('hex').slice(0, 10);
 const verQ = (p) => `${p}?v=${ASSET_VER}`;
@@ -150,8 +151,9 @@ ${extra}</head>
 }
 
 /* ---------------- الصفحات المنفصلة ---------------- */
-function buildPage({ title, desc, body, scripts }) {
-  return docHead({ title, desc, css: 'assets/css/style.css' }) +
+function buildPage({ title, desc, body, scripts, publicStyle = false }) {
+  return docHead({ title, desc, css: 'assets/css/style.css',
+    extra: publicStyle ? `<link rel="stylesheet" href="${verQ('assets/css/public-polish.css')}">` : '' }) +
     partials.sprite + '\n' +
     partials.header + '\n' +
     body + '\n' +
@@ -161,7 +163,7 @@ function buildPage({ title, desc, body, scripts }) {
 }
 
 writeFileSync(P('index.html'), buildPage({
-  title: META.title, desc: META.desc, body: partials.public, scripts: SCRIPTS.public
+  title: META.title, desc: META.desc, body: partials.public, scripts: SCRIPTS.public, publicStyle: true
 }));
 writeFileSync(P('verify.html'), buildPage({
   title: 'التحقق من بطاقة التوظيف | شركة الهدف للتوظيف',
@@ -196,7 +198,7 @@ function buildStandalone() {
   const stats = { fonts: 0, cssImgs: 0, htmlImgs: 0 };
 
   // 1) CSS مع دمج الخطوط والصور
-  let css = CSS.replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
+  let css = (CSS + '\n' + PUBLIC_CSS).replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
     const d = dataUri('assets/fonts/' + f); if (!d) return m;
     stats.fonts += d.size; return `url(${d.uri})`;
   });

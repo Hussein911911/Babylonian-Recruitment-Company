@@ -2516,3 +2516,35 @@ table.data tbody tr:hover { background: #faf8f3; }
   outline: 3px solid var(--white);
   outline-offset: 3px;
 }
+
+/* Shared screen-only horizontal layout and motion. */
+@media screen{.contact-inline>*{max-width:100%}
+:root{--flow-ease:cubic-bezier(.22,1,.36,1)}
+.btn{white-space:normal;text-wrap:pretty;line-height:1.65}
+.btn > svg,.badge > svg,.panel-head h3 > svg,.hc-item > svg,.feature-list li > svg,.job-meta .mi > svg{flex-shrink:0}
+.chip-code,.job-code,.hc-phones a,.footer-phones a{white-space:nowrap;word-break:normal;overflow-wrap:normal}
+.panel-head{flex-wrap:wrap;gap:12px 18px}
+.panel-head > h3{flex:1 1 220px;line-height:1.85}
+.toolbar,.toolbar-enhanced{gap:12px}
+.toolbar .field,.toolbar-enhanced .field{flex:1 1 160px;min-width:0}
+.toolbar .field.grow,.toolbar-enhanced .field.grow{flex:2 1 230px}
+.toolbar .btn,.toolbar-enhanced .btn,.cell-actions .btn{min-height:42px}
+.data-item{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.data-item .k{flex:0 1 110px}
+.data-item .v{flex:1 1 140px;min-width:0}
+.ov-stat{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 14px;align-content:center}
+.ov-stat .ov-icon{grid-column:1;grid-row:1 / span 3;margin:0;align-self:center}
+.ov-stat .ov-val,.ov-stat .ov-lbl,.ov-stat .ov-hint{grid-column:2;margin:0}
+.bk-sum-row{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.bk-sum-row .k{flex:0 1 110px}
+.bk-sum-row .v{flex:1 1 140px;min-width:0}
+}
+@media screen and (prefers-reduced-motion:no-preference){.verify-card{animation:flow-settle .45s var(--flow-ease) both}
+.modal{animation:flow-settle .22s var(--flow-ease) both}
+.btn:active:not(:disabled){translate:0 1px}
+}
+@keyframes flow-settle{from{opacity:0;transform:translateY(8px)}
+to{opacity:1;transform:none}
+}
+@media screen and (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+}

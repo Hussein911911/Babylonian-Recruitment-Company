@@ -590,6 +590,19 @@ body{
 }
 @media print{#keyboard-navigation{display:none!important}}
 
+/* Screen-only horizontal layout; printed forms and all application rules stay unchanged. */
+@media screen {
+ .topbar svg,.btn>svg,.rv-ic{flex-shrink:0}
+ .steps-bar{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px}
+ .steps-track{flex:1 1 160px;justify-content:flex-start}.step-label{flex:0 1 auto;margin:0}
+ .rv-row{flex-wrap:wrap;align-items:baseline;gap:8px 18px}.rv-k{flex:0 1 150px;line-height:1.8}.rv-v{flex:1 1 220px;min-width:0}.rv-edit{flex:0 0 auto}
+ .btn{white-space:normal;line-height:1.7}.rv-chips{align-items:center}.rv-chip{display:inline-flex;align-items:center;gap:8px}
+ .form-sheet .fs-section .fs-td{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+ .form-sheet .fs-section .fs-td .k{flex:0 1 110px}.form-sheet .fs-section .fs-td .v{flex:1 1 150px;min-width:0}
+ @media(max-width:760px){.rv-k{flex:0 1 90px}.rv-v{flex:1 1 140px}.rv-row{gap:8px 12px}.rv-edit{margin-inline-start:auto}}
+}
+@media screen and (prefers-reduced-motion:no-preference){.rv-edit,.welcome .employer-link{transition:background .2s,border-color .2s,box-shadow .2s}.welcome .employer-link:hover{box-shadow:0 8px 24px #00000018}.anim-zoom.anim-glow{animation-iteration-count:1,1}}
+
 /* ── الطباعة: استمارة A4 وحدها بلا واجهة ── */
 @media print{
   @page{size:A4;margin:8mm}

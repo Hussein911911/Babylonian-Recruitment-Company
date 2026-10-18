@@ -2534,6 +2534,98 @@ table.data tbody tr:hover { background: #faf8f3; }
   outline-offset: 3px;
 }
 
+/* Shared screen-only horizontal layout and motion. */
+@media screen{.contact-inline>*{max-width:100%}
+:root{--flow-ease:cubic-bezier(.22,1,.36,1)}
+.btn{white-space:normal;text-wrap:pretty;line-height:1.65}
+.btn > svg,.badge > svg,.panel-head h3 > svg,.hc-item > svg,.feature-list li > svg,.job-meta .mi > svg{flex-shrink:0}
+.chip-code,.job-code,.hc-phones a,.footer-phones a{white-space:nowrap;word-break:normal;overflow-wrap:normal}
+.panel-head{flex-wrap:wrap;gap:12px 18px}
+.panel-head > h3{flex:1 1 220px;line-height:1.85}
+.toolbar,.toolbar-enhanced{gap:12px}
+.toolbar .field,.toolbar-enhanced .field{flex:1 1 160px;min-width:0}
+.toolbar .field.grow,.toolbar-enhanced .field.grow{flex:2 1 230px}
+.toolbar .btn,.toolbar-enhanced .btn,.cell-actions .btn{min-height:42px}
+.data-item{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.data-item .k{flex:0 1 110px}
+.data-item .v{flex:1 1 140px;min-width:0}
+.ov-stat{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 14px;align-content:center}
+.ov-stat .ov-icon{grid-column:1;grid-row:1 / span 3;margin:0;align-self:center}
+.ov-stat .ov-val,.ov-stat .ov-lbl,.ov-stat .ov-hint{grid-column:2;margin:0}
+.bk-sum-row{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.bk-sum-row .k{flex:0 1 110px}
+.bk-sum-row .v{flex:1 1 140px;min-width:0}
+}
+@media screen and (prefers-reduced-motion:no-preference){.verify-card{animation:flow-settle .45s var(--flow-ease) both}
+.modal{animation:flow-settle .22s var(--flow-ease) both}
+.btn:active:not(:disabled){translate:0 1px}
+}
+@keyframes flow-settle{from{opacity:0;transform:translateY(8px)}
+to{opacity:1;transform:none}
+}
+@media screen and (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+}
+
+/* Horizontal public-page rhythm; screen only, no functional or print changes. */
+@media screen {
+  .jobs-grid { grid-template-columns: repeat(auto-fill,minmax(min(100%,325px),1fr)); }
+  .job-head > div, .job-meta .mi, .hero-inner > *, .header-main > *,
+  .contact-card > *, .service > *, .step > * { min-width: 0; }
+  .job-head { flex-wrap: wrap; }
+  .job-title, .section-head h2 { text-wrap: pretty; word-break: normal; }
+  .job-meta .mi { line-height: 1.8; }
+  .hero-cta { align-items: stretch; }
+  .hero-cta .btn { flex: 0 1 auto; min-height: 50px; }
+  .header-contact { gap: 10px 18px; }
+  .hc-item { min-width: 0; line-height: 1.8; }
+  .hc-phones { flex-wrap: wrap; gap: 5px 12px; }
+  .footer-phones { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+  .site-footer ul { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .site-footer ul li { margin: 0; }
+  .service, .contact-card, .steps .step {
+    display: grid; grid-template-columns: 48px minmax(0,1fr);
+    align-content: start; align-items: start; column-gap: 16px; row-gap: 8px;
+    text-align: start; padding: 24px;
+  }
+  .service > svg, .contact-card > .ic, .steps .step > .num {
+    grid-column: 1; grid-row: 1 / span 3; margin: 0 !important;
+    width: 48px; height: 48px; flex: none;
+  }
+  .service > h3, .contact-card > h3, .steps .step > h3 {
+    grid-column: 2; margin: 0; line-height: 1.85; align-self: center;
+  }
+  .service > p, .contact-card > p, .steps .step > p { grid-column: 2; margin: 0; line-height: 1.95; }
+  .service > svg { padding: 10px; border-radius: 14px; background: #f7f2e7; color: var(--gold-3); }
+  .steps { grid-template-columns: repeat(auto-fit,minmax(min(100%,215px),1fr)); }
+  .quick-search { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .quick-search .qs-label { flex: 0 0 auto; }
+  .quick-search .qs-main { flex: 2 1 260px; min-width: 0; }
+  .quick-search .qs-region { flex: 1 1 180px; min-width: 0; }
+  .quick-search .qs-scan, .quick-search .qs-submit { flex: 0 1 auto; min-height: 44px; }
+  .contact-card a { text-underline-offset: 5px; }
+  .contact-card .contact-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+}
+@media screen and (max-width: 600px) {
+  .service, .contact-card, .steps .step { padding: 20px; column-gap: 12px; }
+  .hero-cta .btn { flex: 1 1 200px; }
+  .quick-search .qs-label, .quick-search .qs-main { flex-basis: 100%; }
+  .quick-search .qs-region { flex: 1 1 150px; }
+  .quick-search .qs-scan, .quick-search .qs-submit { flex: 1 1 90px; }
+  .site-footer .foot-main { row-gap: 28px; }
+}
+@media screen and (prefers-reduced-motion: no-preference) {
+  .service, .contact-card, .step {
+    transition: border-color .24s ease, box-shadow .24s ease, transform .28s var(--flow-ease);
+  }
+  .hero-badge, .hero h1 .accent, .hero-cta .btn-gold { animation-iteration-count: 1; }
+}
+@media screen and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .service:hover, .contact-card:hover, .steps .step:hover { transform: translateY(-3px); border-color: #c8a24a80; box-shadow: 0 14px 32px #102a5610; }
+  .footer-phones a:hover { color: #fff0c3; }
+}
+/* Preserve the original stacked contact lines on paper. */
+@media print { .contact-inline > * { display: block; } }
+
 </style>
 </head>
 <body>
@@ -3090,8 +3182,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       <div class="contact-card">
         <div class="ic"><svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg></div>
         <h3>أرقام الواتساب</h3>
-        <p><a href="https://wa.me/9647760058007" target="_blank" rel="noopener" dir="ltr" class="mono">07760058007</a></p>
-        <p><a href="https://wa.me/9647715993271" target="_blank" rel="noopener" dir="ltr" class="mono">07715993271</a></p>
+        <p class="contact-inline"><a href="https://wa.me/9647760058007" target="_blank" rel="noopener" dir="ltr" class="mono">07760058007</a><a href="https://wa.me/9647715993271" target="_blank" rel="noopener" dir="ltr" class="mono">07715993271</a></p>
       </div>
       <div class="contact-card">
         <div class="ic"><svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg></div>
@@ -3101,7 +3192,7 @@ table.data tbody tr:hover { background: #faf8f3; }
       <div class="contact-card">
         <div class="ic"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg></div>
         <h3>أوقات العمل</h3>
-        <p>السبت – الخميس<br>9:00 صباحاً – 5:00 مساءً<br>الجمعة: عطلة رسمية</p>
+        <p class="contact-inline"><span>السبت – الخميس</span><span>9:00 صباحاً – 5:00 مساءً</span><span>الجمعة: عطلة رسمية</span></p>
       </div>
     </div>
 
