@@ -93,7 +93,7 @@
 
   <main class="app-main">
     <div class="app-top">
-      <div style="display:flex;align-items:center;gap:8px">
+      <div class="app-titlebar" style="display:flex;align-items:center;gap:8px">
         <button class="hamburger-btn" id="hamburger-btn" aria-label="فتح القائمة">
           <span></span>
           <span></span>
@@ -104,6 +104,10 @@
           <h1 id="view-title">نظرة عامة</h1>
           <div class="sub" id="view-sub">ملخص لحظي لحالة الوظائف والاستمارات والحجوزات</div>
         </div>
+        <button type="button" class="notification-toggle" id="notification-toggle" aria-label="الإشعارات" aria-controls="notification-center" aria-expanded="false">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+          <span class="notification-label">الإشعارات</span><span class="notification-count" id="notification-count" hidden>0</span>
+        </button>
       </div>
       <div class="flex flex-wrap" style="gap:6px">
         <form class="search-wrap" id="quick-code-form" style="min-width:220px">
@@ -539,3 +543,17 @@
   });
 </script>
 
+
+<!-- Kept outside app-shell so the background can be inert while the drawer is open. -->
+<div id="notification-center" hidden>
+  <div class="notification-backdrop" data-notice-dismiss aria-hidden="true"></div>
+  <section class="notification-drawer" role="dialog" aria-modal="true" aria-labelledby="notification-title" aria-describedby="notification-status">
+    <header class="notification-header"><div><h2 id="notification-title">مركز الإشعارات</h2><p id="notification-status">آخر تحديثات الشركة</p></div><button type="button" id="notification-close" class="notification-close" data-notice-dismiss aria-label="إغلاق الإشعارات">×</button></header>
+    <div class="notification-tools"><div class="notification-filters" id="notification-filters" role="group" aria-label="تصفية الإشعارات">
+      <button type="button" data-filter="all" aria-pressed="true">الكل</button><button type="button" data-filter="unread" aria-pressed="false">غير المقروء</button><button type="button" data-filter="decision" aria-pressed="false">قرارات أصحاب العمل</button><button type="button" data-filter="booking" aria-pressed="false">الحجوزات</button>
+    </div><button type="button" class="btn btn-outline btn-sm" id="notification-read-all">تحديد الكل كمقروء</button></div>
+    <ul class="notification-list" id="notification-list" aria-label="آخر الإشعارات" tabindex="0"></ul>
+    <p class="notification-footer">آخر 100 تحديث من السجلات المتاحة حسب صلاحيتك. <span id="notification-read-note">حالة القراءة محفوظة لحسابك على هذا الجهاز فقط.</span></p>
+  </section>
+</div>
+<div class="sr-only" id="notification-live" aria-live="polite" aria-atomic="true"></div>

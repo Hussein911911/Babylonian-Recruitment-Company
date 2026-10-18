@@ -73,6 +73,7 @@
       reservedBy: r.reserved_by || null,
       holdExpiresAt: toISO(r.hold_expires_at),
       createdAt: toISO(r.created_at),
+      updatedAt: toISO(r.updated_at),
       createdBy: r.created_by || null,
       closedAt: toISO(r.closed_at),
       notes: r.notes || '',

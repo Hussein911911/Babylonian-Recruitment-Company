@@ -68,6 +68,7 @@ const partials = {
 };
 const CSS = read('assets/css/style.css');
 const PUBLIC_CSS = read('assets/css/public-polish.css');
+const NOTIFICATION_CSS = read('assets/css/notifications.css');
 /* ---------------------------------------------------------------------------
  *  بذرة العرض للملف المستقل
  *  ---------------------------------------------------------------------------
@@ -86,7 +87,7 @@ const DEMO_SEED_JSON = (() => {
   return m[1];
 })();
 
-const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard'];
+const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard', 'notifications'];
 
 /* ---------------------------------------------------------------------------
  *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
@@ -103,7 +104,7 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
 const SCRIPTS = {
   public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
   verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
-  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard']
+  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard', 'notifications']
 };
 
 /* مسار الأصل من الاسم: 'vendor/x' → assets/vendor/x.js وإلا assets/js/x.js */
@@ -117,7 +118,7 @@ const scriptPath = (n) => n.startsWith('vendor/')
    تعديل cloud-sync.js — فيبقى المتصفح على نسخة قديمة **بصمت**، وهو أسوأ أنواع
    الأخطاء لأن الكود الجديد لا يصل أصلاً. */
 const ASSET_VER = process.env.HRC_ASSET_VER || createHash('sha1')
-  .update([CSS, PUBLIC_CSS, ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
+  .update([CSS, PUBLIC_CSS, NOTIFICATION_CSS, ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
            ...CLOUD_ORDER.map((n) => read(scriptPath(n)))].join('\u0000'))
   .digest('hex').slice(0, 10);
 const verQ = (p) => `${p}?v=${ASSET_VER}`;
@@ -151,9 +152,10 @@ ${extra}</head>
 }
 
 /* ---------------- الصفحات المنفصلة ---------------- */
-function buildPage({ title, desc, body, scripts, publicStyle = false }) {
+function buildPage({ title, desc, body, scripts, publicStyle = false, staffStyle = false }) {
   return docHead({ title, desc, css: 'assets/css/style.css',
-    extra: publicStyle ? `<link rel="stylesheet" href="${verQ('assets/css/public-polish.css')}">` : '' }) +
+    extra: (publicStyle ? `<link rel="stylesheet" href="${verQ('assets/css/public-polish.css')}">` : '') +
+      (staffStyle ? `<link rel="stylesheet" href="${verQ('assets/css/notifications.css')}">` : '') }) +
     partials.sprite + '\n' +
     partials.header + '\n' +
     body + '\n' +
@@ -190,7 +192,7 @@ writeFileSync(P('verify.html'), buildPage({
 writeFileSync(P('dashboard.html'), buildPage({
   title: 'المنظومة الداخلية | شركة الهدف للتوظيف',
   desc: 'لوحة الموظفين والإدارة لشركة الهدف للتوظيف: إدارة الوظائف، إصدار الاستمارات، متابعة الحجوزات، سجل التدقيق، واللوحة المالية.',
-  body: partials.dashboard, scripts: SCRIPTS.dashboard
+  body: partials.dashboard, scripts: SCRIPTS.dashboard, staffStyle: true
 }));
 
 /* ---------------- النسخة المستقلة (ملف واحد) ---------------- */
@@ -198,7 +200,7 @@ function buildStandalone() {
   const stats = { fonts: 0, cssImgs: 0, htmlImgs: 0 };
 
   // 1) CSS مع دمج الخطوط والصور
-  let css = (CSS + '\n' + PUBLIC_CSS).replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
+  let css = (CSS + '\n' + PUBLIC_CSS + '\n' + NOTIFICATION_CSS).replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
     const d = dataUri('assets/fonts/' + f); if (!d) return m;
     stats.fonts += d.size; return `url(${d.uri})`;
   });

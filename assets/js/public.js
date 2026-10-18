@@ -494,7 +494,7 @@
             '<h3 class="job-title">' + UI.esc(j.title) + '</h3>' +
             '<span class="chip chip-code mono job-code">' + UI.esc(j.code) + '</span>' +
           '</div>' +
-          '<div style="display:grid;gap:6px;justify-items:end">' +
+          '<div class="job-statuses">' +
             UI.jobBadge(j.status) +
             '<span class="chip chip-gold tiny">' + UI.esc(j.category) + '</span>' +
           '</div>' +

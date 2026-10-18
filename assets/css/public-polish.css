@@ -57,3 +57,15 @@
 }
 /* Preserve the original stacked contact lines on paper. */
 @media print { .contact-inline > * { display: block; } }
+/* Give Arabic titles and salaries real space rather than breaking each letter. */
+@media screen{
+ .job-head>div:first-child{flex:1 1 200px}.job-head>div:last-child{flex:0 1 auto;max-width:100%}
+ .job-statuses{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px}
+ .job-title{line-height:1.8;overflow-wrap:break-word;word-break:normal}
+ .job-head .badge,.job-head .chip:not(.chip-code){white-space:normal;word-break:normal;overflow-wrap:break-word;max-width:100%;line-height:1.8}
+ .job-meta .mi{align-items:baseline}.job-meta .mi span{min-width:0;overflow-wrap:break-word}
+ .job-meta .mi:nth-child(3){grid-column:1/-1;font-variant-numeric:tabular-nums}
+ .job-foot>.flex{flex-wrap:wrap;max-width:100%;justify-content:flex-end}
+ .salary{font-variant-numeric:tabular-nums;max-width:100%;white-space:normal;overflow-wrap:break-word}
+ .hero-stat{min-width:0}.hero-stat b{font-size:clamp(1.1rem,2vw,1.6rem);font-variant-numeric:tabular-nums;overflow-wrap:break-word}
+}

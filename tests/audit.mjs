@@ -5,7 +5,7 @@
  *  يفحص كل شيء آلياً ويطبع تقريراً عربياً واضحاً:
  *    1) وقت التشغيل: تحميل كل صفحة بلا أي خطأ في الكونسول
  *    2) الترابط: كل نقطة/أيقونة/معرّف يُستخدم موجود فعلاً
- *    3) التنسيق: كل صنف CSS مستخدم في HTML له تعريف في style.css
+ *    3) التنسيق: كل صنف CSS مستخدم في HTML له تعريف في أنماط الصفحة الفعلية
  *    4) الأصول: كل صورة/خط/ملف مُشار إليه موجود على القرص
  *    5) الإتاحة: اللغة، الاتجاه، نصوص بديلة، تسميات النماذج
  *    6) الطباعة: حاويات النوافذ والطباعة والتنبيهات
@@ -143,20 +143,29 @@ for (const file of PAGES) {
 }
 
 /* ═══ 3) تغطية التنسيق: كل صنف مستخدم له قاعدة ═══════════════════════════ */
-section('3) التنسيق — كل صنف CSS مستخدم في HTML له تعريف في style.css');
+section('3) التنسيق — كل صنف CSS مستخدم في HTML له تعريف في أنماط الصفحة الفعلية');
 
 // أصناف تُبنى داخل الكود (نوافذ/صفوف/بطاقات) — تُجمع من ملفات JS أيضاً
 const jsSrc = jsSrcAll;
 const jsClasses = new Set([...jsSrc.matchAll(/class="([^"{}]*?)"/g)].flatMap((m) => m[1].split(/\s+/)).filter(Boolean));
 
 for (const file of PAGES) {
+  // Check what this page actually loads, including page-scoped styles and
+  // standalone inline CSS; a definition in an unrelated sheet is not enough.
+  const doc = loaded[file].doc;
+  const sheets = [...doc.querySelectorAll('link[rel="stylesheet"][href]')]
+    .map(el => el.getAttribute('href').split('?')[0])
+    .filter(href => !/^(https?:|data:|\/\/)/.test(href))
+    .map(href => readFileSync(join(ROOT, href.replace(/^\//, '')), 'utf8'));
+  sheets.push(...[...doc.querySelectorAll('style')].map(el => el.textContent));
+  const pageClasses = new Set([...sheets.join('\n').matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map(m => m[1]));
   const used = new Set();
   loaded[file].doc.querySelectorAll('[class]').forEach((el) => {
     String(el.getAttribute('class') || '').split(/\s+/).forEach((c) => { if (c && !CSS_ALLOW.has(c)) used.add(c); });
   });
-  const undef = [...used].filter((c) => !cssClasses.has(c) && !jsClasses.has(c));
+  const undef = [...used].filter((c) => !pageClasses.has(c) && !jsClasses.has(c));
   if (undef.length) bad(file + ' — كل الأصناف معرّفة', 'بلا تعريف (' + undef.length + '): ' + undef.slice(0, 12).join(', '));
-  else ok(file + ' — ' + used.size + ' صنفاً مستخدماً، كلها معرّفة (' + cssClasses.size + ' صنفاً في الملف)');
+  else ok(file + ' — ' + used.size + ' صنفاً مستخدماً، كلها معرّفة (' + pageClasses.size + ' صنفاً في أنماط الصفحة)');
 }
 
 /* ═══ 3.b) سلامة ملف التنسيق: المتغيرات والأقواس وأحجام الأيقونات ═══════ */

@@ -72,7 +72,9 @@ const BUDGET = {
      dashboard.js (تُقاس مقيسةً: 940KB خاماً). تبقى الرسالة: منع القفزات. */
   'index.html': { raw: 580, requests: 20 },
   'verify.html': { raw: 480, requests: 20 },
-  'dashboard.html': { raw: 940, requests: 20 }
+  /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
+     No new public scripts or DB requests; public budgets and auth tests unchanged. */
+  'dashboard.html': { raw: 964, requests: 20 }
 };
 
 function payloadOf(page) {

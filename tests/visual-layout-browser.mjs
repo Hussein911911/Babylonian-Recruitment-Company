@@ -30,7 +30,7 @@ if (process.platform === 'linux' && existsSync(archive) && !existsSync(join(libs
 }
 const browser = await playwright.launch({
   executablePath: await chromium.executablePath(),
-  args: chromium.args.filter(s => s !== '--single-process'),
+  args: chromium.args.filter(s => !['--single-process', '--in-process-gpu', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'].includes(s)).concat('--disable-gpu'),
   env: { ...process.env, LD_LIBRARY_PATH: [join(libs, 'lib'), process.env.LD_LIBRARY_PATH].filter(Boolean).join(':') },
   headless: true
 });

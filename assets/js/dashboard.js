@@ -108,6 +108,25 @@
     bindToolbars();
     bindActions();
     bindSidebar();
+    document.addEventListener('hrc:notification-open', function (e) {
+      if (!Store.currentUser()) return;
+      var n = e.detail || {};
+      if (n.jobCode) {
+        var job = Store.getJob(n.jobCode);
+        if (n.view === 'holds' && job && ['reserved', 'hiring'].indexOf(job.status) >= 0) {
+          setView('holds'); openHoldsModal(n.jobCode); return;
+        }
+        state.j = { q: n.jobCode, status: 'all', region: 'all', governorate: 'all', shift: 'all' };
+        document.getElementById('jq').value = n.jobCode;
+        ['j-status', 'j-region', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });
+        setView('jobs');
+      } else if (n.view === 'applicants' && Store.isAdmin()) {
+        state.a = { q: n.serial || '', status: 'all', user: 'all' };
+        document.getElementById('aq').value = state.a.q;
+        document.getElementById('a-status').value = 'all'; document.getElementById('a-user').value = 'all';
+        setView('applicants');
+      } else setView(n.view === 'settings' && Store.isAdmin() ? 'settings' : 'overview');
+    });
     if (Store.currentUser()) enterApp();
     snapshotStatuses();
     // التقاط النسخة التلقائية المستحقة (لو فُتحت الصفحة بعد وقت الجدولة)
@@ -991,7 +1010,7 @@
   /* ======================= الصيانة الدورية ======================= */
   function snapshotStatuses() {
     state.lastStatuses = {};
-    Store.db().jobs.forEach(function (j) { state.lastStatuses[j.code] = j.status; });
+    Store.db().jobs.forEach(function (j) { state.lastStatuses[j.code] = j.critical ? 'critical' : j.status; });
   }
 
   function tick() {
@@ -1006,7 +1025,8 @@
     /* نظام البطاقات: انتهاء مهلة الحجز ← حالة «حرجة» بانتظار قرار الموظف
        (توظيف / إرجاع / حذف) — لا إفراج تلقائي بعد اليوم. */
     Store.db().jobs.forEach(function (j) {
-      if (j.status === 'reserved' && !j.holdExpiresAt && j.critical) {
+      if (j.status === 'reserved' && !j.holdExpiresAt && j.critical && before[j.code] !== 'critical' &&
+          !Store.getAttempts(j.reservedBy).some(function (t) { return t.jobCode === j.code && t.slotStatus === 'critical' && t.employerDecision === 'reject'; })) {
         UI.toast('warn', 'حالة حرجة', 'الوظيفة ' + j.code + ' انتهت مهلة حجزها (24 ساعة) — بانتظار قرارك: توظيف أو إرجاع أو حذف.', 9000);
       }
     });
