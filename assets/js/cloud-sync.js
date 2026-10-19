@@ -34,7 +34,7 @@
      تُنتج فروقاً وهمية تُطلق عمليات تعديل بلا داعٍ في كل مرة. */
   function normJobs(j) {
     return JSON.stringify([j.code, j.title, j.category, j.region, j.governorate || '', j.salaryMin, j.salaryMax,
-      j.shift, j.gender, j.vacancies, j.requirements, j.description,
+      j.shift, j.gender, j.vacancies, !!j.manualClosed, j.requirements, j.description,
       j.employer && j.employer.name, j.employer && j.employer.phone, j.employer && j.employer.address,
       j.interviewLocation, j.status, j.reservedBy, j.holdExpiresAt, j.closedAt, j.notes, j.imageUrl]);
   }
@@ -48,7 +48,7 @@
       a.issueDate, a.expiryDate, a.attemptLimit, a.rejectReason, a.cardPrintCode]);
   }
   function normAttempts(t) {
-    return JSON.stringify([t.serial, t.no, t.jobCode, t.slotStatus, t.selectedAt,
+    return JSON.stringify([t.serial, t.no, t.jobCode, t.vacancyNo||null, t.employerDecision||null, t.decisionAt||null, t.reason||'', t.slotStatus, t.selectedAt,
       t.holdExpiresAt, t.closedAt, t.note]);
   }
   function normAudit(l) {
@@ -305,6 +305,7 @@
       else q = q.eq(w.column, w.value);
       /* لا نسمح بتعديل المعرّفات الطبيعية */
       delete row.code; delete row.serial; delete row.attempt_no; delete row.key;
+      if(op.table==='job_attempts')q=q.select(); // Adopt the server-allocated seat.
       return finish(q, op, hooks);
     }
 
@@ -329,6 +330,7 @@
         throw Object.assign(new Error(res.error.message || 'خطأ قاعدة بيانات'),
           { __brc: { op: op.op, table: op.table, code: res.error.code, detail: res.error } });
       }
+      if(op.table==='job_attempts' && op.local && res && Array.isArray(res.data) && res.data[0] && res.data[0].vacancy_no)op.local.vacancyNo=res.data[0].vacancy_no;
       if (hooks && hooks.onOp) hooks.onOp(op, res);
       return res;
     });

@@ -59,12 +59,13 @@
       closedAt: toISO(r.closed_at),
       notes: r.notes || '',
       vacancies: n(r.vacancies, 1),
+      manualClosed: r.manual_closed, filledVacancyNumbers:r.filled_vacancy_numbers, availableVacancies:r.available_vacancies,
       imageUrl: r.image_url || ''
     };
   }
 
   function jobToDb(o) {
-    return {
+    var row = {
       code: o.code, title: o.title, category: o.category || 'خدمات', region: o.region, governorate: o.governorate || 'بابل',
       salary_min: n(o.salaryMin), salary_max: n(o.salaryMax),
       shift: o.shift || 'صباحي', gender: o.gender || 'لا فرق',
@@ -82,6 +83,8 @@
       notes: o.notes || '',
       image_url: o.imageUrl || ''
     };
+    if(typeof o.manualClosed==='boolean')row.manual_closed=o.manualClosed;
+    return row;
   }
 
   /* ------------------------ تحويل الاستمارات (applicants) ------------------------ */
@@ -164,6 +167,7 @@
       location: job ? job.region : null,
       employerName: job ? job.employer.name : null,
       employerPhone: job ? job.employer.phone : null,
+      vacancyNo: r.vacancy_no || null,
       slotStatus: r.slot_status || 'empty',
       code: r.chance_code || null,          /* رمز الفرصة السري (ظهر البطاقة) */
       selectedAt: toISO(r.selected_at),
@@ -182,7 +186,7 @@
   var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   function attemptToDb(o) {
-    return {
+    var row = {
       serial: o.serial, attempt_no: n(o.no),
       /* ⚠️ job_id يُرسل فقط إن كان UUID صالحاً: المعرّفات المحلية المولَّدة
          (uid('job') = 'job-xxxx') ليست UUID، وإرسالها يُفشل الإدراج بـ
@@ -197,6 +201,8 @@
       employer_decision: o.employerDecision || null, decision_at: o.decisionAt || null,
       employer_reason: o.reason || null
     };
+    if(o.vacancyNo!=null)row.vacancy_no=o.vacancyNo;
+    return row;
   }
 
   /* ---------------------------- التدقيق (audit_log) ---------------------------- */

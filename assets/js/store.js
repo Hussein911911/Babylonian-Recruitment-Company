@@ -98,7 +98,7 @@
         holdExpiresAt: null,
         createdAt: created.toISOString(), createdBy: idx % 2 ? 'staff2' : 'staff',
         closedAt: extra.status === 'closed' ? addDays(new Date(), -1).toISOString() : null,
-        notes: '', vacancies: 1, imageUrl: j.imageUrl || ''
+        notes: '', vacancies: Number(j.vacancies||1), imageUrl: j.imageUrl || ''
       });
     });
     // الباحثون عن عمل + الاستمارات
@@ -197,17 +197,7 @@
     } catch (e) { /* لا تخزين متاح */ }
   }
 
-  /* ---------------------------------------------------------------------------
-   *  ترحيل مفاتيح التخزين من البادئة القديمة brc إلى hrc — مرة واحدة.
-   *  ---------------------------------------------------------------------------
-   *  توحيد الرمز (2026-09-26) غيّر أسماء مفاتيح localStorage، وبدون هذا الترحيل
-   *  تختفي بيانات الأجهزة التي كانت تعمل قبل التحديث (ومعها النسخ الاحتياطية
-   *  المحفوظة) بلا أي رسالة — تبدو كأن النظام مسح كل شيء.
-   *
-   *  ينسخ القديم إلى الجديد **فقط** إذا لم يكن الجديد موجوداً، ثم يحذف القديم.
-   *  هذه ليست «توافقية دائمة»: بعد أن تُحدَّث أجهزة الموظفين يمكن حذف الدالة
-   *  واستدعاءها بأمان.
-   * ------------------------------------------------------------------------- */
+  // Migrate old local prefixes once without overwriting an existing new key.
   function migrateLegacyPrefix() {
     try {
       if (localStorage.getItem('hrc-prefix-migrated')) return;
@@ -646,10 +636,11 @@
   function setJobStatus(code, status, reason) {
     var job = getJob(code); if (!job) return null;
     var old = job.status;
-    job.status = status;
+    job.status = status; job.manualClosed=status==='closed';
     if (status === 'available') { job.reservedBy = null; job.holdExpiresAt = null; }
     if (status === 'closed') { job.closedAt = nowISO(); job.reservedBy = null; job.holdExpiresAt = null; }
-    audit('تغيير حالة وظيفة', 'job', job.code, 'الحالة: ' + CFG.jobStatus[old].ar + ' ← ' + CFG.jobStatus[status].ar + (reason ? ' | السبب: ' + reason : ''));
+    refreshVacancies(job);
+    audit('تغيير حالة وظيفة', 'job', job.code, 'الحالة: ' + CFG.jobStatus[old].ar + ' ← ' + CFG.jobStatus[job.status].ar + (reason ? ' | السبب: ' + reason : ''));
     save(); emit();
     return job;
   }
@@ -659,12 +650,13 @@
     /* حذف وظيفة عليها حجز/حرجة يغلق فرصة البطاقة المرتبطة (الفرصة مستهلكة —
        قرار معتمد: لا تعود الفرصة بأي نتيجة) */
     db.attempts.forEach(function (t) {
-      if (t.jobId === job.id && (t.slotStatus === 'reserved' || t.slotStatus === 'critical')) {
+      if (t.jobId === job.id && (t.slotStatus === 'reserved' || t.slotStatus === 'critical' || t.slotStatus === 'hiring')) {
         t.slotStatus = 'expired';
         t.closedAt = nowISO();
         t.holdExpiresAt = null;
         t.note = 'حذفت الشركة الوظيفة ' + job.code + ' — استُهلكت الفرصة';
       }
+      if(t.jobId===job.id)t.jobId=null;
     });
     db.jobs = db.jobs.filter(function (j) { return j.code !== code; });
     audit('حذف وظيفة', 'job', code, job.title + ' — ' + job.region);
@@ -1016,6 +1008,7 @@
       if (job) { job.status = 'reserved'; job.critical = true; job.holdExpiresAt = null; }
     }
 
+    refreshVacancies(job);
     audit(decision === 'hire' ? 'طلب توظيف من صاحب العمل' : 'رفض من صاحب العمل مع السبب',
       'applicant', app.serial,
       'صاحب العمل سجّل عبر صفحة الباركود ' +
@@ -1140,6 +1133,26 @@
 
   /* ======================= الفرص: الاختيار والنتائج ======================= */
 
+  // A vacancy is not a card chance: filled seats remain occupied permanently.
+  function vacancySummary(job) {
+    var total=Math.max(1,Number(job.vacancies||1)),occupied={},held=0,filled=0;
+    (job.filledVacancyNumbers||[]).forEach(function(n){occupied[n]=true;});
+    db.attempts.filter(function(t){return t.jobId===job.id && ['reserved','critical','hiring','succeeded'].indexOf(t.slotStatus)>=0;}).forEach(function(t){
+      var n=Number(t.vacancyNo||1);occupied[n]=true;if(t.slotStatus!=='succeeded')held++;
+    });
+    filled=Object.keys(occupied).length-held;
+    var free=[];for(var i=1;i<=total;i++)if(!occupied[i])free.push(i);
+    return {total:total,filled:filled,held:held,available:job.manualClosed?0:free.length,free:job.manualClosed?[]:free};
+  }
+  function refreshVacancies(job) {
+    if(!job)return;
+    var v=vacancySummary(job),active=db.attempts.filter(function(t){return t.jobId===job.id&&['reserved','critical','hiring'].indexOf(t.slotStatus)>=0;});
+    job.status=job.manualClosed?'closed':v.available?'available':v.filled>=v.total?'closed':active.some(function(t){return t.slotStatus==='hiring';})?'hiring':'reserved';
+    job.reservedBy=active.length?active[0].serial:null;job.holdExpiresAt=active.length?active[0].holdExpiresAt:null;
+    job.critical=active.some(function(t){return t.slotStatus==='critical';});job.updatedAt=nowISO();
+    job.closedAt=job.status==='closed'?nowISO():null;
+  }
+
   function selectAttempt(serial, jobCode, opts) {
     opts = opts || {};
     var app = getApplicant(serial);
@@ -1158,6 +1171,9 @@
     if (!slot) return { ok: false, error: 'لا توجد فرص متاحة — استُهلكت فرص البطاقة (' + (db.settings.attemptLimit || 2) + ')' };
 
     var hours = Number(db.settings.holdHours || 24);
+    var freeSeat=vacancySummary(job).free[0];
+    if(!freeSeat)return {ok:false,error:'لا يوجد شاغر متاح'};
+    slot.vacancyNo=freeSeat;
     slot.jobId = job.id; slot.jobCode = job.code; slot.jobTitle = job.title;
     slot.location = job.region; slot.employerName = job.employer.name; slot.employerPhone = job.employer.phone;
     slot.slotStatus = 'reserved';
@@ -1165,9 +1181,7 @@
     slot.holdExpiresAt = addHours(new Date(), hours).toISOString();
     slot.staff = currentUser() ? currentUser().username : 'system';
 
-    job.status = 'reserved';
-    job.reservedBy = serial;
-    job.holdExpiresAt = slot.holdExpiresAt;
+    refreshVacancies(job);
 
     audit('حجز مؤقت لوظيفة', 'job', job.code,
       'الفرصة #' + slot.no + ' للبطاقة ' + serial + ' — تعليق الوظيفة ' + hours + ' ساعة حتى ' + fmtDateTime(slot.holdExpiresAt) +
@@ -1326,18 +1340,17 @@
      لكن التوظيف لا يُنهي البطاقة: يبقى للزبون حقه في فرصته الأخرى حتى
      نهاية مدة البطاقة (30 يوماً). */
   function setOutcome(serial, no, outcome, note) {
+    if(['succeeded','rejected'].indexOf(outcome)<0)return {ok:false,error:'قرار غير صالح'};
     var slot = getAttempts(serial).filter(function (t) { return t.no === Number(no); })[0];
     if (!slot) return { ok: false, error: 'الفرصة غير موجودة' };
+    if(['reserved','critical','hiring'].indexOf(slot.slotStatus)<0)return {ok:false,error:'انحسمت هذه الفرصة أو تغيرت؛ حدّث التفاصيل'};
     var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
     slot.slotStatus = outcome;
     slot.closedAt = nowISO();
     slot.note = note || slot.note;
     slot.holdExpiresAt = null;
 
-    if (job) {
-      if (outcome === 'succeeded') { job.status = 'closed'; job.reservedBy = null; job.holdExpiresAt = null; job.critical = false; job.closedAt = nowISO(); }
-      else { job.status = 'available'; job.reservedBy = null; job.holdExpiresAt = null; job.critical = false; }
-    }
+    refreshVacancies(job);
     // تفعيل الفرصة التالية تلقائياً (أول خانة فارغة متبقية على البطاقة)
     var next = null;
     if (outcome === 'rejected') next = activeAttempt(serial);
@@ -1345,8 +1358,8 @@
       'attempt', serial + ' / #' + no,
       (job ? job.code + ' — ' + job.title : '') + ' | ' +
       (outcome === 'succeeded'
-        ? 'تم التوظيف وإغلاق الوظيفة — وتبقى فرصة الزبون الأخرى محفوظة حتى نهاية مدة البطاقة'
-        : 'إعادة الوظيفة إلى (متاحة) وتفعيل الفرصة #' + (next ? next.no : '—') + ' تلقائياً') +
+        ? 'تم ملء الشاغر المعني فقط — وتبقى بقية الشواغر وفرصة الزبون الأخرى حسب حالتها'
+        : 'إعادة الشاغر المعني إلى (متاح) وتفعيل الفرصة #' + (next ? next.no : '—') + ' تلقائياً') +
       (note ? ' | ملاحظة: ' + note : ''));
     save(); emit();
     return { ok: true, attempt: slot, job: job, nextAttempt: next };
@@ -1357,12 +1370,13 @@
   function releaseHold(serial, no, reason) {
     var slot = getAttempts(serial).filter(function (t) { return t.no === Number(no); })[0];
     if (!slot) return { ok: false, error: 'الفرصة غير موجودة' };
+    if(['reserved','critical','hiring'].indexOf(slot.slotStatus)<0)return {ok:false,error:'انحسمت هذه الفرصة أو تغيرت؛ حدّث التفاصيل'};
     var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
     slot.slotStatus = 'expired';
     slot.closedAt = nowISO();
     slot.holdExpiresAt = null;
     slot.note = reason || 'قرار الشركة بعد انتهاء مهلة الحجز — استُهلكت الفرصة وأُعيدت الوظيفة متوفرة';
-    if (job) { job.status = 'available'; job.reservedBy = null; job.holdExpiresAt = null; job.critical = false; }
+    refreshVacancies(job);
     audit('إرجاع وظيفة بعد حرجة', 'job', job ? job.code : '—',
       'الفرصة #' + no + ' للبطاقة ' + serial + ' — أُعيدت الوظيفة إلى (متاحة) | ' + slot.note);
     save(); emit();
@@ -1383,28 +1397,11 @@
     var actions = [];
     var now = new Date();
 
-    // 1) الحجوزات المنتهية (24 ساعة) ← حالة «حرجة» بانتظار قرار الموظف
-    db.jobs.forEach(function (job) {
-      if (job.status !== 'reserved' || !job.holdExpiresAt) return;
-      if (new Date(job.holdExpiresAt).getTime() > now.getTime()) return;
-      var slot = db.attempts.filter(function (t) {
-        return t.serial === job.reservedBy && t.jobId === job.id && t.slotStatus === 'reserved';
-      })[0];
-      /* الوظيفة تبقى مقفلة (محجوزة) حتى القرار — لا يقدم عليها غيره */
-      job.holdExpiresAt = null;
-      job.critical = true;
-      if (slot) {
-        slot.slotStatus = 'critical';
-        slot.holdExpiresAt = null;
-        slot.note = 'انتهت مهلة 24 ساعة دون قرار — بانتظار قرار الشركة (توظيف / إرجاع / حذف)';
-      }
-      db.audit.unshift({
-        id: uid('log'), ts: now.toISOString(), user: 'system', role: 'system', name: 'النظام (تلقائي)',
-        ip: localIp(), action: 'حالة حرجة (انتهاء 24 ساعة)', entity: 'job', entityId: job.code,
-        details: 'انتهت مهلة الحجز دون قرار — الوظيفة بانتظار قرار الموظف: تم التوظيف أو إرجاعها متوفرة أو حذفها' +
-          (slot ? ' | الفرصة #' + slot.no + ' للبطاقة ' + slot.serial : '')
-      });
-      actions.push({ type: 'criticalHold', job: job.code, serial: job.reservedBy });
+    db.attempts.forEach(function(t){
+      if(t.slotStatus!=='reserved'||!t.holdExpiresAt||new Date(t.holdExpiresAt)>now)return;
+      t.slotStatus='critical';t.holdExpiresAt=null;t.note='انتهت مهلة 24 ساعة — بانتظار قرار الشركة';
+      refreshVacancies(db.jobs.filter(function(j){return j.id===t.jobId;})[0]);
+      actions.push({type:'criticalHold',job:t.jobCode,serial:t.serial});
     });
 
     // 2) انتهاء صلاحية البطاقات (30 يوماً)
@@ -1582,30 +1579,13 @@
 
   function pendingActions() {
     var out = { holds: [], critical: [], hiring: [], expired: [], exhausted: [], rejected: [], requests: [] };
-    db.jobs.forEach(function (j) {
-      if (j.status === 'reserved' && j.holdExpiresAt) {
-        var h = diffHours(j.holdExpiresAt, new Date());
-        out.holds.push({ job: j, hoursLeft: h, serial: j.reservedBy });
-      }
-      /* الحالة الحرجة: انتهت مهلة 24 ساعة دون قرار **أو** رفض صاحب العمل
-         بسبب مكتوب — الوظيفة معلّقة بانتظار الموظف: إرجاع متاحة أو حذف */
-      if (j.status === 'reserved' && !j.holdExpiresAt && j.critical) {
-        var ct = db.attempts.filter(function (x) {
-          return x.jobId === j.id && x.slotStatus === 'critical';
-        })[0];
-        out.critical.push({
-          job: j, serial: j.reservedBy, attempt: ct || null,
-          decidedBy: ct && ct.employerDecision === 'reject' ? 'employer' : 'hold',
-          reason: (ct && ct.reason) || '', at: ct ? ct.decisionAt : null
-        });
-      }
-      /* جاري التوظيف: طلب صاحب العمل بانتظار تثبيت الشركة (ج4 — 2026-10-01) */
-      if (j.status === 'hiring') {
-        var t = db.attempts.filter(function (x) {
-          return x.jobId === j.id && x.slotStatus === 'hiring';
-        })[0];
-        out.hiring.push({ job: j, serial: j.reservedBy, decision: t ? t.employerDecision : null, at: t ? t.decisionAt : null });
-      }
+    db.attempts.forEach(function(t){
+      var j=db.jobs.filter(function(j){return j.id===t.jobId;})[0];
+      if(!j||['reserved','critical','hiring'].indexOf(t.slotStatus)<0)return;
+      var row={job:Object.assign({},j,{holdExpiresAt:t.holdExpiresAt}),serial:t.serial,attempt:t,vacancyNo:t.vacancyNo||1,decision:t.employerDecision,at:t.decisionAt,reason:t.reason||'',decidedBy:t.employerDecision==='reject'?'employer':'hold'};
+      if(t.slotStatus==='reserved'){row.hoursLeft=diffHours(t.holdExpiresAt,new Date());out.holds.push(row);}
+      if(t.slotStatus==='critical')out.critical.push(row);
+      if(t.slotStatus==='hiring')out.hiring.push(row);
     });
     db.applicants.forEach(function (a) {
       var st = formStatus(a);
@@ -2612,6 +2592,7 @@
     /* العمليات المعلّقة الآن (للتشخيص والعرض) — لا تُرسل شيئاً */
     diffCloud: function () { return (cloud.sync && cloud.state === 'on') ? cloud.sync.diff(db) : []; },
     // وظائف
+    vacancySummary: vacancySummary, refreshVacancies: refreshVacancies,
     listJobs: listJobs, getJob: getJob, createJob: createJob, updateJob: updateJob, saveJobWithPin: saveJobWithPin,
     setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'HRC-' + (db.counters.jobCode + 1); },
     // باحثون

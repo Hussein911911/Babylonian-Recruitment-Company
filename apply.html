@@ -1985,7 +1985,7 @@ function loadData(){
     jobs=(jr.data||[]).map(function(r){
       return{id:r.id,code:r.code,title:r.title,category:r.category||'خدمات',region:r.region||'',governorate:jobProvince(r.governorate||''),createdAt:r.created_at||'',
         salaryMin:r.salary_min||0,salaryMax:r.salary_max||0,shift:r.shift||'صباحي',description:r.description||'',
-        requirements:Array.isArray(r.requirements)?r.requirements:[],vacancies:r.vacancies||1,imageUrl:r.image_url||'',
+        requirements:Array.isArray(r.requirements)?r.requirements:[],vacancies:r.available_vacancies!=null?r.available_vacancies:r.vacancies||1,imageUrl:r.image_url||'',
         gender:r.gender||'لا فرق',employer:{name:r.employer_name||'',phone:r.employer_phone||'',address:r.employer_address||''},
         interviewLocation:r.interview_location||'',status:r.status||'available'};
     }).filter(function(j){return j.status==='available';});

@@ -25,8 +25,9 @@ try{
  alter table brc.job_attempts add column staff_id uuid;
  alter table brc.applicants add column updated_at timestamptz default now();`);
  const schema=read('docs/schema.sql');for(const n of ['chance_code','mask_name','trg_attempt_hold','ensure_card_attempts','activate_card','select_attempt']){const a=schema.lastIndexOf('create or replace function brc.'+n+'(');assert.ok(a>=0,n);await db.exec(schema.slice(a,schema.indexOf('end $$;',a)+7));}
+ const vacancyMigration=read('supabase/migrations/20261020090000_independent_job_vacancies.sql');
+ await db.exec(vacancyMigration.slice(0,vacancyMigration.indexOf('create or replace function brc.employer_pin_action')));
  await db.exec(`alter table brc.job_attempts alter chance_code set default brc.chance_code();
- create trigger reserve_job before insert or update on brc.job_attempts for each row execute function brc.trg_attempt_hold();
  insert into brc.jobs(code) select 'J-'||n from generate_series(1,12)n;
  insert into brc.applicants(serial,status,expiry_date) values('CARD','active',now()+interval '1 day'),('BLANK','blank',null),('EXPIRED','active',now()-interval '1 day');
  insert into brc.job_attempts(serial,attempt_no) select serial,n from brc.applicants cross join generate_series(1,2)n;`);

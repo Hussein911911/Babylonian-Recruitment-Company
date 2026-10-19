@@ -190,12 +190,13 @@ try {
     // outside this isolated browser; retain the business workflows above.
     await page.evaluate(async () => {
       const db=HRCStore.db(), start=Date.UTC(2026,9,19,9);
-      db.jobs=[];db.attempts=[];db.audit=[];
+      db.jobs=[];db.attempts=[];db.audit=[];db.applicants=[];
       for(let i=0;i<2;i++){
-        db.audit.push({id:'priority-critical-'+i,entity:'job',entityId:'CR-'+i,action:'حالة حرجة — بانتظار قرار الشركة',details:'انتهت مدة الحجز؛ لا إفراج تلقائي.',ts:new Date(start+i*1000).toISOString()});
-        db.audit.push({id:'priority-important-'+i,entity:'backup',action:'استرجاع بيانات الموقع',details:'حدث مهم للمراجعة، دون تغيير حالة أي قرار من هذه الشاشة.',ts:new Date(start+10000+i*1000).toISOString()});
-        db.attempts.push({serial:'PRIORITY-CARD-'+i,no:1,jobCode:'BOOK-'+i,slotStatus:'reserved',selectedAt:new Date(start+20000+i*1000).toISOString()});
-        db.audit.push({id:'priority-routine-'+i,entity:'job',entityId:'UP-'+i,action:'تعديل بيانات وظيفة',details:'آخر تحديث مسجل في بيانات الشركة.',ts:new Date(start+30000+i*1000).toISOString()});
+        for(const phase of ['alert','decision','booking']) {
+          const code='PR-'+phase+'-'+i;db.jobs.push({id:code,code,title:'وظيفة متابعة',status:'reserved',vacancies:1});
+          db.attempts.push({serial:'CARD-'+phase+'-'+i,no:1,jobId:code,jobCode:code,slotStatus:phase==='booking'?'reserved':phase==='decision'?'hiring':'critical',selectedAt:new Date(start+i*1000).toISOString(),employerDecision:phase==='decision'?'hire':null,decisionAt:new Date(start+10000+i*1000).toISOString()});
+        }
+        db.applicants.push({serial:'ACT-'+i,fullName:'بطاقة مفعلة',status:'active',issueDate:new Date(start+30000+i*1000).toISOString()});
       }
       await HRCNotifications.refresh();
     });

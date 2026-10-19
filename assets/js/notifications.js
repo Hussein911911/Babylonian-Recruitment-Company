@@ -9,7 +9,7 @@
     alert: { label: 'حرج', hint: 'تنبيهات عالية الأولوية للمراجعة', rank: 0 },
     decision: { label: 'مهم', hint: 'قرارات وأحداث مهمة للمراجعة', rank: 1 },
     booking: { label: 'الحجوزات', hint: 'متابعة الحجوزات المسجلة', rank: 2 },
-    update: { label: 'عادي', hint: 'تحديثات العمل اليومية', rank: 3 }
+    update: { label: 'عادي', hint: 'تفعيل البطاقات فقط — الإصدار والطباعة في السجل', rank: 3 }
   };
   function sectionFor(item) {
     if (item.kind === 'alert') return 'alert';
@@ -22,64 +22,29 @@
   }
   function build(db, user) {
     if (!user || ['admin', 'staff'].indexOf(user.role) < 0) return [];
-    var items = [], covered = [], jobs = Object.create(null), seen = Object.create(null);
+    var items = [], jobs = Object.create(null), used = Object.create(null);
     (db.jobs || []).forEach(function (j) { jobs[j.code] = j; });
-    function add(item) {
-      item.time = Date.parse(item.at);
-      if (!isFinite(item.time) || seen[item.id]) return;
-      item.section = sectionFor(item);
-      seen[item.id] = true; items.push(item);
-    }
+    function add(n) { n.time=Date.parse(n.at);if(isFinite(n.time)){n.section=sectionFor(n);items.push(n);} }
     (db.attempts || []).forEach(function (t) {
-      if (!t.jobCode || t.slotStatus === 'empty') return;
-      var j = jobs[t.jobCode] || {}, key = String(t.serial + ':' + t.no);
-      var common = { jobCode: t.jobCode, serial: t.serial, jobTitle: j.title || t.jobTitle || '', view: 'holds' };
-      function event(id, kind, title, at, body, reason) {
-        add(Object.assign({}, common, { id: id + ':' + key + ':' + at, kind: kind, title: title, at: at, body: body, reason: reason || '' }));
-        if (at) covered.push({ at: Date.parse(at), serial: t.serial, job: t.jobCode, kind: kind });
-      }
-      if (t.selectedAt) event('reservation', 'booking', 'حجز جديد على وظيفة', t.selectedAt, 'البطاقة ' + t.serial + ' · الفرصة ' + t.no);
-      if (t.employerDecision && t.decisionAt) {
-        var hire = t.employerDecision === 'hire';
-        event('employer-' + t.employerDecision, 'decision', hire ? 'صاحب العمل: تم التوظيف' : 'صاحب العمل: لم يتم التوظيف', t.decisionAt,
-          hire ? 'طلب صاحب العمل بانتظار تثبيت الشركة؛ ليس قراراً نهائياً بعد.' : 'بانتظار قرار الشركة؛ لا تُعاد الوظيفة متاحة تلقائياً.',
-          hire ? '' : (t.reason || 'لم يُسجّل سبب في البيانات المتاحة.'));
-      }
-      if (t.closedAt && ['succeeded', 'rejected'].indexOf(t.slotStatus) >= 0) {
-        event('outcome-' + t.slotStatus, 'update', t.slotStatus === 'succeeded' ? 'الشركة: تثبيت التوظيف' : 'الشركة: إغلاق الفرصة دون توظيف', t.closedAt, t.note || 'تم تسجيل قرار الشركة.');
-      }
+      if (t.slotStatus !== 'empty') used[t.serial] = true;
+      var j = jobs[t.jobCode];
+      if (!j || ['reserved','critical','hiring'].indexOf(t.slotStatus)<0) return;
+      var decision=!!t.employerDecision, critical=t.slotStatus==='critical'&&!decision;
+      var phase=decision?'employer-'+t.employerDecision:critical?'critical':'booking';
+      var seat=Number(t.vacancyNo||1), at=decision?t.decisionAt:(t.selectedAt||j.updatedAt);
+      add({id:'case:'+t.serial+':'+t.no+':'+t.selectedAt+':'+phase,kind:decision?'decision':critical?'alert':'booking',
+        at:at,jobCode:j.code,jobTitle:j.title||'',serial:t.serial,attemptNo:t.no,vacancyNo:seat,view:'holds',
+        title:decision?(t.employerDecision==='hire'?'طلب توظيف — تأكيد الشركة مطلوب':'عدم توظيف — قرار الشركة مطلوب'):critical?'انتهت مهلة الشاغر — قرار مطلوب':'تم التقديم بالبطاقة '+t.serial,
+        body:'البطاقة '+t.serial+' · الفرصة '+t.no+' · الشاغر '+seat+' من '+Number(j.vacancies||1)+
+          (decision?' — بانتظار قرار الشركة؛ ليس قراراً نهائياً ولا يُتاح الشاغر تلقائياً.':critical?' — لا إفراج تلقائي.':' — حجز بانتظار نتيجة صاحب العمل.'),
+        reason:t.employerDecision==='reject'?(t.reason||'لم يُسجّل سبب في البيانات المتاحة.'):'',phase:phase});
     });
-    (db.jobs || []).forEach(function (j) {
-      var at = j.updatedAt || j.createdAt;
-      var already = covered.some(function (c) { return c.job === j.code && Math.abs(c.at - Date.parse(at)) < 60000; }) ||
-        (db.audit || []).some(function (a) { return a.entity === 'job' && a.entityId === j.code && Math.abs(Date.parse(a.ts) - Date.parse(at)) < 60000; });
-      if (!at || already) return;
-      var critical = j.critical || (db.attempts || []).some(function (t) { return t.jobCode === j.code && t.slotStatus === 'critical'; });
-      var labels = { available: 'متاحة', reserved: 'محجوزة', hiring: 'جاري التوظيف', closed: 'مغلقة' };
-      add({ id: 'job:' + j.code + ':' + at + ':' + j.status, kind: critical ? 'alert' : 'update', title: 'آخر حالة للوظيفة: ' + (critical ? 'حرجة — بانتظار الشركة' : (labels[j.status] || j.status)),
-        at: at, jobCode: j.code, jobTitle: j.title || '', serial: '', view: critical ? 'holds' : 'jobs', reason: '', body: 'آخر حالة مسجلة في بيانات الشركة.' });
+    (db.applicants||[]).forEach(function(a){
+      if(a.status==='blank'||a.status==='pending'||a.status==='rejected'||a.status==='expired'||a.status==='exhausted'||!a.fullName||!a.issueDate||used[a.serial])return;
+      add({id:'activation:'+a.serial+':'+a.issueDate,kind:'update',at:a.issueDate,jobCode:'',jobTitle:'',serial:a.serial,view:'holds',
+        title:'تفعيل البطاقة '+a.serial,body:'فُعّلت بيانات البطاقة؛ افتح التفاصيل لمتابعة فرصها والتقديمات.',reason:'',phase:'activation'});
     });
-    (db.audit || []).forEach(function (a) {
-      var entity = a.entity, action = String(a.action || ''), at = Date.parse(a.ts), body = a.details || '';
-      if (action === 'حفظ وظيفة ورمز صاحب العمل') { action = 'تحديث بيانات وظيفة'; body = 'تم حفظ بيانات الوظيفة لدى الشركة.'; }
-      var operational = entity === 'job' || entity === 'applicant';
-      if (user.role !== 'admin' && entity === 'applicant' && a.user !== user.username && ['system', 'employer'].indexOf(a.role) < 0) return;
-      if (!operational && !(user.role === 'admin' && ['settings', 'setting', 'backup', 'system', 'user'].indexOf(entity) >= 0)) return;
-      // Authentication/secret administration is not a notification payload.
-      if (/رمز|كلمة مرور|دخول|خروج|تحقق|QR/i.test(action)) return;
-      var duplicate = covered.some(function (c) {
-        return Math.abs(c.at - at) < 60000 && (a.entityId === c.serial || a.entityId === c.job) &&
-          ((c.kind === 'decision' && /صاحب العمل/.test(action)) || (c.kind === 'booking' && /حجز مؤقت|تقديم ذاتي/.test(action)) ||
-           (c.kind === 'update' && /إتمام توظيف|رفض مرشح/.test(action)));
-      });
-      if (duplicate) return;
-      var jobCode = entity === 'job' ? a.entityId : '', j = jobs[jobCode] || {};
-      add({ id: 'audit:' + a.id, kind: /حرجة|انتهاء/.test(action) ? 'alert' : 'update', title: action,
-        body: body, reason: '', at: a.ts, jobCode: jobCode, jobTitle: j.title || '',
-        serial: entity === 'applicant' ? a.entityId : '',
-        view: entity === 'job' ? 'jobs' : entity === 'applicant' ? (user.role === 'admin' ? 'applicants' : 'overview') : 'settings' });
-    });
-    return items.sort(function (a, b) { return b.time - a.time || a.id.localeCompare(b.id); }).slice(0, LIMIT);
+    return items.sort(function (a, b) { return SECTIONS[a.section].rank-SECTIONS[b.section].rank || b.time - a.time || a.id.localeCompare(b.id); }).slice(0, LIMIT);
   }
   root.HRCNotifications = { build: build, sections: SECTIONS };
   var doc = root.document;
@@ -196,12 +161,12 @@
       var button = e.target.closest('[data-notice-read],[data-notice-open]');
       if (!button || !Store.currentUser()) return;
       var id = button.dataset.noticeRead || button.dataset.noticeOpen;
-      var item = items.filter(function (n) { return n.id === id; })[0];
-      if (!item) return;
+      var item = build(Store.db(), Store.currentUser()).filter(function (n) { return n.id === id; })[0];
+      if (!item) { close(true); render(); UI.toast('info','تحدثت الحالة','انحسمت هذه الحالة أو تغيرت؛ لا قرار على إشعار قديم.'); return; }
       read[hashes[id]] = true; saveRead();
       if (button.hasAttribute('data-notice-open')) {
         close(true);
-        doc.dispatchEvent(new root.CustomEvent('hrc:notification-open', { detail: { view: item.view, jobCode: item.jobCode, serial: item.serial } }));
+        doc.dispatchEvent(new root.CustomEvent('hrc:notification-open', { detail: { view: item.view, jobCode: item.jobCode, serial: item.serial, attemptNo: item.attemptNo, vacancyNo: item.vacancyNo } }));
       }
       render();
       if (!panel.hidden) all.focus();

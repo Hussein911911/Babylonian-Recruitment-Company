@@ -542,7 +542,7 @@
         '<div class="data-item"><div class="k">الأجر الشهري</div><div class="v">' + Store.money(j.salaryMin) + ' – ' + Store.money(j.salaryMax) + '</div></div>' +
         '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
         '<div class="data-item"><div class="k">الجنس</div><div class="v">' + UI.esc(j.gender || 'لا فرق') + '</div></div>' +
-        '<div class="data-item"><div class="k">عدد الشواغر</div><div class="v">' + (j.vacancies || 1) + '</div></div>' +
+        '<div class="data-item"><div class="k">عدد الشواغر</div><div class="v">' + (j.availableVacancies != null ? j.availableVacancies : Store.vacancySummary(j).available) + ' متاح من ' + (j.vacancies||1) + '</div></div>' +
         '<div class="data-item"><div class="k">تاريخ الإضافة</div><div class="v" dir="ltr">' + Store.fmtDate(j.createdAt) + '</div></div>' +
       '</div>' +
       '<div class="panel" style="background:#fdf9ee;border-color:var(--line)">' +
