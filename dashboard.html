@@ -13,8 +13,8 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=d4923e2297">
-<link rel="stylesheet" href="assets/css/notifications.css?v=d4923e2297"><link rel="stylesheet" href="assets/css/backup.css?v=d4923e2297"></head>
+<link rel="stylesheet" href="assets/css/style.css?v=2a19cb162c">
+<link rel="stylesheet" href="assets/css/notifications.css?v=2a19cb162c"><link rel="stylesheet" href="assets/css/backup.css?v=2a19cb162c"></head>
 <body>
 <!-- ===========================================================================
      مكتبة الأيقونات والرموز (SVG Sprite) — تُدرج مرة واحدة في كل صفحة
@@ -724,7 +724,7 @@
 </div>
 <div class="footnote-premium">إدارة الحسابات والصلاحيات متاحة للمدير فقط.</div>
 </div>
-</div></div><div class="panel settings-quick-backup"><div><h3>نسخة احتياطية</h3><p class="small muted mb-0">تنزيل لقطة مشفّرة بكلمة مرور؛ لا تعادل نسخة كاملة من قاعدة الموقع.</p></div><button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> تنزيل نسخة مشفّرة</button></div><details id="settings-advanced" class="settings-advanced"><summary><span>إعدادات متقدمة<small>بيانات الشركة، الاسترداد والنسخ الاحتياطي والصيانة</small></span><span class="settings-expand" aria-hidden="true">＋</span></summary><div class="settings-advanced-content"><div class="panel" id="settings-company">
+</div></div><div id="recovery-tools" aria-live="polite"></div><details id="settings-advanced" class="settings-advanced"><summary><span>إعدادات متقدمة<small>بيانات الشركة، الاسترداد والنسخ الاحتياطي والصيانة</small></span><span class="settings-expand" aria-hidden="true">＋</span></summary><div class="settings-advanced-content"><div class="panel" id="settings-company">
 <div class="panel-head"><h3><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"></use></svg> بيانات الشركة (تظهر في البطاقة)</h3></div>
 <div class="panel-body">
 <div class="data-grid">
@@ -740,46 +740,6 @@
               «خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية.
               الشركة غير مسؤولة قانونياً وعشائياً عن الشخص المرسل وصاحب العمل.»
             </p>
-</div>
-</div><div class="panel" id="settings-backup-tools">
-<div class="panel-head"><h3><svg class="ic"><use href="#i-server" xlink:href="#i-server"></use></svg> النسخ الاحتياطي والصيانة</h3></div>
-<div class="panel-body">
-<div class="backup-assurance"><span class="backup-eyebrow">حماية البيانات · بدون وعود مضللة</span><h4>ثلاث طبقات، لكل واحدة دور واضح</h4><div class="backup-layers"><article><b>01 · نسخة المتصفح</b><p>تصدير مشفّر للبيانات المحملة فقط؛ ليست نسخة PostgreSQL ولا تشمل ملفات المشروع.</p><small id="backup-last-export">لم يجهز ملف على هذا الجهاز بعد</small></article><article><b>02 · قاعدة الشركة</b><p>وكيل مستقل مشفّر + مهمة ويندوز. يحتاج إعداد اللابتوب ومفتاح استرداد منفصل.</p><small>التشغيل وآخر نجاح غير متحققين في هذه الصفحة</small></article><article><b>03 · عمل المكتب المحلي</b><p>طلبات مشتركة أثناء الانقطاع، ثم تحقق ومزامنة؛ ليست حجوزات نهائية قبل الاعتماد.</p><small>يتطلب تثبيت بوابة المكتب وHTTPS على شبكة الشركة</small></article></div></div>
-<p id="backup-legacy-warning" class="tiny muted" hidden></p>
-<div class="flex flex-wrap" style="gap:8px">
-<button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> تصدير آمن</button>
-<button class="btn btn-outline" id="btn-export-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"></use></svg> نسخة مشفّرة للابتوب</button>
-<button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"></use></svg> معاينة ملف نسخة</button>
-<button class="btn btn-ok" id="btn-import-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"></use></svg> فك تشفير ومعاينة</button>
-<button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"></use></svg> خيارات الجدولة</button>
-<button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"></use></svg> عرض اللقطات القديمة</button>
-<button class="btn btn-warn" id="btn-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"></use></svg> فحص الحجوزات والحالات الحرجة</button>
-<button class="btn btn-danger" id="btn-reset"><svg class="ic"><use href="#i-trash" xlink:href="#i-trash"></use></svg> إعادة ضبط البيانات التجريبية</button>
-</div>
-<input type="file" id="import-file" accept="application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية للاستيراد">
-<input type="file" id="import-enc-file" accept=".json,.enc,application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية المشفّرة للاسترداد">
-<div class="panel mt-3" style="background:#f9f6ef;border:1px solid var(--line)">
-<div class="panel-body">
-<h4 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
-<svg class="ic" style="color:var(--gold-3)"><use href="#i-clock" xlink:href="#i-clock"></use></svg>
-                  حالة النسخ والجدولة المستقلة
-                </h4>
-<div id="schedule-status" class="tiny muted">لم يتم تفعيل الجدولة بعد</div>
-<div class="flex flex-wrap mt-2" style="gap:8px">
-<button class="btn btn-outline btn-sm" id="btn-edit-schedule"><svg class="ic"><use href="#i-edit" xlink:href="#i-edit"></use></svg> تعديل الجدولة</button>
-<button class="btn btn-gold btn-sm" id="btn-run-auto-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"></use></svg> نفّذ نسخة الآن</button>
-<button class="btn btn-outline btn-sm" id="btn-disable-schedule"><svg class="ic"><use href="#i-x" xlink:href="#i-x"></use></svg> إيقاف الجدولة</button>
-</div>
-<p class="tiny muted mt-2 mb-0">الاستعادة على الموقع السحابي محظورة من المتصفح حتى للمدير. فحص سلامة الملف لا يعني نجاح استعادته؛ تجربة قاعدة منفصلة لازمة. اللقطات القديمة لا تحذف تلقائياً.</p>
-</div>
-</div>
-<div class="data-grid mt-3">
-<div class="data-item"><div class="k">الوظائف المخزّنة</div><div class="v" id="db-jobs">0</div></div>
-<div class="data-item"><div class="k">الاستمارات</div><div class="v" id="db-apps">0</div></div>
-<div class="data-item"><div class="k">الفرص (خانات)</div><div class="v" id="db-attempts">0</div></div>
-<div class="data-item"><div class="k">سجلات التدقيق</div><div class="v" id="db-audit">0</div></div>
-<div class="data-item"><div class="k">النسخ الاحتياطية</div><div class="v" id="db-backups">0</div></div>
-</div>
 </div>
 </div></div></details></section>
   </main>
@@ -918,18 +878,18 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=d4923e2297"></script>
-<script src="assets/vendor/supabase.js?v=d4923e2297"></script>
-<script src="assets/js/supabase-config.js?v=d4923e2297"></script>
-<script src="assets/js/qr.js?v=d4923e2297"></script>
-<script src="assets/js/cloud.js?v=d4923e2297"></script>
-<script src="assets/js/cloud-auth.js?v=d4923e2297"></script>
-<script src="assets/js/cloud-sync.js?v=d4923e2297"></script>
-<script src="assets/js/store.js?v=d4923e2297"></script>
-<script src="assets/js/ui.js?v=d4923e2297"></script>
-<script src="assets/js/nav.js?v=d4923e2297"></script>
-<script src="assets/js/voucher.js?v=d4923e2297"></script>
-<script src="assets/js/dashboard.js?v=d4923e2297"></script>
-<script src="assets/js/notifications.js?v=d4923e2297"></script>
+<script src="assets/js/config.js?v=2a19cb162c"></script>
+<script src="assets/vendor/supabase.js?v=2a19cb162c"></script>
+<script src="assets/js/supabase-config.js?v=2a19cb162c"></script>
+<script src="assets/js/qr.js?v=2a19cb162c"></script>
+<script src="assets/js/cloud.js?v=2a19cb162c"></script>
+<script src="assets/js/cloud-auth.js?v=2a19cb162c"></script>
+<script src="assets/js/cloud-sync.js?v=2a19cb162c"></script>
+<script src="assets/js/store.js?v=2a19cb162c"></script>
+<script src="assets/js/ui.js?v=2a19cb162c"></script>
+<script src="assets/js/nav.js?v=2a19cb162c"></script>
+<script src="assets/js/voucher.js?v=2a19cb162c"></script>
+<script src="assets/js/dashboard.js?v=2a19cb162c"></script>
+<script src="assets/js/notifications.js?v=2a19cb162c"></script>
 </body>
 </html>

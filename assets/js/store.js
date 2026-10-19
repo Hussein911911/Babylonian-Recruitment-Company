@@ -2487,6 +2487,22 @@
     });
   }
 
+  // Server-owned operational recovery. No browser JSON upload or service key.
+  function recoveryRPC(action, id, name, ticket) {
+    if (!isAdmin() || !enforceAuth() || !cloud.client) return Promise.reject(new Error('يلزم دخول المدير الرسمي واتصال قاعدة الشركة'));
+    return cloud.client.rpc('recovery_manage', { p_action: action, p_id: id || null, p_name: name || '', p_token: ticket || '' }).then(function (r) {
+      if (r.error) throw new Error(r.error.message || 'تعذر تنفيذ النسخ أو الاسترجاع');
+      if (!r.data || !r.data.ok) throw new Error('لم تكتمل العملية؛ لم يتم تأكيد نجاحها');
+      if (r.data.requiresLogin) {
+        if (cloud.timer) clearTimeout(cloud.timer);
+        cloud.sync = null; memSession = null;
+        try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+        return signOutCloud().then(function () { return r.data; });
+      }
+      return r.data;
+    });
+  }
+
   function changeCloudPassword(newPassword) {
     if (!cloud.client || !root.HRCCloudAuth) return Promise.resolve({ ok: false, error: 'غير متاح في الوضع المحلي' });
     var auth = cloud.auth || root.HRCCloudAuth.create(cloud.client);
@@ -2576,7 +2592,7 @@
     createCloudAccount: createCloudAccount, updateCloudAccount: updateCloudAccount,
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     probeServiceKey: probeServiceKey,
-    staffAdmin: staffAdmin,
+    staffAdmin: staffAdmin, recoveryRPC: recoveryRPC,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,

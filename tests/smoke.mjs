@@ -851,15 +851,13 @@ check('البحث السريع بالكود يفتح بطاقة الوظيفة',
   const modal = lastModal(dash.doc);
   return (modal && modal.textContent.includes('HRC-1045') && modal.textContent.includes('بطاقة الوظيفة الداخلية')) || 'لم تُفتح البطاقة';
 });
-check('الإعدادات مختصرة والمتقدم مطوي دون حذف أدوات الإدارة', () => {
-  const doc = dash.doc;
-  const advanced = doc.getElementById('settings-advanced');
-  const main = doc.querySelector('#view-settings .settings-main');
-  const quick = doc.getElementById('btn-quick-backup');
-  return (!!advanced && !advanced.open && main.contains(doc.getElementById('settings-form')) &&
-    main.contains(doc.getElementById('users-table-body')) && !advanced.contains(quick) &&
-    ['btn-export', 'btn-import', 'btn-schedule-backup', 'btn-reset', 'set-verify-base']
-      .every((id) => advanced.contains(doc.getElementById(id)))) || 'اختل ترتيب الأساسيات أو اختفت أداة إدارية';
+check('الإعدادات مختصرة والنسخ الجديد منفصل عن الأدوات القديمة', () => {
+  const doc = dash.doc, advanced = doc.getElementById('settings-advanced');
+  const main = doc.querySelector('#view-settings .settings-main'), recovery = doc.getElementById('recovery-tools');
+  return (!!advanced && !advanced.open && !!recovery && !advanced.contains(recovery) &&
+    main.contains(doc.getElementById('settings-form')) && main.contains(doc.getElementById('users-table-body')) &&
+    advanced.contains(doc.getElementById('set-verify-base')) &&
+    ['btn-export','btn-import','btn-schedule-backup','btn-reset'].every(id=>!advanced.querySelector('#'+id))) || 'اختل ترتيب الأساسيات أو بقيت أدوات النسخ القديمة';
 });
 check('قسم الاتصال وإدارة القناة محذوف من الصفحة وليس مخفياً', () => {
   return ['settings-connection', 'users-channel', 'btn-cloud-key'].every((id) => !dash.doc.getElementById(id)) || 'بقيت أدوات القناة في الصفحة';
