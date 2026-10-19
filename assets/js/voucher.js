@@ -385,7 +385,7 @@
       pageStyle.textContent = '';
     }
     window.addEventListener('afterprint', after, { once: true });
-    setTimeout(function () { window.print(); setTimeout(after, 1600); }, 160);
+    setTimeout(function () { readyPrint(seq, after, 1600); }, 160);
   }
 
   /* معاينة الاستمارة داخل نافذة (للشاشة) — تُستدعى من شاشة نجاح البيع
@@ -409,7 +409,11 @@
      ⚠️ رمز تسلسلي: طبقتان متتاليتان (مثلاً بطاقتان خلف بعض) — مؤقّت التنظيف
      الخاص بالطباعة القديمة قد ينفجر بين إعداد محتوى الجديدة ونداء الطباعة
      فيمسح ورقتها بيضاء. التنظيف الآن لا يعمل إلا لآخر طباعة فقط. */
-  var printSeq = 0;
+  var printSeq = 0, printFonts;
+  function readyPrint(seq, after, delay) {
+    if (!printFonts) printFonts = document.fonts && document.fonts.load ? Promise.all([400,600,700,900].map(function (w) { return document.fonts.load(w+' 12px Cairo','العراق ABC 123'); })).catch(function () { printFonts = null; }) : Promise.resolve();
+    printFonts.then(function () { if (printSeq === seq) { window.print(); setTimeout(after, delay); } });
+  }
 
   function print(app, opts) {
     opts = opts || {};
@@ -424,7 +428,7 @@
     Store.markPrinted(app.serial);
     function after() { if (printSeq === seq) rootEl.innerHTML = ''; }
     window.addEventListener('afterprint', after, { once: true });
-    setTimeout(function () { window.print(); setTimeout(after, 1200); }, 120);
+    setTimeout(function () { readyPrint(seq, after, 1200); }, 120);
   }
 
   /* طباعة دفعة بطاقات (الفارغة عند الإصدار): كل بطاقة بوجهيها وصفحة خاصة */
@@ -442,7 +446,7 @@
     apps.forEach(function (app) { try { Store.markPrinted(app.serial); } catch (e) { } });
     function after() { if (printSeq === seq) rootEl.innerHTML = ''; }
     window.addEventListener('afterprint', after, { once: true });
-    setTimeout(function () { window.print(); setTimeout(after, 1600); }, 160);
+    setTimeout(function () { readyPrint(seq, after, 1600); }, 160);
   }
 
   /* ======================= طباعة الدفعات على ورق A4 ======================= */
@@ -515,7 +519,7 @@
     apps.forEach(function (app) { try { Store.markPrinted(app.serial); } catch (e) { } });
     function after() { if (printSeq === seq) { rootEl.innerHTML = ''; setSheetCss(false); } }
     window.addEventListener('afterprint', after, { once: true });
-    setTimeout(function () { window.print(); setTimeout(after, 2000); }, 160);
+    setTimeout(function () { readyPrint(seq, after, 2000); }, 160);
   }
 
   /* معاينة داخل نافذة منبثقة */

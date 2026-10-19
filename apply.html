@@ -6,7 +6,7 @@
 <title>تقديم على وظيفة | شركة الهدف للتوظيف</title>
 <meta name="theme-color" content="#0b1a3a">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link href="assets/css/fonts.css?v=iraq-tajawal-1" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════════════════════
    منصة الهدف — صفحة التقديم العام (apply.html)
@@ -14,7 +14,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px}
 body{
-  font-family:'Cairo','Segoe UI',Tahoma,sans-serif;
+  font-family:'Tajawal','Segoe UI',Tahoma,sans-serif;
   background:#0b1a3a;color:#f4efe2;direction:rtl;
   min-height:100vh;min-height:100dvh;overflow-x:hidden;
   background-image:
@@ -117,7 +117,7 @@ body{
 .welcome .emblem{width:85px;height:85px;margin:0 auto 14px;display:block}
 .welcome h1{font-size:19pt;font-weight:900;color:#e8d089;margin-bottom:5px}
 .welcome .sub{font-size:10.5pt;color:rgba(249,246,239,.6);margin-bottom:20px;line-height:1.8}
-.employer-link{display:block;margin:12px auto 0;background:none;border:0;color:rgba(249,246,239,.5);font:600 8.5pt 'Cairo',sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.employer-link{display:block;margin:12px auto 0;background:none;border:0;color:rgba(249,246,239,.5);font:600 8.5pt 'Tajawal',sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .gold-line{height:1px;background:linear-gradient(90deg,transparent,#c8a24a 50%,transparent);margin:14px auto;width:75%}
 
 /* ── الأزرار ── */
@@ -161,16 +161,16 @@ body{
 
 /* ── مقياس رقم الهاتف (11 رقم) ── */
 .phone-meter{display:flex;align-items:center;gap:8px;margin-top:8px;direction:ltr}
-.phone-meter .pc-num{font:900 12pt 'Cairo',sans-serif;color:#e8d089;min-width:20px;text-align:center;transition:color .3s}
-.phone-meter .pc-of{font:700 8pt 'Cairo',sans-serif;color:rgba(249,246,239,.35)}
+.phone-meter .pc-num{font:900 12pt 'Tajawal',sans-serif;color:#e8d089;min-width:20px;text-align:center;transition:color .3s}
+.phone-meter .pc-of{font:700 8pt 'Tajawal',sans-serif;color:rgba(249,246,239,.35)}
 .phone-meter .pc-track{flex:1;height:5px;border-radius:3px;background:rgba(249,246,239,.1);overflow:hidden}
 .phone-meter .pc-track i{display:block;height:100%;width:0;border-radius:3px;transition:width .3s cubic-bezier(.22,1,.36,1),background .3s;background:linear-gradient(90deg,#1d6bc4,#6db8ff)}
 .phone-meter.done .pc-num{color:#5ee8a0}
 .phone-meter.done .pc-track i{background:linear-gradient(90deg,#1e9e55,#5ee8a0)}
-.phone-meter .pc-state{font:700 8pt 'Cairo',sans-serif;color:#f0c060;min-width:44px;text-align:center}
+.phone-meter .pc-state{font:700 8pt 'Tajawal',sans-serif;color:#f0c060;min-width:44px;text-align:center}
 .phone-meter.done .pc-state{color:#5ee8a0}
 .phone-meter .pc-state.bad{color:#f08080}
-.dob-meter{margin-top:8px;font:700 8pt 'Cairo',sans-serif;color:rgba(249,246,239,.4);text-align:center;min-height:1.4em}
+.dob-meter{margin-top:8px;font:700 8pt 'Tajawal',sans-serif;color:rgba(249,246,239,.4);text-align:center;min-height:1.4em}
 
 /* ── العنوان ── */
 .section-title{
@@ -452,7 +452,7 @@ body{
 .rv-v{font-size:10pt;font-weight:800;color:#f4efe2;flex:1;line-height:1.6;word-break:break-word}
 .rv-v.mono{letter-spacing:.04em}
 .rv-edit{
-  flex:none;font:700 7.5pt 'Cairo',sans-serif;color:#6db8ff;background:rgba(29,107,196,.14);
+  flex:none;font:700 7.5pt 'Tajawal',sans-serif;color:#6db8ff;background:rgba(29,107,196,.14);
   border:1px solid rgba(29,107,196,.35);border-radius:8px;padding:4px 9px;cursor:pointer;transition:all .2s;
 }
 .rv-edit:hover{background:rgba(29,107,196,.25)}
@@ -922,6 +922,8 @@ function jobSalary(value){var text=jobNorm(value).replace(/[,،٬\s]/g,'');if(!t
    أدوات مساعدة
    ═══════════════════════════════════════════════════════════════ */
 function esc(v){var s=String(v==null?'':v);return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function printApplication(){var fonts=document.fonts;var ready=fonts&&fonts.load?Promise.all([400,600,700,800,900].map(function(w){return fonts.load(w+' 12px Cairo','العراق ABC 123');})).catch(function(){}):Promise.resolve();ready.then(function(){window.print();});}
+function iraqYear(){return Number(new Intl.DateTimeFormat('en',{timeZone:'Asia/Baghdad',year:'numeric',calendar:'gregory'}).format(new Date()));}
 function money(n){return(n==null||isNaN(n))?'—':Number(n).toLocaleString('en-US')+' د.ع';}
 function ar(n){var a=['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];return String(n).replace(/\d/g,function(d){return a[+d];});}
 function pad2(v){var s=String(v||'');return s.length<2?'0'+s:s;}
@@ -961,6 +963,7 @@ var transitioning=false; /* منع النقرات أثناء الانتقال */
 var pickedJobs=[];       /* وظائف الزبون المعيَّنة لفرصتيه — حتى وظيفتين (قرار 2026-10-06) */
 
 var G={
+  printApplication:printApplication,
   openEmployer:function(){
     var base=location.pathname.replace(/[^/]*$/,'');
     location.href=base+'employer.html?form='+encodeURIComponent(cardSerial||'');
@@ -1150,7 +1153,7 @@ var G={
         /* فحص العمر (16-70) */
         var chosenDate=new Date(parseInt(y),parseInt(m)-1,parseInt(d));
         if(chosenDate.getFullYear()!==parseInt(y)||chosenDate.getMonth()!==parseInt(m)-1||chosenDate.getDate()!==parseInt(d)){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">تاريخ الميلاد غير صحيح — تحقق من اليوم والشهر</span></div>';return false;}
-        var age=new Date().getFullYear()-parseInt(y);
+        var age=iraqYear()-parseInt(y);
         if(age<16){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">العمر أقل من 16 سنة — الحد الأدنى للتوظيف هو 16 سنة</span></div>';return false;}
         if(age>70){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">يرجى التحقق من سنة الميلاد — العمر المُدخل '+ar(age)+' سنة</span></div>';return false;}
         setValid($('f-day'));setValid($('f-mon'));setValid($('f-yr'));
@@ -1585,7 +1588,7 @@ var G={
       +'</div>';
     var acts=$('result-actions');
     if(acts){
-      var a='<button class="btn btn-primary btn-sm btn-shine" onclick="window.print()">🖨 طباعة</button>';
+      var a='<button class="btn btn-primary btn-sm btn-shine" onclick="G.printApplication()">🖨 طباعة</button>';
       a+='<button class="btn btn-outline btn-sm" onclick="G.copyLink()">🔗 نسخ رابط الاستمارة</button>';
       if(chancesLeft>0)a+='<button class="btn btn-ghost-gold" onclick="G.go(6)">📷 استخدام الباركود لاختيار وظيفة ثانية</button>';
       a+='<button class="btn btn-outline btn-sm" onclick="G.backToJobs()">← العودة للوظائف</button>';
@@ -1615,11 +1618,12 @@ var G={
     var cUrl=(location.origin||'https://hrc-babil.com')+location.pathname.replace(/[^/]*$/,'')+'apply.html?form='+encodeURIComponent(cardSerial);
 
     /* تاريخان يهمّان صاحب العمل: مهلة الحجز (24 ساعة) وانتهاء صلاحية البطاقة */
-    var holdTxt='—',expTxt=(cardData&&cardData.expiryDate)?String(cardData.expiryDate).slice(0,10).split('-').reverse().join('/'):'—';
+    var holdTxt='—',expTxt='—';
+    if(cardData&&cardData.expiryDate){var expiry=new Date(cardData.expiryDate);if(!isNaN(expiry.getTime()))expTxt=expiry.toLocaleDateString('en-GB',{timeZone:'Asia/Baghdad',calendar:'gregory'});}
     if(att.holdExpiresAt){
       var hd=new Date(att.holdExpiresAt);
       if(!isNaN(hd.getTime())){
-        holdTxt=hd.toLocaleString('ar-IQ',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        holdTxt=hd.toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad',calendar:'gregory',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
       }
     }
     var statusTxt = chancesLeft<=0 ? 'مستنفدة الفرص' : 'سارية';
@@ -1747,7 +1751,7 @@ var G={
     $('steps-bar').style.display='none';
 
     /* ── أزرار ما بعد الاستمارة: طباعة · وظيفة أخرى · نسخ الرابط ── */
-    var acts='<button class="btn btn-primary btn-shine" onclick="window.print()">🖨️ طباعة الاستمارة (A4)</button>';
+    var acts='<button class="btn btn-primary btn-shine" onclick="G.printApplication()">🖨️ طباعة الاستمارة (A4)</button>';
     if(chancesLeft>0){
       acts+='<button class="btn btn-ghost-gold" onclick="G.go(6)">📷 استخدام الباركود لاختيار وظيفة ثانية</button>';
     }
@@ -1841,7 +1845,7 @@ function initDates(){
   m.innerHTML='<option value="">الشهر</option>';
   for(var j=1;j<=12;j++){var o2=document.createElement('option');o2.value=j;o2.textContent=j;m.appendChild(o2);}
   y.innerHTML='<option value="">السنة</option>';
-  var now=new Date().getFullYear();
+  var now=iraqYear();
   for(var k=now;k>=1950;k--){var o3=document.createElement('option');o3.value=k;o3.textContent=k;y.appendChild(o3);}
 }
 

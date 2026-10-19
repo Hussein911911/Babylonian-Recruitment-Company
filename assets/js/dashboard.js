@@ -82,6 +82,8 @@
       updateHamburgerNotif();
     });
     setInterval(tick, 30000);
+    setInterval(renderClock, 1000);
+    document.addEventListener('visibilitychange', renderClock);
   }
 
   /* ======================= القائمة الجانبية ======================= */
@@ -966,6 +968,13 @@
   }
 
   /* ======================= نظرة عامة ======================= */
+  var iraqCalendar = new Intl.DateTimeFormat('ar-IQ-u-ca-gregory', {timeZone:'Asia/Baghdad',weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  function renderClock() {
+    if (!Store.currentUser() || state.view !== 'overview') return;
+    var now = new Date(), clock = document.getElementById('ov-clock'), date = document.getElementById('ov-date');
+    if (clock) clock.textContent = Store.fmtDateTime(now).slice(11,16);
+    if (date) date.textContent = iraqCalendar.format(now);
+  }
   function renderOverview() {
     var s = Store.stats();
     var pa = Store.pendingActions();
@@ -975,14 +984,7 @@
     var user = Store.currentUser();
     var userName = document.getElementById('ov-user-name');
     if (userName) userName.textContent = user ? (user.name || user.username) : '—';
-    var clock = document.getElementById('ov-clock');
-    var dateEl = document.getElementById('ov-date');
-    if (clock) {
-      var now = new Date();
-      var h = String(now.getHours()), m = String(now.getMinutes());
-      clock.textContent = (h.length < 2 ? '0' : '') + h + ':' + (m.length < 2 ? '0' : '') + m;
-      if (dateEl) dateEl.textContent = now.toLocaleDateString('ar-IQ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    }
+    renderClock();
 
     // ═══ إحصائيات ═══
     var stats = [
@@ -2266,11 +2268,7 @@
       if (a) a.value = from; if (b) b.value = to;
       renderFinance();
     }
-    function dayOffset(n) {
-      var d = new Date();
-      d.setDate(d.getDate() + n);
-      return Store.fmtDate(d);       // YYYY-MM-DD بالتوقيت المحلي
-    }
+    function dayOffset(n) { return Store.dayOffset(n); }
 
     var finToday = document.getElementById('btn-fin-today');
     if (finToday) finToday.addEventListener('click', function () {

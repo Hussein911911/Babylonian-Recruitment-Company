@@ -591,7 +591,7 @@ check('ملاحظة «باركود البطاقة نفسه» موجودة في �
 check('كل استمارة بها الفرصة والمهلة وتاريخ الانتهاء', /الفرصة/.test(res) && /مهلة الرد على الحجز/.test(res));
 check('عنوان النجاح يعدّ الفرصتين', /فرصتان|فرصتين/.test(res), (res.match(/ok-sub[^<]*/) || [''])[0]);
 const acts = $('result-actions').innerHTML;
-check('زر طباعة الاستمارات', actions_has(acts, 'طباعة') && acts.includes('window.print()'));
+check('زر طباعة الاستمارات', actions_has(acts, 'طباعة') && acts.includes('G.printApplication()') && typeof sandbox.G.printApplication === 'function');
 check('لا زر «وظيفة ثانية» — الفرصتان استُهلكتا', !actions_has(acts, 'وظيفة ثانية'), acts.slice(0, 160));
 check('تنبيه استهلاك الفرصتين ظاهر للزبون', /استُهلكت فرصتا البطاقة/.test(res), res.slice(-260));
 check('زر نسخ رابط الاستمارة', acts.includes('copyLink'));

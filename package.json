@@ -16,7 +16,7 @@
     "test:employer-pin": "node tests/employer-pin.mjs",
     "test:notifications": "node tests/notifications.mjs",
     "test:employer-entry": "node tests/employer-entry.mjs",
-    "test:all": "node tests/recovery-sql.mjs && node tests/recovery-ui.mjs && node tests/backup-hardening.mjs && node tests/office-sql.mjs && node tests/office.mjs && node tests/database-backup-agent.mjs && node tests/audit-write.mjs && node tests/reprint-code.mjs && node tests/smoke.mjs && node tests/audit-search.mjs && node tests/apply-flow.mjs && node tests/job-filters.mjs && node tests/card-identity.mjs && node tests/apply-navigation.mjs && node tests/employer-otp.mjs && node tests/employer-pin.mjs && node tests/notifications.mjs && node tests/employer-entry.mjs && node tests/schema.mjs && node tests/cloud.mjs && node tests/cloud-http.mjs && node tests/cloud-sync.mjs && node tests/store-cloud.mjs && node tests/dashboard-cloud.mjs && node tests/staff-accounts.mjs && node tests/dashboard-users.mjs && node tests/staff-lifecycle.mjs && node tests/staff-admin-function.mjs && node tests/staff-admin-http.mjs && node tests/perf.mjs && node tests/supabase-check.mjs && node tests/backup.mjs && node tests/e2e.mjs && node tests/audit.mjs",
+    "test:all": "node tests/iraq-time.mjs && node tests/recovery-sql.mjs && node tests/recovery-ui.mjs && node tests/backup-hardening.mjs && node tests/office-sql.mjs && node tests/office.mjs && node tests/database-backup-agent.mjs && node tests/audit-write.mjs && node tests/reprint-code.mjs && node tests/smoke.mjs && node tests/audit-search.mjs && node tests/apply-flow.mjs && node tests/job-filters.mjs && node tests/card-identity.mjs && node tests/apply-navigation.mjs && node tests/employer-otp.mjs && node tests/employer-pin.mjs && node tests/notifications.mjs && node tests/employer-entry.mjs && node tests/schema.mjs && node tests/cloud.mjs && node tests/cloud-http.mjs && node tests/cloud-sync.mjs && node tests/store-cloud.mjs && node tests/dashboard-cloud.mjs && node tests/staff-accounts.mjs && node tests/dashboard-users.mjs && node tests/staff-lifecycle.mjs && node tests/staff-admin-function.mjs && node tests/staff-admin-http.mjs && node tests/perf.mjs && node tests/supabase-check.mjs && node tests/backup.mjs && node tests/e2e.mjs && node tests/audit.mjs",
     "e2e": "node tests/e2e.mjs",
     "audit": "node tests/audit.mjs",
     "verify:qr": "node tests/qr-report.mjs",
@@ -48,7 +48,9 @@
     "office:start": "node office/server.mjs",
     "office:backup": "node office/backup-agent.mjs backup",
     "test:backup-browser": "node tests/backup-browser.mjs",
-    "test:recovery": "node tests/recovery-sql.mjs && node tests/recovery-ui.mjs"
+    "test:recovery": "node tests/recovery-sql.mjs && node tests/recovery-ui.mjs",
+    "test:iraq-time": "node tests/iraq-time.mjs",
+    "test:iraq-font-browser": "node tests/iraq-font-browser.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",

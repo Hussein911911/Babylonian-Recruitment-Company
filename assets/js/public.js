@@ -187,7 +187,7 @@
     }, 120));
 
     var y = document.getElementById('year');
-    if (y) y.textContent = String(new Date().getFullYear());
+    if (y) y.textContent = Store.fmtDate(new Date()).slice(0,4);
   }
 
   function runQuickSearch(code, region) {

@@ -16,22 +16,33 @@
 
   function nowISO() { return new Date().toISOString(); }
 
-  /* طابع زمني بالصيغة المطلوبة في سجل التدقيق: YYYY-MM-DD HH:mm:ss */
+  // Gregorian Baghdad display; persisted instants remain UTC, never +3 twice.
+  var iraqFormat = new Intl.DateTimeFormat('en-GB-u-ca-gregory-nu-latn', {timeZone:'Asia/Baghdad',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+  function iraqParts(value) {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(value)) value = value.replace(' ','T') + '+03:00';
+    var d = value instanceof Date ? value : new Date(value), p = {};
+    if (isNaN(d.getTime())) return null;
+    iraqFormat.formatToParts(d).forEach(function (v) { p[v.type] = v.value; });
+    return p;
+  }
   function fmtDateTime(d) {
-    d = d instanceof Date ? d : new Date(d);
-    if (isNaN(d.getTime())) return '—';
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1, 2) + '-' + pad(d.getDate(), 2) + ' ' +
-      pad(d.getHours(), 2) + ':' + pad(d.getMinutes(), 2) + ':' + pad(d.getSeconds(), 2);
+    var p = iraqParts(d);
+    return p ? p.year+'-'+p.month+'-'+p.day+' '+p.hour+':'+p.minute+':'+p.second : '—';
   }
-
   function fmtDate(d) {
-    d = d instanceof Date ? d : new Date(d);
-    if (isNaN(d.getTime())) return '—';
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1, 2) + '-' + pad(d.getDate(), 2);
+    if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      var v = new Date(d+'T00:00:00Z');
+      return !isNaN(v.getTime()) && v.toISOString().slice(0,10) === d ? d : '—';
+    }
+    return fmtDateTime(d).slice(0,10);
   }
-
-  function addDays(date, days) { var d = new Date(date.getTime()); d.setDate(d.getDate() + days); return d; }
-  function addHours(date, hours) { var d = new Date(date.getTime()); d.setHours(d.getHours() + hours); return d; }
+  function dayOffset(n, at) {
+    var d = new Date(fmtDate(at == null ? new Date() : at)+'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate()+n);
+    return isNaN(d.getTime()) ? '—' : d.toISOString().slice(0,10);
+  }
+  function addDays(date, days) { return new Date(date.getTime() + days * 86400000); }
+  function addHours(date, hours) { return new Date(date.getTime() + hours * 3600000); }
 
   function money(n) {
     if (n == null || isNaN(n)) return '—';
@@ -545,13 +556,12 @@
       var text = auditSearchText([r.action, r.details, r.entityId, r.entity, r.user, r.name, r.ip].join(' '));
       return words.every(function (word) { return text.indexOf(word) >= 0; });
     });
-    // Calendar days use the browser's local timezone; the end is exclusive.
-    var from = f.from ? new Date(f.from + 'T00:00:00') : null;
-    var to = f.to ? new Date(f.to + 'T00:00:00') : null;
-    if ((from && isNaN(from.getTime())) || (to && isNaN(to.getTime())) || (from && to && from > to)) return [];
-    if (to) to.setDate(to.getDate() + 1);
-    if (from) rows = rows.filter(function (r) { return new Date(r.ts).getTime() >= from.getTime(); });
-    if (to) rows = rows.filter(function (r) { return new Date(r.ts).getTime() < to.getTime(); });
+    // Inclusive calendar-day filters use Baghdad, independent of device zone.
+    var from = f.from || '', to = f.to || '';
+    if ((from && fmtDate(from) !== from) || (to && fmtDate(to) !== to) || (from && to && from > to)) return [];
+    if (from || to) rows = rows.filter(function (r) {
+      var day = fmtDate(r.ts); return day !== '—' && (!from || day >= from) && (!to || day <= to);
+    });
     return rows.sort(function (a, b) {
       var delta = new Date(b.ts).getTime() - new Date(a.ts).getTime();
       return f.sort === 'oldest' ? -delta : delta;
@@ -1524,8 +1534,10 @@
       /* استمارة قيد الطلب (issueDate = null) لا تنتمي لأي يوم: كانت تُقارَن
          بـ null فتمرّ في كل نطاق — وهذا يُفسد فلتر «اليوم/أمس». */
       if ((from || to) && !a.issueDate) return;
-      if (from && a.issueDate < from) return;
-      if (to && a.issueDate > to + 'T23:59:59') return;
+      var day = fmtDate(a.issueDate);
+      if ((from || to) && day === '—') return;
+      if (from && day < from) return;
+      if (to && day > to) return;
       var key = a.createdBy || 'system';
       rows[key] = rows[key] || { user: key, forms: 0, printed: 0, expected: 0, collected: 0, hires: 0, holds: 0, paid: 0, unpaid: 0, partial: 0 };
       rows[key].forms++;
@@ -1755,12 +1767,12 @@
      صالحة للاستعادة) ونُصفّي الاستمارات والمحاولات وسجل التدقيق بالتاريخ. */
   function sliceByRange(snapshot, range) {
     if (!range || (!range.from && !range.to)) return null;
-    var from = range.from ? range.from + 'T00:00:00.000Z' : null;
-    var to = range.to ? range.to + 'T23:59:59.999Z' : null;
+    var from = range.from || null;
+    var to = range.to || null;
     var inRange = function (ts) {
       if (!ts) return false;
-      if (from && ts < from) return false;
-      if (to && ts > to) return false;
+      var day = fmtDate(ts);
+      if (day === '—' || (from && day < from) || (to && day > to)) return false;
       return true;
     };
     var out = JSON.parse(JSON.stringify(snapshot));
@@ -1896,9 +1908,9 @@
     var s = getAutoSchedule();
     if (!s) return null;
     var d = now ? new Date(now) : new Date();
-    if (s.days.indexOf(d.getDay()) < 0) return null;
+    if (s.days.indexOf(new Date(fmtDate(d)+'T12:00:00Z').getUTCDay()) < 0) return null;
     var parts = String(s.time).split(':');
-    var slot = new Date(d.getFullYear(), d.getMonth(), d.getDate(), Number(parts[0]) || 0, Number(parts[1]) || 0, 0, 0);
+    var slot = new Date(fmtDate(d)+'T'+pad(Number(parts[0])||0,2)+':'+pad(Number(parts[1])||0,2)+':00+03:00');
     if (d.getTime() < slot.getTime()) return null;             // لم يحن الوقت بعد
     var slotKey = fmtDate(d) + 'T' + s.time;
     if (readJson(AUTO_RUN_KEY, null) === slotKey) return null;  // نُفّذت مسبقاً
@@ -2634,7 +2646,7 @@
     getAutoSchedule: getAutoSchedule, saveAutoSchedule: saveAutoSchedule,
     clearAutoSchedule: clearAutoSchedule, lastAutoRun: lastAutoRun, checkAutoBackup: checkAutoBackup,
     // أدوات
-    fmtDate: fmtDate, fmtDateTime: fmtDateTime, money: money, diffDays: diffDays, diffHours: diffHours,
+    timeZone: 'Asia/Baghdad', dayOffset: dayOffset, fmtDate: fmtDate, fmtDateTime: fmtDateTime, money: money, diffDays: diffDays, diffHours: diffHours,
     addDays: addDays, addHours: addHours, resetDemo: resetDemo, exportJson: exportJson, importJson: importJson, previewBackup: previewBackup,
     token_for: token, uid: uid
   };
