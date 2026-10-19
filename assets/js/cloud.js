@@ -1,23 +1,4 @@
-/* ===========================================================================
- *  HRC — طبقة الربط بـ Supabase (HRCCloud)
- *  ---------------------------------------------------------------------------
- *  الفكرة المعمارية:
- *    الواجهة تنادي HRCStore بشكل **متزامن** (222 نقطة استدعاء)، وسوبابيس
- *    **غير متزامنة**. الحل: نحتفظ بنسخة كاملة من البيانات في الذاكرة بنفس شكل
- *    HRCStore المحلي (كائن db)، ونملؤها من سوبابيس عند الإقلاع، ثم:
- *      • القراءة  → من الذاكرة فوراً (بلا تغيير في أي نقطة استدعاء)
- *      • الكتابة  → تحديث الذاكرة فوراً + دفع لسوبابيس في الخلفية + emit()
- *      • التغيير  → Realtime يحدّث الذاكرة ويستدعي emit() لباقي المستخدمين
- *    بهذا لا تحتاج 222 نقطة استدعاء أي تعديل.
- *
- *  هذا الملف مسؤول عن **التحويل والتحميل** فقط:
- *    • تحويل الأعمدة: snake_case (SQL) ↔ camelCase (JS)
- *    • تجميع الكائنات المركّبة: employer{} · سجل التدقيق · الإعدادات
- *    • وصل المحاولات بالوظائف والموظفين (البيانات المُسطّحة غير موجودة في SQL)
- *
- *  بلا أي حزم خارجية — يستقبل عميل سوبابيس كوسيط، فيمكن اختباره بعميل وهمي
- *  دون شبكة (انظر tests/cloud.mjs).
- * =========================================================================== */
+/* HRCCloud: SQL/UI mapping, bounded paged reads and RPC adapters. */
 (function (root) {
   'use strict';
 
@@ -250,10 +231,7 @@
     };
   }
 
-  /* ------------------------- الإعدادات (settings: key/value jsonb) -------------------------
-   *  SQL تُخزّن صفوفاً: ('rules', {...}) و ('company', {...}).
-   *  الواجهة تتوقّع كائناً مسطّحاً بقيم camelCase.
-   * ----------------------------------------------------------------------------- */
+  // Flatten SQL settings JSON into UI configuration.
   function settingsFromDb(rows) {
     var out = {};
     (rows || []).forEach(function (r) {
@@ -300,12 +278,8 @@
     var audit = (data.audit_log || []).map(auditFromDb);
     var settings = settingsFromDb(data.settings);
 
-    /* آخر أرقام التسلسل: نستنتجها من البيانات الفعلية حتى لا تتصادم الأكواد
-       الجديدة مع القديمة. (المصدر الحقيقي تسلسلات PostgreSQL، وهذي للعرض فقط.) */
+    // Infer display-only counters from server-assigned identifiers.
     var maxJob = 1041, maxSerial = 119;
-    /* بادئة واحدة موحّدة HRC — لا صيغة ثانية في المنظومة:
-       القاعدة تحوي سجلات صدرت بالرمز القديم، ولو تجاهلناها لعاد العدّاد إلى
-       رقم مستعمَل فتتكرّر الأكواد على وظيفتين مختلفتين. */
     jobs.forEach(function (j) {
       var m = /^HRC-(\d+)$/.exec(j.code || '');
       if (m) maxJob = Math.max(maxJob, Number(m[1]));
@@ -333,14 +307,51 @@
    * ========================================================================== */
   var TABLES = ['jobs', 'applicants', 'job_attempts', 'audit_log', 'settings', 'staff'];
 
+  // Stable, bounded pages: never silently adopt a truncated table. Exact counts
+  // also handle API row caps SMALLER than our requested 500 rows.
+  function readPages(client, table, maximum) {
+    var keys = { jobs: 'code', applicants: 'serial', job_attempts: 'id', audit_log: 'id', settings: 'key', staff: 'id', public_jobs: 'code' };
+    var key = keys[table], rows = [], expected = null, seen = Object.create(null);
+    function query() {
+      var q = client.from(table).select('*', { count: 'exact' });
+      if (table === 'audit_log') q = q.order('ts', { ascending: false });
+      return q.order(key, { ascending: true });
+    }
+    var first = query();
+    // Compatibility with older injected adapters. All shipped production clients
+    // implement range; dedicated capped-API tests exercise that path.
+    if (typeof first.range !== 'function') return table === 'audit_log' ? first.limit(maximum) : first;
+    function failure(message) { return { data: null, error: { message: message, code: 'INCOMPLETE_LOAD' } }; }
+    function next(q) {
+      return Promise.resolve(q.range(rows.length, Math.min(rows.length + 499, maximum - 1))).then(function (res) {
+        if (!res || res.error) return res || failure('لا نتيجة من القاعدة');
+        var count = typeof res.count === 'number' ? res.count : null;
+        if (expected !== null && count !== null && count !== expected) return failure('تغير عدد السجلات أثناء التحميل؛ أعد التحديث');
+        if (expected === null) expected = count;
+        if (table !== 'audit_log' && count > maximum) return failure('حجم الجدول يتجاوز حد التحميل الآمن؛ يلزم تقسيم البيانات');
+        var page = Array.isArray(res.data) ? res.data : [];
+        for (var i = 0; i < page.length; i++) {
+          var id = String(page[i][key]);
+          if (seen[id]) return failure('تكرر سجل أثناء التحميل؛ أعد التحديث');
+          seen[id] = true; rows.push(page[i]);
+        }
+        var target = expected === null ? null : Math.min(expected, maximum);
+        if (target !== null && rows.length >= target) return { data: rows, error: null };
+        if (!page.length) return target === null ? { data: rows, error: null } : failure('لم يكتمل تحميل الجدول');
+        if (rows.length >= maximum) return table === 'audit_log' ? { data: rows, error: null } : failure('تجاوز حد التحميل الآمن');
+        if (target === null && page.length < 500) return { data: rows, error: null };
+        return next(query());
+      });
+    }
+    return next(first);
+  }
+
   function fetchAll(client, opts) {
     opts = opts || {};
     var limit = opts.auditLimit || 2000;
 
     var queries = TABLES.map(function (t) {
-      var q = client.from(t).select('*');
-      if (t === 'audit_log') q = q.order('ts', { ascending: false }).limit(limit);
-      return q;
+      return readPages(client, t, t === 'audit_log' ? limit : 100000);
     });
 
     return Promise.all(queries).then(function (results) {
@@ -358,16 +369,9 @@
     });
   }
 
-  /* ============================================================================
-   *  القراءة العامة (بلا تسجيل دخول) — للزائر
-   *  ---------------------------------------------------------------------------
-   *  anon لا يملك صلاحية على brc.jobs إطلاقاً (RLS)، بل على العرض brc.public_jobs
-   *  فقط. فلو قرأ الزائر brc.jobs لرجع الجدول فارغاً/مرفوضاً وظهر الموقع بلا وظائف.
-   *  لذلك للزائر مسار قراءة منفصل — وهذا هو الفرق بين «يعمل عند الموظف» و«يعمل
-   *  عند الزائر»، وهو فرق يُكتشف متأخراً عادةً (الموظف مُسجَّل دخوله فلا يرى الخلل).
-   * ========================================================================== */
+  // Public reads use the RLS-safe public_jobs view, never the jobs table.
   function fetchPublicJobs(client) {
-    return client.from('public_jobs').select('*').then(function (res) {
+    return readPages(client, 'public_jobs', 100000).then(function (res) {
       if (res && res.error) {
         return { ok: false, error: res.error, jobs: [] };
       }

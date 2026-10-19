@@ -136,6 +136,8 @@ for (const file of PAGES) {
   else ok('مكتبة الأيقونات — ' + spriteIds.size + ' معرّفاً بلا تكرار');
   // الأيقونة مستخدمة إن وردت في HTML الصفحات أو نُودي بها من الكود HRCUI.ic('name')
   const iconCalls = new Set([...jsSrcAll.matchAll(/ic\(\s*'([a-z0-9-]+)'/g)].map((m) => 'i-' + m[1]));
+  // Dashboard statistics also construct hrefs from icon metadata.
+  for (const stats of jsSrcAll.matchAll(/var stats = \[([\s\S]*?)\];/g)) for (const m of stats[1].matchAll(/\bicon:\s*'([a-z0-9-]+)'/g)) { const id='i-'+m[1]; iconCalls.add(id); if(!spriteIds.has(id)) bad('Dynamic statistics icon exists',id); }
   const inPages = (id) => PAGES.some((f) => loaded[f] && loaded[f].doc.documentElement.outerHTML.includes('#' + id));
   const unused = [...spriteIds].filter((id) => !id.startsWith('g-') && id !== 'i-emblem' && !iconCalls.has(id) && !inPages(id));
   if (unused.length) warnf('أيقونات غير مستخدمة (' + unused.length + ')', unused.join(', '));

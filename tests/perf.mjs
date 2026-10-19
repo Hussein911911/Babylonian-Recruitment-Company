@@ -137,8 +137,8 @@ step(3, 'ميزانية القاعدة — طلبات Supabase لكل زيارة
   const count = tables.split(',').filter((x) => x.trim()).length;
   check('جداول الإقلاع للموظف ستة كما هو متوقّع', count === 6, String(count));
   check('الصفحات العامة لا تشترك في القناة اللحظية', !/subscribeAll/.test(readFileSync(join(ROOT, 'assets/js/public.js'), 'utf8')));
-  check('مساعد القراءة العامة محصور بمطلب واحد (public_jobs)',
-    /from\('public_jobs'\)/.test(cloudJs) && !/from\('jobs'\)[\s\S]{0,80}fetchPublicJobs/.test(cloudJs));
+  check('مساعد القراءة العامة محصور بعرض public_jobs (صفحات عند كبر القائمة)',
+    /readPages\(client, 'public_jobs', 100000\)/.test(cloudJs) && !/from\('jobs'\)[\s\S]{0,80}fetchPublicJobs/.test(cloudJs));
   check('الإقلاع العام لا يقرأ جداول الموظفين (canReadStaffTables)', /canReadStaffTables/.test(cfgJs));
 }
 

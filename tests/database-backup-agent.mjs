@@ -9,6 +9,9 @@ import {backup,verify,validateSource,validateTarget,restoreDrill} from '../offic
 const dir=mkdtempSync(join(tmpdir(),'hrc-database-agent-'));let count=0;
 const check=(name,v)=>{assert.ok(v,name);count++;console.log('✓ '+name);};
 try{
+ const schedule=readFileSync(new URL('../office/windows/Register-Tasks.ps1',import.meta.url),'utf8');
+ check('Windows registration is weekly, Friday by default, not daily',schedule.includes('-Weekly -WeeksInterval 1 -DaysOfWeek $BackupDay')&&schedule.includes("$BackupDay='Friday'")&&!schedule.includes('-Daily'));
+ check('Windows registration rejects old multi-copy retention config',schedule.includes('$backupConfig.keep -ne 1'));
  const bin=join(dir,'bin'),dest=join(dir,'backups');mkdirSync(bin);mkdirSync(dest);
  const pair=generateKeyPairSync('rsa',{modulusLength:3072,publicKeyEncoding:{type:'spki',format:'pem'},privateKeyEncoding:{type:'pkcs8',format:'pem',cipher:'aes-256-cbc',passphrase:'fixture-recovery-password'}});
  const cfg={databaseUrl:'postgresql://fixture@localhost:5432/postgres?sslmode=verify-full',pgpassFile:join(dir,'fixture.pgpass'),pgBin:bin,destination:dest,recipientPublicKey:join(dir,'public.pem'),recipientPrivateKey:join(dir,'private.pem'),privateKeyPasswordFile:join(dir,'password.txt'),restoreUrl:'postgresql://fixture@127.0.0.1:5434/brc_restore_drill_fixture',keep:2};
@@ -30,6 +33,14 @@ try{
  process.env.HRC_FAKE_DUMP_FAIL='1';await assert.rejects(()=>backup(cfg,{clock:()=>new Date('2026-10-19T09:01:00Z')}));delete process.env.HRC_FAKE_DUMP_FAIL;check('source failure cannot publish a partial success',readdirSync(dest).filter(f=>f.endsWith('.hrcdb')).length===1&&!readdirSync(dest).some(f=>f.endsWith('.partial')));
  process.env.HRC_FAKE_PARSE_FAIL='1';await assert.rejects(()=>backup(cfg,{clock:()=>new Date('2026-10-19T09:02:00Z')}));delete process.env.HRC_FAKE_PARSE_FAIL;check('archive decoder failure preserves prior verified backup',readdirSync(dest).filter(f=>f.endsWith('.hrcdb')).length===1);
  await backup(cfg,{clock:()=>new Date('2026-10-19T09:03:00Z')});await backup(cfg,{clock:()=>new Date('2026-10-19T09:04:00Z')});check('retention keeps latest two verified pairs, only after success',readdirSync(dest).filter(f=>f.endsWith('.hrcdb')).length===2&&!readdirSync(dest).includes(manifest.file));
+ // Explicit latest-only policy: a failure must not remove the last good pair.
+ cfg.keep=1;
+ const latest=await backup(cfg,{clock:()=>new Date('2026-10-19T09:05:00Z')});
+ check('keep=1 retains exactly the newest verified archive and manifest',readdirSync(dest).filter(f=>f.endsWith('.hrcdb')).length===1&&readdirSync(dest).includes(latest.file));
+ process.env.HRC_FAKE_PARSE_FAIL='1';await assert.rejects(()=>backup(cfg,{clock:()=>new Date('2026-10-19T09:06:00Z')}));delete process.env.HRC_FAKE_PARSE_FAIL;
+ check('keep=1 decoder failure preserves the latest verified pair',readdirSync(dest).filter(f=>f.endsWith('.hrcdb')).length===1&&readdirSync(dest).includes(latest.file));
+ delete cfg.keep;await backup(cfg,{clock:()=>new Date('2026-10-19T09:07:00Z')});
+ check('default retention is one successful copy',readdirSync(dest).filter(f=>f.endsWith('.hrcdb')).length===1);
  // Guard runs BEFORE opening/decrypting any input or launching a DB process.
  await assert.rejects(()=>restoreDrill('/does-not-exist',{...cfg,restoreUrl:'postgresql://user@production.supabase.co/postgres'},'ISOLATED-ONLY'),/loopback/);check('production restore rejected before any process or file access',true);
  console.log(`Database archive agent: ${count} checks passed (synthetic PostgreSQL executables; real native restore NOT tested).`);

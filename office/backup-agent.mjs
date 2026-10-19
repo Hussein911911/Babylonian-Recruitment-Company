@@ -43,9 +43,9 @@ export async function backup(cfg,{clock=()=>new Date(),spawnChild=child}={}){
   const fd=openSync(temp,'r+');try{fsyncSync(fd);}finally{closeSync(fd);}renameSync(temp,final);
   const manifest={format:'HRC-DATABASE-ARCHIVE-v1',file:name,createdAt:stamp,bytes:statSync(final).size,sha256:await checksum(final),validation:'full-archive-decoded-without-database-writes',sourceId:createHash('sha256').update(cfg.databaseUrl).digest('hex'),scope:'PostgreSQL logical database; no global roles/ACL ownership, Storage file bytes, edge secrets, PITR or project settings',restoreDrill:false};
   atomicWrite(final+'.json',JSON.stringify(manifest,null,2));
-  // Retain 30 successful manifest+archive pairs by default, never purge a failed
+  // Retain the latest successful manifest+archive pair by default; never purge a failed
   // job's previous successes. Retention runs only after a new verified archive.
-  const keep=Math.max(2,Math.min(365,Number(cfg.keep)||30));
+  const keep=Math.max(1,Math.min(365,Number(cfg.keep)||1));
   const manifests=readdirSync(dest).filter(f=>/^hrc-[\dTZ.-]+\.hrcdb\.json$/.test(f)).sort();
   for(const old of manifests.slice(0,-keep)){const p=join(dest,old),m=JSON.parse(readFileSync(p));if(m.format==='HRC-DATABASE-ARCHIVE-v1'&&m.validation==='full-archive-decoded-without-database-writes'&&m.file===old.slice(0,-5)){unlinkSync(p.slice(0,-5));unlinkSync(p);}}
   return manifest;

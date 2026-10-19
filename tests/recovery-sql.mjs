@@ -96,5 +96,22 @@ try{
  // Tampering is authenticated, not merely a checksum label.
  const good=(await db.query('select ciphertext from brc.recovery_copies where id=$1',[copy])).rows[0].ciphertext;await db.query("update brc.recovery_copies set ciphertext='\\x000102' where id=$1",[copy]);await assert.rejects(()=>call('preview',copy));check('corrupted archive cannot reach restore',true);await db.query('update brc.recovery_copies set ciphertext=$2 where id=$1',[copy,good]);
  await db.exec('alter table brc.jobs add column future_schema_field text');await assert.rejects(()=>call('preview',copy));check('schema drift rejected instead of discarding fields silently',true);
+ // Weekly runner: real pgcrypto and table locks; no live database or cron.
+ const weekly=read('supabase/migrations/20261019210230_weekly_recovery_retention.sql').split('-- SCHEDULER:')[0];
+ await db.exec('create role service_role;grant usage on schema brc to service_role');await db.exec(weekly);await db.exec(weekly);
+ const weeklyCall=async()=>(await db.query('select brc.recovery_weekly() id')).rows[0].id;
+ before=await fingerprint();let weeklyId=await weeklyCall();
+ check('weekly copy authenticates and retains only latest snapshot',await count('recovery_copies')===1&&(await db.query('select brc.recovery_read($1) p',[weeklyId])).rows[0].p.format===1&&await fingerprint()===before);
+ for(const role of ['anon','authenticated','service_role']) {await db.exec('set role '+role);await assert.rejects(weeklyCall);await db.exec('reset role');check('weekly private runner denies '+role,true);}
+ await db.exec("create function brc.fixture_backup_failure() returns trigger language plpgsql as $$begin raise exception 'synthetic failure';end$$; create trigger fixture_backup_failure before insert on brc.recovery_copies for each row execute function brc.fixture_backup_failure()");
+ await assert.rejects(weeklyCall);check('failed weekly insertion retains the prior copy and business state',await count('recovery_copies')===1&&(await db.query('select id from brc.recovery_copies')).rows[0].id===weeklyId&&await fingerprint()===before);
+ await db.exec('drop trigger fixture_backup_failure on brc.recovery_copies');
+ await db.exec("create function brc.fixture_backup_corrupt() returns trigger language plpgsql as $$begin NEW.ciphertext:=decode('000102','hex');return NEW;end$$;create trigger fixture_backup_corrupt before insert on brc.recovery_copies for each row execute function brc.fixture_backup_corrupt()");
+ await assert.rejects(weeklyCall);check('failed new-copy authentication rolls back insertion and retains prior copy',await count('recovery_copies')===1&&(await db.query('select id from brc.recovery_copies')).rows[0].id===weeklyId);
+ await db.exec('drop trigger fixture_backup_corrupt on brc.recovery_copies');
+ await db.exec("create trigger fixture_backup_failure before delete on brc.recovery_copies for each row execute function brc.fixture_backup_failure()");
+ await assert.rejects(weeklyCall);check('failed old-copy prune rolls back entire weekly replacement',await count('recovery_copies')===1&&(await db.query('select id from brc.recovery_copies')).rows[0].id===weeklyId);
+ await db.exec('drop trigger fixture_backup_failure on brc.recovery_copies');
+ const nextWeekly=await weeklyCall();check('next weekly success replaces last copy atomically',await count('recovery_copies')===1&&nextWeekly!==weeklyId&&await fingerprint()===before);
  console.log(`Managed recovery SQL: ${n} checks passed. No production restore executed.`);
 }finally{await db.close();}
