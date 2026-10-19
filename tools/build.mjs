@@ -86,7 +86,14 @@ const DEMO_SEED_SRC = read('tests/fixtures/demo-seed.mjs');
 const DEMO_SEED_JSON = (() => {
   const m = DEMO_SEED_SRC.match(/export const DEMO_SEED = ([\s\S]*?);\n\n\/\* تحقن/);
   if (!m) throw new Error('تعذّر استخراج DEMO_SEED من tests/fixtures/demo-seed.mjs');
-  return m[1];
+  // Demo images are embedded too: the exported file needs no sibling assets.
+  // Fail the build if an expected local illustration is missing.
+  return m[1].replace(/imageUrl: '([^']+)'/g, (field, path) => {
+    if (!path.startsWith('assets/img/jobs/')) throw new Error('Demo image must be local: ' + path);
+    const image = dataUri(path);
+    if (!image) throw new Error('Missing demo image: ' + path);
+    return 'imageUrl: ' + JSON.stringify(image.uri);
+  });
 })();
 
 const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard', 'notifications', 'legacy-backup'];

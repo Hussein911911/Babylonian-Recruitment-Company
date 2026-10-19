@@ -51,7 +51,8 @@
     "test:recovery": "node tests/recovery-sql.mjs && node tests/recovery-ui.mjs",
     "test:iraq-time": "node tests/iraq-time.mjs",
     "test:iraq-font-browser": "node tests/iraq-font-browser.mjs",
-    "test:workspace-layout": "node tests/horizontal-workspace-browser.mjs"
+    "test:workspace-layout": "node tests/horizontal-workspace-browser.mjs",
+    "test:offline-images": "node tests/offline-images-browser.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",
