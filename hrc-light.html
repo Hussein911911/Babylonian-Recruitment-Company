@@ -2679,6 +2679,25 @@ to{opacity:1;transform:none}
 .notice-item:not(.notice-unread) .notice-icon{background:#dfe9e6;color:#46635d}
 .notice-unread .notice-actions .btn-outline{background:#ead29d;border-color:#ead29d;color:#172e50}
 
+/* Priority palette: color describes urgency; read state remains independent. */
+#notification-center [data-section=alert]{--notice-accent:#bd3c50;--notice-ink:#96283c;--notice-chip:#ffe6eb;--notice-line:#e9b8c3;--notice-light:#fff5f7;--notice-deep:#4b2030;--notice-end:#321a2b}
+#notification-center [data-section=decision]{--notice-accent:#ae6b18;--notice-ink:#88500b;--notice-chip:#ffedcb;--notice-line:#e8cf9e;--notice-light:#fffbf2;--notice-deep:#443020;--notice-end:#2e241d}
+#notification-center [data-section=booking]{--notice-accent:#326cae;--notice-ink:#24558c;--notice-chip:#e2efff;--notice-line:#b9d0ee;--notice-light:#f3f7ff;--notice-deep:#203e65;--notice-end:#11263f}
+#notification-center [data-section=update]{--notice-accent:#287d6b;--notice-ink:#206453;--notice-chip:#dff2e9;--notice-line:#b9d9cc;--notice-light:#f2faf6;--notice-deep:#1b4140;--notice-end:#142f32}
+.notification-eyebrow{display:block;font-size:10px;letter-spacing:.03em;color:#e9ce8e;margin-bottom:5px}.notification-header{border-bottom:3px solid #d9bc77}.notification-header h2{color:#fff5dc}.notification-header p{font-size:11px}
+.notification-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible;gap:7px;padding:0}.notification-filters button{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0;border-radius:11px;padding:8px 10px;font-size:11px;font-weight:700}.notification-filters [data-filter-count]{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:23px;min-height:22px;padding:0 5px;border-radius:7px;font-size:10px;font-weight:800;font-variant-numeric:tabular-nums;background:#e8eef5;color:#34516e}
+.notification-filters button[data-section]{background:var(--notice-light);border-color:var(--notice-line);color:var(--notice-ink)}.notification-filters button[data-section] [data-filter-count]{background:var(--notice-chip);color:var(--notice-ink)}.notification-filters button[data-section][aria-pressed=true]{background:var(--notice-deep);color:#fff;border-color:var(--notice-accent);box-shadow:inset 0 -2px 0 var(--notice-accent)}.notification-filters button[aria-pressed=true] [data-filter-count]{color:#fff;background:#ffffff24}
+.notification-priority-summary{margin:0;padding:10px 18px;font-size:11px;line-height:1.9;background:#eef2f7;color:#465e79;border-bottom:1px solid #dde5ee}.notification-priority-summary[data-urgent=true]{color:#942e40;background:#fff0f3;border-color:#f0cdd4;font-weight:700}
+.notice-group{padding:8px 3px 12px;margin:3px 0;list-style:none}.notice-group:not(:first-child){margin-top:22px;border-top:1px solid #dfe5ed;padding-top:17px}.notice-group h3{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;color:var(--notice-ink)}.notice-group h3::before{content:'';height:9px;width:9px;border-radius:3px;background:var(--notice-accent);flex:none}.notice-group h3 span{display:inline-flex;justify-content:center;min-width:23px;background:var(--notice-chip);padding:2px 6px;border-radius:7px;font-size:10px;font-variant-numeric:tabular-nums}.notice-group p{margin:5px 17px 0;font-size:10px;color:#526880;line-height:1.8}
+.notice-item[data-section]{--notice-title:#18334a;--notice-muted:#4e637a;background:var(--notice-light);border-color:var(--notice-line);border-inline-start:4px solid var(--notice-accent);color:#2b4057;box-shadow:0 3px 10px #19334c05}.notice-item[data-section].notice-unread{--notice-title:#fff8ee;--notice-muted:#dbe5f0;background:linear-gradient(135deg,var(--notice-deep),var(--notice-end));border-color:var(--notice-accent);border-inline-start:4px solid var(--notice-accent);color:#edf2f8;box-shadow:0 7px 20px #15283f20}
+.notice-item[data-section] h3{color:var(--notice-title)}.notice-item[data-section] .notice-job,.notice-item[data-section] time{color:var(--notice-muted)}.notice-item[data-section] .notice-icon{background:var(--notice-chip);color:var(--notice-ink)}.notice-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:7px}.notice-priority{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:6px;background:var(--notice-chip);color:var(--notice-ink);font-size:10px;font-weight:800;line-height:1.8}.notice-priority::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.notice-item[data-section].notice-unread .notice-state{color:#f7f9fc;background:#ffffff14;border-color:#ffffff55}.notice-item[data-section].notice-unread .notice-dot{background:#fff}.notice-item[data-section]:not(.notice-unread) .notice-state{color:#405875;background:#e2e9f1;border-color:#bdcad9}.notice-item[data-section]:not(.notice-unread) .notice-actions .btn-outline{background:var(--notice-chip);border-color:var(--notice-line);color:var(--notice-ink)}
+.notification-toggle[data-priority=alert] .notification-count{background:#a92d43}.notification-toggle[data-priority=decision] .notification-count{background:#87520d}.notification-toggle[data-priority=booking] .notification-count{background:#245c96}.notification-toggle[data-priority=update] .notification-count{background:#226956}.notification-toggle[data-priority=alert]{border-color:#ce8a98;box-shadow:0 0 0 3px #bd3c500a}
+@media screen and (max-width:600px){.notification-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.notification-filters button{padding:8px 9px;font-size:11px}.notification-priority-summary{padding:9px 12px}.notice-group:not(:first-child){margin-top:17px}.notification-header{padding:18px 20px}.notification-header h2{font-size:21px}}
+@media (forced-colors:active){.notice-item[data-section]{border:1px solid CanvasText;border-inline-start:4px solid Highlight}.notice-priority,.notice-state{border:1px solid CanvasText}}
+/* Short/landscape windows keep every control reachable via drawer scrolling. */
+@media screen and (max-height:560px){.notification-drawer{display:block;overflow-y:auto;overscroll-behavior:contain}.notification-list{overflow:visible;max-height:none}.notification-header{padding-block:12px}.notification-tools{padding-block:10px}.notification-footer{padding-block:10px}}
+
 /* Staff-only backup assurance panel; public/print styles are unaffected. */
 .backup-assurance{padding:22px;border:1px solid #c8b077;border-radius:16px;background:linear-gradient(130deg,#152c48,#254866);color:#f2f5fa;margin-bottom:18px}.backup-eyebrow{font-size:11px;color:#e6cb8f;letter-spacing:.03em}.backup-assurance h4{font-size:19px;color:#fff;margin:7px 0 18px}.backup-layers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.backup-layers article{background:#ffffff0a;border:1px solid #ffffff24;border-radius:12px;padding:16px;min-width:0}.backup-layers b{font-size:13px;color:#f2dba6}.backup-layers p{font-size:12px;line-height:1.9;margin:10px 0;color:#f1f4f8}.backup-layers small{font-size:10px;line-height:1.9;display:block;color:#d4dfed;overflow-wrap:anywhere}#backup-legacy-warning{padding:12px;background:#fff3df;border:1px solid #e5cb93;border-radius:10px;color:#74531a}@media(max-width:800px){.backup-layers{grid-template-columns:1fr}.backup-assurance{padding:17px}}
 /* Live operational recovery console. No legacy browser controls in production. */
@@ -3858,12 +3877,15 @@ to{opacity:1;transform:none}
 <div id="notification-center" hidden>
   <div class="notification-backdrop" data-notice-dismiss aria-hidden="true"></div>
   <section class="notification-drawer" role="dialog" aria-modal="true" aria-labelledby="notification-title" aria-describedby="notification-status">
-    <header class="notification-header"><div><h2 id="notification-title">مركز الإشعارات</h2><p id="notification-status">آخر تحديثات الشركة</p></div><button type="button" id="notification-close" class="notification-close" data-notice-dismiss aria-label="إغلاق الإشعارات">×</button></header>
-    <div class="notification-tools"><div class="notification-filters" id="notification-filters" role="group" aria-label="تصفية الإشعارات">
-      <button type="button" data-filter="all" aria-pressed="true">الكل</button><button type="button" data-filter="unread" aria-pressed="false">غير المقروء</button><button type="button" data-filter="decision" aria-pressed="false">قرارات أصحاب العمل</button><button type="button" data-filter="booking" aria-pressed="false">الحجوزات</button>
-    </div><button type="button" class="btn btn-outline btn-sm" id="notification-read-all">تحديد الكل كمقروء</button></div>
+    <header class="notification-header"><div><span class="notification-eyebrow">متابعة الشركة · حسب الأولوية</span><h2 id="notification-title">مركز الإشعارات</h2><p id="notification-status">آخر تحديثات الشركة</p></div><button type="button" id="notification-close" class="notification-close" data-notice-dismiss aria-label="إغلاق الإشعارات">×</button></header>
+    <div class="notification-tools"><div class="notification-filters" id="notification-filters" role="group" aria-label="تصفية الإشعارات حسب الأولوية">
+      <button type="button" data-filter="all" aria-pressed="true">الكل <span data-filter-count>0</span></button><button type="button" data-filter="unread" aria-pressed="false">غير المقروء <span data-filter-count>0</span></button>
+      <button type="button" data-filter="alert" data-section="alert" aria-pressed="false">حرج <span data-filter-count>0</span></button><button type="button" data-filter="decision" data-section="decision" aria-pressed="false">مهم <span data-filter-count>0</span></button>
+      <button type="button" data-filter="booking" data-section="booking" aria-pressed="false">الحجوزات <span data-filter-count>0</span></button><button type="button" data-filter="update" data-section="update" aria-pressed="false">عادي <span data-filter-count>0</span></button>
+    </div><button type="button" class="btn btn-outline btn-sm" id="notification-read-all" title="تحديد جميع الإشعارات في كل الأقسام كمقروءة">تحديد الكل كمقروء</button></div>
+    <p class="notification-priority-summary" id="notification-priority-summary">الأولوية أولاً · الأحدث داخل كل قسم</p>
     <ul class="notification-list" id="notification-list" aria-label="آخر الإشعارات" tabindex="0"></ul>
-    <p class="notification-footer">آخر 100 تحديث من السجلات المتاحة حسب صلاحيتك. <span id="notification-read-note">حالة القراءة محفوظة لحسابك على هذا الجهاز فقط.</span></p>
+    <p class="notification-footer">أحدث 100 تحديث متاح حسب صلاحيتك، مرتبة حسب الأولوية. القراءة ليست اعتماداً لقرار الشركة. <span id="notification-read-note">حالة القراءة محفوظة لحسابك على هذا الجهاز فقط.</span></p>
   </section>
 </div>
 <div class="sr-only" id="notification-live" aria-live="polite" aria-atomic="true"></div>
@@ -13418,6 +13440,22 @@ to{opacity:1;transform:none}
 (function (root) {
   'use strict';
   var LIMIT = 100;
+  // Display-only triage; never a hiring decision or mutation of business data.
+  var SECTIONS = {
+    alert: { label: 'حرج', hint: 'تنبيهات عالية الأولوية للمراجعة', rank: 0 },
+    decision: { label: 'مهم', hint: 'قرارات وأحداث مهمة للمراجعة', rank: 1 },
+    booking: { label: 'الحجوزات', hint: 'متابعة الحجوزات المسجلة', rank: 2 },
+    update: { label: 'عادي', hint: 'تحديثات العمل اليومية', rank: 3 }
+  };
+  function sectionFor(item) {
+    if (item.kind === 'alert') return 'alert';
+    if (item.kind === 'decision') return 'decision';
+    if (item.kind === 'booking') return 'booking';
+    // A data-removal/recovery event must not be painted like routine activity.
+    if ((item.jobCode && /حذف/.test(item.title || '')) || /حذف وظيفة|حذف بيانات/.test(item.title || '')) return 'alert';
+    if (/استرجاع|تعطيل|حذف/.test(item.title || '')) return 'decision';
+    return 'update';
+  }
   function build(db, user) {
     if (!user || ['admin', 'staff'].indexOf(user.role) < 0) return [];
     var items = [], covered = [], jobs = Object.create(null), seen = Object.create(null);
@@ -13425,6 +13463,7 @@ to{opacity:1;transform:none}
     function add(item) {
       item.time = Date.parse(item.at);
       if (!isFinite(item.time) || seen[item.id]) return;
+      item.section = sectionFor(item);
       seen[item.id] = true; items.push(item);
     }
     (db.attempts || []).forEach(function (t) {
@@ -13478,7 +13517,7 @@ to{opacity:1;transform:none}
     });
     return items.sort(function (a, b) { return b.time - a.time || a.id.localeCompare(b.id); }).slice(0, LIMIT);
   }
-  root.HRCNotifications = { build: build };
+  root.HRCNotifications = { build: build, sections: SECTIONS };
   var doc = root.document;
   if (!doc) return;
   function mount() {
@@ -13518,7 +13557,7 @@ to{opacity:1;transform:none}
       if (key !== account) { close(false); account = key; hashes = {}; loadRead(); previous = null; filter = 'all'; list.textContent = ''; doc.getElementById('notification-live').textContent = ''; }
       if (!account) {
         items = []; previous = null; list.textContent = ''; doc.getElementById('notification-live').textContent = ''; badge.textContent = '0'; badge.hidden = true;
-        toggle.disabled = true; return;
+        toggle.disabled = true; toggle.removeAttribute('data-priority'); var summary = doc.getElementById('notification-priority-summary'); if (summary) { summary.textContent = ''; summary.dataset.urgent = 'false'; } return;
       }
       toggle.disabled = false;
       var rows = build(Store.db(), Store.currentUser()), cache = hashes, scope = account;
@@ -13547,12 +13586,30 @@ to{opacity:1;transform:none}
       toggle.setAttribute('aria-label', 'الإشعارات، ' + unread + ' غير مقروءة');
       all.disabled = !unread;
       status.textContent = cloud.state === 'on' ? 'تتحدث مع مزامنة بيانات الشركة' : cloud.state === 'connecting' ? 'جارٍ مزامنة آخر التحديثات…' : 'آخر بيانات متاحة — لا يوجد اتصال مباشر حالياً';
-      filters.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.filter === filter)); });
-      var visible = items.filter(function (n) { return filter === 'all' || (filter === 'unread' ? !read[hashes[n.id]] : n.kind === filter); });
+      var highest = items.filter(function (n) { return !read[hashes[n.id]]; }).sort(function (a, b) { return SECTIONS[a.section].rank - SECTIONS[b.section].rank; })[0];
+      if (highest) toggle.setAttribute('data-priority', highest.section); else toggle.removeAttribute('data-priority');
+      var criticalUnread = items.filter(function (n) { return n.section === 'alert' && !read[hashes[n.id]]; }).length;
+      if (criticalUnread) toggle.setAttribute('aria-label', 'الإشعارات، ' + unread + ' غير مقروءة، منها ' + criticalUnread + ' حرجة');
+      var summary = doc.getElementById('notification-priority-summary');
+      if (summary) { summary.textContent = criticalUnread ? criticalUnread + ' إشعارات حرجة غير مقروءة — راجعها أولاً' : 'الأولوية أولاً · الأحدث داخل كل قسم'; summary.dataset.urgent = String(!!criticalUnread); }
+      filters.querySelectorAll('button').forEach(function (b) {
+        b.setAttribute('aria-pressed', String(b.dataset.filter === filter));
+        var count = b.querySelector('[data-filter-count]');
+        if (count) count.textContent = String(b.dataset.filter === 'all' ? items.length : b.dataset.filter === 'unread' ? unread : items.filter(function (n) { return n.section === b.dataset.filter; }).length);
+      });
+      var visible = items.filter(function (n) { return filter === 'all' || (filter === 'unread' ? !read[hashes[n.id]] : n.section === filter); });
+      visible.sort(function (a, b) { return SECTIONS[a.section].rank - SECTIONS[b.section].rank || b.time - a.time || a.id.localeCompare(b.id); });
+      var lastSection = '';
       list.innerHTML = visible.length ? visible.map(function (n) {
-        var icon = n.kind === 'booking' ? 'hourglass' : n.kind === 'decision' ? 'briefcase' : n.kind === 'alert' ? 'alert' : 'refresh';
-        return '<li class="notice-item ' + (read[hashes[n.id]] ? '' : 'notice-unread') + '"><div class="notice-icon">' + UI.ic(icon) + '</div><div class="notice-content">' +
-          '<div class="notice-heading"><h3>' + UI.esc(n.title) + '</h3>' + ('<span class="notice-state">' + (read[hashes[n.id]] ? 'مقروء' : '<span class="notice-dot" aria-hidden="true"></span>غير مقروء') + '</span>') + '</div>' +
+        var section = SECTIONS[n.section], heading = '';
+        if (lastSection !== n.section) {
+          lastSection = n.section;
+          var count = visible.filter(function (v) { return v.section === n.section; }).length;
+          heading = '<li role="presentation" class="notice-group" data-section="' + n.section + '"><h3>' + UI.esc(section.label) + '<span>' + count + '</span></h3><p>' + UI.esc(section.hint) + '</p></li>';
+        }
+        var icon = n.section === 'alert' ? 'alert' : n.kind === 'booking' ? 'hourglass' : n.kind === 'decision' ? 'briefcase' : 'refresh';
+        return heading + '<li data-section="' + n.section + '" class="notice-item ' + (read[hashes[n.id]] ? '' : 'notice-unread') + '"><div class="notice-icon">' + UI.ic(icon) + '</div><div class="notice-content">' +
+          '<div class="notice-tags"><span class="notice-priority">' + UI.esc(section.label) + '</span></div><div class="notice-heading"><h3>' + UI.esc(n.title) + '</h3>' + ('<span class="notice-state">' + (read[hashes[n.id]] ? 'مقروء' : '<span class="notice-dot" aria-hidden="true"></span>غير مقروء') + '</span>') + '</div>' +
           (n.jobCode ? '<p class="notice-job"><bdi>' + UI.esc(n.jobCode) + '</bdi> · ' + UI.esc(n.jobTitle) + '</p>' : '') +
           '<p>' + UI.esc(n.body) + '</p>' + (n.reason ? '<p class="notice-reason"><strong>السبب:</strong> ' + UI.esc(n.reason) + '</p>' : '') +
           '<time datetime="' + UI.esc(n.at) + '">' + UI.esc(Store.fmtDateTime(n.at)) + '</time><div class="notice-actions">' +

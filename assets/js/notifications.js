@@ -4,6 +4,22 @@
 (function (root) {
   'use strict';
   var LIMIT = 100;
+  // Display-only triage; never a hiring decision or mutation of business data.
+  var SECTIONS = {
+    alert: { label: 'حرج', hint: 'تنبيهات عالية الأولوية للمراجعة', rank: 0 },
+    decision: { label: 'مهم', hint: 'قرارات وأحداث مهمة للمراجعة', rank: 1 },
+    booking: { label: 'الحجوزات', hint: 'متابعة الحجوزات المسجلة', rank: 2 },
+    update: { label: 'عادي', hint: 'تحديثات العمل اليومية', rank: 3 }
+  };
+  function sectionFor(item) {
+    if (item.kind === 'alert') return 'alert';
+    if (item.kind === 'decision') return 'decision';
+    if (item.kind === 'booking') return 'booking';
+    // A data-removal/recovery event must not be painted like routine activity.
+    if ((item.jobCode && /حذف/.test(item.title || '')) || /حذف وظيفة|حذف بيانات/.test(item.title || '')) return 'alert';
+    if (/استرجاع|تعطيل|حذف/.test(item.title || '')) return 'decision';
+    return 'update';
+  }
   function build(db, user) {
     if (!user || ['admin', 'staff'].indexOf(user.role) < 0) return [];
     var items = [], covered = [], jobs = Object.create(null), seen = Object.create(null);
@@ -11,6 +27,7 @@
     function add(item) {
       item.time = Date.parse(item.at);
       if (!isFinite(item.time) || seen[item.id]) return;
+      item.section = sectionFor(item);
       seen[item.id] = true; items.push(item);
     }
     (db.attempts || []).forEach(function (t) {
@@ -64,7 +81,7 @@
     });
     return items.sort(function (a, b) { return b.time - a.time || a.id.localeCompare(b.id); }).slice(0, LIMIT);
   }
-  root.HRCNotifications = { build: build };
+  root.HRCNotifications = { build: build, sections: SECTIONS };
   var doc = root.document;
   if (!doc) return;
   function mount() {
@@ -104,7 +121,7 @@
       if (key !== account) { close(false); account = key; hashes = {}; loadRead(); previous = null; filter = 'all'; list.textContent = ''; doc.getElementById('notification-live').textContent = ''; }
       if (!account) {
         items = []; previous = null; list.textContent = ''; doc.getElementById('notification-live').textContent = ''; badge.textContent = '0'; badge.hidden = true;
-        toggle.disabled = true; return;
+        toggle.disabled = true; toggle.removeAttribute('data-priority'); var summary = doc.getElementById('notification-priority-summary'); if (summary) { summary.textContent = ''; summary.dataset.urgent = 'false'; } return;
       }
       toggle.disabled = false;
       var rows = build(Store.db(), Store.currentUser()), cache = hashes, scope = account;
@@ -133,12 +150,30 @@
       toggle.setAttribute('aria-label', 'الإشعارات، ' + unread + ' غير مقروءة');
       all.disabled = !unread;
       status.textContent = cloud.state === 'on' ? 'تتحدث مع مزامنة بيانات الشركة' : cloud.state === 'connecting' ? 'جارٍ مزامنة آخر التحديثات…' : 'آخر بيانات متاحة — لا يوجد اتصال مباشر حالياً';
-      filters.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.filter === filter)); });
-      var visible = items.filter(function (n) { return filter === 'all' || (filter === 'unread' ? !read[hashes[n.id]] : n.kind === filter); });
+      var highest = items.filter(function (n) { return !read[hashes[n.id]]; }).sort(function (a, b) { return SECTIONS[a.section].rank - SECTIONS[b.section].rank; })[0];
+      if (highest) toggle.setAttribute('data-priority', highest.section); else toggle.removeAttribute('data-priority');
+      var criticalUnread = items.filter(function (n) { return n.section === 'alert' && !read[hashes[n.id]]; }).length;
+      if (criticalUnread) toggle.setAttribute('aria-label', 'الإشعارات، ' + unread + ' غير مقروءة، منها ' + criticalUnread + ' حرجة');
+      var summary = doc.getElementById('notification-priority-summary');
+      if (summary) { summary.textContent = criticalUnread ? criticalUnread + ' إشعارات حرجة غير مقروءة — راجعها أولاً' : 'الأولوية أولاً · الأحدث داخل كل قسم'; summary.dataset.urgent = String(!!criticalUnread); }
+      filters.querySelectorAll('button').forEach(function (b) {
+        b.setAttribute('aria-pressed', String(b.dataset.filter === filter));
+        var count = b.querySelector('[data-filter-count]');
+        if (count) count.textContent = String(b.dataset.filter === 'all' ? items.length : b.dataset.filter === 'unread' ? unread : items.filter(function (n) { return n.section === b.dataset.filter; }).length);
+      });
+      var visible = items.filter(function (n) { return filter === 'all' || (filter === 'unread' ? !read[hashes[n.id]] : n.section === filter); });
+      visible.sort(function (a, b) { return SECTIONS[a.section].rank - SECTIONS[b.section].rank || b.time - a.time || a.id.localeCompare(b.id); });
+      var lastSection = '';
       list.innerHTML = visible.length ? visible.map(function (n) {
-        var icon = n.kind === 'booking' ? 'hourglass' : n.kind === 'decision' ? 'briefcase' : n.kind === 'alert' ? 'alert' : 'refresh';
-        return '<li class="notice-item ' + (read[hashes[n.id]] ? '' : 'notice-unread') + '"><div class="notice-icon">' + UI.ic(icon) + '</div><div class="notice-content">' +
-          '<div class="notice-heading"><h3>' + UI.esc(n.title) + '</h3>' + ('<span class="notice-state">' + (read[hashes[n.id]] ? 'مقروء' : '<span class="notice-dot" aria-hidden="true"></span>غير مقروء') + '</span>') + '</div>' +
+        var section = SECTIONS[n.section], heading = '';
+        if (lastSection !== n.section) {
+          lastSection = n.section;
+          var count = visible.filter(function (v) { return v.section === n.section; }).length;
+          heading = '<li role="presentation" class="notice-group" data-section="' + n.section + '"><h3>' + UI.esc(section.label) + '<span>' + count + '</span></h3><p>' + UI.esc(section.hint) + '</p></li>';
+        }
+        var icon = n.section === 'alert' ? 'alert' : n.kind === 'booking' ? 'hourglass' : n.kind === 'decision' ? 'briefcase' : 'refresh';
+        return heading + '<li data-section="' + n.section + '" class="notice-item ' + (read[hashes[n.id]] ? '' : 'notice-unread') + '"><div class="notice-icon">' + UI.ic(icon) + '</div><div class="notice-content">' +
+          '<div class="notice-tags"><span class="notice-priority">' + UI.esc(section.label) + '</span></div><div class="notice-heading"><h3>' + UI.esc(n.title) + '</h3>' + ('<span class="notice-state">' + (read[hashes[n.id]] ? 'مقروء' : '<span class="notice-dot" aria-hidden="true"></span>غير مقروء') + '</span>') + '</div>' +
           (n.jobCode ? '<p class="notice-job"><bdi>' + UI.esc(n.jobCode) + '</bdi> · ' + UI.esc(n.jobTitle) + '</p>' : '') +
           '<p>' + UI.esc(n.body) + '</p>' + (n.reason ? '<p class="notice-reason"><strong>السبب:</strong> ' + UI.esc(n.reason) + '</p>' : '') +
           '<time datetime="' + UI.esc(n.at) + '">' + UI.esc(Store.fmtDateTime(n.at)) + '</time><div class="notice-actions">' +

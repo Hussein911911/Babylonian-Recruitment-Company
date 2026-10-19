@@ -13,8 +13,8 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=2a19cb162c">
-<link rel="stylesheet" href="assets/css/notifications.css?v=2a19cb162c"><link rel="stylesheet" href="assets/css/backup.css?v=2a19cb162c"></head>
+<link rel="stylesheet" href="assets/css/style.css?v=a056240607">
+<link rel="stylesheet" href="assets/css/notifications.css?v=a056240607"><link rel="stylesheet" href="assets/css/backup.css?v=a056240607"></head>
 <body>
 <!-- ===========================================================================
      مكتبة الأيقونات والرموز (SVG Sprite) — تُدرج مرة واحدة في كل صفحة
@@ -791,12 +791,15 @@
 <div id="notification-center" hidden>
   <div class="notification-backdrop" data-notice-dismiss aria-hidden="true"></div>
   <section class="notification-drawer" role="dialog" aria-modal="true" aria-labelledby="notification-title" aria-describedby="notification-status">
-    <header class="notification-header"><div><h2 id="notification-title">مركز الإشعارات</h2><p id="notification-status">آخر تحديثات الشركة</p></div><button type="button" id="notification-close" class="notification-close" data-notice-dismiss aria-label="إغلاق الإشعارات">×</button></header>
-    <div class="notification-tools"><div class="notification-filters" id="notification-filters" role="group" aria-label="تصفية الإشعارات">
-      <button type="button" data-filter="all" aria-pressed="true">الكل</button><button type="button" data-filter="unread" aria-pressed="false">غير المقروء</button><button type="button" data-filter="decision" aria-pressed="false">قرارات أصحاب العمل</button><button type="button" data-filter="booking" aria-pressed="false">الحجوزات</button>
-    </div><button type="button" class="btn btn-outline btn-sm" id="notification-read-all">تحديد الكل كمقروء</button></div>
+    <header class="notification-header"><div><span class="notification-eyebrow">متابعة الشركة · حسب الأولوية</span><h2 id="notification-title">مركز الإشعارات</h2><p id="notification-status">آخر تحديثات الشركة</p></div><button type="button" id="notification-close" class="notification-close" data-notice-dismiss aria-label="إغلاق الإشعارات">×</button></header>
+    <div class="notification-tools"><div class="notification-filters" id="notification-filters" role="group" aria-label="تصفية الإشعارات حسب الأولوية">
+      <button type="button" data-filter="all" aria-pressed="true">الكل <span data-filter-count>0</span></button><button type="button" data-filter="unread" aria-pressed="false">غير المقروء <span data-filter-count>0</span></button>
+      <button type="button" data-filter="alert" data-section="alert" aria-pressed="false">حرج <span data-filter-count>0</span></button><button type="button" data-filter="decision" data-section="decision" aria-pressed="false">مهم <span data-filter-count>0</span></button>
+      <button type="button" data-filter="booking" data-section="booking" aria-pressed="false">الحجوزات <span data-filter-count>0</span></button><button type="button" data-filter="update" data-section="update" aria-pressed="false">عادي <span data-filter-count>0</span></button>
+    </div><button type="button" class="btn btn-outline btn-sm" id="notification-read-all" title="تحديد جميع الإشعارات في كل الأقسام كمقروءة">تحديد الكل كمقروء</button></div>
+    <p class="notification-priority-summary" id="notification-priority-summary">الأولوية أولاً · الأحدث داخل كل قسم</p>
     <ul class="notification-list" id="notification-list" aria-label="آخر الإشعارات" tabindex="0"></ul>
-    <p class="notification-footer">آخر 100 تحديث من السجلات المتاحة حسب صلاحيتك. <span id="notification-read-note">حالة القراءة محفوظة لحسابك على هذا الجهاز فقط.</span></p>
+    <p class="notification-footer">أحدث 100 تحديث متاح حسب صلاحيتك، مرتبة حسب الأولوية. القراءة ليست اعتماداً لقرار الشركة. <span id="notification-read-note">حالة القراءة محفوظة لحسابك على هذا الجهاز فقط.</span></p>
   </section>
 </div>
 <div class="sr-only" id="notification-live" aria-live="polite" aria-atomic="true"></div>
@@ -878,18 +881,18 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=2a19cb162c"></script>
-<script src="assets/vendor/supabase.js?v=2a19cb162c"></script>
-<script src="assets/js/supabase-config.js?v=2a19cb162c"></script>
-<script src="assets/js/qr.js?v=2a19cb162c"></script>
-<script src="assets/js/cloud.js?v=2a19cb162c"></script>
-<script src="assets/js/cloud-auth.js?v=2a19cb162c"></script>
-<script src="assets/js/cloud-sync.js?v=2a19cb162c"></script>
-<script src="assets/js/store.js?v=2a19cb162c"></script>
-<script src="assets/js/ui.js?v=2a19cb162c"></script>
-<script src="assets/js/nav.js?v=2a19cb162c"></script>
-<script src="assets/js/voucher.js?v=2a19cb162c"></script>
-<script src="assets/js/dashboard.js?v=2a19cb162c"></script>
-<script src="assets/js/notifications.js?v=2a19cb162c"></script>
+<script src="assets/js/config.js?v=a056240607"></script>
+<script src="assets/vendor/supabase.js?v=a056240607"></script>
+<script src="assets/js/supabase-config.js?v=a056240607"></script>
+<script src="assets/js/qr.js?v=a056240607"></script>
+<script src="assets/js/cloud.js?v=a056240607"></script>
+<script src="assets/js/cloud-auth.js?v=a056240607"></script>
+<script src="assets/js/cloud-sync.js?v=a056240607"></script>
+<script src="assets/js/store.js?v=a056240607"></script>
+<script src="assets/js/ui.js?v=a056240607"></script>
+<script src="assets/js/nav.js?v=a056240607"></script>
+<script src="assets/js/voucher.js?v=a056240607"></script>
+<script src="assets/js/dashboard.js?v=a056240607"></script>
+<script src="assets/js/notifications.js?v=a056240607"></script>
 </body>
 </html>

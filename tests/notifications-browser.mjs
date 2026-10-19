@@ -30,7 +30,7 @@ if (process.platform === 'linux' && existsSync(archive) && !existsSync(join(libs
 }
 const browser = await playwright.launch({
   executablePath: await chromium.executablePath(),
-  args: chromium.args.filter(s => !['--single-process', '--in-process-gpu', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'].includes(s)).concat('--disable-gpu'),
+  args: chromium.args.filter(s => !['--disable-web-security', '--single-process', '--in-process-gpu', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'].includes(s)).concat('--disable-gpu'),
   env: { ...process.env, LD_LIBRARY_PATH: [join(libs, 'lib'), process.env.LD_LIBRARY_PATH].filter(Boolean).join(':') },
   headless: true
 });
@@ -88,7 +88,7 @@ try {
     check(await page.locator('#notification-center').isVisible(), 'Drawer opens');
     const unread = page.locator('.notice-unread').first();
     check(await unread.locator('.notice-state').textContent() === 'غير مقروء', 'Unread has explicit state label');
-    const unreadPaint = await unread.evaluate(el => ({ background: getComputedStyle(el).backgroundImage, color: getComputedStyle(el.querySelector('h3')).color }));
+    const unreadPaint = await unread.evaluate(el => ({ background: getComputedStyle(el).backgroundImage, color: getComputedStyle(el.querySelector('h3')).color, surface: getComputedStyle(el).getPropertyValue(el.classList.contains('notice-unread') ? '--notice-deep' : '--notice-light').trim().replace('#','') }));
     check(await page.evaluate(() => document.getElementById('app-shell').inert), 'Background is inert');
     await page.keyboard.press('Shift+Tab');
     check(await page.evaluate(() => document.querySelector('.notification-drawer').contains(document.activeElement)), 'Keyboard focus trapped');
@@ -96,7 +96,7 @@ try {
     check(await page.locator('#notification-count').isHidden(), 'Read all clears counter');
     const readCard = page.locator('.notice-item').first();
     check(await readCard.locator('.notice-state').textContent() === 'مقروء', 'Read has explicit state label');
-    const readPaint = await readCard.evaluate(el => ({ background: getComputedStyle(el).backgroundImage, color: getComputedStyle(el.querySelector('h3')).color }));
+    const readPaint = await readCard.evaluate(el => ({ background: getComputedStyle(el).backgroundImage, color: getComputedStyle(el.querySelector('h3')).color, surface: getComputedStyle(el).getPropertyValue(el.classList.contains('notice-unread') ? '--notice-deep' : '--notice-light').trim().replace('#','') }));
     check(readPaint.background !== unreadPaint.background && readPaint.color !== unreadPaint.color, 'Read/unread backgrounds and title colors differ');
     // Real computed title contrast: both states must remain readable.
     function contrast(hex, rgb) {
@@ -105,7 +105,7 @@ try {
       const luminance = x => x.map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }).reduce((n, v, i) => n + v * [.2126, .7152, .0722][i], 0);
       const x = luminance(a), y = luminance(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
     }
-    check(contrast('203e65', unreadPaint.color) >= 4.5 && contrast('f0f3f7', readPaint.color) >= 4.5, 'Title contrast passes 4.5:1 in both states');
+    check(contrast(unreadPaint.surface, unreadPaint.color) >= 4.5 && contrast(readPaint.surface, readPaint.color) >= 4.5, 'Title contrast passes 4.5:1 in both states');
     await page.keyboard.press('Escape');
     check(await page.locator('#notification-toggle').evaluate(el => el === document.activeElement), 'Escape restores trigger focus');
     check(!await page.evaluate(() => document.getElementById('app-shell').inert), 'Background restored');
@@ -186,7 +186,63 @@ try {
       await page.evaluate(() => document.querySelectorAll('.js-val,.cs-val').forEach(el => { el.textContent = '987654321'; }));
       await contentFits(page, '.js-val,.cs-val,.js-lbl,.cs-lbl');
     }
+    // Fresh fixture events for all four priority groups. No mutation/API calls
+    // outside this isolated browser; retain the business workflows above.
+    await page.evaluate(async () => {
+      const db=HRCStore.db(), start=Date.UTC(2026,9,19,9);
+      db.jobs=[];db.attempts=[];db.audit=[];
+      for(let i=0;i<2;i++){
+        db.audit.push({id:'priority-critical-'+i,entity:'job',entityId:'CR-'+i,action:'حالة حرجة — بانتظار قرار الشركة',details:'انتهت مدة الحجز؛ لا إفراج تلقائي.',ts:new Date(start+i*1000).toISOString()});
+        db.audit.push({id:'priority-important-'+i,entity:'backup',action:'استرجاع بيانات الموقع',details:'حدث مهم للمراجعة، دون تغيير حالة أي قرار من هذه الشاشة.',ts:new Date(start+10000+i*1000).toISOString()});
+        db.attempts.push({serial:'PRIORITY-CARD-'+i,no:1,jobCode:'BOOK-'+i,slotStatus:'reserved',selectedAt:new Date(start+20000+i*1000).toISOString()});
+        db.audit.push({id:'priority-routine-'+i,entity:'job',entityId:'UP-'+i,action:'تعديل بيانات وظيفة',details:'آخر تحديث مسجل في بيانات الشركة.',ts:new Date(start+30000+i*1000).toISOString()});
+      }
+      await HRCNotifications.refresh();
+    });
     await page.locator('#notification-toggle').click();
+    await page.locator('[data-filter="all"]').click();
+    check(JSON.stringify(await page.locator('.notice-group').evaluateAll(nodes=>nodes.map(n=>n.dataset.section)))===JSON.stringify(['alert','decision','booking','update']), 'Four groups ordered by urgency, not latest timestamp');
+    check(await page.locator('.notice-item').count()===8, 'Grouping neither duplicates nor drops events');
+    const palette=await page.locator('.notice-group').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).getPropertyValue('--notice-accent').trim()));
+    check(new Set(palette).size===4, 'Each category has its own distinct color');
+    check(await page.locator('#notification-toggle').getAttribute('data-priority')==='alert', 'Bell reflects highest unread priority');
+    check((await page.locator('#notification-priority-summary').textContent()).includes('2 إشعارات حرجة'), 'Urgent unread count is explicit');
+    for(const section of ['alert','decision','booking','update']){
+      await page.locator(`[data-filter="${section}"]`).click();
+      check(await page.locator(`[data-filter="${section}"] [data-filter-count]`).textContent()==='2', 'Category count '+section);
+      const styles=await page.locator(`.notice-item[data-section="${section}"]`).first().evaluate(el=>{const st=getComputedStyle(el);return {start:st.getPropertyValue('--notice-deep').trim().replace('#',''),end:st.getPropertyValue('--notice-end').trim().replace('#',''),text:getComputedStyle(el.querySelector('h3')).color,chip:st.getPropertyValue('--notice-chip').trim().replace('#',''),chipText:getComputedStyle(el.querySelector('.notice-priority')).color};});
+      check(contrast(styles.start,styles.text)>=4.5&&contrast(styles.end,styles.text)>=4.5&&contrast(styles.chip,styles.chipText)>=4.5, 'Actual category text/badge contrast passes AA '+section);
+      const times=await page.locator(`.notice-item[data-section="${section}"] time`).evaluateAll(nodes=>nodes.map(n=>Date.parse(n.dateTime)));
+      check(times[0]>=times[1], 'Newest first within '+section);
+      await page.locator(`[data-filter="${section}"]`).click();
+      check(await page.locator('.notice-item').count()===2&&await page.locator('.notice-group').count()===1,'Priority filter works '+section);
+      if([375,1440].includes(width))await page.locator('.notification-drawer').screenshot({path:join(output,`priority-${section}-${width}.png`)});
+    }
+    await page.locator('[data-filter="all"]').click();
+    await page.locator('.notice-item[data-section="alert"] [data-notice-read]').first().click();
+    const readCritical=page.locator('.notice-item[data-section="alert"]:not(.notice-unread)').first();
+    check(await readCritical.locator('.notice-priority').textContent()==='حرج','Reading a critical notice never downgrades its urgency');
+    const readStyles=await readCritical.evaluate(el=>({light:getComputedStyle(el).getPropertyValue('--notice-light').trim().replace('#',''),title:getComputedStyle(el.querySelector('h3')).color}));
+    check(contrast(readStyles.light,readStyles.title)>=4.5,'Read critical title still meets AA');
+    await page.locator('.notice-item[data-section="alert"] [data-notice-read]').first().click();
+    check(await page.locator('#notification-toggle').getAttribute('data-priority')==='decision','Bell moves to next unread priority after urgent notices read');
+    await page.locator('[data-filter="unread"]').click();
+    check(await page.locator('.notice-item').count()===6&&await page.locator('.notice-group[data-section="alert"]').count()===0,'Unread filter respects priority and read status separately');
+    await page.locator('#notification-read-all').click();
+    await page.locator('[data-filter="all"]').click();
+    for(const section of ['alert','decision','booking','update']){
+      const styles=await page.locator(`.notice-item[data-section="${section}"]`).first().evaluate(el=>{const st=getComputedStyle(el);return {light:st.getPropertyValue('--notice-light').trim().replace('#',''),text:getComputedStyle(el.querySelector('h3')).color,chip:st.getPropertyValue('--notice-chip').trim().replace('#',''),chipText:getComputedStyle(el.querySelector('.notice-priority')).color};});
+      check(contrast(styles.light,styles.text)>=4.5&&contrast(styles.chip,styles.chipText)>=4.5,'Read category text/badge actual contrast AA '+section);
+      check(await page.locator(`.notice-item[data-section="${section}"] .notice-state`).first().textContent()==='مقروء','Read state stays independent of category '+section);
+    }
+    check(await page.locator('#notification-toggle').getAttribute('data-priority')===null,'No stale urgency on the bell once all read');
+    if(width===375){
+      await page.setViewportSize({width:375,height:420});
+      await page.locator('.notification-footer').scrollIntoViewIfNeeded();
+      check(await page.locator('.notification-drawer').evaluate(e=>e.scrollHeight>e.clientHeight&&getComputedStyle(e).overflowY==='auto'),'Short landscape window can scroll entire drawer');
+      check(await page.locator('.notification-footer').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight+1),'Footer remains reachable in short viewport');
+      await page.setViewportSize({width:375,height:1000});
+    }
     await page.emulateMedia({ media: 'print' });
     check(await page.locator('#notification-center').isHidden(), 'Notifications never print');
     await page.emulateMedia({ media: 'screen', reducedMotion: 'reduce' });
