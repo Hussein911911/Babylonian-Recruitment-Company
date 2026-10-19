@@ -1318,7 +1318,7 @@
     var list = Store.listApplicants({ status: 'all' });
     var body = '<p class="muted small">اختر البطاقة (الباحث) لتسجيل الفرصة على الوظيفة <b class="mono">' + UI.esc(code) + '</b>. ' +
       'ستُحجز الوظيفة مؤقتاً ' + Store.settings().holdHours + ' ساعة بانتظار نتيجة المقابلة.</p>' +
-      '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:560px">' +
+      '<div class="table-wrap"><div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:560px">' +
       '<thead><tr><th>الرقم التسلسلي</th><th>الباحث</th><th>الفرص</th><th>الحالة</th><th>ترشيح</th></tr></thead><tbody>' +
       list.map(function (a) {
         var st = Store.formStatus(a);
@@ -1497,13 +1497,13 @@
         var app = Store.getApplicant(serial);
         var url = Store.verifyUrl(serial);
         UI.modal({
-          title: 'التحقق من البطاقة ' + serial, body:
-            '<div class="grid" style="grid-template-columns:1fr 200px;gap:18px;align-items:start">' +
+          title: 'التحقق من البطاقة', subtitle: serial, body:
+            '<div class="grid card-verification">' +
             '<div><div class="data-grid">' +
             '<div class="data-item"><div class="k">الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
             '<div class="data-item"><div class="k">حالة البطاقة</div><div class="v">' + CFG.formStatus[Store.formStatus(app)].ar + '</div></div>' +
             '<div class="data-item"><div class="k">المتبقي</div><div class="v">' + Store.attemptsLeft(serial) + ' فرصة</div></div>' +
-            '<div class="data-item" style="grid-column:1/-1"><div class="k">رابط التحقق (المطبوع في الكيو آر كود)</div><div class="v mono tiny" dir="ltr">' + UI.esc(url) + '</div></div>' +
+            '<div class="data-item card-link-row" style="grid-column:1/-1"><div class="k">رابط التحقق (المطبوع في الكيو آر كود)</div><div class="v mono tiny" dir="ltr" tabindex="0" aria-label="رابط التحقق — تمرير أفقي">' + UI.esc(url) + '</div></div>' +
             '</div><div class="flex mt-2"><button class="btn btn-lapis btn-sm" id="go-verify">' + UI.ic('eye') + ' فتح صفحة التحقق</button>' +
             '<button class="btn btn-outline btn-sm" id="copy-url">' + UI.ic('share') + ' نسخ الرابط</button></div></div>' +
             '<div class="verify-qr">' + V.qrSvg(url, 180) + '</div></div>',
@@ -1787,7 +1787,7 @@
     var jobs = Store.listJobs({ status: 'available' });
     var body = '' +
       '<p class="muted small">اختر الوظيفة المطلوبة للفرصة رقم <b>#' + no + '</b>. الوظيفة ستُحجز مؤقتاً ' +
-      Store.settings().holdHours + ' ساعة بانتظار نتيجة المقابلة، وإن لم تُثبَّت النتيجة تُفرج تلقائياً.</p>' +
+      Store.settings().holdHours + ' ساعة بانتظار نتيجة المقابلة؛ بعدها تصبح حرجة بانتظار قرار الشركة، ولا تُتاح تلقائياً.</p>' +
       '<div class="search-wrap mb-2"><svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>' +
       '<input type="search" id="pick-q" placeholder="ابحث بالكود أو العنوان أو المنطقة..."></div>' +
       '<div id="pick-list">' + pickListHtml(jobs) + '</div>';
@@ -1821,7 +1821,7 @@
 
   function pickListHtml(jobs) {
     if (!jobs.length) return '<div class="table-empty">لا توجد وظائف متاحة مطابقة</div>';
-    return '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:620px">' +
+    return '<div class="table-wrap"><div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:620px">' +
       '<thead><tr><th>الكود</th><th>الوظيفة</th><th>المنطقة</th><th>الأجر</th><th>الدوام</th><th>اختيار</th></tr></thead><tbody>' +
       jobs.map(function (j) {
         return '<tr><td><span class="chip chip-code mono">' + UI.esc(j.code) + '</span></td>' +
@@ -2324,7 +2324,7 @@
       (j.status === 'reserved' && j.holdExpiresAt
         ? '<div class="panel" style="background:#fdf1d8;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
           '<p class="mb-0 small">' + UI.ic('hourglass') + ' محجوزة للبطاقة <b class="mono">' + UI.esc(j.reservedBy) + '</b> — ' + UI.holdHtml(j.holdExpiresAt) + '</p></div></div>' : '') +
-      '<div class="table-wrap mt-3"><div class="table-scroll"><table class="data" style="min-width:520px">' +
+      '<div class="table-wrap mt-3"><div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:520px">' +
       '<thead><tr><th>البطاقة</th><th>الفرصة</th><th>الحالة</th><th>وقت الاختيار</th></tr></thead><tbody>' +
       (attempts.length ? attempts.map(function (t) {
         return '<tr><td class="mono">' + UI.esc(t.serial) + '</td><td>#' + t.no + '</td><td>' + UI.slotBadge(t.slotStatus) + '</td>' +

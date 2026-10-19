@@ -70,6 +70,7 @@ const CSS = read('assets/css/style.css');
 const PUBLIC_CSS = read('assets/css/public-polish.css');
 const NOTIFICATION_CSS = read('assets/css/notifications.css');
 const BACKUP_CSS = read('assets/css/backup.css');
+const WORKSPACE_CSS = read('assets/css/workspace-layout.css');
 /* ---------------------------------------------------------------------------
  *  بذرة العرض للملف المستقل
  *  ---------------------------------------------------------------------------
@@ -119,7 +120,7 @@ const scriptPath = (n) => n.startsWith('vendor/')
    تعديل cloud-sync.js — فيبقى المتصفح على نسخة قديمة **بصمت**، وهو أسوأ أنواع
    الأخطاء لأن الكود الجديد لا يصل أصلاً. */
 const ASSET_VER = process.env.HRC_ASSET_VER || createHash('sha1')
-  .update([CSS, PUBLIC_CSS, NOTIFICATION_CSS, BACKUP_CSS, read('assets/js/recovery.js'), ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
+  .update([CSS, PUBLIC_CSS, NOTIFICATION_CSS, BACKUP_CSS, WORKSPACE_CSS, read('assets/js/recovery.js'), ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
            ...CLOUD_ORDER.map((n) => read(scriptPath(n)))].join('\u0000'))
   .digest('hex').slice(0, 10);
 const verQ = (p) => `${p}?v=${ASSET_VER}`;
@@ -156,7 +157,7 @@ ${extra}</head>
 function buildPage({ title, desc, body, scripts, publicStyle = false, staffStyle = false }) {
   return docHead({ title, desc, css: 'assets/css/style.css',
     extra: (publicStyle ? `<link rel="stylesheet" href="${verQ('assets/css/public-polish.css')}">` : '') +
-      (staffStyle ? `<link rel="stylesheet" href="${verQ('assets/css/notifications.css')}"><link rel="stylesheet" href="${verQ('assets/css/backup.css')}">` : '') }) +
+      (staffStyle ? `<link rel="stylesheet" href="${verQ('assets/css/notifications.css')}"><link rel="stylesheet" href="${verQ('assets/css/backup.css')}"><link rel="stylesheet" href="${verQ('assets/css/workspace-layout.css')}">` : '') }) +
     partials.sprite + '\n' +
     partials.header + '\n' +
     body + '\n' +
@@ -201,7 +202,7 @@ function buildStandalone() {
   const stats = { fonts: 0, cssImgs: 0, htmlImgs: 0 };
 
   // 1) CSS مع دمج الخطوط والصور
-  let css = (CSS + '\n' + PUBLIC_CSS + '\n' + NOTIFICATION_CSS + '\n' + BACKUP_CSS).replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
+  let css = (CSS + '\n' + PUBLIC_CSS + '\n' + NOTIFICATION_CSS + '\n' + BACKUP_CSS + '\n' + WORKSPACE_CSS).replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
     const d = dataUri('assets/fonts/' + f); if (!d) return m;
     stats.fonts += d.size; return `url(${d.uri})`;
   });

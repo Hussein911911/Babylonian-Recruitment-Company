@@ -1,4 +1,4 @@
-// Service Worker للعمل أوفلاين — hrc-cache-v40
+// Service Worker للعمل أوفلاين — hrc-cache-v41
 // ---------------------------------------------------------------------------
 // سياسة التخزين منذ v4:
 //   • HTML و JS  → network-first: الشبكة أولاً (الزائر يرى آخر نسخة)، والكاش
@@ -28,7 +28,7 @@
    إن كان مطابقاً. إبقاء الرقم ثابتاً يُبقي الزوار القدامى على نسخة قديمة
    من index.html مهما أعدت النشر (ظهر فعلاً: زر دخول محذوف بقي على حاسبة
    زارت الموقع قبل الحذف، بينما اختفى على هاتف لم يزره من قبل). */
-const CACHE_NAME = 'hrc-cache-v40';
+const CACHE_NAME = 'hrc-cache-v41';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -41,6 +41,7 @@ const urlsToCache = [
   '/verify.html',
   '/404.html',
   '/assets/css/style.css',
+  '/assets/css/workspace-layout.css',
   '/assets/css/fonts.css',
   '/assets/css/public-polish.css',
   '/assets/css/notifications.css',

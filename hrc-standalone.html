@@ -681,13 +681,13 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 /* ============================ 14) النوافذ والتنبيهات ============================ */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(6, 13, 31, .62); backdrop-filter: blur(4px);
-  z-index: 200; display: grid; place-items: center; padding: 20px; overflow-y: auto;
+  z-index: 200; display: grid; grid-template-columns:minmax(0,1fr); place-items: center; padding: 20px; overflow-y: auto;
 }
 .modal {
-  background: #fff; border-radius: 20px; width: min(760px, 96vw); box-shadow: var(--shadow-lg);
+  background: #fff; border-radius: 20px; width: min(760px, 100%); box-shadow: var(--shadow-lg);
   border: 1px solid var(--line); max-height: 92vh; display: flex; flex-direction: column; animation: pop .22s ease-out;
 }
-.modal.modal-wide { width: min(1020px, 96vw); }
+.modal.modal-wide { width: min(1020px, 100%); }
 @keyframes pop { from { transform: translateY(14px) scale(.985); opacity: 0 } to { transform: none; opacity: 1 } }
 .modal-head {
   padding: 20px 22px; border-bottom: 1px solid var(--line-soft); display: flex; justify-content: space-between;
@@ -1056,7 +1056,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 /* ============================ 18.b) نافذة «بطاقتي» ============================
    شاشات البطاقة: الدخول بالباركود، الحالة، استخدام فرصة، إعادة الطباعة —
    نفس الهوية (لازورد + ذهب + خط Cairo). */
-.modal-booking { width: min(680px, 96vw); }
+.modal-booking { width: min(680px, 100%); }
 .bk-wrap { direction: rtl; }
 
 /* شريط التقدّم: نقاط مرقّمة موصولة بخط ذهبي */
@@ -2677,6 +2677,59 @@ to{opacity:1;transform:none}
 /* Live operational recovery console. No legacy browser controls in production. */
 .recovery-console{margin:22px 0;border:1px solid #d5c496;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 10px 35px #172e4910}.recovery-head{display:flex;align-items:center;justify-content:space-between;gap:20px;background:linear-gradient(125deg,#142b46,#254967);padding:25px;color:#f2f5fb}.recovery-eyebrow{font-size:11px;color:#f0d99e}.recovery-head h3{color:#fff;font-size:22px;margin:6px 0 9px}.recovery-head p{font-size:12px;line-height:1.9;margin:0;color:#dce6f2}.recovery-head .btn{flex-shrink:0}.recovery-strip{display:flex;flex-wrap:wrap;gap:10px 22px;padding:12px 23px;background:#f8f4e9;color:#634b20;font-size:11px;border-bottom:1px solid #e8dfca}.recovery-console [data-recovery-status]{padding:15px 23px;font-size:12px;line-height:1.9;color:#2d506d;margin:0}.recovery-console .recovery-error{color:#963f35;background:#fff3ef}.recovery-list-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 23px 12px}.recovery-list-head h4{margin:0}.recovery-copy{display:flex;justify-content:space-between;align-items:center;gap:18px;margin:0 23px 12px;padding:17px;border:1px solid #e0e6ec;border-radius:12px;background:#fbfcfe;min-width:0}.recovery-copy>div{min-width:0}.recovery-copy h4{font-size:14px;margin:0 0 6px;overflow-wrap:anywhere}.recovery-copy-meta{font-size:11px;line-height:1.9;color:#536a83;margin:0}.recovery-actions{display:flex;gap:7px;flex-shrink:0;flex-wrap:wrap}.recovery-safety{display:inline-block;margin-top:6px;color:#386953;background:#eaf5ee;border-radius:6px;font-size:10px;padding:3px 8px}.recovery-scope{background:#f6f8fb;padding:16px 23px;margin:18px 0 0;font-size:11px;line-height:2;color:#53677f}.recovery-empty{padding:20px 23px;color:#66768c}.recovery-comparison{display:grid;grid-template-columns:1fr 1fr;gap:12px}.recovery-comparison>div{padding:16px;border:1px solid #d5dfeb;border-radius:12px;background:#f4f7fb}.recovery-comparison small{display:block;margin-bottom:8px;color:#516980}.recovery-comparison b{font-size:13px;line-height:1.9;display:block}.recovery-risk-list{list-style:none;padding:0;margin:18px 0}.recovery-risk-list li{display:flex;justify-content:space-between;gap:15px;padding:8px 3px;border-bottom:1px solid #e7ecf1;font-size:12px}.recovery-warning{padding:14px;background:#fff3e2;color:#75531d;border:1px solid #e4c894;border-radius:10px;font-size:12px;line-height:2}.recovery-ack{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.9;margin:18px 0}.recovery-ack input{width:18px;height:18px;flex-shrink:0;margin-top:4px}@media(max-width:760px){.recovery-head{align-items:stretch;flex-direction:column;padding:20px}.recovery-head h3{font-size:19px}.recovery-copy{margin-inline:14px;padding:14px;align-items:stretch;flex-direction:column}.recovery-actions .btn:first-child{flex:1}.recovery-comparison{grid-template-columns:1fr}.recovery-list-head,.recovery-console [data-recovery-status]{padding-inline:16px}.recovery-scope{padding:14px 16px}}
 
+/* Staff workspace readability. Screen only: paper templates remain untouched. */
+@media screen {
+ .app-shell :is(h1,h2,h3,h4,p,li,label,.job,.k,.v,.meta,.ov-hc-title,.ov-hc-sub),
+ .modal :is(h3,p,li,label,.job,.k,.v,.badge) { word-break:normal;overflow-wrap:normal; }
+ .app-shell :is(.mono,a[href]),.modal :is(.mono,a[href]) { overflow-wrap:anywhere; }
+ .ov-hold-card { flex-wrap:wrap;align-items:flex-start; }
+ .ov-hold-card .ov-hc-body { flex:1 1 200px; }
+ .ov-hold-card .ov-hc-timer { flex:0 1 auto;max-width:100%;margin-inline-start:auto; }
+ .hold-timer { flex-wrap:wrap;max-width:100%; }
+ .hold-timer>svg { flex-shrink:0; }
+ .modal,.modal.modal-wide { max-width:100%;min-width:0; }
+ .modal-head,.modal-foot { flex-shrink:0; }
+ .modal-head>div { min-width:0;flex:1; }
+ .modal-head .icon-btn { flex-shrink:0; }
+ .modal-head h3 { line-height:1.8; }
+ .modal-body { min-width:0;min-height:0;overscroll-behavior:contain; }
+ .modal .data-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); }
+ .modal .field { min-width:0; }
+ .modal .badge { white-space:normal;max-width:100%;line-height:1.8; }
+ .modal :is(input,select,textarea) { max-width:100%;min-width:0; }
+ .modal-foot .btn { flex:0 1 auto;min-height:42px; }
+ .modal .data-item .v { word-break:normal; }
+ .modal .data-item .v.mono { overflow-wrap:anywhere; }
+ .card-verification { grid-template-columns:minmax(0,1fr) 200px;gap:18px;align-items:start; }
+ .card-verification>div { min-width:0; }
+ .card-verification .data-item .k { flex:0 1 auto;max-width:100%; }
+ .card-verification .card-link-row { display:block; }
+ .card-link-row .v.mono { margin-top:8px;white-space:nowrap;overflow-x:auto;max-width:100%;text-align:left;padding-bottom:5px; }
+ .card-verification .flex { flex-wrap:wrap; }
+ .card-verification .verify-qr { justify-self:center;max-width:100%; }
+ .attempt-slot>* { min-width:0; }
+ .table-scroll { max-width:100%;overflow-x:auto; }
+ .table-scroll:focus-visible { outline:2px solid #326cae;outline-offset:-2px; }
+ table.data th { white-space:nowrap; }
+ table.data .cell-actions { min-width:140px;gap:7px; }
+ table.data .cell-actions .btn { flex-shrink:0; }
+}
+@media screen and (max-width:850px) {
+ .attempt-slot { grid-template-columns:minmax(0,1fr)!important;align-items:start; }
+ .attempt-slot>.no { width:36px;height:36px; }
+ .attempt-slot>div:last-child { display:flex;flex-wrap:wrap;gap:8px; }
+}
+@media screen and (max-width:640px) {
+ .card-verification { grid-template-columns:minmax(0,1fr); }
+ .modal-foot .btn { flex:1 1 140px; }
+ .modal-foot { gap:10px; }
+}
+
+@media screen and (max-height:560px) {
+ .modal { display:block;overflow-y:auto;overscroll-behavior:contain; }
+ .modal-body { overflow:visible; }
+}
+
 </style>
 </head>
 <body>
@@ -3551,7 +3604,7 @@ to{opacity:1;transform:none}
 
           <!-- الجدول -->
           <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-            <div class="table-scroll">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
               <table class="data" style="margin:0">
                 <thead>
                   <tr>
@@ -3613,7 +3666,7 @@ to{opacity:1;transform:none}
 
           <!-- الجدول -->
           <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-            <div class="table-scroll">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
               <table class="data" style="margin:0">
                 <thead>
                   <tr>
@@ -3655,7 +3708,7 @@ to{opacity:1;transform:none}
       <div class="panel">
         <div class="panel-head"><h3><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> حالات حرجة بانتظار قرار (توظيف / إرجاع / حذف)</h3></div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll"><table class="data" style="min-width:700px">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:700px">
             <thead><tr><th>البطاقة</th><th>الباحث</th><th>الفرصة</th><th>كود الوظيفة</th><th>انتهت في</th><th>ملاحظة</th><th>إجراء</th></tr></thead>
             <tbody id="expired-table-body"></tbody>
           </table></div>
@@ -3711,7 +3764,7 @@ to{opacity:1;transform:none}
           <p class="tiny hidden" id="log-date-error" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.</p>
         </div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
             <table class="data">
               <thead><tr><th>الوقت (YYYY-MM-DD HH:mm:ss)</th><th>المستخدم</th><th>الصلاحية</th><th>IP الجلسة</th><th>العملية</th><th>السجل</th><th>التفاصيل</th></tr></thead>
               <tbody id="audit-table-body"></tbody>
@@ -3743,7 +3796,7 @@ to{opacity:1;transform:none}
         </div>
         <div class="panel-body"><div class="bars" id="fin-bars"></div></div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
             <table class="data" style="min-width:680px">
               <thead><tr><th>الموظف</th><th>البطاقات الصادرة</th><th>مرات الطباعة</th><th>سعر البطاقة</th><th>المتوقع تحصيله</th><th>المستلَم (كاش)</th><th>حالة البيع</th><th>توظيف ناجح</th><th>حجوزات جارية</th></tr></thead>
               <tbody id="fin-table-body"></tbody>
@@ -3773,7 +3826,7 @@ to{opacity:1;transform:none}
 </div>
 <div class="panel-body" style="padding:0">
 <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-<div class="table-scroll" tabindex="0" role="region" aria-label="جدول الموظفين — مرّر أفقياً لعرض بقية الأعمدة"><table class="data" style="min-width:520px;margin:0">
+<div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة" tabindex="0" role="region" aria-label="جدول الموظفين — مرّر أفقياً لعرض بقية الأعمدة"><table class="data" style="min-width:520px;margin:0">
 <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
 <tbody id="users-table-body"></tbody>
 </table></div>
@@ -12056,7 +12109,7 @@ to{opacity:1;transform:none}
     var list = Store.listApplicants({ status: 'all' });
     var body = '<p class="muted small">اختر البطاقة (الباحث) لتسجيل الفرصة على الوظيفة <b class="mono">' + UI.esc(code) + '</b>. ' +
       'ستُحجز الوظيفة مؤقتاً ' + Store.settings().holdHours + ' ساعة بانتظار نتيجة المقابلة.</p>' +
-      '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:560px">' +
+      '<div class="table-wrap"><div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:560px">' +
       '<thead><tr><th>الرقم التسلسلي</th><th>الباحث</th><th>الفرص</th><th>الحالة</th><th>ترشيح</th></tr></thead><tbody>' +
       list.map(function (a) {
         var st = Store.formStatus(a);
@@ -12235,13 +12288,13 @@ to{opacity:1;transform:none}
         var app = Store.getApplicant(serial);
         var url = Store.verifyUrl(serial);
         UI.modal({
-          title: 'التحقق من البطاقة ' + serial, body:
-            '<div class="grid" style="grid-template-columns:1fr 200px;gap:18px;align-items:start">' +
+          title: 'التحقق من البطاقة', subtitle: serial, body:
+            '<div class="grid card-verification">' +
             '<div><div class="data-grid">' +
             '<div class="data-item"><div class="k">الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
             '<div class="data-item"><div class="k">حالة البطاقة</div><div class="v">' + CFG.formStatus[Store.formStatus(app)].ar + '</div></div>' +
             '<div class="data-item"><div class="k">المتبقي</div><div class="v">' + Store.attemptsLeft(serial) + ' فرصة</div></div>' +
-            '<div class="data-item" style="grid-column:1/-1"><div class="k">رابط التحقق (المطبوع في الكيو آر كود)</div><div class="v mono tiny" dir="ltr">' + UI.esc(url) + '</div></div>' +
+            '<div class="data-item card-link-row" style="grid-column:1/-1"><div class="k">رابط التحقق (المطبوع في الكيو آر كود)</div><div class="v mono tiny" dir="ltr" tabindex="0" aria-label="رابط التحقق — تمرير أفقي">' + UI.esc(url) + '</div></div>' +
             '</div><div class="flex mt-2"><button class="btn btn-lapis btn-sm" id="go-verify">' + UI.ic('eye') + ' فتح صفحة التحقق</button>' +
             '<button class="btn btn-outline btn-sm" id="copy-url">' + UI.ic('share') + ' نسخ الرابط</button></div></div>' +
             '<div class="verify-qr">' + V.qrSvg(url, 180) + '</div></div>',
@@ -12525,7 +12578,7 @@ to{opacity:1;transform:none}
     var jobs = Store.listJobs({ status: 'available' });
     var body = '' +
       '<p class="muted small">اختر الوظيفة المطلوبة للفرصة رقم <b>#' + no + '</b>. الوظيفة ستُحجز مؤقتاً ' +
-      Store.settings().holdHours + ' ساعة بانتظار نتيجة المقابلة، وإن لم تُثبَّت النتيجة تُفرج تلقائياً.</p>' +
+      Store.settings().holdHours + ' ساعة بانتظار نتيجة المقابلة؛ بعدها تصبح حرجة بانتظار قرار الشركة، ولا تُتاح تلقائياً.</p>' +
       '<div class="search-wrap mb-2"><svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>' +
       '<input type="search" id="pick-q" placeholder="ابحث بالكود أو العنوان أو المنطقة..."></div>' +
       '<div id="pick-list">' + pickListHtml(jobs) + '</div>';
@@ -12559,7 +12612,7 @@ to{opacity:1;transform:none}
 
   function pickListHtml(jobs) {
     if (!jobs.length) return '<div class="table-empty">لا توجد وظائف متاحة مطابقة</div>';
-    return '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:620px">' +
+    return '<div class="table-wrap"><div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:620px">' +
       '<thead><tr><th>الكود</th><th>الوظيفة</th><th>المنطقة</th><th>الأجر</th><th>الدوام</th><th>اختيار</th></tr></thead><tbody>' +
       jobs.map(function (j) {
         return '<tr><td><span class="chip chip-code mono">' + UI.esc(j.code) + '</span></td>' +
@@ -13062,7 +13115,7 @@ to{opacity:1;transform:none}
       (j.status === 'reserved' && j.holdExpiresAt
         ? '<div class="panel" style="background:#fdf1d8;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
           '<p class="mb-0 small">' + UI.ic('hourglass') + ' محجوزة للبطاقة <b class="mono">' + UI.esc(j.reservedBy) + '</b> — ' + UI.holdHtml(j.holdExpiresAt) + '</p></div></div>' : '') +
-      '<div class="table-wrap mt-3"><div class="table-scroll"><table class="data" style="min-width:520px">' +
+      '<div class="table-wrap mt-3"><div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:520px">' +
       '<thead><tr><th>البطاقة</th><th>الفرصة</th><th>الحالة</th><th>وقت الاختيار</th></tr></thead><tbody>' +
       (attempts.length ? attempts.map(function (t) {
         return '<tr><td class="mono">' + UI.esc(t.serial) + '</td><td>#' + t.no + '</td><td>' + UI.slotBadge(t.slotStatus) + '</td>' +

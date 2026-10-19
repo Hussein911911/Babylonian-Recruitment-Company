@@ -13,8 +13,8 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=a3853e9fc6">
-<link rel="stylesheet" href="assets/css/notifications.css?v=a3853e9fc6"><link rel="stylesheet" href="assets/css/backup.css?v=a3853e9fc6"></head>
+<link rel="stylesheet" href="assets/css/style.css?v=b0ca5b7727">
+<link rel="stylesheet" href="assets/css/notifications.css?v=b0ca5b7727"><link rel="stylesheet" href="assets/css/backup.css?v=b0ca5b7727"><link rel="stylesheet" href="assets/css/workspace-layout.css?v=b0ca5b7727"></head>
 <body>
 <!-- ===========================================================================
      مكتبة الأيقونات والرموز (SVG Sprite) — تُدرج مرة واحدة في كل صفحة
@@ -491,7 +491,7 @@
 
           <!-- الجدول -->
           <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-            <div class="table-scroll">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
               <table class="data" style="margin:0">
                 <thead>
                   <tr>
@@ -553,7 +553,7 @@
 
           <!-- الجدول -->
           <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-            <div class="table-scroll">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
               <table class="data" style="margin:0">
                 <thead>
                   <tr>
@@ -595,7 +595,7 @@
       <div class="panel">
         <div class="panel-head"><h3><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> حالات حرجة بانتظار قرار (توظيف / إرجاع / حذف)</h3></div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll"><table class="data" style="min-width:700px">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:700px">
             <thead><tr><th>البطاقة</th><th>الباحث</th><th>الفرصة</th><th>كود الوظيفة</th><th>انتهت في</th><th>ملاحظة</th><th>إجراء</th></tr></thead>
             <tbody id="expired-table-body"></tbody>
           </table></div>
@@ -651,7 +651,7 @@
           <p class="tiny hidden" id="log-date-error" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.</p>
         </div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
             <table class="data">
               <thead><tr><th>الوقت (YYYY-MM-DD HH:mm:ss)</th><th>المستخدم</th><th>الصلاحية</th><th>IP الجلسة</th><th>العملية</th><th>السجل</th><th>التفاصيل</th></tr></thead>
               <tbody id="audit-table-body"></tbody>
@@ -683,7 +683,7 @@
         </div>
         <div class="panel-body"><div class="bars" id="fin-bars"></div></div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
             <table class="data" style="min-width:680px">
               <thead><tr><th>الموظف</th><th>البطاقات الصادرة</th><th>مرات الطباعة</th><th>سعر البطاقة</th><th>المتوقع تحصيله</th><th>المستلَم (كاش)</th><th>حالة البيع</th><th>توظيف ناجح</th><th>حجوزات جارية</th></tr></thead>
               <tbody id="fin-table-body"></tbody>
@@ -713,7 +713,7 @@
 </div>
 <div class="panel-body" style="padding:0">
 <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-<div class="table-scroll" tabindex="0" role="region" aria-label="جدول الموظفين — مرّر أفقياً لعرض بقية الأعمدة"><table class="data" style="min-width:520px;margin:0">
+<div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة" tabindex="0" role="region" aria-label="جدول الموظفين — مرّر أفقياً لعرض بقية الأعمدة"><table class="data" style="min-width:520px;margin:0">
 <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
 <tbody id="users-table-body"></tbody>
 </table></div>
@@ -877,18 +877,18 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=a3853e9fc6"></script>
-<script src="assets/vendor/supabase.js?v=a3853e9fc6"></script>
-<script src="assets/js/supabase-config.js?v=a3853e9fc6"></script>
-<script src="assets/js/qr.js?v=a3853e9fc6"></script>
-<script src="assets/js/cloud.js?v=a3853e9fc6"></script>
-<script src="assets/js/cloud-auth.js?v=a3853e9fc6"></script>
-<script src="assets/js/cloud-sync.js?v=a3853e9fc6"></script>
-<script src="assets/js/store.js?v=a3853e9fc6"></script>
-<script src="assets/js/ui.js?v=a3853e9fc6"></script>
-<script src="assets/js/nav.js?v=a3853e9fc6"></script>
-<script src="assets/js/voucher.js?v=a3853e9fc6"></script>
-<script src="assets/js/dashboard.js?v=a3853e9fc6"></script>
-<script src="assets/js/notifications.js?v=a3853e9fc6"></script>
+<script src="assets/js/config.js?v=b0ca5b7727"></script>
+<script src="assets/vendor/supabase.js?v=b0ca5b7727"></script>
+<script src="assets/js/supabase-config.js?v=b0ca5b7727"></script>
+<script src="assets/js/qr.js?v=b0ca5b7727"></script>
+<script src="assets/js/cloud.js?v=b0ca5b7727"></script>
+<script src="assets/js/cloud-auth.js?v=b0ca5b7727"></script>
+<script src="assets/js/cloud-sync.js?v=b0ca5b7727"></script>
+<script src="assets/js/store.js?v=b0ca5b7727"></script>
+<script src="assets/js/ui.js?v=b0ca5b7727"></script>
+<script src="assets/js/nav.js?v=b0ca5b7727"></script>
+<script src="assets/js/voucher.js?v=b0ca5b7727"></script>
+<script src="assets/js/dashboard.js?v=b0ca5b7727"></script>
+<script src="assets/js/notifications.js?v=b0ca5b7727"></script>
 </body>
 </html>

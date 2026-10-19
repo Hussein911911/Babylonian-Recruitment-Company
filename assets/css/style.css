@@ -664,13 +664,13 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 /* ============================ 14) النوافذ والتنبيهات ============================ */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(6, 13, 31, .62); backdrop-filter: blur(4px);
-  z-index: 200; display: grid; place-items: center; padding: 20px; overflow-y: auto;
+  z-index: 200; display: grid; grid-template-columns:minmax(0,1fr); place-items: center; padding: 20px; overflow-y: auto;
 }
 .modal {
-  background: #fff; border-radius: 20px; width: min(760px, 96vw); box-shadow: var(--shadow-lg);
+  background: #fff; border-radius: 20px; width: min(760px, 100%); box-shadow: var(--shadow-lg);
   border: 1px solid var(--line); max-height: 92vh; display: flex; flex-direction: column; animation: pop .22s ease-out;
 }
-.modal.modal-wide { width: min(1020px, 96vw); }
+.modal.modal-wide { width: min(1020px, 100%); }
 @keyframes pop { from { transform: translateY(14px) scale(.985); opacity: 0 } to { transform: none; opacity: 1 } }
 .modal-head {
   padding: 20px 22px; border-bottom: 1px solid var(--line-soft); display: flex; justify-content: space-between;
@@ -1039,7 +1039,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 /* ============================ 18.b) نافذة «بطاقتي» ============================
    شاشات البطاقة: الدخول بالباركود، الحالة، استخدام فرصة، إعادة الطباعة —
    نفس الهوية (لازورد + ذهب + خط Cairo). */
-.modal-booking { width: min(680px, 96vw); }
+.modal-booking { width: min(680px, 100%); }
 .bk-wrap { direction: rtl; }
 
 /* شريط التقدّم: نقاط مرقّمة موصولة بخط ذهبي */
