@@ -332,6 +332,7 @@ for (const [js, page] of CONTRACT) {
   for (const f of published) {
     const src = readFileSync(join(ROOT, f), 'utf8');
     if (/حسابات تجريبية/.test(src)) leaked.push(f + ': نص الحسابات التجريبية');
+    if (/admin123|staff123|تذكير للفريق|hrc-dev-accounts|الدخول الأول/.test(src)) leaked.push(f + ': بيانات افتراضية أو تذكير تطوير منشور');
     if (/demo-account|login-demo-info/.test(src)) leaked.push(f + ': أنماط الحسابات التجريبية');
   }
   if (leaked.length) bad('لا حسابات تجريبية ظاهرة على شاشة الدخول', leaked.join(' | '));

@@ -157,9 +157,8 @@ const note = t1.doc.getElementById('hrc-cloud-note');
 const banner = t1.doc.getElementById('hrc-cloud-banner');
 check('شاشة الدخول تُعلن الحالة (ملاحظة ظاهرة)', !!note && /متصل|انتقالي|محلي/.test(note.textContent), note && note.textContent.slice(0, 60));
 const devWarn = t1.doc.getElementById('hrc-dev-accounts');
-check('تذكير الفريق بحذف حسابات الكود ظاهر (قبل التسليم)', !!devWarn && /تُحذف قبل التسليم/.test(devWarn.textContent),
-  devWarn && devWarn.textContent.slice(0, 80));
-check('التذكير لا يعرض أي كلمة مرور', !!devWarn && !/admin123|staff123/.test(devWarn.textContent));
+check('تذكير الفريق غير منشور حتى في الوضع الانتقالي', devWarn === null);
+check('شاشة الدخول لا تعلن أي كلمة مرور افتراضية', !/admin123|staff123|الدخول الأول/.test(t1.doc.getElementById('login-wrap').textContent));
 check('بانر الحالة ظاهر في أعلى الصفحة', !!banner, 'لا بانر');
 check('البانر يشرح الوضع الانتقالي وخطوة إكمال التحوّل',
   !!banner && /انتقالي|محلي/.test(banner.textContent) && /enforceAuth|حساب/.test(banner.textContent),

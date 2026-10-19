@@ -11,9 +11,9 @@ if(!process.argv.includes('--child')){
   const n=JSON.parse(execFileSync(process.execPath,[fileURLToPath(import.meta.url),'--child'],{env:{...process.env,TZ},encoding:'utf8'}));total+=n;
   console.log('✓ Baghdad time/date/filter checks in host zone '+TZ+': '+n);
  }
- for(const weight of [400,500,700,900])assert.equal(readFileSync(new URL('../assets/fonts/tajawal-'+weight+'.woff2',import.meta.url)).subarray(0,4).toString(),'wOF2');
- assert.match(read('assets/fonts/Tajawal-LICENSE.txt'),/SIL OPEN FONT LICENSE/);
- assert.match(read('assets/css/style.css'),/font-family: 'Tajawal', 'Cairo'/);
+ for(const weight of [400,500,600,700])assert.equal(readFileSync(new URL('../assets/fonts/plex'+weight+'.woff2',import.meta.url)).subarray(0,4).toString(),'wOF2');
+ assert.match(read('assets/fonts/IBM-Plex-Arabic-LICENSE.txt'),/SIL OPEN FONT LICENSE/);
+ assert.match(read('assets/css/style.css'),/font-family: 'IBM Plex Sans Arabic', 'Cairo'/);
  assert.match(read('assets/js/voucher.js'),/font-family:Cairo/);
  assert.match(read('assets/js/voucher.js'),/document.fonts.load/);
  console.log(`PASS ${total+8} Iraq time/font checks; UTC storage unchanged.`);

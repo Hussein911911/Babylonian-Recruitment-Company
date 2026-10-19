@@ -13,6 +13,16 @@ if(existsSync(packed)&&!existsSync(new URL('lib/',libs))){mkdirSync(libs,{recurs
 const browser=await playwright.launch({executablePath:await chromium.executablePath(),args:chromium.args.filter(s=>!['--disable-web-security','--single-process','--in-process-gpu','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'].includes(s)).concat('--disable-gpu'),env:{...process.env,LD_LIBRARY_PATH:[new URL('lib/',libs).pathname,process.env.LD_LIBRARY_PATH].filter(Boolean).join(':')},headless:true});
 let n=0;const check=(label,value)=>{assert.ok(value,label);n++;console.log('✓ '+label);};
 try{
+ const loginContext=await browser.newContext({viewport:{width:375,height:900},reducedMotion:'reduce',serviceWorkers:'block'}),loginPage=await loginContext.newPage();
+ await loginPage.route('**/*',r=>{const u=r.request().url();if(u.startsWith(base)&&u.includes('/assets/js/supabase-config.js'))return r.fulfill({contentType:'application/javascript',body:'window.HRCSupabaseConfig={enabled:false,enforceAuth:true};'});return u.startsWith(base)&&r.request().method()==='GET'?r.continue():r.abort();});
+ await loginPage.goto(base+'dashboard.html');await loginPage.locator('#login-wrap').waitFor({state:'visible'});
+ await loginPage.evaluate(async()=>{await Promise.all([400,600,700].map(w=>document.fonts.load(w+' 16px "IBM Plex Sans Arabic"','العراق ABC 123')));await document.fonts.ready;});
+ check('unauthenticated login has no advertised default account',! /admin123|staff123|الدخول الأول/.test(await loginPage.locator('#login-wrap').textContent()));
+ check('team reminder/checklist is absent from login',await loginPage.locator('#hrc-dev-accounts').count()===0&&!/تذكير للفريق|pre-delivery-checklist/.test(await loginPage.locator('#login-wrap').textContent()));
+ check('private dashboard remains hidden before authentication',await loginPage.locator('#app-shell').isHidden()&&await loginPage.evaluate(()=>HRCStore.currentUser()===null));
+ check('login uses the new professional font',(await loginPage.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)).split(',')[0].replace(/["']/g,'').trim()==='IBM Plex Sans Arabic');
+ check('login inputs and submit remain available',await loginPage.locator('#login-user').isVisible()&&await loginPage.locator('#login-pass').isVisible()&&await loginPage.locator('#login-form button[type="submit"]').isVisible());
+ await loginPage.screenshot({path:new URL('login-clean-375.png',out).pathname,fullPage:true});await loginContext.close();
  for(const [zone,width] of [['UTC',320],['America/Los_Angeles',375],['Asia/Tokyo',1440]]){
   const context=await browser.newContext({timezoneId:zone,viewport:{width,height:1000},serviceWorkers:'block'}),page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
@@ -24,9 +34,9 @@ try{
   await page.route('**/*',r=>{const u=r.request().url();if(u.startsWith(base)&&u.includes('/assets/js/supabase-config.js'))return r.fulfill({contentType:'application/javascript',body:'window.HRCSupabaseConfig={enabled:false,enforceAuth:false};'});return u.startsWith(base)&&r.request().method()==='GET'?r.continue():r.abort();});
   await page.goto(base+'index.html');await page.waitForFunction(()=>document.getElementById('year')?.textContent==='2027');
   check('public year follows Baghdad across new year: '+zone,await page.locator('#year').textContent()==='2027');
-  const faces=await page.evaluate(async()=>{const result=await Promise.all([400,500,700,900].map(w=>document.fonts.load(w+' 16px Tajawal','العراق ABC 0123')));return result.every(rows=>rows.length&&rows.every(f=>f.status==='loaded'));});
-  check('all four full Arabic/Latin Tajawal weights load locally: '+zone,faces);
-  check('public body uses new font: '+zone,(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)).startsWith('Tajawal'));
+  const faces=await page.evaluate(async()=>{const result=await Promise.all([400,500,600,700].map(w=>document.fonts.load(w+' 16px "IBM Plex Sans Arabic"' ,'العراق ABC 0123')));return result.every(rows=>rows.length&&rows.every(f=>f.status==='loaded'));});
+  check('all four full Arabic/Latin IBM Plex Sans Arabic weights load locally: '+zone,faces);
+  check('public body uses new font: '+zone,(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)).split(',')[0].replace(/["']/g,'').trim()==='IBM Plex Sans Arabic' );
   await page.goto(base+'dashboard.html');await page.waitForFunction(()=>document.getElementById('ov-clock')?.textContent==='00:07');await page.evaluate(()=>document.fonts.ready);
   check('clock Baghdad, regardless of host/browser zone: '+zone,await page.locator('#ov-clock').textContent()==='00:07');
   check('calendar Baghdad day/year not device day: '+zone,/٢٠٢٧|2027/.test(await page.locator('#ov-date').textContent()));
@@ -47,13 +57,13 @@ try{
   check('original 86x54mm card dimensions unchanged: '+zone,await card.evaluate(e=>{const r=e.getBoundingClientRect();return Math.abs(r.width-86*96/25.4)<1&&Math.abs(r.height-54*96/25.4)<1;}));
   await page.emulateMedia({media:'screen'});
   await page.goto(base+'apply.html');await page.waitForFunction(()=>typeof window.G?.printApplication==='function');
-  check('independent application page uses local Tajawal: '+zone,(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)).startsWith('Tajawal'));
+  check('independent application page uses local IBM Plex Sans Arabic: '+zone,(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)).split(',')[0].replace(/["']/g,'').trim()==='IBM Plex Sans Arabic' );
   check('application calendar year is Baghdad, not host zone: '+zone,await page.locator('#f-yr option').nth(1).textContent()==='2027');
   await page.evaluate(()=>{window.__applyPrints=0;window.print=()=>__applyPrints++;G.printApplication();});
   await page.waitForFunction(()=>__applyPrints===1);
   check('application preserves all Cairo print weights including 800: '+zone,await page.evaluate(()=>[400,600,700,800,900].every(w=>document.fonts.check(w+' 12px Cairo','العراق ABC 123'))));
   await page.goto(base+'employer.html');await page.waitForFunction(()=>document.fonts.status==='loaded');
-  check('independent employer portal uses Tajawal: '+zone,(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)).startsWith('Tajawal'));
+  check('independent employer portal uses IBM Plex Sans Arabic: '+zone,(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)).split(',')[0].replace(/["']/g,'').trim()==='IBM Plex Sans Arabic' );
   check('no runtime errors: '+zone,errors.length===0);await context.close();
  }
  console.log(`PASS ${n} native Iraq clock/font/print checks. No live backend requests.`);
