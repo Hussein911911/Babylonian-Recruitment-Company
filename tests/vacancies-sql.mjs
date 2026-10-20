@@ -22,7 +22,10 @@ try{
  const migration=read('supabase/migrations/20261017190000_employer_job_pin.sql');await db.exec(migration);await db.exec(migration);
  const activation=read('supabase/migrations/20261017232710_activate_employer_job_pin_retire_whatsapp.sql');await db.exec(activation);await db.exec(activation);
  await db.exec("alter table brc.applicants add column updated_at timestamptz default now()");
+ await db.exec(`create view brc.public_jobs as select code,title,category,region,shift,salary_min,salary_max,gender,vacancies,requirements,status,(status='reserved') is_reserved,hold_expires_at,created_at,coalesce(description,'') description,coalesce(image_url,'') image_url from brc.jobs`);
+ const legacyColumns=(await db.query("select column_name from information_schema.columns where table_schema='brc' and table_name='public_jobs' order by ordinal_position")).rows.map(x=>x.column_name);
  const vacancies=read('supabase/migrations/20261020090000_independent_job_vacancies.sql');await db.exec(vacancies);await db.exec(vacancies);
+ check('upgrade preserves all sixteen legacy public view columns in place',(await db.query("select column_name from information_schema.columns where table_schema='brc' and table_name='public_jobs' order by ordinal_position")).rows.slice(0,16).map(x=>x.column_name).join()===legacyColumns.join());
  await db.exec("set test.staff='yes'");
  const saved=await rpc('staff_save_job_pin',['',JSON.stringify({...data,vacancies:3}),'012345']);assert.ok(saved.ok);const job=saved.job;
  const reserve=async(serial)=>{await db.query("insert into brc.applicants(serial,status,full_name,phone,expiry_date) values($1,'active','عميل تجريبي','07700000000',now()+interval '30 days')",[serial]);await db.query("insert into brc.job_attempts(serial,attempt_no,job_id,slot_status) values($1,1,$2,'reserved')",[serial,job.id]);};
@@ -57,5 +60,8 @@ try{
  await db.query("insert into brc.job_attempts(serial,attempt_no,job_id,slot_status) values('DELETE-CARD',1,$1,'reserved')",[removed.job.id]);await db.exec("update brc.job_attempts set slot_status='hiring' where serial='DELETE-CARD'");
  await db.query('delete from brc.jobs where id=$1',[removed.job.id]);const retired=(await db.query("select slot_status,job_id from brc.job_attempts where serial='DELETE-CARD'")).rows[0];check('explicit whole-ad deletion retires pending hire without restoring a chance',retired.slot_status==='expired'&&retired.job_id===null);
  const before=JSON.stringify(await state());await db.exec(read('supabase/migrations/20261020090000_independent_job_vacancies.sql'));check('reinstallation preserves completed seat ledger',JSON.stringify(await state())===before);
+ await db.exec(`drop view brc.public_jobs;create view brc.public_jobs as select code,title,category,region,governorate,shift,salary_min,salary_max,gender,vacancies,requirements,status,(status='reserved') is_reserved,hold_expires_at,created_at,coalesce(description,'') description,coalesce(image_url,'') image_url from brc.jobs`);
+ await db.exec(vacancies);await db.exec(vacancies);
+ check('fresh canonical view also upgrades idempotently',(await db.query("select column_name from information_schema.columns where table_schema='brc' and table_name='public_jobs' order by ordinal_position")).rows[4].column_name==='governorate');
  console.log('PASS '+count+' independent vacancy SQL checks; no live database touched.');
 }finally{await db.close();}

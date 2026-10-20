@@ -132,6 +132,13 @@ end $$;
 
 
 
+-- CREATE OR REPLACE must preserve the live view's existing column order.
+-- Older installations have no governorate column; append it rather than
+-- inserting it ahead of shift. Fresh canonical schemas already have it fifth.
+do $upgrade_view$
+begin
+ if exists(select 1 from information_schema.columns where table_schema='brc' and table_name='public_jobs' and column_name='governorate' and ordinal_position=5) then
+ execute $view$
 create or replace view brc.public_jobs
 with (security_invoker = false) as
   select code, title, category, region, governorate, shift, salary_min, salary_max, gender,
@@ -147,3 +154,25 @@ with (security_invoker = false) as
          case when j.manual_closed then 0 else greatest(j.vacancies-cardinality(j.filled_vacancy_numbers)-(select count(*)::int from brc.job_attempts a where a.job_id=j.id and a.slot_status in('reserved','critical','hiring')),0) end as available_vacancies
     from brc.jobs j
    where status <> 'closed' or created_at > now() - interval '120 days';
+$view$;
+ else
+ execute $view$
+create or replace view brc.public_jobs
+with (security_invoker = false) as
+  select code, title, category, region, shift, salary_min, salary_max, gender,
+         vacancies, requirements, status,
+         (status = 'reserved') as is_reserved,
+         hold_expires_at,
+         created_at,
+         -- الوصف والصورة جزء من الإعلان نفسه فيظهران للزائر (بخلاف اسم صاحب
+         -- العمل وهاتفه ومكان المقابلة التي تبقى محجوبة للداخل). بدون هذين
+         -- العمودين تظهر بطاقات الوظائف في الموقع العام بلا وصف ولا صورة.
+         coalesce(description, '') as description,
+         coalesce(image_url, '') as image_url,
+         case when j.manual_closed then 0 else greatest(j.vacancies-cardinality(j.filled_vacancy_numbers)-(select count(*)::int from brc.job_attempts a where a.job_id=j.id and a.slot_status in('reserved','critical','hiring')),0) end as available_vacancies,
+         governorate
+    from brc.jobs j
+   where status <> 'closed' or created_at > now() - interval '120 days';
+$view$;
+ end if;
+end $upgrade_view$;
