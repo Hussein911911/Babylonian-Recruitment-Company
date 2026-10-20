@@ -5,7 +5,7 @@
  *  يفحص كل شيء آلياً ويطبع تقريراً عربياً واضحاً:
  *    1) وقت التشغيل: تحميل كل صفحة بلا أي خطأ في الكونسول
  *    2) الترابط: كل نقطة/أيقونة/معرّف يُستخدم موجود فعلاً
- *    3) التنسيق: كل صنف CSS مستخدم في HTML له تعريف في style.css
+ *    3) التنسيق: كل صنف CSS مستخدم في HTML له تعريف في أنماط الصفحة الفعلية
  *    4) الأصول: كل صورة/خط/ملف مُشار إليه موجود على القرص
  *    5) الإتاحة: اللغة، الاتجاه، نصوص بديلة، تسميات النماذج
  *    6) الطباعة: حاويات النوافذ والطباعة والتنبيهات
@@ -136,6 +136,8 @@ for (const file of PAGES) {
   else ok('مكتبة الأيقونات — ' + spriteIds.size + ' معرّفاً بلا تكرار');
   // الأيقونة مستخدمة إن وردت في HTML الصفحات أو نُودي بها من الكود HRCUI.ic('name')
   const iconCalls = new Set([...jsSrcAll.matchAll(/ic\(\s*'([a-z0-9-]+)'/g)].map((m) => 'i-' + m[1]));
+  // Dashboard statistics also construct hrefs from icon metadata.
+  for (const stats of jsSrcAll.matchAll(/var stats = \[([\s\S]*?)\];/g)) for (const m of stats[1].matchAll(/\bicon:\s*'([a-z0-9-]+)'/g)) { const id='i-'+m[1]; iconCalls.add(id); if(!spriteIds.has(id)) bad('Dynamic statistics icon exists',id); }
   const inPages = (id) => PAGES.some((f) => loaded[f] && loaded[f].doc.documentElement.outerHTML.includes('#' + id));
   const unused = [...spriteIds].filter((id) => !id.startsWith('g-') && id !== 'i-emblem' && !iconCalls.has(id) && !inPages(id));
   if (unused.length) warnf('أيقونات غير مستخدمة (' + unused.length + ')', unused.join(', '));
@@ -143,20 +145,29 @@ for (const file of PAGES) {
 }
 
 /* ═══ 3) تغطية التنسيق: كل صنف مستخدم له قاعدة ═══════════════════════════ */
-section('3) التنسيق — كل صنف CSS مستخدم في HTML له تعريف في style.css');
+section('3) التنسيق — كل صنف CSS مستخدم في HTML له تعريف في أنماط الصفحة الفعلية');
 
 // أصناف تُبنى داخل الكود (نوافذ/صفوف/بطاقات) — تُجمع من ملفات JS أيضاً
 const jsSrc = jsSrcAll;
 const jsClasses = new Set([...jsSrc.matchAll(/class="([^"{}]*?)"/g)].flatMap((m) => m[1].split(/\s+/)).filter(Boolean));
 
 for (const file of PAGES) {
+  // Check what this page actually loads, including page-scoped styles and
+  // standalone inline CSS; a definition in an unrelated sheet is not enough.
+  const doc = loaded[file].doc;
+  const sheets = [...doc.querySelectorAll('link[rel="stylesheet"][href]')]
+    .map(el => el.getAttribute('href').split('?')[0])
+    .filter(href => !/^(https?:|data:|\/\/)/.test(href))
+    .map(href => readFileSync(join(ROOT, href.replace(/^\//, '')), 'utf8'));
+  sheets.push(...[...doc.querySelectorAll('style')].map(el => el.textContent));
+  const pageClasses = new Set([...sheets.join('\n').matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map(m => m[1]));
   const used = new Set();
   loaded[file].doc.querySelectorAll('[class]').forEach((el) => {
     String(el.getAttribute('class') || '').split(/\s+/).forEach((c) => { if (c && !CSS_ALLOW.has(c)) used.add(c); });
   });
-  const undef = [...used].filter((c) => !cssClasses.has(c) && !jsClasses.has(c));
+  const undef = [...used].filter((c) => !pageClasses.has(c) && !jsClasses.has(c));
   if (undef.length) bad(file + ' — كل الأصناف معرّفة', 'بلا تعريف (' + undef.length + '): ' + undef.slice(0, 12).join(', '));
-  else ok(file + ' — ' + used.size + ' صنفاً مستخدماً، كلها معرّفة (' + cssClasses.size + ' صنفاً في الملف)');
+  else ok(file + ' — ' + used.size + ' صنفاً مستخدماً، كلها معرّفة (' + pageClasses.size + ' صنفاً في أنماط الصفحة)');
 }
 
 /* ═══ 3.b) سلامة ملف التنسيق: المتغيرات والأقواس وأحجام الأيقونات ═══════ */
@@ -323,6 +334,7 @@ for (const [js, page] of CONTRACT) {
   for (const f of published) {
     const src = readFileSync(join(ROOT, f), 'utf8');
     if (/حسابات تجريبية/.test(src)) leaked.push(f + ': نص الحسابات التجريبية');
+    if (/admin123|staff123|تذكير للفريق|hrc-dev-accounts|الدخول الأول/.test(src)) leaked.push(f + ': بيانات افتراضية أو تذكير تطوير منشور');
     if (/demo-account|login-demo-info/.test(src)) leaked.push(f + ': أنماط الحسابات التجريبية');
   }
   if (leaked.length) bad('لا حسابات تجريبية ظاهرة على شاشة الدخول', leaked.join(' | '));
@@ -808,7 +820,7 @@ section('10) بطاقة التوظيف المطبوعة (86×54مم) — الب�
     'هوية البطاقة (بلا بيانات زبون)': /بطاقة الزبون — هوية الباركود/,
     'تاريخا الإصدار والانتهاء': /الإصدار/,
     'الباركود QR': /<svg/,
-    'رمزا الفرصتين': new RegExp(attempts.map((t) => t.code.replace('-', '\\-')).join('|')),
+    'رمز التحقق للبطاقة القديمة': new RegExp(attempts[0].code),
     'قواعد الفرصتين': /فرصتين مستقلتين/,
     'حجز 24 ساعة': /24 ساعة/,
     'الفرصة لا تعود': /ولا تعود/,
@@ -831,8 +843,8 @@ section('10) بطاقة التوظيف المطبوعة (86×54مم) — الب�
 
   const codeBoxes = (html.match(/class="code"/g) || []).length;
   const faces = (html.match(/class="hrc-card[" ]/g) || []).length;
-  if (codeBoxes !== 2 || faces !== 2) bad('البطاقة تعرض وجهين برمزي الفرصتين', 'أوجه ' + faces + ' / صناديق رموز ' + codeBoxes);
-  else ok('البطاقة تعرض وجهين (أمامي/خلفي) وصندوقي رمزي الفرصتين');
+  if (codeBoxes !== 2 || faces !== 2) bad('البطاقة تعرض وجهين ورمزي الفرصتين', 'أوجه ' + faces + ' / صناديق رموز ' + codeBoxes);
+  else ok('البطاقة تعرض وجهين (أمامي/خلفي) وصندوق رمزي الفرصتين');
 
   const svgCount = (html.match(/<svg/g) || []).length;
   const hasQrPath = /<path[^>]+d="M[\d. ]/.test(html);
@@ -856,9 +868,9 @@ section('10ب) استمارة التوظيف A4 — بيانات الزبون و
     'باركود البطاقة': /HRC-BC-000120/,
     'اسم الزبون': /حسين كاظم عبد الله/,
     'هاتف الزبون': /07701234567/,
-    'عنوان الزبون': /العنوان/,
+    'عنوان الزبون': /عنوان السكن/,
     'الوظيفة المطلوبة': /الوظيفة المطلوبة/,
-    'بيانات صاحب العمل': /بيانات التواصل بصاحب العمل/,
+    'بيانات صاحب العمل': /بيانات صاحب العمل/,
     'هاتف صاحب العمل': new RegExp((job && job.employer.phone) || '7760058'),
     'مكان المقابلة': /مكان المقابلة/,
     'باركود QR': /<svg/,

@@ -1,0 +1,71 @@
+/* Horizontal public-page rhythm; screen only, no functional or print changes. */
+@media screen {
+  .jobs-grid { grid-template-columns: repeat(auto-fill,minmax(min(100%,325px),1fr)); }
+  .job-head > div, .job-meta .mi, .hero-inner > *, .header-main > *,
+  .contact-card > *, .service > *, .step > * { min-width: 0; }
+  .job-head { flex-wrap: wrap; }
+  .job-title, .section-head h2 { text-wrap: pretty; word-break: normal; }
+  .job-meta .mi { line-height: 1.8; }
+  .hero-cta { align-items: stretch; }
+  .hero-cta .btn { flex: 0 1 auto; min-height: 50px; }
+  .header-contact { gap: 10px 18px; }
+  .hc-item { min-width: 0; line-height: 1.8; }
+  .hc-phones { flex-wrap: wrap; gap: 5px 12px; }
+  .footer-phones { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+  .site-footer ul { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .site-footer ul li { margin: 0; }
+  .service, .contact-card, .steps .step {
+    display: grid; grid-template-columns: 48px minmax(0,1fr);
+    align-content: start; align-items: start; column-gap: 16px; row-gap: 8px;
+    text-align: start; padding: 24px;
+  }
+  .service > svg, .contact-card > .ic, .steps .step > .num {
+    grid-column: 1; grid-row: 1 / span 3; margin: 0 !important;
+    width: 48px; height: 48px; flex: none;
+  }
+  .service > h3, .contact-card > h3, .steps .step > h3 {
+    grid-column: 2; margin: 0; line-height: 1.85; align-self: center;
+  }
+  .service > p, .contact-card > p, .steps .step > p { grid-column: 2; margin: 0; line-height: 1.95; }
+  .service > svg { padding: 10px; border-radius: 14px; background: #f7f2e7; color: var(--gold-3); }
+  .steps { grid-template-columns: repeat(auto-fit,minmax(min(100%,215px),1fr)); }
+  .quick-search { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .quick-search .qs-label { flex: 0 0 auto; }
+  .quick-search .qs-main { flex: 2 1 260px; min-width: 0; }
+  .quick-search .qs-region { flex: 1 1 180px; min-width: 0; }
+  .quick-search .qs-scan, .quick-search .qs-submit { flex: 0 1 auto; min-height: 44px; }
+  .contact-card a { text-underline-offset: 5px; }
+  .contact-card .contact-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+}
+@media screen and (max-width: 600px) {
+  .service, .contact-card, .steps .step { padding: 20px; column-gap: 12px; }
+  .hero-cta .btn { flex: 1 1 200px; }
+  .quick-search .qs-label, .quick-search .qs-main { flex-basis: 100%; }
+  .quick-search .qs-region { flex: 1 1 150px; }
+  .quick-search .qs-scan, .quick-search .qs-submit { flex: 1 1 90px; }
+  .site-footer .foot-main { row-gap: 28px; }
+}
+@media screen and (prefers-reduced-motion: no-preference) {
+  .service, .contact-card, .step {
+    transition: border-color .24s ease, box-shadow .24s ease, transform .28s var(--flow-ease);
+  }
+  .hero-badge, .hero h1 .accent, .hero-cta .btn-gold { animation-iteration-count: 1; }
+}
+@media screen and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .service:hover, .contact-card:hover, .steps .step:hover { transform: translateY(-3px); border-color: #c8a24a80; box-shadow: 0 14px 32px #102a5610; }
+  .footer-phones a:hover { color: #fff0c3; }
+}
+/* Preserve the original stacked contact lines on paper. */
+@media print { .contact-inline > * { display: block; } }
+/* Give Arabic titles and salaries real space rather than breaking each letter. */
+@media screen{
+ .job-head>div:first-child{flex:1 1 200px}.job-head>div:last-child{flex:0 1 auto;max-width:100%}
+ .job-statuses{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px}
+ .job-title{line-height:1.8;overflow-wrap:break-word;word-break:normal}
+ .job-head .badge,.job-head .chip:not(.chip-code){white-space:normal;word-break:normal;overflow-wrap:break-word;max-width:100%;line-height:1.8}
+ .job-meta .mi{align-items:baseline}.job-meta .mi span{min-width:0;overflow-wrap:break-word}
+ .job-meta .mi:nth-child(3){grid-column:1/-1;font-variant-numeric:tabular-nums}
+ .job-foot>.flex{flex-wrap:wrap;max-width:100%;justify-content:flex-end}
+ .salary{font-variant-numeric:tabular-nums;max-width:100%;white-space:normal;overflow-wrap:break-word}
+ .hero-stat{min-width:0}.hero-stat b{font-size:clamp(1.1rem,2vw,1.6rem);font-variant-numeric:tabular-nums;overflow-wrap:break-word}
+}

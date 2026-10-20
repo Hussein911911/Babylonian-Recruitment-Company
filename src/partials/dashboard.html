@@ -48,10 +48,6 @@
         <svg class="ic"><use href="#i-arrow-left" xlink:href="#i-arrow-left"/></svg>
         العودة إلى الموقع العام
       </a>
-      <div style="margin-top:16px;color:#6b7793;font-size:.78rem;line-height:1.8">
-        <svg class="ic" style="width:14px;height:14px;vertical-align:-2px"><use href="#i-shield"/></svg>
-        الحسابات ينشئها المدير من لوحة التحكم — الدخول الأول: <b class="mono" style="color:#c8a24a">admin</b> / <b class="mono" style="color:#c8a24a">admin123</b>
-      </div>
     </div>
   </div>
 </div>
@@ -86,9 +82,6 @@
       <button class="btn btn-ghost btn-block btn-sm" id="btn-logout">
         <svg class="ic"><use href="#i-logout" xlink:href="#i-logout"/></svg> تسجيل الخروج
       </button>
-      <p class="tiny mt-2 mb-0" style="color:#8fa0c4">
-        نظام محلي يعمل داخل المتصفح (localStorage) — جاهز للربط بـ PostgreSQL/Supabase كما في ملف المخطط.
-      </p>
     </div>
   </aside>
 
@@ -96,7 +89,7 @@
 
   <main class="app-main">
     <div class="app-top">
-      <div style="display:flex;align-items:center;gap:8px">
+      <div class="app-titlebar" style="display:flex;align-items:center;gap:8px">
         <button class="hamburger-btn" id="hamburger-btn" aria-label="فتح القائمة">
           <span></span>
           <span></span>
@@ -107,12 +100,17 @@
           <h1 id="view-title">نظرة عامة</h1>
           <div class="sub" id="view-sub">ملخص لحظي لحالة الوظائف والاستمارات والحجوزات</div>
         </div>
+        <button type="button" class="notification-toggle" id="notification-toggle" aria-label="الإشعارات" aria-controls="notification-center" aria-expanded="false">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+          <span class="notification-label">الإشعارات</span><span class="notification-count" id="notification-count" hidden>0</span>
+        </button>
       </div>
       <div class="flex flex-wrap" style="gap:6px">
         <form class="search-wrap" id="quick-code-form" style="min-width:220px">
           <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
           <input type="text" id="quick-code" placeholder="بحث سريع بكود الوظيفة (HRC-1042)" aria-label="بحث بكود الوظيفة">
         </form>
+        <button class="btn btn-outline btn-sm" id="btn-card-history">بحث السجل الكامل والأرشيف</button>
         <button class="btn btn-lapis btn-sm" id="btn-new-app"><svg class="ic"><use href="#i-user-plus" xlink:href="#i-user-plus"/></svg> بيع وتعبئة بطاقة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-batch" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-card" data-admin-only="true" title="بطاقة واحدة فارغة بكودها — للمدير فقط"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
@@ -130,8 +128,8 @@
           <p>لوحة تحكم شركة الهدف للتوظيف — نظرة عامة على حالة النظام</p>
         </div>
         <div class="ov-welcome-time">
-          <div class="time-big" id="ov-clock">--:--</div>
-          <div class="date-sm" id="ov-date">—</div>
+          <div class="time-big" id="ov-clock" dir="ltr" aria-label="الوقت بتوقيت بغداد">--:--</div>
+          <div class="date-sm" id="ov-date">—</div><div class="tiny">توقيت العراق · بغداد (UTC+3)</div>
         </div>
       </div>
 
@@ -213,7 +211,7 @@
 
           <!-- الجدول -->
           <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-            <div class="table-scroll">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
               <table class="data" style="margin:0">
                 <thead>
                   <tr>
@@ -229,7 +227,7 @@
           <!-- ملاحظة سفلية -->
           <div class="footnote-premium">
             <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
-            بيانات صاحب العمل (الاسم، الهاتف، العنوان) تظهر هنا للموظفين فقط — ولا تُعرض في الموقع العام أبداً.
+            بيانات صاحب العمل خاصة بالموظفين ولا تظهر للعامة.
           </div>
         </div>
       </div>
@@ -275,7 +273,7 @@
 
           <!-- الجدول -->
           <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-            <div class="table-scroll">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
               <table class="data" style="margin:0">
                 <thead>
                   <tr>
@@ -295,11 +293,12 @@
               </table>
             </div>
           </div>
+          <div id="apps-pager" class="flex" style="gap:12px;flex-wrap:wrap;margin:12px 0"></div>
 
           <!-- ملاحظة سفلية -->
           <div class="footnote-premium">
             <svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg>
-            البطاقة صالحة 30 يوماً وفيها فرصتان مستقلتان — بعد استهلاك الفرصتين أو انتهاء المدة تتوقف صلاحية التقديم.
+            يتوقف التقديم عند انتهاء صلاحية البطاقة أو استهلاك فرصها.
           </div>
         </div>
       </div>
@@ -317,7 +316,7 @@
       <div class="panel">
         <div class="panel-head"><h3><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> حالات حرجة بانتظار قرار (توظيف / إرجاع / حذف)</h3></div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll"><table class="data" style="min-width:700px">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:700px">
             <thead><tr><th>البطاقة</th><th>الباحث</th><th>الفرصة</th><th>كود الوظيفة</th><th>انتهت في</th><th>ملاحظة</th><th>إجراء</th></tr></thead>
             <tbody id="expired-table-body"></tbody>
           </table></div>
@@ -338,10 +337,10 @@
         <div class="panel-body">
           <div class="toolbar">
             <div class="field grow">
-              <label for="log-q">بحث في التفاصيل</label>
+              <label for="log-q">بحث شامل في السجل</label>
               <div class="search-wrap">
                 <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-                <input type="search" id="log-q" placeholder="حالة حرجة ، HRC-1042 ، اسم مستخدم ...">
+                <input type="search" id="log-q" placeholder="اسم الموظف، العملية، الباركود أو كود الوظيفة…">
               </div>
             </div>
             <div class="field">
@@ -357,24 +356,41 @@
                 <option value="system">النظام</option>
               </select>
             </div>
+            <div class="field"><label for="log-action">نوع العملية</label><select id="log-action"><option value="all">كل العمليات</option></select></div>
+            <div class="field"><label for="log-entity">نوع السجل</label><select id="log-entity"><option value="all">كل الأنواع</option></select></div>
             <div class="field"><label for="log-from"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>من تاريخ</label><input type="date" id="log-from"></div>
             <div class="field"><label for="log-to"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>إلى تاريخ</label><input type="date" id="log-to"></div>
           </div>
+          <div class="audit-quick" role="group" aria-label="فترات السجل السريعة">
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="today">اليوم</button>
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="yesterday">أمس</button>
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="week">آخر 7 أيام</button>
+            <button type="button" class="btn btn-outline btn-sm" data-audit-range="month">آخر 30 يوماً</button>
+            <button type="button" class="btn btn-outline btn-sm" id="log-reset">تصفير الفلاتر</button>
+          </div>
+          <p class="tiny muted mt-2 mb-0" id="log-filter-summary" aria-live="polite"></p>
+          <p class="tiny hidden" id="log-date-error" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.</p>
         </div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
             <table class="data">
               <thead><tr><th>الوقت (YYYY-MM-DD HH:mm:ss)</th><th>المستخدم</th><th>الصلاحية</th><th>IP الجلسة</th><th>العملية</th><th>السجل</th><th>التفاصيل</th></tr></thead>
               <tbody id="audit-table-body"></tbody>
             </table>
           </div>
-          <div class="tfoot-note">كل تغيير في النظام يُسجّل تلقائياً بالثانية مع المستخدم وعنوان الجلسة والعملية والتفاصيل.</div>
+          <div class="audit-pagination">
+            <label for="log-page-size">سجل بالصفحة <select id="log-page-size"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></label>
+            <label for="log-sort">الترتيب <select id="log-sort"><option value="newest">الأحدث أولاً</option><option value="oldest">الأقدم أولاً</option></select></label>
+            <div class="audit-pages"><button type="button" class="btn btn-outline btn-sm" id="log-prev">السابق</button><span id="log-page-info" aria-live="polite"></span><button type="button" class="btn btn-outline btn-sm" id="log-next">التالي</button></div>
+          </div>
+          <div class="tfoot-note">السجل المحمّل فقط · توقيت بغداد (العراق) · CSV يشمل كل النتائج المفلترة.</div>
         </div>
       </div>
     </section>
 
     <!-- ================= اللوحة المالية (مدير) ================= -->
     <section class="view" id="view-finance">
+      <p id="finance-scope" class="tiny muted"></p>
       <div class="stat-grid" id="fin-stats"></div>
       <div class="panel">
         <div class="panel-head">
@@ -389,127 +405,61 @@
         </div>
         <div class="panel-body"><div class="bars" id="fin-bars"></div></div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
             <table class="data" style="min-width:680px">
               <thead><tr><th>الموظف</th><th>البطاقات الصادرة</th><th>مرات الطباعة</th><th>سعر البطاقة</th><th>المتوقع تحصيله</th><th>المستلَم (كاش)</th><th>حالة البيع</th><th>توظيف ناجح</th><th>حجوزات جارية</th></tr></thead>
               <tbody id="fin-table-body"></tbody>
             </table>
           </div>
-          <div class="tfoot-note">المبالغ وفق سعر البطاقة المُعرّف في الإعدادات — البيع كاش عند نقاط البيع فقط، وتُحدَّث تلقائياً مع كل إصدار.</div>
+          <div class="tfoot-note">التحصيل وفق سعر البطاقة في الإعدادات — الدفع كاش.</div>
         </div>
       </div>
     </section>
 
     <!-- ================= الإعدادات ================= -->
-    <section class="view" id="view-settings">
-      <div class="grid grid-2">
-        <div class="panel">
-          <div class="panel-head"><h3><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg> قواعد العمل</h3></div>
-          <div class="panel-body">
-            <form id="settings-form">
-              <div class="field mb-2"><label for="set-attempts-locked">الفرص لكل بطاقة</label><input type="number" id="set-attempts-locked" value="2" disabled title="مقفلة بقرار الشركة"></div>
-              <div class="field mb-2"><label for="set-days">صلاحية البطاقة (يوم)</label><input type="number" id="set-days" min="1" max="180"></div>
-              <div class="field mb-2"><label for="set-hours">مدة الحجز المؤقت للوظيفة (ساعة)</label><input type="number" id="set-hours" min="1" max="168"></div>
-              <div class="field mb-2"><label for="set-fee">سعر البطاقة (دينار — كاش)</label><input type="number" id="set-fee" min="0" step="500"></div>
-              <button class="btn btn-lapis mt-3" type="submit"><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg> حفظ الإعدادات</button>
-            </form>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panel-head"><h3><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg> بيانات الشركة (تظهر في البطاقة)</h3></div>
-          <div class="panel-body">
-            <div class="data-grid">
-              <div class="data-item"><div class="k">الاسم العربي</div><div class="v">شركة الهدف للتوظيف</div></div>
-              <div class="data-item"><div class="k">الاسم الإنجليزي</div><div class="v mono" dir="ltr">Al-Hadaf Recruitment Company</div></div>
-              <div class="data-item wide"><div class="k">العنوان</div><div class="v">حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي</div></div>
-              <div class="data-item"><div class="k">الهاتف 1</div><div class="v mono" dir="ltr">07760058007</div></div>
-              <div class="data-item"><div class="k">الهاتف 2</div><div class="v mono" dir="ltr">07715993271</div></div>
-              <div class="data-item wide"><div class="k">رابط التحقق المطبوع في الكيو آر كود</div><div class="v mono" dir="ltr" id="set-verify-base">—</div></div>
-            </div>
-            <p class="tiny muted mt-3 mb-0">
+    <section class="view" id="view-settings"><div class="settings-main"><div class="panel" id="settings-rules">
+<div class="panel-head"><h3><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"></use></svg> قواعد العمل</h3></div>
+<div class="panel-body">
+<form id="settings-form">
+<div class="field mb-2"><label for="set-attempts">الفرص لكل بطاقة جديدة</label><input type="number" id="set-attempts" value="2" min="1" max="10" step="1" required=""><small class="muted">للإصدارات الجديدة فقط؛ لا تتغير فرص البطاقات السابقة.</small></div>
+<div class="field mb-2"><label for="set-days">صلاحية البطاقة (يوم)</label><input type="number" id="set-days" min="1" max="180"></div>
+<div class="field mb-2"><label for="set-hours">مدة الحجز المؤقت للوظيفة (ساعة)</label><input type="number" id="set-hours" min="1" max="168"></div>
+<div class="field mb-2"><label for="set-fee">سعر البطاقة (دينار — كاش)</label><input type="number" id="set-fee" min="0" step="500"></div>
+<button class="btn btn-lapis mt-3" type="submit"><svg class="ic"><use href="#i-check" xlink:href="#i-check"></use></svg> حفظ الإعدادات</button>
+</form>
+</div>
+</div><div class="panel" id="settings-users">
+<div class="panel-head">
+<h3><svg class="ic" style="color:#e8d089"><use href="#i-users" xlink:href="#i-users"></use></svg> إدارة الموظفين والصلاحيات</h3>
+<button class="btn btn-gold btn-sm" id="btn-add-user"><svg class="ic"><use href="#i-plus"></use></svg> إضافة موظف</button>
+</div>
+<div class="panel-body" style="padding:0">
+<div class="table-wrap" style="border:none;box-shadow:none;margin:0">
+<div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة" tabindex="0" role="region" aria-label="جدول الموظفين — مرّر أفقياً لعرض بقية الأعمدة"><table class="data" style="min-width:520px;margin:0">
+<thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+<tbody id="users-table-body"></tbody>
+</table></div>
+</div>
+<div class="footnote-premium">إدارة الحسابات والصلاحيات متاحة للمدير فقط.</div>
+</div>
+</div></div><div id="recovery-tools" aria-live="polite"></div><details id="settings-advanced" class="settings-advanced"><summary><span>إعدادات متقدمة<small>بيانات الشركة، الاسترداد والنسخ الاحتياطي والصيانة</small></span><span class="settings-expand" aria-hidden="true">＋</span></summary><div class="settings-advanced-content"><div class="panel" id="settings-company">
+<div class="panel-head"><h3><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"></use></svg> بيانات الشركة (تظهر في البطاقة)</h3></div>
+<div class="panel-body">
+<div class="data-grid">
+<div class="data-item"><div class="k">الاسم العربي</div><div class="v">شركة الهدف للتوظيف</div></div>
+<div class="data-item"><div class="k">الاسم الإنجليزي</div><div class="v mono" dir="ltr">Al-Hadaf Recruitment Company</div></div>
+<div class="data-item wide"><div class="k">العنوان</div><div class="v">حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي</div></div>
+<div class="data-item"><div class="k">الهاتف 1</div><div class="v mono" dir="ltr">07760058007</div></div>
+<div class="data-item"><div class="k">الهاتف 2</div><div class="v mono" dir="ltr">07715993271</div></div>
+<div class="data-item wide"><div class="k">رابط التحقق المطبوع في الكيو آر كود</div><div class="v mono" dir="ltr" id="set-verify-base">—</div></div>
+</div>
+<p class="tiny muted mt-3 mb-0">
               نص الإخلاء القانوني المطبوع على ظهر كل بطاقة:
               «خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية.
               الشركة غير مسؤولة قانونياً وعشائياً عن الشخص المرسل وصاحب العمل.»
             </p>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-2">
-        <div class="panel">
-          <div class="panel-head" style="background:linear-gradient(135deg,#0b1a3a,#17376c);border-radius:14px 14px 0 0;border-color:transparent">
-            <h3 style="color:#fff"><svg class="ic" style="color:#e8d089"><use href="#i-users" xlink:href="#i-users"/></svg> إدارة الموظفين والصلاحيات</h3>
-            <button class="btn btn-gold btn-sm" id="btn-add-user"><svg class="ic"><use href="#i-plus"/></svg> إضافة موظف</button>
-            <button class="btn btn-outline btn-sm" id="btn-cloud-key" title="مفتاح Supabase للتسجيل في القاعدة"><svg class="ic"><use href="#i-server"/></svg> ربط السحابة</button>
-          </div>
-          <div class="panel-body" style="padding:0">
-            <!-- قناة إنشاء الحسابات: تُرسم من dashboard.js (renderUsersChannel) وتقول
-                 للمدير قبل فتح النموذج: أنشئ الحسابات ← ستُسجَّل في قاعدة الشركة، أم
-                 لا قناة بعد (مع الخطوة المطلوبة). بلا هذا الشريط يكتشف المدير الأمر
-                 عند أول «إنشاء الحساب» برسالة خطأ — أو الأسوأ: يُنشئ حساباً محلياً
-                 يُوهمه أن الموظف أُضيف بينما صاحبه لا يدخل من أي جهاز. -->
-            <div id="users-channel" style="margin:14px 14px 0"></div>
-            <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-              <div class="table-scroll"><table class="data" style="min-width:520px;margin:0">
-                <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
-                <tbody id="users-table-body"></tbody>
-              </table></div>
-            </div>
-            <div class="footnote-premium">
-              <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
-              فقط المدير العام يكدر يضيف وتعديل وحذف الموظفين. في النسخة السحابية تُدار الحسابات عبر Supabase Auth مع سياسات RLS.
-            </div>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panel-head"><h3><svg class="ic"><use href="#i-server" xlink:href="#i-server"/></svg> النسخ الاحتياطي والصيانة</h3></div>
-          <div class="panel-body">
-            <div class="flex flex-wrap" style="gap:8px">
-              <button class="btn btn-gold" id="btn-quick-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> نسخة احتياطية سريعة</button>
-              <button class="btn btn-outline" id="btn-export"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير JSON</button>
-              <button class="btn btn-outline" id="btn-export-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg> نسخة مشفّرة للابتوب</button>
-              <button class="btn btn-outline" id="btn-import"><svg class="ic"><use href="#i-upload" xlink:href="#i-upload"/></svg> استيراد نسخة</button>
-              <button class="btn btn-ok" id="btn-import-encrypted"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg> استرداد نسخة مشفّرة</button>
-              <button class="btn btn-lapis" id="btn-schedule-backup"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> جدولة النسخ التلقائي</button>
-              <button class="btn btn-outline" id="btn-view-backups"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> عرض النسخ الاحتياطية</button>
-              <button class="btn btn-warn" id="btn-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تشغيل قواعد الحجز التلقائي</button>
-              <button class="btn btn-danger" id="btn-reset"><svg class="ic"><use href="#i-trash" xlink:href="#i-trash"/></svg> إعادة ضبط البيانات التجريبية</button>
-            </div>
-            <input type="file" id="import-file" accept="application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية للاستيراد">
-            <input type="file" id="import-enc-file" accept=".json,.enc,application/json" class="hidden" aria-label="اختيار ملف النسخة الاحتياطية المشفّرة للاسترداد">
-            
-            <div class="panel mt-3" style="background:#f9f6ef;border:1px solid var(--line)">
-              <div class="panel-body">
-                <h4 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
-                  <svg class="ic" style="color:var(--gold-3)"><use href="#i-clock" xlink:href="#i-clock"/></svg>
-                  النسخ الاحتياطي التلقائي المجدول
-                </h4>
-                <div id="schedule-status" class="tiny muted">لم يتم تفعيل الجدولة بعد</div>
-                <div class="flex flex-wrap mt-2" style="gap:8px">
-                  <button class="btn btn-outline btn-sm" id="btn-edit-schedule"><svg class="ic"><use href="#i-edit" xlink:href="#i-edit"/></svg> تعديل الجدولة</button>
-                  <button class="btn btn-gold btn-sm" id="btn-run-auto-backup"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> نفّذ نسخة الآن</button>
-                  <button class="btn btn-outline btn-sm" id="btn-disable-schedule"><svg class="ic"><use href="#i-x" xlink:href="#i-x"/></svg> إيقاف الجدولة</button>
-                </div>
-                <p class="tiny muted mt-2 mb-0">
-                  الجدولة المحلية تعمل عند فتح لوحة المدير. للنسخ التلقائي خارج الموقع يجب تفعيل Backup/PITR في Supabase وربط مخزن خارجي خاص؛ لا تعتمد على المتصفح وحده.
-                </p>
-              </div>
-            </div>
-            
-            <div class="data-grid mt-3">
-              <div class="data-item"><div class="k">الوظائف المخزّنة</div><div class="v" id="db-jobs">0</div></div>
-              <div class="data-item"><div class="k">الاستمارات</div><div class="v" id="db-apps">0</div></div>
-              <div class="data-item"><div class="k">الفرص (خانات)</div><div class="v" id="db-attempts">0</div></div>
-              <div class="data-item"><div class="k">سجلات التدقيق</div><div class="v" id="db-audit">0</div></div>
-              <div class="data-item"><div class="k">النسخ الاحتياطية</div><div class="v" id="db-backups">0</div></div>
-            </div>
-            <p class="tiny muted mt-3 mb-0">
-              البيانات تُخزَّن في متصفحك (localStorage) — للحفظ الدائم على السيرفر راجع <span class="mono">docs/schema.sql</span>.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
+</div>
+</div></div></details></section>
   </main>
 </div>
 
@@ -530,7 +480,7 @@
   const offlineIndicator = document.createElement('div');
   offlineIndicator.id = 'offline-indicator';
   offlineIndicator.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#a8322f;color:#fff;padding:10px;text-align:center;z-index:9999;display:none;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.2);';
-  offlineIndicator.innerHTML = '⚠️ أنت تعمل بدون اتصال — سيتم المزامنة تلقائياً عند العودة للاتصال';
+  offlineIndicator.innerHTML = '⚠️ انقطع الإنترنت — استخدم بوابة المكتب المحلية المجهزة؛ بيانات المتصفح ليست سجلاً مشتركاً مضمون المزامنة';
   document.body.appendChild(offlineIndicator);
 
   window.addEventListener('online', () => {
@@ -541,7 +491,7 @@
       window.HRCStore.syncOfflineChanges();
     }
     if (window.HRCUI) {
-      window.HRCUI.toast('ok', 'تم الاتصال', 'تم استعادة الاتصال بنجاح — البيانات محدثة');
+      window.HRCUI.toast('ok', 'تم الاتصال', 'عاد الاتصال؛ انتظر اكتمال التحقق من بيانات الموقع وحالات الطلبات');
     }
   });
 
@@ -549,8 +499,25 @@
     isOnline = false;
     offlineIndicator.style.display = 'block';
     if (window.HRCUI) {
-      window.HRCUI.toast('warn', 'انقطع الاتصال', 'أنت تعمل بدون اتصال — التغييرات تُحفظ محلياً');
+      window.HRCUI.toast('warn', 'انقطع الاتصال', 'للعمل المشترك أثناء الانقطاع استخدم بوابة لابتوب الشركة بعد تجهيزها');
     }
   });
 </script>
 
+
+<!-- Kept outside app-shell so the background can be inert while the drawer is open. -->
+<div id="notification-center" hidden>
+  <div class="notification-backdrop" data-notice-dismiss aria-hidden="true"></div>
+  <section class="notification-drawer" role="dialog" aria-modal="true" aria-labelledby="notification-title" aria-describedby="notification-status">
+    <header class="notification-header"><div><span class="notification-eyebrow">متابعة الشركة · حسب الأولوية</span><h2 id="notification-title">مركز الإشعارات</h2><p id="notification-status">آخر تحديثات الشركة</p></div><button type="button" id="notification-close" class="notification-close" data-notice-dismiss aria-label="إغلاق الإشعارات">×</button></header>
+    <div class="notification-tools"><div class="notification-filters" id="notification-filters" role="group" aria-label="تصفية الإشعارات حسب الأولوية">
+      <button type="button" data-filter="all" aria-pressed="true">الكل <span data-filter-count>0</span></button><button type="button" data-filter="unread" aria-pressed="false">غير المقروء <span data-filter-count>0</span></button>
+      <button type="button" data-filter="alert" data-section="alert" aria-pressed="false">حرج <span data-filter-count>0</span></button><button type="button" data-filter="decision" data-section="decision" aria-pressed="false">مهم <span data-filter-count>0</span></button>
+      <button type="button" data-filter="booking" data-section="booking" aria-pressed="false">الحجوزات <span data-filter-count>0</span></button><button type="button" data-filter="update" data-section="update" aria-pressed="false">عادي <span data-filter-count>0</span></button>
+    </div><button type="button" class="btn btn-outline btn-sm" id="notification-read-all" title="تحديد جميع الإشعارات في كل الأقسام كمقروءة">تحديد الكل كمقروء</button></div>
+    <p class="notification-priority-summary" id="notification-priority-summary">الأولوية أولاً · الأحدث داخل كل قسم</p>
+    <ul class="notification-list" id="notification-list" aria-label="آخر الإشعارات" tabindex="0"></ul>
+    <p class="notification-footer">أحدث 100 تحديث متاح حسب صلاحيتك، مرتبة حسب الأولوية. القراءة ليست اعتماداً لقرار الشركة. <span id="notification-read-note">حالة القراءة محفوظة لحسابك على هذا الجهاز فقط.</span></p>
+  </section>
+</div>
+<div class="sr-only" id="notification-live" aria-live="polite" aria-atomic="true"></div>

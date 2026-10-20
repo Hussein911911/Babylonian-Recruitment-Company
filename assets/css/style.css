@@ -5,46 +5,19 @@
  * =========================================================================== */
 
 /* ============================ 1) الخطوط ============================ */
-@font-face {
-  font-family: 'Cairo'; font-style: normal; font-weight: 400; font-display: swap;
-  src: url('../fonts/cairo-arabic-400-normal.woff2') format('woff2');
-  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+FB50-FDFF, U+FE70-FEFF;
-}
-@font-face {
-  font-family: 'Cairo'; font-style: normal; font-weight: 400; font-display: swap;
-  src: url('../fonts/cairo-latin-400-normal.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215;
-}
-@font-face {
-  font-family: 'Cairo'; font-style: normal; font-weight: 600; font-display: swap;
-  src: url('../fonts/cairo-arabic-600-normal.woff2') format('woff2');
-  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+FB50-FDFF, U+FE70-FEFF;
-}
-@font-face {
-  font-family: 'Cairo'; font-style: normal; font-weight: 600; font-display: swap;
-  src: url('../fonts/cairo-latin-600-normal.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122;
-}
-@font-face {
-  font-family: 'Cairo'; font-style: normal; font-weight: 700; font-display: swap;
-  src: url('../fonts/cairo-arabic-700-normal.woff2') format('woff2');
-  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+FB50-FDFF, U+FE70-FEFF;
-}
-@font-face {
-  font-family: 'Cairo'; font-style: normal; font-weight: 700; font-display: swap;
-  src: url('../fonts/cairo-latin-700-normal.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122;
-}
-@font-face {
-  font-family: 'Cairo'; font-style: normal; font-weight: 900; font-display: swap;
-  src: url('../fonts/cairo-arabic-900-normal.woff2') format('woff2');
-  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+FB50-FDFF, U+FE70-FEFF;
-}
-@font-face {
-  font-family: 'Cairo'; font-style: normal; font-weight: 900; font-display: swap;
-  src: url('../fonts/cairo-latin-900-normal.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122;
-}
+/* IBM Plex UI; Cairo print. */
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:400;font-display:swap;src:url('../fonts/plex400.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:500;font-display:swap;src:url('../fonts/plex500.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:700;font-display:swap;src:url('../fonts/plex700.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:600;font-display:swap;src:url('../fonts/plex600.woff2') format('woff2')}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:400;font-display:swap;src:url('../fonts/cairo-arabic-400-normal.woff2') format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+FB50-FDFF,U+FE70-FEFF;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:400;font-display:swap;src:url('../fonts/cairo-latin-400-normal.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:600;font-display:swap;src:url('../fonts/cairo-arabic-600-normal.woff2') format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+FB50-FDFF,U+FE70-FEFF;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:600;font-display:swap;src:url('../fonts/cairo-latin-600-normal.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+2000-206F,U+2074,U+20AC,U+2122;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:700;font-display:swap;src:url('../fonts/cairo-arabic-700-normal.woff2') format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+FB50-FDFF,U+FE70-FEFF;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:700;font-display:swap;src:url('../fonts/cairo-latin-700-normal.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+2000-206F,U+2074,U+20AC,U+2122;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:900;font-display:swap;src:url('../fonts/cairo-arabic-900-normal.woff2') format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+FB50-FDFF,U+FE70-FEFF;}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:900;font-display:swap;src:url('../fonts/cairo-latin-900-normal.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+2000-206F,U+2074,U+20AC,U+2122;}
 
 /* ============================ 2) المتغيرات ============================ */
 :root {
@@ -81,9 +54,9 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
-  margin: 0; font-family: 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
+  margin: 0; font-family: 'IBM Plex Sans Arabic', 'Cairo', 'Segoe UI', Tahoma, sans-serif;
   background: var(--cream); color: var(--text); direction: rtl; text-align: right;
-  font-size: 15.5px; line-height: 1.85; -webkit-font-smoothing: antialiased;
+  font-size: 16px; line-height: 1.85; -webkit-font-smoothing: antialiased;
 }
 h1, h2, h3, h4 { margin: 0 0 .5rem; line-height: 1.35; font-weight: 900; letter-spacing: -.2px; }
 h1 { font-size: clamp(1.9rem, 4.4vw, 3.5rem); }
@@ -691,13 +664,13 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 /* ============================ 14) النوافذ والتنبيهات ============================ */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(6, 13, 31, .62); backdrop-filter: blur(4px);
-  z-index: 200; display: grid; place-items: center; padding: 20px; overflow-y: auto;
+  z-index: 200; display: grid; grid-template-columns:minmax(0,1fr); place-items: center; padding: 20px; overflow-y: auto;
 }
 .modal {
-  background: #fff; border-radius: 20px; width: min(760px, 96vw); box-shadow: var(--shadow-lg);
+  background: #fff; border-radius: 20px; width: min(760px, 100%); box-shadow: var(--shadow-lg);
   border: 1px solid var(--line); max-height: 92vh; display: flex; flex-direction: column; animation: pop .22s ease-out;
 }
-.modal.modal-wide { width: min(1020px, 96vw); }
+.modal.modal-wide { width: min(1020px, 100%); }
 @keyframes pop { from { transform: translateY(14px) scale(.985); opacity: 0 } to { transform: none; opacity: 1 } }
 .modal-head {
   padding: 20px 22px; border-bottom: 1px solid var(--line-soft); display: flex; justify-content: space-between;
@@ -1043,6 +1016,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 #print-root { display: none; }
 
 @media print {
+  body { font-size:15.5px; }
   /* بطاقة 86×54مم بالحجم الفعلي — بلا هوامش (voucher.js يضبط تفاصيل الصفحتين)
      ─────────────────────────────────────────────────────────────────────
      ⚠️ حجب الصفحة «عرضاً» لا «إخفاءً»: القاعدة القديمة كانت
@@ -1065,7 +1039,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 /* ============================ 18.b) نافذة «بطاقتي» ============================
    شاشات البطاقة: الدخول بالباركود، الحالة، استخدام فرصة، إعادة الطباعة —
    نفس الهوية (لازورد + ذهب + خط Cairo). */
-.modal-booking { width: min(680px, 96vw); }
+.modal-booking { width: min(680px, 100%); }
 .bk-wrap { direction: rtl; }
 
 /* شريط التقدّم: نقاط مرقّمة موصولة بخط ذهبي */
@@ -1231,7 +1205,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 }
 .bk-foot-note { margin-inline-start: auto; align-self: center; }
 
-/* زر «احجز الآن» الذهبي في شريط التنقل */
+/* زر «بطاقتي» الذهبي في شريط التنقل */
 .main-nav a.nav-book {
   background: linear-gradient(135deg, var(--gold), #dcbf72); color: #241a05 !important;
   font-weight: 800; border-radius: 10px; box-shadow: 0 5px 14px rgba(200, 162, 74, .35);
@@ -2153,15 +2127,15 @@ table.data tbody tr:hover { background: #faf8f3; }
 }
 .main-nav a:hover::after, .main-nav a.active::after { width: 60%; }
 
-/* زر الحجز الذهبي */
-.nav-book {
-  background: linear-gradient(135deg, rgba(200,162,74,.25), rgba(200,162,74,.10)) !important;
-  border: 1px solid rgba(200,162,74,.45) !important;
-  color: var(--gold-2) !important;
+/* زر «بطاقتي»: ذهب مصمت وواضح على الترويسة الداكنة */
+.main-nav a.nav-book {
+  background: linear-gradient(135deg, #f3cf68, #d6a838) !important;
+  border: 1px solid #f5d983 !important;
+  color: #241a05 !important;
   padding: 9px 20px !important;
 }
-.nav-book:hover {
-  background: linear-gradient(135deg, rgba(200,162,74,.40), rgba(200,162,74,.20)) !important;
+.main-nav a.nav-book:hover {
+  background: linear-gradient(135deg, #ffe39a, #e8bc50) !important;
   box-shadow: 0 0 18px rgba(200,162,74,.25);
 }
 
@@ -2440,4 +2414,111 @@ table.data tbody tr:hover { background: #faf8f3; }
   .site-footer .foot-main { grid-template-columns: 1fr; }
   .quick-search { flex-direction: column; }
   .qs-field.qs-main, .qs-field.qs-region { flex: 1 1 100%; }
+}
+
+/* Settings: daily tasks first; technical and recovery tools stay opt-in. */
+#view-settings .settings-main {
+  display: grid;
+  grid-template-columns: minmax(260px, .85fr) minmax(0, 1.15fr);
+  align-items: start;
+  gap: 20px;
+}
+#view-settings .settings-main > .panel { margin: 0; }
+#view-settings .panel-head { flex-wrap: wrap; gap: 12px; }
+#view-settings #settings-users .panel-head { background: var(--lapis, #17376c); }
+#view-settings #settings-users .panel-head h3 { color: #fff; }
+#view-settings .settings-quick-backup {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px; padding: 22px; margin-top: 20px;
+}
+#view-settings .settings-quick-backup h3 { margin: 0 0 6px; }
+#view-settings .settings-quick-backup .btn { flex-shrink: 0; }
+#view-settings .settings-advanced {
+  border: 1px solid var(--line); border-radius: 14px;
+  background: var(--white); margin-top: 20px; overflow: hidden;
+}
+#view-settings .settings-advanced > summary {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 20px 22px; cursor: pointer; list-style: none; font-weight: 700;
+}
+#view-settings .settings-advanced > summary::-webkit-details-marker { display: none; }
+#view-settings .settings-advanced > summary small {
+  display: block; margin-top: 5px; font-size: .8rem; font-weight: 400; color: var(--muted);
+}
+#view-settings .settings-advanced > summary:focus-visible { outline: 3px solid #c8a24a; outline-offset: -4px; }
+#view-settings .settings-advanced[open] .settings-expand { transform: rotate(45deg); }
+#view-settings .settings-advanced-content { display: grid; gap: 18px; padding: 0 20px 20px; }
+#view-settings .settings-advanced-content > .panel { margin: 0; }
+#view-settings input, #view-settings .data-item .v { overflow-wrap: anywhere; }
+@media (max-width: 1000px) {
+  #view-settings .settings-main { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  #view-settings .settings-main { padding: 10px 12px; gap: 14px; }
+  #view-settings .settings-quick-backup { flex-direction: column; align-items: stretch; margin: 4px 12px 14px; padding: 18px; }
+  #view-settings .settings-quick-backup .btn { width: 100%; justify-content: center; }
+  #view-settings .settings-advanced { margin: 0 12px 14px; padding: 0; }
+  #view-settings .settings-advanced > summary { padding: 18px 14px; }
+  #view-settings .settings-advanced-content { padding: 0 10px 10px; gap: 12px; }
+  #view-settings #settings-rules .panel-body, #view-settings #settings-company .panel-body { padding: 16px; }
+  #view-settings #settings-rules input { font-size: 16px; }
+  #view-settings #settings-rules button[type="submit"] { width: 100%; justify-content: center; }
+}
+
+/* Audit explorer: filters wrap without widening the page. */
+#view-audit .toolbar { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px; }
+#view-audit .toolbar .grow { grid-column:1/-1; }
+#view-audit .search-wrap { width:100%; }
+#view-audit .panel-head { flex-wrap:wrap;gap:12px; }
+.audit-quick,.audit-pagination,.audit-pages { display:flex;align-items:center;flex-wrap:wrap;gap:8px; }
+.audit-quick { margin-top:14px; }
+.audit-quick [aria-pressed="true"] { background:var(--lapis);color:var(--white); }
+.audit-pagination { justify-content:space-between;padding:16px;border-top:1px solid var(--line-soft); }
+.audit-pagination label { display:flex;align-items:center;gap:8px;font-size:.85rem; }
+.audit-pagination select { width:auto;min-width:70px; }
+#log-date-error { color:var(--danger); }
+#view-audit .btn:disabled { opacity:.45;cursor:not-allowed; }
+@media(max-width:720px) {
+  #view-audit .toolbar { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #view-audit .panel-body { padding:14px; }
+  #view-audit input,#view-audit select { font-size:16px; }
+  .audit-pages { width:100%;justify-content:space-between; }
+}
+@media(max-width:420px) { #view-audit .toolbar { grid-template-columns:minmax(0,1fr); } }
+
+.main-nav a.nav-book:focus-visible {
+  outline: 3px solid var(--white);
+  outline-offset: 3px;
+}
+
+/* Shared screen-only horizontal layout and motion. */
+@media screen{.contact-inline>*{max-width:100%}
+:root{--flow-ease:cubic-bezier(.22,1,.36,1)}
+.btn{white-space:normal;text-wrap:pretty;line-height:1.65}
+.btn > svg,.badge > svg,.panel-head h3 > svg,.hc-item > svg,.feature-list li > svg,.job-meta .mi > svg{flex-shrink:0}
+.chip-code,.job-code,.hc-phones a,.footer-phones a{white-space:nowrap;word-break:normal;overflow-wrap:normal}
+.panel-head{flex-wrap:wrap;gap:12px 18px}
+.panel-head > h3{flex:1 1 220px;line-height:1.85}
+.toolbar,.toolbar-enhanced{gap:12px}
+.toolbar .field,.toolbar-enhanced .field{flex:1 1 160px;min-width:0}
+.toolbar .field.grow,.toolbar-enhanced .field.grow{flex:2 1 230px}
+.toolbar .btn,.toolbar-enhanced .btn,.cell-actions .btn{min-height:42px}
+.data-item{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.data-item .k{flex:0 1 110px}
+.data-item .v{flex:1 1 140px;min-width:0}
+.ov-stat{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 14px;align-content:center}
+.ov-stat .ov-icon{grid-column:1;grid-row:1 / span 3;margin:0;align-self:center}
+.ov-stat .ov-val,.ov-stat .ov-lbl,.ov-stat .ov-hint{grid-column:2;margin:0}
+.bk-sum-row{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.bk-sum-row .k{flex:0 1 110px}
+.bk-sum-row .v{flex:1 1 140px;min-width:0}
+}
+@media screen and (prefers-reduced-motion:no-preference){.verify-card{animation:flow-settle .45s var(--flow-ease) both}
+.modal{animation:flow-settle .22s var(--flow-ease) both}
+.btn:active:not(:disabled){translate:0 1px}
+}
+@keyframes flow-settle{from{opacity:0;transform:translateY(8px)}
+to{opacity:1;transform:none}
+}
+@media screen and (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important;scroll-behavior:auto !important}
 }

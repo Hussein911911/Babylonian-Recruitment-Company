@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Synthetic cross-device transfer: inject fixtures in test memory, NOT through
+// the restore API (now admin-only). Production Auth/security checks stay intact.
+function injectFixture(store,json){const db=store.db();for(const k of Object.keys(db))delete db[k];Object.assign(db,JSON.parse(json));store.emit();}
 /* ===========================================================================
  *  HRC — اختبارات دخانية وظيفية (jsdom)
  *  ---------------------------------------------------------------------------
@@ -71,7 +74,7 @@ async function load(file, { hash = '', search = '', waitMs = 260, session = null
          tests/fixtures/demo-seed.mjs). تُوضع قبل تنفيذ config.js. */
       window.__HRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
       if (!session) return;
-      const m = new Map([['hrc_session_v2', JSON.stringify(session)]]);
+      const m = new Map([['hrc_session_v2', JSON.stringify({ ...session, cloud: true })]]);
       Object.defineProperty(window, 'sessionStorage', {
         configurable: true,
         value: {
@@ -94,11 +97,27 @@ async function load(file, { hash = '', search = '', waitMs = 260, session = null
   window.__printed = 0;
   if (!window.URL.createObjectURL) window.URL.createObjectURL = () => 'blob:test';
   await new Promise((r) => setTimeout(r, waitMs));
+  // This loader is the explicitly offline UI fixture; cloud fixtures use loadCloudSite.
+  if (window.HRCSupabaseConfig) window.HRCSupabaseConfig.enabled = false;
   if (window.location.hash !== hash && hash) window.location.hash = hash;
   window.dispatchEvent(new window.Event('hashchange'));
   await new Promise((r) => setTimeout(r, 120));
   return { dom, window, doc: window.document, errors };
 }
+
+/* Content cleanup must not remove safety information or reintroduce stale setup copy. */
+check('نصوص التشغيل لا تدّعي أن النظام محلي أو غير مربوط', () => {
+  const partial = readFileSync(resolve(ROOT, 'src/partials/dashboard.html'), 'utf8');
+  return !/نظام محلي يعمل داخل المتصفح|جاهز للربط بـ|للحفظ الدائم على السيرفر راجع/.test(partial);
+});
+check('الاختصار يحافظ على شروط الحجز وحقوق البطاقة والتنبيه القانوني', () => {
+  const home = readFileSync(resolve(ROOT, 'src/partials/public.html'), 'utf8');
+  const footer = readFileSync(resolve(ROOT, 'src/partials/footer.html'), 'utf8');
+  const verifyCopy = readFileSync(resolve(ROOT, 'src/partials/verify.html'), 'utf8');
+  return /24 ساعة/.test(home) && /حرجة/.test(home) && /لا تعود متاحة تلقائياً/.test(home) &&
+    /30 يوماً/.test(home) && /الدفع كاش/.test(home) && /الفرصة المستهلكة لا تعود/.test(home) &&
+    /الشركة غير مسؤولة قانونياً وعشائرياً/.test(footer) && /للموظفين والإدارة فقط/.test(verifyCopy);
+});
 
 /* ======================= 1) الموقع العام ======================= */
 console.log('\n=== 1) الموقع العام (index.html) ===');
@@ -267,7 +286,7 @@ await (async () => {
     lastModal(site.doc).querySelector('#bk-print').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 160));
     const err = lastModal(site.doc).querySelector('[data-bk-err="rcode"]');
-    if (!err || !/رمز الفرصة غير صحيح/.test(err.textContent)) return bad(name, 'رمز خاطئ مرّ في إعادة الطباعة');
+    if (!err || !/رمز التحقق غير صحيح/.test(err.textContent)) return bad(name, 'رمز خاطئ مرّ في إعادة الطباعة');
     const real = site.window.HRCStore.getAttempts('HRC-BC-000117')[0].code;
     rc.value = real;
     rc.dispatchEvent(new site.window.Event('input', { bubbles: true }));
@@ -338,13 +357,30 @@ check('قالب البطاقة يحوي الوجهين وكل بياناتها �
   const faces = (html.match(/class="hrc-card[" ]/g) || []).length;
   return faces === 2 || 'عدد الأوجه: ' + faces;
 });
-check('ظهر البطاقة يعرض رمزي الفرصتين بصيغة NNNN-AA ويحمل التعليمات المقفلة', () => {
+check('تصميم البطاقة يعرض رمز تحقق واحداً مستقلاً عن عدد الفرص', () => {
+  for (const count of [1, 2, 3, 6, 10]) {
+    const app = { serial: 'DEMO-ONLY', status: 'blank', cardPrintCode: '7A2C9E4B1D8F6C03', fullName: 'اسم لا يُطبع', phone: '07700000099' };
+    const attempts = Array.from({ length: count }, (_, i) => ({ no: i + 1, code: (1234 + i) + '-AB', slotStatus: 'empty' }));
+    const fragment = JSDOM.fragment(site.window.HRCVoucher.buildHtml(app, attempts));
+    if (fragment.querySelectorAll('.hrc-card').length !== 2 || fragment.querySelectorAll('.code').length !== 1) return 'رموز ناقصة للعدد ' + count;
+    if (attempts.some((t) => fragment.textContent.includes(t.code)) || !fragment.textContent.includes('7A2C-9E4B-1D8F-6C03')) return 'تسرّب رمز فرصة أو تغيّر رمز التحقق';
+    if (/اسم لا يُطبع|07700000099/.test(fragment.textContent)) return 'تسربت بيانات الزبون للبطاقة';
+    if (!fragment.querySelector('.hc-serial') || !fragment.querySelector('.hc-dates')) return 'تسلسل الهوية والتواريخ ناقص';
+    const model = site.window.HRCQR.encode(site.window.HRCStore.cardUrl(app.serial), 'M');
+    const svg = fragment.querySelector('.hrc-qr-slot svg');
+    const modules = model.size || model.moduleCount || model.matrix.length;
+    if (!svg || svg.getAttribute('viewBox') !== '0 0 ' + (modules + 8) + ' ' + (modules + 8)) return 'الهامش الأبيض للباركود غير كافٍ';
+  }
+  const style = site.doc.getElementById('hrc-card-style').textContent;
+  return (/box-sizing:border-box;width:86mm;height:54mm/.test(style) && /size:86mm 54mm/.test(style)) || 'تغير المقاس الفعلي';
+});
+check('البطاقة الأصلية تُطبع برمزي الفرصتين مع حفظ الشروط', () => {
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
   const attempts = site.window.HRCStore.getAttempts('HRC-BC-000120');
   const html = site.window.HRCVoucher.buildHtml(app);
   const codes = attempts.map((t) => t.code);
   if (!codes.every((c) => /^\d{4}-[A-HJ-NP-Z]{2}$/.test(c || ''))) return 'رمز فرصة بصيغة خاطئة: ' + codes.join(',');
-  if (!codes.every((c) => html.includes(c))) return 'ظهر البطاقة لا يعرض الرموز: ' + codes.join(',');
+  if (!codes.every((code) => html.includes(code))) return 'لم تُسترجع رموز الفرص الأصلية';
   const rules = ['فرصتين مستقلتين', '24 ساعة', 'ولا تعود', 'مكتب استنساخ'];
   const miss = rules.filter((r) => !html.includes(r));
   return miss.length === 0 || 'تعليمات ناقصة بالظهر: ' + miss.join(' , ');
@@ -403,7 +439,7 @@ check('الطباعة تُخرج ورقة الاستمارة وحدها (بلا 
   const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
   const printBlock = page.slice(page.indexOf('@media print'));
   return printBlock.includes('#result-content .ok-hero') &&
-    printBlock.includes('#result-content .result-actions') &&
+    printBlock.includes('#pg-result > :not(#result-content)') &&
     printBlock.includes('break-inside:avoid') || 'كتلة الطباعة لا تخفي عناصر الواجهة';
 });
 check('كل خطوات الإدخال فيها زر رجوع، ومؤشر الهاتف يتحقق من 11 رقماً تبدأ بـ 07', () => {
@@ -475,7 +511,7 @@ await (async () => {
     return pass ? ok(name) : bad(name, JSON.stringify({ res: res.error, left: left, now: S.attemptsLeft(serial) }));
   } catch (e) { bad(name, e.message); }
 })();
-check('التحقق برمز الفرصة يكشف بيانات البطاقة كاملة (إثبات الحيازة)', () => {
+check('رمز التحقق المستقل يكشف بيانات الطباعة بعد إثبات الحيازة', () => {
   const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
   const code = S.getAttempts(serial)[0].code;
   const r = S.cardVerifyCode(serial, code);
@@ -628,6 +664,7 @@ const dash = await load('dashboard.html');
    أمنياً ولا يُخفض للاختبارات. فاختبارات الواجهة الداخلية تزرع حساباتها في
    هذا المتصفح الافتراضي وحده (كما تُزرع جلسة الموظف أعلاه)، والدخول هنا
    محلي بحت لأن jsdom بلا fetch فلا سحابة أصلاً. */
+dash.window.HRCSupabaseConfig.enforceAuth = false; // isolated local UI fixture only
 dash.window.HRC_CONFIG.users = [
   { username: 'admin', password: 'admin123', name: 'مدير الفحص', role: 'admin', title: 'مدير عام' },
   { username: 'staff', password: 'staff123', name: 'موظف فحص', role: 'staff', title: 'موظف توظيف' }
@@ -768,6 +805,19 @@ check('نموذج إضافة وظيفة يُنتج كود HRC-#### جديداً'
   const newJob = dash.window.HRCStore.listJobs({}).find((j) => j.title === 'فني تبريد');
   return (after === before + 1 && newJob && /^HRC-\d{4}$/.test(newJob.code)) || ('عدد ' + after + ' / كود ' + (newJob && newJob.code));
 });
+check('نموذج رمز صاحب العمل: ست خانات مقنّعة، تطبيع عربي، تأكيد، وحفظ منفصل عن بيانات الوظيفة', () => {
+  closeAllModals(dash.doc);const S=dash.window.HRCStore,originalStatus=S.cloudStatus,originalSave=S.saveJobWithPin;
+  let captured=null;S.cloudStatus=()=>({state:'on',role:'staff'});S.saveJobWithPin=(code,data,pin)=>{captured={code,data,pin};return Promise.resolve({ok:false,error:'فشل اختباري بلا كتابة'});};
+  try{
+    dash.doc.getElementById('btn-new-job').click();const box=lastModal(dash.doc),pin=box.querySelector('#f-epin'),confirmation=box.querySelector('#f-epin-confirm');
+    if(!pin.required||pin.type!=='password'||pin.value!==''||!confirmation)return 'الرمز ليس مطلوباً ومقنّعاً وفارغاً';
+    box.querySelector('#f-title').value='وظيفة اختبار آمن';box.querySelector('#f-ename').value='صاحب عمل';box.querySelector('#f-ephone').value='07700000000';
+    pin.value='٠٥٨٢٩٧';pin.dispatchEvent(new dash.window.Event('input'));if(pin.value!=='058297')return 'فشل تطبيع الرمز';
+    confirmation.value='123456';box.querySelector('#job-save').click();if(captured)return 'قبل رمزين غير متطابقين';
+    confirmation.value='058297';box.querySelector('#job-save').click();
+    return !!captured&&captured.pin==='058297'&&!JSON.stringify(captured.data).includes('058297')||'الرمز لم يرسل منفصلاً إلى RPC';
+  }finally{S.cloudStatus=originalStatus;S.saveJobWithPin=originalSave;closeAllModals(dash.doc);}
+});
 check('شاشة الحجوزات تعرض الحجوزات الجارية مع العدّاد التنازلي', () => {
   const r = dash.window.HRCStore.selectAttempt('HRC-BC-000117', 'HRC-1049');
   // HRC-1049 مغلقة → نتوقع فشلاً، ثم نجرّب وظيفة متاحة
@@ -801,10 +851,27 @@ check('البحث السريع بالكود يفتح بطاقة الوظيفة',
   const modal = lastModal(dash.doc);
   return (modal && modal.textContent.includes('HRC-1045') && modal.textContent.includes('بطاقة الوظيفة الداخلية')) || 'لم تُفتح البطاقة';
 });
-check('الإعدادات: الفرصتان والإفراج التلقائي مقفلان (لا يظهران كحقلي تحرير)', () => {
+check('الإعدادات مختصرة والنسخ الجديد منفصل عن الأدوات القديمة', () => {
+  const doc = dash.doc, advanced = doc.getElementById('settings-advanced');
+  const main = doc.querySelector('#view-settings .settings-main'), recovery = doc.getElementById('recovery-tools');
+  return (!!advanced && !advanced.open && !!recovery && !advanced.contains(recovery) &&
+    main.contains(doc.getElementById('settings-form')) && main.contains(doc.getElementById('users-table-body')) &&
+    advanced.contains(doc.getElementById('set-verify-base')) &&
+    ['btn-export','btn-import','btn-schedule-backup','btn-reset'].every(id=>!advanced.querySelector('#'+id))) || 'اختل ترتيب الأساسيات أو بقيت أدوات النسخ القديمة';
+});
+check('قسم الاتصال وإدارة القناة محذوف من الصفحة وليس مخفياً', () => {
+  return ['settings-connection', 'users-channel', 'btn-cloud-key'].every((id) => !dash.doc.getElementById(id)) || 'بقيت أدوات القناة في الصفحة';
+});
+check('الإعدادات المتقدمة تُفتح وتُغلق بلوحة التحكم', () => {
+  const advanced = dash.doc.getElementById('settings-advanced');
+  advanced.querySelector('summary').click();
+  const opened = advanced.open;
+  advanced.querySelector('summary').click();
+  return (opened && !advanced.open) || 'القسم المتقدم لا يفتح ويغلق';
+});
+check('الإعدادات: عدد الفرص قابل للتعديل والإفراج التلقائي مقفل', () => {
   const att = dash.doc.getElementById('set-attempts');
-  const auto = dash.doc.getElementById('set-auto');
-  return (!att && !auto) || 'حقل مقفل ما زال قابلاً للتحرير';
+  return (att && !att.disabled && att.min === '1' && att.max === '10' && !dash.doc.getElementById('set-auto')) || 'حقول القواعد غير صحيحة';
 });
 check('صلاحية المدير تُظهر اللوحة المالية وسجل التدقيق الكامل', () => {
   closeAllModals(dash.doc);
@@ -820,6 +887,28 @@ check('صلاحية المدير تُظهر اللوحة المالية وسجل
   const auditRows = dash.doc.querySelectorAll('#audit-table-body tr').length;
   return (navVisible && view.classList.contains('active') && bars > 0 && stats === 4) ||
     ('ظاهر: ' + navVisible + ' / نشط: ' + view.classList.contains('active') + ' / أعمدة: ' + bars + ' / بطاقات: ' + stats + ' / سجل: ' + auditRows);
+});
+check('تغيير عدد الفرص من إعدادات المدير يحفظ حقوق البطاقات القديمة', () => {
+  const store = dash.window.HRCStore;
+  const old = store.createApplicant({ fullName: 'بطاقة قبل التغيير', phone: '07711111111' });
+  const form = dash.doc.getElementById('settings-form');
+  const field = dash.doc.getElementById('set-attempts');
+  field.value = '3';
+  form.dispatchEvent(new dash.window.Event('submit', { bubbles: true, cancelable: true }));
+  const newer = store.createApplicant({ fullName: 'بطاقة بعد التغيير', phone: '07711111112' });
+  const valid = store.settings().attemptLimit === 3 && store.getAttempts(old.serial).length === 2 &&
+    old.attemptLimit === 2 && store.getAttempts(newer.serial).length === 3 && newer.attemptLimit === 3 &&
+    store.getAttempts(newer.serial).every((t) => dash.window.HRCVoucher.buildHtml(newer).includes(t.code));
+  field.value = '2';
+  form.dispatchEvent(new dash.window.Event('submit', { bubbles: true, cancelable: true }));
+  return (valid && newer.attemptLimit === 3 && store.settings().attemptLimit === 2) || 'تغيّرت حقوق البطاقات أو لم يُحفظ الإعداد';
+});
+check('الإعدادات ترفض أعداد الفرص غير الصالحة', () => {
+  const store = dash.window.HRCStore;
+  for (const value of [0, -1, 1.5, 11]) {
+    try { store.updateSettings({ attemptLimit: value }); return 'قُبل عدد غير صالح: ' + value; } catch (e) { }
+  }
+  return store.settings().attemptLimit === 2;
 });
 check('اللوحة المالية تحسب المتوقع تحصيله = البطاقات × السعر', () => {
   const fee = dash.window.HRCStore.settings().formFee;
@@ -1044,8 +1133,8 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
 console.log('\n=== 8) أدوات الموظف — التحقق من المنظومة الداخلية (بجلسة موظف) ===');
 {
   const dash = await load('dashboard.html', { session: STAFF_SESSION });
-  const DB = site.window.HRCStore.exportJson();
-  dash.window.HRCStore.importJson(DB);
+  const DB = JSON.stringify(site.window.HRCStore.db());
+  injectFixture(dash.window.HRCStore,DB);
   dash.window.HRCStore.emit && dash.window.HRCStore.emit();
   dash.window.HRCRefresh && dash.window.HRCRefresh();
   await new Promise((r) => setTimeout(r, 200));
@@ -1078,7 +1167,7 @@ console.log('\n=== 8) أدوات الموظف — التحقق من المنظو
 
   /* المدير: نفس الأدوات + الصلاحيات الإدارية قائمة */
   const admin = await load('dashboard.html', { session: { username: 'admin', name: 'مدير فحص', role: 'admin', title: 'مدير عام', at: new Date().toISOString() } });
-  admin.window.HRCStore.importJson(DB);
+  injectFixture(admin.window.HRCStore,DB);
   admin.window.HRCStore.emit && admin.window.HRCStore.emit();
   await new Promise((r) => setTimeout(r, 150));
   check('لوحة المدير تفتح وتُظهر أدوات الإدارة (اللوحة المالية)', () => {

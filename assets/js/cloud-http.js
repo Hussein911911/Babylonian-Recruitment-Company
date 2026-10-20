@@ -54,8 +54,9 @@
       return { message: msg, code: code || ('HTTP_' + status) };
     }
 
-    function request(method, path, body, write, both) {
+    function request(method, path, body, write, both, exactCount) {
       var init = { method: method, headers: headers(write, both) };
+      if (exactCount) init.headers.Prefer = 'count=exact';
       if (body !== undefined) {
         init.headers['Content-Type'] = 'application/json';
         init.body = JSON.stringify(body);
@@ -65,7 +66,11 @@
           if (!res.ok) return { data: null, error: toError(res.status, txt), status: res.status };
           var data = null;
           if (txt) { try { data = JSON.parse(txt); } catch (e) { data = txt; } }
-          return { data: data, error: null, status: res.status };
+          var cr = res.headers && res.headers.get('content-range');
+          var total = cr && /\/(\d+)$/.exec(cr);
+          var result = { data: data, error: null, status: res.status };
+          if (total) result.count = Number(total[1]);
+          return result;
         });
       }).catch(function (e) {
         return { data: null, error: { message: 'تعذّر الاتصال: ' + (e && e.message || e), code: 'NETWORK' } };
@@ -74,15 +79,16 @@
 
     /* نفس واجهة supabase-js للمسار العام: from(t).select(c).eq(..).limit(..) */
     function from(table) {
-      var q = { cols: '*', filters: [], limit: null, order: null };
+      var q = { cols: '*', filters: [], limit: null, order: null, offset: null, exactCount: false };
       var api = {
-        select: function (cols) { if (cols) q.cols = cols; return api; },
+        select: function (cols, options) { if (cols) q.cols = cols; q.exactCount = !!(options && options.count === 'exact'); return api; },
         eq: function (col, val) { q.filters.push(col + '=' + encodeURIComponent(val)); return api; },
         order: function (col, o) {
           q.order = col + '.' + ((o && o.ascending === false) ? 'desc' : 'asc');
           return api;
         },
         limit: function (n) { q.limit = n; return api; },
+        range: function (from, to) { q.offset = from; q.limit = to - from + 1; return api; },
         single: function () { return run().then(function (r) {
           if (r.error) return r;
           var rows = Array.isArray(r.data) ? r.data : [];
@@ -95,7 +101,8 @@
         var qs = ['select=' + encodeURIComponent(q.cols)].concat(q.filters);
         if (q.order) qs.push('order=' + encodeURIComponent(q.order));
         if (q.limit != null) qs.push('limit=' + q.limit);
-        return request('GET', table + '?' + qs.join('&'), undefined, false);
+        if (q.offset != null) qs.push('offset=' + q.offset);
+        return request('GET', table + '?' + qs.join('&'), undefined, false, false, q.exactCount);
       }
       return api;
     }

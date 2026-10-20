@@ -143,7 +143,7 @@ function makeFetch(server, browser) {
     /* ───────────── PostgREST ───────────── */
     const rest = /\/rest\/v1\/([a-z_]+)/.exec(url);
     if (rest) {
-      const table = rest[1];
+      const table = rest[1].replace(/^working_/, '');
       /* ⚠️ RLS حقيقية السلوك: بلا جلسة موظف ولا مفتاح خدمة — لا قراءة لجداول
          الموظفين. هذا ما يجعل اختبار «الزائر لا يقرأ» واختبار «الدخول يفتح
          البيانات» ذا معنى (لو سمحنا للجميع لصار كل شيء أخضر بلا فائدة). */
@@ -151,6 +151,7 @@ function makeFetch(server, browser) {
       if (!allowed && table !== 'public_jobs') {
         return Promise.resolve(reply(401, { code: '42501', message: 'permission denied for table ' + table }));
       }
+      if(table==='rpc'&&url.includes('/staff_issuance_registry')&&server.staff.some(s=>s.auth_id===sessionUserId&&s.active!==false)){const args=JSON.parse(init.body||'{}');return Promise.resolve(reply(200,args.p_serial==null?{version:1,bitmap:Buffer.alloc(595125).toString('base64')}:{used:false}));}
       if (table === 'staff' && sessionUserId && !isService) {
         /* الموظف يقرأ سطره هو — كما في سياسة staff_self_read */
         let rows = server.staff.filter((r) => r.auth_id === sessionUserId);
@@ -245,7 +246,7 @@ console.log('═'.repeat(74));
 const server = makeServer();
 
 /* ===========================================================================
- *  1) متصفح المدير: يدخل محلياً (الوضع المعلَن) ويصل إلى إدارة الموظفين
+ *  1) متصفح المدير: يدخل بحساب Supabase Auth الرسمي ويصل إلى إدارة الموظفين
  * =========================================================================== */
 step(1, 'متصفح المدير: دخول + الوصول إلى «إدارة الموظفين والصلاحيات»');
 const mgr = await openBrowser(server, 'manager');
@@ -254,16 +255,18 @@ check('المكتبة الحقيقية محمّلة (window.supabase)', !!(mgr.w
 check('عميل الدوال متاح (functions.invoke) — شرط قناة الدالة السحابية',
   !!(mgr.window.HRCStore && mgr.window.HRCStore.cloudStatus().configured));
 
-submitLogin(mgr.window, mgr.doc, 'admin', 'admin123');   // الحساب المعلَن في config.js
+submitLogin(mgr.window, mgr.doc, 'admin', 'admin123');
+await sleep(300);
+check('الحساب المحلي القديم مرفوض', !shellShown(mgr.doc) && !mgr.window.HRCStore.currentUser());
+submitLogin(mgr.window, mgr.doc, 'admin', 'Admin@12345'); // Supabase Auth fixture
 await sleep(400);
 check('الدخول نجح واللوحة ظاهرة', shellShown(mgr.doc), loginErrText(mgr.doc));
 
 mgr.doc.querySelector('#side-nav button[data-view="settings"]').click();
 await sleep(150);
 check('قسم الإعدادات ظاهر', !mgr.doc.getElementById('view-settings').classList.contains('hidden'));
-const strip = mgr.doc.getElementById('users-channel');
-check('شريط «قناة إنشاء الحسابات» ظاهر', !!strip && /قناة|لا قناة|جاهز/.test(strip.textContent),
-  strip && strip.textContent.slice(0, 120));
+check('لا قسم قناة أو ربط سحابة في الإعدادات',
+  !mgr.doc.getElementById('settings-connection') && !mgr.doc.getElementById('users-channel') && !mgr.doc.getElementById('btn-cloud-key'));
 
 /* ===========================================================================
  *  2) المدير يُنشئ حساب موظف من النموذج (عبر مفتاح الخدمة المفحوص)

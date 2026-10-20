@@ -157,9 +157,8 @@ const note = t1.doc.getElementById('hrc-cloud-note');
 const banner = t1.doc.getElementById('hrc-cloud-banner');
 check('شاشة الدخول تُعلن الحالة (ملاحظة ظاهرة)', !!note && /متصل|انتقالي|محلي/.test(note.textContent), note && note.textContent.slice(0, 60));
 const devWarn = t1.doc.getElementById('hrc-dev-accounts');
-check('تذكير الفريق بحذف حسابات الكود ظاهر (قبل التسليم)', !!devWarn && /تُحذف قبل التسليم/.test(devWarn.textContent),
-  devWarn && devWarn.textContent.slice(0, 80));
-check('التذكير لا يعرض أي كلمة مرور', !!devWarn && !/admin123|staff123/.test(devWarn.textContent));
+check('تذكير الفريق غير منشور حتى في الوضع الانتقالي', devWarn === null);
+check('شاشة الدخول لا تعلن أي كلمة مرور افتراضية', !/admin123|staff123|الدخول الأول/.test(t1.doc.getElementById('login-wrap').textContent));
 check('بانر الحالة ظاهر في أعلى الصفحة', !!banner, 'لا بانر');
 check('البانر يشرح الوضع الانتقالي وخطوة إكمال التحوّل',
   !!banner && /انتقالي|محلي/.test(banner.textContent) && /enforceAuth|حساب/.test(banner.textContent),
@@ -180,7 +179,8 @@ check('لا شيء يُدفع للقاعدة في الوضع الانتقالي 
  *  2) الوضع النهائي (enforceAuth=true): لا باب خلفي
  * =========================================================================== */
 step(2, 'الوضع النهائي — enforceAuth=true يمنع الدخول المحلي تماماً');
-const t2 = await open({ enforceAuth: true });
+const t2 = await open(); // production settings, without overriding the auth lock
+check('الإنتاج بلا حسابات محلية افتراضية', t2.window.HRC_CONFIG.users.length === 0);
 t2.window.HRCStore.logout();
 await new Promise((r) => setTimeout(r, 120));
 check('مفتاح enforceAuth مفعّل كما ضبطه المسؤول', t2.window.HRCStore.cloudStatus().enforceAuth === true);

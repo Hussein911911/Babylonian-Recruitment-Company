@@ -1,25 +1,13 @@
-/* ===========================================================================
- *  HRC — طبقة الربط بـ Supabase (HRCCloud)
- *  ---------------------------------------------------------------------------
- *  الفكرة المعمارية:
- *    الواجهة تنادي HRCStore بشكل **متزامن** (222 نقطة استدعاء)، وسوبابيس
- *    **غير متزامنة**. الحل: نحتفظ بنسخة كاملة من البيانات في الذاكرة بنفس شكل
- *    HRCStore المحلي (كائن db)، ونملؤها من سوبابيس عند الإقلاع، ثم:
- *      • القراءة  → من الذاكرة فوراً (بلا تغيير في أي نقطة استدعاء)
- *      • الكتابة  → تحديث الذاكرة فوراً + دفع لسوبابيس في الخلفية + emit()
- *      • التغيير  → Realtime يحدّث الذاكرة ويستدعي emit() لباقي المستخدمين
- *    بهذا لا تحتاج 222 نقطة استدعاء أي تعديل.
- *
- *  هذا الملف مسؤول عن **التحويل والتحميل** فقط:
- *    • تحويل الأعمدة: snake_case (SQL) ↔ camelCase (JS)
- *    • تجميع الكائنات المركّبة: employer{} · سجل التدقيق · الإعدادات
- *    • وصل المحاولات بالوظائف والموظفين (البيانات المُسطّحة غير موجودة في SQL)
- *
- *  بلا أي حزم خارجية — يستقبل عميل سوبابيس كوسيط، فيمكن اختباره بعميل وهمي
- *  دون شبكة (انظر tests/cloud.mjs).
- * =========================================================================== */
+/* HRCCloud: SQL/UI mapping, bounded paged reads and RPC adapters. */
 (function (root) {
   'use strict';
+
+  var chanceBitmap=null;
+  function chanceIndex(code){var m=/^([1-9][0-9]{3})-([A-HJKMNP-Z])([A-HJKMNP-Z])$/.exec(code||'');if(!m)return -1;var letters='ABCDEFGHJKMNPQRSTUVWXYZ';return (Number(m[1])-1000)*529+letters.indexOf(m[2])*23+letters.indexOf(m[3]);}
+  function chanceUsed(code){var i=chanceIndex(code);return !!(chanceBitmap&&i>=0&&(chanceBitmap[i>>3]&(1<<(i%8))));}
+  function rememberChance(code){var i=chanceIndex(code);if(chanceBitmap&&i>=0)chanceBitmap[i>>3]|=1<<(i%8);}
+  function clearChanceRegistry(){chanceBitmap=null;}
+  function setChanceRegistry(data){if(!data||data.version!==1||typeof data.bitmap!=='string')throw Error('سجل رموز الفرص غير متاح');var raw=(root.atob||atob)(data.bitmap);if(raw.length!==595125)throw Error('سجل رموز غير مكتمل');chanceBitmap=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)chanceBitmap[i]=raw.charCodeAt(i);}
 
   /* ---------------------------- أدوات مساعدة ---------------------------- */
   var ISO_RE = /^\d{4}-\d{2}-\d{2}T/;
@@ -49,6 +37,7 @@
   /* ------------------------- تحويل الوظائف (jobs) ------------------------- */
   function jobFromDb(r) {
     return {
+      employerPinSet: r.employer_pin_set === true,
       id: r.id,
       code: r.code,
       title: r.title,
@@ -72,16 +61,18 @@
       reservedBy: r.reserved_by || null,
       holdExpiresAt: toISO(r.hold_expires_at),
       createdAt: toISO(r.created_at),
+      updatedAt: toISO(r.updated_at),
       createdBy: r.created_by || null,
       closedAt: toISO(r.closed_at),
       notes: r.notes || '',
       vacancies: n(r.vacancies, 1),
+      manualClosed: r.manual_closed, filledVacancyNumbers:r.filled_vacancy_numbers, availableVacancies:r.available_vacancies,
       imageUrl: r.image_url || ''
     };
   }
 
   function jobToDb(o) {
-    return {
+    var row = {
       code: o.code, title: o.title, category: o.category || 'خدمات', region: o.region, governorate: o.governorate || 'بابل',
       salary_min: n(o.salaryMin), salary_max: n(o.salaryMax),
       shift: o.shift || 'صباحي', gender: o.gender || 'لا فرق',
@@ -99,13 +90,16 @@
       notes: o.notes || '',
       image_url: o.imageUrl || ''
     };
+    if(typeof o.manualClosed==='boolean')row.manual_closed=o.manualClosed;
+    return row;
   }
 
   /* ------------------------ تحويل الاستمارات (applicants) ------------------------ */
   function applicantFromDb(r) {
     return {
       id: r.id,
-      serial: r.serial,
+      serial: r.serial, archivedAt: r.archived_at || null,
+      cardPrintCode: r.card_print_code || null,
       fullName: r.full_name,
       phone: r.phone,
       address: r.address || '',
@@ -157,6 +151,7 @@
          الطلب وانتهت الصلاحية 30 يوماً من لحظة الطلب لا من لحظة الإصدار. */
     if (o.issueDate) row.issue_date = o.issueDate;
     if (o.expiryDate) row.expiry_date = o.expiryDate;
+    if (o.cardPrintCode) row.card_print_code = o.cardPrintCode;
     if (o.attemptLimit != null) row.attempt_limit = n(o.attemptLimit, 5);
     return row;
   }
@@ -179,6 +174,7 @@
       location: job ? job.region : null,
       employerName: job ? job.employer.name : null,
       employerPhone: job ? job.employer.phone : null,
+      vacancyNo: r.vacancy_no || null,
       slotStatus: r.slot_status || 'empty',
       code: r.chance_code || null,          /* رمز الفرصة السري (ظهر البطاقة) */
       selectedAt: toISO(r.selected_at),
@@ -197,7 +193,7 @@
   var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   function attemptToDb(o) {
-    return {
+    var row = {
       serial: o.serial, attempt_no: n(o.no),
       /* ⚠️ job_id يُرسل فقط إن كان UUID صالحاً: المعرّفات المحلية المولَّدة
          (uid('job') = 'job-xxxx') ليست UUID، وإرسالها يُفشل الإدراج بـ
@@ -212,6 +208,8 @@
       employer_decision: o.employerDecision || null, decision_at: o.decisionAt || null,
       employer_reason: o.reason || null
     };
+    if(o.vacancyNo!=null)row.vacancy_no=o.vacancyNo;
+    return row;
   }
 
   /* ---------------------------- التدقيق (audit_log) ---------------------------- */
@@ -246,10 +244,7 @@
     };
   }
 
-  /* ------------------------- الإعدادات (settings: key/value jsonb) -------------------------
-   *  SQL تُخزّن صفوفاً: ('rules', {...}) و ('company', {...}).
-   *  الواجهة تتوقّع كائناً مسطّحاً بقيم camelCase.
-   * ----------------------------------------------------------------------------- */
+  // Flatten SQL settings JSON into UI configuration.
   function settingsFromDb(rows) {
     var out = {};
     (rows || []).forEach(function (r) {
@@ -296,12 +291,8 @@
     var audit = (data.audit_log || []).map(auditFromDb);
     var settings = settingsFromDb(data.settings);
 
-    /* آخر أرقام التسلسل: نستنتجها من البيانات الفعلية حتى لا تتصادم الأكواد
-       الجديدة مع القديمة. (المصدر الحقيقي تسلسلات PostgreSQL، وهذي للعرض فقط.) */
+    // Infer display-only counters from server-assigned identifiers.
     var maxJob = 1041, maxSerial = 119;
-    /* بادئة واحدة موحّدة HRC — لا صيغة ثانية في المنظومة:
-       القاعدة تحوي سجلات صدرت بالرمز القديم، ولو تجاهلناها لعاد العدّاد إلى
-       رقم مستعمَل فتتكرّر الأكواد على وظيفتين مختلفتين. */
     jobs.forEach(function (j) {
       var m = /^HRC-(\d+)$/.exec(j.code || '');
       if (m) maxJob = Math.max(maxJob, Number(m[1]));
@@ -329,41 +320,76 @@
    * ========================================================================== */
   var TABLES = ['jobs', 'applicants', 'job_attempts', 'audit_log', 'settings', 'staff'];
 
+  // Stable, bounded pages: never silently adopt a truncated table. Exact counts
+  // also handle API row caps SMALLER than our requested 500 rows.
+  function readPages(client, table, maximum) {
+    var keys = { jobs: 'code', applicants: 'serial', job_attempts: 'id', audit_log: 'id', settings: 'key', staff: 'id', public_jobs: 'code' };
+    keys.working_jobs='code';keys.working_applicants='serial';keys.working_job_attempts='id';
+    var key = keys[table], rows = [], expected = null, seen = Object.create(null);
+    function query() {
+      var q = client.from(table).select('*', { count: 'exact' });
+      if (table === 'audit_log') q = q.order('ts', { ascending: false });
+      return q.order(key, { ascending: true });
+    }
+    var first = query();
+    // Compatibility with older injected adapters. All shipped production clients
+    // implement range; dedicated capped-API tests exercise that path.
+    if (typeof first.range !== 'function') return table === 'audit_log' ? first.limit(maximum) : first;
+    function failure(message) { return { data: null, error: { message: message, code: 'INCOMPLETE_LOAD' } }; }
+    function next(q) {
+      return Promise.resolve(q.range(rows.length, Math.min(rows.length + 499, maximum - 1))).then(function (res) {
+        if (!res || res.error) return res || failure('لا نتيجة من القاعدة');
+        var count = typeof res.count === 'number' ? res.count : null;
+        if (expected !== null && count !== null && count !== expected) return failure('تغير عدد السجلات أثناء التحميل؛ أعد التحديث');
+        if (expected === null) expected = count;
+        if (table !== 'audit_log' && count > maximum) return failure('حجم الجدول يتجاوز حد التحميل الآمن؛ يلزم تقسيم البيانات');
+        var page = Array.isArray(res.data) ? res.data : [];
+        for (var i = 0; i < page.length; i++) {
+          var id = String(page[i][key]);
+          if (seen[id]) return failure('تكرر سجل أثناء التحميل؛ أعد التحديث');
+          seen[id] = true; rows.push(page[i]);
+        }
+        var target = expected === null ? null : Math.min(expected, maximum);
+        if (target !== null && rows.length >= target) return { data: rows, error: null };
+        if (!page.length) return target === null ? { data: rows, error: null } : failure('لم يكتمل تحميل الجدول');
+        if (rows.length >= maximum) return table === 'audit_log' ? { data: rows, error: null } : failure('تجاوز حد التحميل الآمن');
+        if (target === null && page.length < 500) return { data: rows, error: null };
+        return next(query());
+      });
+    }
+    return next(first);
+  }
+
   function fetchAll(client, opts) {
     opts = opts || {};
     var limit = opts.auditLimit || 2000;
 
     var queries = TABLES.map(function (t) {
-      var q = client.from(t).select('*');
-      if (t === 'audit_log') q = q.order('ts', { ascending: false }).limit(limit);
-      return q;
+      var source=opts.workspace&&['jobs','applicants','job_attempts'].indexOf(t)>=0?'working_'+t:t;
+      return readPages(client, source, t === 'audit_log' ? limit : 100000);
     });
 
+    if(opts.workspace){queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_card_report',{p_from:null,p_to:null});}).catch(function(){return {error:true};}));queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_issuance_registry',{p_serial:null});}).then(function(r){if(r.error)throw Error('تعذر قراءة سجل الرموز');setChanceRegistry(r.data);return {ok:true};}).catch(function(e){return {error:{message:e.message,code:'REGISTRY_REQUIRED'}};}));}
     return Promise.all(queries).then(function (results) {
       var failed = [];
       var data = {};
-      results.forEach(function (res, i) {
+      results.slice(0,TABLES.length).forEach(function (res, i) {
         var t = TABLES[i];
         if (res && res.error) { failed.push({ table: t, error: res.error }); data[t] = []; }
         else data[t] = (res && res.data) || [];
       });
       var db = buildDb(data);
+      if(opts.workspace&&results[TABLES.length+1].error&&!failed.some(function(f){return f.table==='job_attempts';}))failed.push({table:'job_attempts',error:results[TABLES.length+1].error});
       db.meta.failedTables = failed.map(function (f) { return f.table; });
       db.meta.errors = failed;
+      if(opts.workspace){db.meta.workspace=true;db.meta.partialTables=['jobs','applicants','job_attempts'];var report=results[TABLES.length];if(report&&!report.error&&report.data&&report.data.stats&&Array.isArray(report.data.rows))db.meta.serverReport=report.data;}
       return db;
     });
   }
 
-  /* ============================================================================
-   *  القراءة العامة (بلا تسجيل دخول) — للزائر
-   *  ---------------------------------------------------------------------------
-   *  anon لا يملك صلاحية على brc.jobs إطلاقاً (RLS)، بل على العرض brc.public_jobs
-   *  فقط. فلو قرأ الزائر brc.jobs لرجع الجدول فارغاً/مرفوضاً وظهر الموقع بلا وظائف.
-   *  لذلك للزائر مسار قراءة منفصل — وهذا هو الفرق بين «يعمل عند الموظف» و«يعمل
-   *  عند الزائر»، وهو فرق يُكتشف متأخراً عادةً (الموظف مُسجَّل دخوله فلا يرى الخلل).
-   * ========================================================================== */
+  // Public reads use the RLS-safe public_jobs view, never the jobs table.
   function fetchPublicJobs(client) {
-    return client.from('public_jobs').select('*').then(function (res) {
+    return readPages(client, 'public_jobs', 100000).then(function (res) {
       if (res && res.error) {
         return { ok: false, error: res.error, jobs: [] };
       }
@@ -486,6 +512,7 @@
     }
 
     if (table === 'applicants') {
+      if(db.meta&&db.meta.workspace&&row&&row.archived_at){removeFrom(db.applicants,row.serial,function(x){return x.serial;});db.attempts=db.attempts.filter(function(t){if(t.serial===row.serial){rememberChance(t.code);return false;}return true;});if(Array.isArray(db.usedSerials))db.usedSerials=db.usedSerials.filter(function(s){return s!==row.serial;});return db;}
       if (type === 'DELETE') removeFrom(db.applicants, old.serial, function (x) { return x.serial; });
       else replaceIn(db.applicants, applicantFromDb(row), function (x) { return x.serial; });
       return db;
@@ -570,6 +597,7 @@
           card: {
             serial: c.serial, fullName: c.fullName, phone: c.phone,
             status: c.status, issueDate: c.issueDate, expiryDate: c.expiryDate,
+            usesCardPrintCode: c.usesCardPrintCode === true,
             chancesLeft: c.chancesLeft, succeeded: c.succeeded === true,
             chances: (c.chances || []).map(function (ch) {
               return {
@@ -607,10 +635,9 @@
       });
   }
 
-  /* إثبات حيازة البطاقة لإعادة الطباعة: الباركود + رمز إحدى الفرصتين
-     يُرجع الحمولة الكاملة للطباعة (الاسم والهاتف ورمزا الفرصتين) */
+  /* حمولة الطباعة المحمية برمز مستقل، أو رمز فرصة للبطاقات القديمة فقط. */
   function verifyCardCodeRpc(client, serial, code) {
-    if (!serial || !code) return Promise.resolve({ ok: false, error: 'أدخل الباركود ورمز الفرصة' });
+    if (!serial || !code) return Promise.resolve({ ok: false, error: 'أدخل الباركود ورمز التحقق' });
     return rpcCall(client, 'verify_card_code', { p_serial: String(serial).trim(), p_code: String(code).trim() })
       .then(function (res) {
         if (res && res.error) {
@@ -618,8 +645,8 @@
         }
         var data = res && res.data;
         if (!data || typeof data !== 'object') return { ok: false, code: 'empty', error: 'لا نتيجة من الخادم' };
-        if (data.ok === false) return { ok: false, code: 'bad_code', error: data.error || 'رمز الفرصة غير صحيح' };
-        return { ok: true, data: data };
+        if (data.ok === false) return { ok: false, code: 'bad_code', error: data.error || 'رمز التحقق غير صحيح' };
+        return { ok: true, data: data.data || data };
       })
       .catch(function (e) {
         return { ok: false, code: 'network', error: 'تعذّر الاتصال: ' + (e && e.message || e) };
@@ -722,7 +749,7 @@
     staffFromDb: staffFromDb,
     settingsFromDb: settingsFromDb, settingsToDb: settingsToDb,
     /* بيانات */
-    buildDb: buildDb, fetchAll: fetchAll, TABLES: TABLES,
+    chanceUsed:chanceUsed,rememberChance:rememberChance,clearChanceRegistry:clearChanceRegistry, rpcCall:rpcCall, buildDb: buildDb, fetchAll: fetchAll, TABLES: TABLES,
 
     fetchPublicJobs: fetchPublicJobs, verifyForm: verifyForm,
     lookupCard: lookupCardRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,

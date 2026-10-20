@@ -341,8 +341,8 @@ const empLink = findByOnclick('G.openEmployer()');
 check('جملة «صاحب العمل؟» ظاهرة أسفل «ابدأ الآن» في صفحة الترحيب',
   !!empLink && /صاحب العمل؟/.test(empLink.textContent), empLink ? empLink.textContent : 'غير موجودة');
 vm.runInContext('G.openEmployer()', ctx);
-check('الضغط عليها يفتح صفحة صاحب العمل بنفس الباركود (role=employer)',
-  /index\.html\?role=employer#card=HRC-BC-000120$/.test(String(sandbox.location.href)),
+check('الضغط عليها يفتح بوابة تحقق صاحب العمل بنفس الباركود',
+  /employer\.html\?form=HRC-BC-000120$/.test(String(sandbox.location.href)),
   String(sandbox.location.href));
 sandbox.location.href = '';
 
@@ -571,6 +571,12 @@ const res = $('result-content').innerHTML;
 check('علامة النجاح المرسومة (SVG) موجودة', res.includes('ok-check') && res.includes('ok-title'));
 check('ورقتان A4 — استمارة لكل وظيفة اختارها الزبون', (res.match(/class="form-sheet"/g) || []).length === 2,
   String((res.match(/class="form-sheet"/g) || []).length));
+check('كل استمارة تقسم البيانات إلى ثلاثة أقسام مستقلة ومرقمة',
+  (res.match(/class="fs-section fs-customer"/g) || []).length === 2 &&
+  (res.match(/class="fs-section fs-job"/g) || []).length === 2 &&
+  (res.match(/class="fs-section fs-employer"/g) || []).length === 2 &&
+  (res.match(/class="fs-section-no"/g) || []).length === 6 &&
+  (res.match(/<section/g) || []).length === (res.match(/<\/section>/g) || []).length);
 check('الاستمارتان تحملان رقم الباركود', (res.match(/HRC-BC-000120/g) || []).length >= 4, String((res.match(/HRC-BC-000120/g) || []).length));
 check('الاستمارتان تُعيدان بيانات الزبون المطبوعة', res.includes('أحمد محمد علي حسن') && res.includes('07712345678'));
 check('كل استمارة تحمل وظيفتها وكودها',
@@ -585,7 +591,7 @@ check('ملاحظة «باركود البطاقة نفسه» موجودة في �
 check('كل استمارة بها الفرصة والمهلة وتاريخ الانتهاء', /الفرصة/.test(res) && /مهلة الرد على الحجز/.test(res));
 check('عنوان النجاح يعدّ الفرصتين', /فرصتان|فرصتين/.test(res), (res.match(/ok-sub[^<]*/) || [''])[0]);
 const acts = $('result-actions').innerHTML;
-check('زر طباعة الاستمارات', actions_has(acts, 'طباعة') && acts.includes('window.print()'));
+check('زر طباعة الاستمارات', actions_has(acts, 'طباعة') && acts.includes('G.printApplication()') && typeof sandbox.G.printApplication === 'function');
 check('لا زر «وظيفة ثانية» — الفرصتان استُهلكتا', !actions_has(acts, 'وظيفة ثانية'), acts.slice(0, 160));
 check('تنبيه استهلاك الفرصتين ظاهر للزبون', /استُهلكت فرصتا البطاقة/.test(res), res.slice(-260));
 check('زر نسخ رابط الاستمارة', acts.includes('copyLink'));

@@ -34,7 +34,7 @@
      تُنتج فروقاً وهمية تُطلق عمليات تعديل بلا داعٍ في كل مرة. */
   function normJobs(j) {
     return JSON.stringify([j.code, j.title, j.category, j.region, j.governorate || '', j.salaryMin, j.salaryMax,
-      j.shift, j.gender, j.vacancies, j.requirements, j.description,
+      j.shift, j.gender, j.vacancies, !!j.manualClosed, j.requirements, j.description,
       j.employer && j.employer.name, j.employer && j.employer.phone, j.employer && j.employer.address,
       j.interviewLocation, j.status, j.reservedBy, j.holdExpiresAt, j.closedAt, j.notes, j.imageUrl]);
   }
@@ -45,10 +45,10 @@
   function normApplicants(a) {
     return JSON.stringify([a.serial, a.fullName, a.phone, a.address, a.dob, a.gender,
       a.nationality, a.status, a.fee, a.feePaid, a.printedCount, a.notes, a.requestedCode,
-      a.issueDate, a.expiryDate, a.attemptLimit, a.rejectReason]);
+      a.issueDate, a.expiryDate, a.attemptLimit, a.rejectReason, a.cardPrintCode]);
   }
   function normAttempts(t) {
-    return JSON.stringify([t.serial, t.no, t.jobCode, t.slotStatus, t.selectedAt,
+    return JSON.stringify([t.serial, t.no, t.jobCode, t.vacancyNo||null, t.employerDecision||null, t.decisionAt||null, t.reason||'', t.slotStatus, t.selectedAt,
       t.holdExpiresAt, t.closedAt, t.note]);
   }
   function normAudit(l) {
@@ -108,11 +108,12 @@
            نرفض أي مفتاح يحوي null/undefined في أي جزء منه. */
         if (k == null || k === '' || /(^|:)(null|undefined)($|:)/.test(String(k))) return;
         seen[k] = true;
-        if (!(k in snapshot[spec.table])) ops.push({ table: spec.table, op: 'insert', key: k, local: item });
+        if (!(k in snapshot[spec.table])) ops.push({ table: spec.table, op: 'insert', key: k, local: item, independentCard: spec.table === 'job_attempts' && (db.applicants || []).some(function (a) { return a.serial === item.serial && !!a.cardPrintCode; }) });
         else if (current[spec.table][k] !== snapshot[spec.table][k]) ops.push({ table: spec.table, op: 'update', key: k, local: item });
       });
       Object.keys(snapshot[spec.table]).forEach(function (k) {
         if (seen[k]) return;
+        if(db.meta&&db.meta.partialTables&&db.meta.partialTables.indexOf(spec.table)>=0&&!(db.meta.explicitDeletes&&db.meta.explicitDeletes[spec.table]&&db.meta.explicitDeletes[spec.table].indexOf(k)>=0))return;
         /* ⚠️ حماية 2026-10-06 (عطل حقيقي مُشاهد): كانت المزامنة تحذف خانات فرص
            بطاقة **موجودة محلياً لكن خاناتها غير محمّلة** (جهاز جديد، ذاكرة
            متصفح ممسوحة، سحب ناقص) — فتُصبح البطاقة الجديدة بلا أي فرصة في
@@ -205,7 +206,14 @@
         { __brc: { op: op.op, table: op.table, code: 'HRC_NO_ROW' } });
     }
     if (op.table === 'jobs') return C.jobToDb(op.local);
-    if (op.table === 'applicants') return C.applicantToDb(op.local);
+    if (op.table === 'applicants') {
+      var row = C.applicantToDb(op.local);
+      /* Legacy imports need explicit NULL, otherwise the server default
+         silently invalidates their already-printed opportunity codes.
+         Updates still omit an absent secret rather than clearing a remote one. */
+      if (op.op === 'insert' && !op.local.cardPrintCode) row.card_print_code = null;
+      return row;
+    }
     if (op.table === 'job_attempts') return C.attemptToDb(op.local);
     if (op.table === 'audit_log') return C.auditToDb(op.local);
     if (op.table === 'settings') return { key: op.local.key, value: op.local.value };
@@ -247,9 +255,42 @@
     if (op.op === 'insert') {
       /* audit_log معرّفه bigserial — نُسقطه ليتولّاه الخادم */
       if (op.table === 'audit_log' && row.id != null) delete row.id;
-      return finish(table.insert(row).select(), op, hooks)
+      return finish(op.table === 'audit_log' ? table.insert(row) : table.insert(row).select(), op, hooks)
         .catch(function (err) {
-          if (!isUniqueViolation(err)) throw err;
+          var info = err && err.__brc;
+          var missingLegacyColumn = info && (info.code === '42703' || info.code === 'PGRST204') && /card_print_code/i.test(String(err.message || ''));
+          // Original two-code cards must also save against the original schema.
+          // Only omit a NULL compatibility field when the server proves it absent;
+          // never drop an actual printed secret or retry permission/validation errors.
+          if (op.table === 'applicants' && !op.local.cardPrintCode && row.card_print_code === null && missingLegacyColumn) {
+            var legacyRow = Object.assign({}, row);
+            delete legacyRow.card_print_code;
+            return finish(client.from('applicants').insert(legacyRow).select(), op, hooks);
+          }
+          if (!isUniqueViolation(err) || op.table === 'applicants' || op.table === 'audit_log') throw err;
+          if (op.table === 'job_attempts') {
+            // Applicant AFTER INSERT already creates the slots. Never regenerate
+            // their serial or overwrite an existing consumed/held opportunity.
+            if ((!op.independentCard && !op.freshCard) || row.slot_status !== 'empty') throw err;
+            return finish(client.from('job_attempts').select('*').eq('serial', row.serial).eq('attempt_no', row.attempt_no), op, null).then(function (res) {
+              var existing = res && res.data && res.data[0];
+              if (!existing || existing.serial !== row.serial || Number(existing.attempt_no) !== Number(row.attempt_no) || existing.slot_status !== 'empty' || !existing.chance_code) throw err;
+              if (op.independentCard) {
+                op.local.code = existing.chance_code;
+                if (hooks && hooks.onOp) hooks.onOp(op, res);
+                return res;
+              }
+              // For an original card just created by THIS sync, retain exactly
+              // the two codes sent to the printer. Never edit an older card.
+              return finish(client.from('job_attempts').update({ chance_code: row.chance_code })
+                .eq('serial', row.serial).eq('attempt_no', row.attempt_no)
+                .eq('slot_status', 'empty').eq('chance_code', existing.chance_code).select(), op, hooks)
+                .then(function (updated) {
+                  if (!updated || !updated.data || updated.data.length !== 1) throw err;
+                  return updated;
+                });
+            });
+          }
           /* تصادم مفتاح فريد: أعد المحاولة بلا المفتاح الطبيعي */
           var retry = Object.assign({}, row);
           delete retry.code; delete retry.serial;
@@ -265,6 +306,7 @@
       else q = q.eq(w.column, w.value);
       /* لا نسمح بتعديل المعرّفات الطبيعية */
       delete row.code; delete row.serial; delete row.attempt_no; delete row.key;
+      if(op.table==='job_attempts')q=q.select(); // Adopt the server-allocated seat.
       return finish(q, op, hooks);
     }
 
@@ -289,6 +331,7 @@
         throw Object.assign(new Error(res.error.message || 'خطأ قاعدة بيانات'),
           { __brc: { op: op.op, table: op.table, code: res.error.code, detail: res.error } });
       }
+      if(op.table==='job_attempts' && op.local && res && Array.isArray(res.data) && res.data[0] && res.data[0].vacancy_no)op.local.vacancyNo=res.data[0].vacancy_no;
       if (hooks && hooks.onOp) hooks.onOp(op, res);
       return res;
     });
@@ -319,6 +362,7 @@
     var snapshot = cloneSnapshot(opts.snapshot || snapshotOf({}));
     var pushing = false;
     var pendingAgain = false;
+    var freshParents = {};
 
     function setSnapshot(db) { snapshot = snapshotOf(db); }
     function getSnapshot() { return snapshot; }
@@ -365,18 +409,24 @@
 
       var done = 0;
       var failedOps = [];
+      var failures = [];
 
       return ordered.reduce(function (chain, op) {
         return chain.then(function () {
+          if (op.table === 'job_attempts' && op.local && failures.some(function (f) { return f.table === 'applicants' && f.key === op.local.serial; })) throw Object.assign(new Error('لم يُحفظ سجل البطاقة الأصلي'), { __brc: { code: 'PARENT_NOT_SAVED' } });
+          if (op.table === 'job_attempts' && op.local) op.freshCard = !!freshParents[op.local.serial];
           return executeOne(client, op, opts.hooks).then(function () {
+            if (op.table === 'applicants' && op.op === 'insert') freshParents[op.key] = true;
             /* نجحت: نُقدّم اللقطة لهذه العملية وحدها */
             advanceSnapshot(snapshot, op);
+            if(op.op==='delete'&&db.meta&&db.meta.explicitDeletes&&db.meta.explicitDeletes[op.table])db.meta.explicitDeletes[op.table]=db.meta.explicitDeletes[op.table].filter(function(k){return k!==op.key;});
             done++;
           });
         }).catch(function (err) {
           /* عملية فاشلة لا توقف البقية — لكنها **تبقى معلّقة** حتى تُعاد */
           var info = (err && err.__brc) || {};
           failedOps.push(op);
+          failures.push({ table: op.table, key: op.key, code: info.code || '', message: String(err && err.message || 'تعذّر الحفظ') });
           log('فشل ' + op.op + ' على ' + op.table + ' (' + op.key + '): ' + (err && err.message || err));
           if (opts.onError) opts.onError(err, op);
           if (info.code === '42P01' || info.code === 'PGRST205') {
@@ -388,7 +438,7 @@
         .then(function () {
           pushing = false;
           if (pendingAgain) { pendingAgain = false; return push(db); }
-          return { ops: done, failed: failedOps.length, pending: failedOps.map(function (o) { return o.table + ':' + o.key; }) };
+          return { ops: done, failed: failedOps.length, pending: failedOps.map(function (o) { return o.table + ':' + o.key; }), failures: failures };
         })
         .catch(function (err) {
           pushing = false;

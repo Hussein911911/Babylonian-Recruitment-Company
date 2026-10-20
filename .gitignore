@@ -10,3 +10,13 @@ dist/
 # معاينة الاستمارة المطبوعة (تُولَّد محلياً من tests/apply-flow.mjs — أداة تطوير)
 form-preview.html
 __pycache__/
+# Company laptop secrets, encrypted working state and recovery output.
+.office/
+office/runtime/
+*.hrcdb
+*.pfx
+*.key.pem
+*.private.pem
+*.pgpass
+state.key
+state.enc

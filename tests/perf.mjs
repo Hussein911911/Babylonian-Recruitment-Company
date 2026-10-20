@@ -72,7 +72,9 @@ const BUDGET = {
      dashboard.js (تُقاس مقيسةً: 940KB خاماً). تبقى الرسالة: منع القفزات. */
   'index.html': { raw: 580, requests: 20 },
   'verify.html': { raw: 480, requests: 20 },
-  'dashboard.html': { raw: 940, requests: 20 }
+  /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
+     No new public scripts or DB requests; public budgets and auth tests unchanged. */
+  'dashboard.html': { raw: 964, requests: 20 }
 };
 
 function payloadOf(page) {
@@ -135,8 +137,8 @@ step(3, 'ميزانية القاعدة — طلبات Supabase لكل زيارة
   const count = tables.split(',').filter((x) => x.trim()).length;
   check('جداول الإقلاع للموظف ستة كما هو متوقّع', count === 6, String(count));
   check('الصفحات العامة لا تشترك في القناة اللحظية', !/subscribeAll/.test(readFileSync(join(ROOT, 'assets/js/public.js'), 'utf8')));
-  check('مساعد القراءة العامة محصور بمطلب واحد (public_jobs)',
-    /from\('public_jobs'\)/.test(cloudJs) && !/from\('jobs'\)[\s\S]{0,80}fetchPublicJobs/.test(cloudJs));
+  check('مساعد القراءة العامة محصور بعرض public_jobs (صفحات عند كبر القائمة)',
+    /readPages\(client, 'public_jobs', 100000\)/.test(cloudJs) && !/from\('jobs'\)[\s\S]{0,80}fetchPublicJobs/.test(cloudJs));
   check('الإقلاع العام لا يقرأ جداول الموظفين (canReadStaffTables)', /canReadStaffTables/.test(cfgJs));
 }
 

@@ -67,6 +67,10 @@ const partials = {
   dashboard: read('src/partials/dashboard.html')
 };
 const CSS = read('assets/css/style.css');
+const PUBLIC_CSS = read('assets/css/public-polish.css');
+const NOTIFICATION_CSS = read('assets/css/notifications.css');
+const BACKUP_CSS = read('assets/css/backup.css');
+const WORKSPACE_CSS = read('assets/css/workspace-layout.css');
 /* ---------------------------------------------------------------------------
  *  بذرة العرض للملف المستقل
  *  ---------------------------------------------------------------------------
@@ -82,10 +86,17 @@ const DEMO_SEED_SRC = read('tests/fixtures/demo-seed.mjs');
 const DEMO_SEED_JSON = (() => {
   const m = DEMO_SEED_SRC.match(/export const DEMO_SEED = ([\s\S]*?);\n\n\/\* تحقن/);
   if (!m) throw new Error('تعذّر استخراج DEMO_SEED من tests/fixtures/demo-seed.mjs');
-  return m[1];
+  // Demo images are embedded too: the exported file needs no sibling assets.
+  // Fail the build if an expected local illustration is missing.
+  return m[1].replace(/imageUrl: '([^']+)'/g, (field, path) => {
+    if (!path.startsWith('assets/img/jobs/')) throw new Error('Demo image must be local: ' + path);
+    const image = dataUri(path);
+    if (!image) throw new Error('Missing demo image: ' + path);
+    return 'imageUrl: ' + JSON.stringify(image.uri);
+  });
 })();
 
-const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard'];
+const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard', 'notifications', 'legacy-backup', 'card-archive'];
 
 /* ---------------------------------------------------------------------------
  *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
@@ -102,7 +113,7 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
 const SCRIPTS = {
   public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
   verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
-  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard']
+  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard', 'notifications']
 };
 
 /* مسار الأصل من الاسم: 'vendor/x' → assets/vendor/x.js وإلا assets/js/x.js */
@@ -116,7 +127,7 @@ const scriptPath = (n) => n.startsWith('vendor/')
    تعديل cloud-sync.js — فيبقى المتصفح على نسخة قديمة **بصمت**، وهو أسوأ أنواع
    الأخطاء لأن الكود الجديد لا يصل أصلاً. */
 const ASSET_VER = process.env.HRC_ASSET_VER || createHash('sha1')
-  .update([CSS, ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
+  .update([CSS, PUBLIC_CSS, NOTIFICATION_CSS, BACKUP_CSS, WORKSPACE_CSS, read('assets/js/recovery.js'), ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
            ...CLOUD_ORDER.map((n) => read(scriptPath(n)))].join('\u0000'))
   .digest('hex').slice(0, 10);
 const verQ = (p) => `${p}?v=${ASSET_VER}`;
@@ -150,8 +161,10 @@ ${extra}</head>
 }
 
 /* ---------------- الصفحات المنفصلة ---------------- */
-function buildPage({ title, desc, body, scripts }) {
-  return docHead({ title, desc, css: 'assets/css/style.css' }) +
+function buildPage({ title, desc, body, scripts, publicStyle = false, staffStyle = false }) {
+  return docHead({ title, desc, css: 'assets/css/style.css',
+    extra: (publicStyle ? `<link rel="stylesheet" href="${verQ('assets/css/public-polish.css')}">` : '') +
+      (staffStyle ? `<link rel="stylesheet" href="${verQ('assets/css/notifications.css')}"><link rel="stylesheet" href="${verQ('assets/css/backup.css')}"><link rel="stylesheet" href="${verQ('assets/css/workspace-layout.css')}">` : '') }) +
     partials.sprite + '\n' +
     partials.header + '\n' +
     body + '\n' +
@@ -161,7 +174,7 @@ function buildPage({ title, desc, body, scripts }) {
 }
 
 writeFileSync(P('index.html'), buildPage({
-  title: META.title, desc: META.desc, body: partials.public, scripts: SCRIPTS.public
+  title: META.title, desc: META.desc, body: partials.public, scripts: SCRIPTS.public, publicStyle: true
 }));
 writeFileSync(P('verify.html'), buildPage({
   title: 'التحقق من بطاقة التوظيف | شركة الهدف للتوظيف',
@@ -188,7 +201,7 @@ writeFileSync(P('verify.html'), buildPage({
 writeFileSync(P('dashboard.html'), buildPage({
   title: 'المنظومة الداخلية | شركة الهدف للتوظيف',
   desc: 'لوحة الموظفين والإدارة لشركة الهدف للتوظيف: إدارة الوظائف، إصدار الاستمارات، متابعة الحجوزات، سجل التدقيق، واللوحة المالية.',
-  body: partials.dashboard, scripts: SCRIPTS.dashboard
+  body: partials.dashboard, scripts: SCRIPTS.dashboard, staffStyle: true
 }));
 
 /* ---------------- النسخة المستقلة (ملف واحد) ---------------- */
@@ -196,7 +209,7 @@ function buildStandalone() {
   const stats = { fonts: 0, cssImgs: 0, htmlImgs: 0 };
 
   // 1) CSS مع دمج الخطوط والصور
-  let css = CSS.replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
+  let css = (CSS + '\n' + PUBLIC_CSS + '\n' + NOTIFICATION_CSS + '\n' + BACKUP_CSS + '\n' + WORKSPACE_CSS).replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
     const d = dataUri('assets/fonts/' + f); if (!d) return m;
     stats.fonts += d.size; return `url(${d.uri})`;
   });

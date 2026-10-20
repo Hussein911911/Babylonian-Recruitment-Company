@@ -48,8 +48,8 @@ while ((m = tableRe.exec(stripped(STRUCTURE)))) tables.push({ name: m[1].toLower
 const order = {};
 tables.forEach((t, i) => { if (!(t.name in order)) order[t.name] = i; });
 
-/* 7 = الستة + brc.issued_serials (سجل الباركودات — الدفعات الفارغة 2026-09-30) */
-check('المخطط يعرّف الجداول السبعة المتوقّعة', tables.length === 7,
+/* 8 = الستة + سجل الباركودات issued_serials + جدول التحقق الخاص employer_otp. */
+check('المخطط يعرّف 16 جدولاً بما فيها النسخ الخاصة', tables.length === 16,
   tables.length + ': ' + tables.map((t) => t.name).join(', '));
 
 const SYSTEM = new Set(['auth.users', 'auth.identities', 'storage.objects']);
@@ -77,16 +77,16 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 /* 30 = 29 السابقة + إصلاح 2026-10-06: ترميم خانات الفرص الناقصة
    (ensure_card_attempts) — بطاقة جديدة كانت تظهر «انتهت فرصك» بلا أي تقديم
    لأن مزامنة لوحة الموظفين كانت تحذف خاناتها من القاعدة. */
-check('عدد الدوال المتوقّع (30)', funcs.length === 30, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+check('تعريفات الدوال: 59 تعريفاً، 56 دالة فعلية (3 تحديثات مقصودة)', funcs.length === 59 && new Set(funcs.map(x=>x.name)).size === 56, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
-const EXPECTED_FUNCS = ['brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
+const EXPECTED_FUNCS = ['brc.recovery_manage', 'brc.office_submit', 'brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
   'brc.trg_defaults', 'brc.trg_attempt_hold', 'brc.trg_no_duplicate_job', 'brc.trg_audit',
   'brc.run_auto_release', 'brc.is_staff', 'brc.is_admin', 'brc.current_staff_id',
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
   'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold',
   'brc.activate_card', 'brc.employer_view', 'brc.employer_decide',
-  'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts'];
+  'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts', 'brc.employer_otp_issue', 'brc.employer_otp_delivery', 'brc.employer_otp_verify', 'brc.employer_otp_action', 'brc.staff_save_job_pin', 'brc.employer_pin_login', 'brc.employer_pin_action'];
 check('كل الدوال المتوقّعة موجودة بالاسم', EXPECTED_FUNCS.every((n) => funcs.some((x) => x.name === n)),
   'المفقود: ' + EXPECTED_FUNCS.filter((n) => !funcs.some((x) => x.name === n)).join(', '));
 
@@ -140,11 +140,10 @@ check('الزائر يستطيع قراءة brc.public_jobs فقط', /public_job
    الفحص هنا يقرأ سطور GRANT (لا REVOKE) فلا يُخدع بإبطال لاحق. */
 check('الزائر لا يستطيع نداء brc.verify_form (التحقق للموظفين والإدارة)', !/verify_form/i.test(anonTargets), anonTargets.slice(0, 160));
 check('الزائر لا يستطيع نداء brc.request_form (لا تقديم استمارة من الموقع)', !/request_form/i.test(anonTargets), anonTargets.slice(0, 160));
-/* موديل 2026-10-01: مسارات عامة مقصودة — نقطة البيع تبيع، وصاحب العمل يقرر
-   بالباركود وحده (خصوصية قبلتها الإدارة صراحة). */
+/* نقطة البيع عامة؛ صلاحيات صاحب العمل القديمة مغلقة بعد إضافة تحقق واتساب. */
 check('الزائر يستطيع نداء brc.activate_card (بيع نقطة البيع عبر الموقع)', /activate_card/i.test(anonTargets));
-check('الزائر يستطيع نداء brc.employer_view (صفحة صاحب العمل بالباركود)', /employer_view/i.test(anonTargets));
-check('الزائر يستطيع نداء brc.employer_decide (قرار التوظيف من صفحة الباركود)', /employer_decide/i.test(anonTargets));
+check('الزائر لا يستطيع تجاوز OTP عبر employer_view القديم', !/employer_view/i.test(anonTargets));
+check('الزائر لا يستطيع تجاوز OTP عبر employer_decide القديم', !/employer_decide/i.test(anonTargets));
 /* موديل 2026-10-06: مسار باركود البطاقة (apply.html) — بلا جلسة، ومن دونه يصير
    مسح باركود كل بطاقة خطأً على الزبون. */
 check('الزائر يستطيع نداء brc.self_service_card (باركود البطاقة يقرأ حالته)', /self_service_card/i.test(anonTargets));
@@ -153,6 +152,8 @@ check('الزائر يستطيع نداء brc.apply_with_card (تقديم ذات
 check('دالتا التقديم الذاتي مُبطَلتان من public قبل المنح',
   /revoke\s+all\s+on\s+function\s+brc\.self_service_card\(text\)\s+from\s+public/i.test(stripped(RAW)) &&
   /revoke\s+all\s+on\s+function\s+brc\.apply_with_card\(text,\s*text,\s*jsonb\)\s+from\s+public/i.test(stripped(RAW)));
+check('لا منح لمسار المكتب إلى الزائر', !/office_submit/.test(anonTargets));
+check('سجل إيصالات المكتب معزول بـRLS وسحب المنح', /alter table brc\.office_receipts enable row level security/.test(RAW) && /revoke all on brc\.office_receipts from public,anon,authenticated/.test(RAW));
 const authGrants = grantLines.filter((l) => /\bauthenticated\b/i.test(l)).join(' ');
 check('الموظف المسجَّل يستطيع نداء brc.verify_form', /verify_form/i.test(authGrants));
 check('لا جدول حساس ممنوح للزائر مباشرة',
@@ -272,7 +273,7 @@ for (const [label, re] of [
 ]) check(label, re.test(RAW));
 
 const trigCount = [...stripped(RAW).matchAll(/create\s+trigger\s+\w+/gi)].length;
-check('المشغّلات التسعة موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق/سجل الباركودات)', trigCount === 9, trigCount + '');
+check('تعريفات المشغّلات بما فيها حاجز الاسترجاع موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق/سجل الباركودات)', trigCount === 16, trigCount + '');
 
 /* ------------------------- 9) مزامنة ملف الـ migration ------------------------- */
 step(9, 'ملف الـ migration — متطابق مع المصدر (تكاملة GitHub في Supabase)');
@@ -407,7 +408,7 @@ step(12, 'مسار التحديث — كل دالة يناديها باركود 
   check('صفحة الباركود تستعمل عميل الاتصال المحلي (cloud-http.js)',
     /assets\/js\/cloud-http\.js/.test(applySrc) && !/cdn\.jsdelivr|unpkg\.com|esm\.sh/i.test(applySrc));
   check('صفحة الباركود تشرح للمستخدم العربي سبب الخطأ بدل رسالة الخادم الخام',
-    /isMissingFunction/.test(applySrc) && /db-update\.html/.test(applySrc));
+    /isMissingFunction/.test(applySrc) && /docs\/schema\.sql/.test(applySrc) && /الهجرات الحديثة/.test(applySrc));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

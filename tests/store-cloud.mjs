@@ -40,6 +40,7 @@ function makeMock(opts = {}) {
   let seq = 1;
 
   function query(table) {
+    table=table.replace(/^working_/, ''); // Invoker views use the same synthetic base rows.
     const q = { table, _op: null, _payload: null, _filters: [] };
     const api = {
       select() { if (!q._op) q._op = 'select'; return api; },
@@ -47,6 +48,7 @@ function makeMock(opts = {}) {
       update(p) { q._op = 'update'; q._payload = p; return api; },
       delete() { q._op = 'delete'; return api; },
       eq(c, v) { q._filters.push([c, v]); return api; },
+      in(c, v) { q._filters.push([c, v]); return api; },
       order() { return api; }, limit() { return api; }, single() { return api; },
       then(res, rej) {
         const rec = { table, op: q._op, payload: q._payload, filters: q._filters };
@@ -68,15 +70,15 @@ function makeMock(opts = {}) {
           return Promise.resolve({ data: [row], error: null }).then(res, rej);
         }
         if (q._op === 'update') {
-          const hit = (state[table] || []).filter((r) => q._filters.every(([c, v]) => String(r[c]) === String(v)));
+          const hit = (state[table] || []).filter((r) => q._filters.every(([c, v]) => (Array.isArray(v) ? v.includes(r[c]) : String(r[c]) === String(v))));
           hit.forEach((r) => Object.assign(r, q._payload));
           return Promise.resolve({ data: hit, error: null }).then(res, rej);
         }
         if (q._op === 'delete') {
-          state[table] = (state[table] || []).filter((r) => !q._filters.every(([c, v]) => String(r[c]) === String(v)));
+          state[table] = (state[table] || []).filter((r) => !q._filters.every(([c, v]) => (Array.isArray(v) ? v.includes(r[c]) : String(r[c]) === String(v))));
           return Promise.resolve({ data: null, error: null }).then(res, rej);
         }
-        const rows = (state[table] || []).filter((r) => q._filters.every(([c, v]) => String(r[c]) === String(v)));
+        const rows = (state[table] || []).filter((r) => q._filters.every(([c, v]) => (Array.isArray(v) ? v.includes(r[c]) : String(r[c]) === String(v))));
         return Promise.resolve({ data: rows, error: null }).then(res, rej);
       }
     };
@@ -89,6 +91,7 @@ function makeMock(opts = {}) {
     rpc(name, args) {
       calls.push({ rpc: name, args });
       /* PostgREST يُرجع قيمة الدالة في data مباشرةً */
+      if(name==='staff_issuance_registry'&&!opts.failAll&&opts.session!==null)return Promise.resolve({data:args.p_serial==null?{version:1,bitmap:Buffer.alloc(595125).toString('base64')}:{used:false},error:null});
       if (opts.rpc && opts.rpc[name]) return Promise.resolve({ data: opts.rpc[name](args), error: null });
       return Promise.resolve({ data: null, error: { message: 'unknown rpc ' + name } });
     },
@@ -156,7 +159,7 @@ function bootStore(mock, extra = {}) {
   if (extra.noVendor) { /* بلا مكتبة سوبابيس */ } else {
     sandbox.supabase = { createClient: () => mock };
   }
-  const load = (f) => new Function('window', readFileSync(join(ROOT, 'assets/js/' + f), 'utf8'))(sandbox);
+  const load = (f) => new Function('window', 'localStorage', 'sessionStorage', readFileSync(join(ROOT, 'assets/js/' + f), 'utf8'))(sandbox, sandbox.localStorage, sandbox.sessionStorage);
   load('config.js');
   load('cloud.js');
   load('cloud-auth.js');
@@ -314,6 +317,26 @@ step(3, 'الجلسة — الدخول من القاعدة لا من config.js')
     JSON.stringify(bad));
 }
 
+step('3-final', 'القفل النهائي لا يعتمد على حالة الشبكة ولا يقبل forceLocal أو حسابات الكاش');
+for (const extra of [{}, { noFetch: true }, { noVendor: true }]) {
+  const { Store, sandbox } = bootStore(makeMock({ rows: cloudRows(), session: null }), { ...extra, enforceAuth: true });
+  // Historical accounts can remain in both config and browser cache after deployment.
+  sandbox.HRC_CONFIG.users = [{ username: 'admin', password: 'admin123', role: 'admin' }];
+  sandbox.localStorage.setItem('hrc_db_v2', JSON.stringify({
+    jobs: [], applicants: [], attempts: [], audit: [], usedSerials: [],
+    settings: { users: [{ username: 'cached-admin', password: 'old-password', role: 'admin' }] }
+  }));
+  Store.init();
+  check('حساب الكاش موجود فعلاً قبل محاولة الدخول: ' + JSON.stringify(extra),
+    Store.settings().users.some((u) => u.username === 'cached-admin'));
+  check('رفض الحساب المحلي حتى بلا عميل/شبكة: ' + JSON.stringify(extra), Store.login('admin', 'admin123') === null);
+  check('forceLocal لا يتجاوز القفل: ' + JSON.stringify(extra), Store.login('admin', 'admin123', { forceLocal: true }) === null);
+  check('رفض حساب محلي بديل: ' + JSON.stringify(extra), Store.login('cached-admin', 'old-password') === null);
+  sandbox.sessionStorage.setItem('hrc_session_v2', JSON.stringify({ username: 'admin', role: 'admin' }));
+  check('لا استعادة لجلسة محلية قديمة: ' + JSON.stringify(extra), Store.currentUser() === null && !Store.isAdmin());
+  check('لا تذكير انتقالي: ' + JSON.stringify(extra), !Store.cloudStatus().devAccountsActive);
+}
+
 step('3أ', 'الوضع الانتقالي — allow محلي معلَن، وبلا أي كتابة في القاعدة');
 {
   /* enforceAuth=false وضعٌ مضى في الإنتاج (الوضع النهائي الآن: enforceAuth=true
@@ -402,7 +425,7 @@ step(4, 'الحرّاس — إعادة الضبط والاستيراد ممنو�
   await sleep(120);
   check('إعادة الضبط مرفوضة وتُرجع false', Store.resetDemo() === false);
   let threw = null;
-  try { Store.importJson(Store.exportJson()); } catch (e) { threw = e; }
+  try { Store.importJson(JSON.stringify(Store.db())); } catch (e) { threw = e; }
   check('الاستيراد مرفوض برسالة واضحة', !!threw && /سحاب/.test(threw.message), threw && threw.message);
   await sleep(300);
   check('لم يُرسل أي حذف أو إدراج جماعي إلى القاعدة',
@@ -545,6 +568,27 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
 /* ===========================================================================
  *  النتيجة
  * =========================================================================== */
+// PIN save uses authenticated RPC and must never contaminate cached job or sync payloads.
+{
+  const mock=makeMock({rows:cloudRows()});const {Store,localStorage}=bootStore(mock);Store.init();await sleep(150);
+  let requests=0,received;const oldRpc=mock.rpc;mock.rpc=(name,args)=>{if(name!=='staff_save_job_pin')return oldRpc(name,args);requests++;received=args;return Promise.resolve({data:{ok:true,job:{...cloudRows().jobs[0],title:'عنوان محفوظ بالرمز',employer_pin_set:true}},error:null});};
+  const result=await Store.saveJobWithPin('HRC-5001',{title:'عنوان محفوظ بالرمز'},'058297');await sleep(150);
+  check('حفظ رمز الوظيفة يستخدم RPC الموظف دون نشره ببيانات الوظيفة',result.ok&&requests===1&&received.p_pin==='058297'&&Store.getJob('HRC-5001').employerPinSet);
+  check('الرمز الخام لا يدخل المخزن أو التخزين المحلي أو عمليات المزامنة',!JSON.stringify(Store.db()).includes('058297')&&!JSON.stringify(localStorage).includes('058297')&&!JSON.stringify(mock.__calls.filter(c=>c.table)).includes('058297'));
+  const before=JSON.stringify(Store.getJob('HRC-5001'));mock.rpc=()=>Promise.resolve({data:null,error:{message:'failed'}});
+  check('فشل RPC لا يعطي نجاحاً ولا يعدل الوظيفة محلياً',!(await Store.saveJobWithPin('HRC-5001',{title:'لا تحفظ'},'123450')).ok&&JSON.stringify(Store.getJob('HRC-5001'))===before);
+}
+
+// Archive eviction must never become a client DELETE on authoritative tables.
+{
+ const rows=cloudRows();rows.applicants[0].attempt_limit=1;rows.applicants[0].status='exhausted';rows.job_attempts[0].slot_status='succeeded';rows.job_attempts[0].closed_at=new Date(Date.now()-61*86400000).toISOString();
+ const mock=makeMock({rows});const {Store}=bootStore(mock);Store.init();await sleep(150);const serial=rows.applicants[0].serial;
+ mock.__channel.fire('applicants',{eventType:'UPDATE',new:{...rows.applicants[0],archived_at:new Date().toISOString()}});await sleep(140);
+ check('الأرشفة اللحظية تزيل البطاقة وفرصها من ذاكرة العمل فقط',!Store.getApplicant(serial)&&Store.getAttempts(serial).length===0);
+ const result=await Store.pushCloud();check('إخلاء البطاقة من الكاش لا يولد حذفاً في القاعدة',!result.failed&&!mock.__calls.some(c=>c.op==='delete'&&['applicants','job_attempts'].includes(c.table)));
+ check('سجل الباركود المحلي المصغّر لا يحتفظ بصفوف الأرشيف',!Store.db().usedSerials.includes(serial));
+}
+
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail ? '❌ ' : '✅ ') + pass + ' ناجح | ' + (fail ? '❌ ' : '') + fail + ' فاشل');
 console.log('═'.repeat(74) + '\n');

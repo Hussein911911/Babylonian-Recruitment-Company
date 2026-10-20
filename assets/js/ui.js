@@ -70,6 +70,7 @@
     host.appendChild(backdrop);
 
     function close() {
+      if (opts.canClose && !opts.canClose()) return;
       backdrop.remove();
       document.removeEventListener('keydown', onKey);
       if (opts.onClose) opts.onClose();

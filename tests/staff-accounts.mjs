@@ -58,6 +58,7 @@ function makeMock(opts = {}) {
   }
 
   function query(table) {
+    table=table.replace(/^working_/, '');
     const q = { table, _op: null, _payload: null, _filters: [] };
     const api = {
       select() { if (!q._op) q._op = 'select'; return api; },
@@ -137,7 +138,7 @@ function makeMock(opts = {}) {
         });
       }
     },
-    rpc(name, args) { calls.push({ rpc: name, args }); return Promise.resolve({ data: null, error: { message: 'unknown rpc ' + name } }); },
+    rpc(name, args) { calls.push({ rpc: name, args }); if(name==='staff_issuance_registry'&&sessionStaff())return Promise.resolve({data:args.p_serial==null?{version:1,bitmap:Buffer.alloc(595125).toString('base64')}:{used:false},error:null});return Promise.resolve({ data: null, error: { message: 'unknown rpc ' + name } }); },
     channel() { return ch; },
     removeChannel() { },
     auth: {

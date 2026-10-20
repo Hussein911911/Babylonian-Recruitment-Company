@@ -94,6 +94,7 @@ try {
   /* حساب مدير fixture محلي: الإنتاج أغلق الدخول المحلي نهائياً (users: [] و
      enforceAuth: true — وهذا صحيح ولا يُخفض). jsdom بلا fetch فالوضع هنا محلي
      بحت، والاختبار يختبر النسخ الاحتياطي لا المصادقة — فنزرع حسابه الخاص. */
+  w.HRCSupabaseConfig.enforceAuth = false; // isolated backup fixture only
   w.HRC_CONFIG.users = [
     { username: 'admin', password: 'admin123', name: 'مدير الفحص', role: 'admin', title: 'مدير عام' }
   ];
@@ -206,8 +207,8 @@ try {
   const now = new Date();
   /* وقت ثابت (12:30) حتى تكون النتيجة مستقلة عن ساعة تشغيل الاختبار */
   const SLOT_H = 12, SLOT_M = 30;
-  const at = (dayOffset, h, m) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, h, m, 0, 0);
-  const saved = S.saveAutoSchedule([now.getDay()], '12:30');
+  const at = (days, h, m) => new Date(S.dayOffset(days, now)+'T'+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':00+03:00');
+  const saved = S.saveAutoSchedule([new Date(S.fmtDate(now)+'T12:00:00Z').getUTCDay()], '12:30');
   check('saveAutoSchedule يحفظ الجدولة', !!saved && saved.days.length === 1 && saved.time === '12:30');
   check('getAutoSchedule يقرأ الجدولة المحفوظة', !!S.getAutoSchedule() && S.getAutoSchedule().time === '12:30');
   check('saveAutoSchedule بلا أيام مرفوض', S.saveAutoSchedule([], '12:30') === null);
@@ -221,16 +222,16 @@ try {
      (الفحص السابق كان يتحقق فقط من «عدم التكرار» ولا يثبت الالتقاط.) */
   w.localStorage.removeItem('hrc-scheduled-backups');
   w.localStorage.removeItem('hrc-auto-backup-last-run');
-  S.saveAutoSchedule([now.getDay()], '08:00');
+  S.saveAutoSchedule([new Date(S.fmtDate(now)+'T12:00:00Z').getUTCDay()], '08:00');
   check('قبل وقت الجدولة (07:59) لا نسخة', S.checkAutoBackup(at(0, 7, 59)) === null);
   const late = S.checkAutoBackup(at(0, 23, 59));
   check('التقاط النسخة الفائتة في نفس اليوم (فُتحت الصفحة متأخرة)', !!late && late.auto === true, late ? late.name : 'null');
   check('الالتقاط يُنتج نسخة واحدة ولا يكرّرها', S.getScheduledBackups().length === 1 && S.checkAutoBackup(at(0, 23, 59)) === null,
     S.getScheduledBackups().length + '');
   check('يوم غير مجدول لا يُنشئ نسخة', S.checkAutoBackup(at(1, SLOT_H, SLOT_M)) === null);
-  const day2 = (now.getDay() + 1) % 7;
+  const day2 = (new Date(S.fmtDate(now)+'T12:00:00Z').getUTCDay() + 1) % 7;
   check('إضافة يوم ثانٍ للجدولة تُنفَّذ في يومه (خانة زمنية جديدة)',
-    !!S.saveAutoSchedule([now.getDay(), day2], '12:30') && !!S.checkAutoBackup(at(1, SLOT_H, SLOT_M)));
+    !!S.saveAutoSchedule([new Date(S.fmtDate(now)+'T12:00:00Z').getUTCDay(), day2], '12:30') && !!S.checkAutoBackup(at(1, SLOT_H, SLOT_M)));
   check('اليوم غير المجدول لا يُنشئ نسخة', S.checkAutoBackup(at(2, SLOT_H, SLOT_M)) === null);
   check('clearAutoSchedule يمسح الجدولة وآخر تنفيذ', S.clearAutoSchedule() === true && !S.getAutoSchedule() && !S.lastAutoRun());
 
@@ -251,7 +252,7 @@ try {
   doc.getElementById('backup-name').value = 'نسخة الواجهة المجدولة';
   const dayBoxes = doc.querySelectorAll('input[name="backup-days"]');
   check('سبعة أيام متاحة للاختيار', dayBoxes.length === 7, dayBoxes.length + '');
-  dayBoxes[now.getDay()].checked = true;
+  dayBoxes[new Date(S.fmtDate(now)+'T12:00:00Z').getUTCDay()].checked = true;
   const autoBox = doc.getElementById('backup-auto');
   autoBox.checked = true;
   autoBox.dispatchEvent(new w.Event('change', { bubbles: true })); await wait(150);
@@ -260,7 +261,7 @@ try {
   const cntBefore = S.getScheduledBackups().length;
   click(doc.getElementById('backup-save')); await wait(400);
   check('حفظ النافذة أنشأ نسخة جديدة', S.getScheduledBackups().length === cntBefore + 1);
-  check('حفظ النافذة فعّل الجدولة التلقائية', !!S.getAutoSchedule() && S.getAutoSchedule().days.indexOf(now.getDay()) >= 0);
+  check('حفظ النافذة فعّل الجدولة التلقائية', !!S.getAutoSchedule() && S.getAutoSchedule().days.indexOf(new Date(S.fmtDate(now)+'T12:00:00Z').getUTCDay()) >= 0);
   check('حالة الجدولة في اللوحة تعرض «مفعّل» والأيام', /مفعّل/.test(txt('schedule-status')), txt('schedule-status'));
   check('الجدولة المحفوظة من الواجهة لا تُنفَّذ قبل وقتها',
     S.checkAutoBackup(new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0)) === null);
@@ -327,7 +328,10 @@ try {
   check('عنصر اختيار ملف الاستيراد موجود', !!imf);
   const snapshot = S.exportJson();
   const trimmed = JSON.parse(snapshot); trimmed.jobs = trimmed.jobs.slice(0, 2);
+  trimmed.applicants = []; trimmed.attempts = []; // valid isolated fixture, no dangling active reservations
   setFile(imf, 'hrc-backup.json', JSON.stringify(trimmed)); await wait(600);
+  check('معاينة الاستيراد تسبق أي تعديل', !!(lastModal() && lastModal().querySelector('[data-ok]')) && S.db().jobs.length === jobsNow);
+  click(lastModal() && lastModal().querySelector('[data-ok]')); await wait(400);
   check('زر «استيراد نسخة» استورد البيانات فعلاً', S.db().jobs.length === 2, S.db().jobs.length + ' مقابل 2');
   check('الاستيراد سُجّل في سجل التدقيق', S.listAudit({}).some((l) => /استيراد/.test(l.action)));
 
@@ -338,6 +342,7 @@ try {
 
   // (د) استعادة البيانات الأصلية عبر الاستيراد
   setFile(imf, 'hrc-backup.json', snapshot); await wait(600);
+  click(lastModal() && lastModal().querySelector('[data-ok]')); await wait(400);
   check('استعادة البيانات الأصلية عبر الاستيراد نجحت', S.db().jobs.length === jobsNow, S.db().jobs.length + ' مقابل ' + jobsNow);
 
   // (هـ) تشغيل قواعد الحجز التلقائي
@@ -484,7 +489,7 @@ try {
       check('النظام اعتمد النسخة المشفّرة (الوظيفة الزائدة اختفت)',
         S.db().jobs.length === jobsBeforeRestore, S.db().jobs.length + ' مقابل ' + jobsBeforeRestore);
       check('حُفظت نسخة أمان قبل الاسترداد', S.listBackupMeta().length > backupsBefore &&
-        S.listBackupMeta().some((b) => /قبل استرداد نسخة مشفّرة/.test(b.name)));
+        S.listBackupMeta().some((b) => /قبل الاستيراد/.test(b.name)));
       check('الاسترداد سُجّل في سجل التدقيق', S.listAudit({}).some((l) => /استيراد/.test(l.action)));
       check('النافذة أُغلقت بعد الاعتماد', !modalOpen());
     }
@@ -509,10 +514,9 @@ try {
   if (btnToday && btnYest && btnAll && fFrom && fTo) {
     const d = new Date();
     const p2 = (n) => String(n).padStart(2, '0');
-    const ymd = (x) => x.getFullYear() + '-' + p2(x.getMonth() + 1) + '-' + p2(x.getDate());
+    const ymd = (x) => S.fmtDate(x);
     const today = ymd(d);
-    const y = new Date(); y.setDate(y.getDate() - 1);
-    const yesterday = ymd(y);
+    const yesterday = S.dayOffset(-1, d);
 
     click(btnToday); await wait(400);
     check('«اليوم» يملأ الحقلين بتاريخ اليوم', fFrom.value === today && fTo.value === today, fFrom.value + ' → ' + fTo.value);

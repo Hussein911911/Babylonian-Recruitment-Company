@@ -187,7 +187,7 @@
     }, 120));
 
     var y = document.getElementById('year');
-    if (y) y.textContent = String(new Date().getFullYear());
+    if (y) y.textContent = Store.fmtDate(new Date()).slice(0,4);
   }
 
   function runQuickSearch(code, region) {
@@ -494,7 +494,7 @@
             '<h3 class="job-title">' + UI.esc(j.title) + '</h3>' +
             '<span class="chip chip-code mono job-code">' + UI.esc(j.code) + '</span>' +
           '</div>' +
-          '<div style="display:grid;gap:6px;justify-items:end">' +
+          '<div class="job-statuses">' +
             UI.jobBadge(j.status) +
             '<span class="chip chip-gold tiny">' + UI.esc(j.category) + '</span>' +
           '</div>' +
@@ -542,7 +542,7 @@
         '<div class="data-item"><div class="k">الأجر الشهري</div><div class="v">' + Store.money(j.salaryMin) + ' – ' + Store.money(j.salaryMax) + '</div></div>' +
         '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
         '<div class="data-item"><div class="k">الجنس</div><div class="v">' + UI.esc(j.gender || 'لا فرق') + '</div></div>' +
-        '<div class="data-item"><div class="k">عدد الشواغر</div><div class="v">' + (j.vacancies || 1) + '</div></div>' +
+        '<div class="data-item"><div class="k">عدد الشواغر</div><div class="v">' + (j.availableVacancies != null ? j.availableVacancies : Store.vacancySummary(j).available) + ' متاح من ' + (j.vacancies||1) + '</div></div>' +
         '<div class="data-item"><div class="k">تاريخ الإضافة</div><div class="v" dir="ltr">' + Store.fmtDate(j.createdAt) + '</div></div>' +
       '</div>' +
       '<div class="panel" style="background:#fdf9ee;border-color:var(--line)">' +

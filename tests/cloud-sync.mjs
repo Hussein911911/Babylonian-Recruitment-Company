@@ -676,6 +676,19 @@ step(9, 'Sync — الأعمدة المُرسلة تطابق مخطط القاع
     Object.keys(auditRow).join(', '));
 }
 
+// Fields meaningful even when the parent summary/status does not change.
+{
+ const db={jobs:[{code:'MULTI',status:'closed',manualClosed:false}],attempts:[{serial:'CARD',no:1,jobCode:'MULTI',slotStatus:'critical',vacancyNo:1,employerDecision:'reject',reason:'قديم'}]};
+ const snap=S.snapshotOf(db);db.jobs[0].manualClosed=true;
+ check('إغلاق الإعلان اليدوي يُزامَن حتى لو الحالة مغلقة أصلاً',S.diff(snap,db).some(o=>o.table==='jobs'&&C.jobToDb(o.local).manual_closed===true));
+ db.attempts[0].reason='سبب مصحح';check('تصحيح سبب القرار يُزامَن دون تبديل مرحلة الحجز',S.diff(snap,db).some(o=>o.table==='job_attempts'&&C.attemptToDb(o.local).employer_reason==='سبب مصحح'));
+ check('رقم الشاغر مستقل عن رقم الفرصة في الكتابة',C.attemptToDb({...db.attempts[0],no:2,vacancyNo:3}).vacancy_no===3);
+ const local={serial:'CARD',no:1,slotStatus:'reserved',vacancyNo:1};
+ let selected=false;const serverClient={from:()=>({update:()=>({eq(){return this;},select(){selected=true;return this;},then(resolve,reject){return Promise.resolve({data:selected?[{vacancy_no:2}]:null,error:null}).then(resolve,reject);}})})};
+ await S.executeOne(serverClient,{table:'job_attempts',op:'update',key:'CARD:1',local,row:C.attemptToDb(local)});
+ check('المقعد الذي تخصصه القاعدة يصحح توقع الجهاز بعد التزامن',local.vacancyNo===2);
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');

@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// Synthetic cross-device transfer: inject fixtures in test memory, NOT through
+// the restore API (now admin-only). Production Auth/security checks stay intact.
+function injectFixture(store,json){const db=store.db();for(const k of Object.keys(db))delete db[k];Object.assign(db,JSON.parse(json));store.emit();}
 /* ===========================================================================
  *  HRC — اختبار المسار الكامل لنظام بطاقة التوظيف (End-to-End)
  *  ---------------------------------------------------------------------------
@@ -42,7 +45,7 @@ function staffStorage(role) {
   const SESSION = role === 'admin'
     ? { username: 'admin', name: 'مدير فحص', role: 'admin', title: 'مدير الشركة', at: new Date().toISOString() }
     : { username: 'staff', name: 'موظف فحص', role: 'staff', title: 'موظف توظيف', at: new Date().toISOString() };
-  const m = new Map([['hrc_session_v2', JSON.stringify(SESSION)]]);
+  const m = new Map([['hrc_session_v2', JSON.stringify({ ...SESSION, cloud: true })]]);
   return {
     getItem: (k) => (m.has(String(k)) ? m.get(String(k)) : null),
     setItem: (k, v) => m.set(String(k), String(v)),
@@ -90,6 +93,8 @@ async function open(file, query, opts = {}) {
   });
   await new Promise((r) => { dom.window.addEventListener('load', r); setTimeout(r, 6000); });
   await wait(400);
+  // Historical end-to-end fixture is intentionally local; cloud suites stay enabled.
+  if (dom.window.HRCSupabaseConfig) dom.window.HRCSupabaseConfig.enabled = false;
   return { dom, w: dom.window, doc: dom.window.document, errors };
 }
 
@@ -315,7 +320,7 @@ check('البطاقة سارية والفرصة الأولى استُهلكت ب
   D.getJob('HRC-1043').status === 'reserved',
   'المتبقي ' + D.attemptsLeft(SERIAL) + ' / ' + (D.getAttempts(SERIAL)[0] || {}).slotStatus);
 const CHANCES = D.getAttempts(SERIAL);
-check('رمزا فرصتي البطاقة هما نفسيهما المطبوعين على الورقة الفارغة',
+check('رموز فرص البطاقة القديمة لا تتغير عند تعبئتها',
   CHANCES.every((t) => blankCodes.indexOf(t.code) >= 0));
 console.log('   ℹ  البطاقة: ' + SERIAL + ' | الفرصة ١: ' + (CHANCES[0] || {}).code + ' | الفرصة ٢: ' + (CHANCES[1] || {}).code);
 
@@ -340,7 +345,7 @@ const mustForm = [
   ['نفس باركود البطاقة', formHtmlPrinted.includes(SERIAL)],
   ['اسم الزبون', formHtmlPrinted.includes('مرتضى كريم جبر')],
   ['الوظيفة المختارة', formHtmlPrinted.includes('HRC-1043')],
-  ['بيانات صاحب العمل', /بيانات التواصل بصاحب العمل/.test(formHtmlPrinted) && formHtmlPrinted.includes('07811234567')],
+  ['بيانات صاحب العمل', /بيانات صاحب العمل/.test(formHtmlPrinted) && formHtmlPrinted.includes('07811234567')],
   ['باركود QR', /<svg[\s\S]*<path/.test(formHtmlPrinted)]
 ];
 const missForm = mustForm.filter(([, c]) => !c).map(([k]) => k);
@@ -356,7 +361,7 @@ const mustPrint = [
   ['الشركة', /شركة الهدف للتوظيف|Al-Hadaf/.test(printHtml)],
   ['الباركود QR', /<svg[\s\S]*<path/.test(printHtml)],
   ['الرقم التسلسلي', printHtml.includes(SERIAL)],
-  ['رمزا الفرصتين', printHtml.includes(CHANCES[0].code) && printHtml.includes(CHANCES[1].code)],
+  ['رمزا الفرصتين الأصليان', printHtml.includes(CHANCES[0].code) && printHtml.includes(CHANCES[1].code)],
   ['الإخلاء القانوني', /غير مسؤولة قانون/.test(printHtml)]
 ];
 const missPrint = mustPrint.filter(([, c]) => !c).map(([k]) => k);
@@ -365,14 +370,14 @@ check('البطاقة المطبوعة تحوي كل عناصرها (' + (mustPr
 check('البطاقة الورقية بلا اسم الزبون (البيانات على استمارة A4 فقط)', !printHtml.includes('مرتضى كريم جبر'));
 check('الطباعة سُجّلت في عدّاد البطاقة', D.getApplicant(SERIAL).printedCount > 0);
 
-const DB1 = D.exportJson();
+const DB1 = JSON.stringify(D.db());
 
 /* ═══ 3) الزبون يتابع بطاقته ويستخدم الفرصة الأولى ═══════════════════════ */
 step(3, '«بطاقتي» — الزبون يتابع بطاقته بالباركود ويستخدم الفرصة الأولى');
 
 const pub = await open('index.html');
 const P = pub.w.HRCStore;
-P.importJson(DB1);
+injectFixture(P,DB1);
 await wait(250);
 
 /* بطاقة فارغة لم تُبع بعد: عرض الزبون يرفضها (منع التزوير ببيع ورق المخزون) */
@@ -442,7 +447,7 @@ check('الفرصة الثانية استُهلكت بالتقديم الذات�
   P.getAttempts(SERIAL)[1].slotStatus === 'reserved' && P.getAttempts(SERIAL)[1].jobCode === 'HRC-1042');
 check('التقديم الذاتي موثّق في سجل التدقيق', P.listAudit().some((l) => /تقديم ذاتي/.test(l.action)));
 
-const DB2 = P.exportJson();
+const DB2 = JSON.stringify(P.db());
 
 /* ═══ 3ب) صاحب العمل: يمسح الباركود ويسجّل طلبه — والقرار للشركة ═══════ */
 step('3ب', 'صاحب العمل — يمسح الباركود ويسجّل طلب توظيف (الوظيفة «جاري التوظيف» حتى قرار الشركة)');
@@ -501,7 +506,7 @@ await wait(900);
   const box = lastModal(emp.doc);
   const again = box.querySelector('#bk-empd-close');
   if (again) { click(emp.w, again); await wait(250); }
-  const emp2 = await open('index.html', '?role=employer#card=' + encodeURIComponent(SERIAL), { db: emp.w.HRCStore.exportJson() });
+  const emp2 = await open('index.html', '?role=employer#card=' + encodeURIComponent(SERIAL), { db: JSON.stringify(emp.w.HRCStore.db()) });
   await wait(900);
   {
     const b2 = lastModal(emp2.doc);
@@ -513,14 +518,14 @@ await wait(900);
       /بانتظار تثبيت الشركة/.test(t3) && !b3.querySelector('#bk-emp-hire') && !b3.querySelector('#bk-emp-reject'));
   }
 }
-const DB2B = emp.w.HRCStore.exportJson();
+const DB2B = JSON.stringify(emp.w.HRCStore.db());
 
 /* ═══ 4) انتهاء مهلة 24 ساعة ⇒ حالة «حرجة» (لا إفراج تلقائي) ════════════ */
 step(4, 'انتهاء مهلة الحجز — حالة «حرجة» بانتظار قرار الموظف (لا إفراج تلقائي)');
 
 const dash2 = await open('dashboard.html', undefined, { session: 'staff' });
 const D2 = dash2.w.HRCStore;
-D2.importJson(DB2B);
+injectFixture(D2,DB2B);
 dash2.w.HRCRefresh && dash2.w.HRCRefresh();
 await wait(250);
 check('زرا «إضافة بطاقة» و«إصدار دفعة» مخفيان عن الموظف (للمدير وحده)',
@@ -547,7 +552,7 @@ await wait(200);
     /حالة حرجة/.test(ov.textContent) && /HRC-1043/.test(ov.textContent));
 }
 
-const DB3 = D2.exportJson();
+const DB3 = JSON.stringify(D2.db());
 
 /* ═══ 5) قرار الشركة: تثبيت طلب صاحب العمل + حسم الحالة الحرجة ═════════ */
 step(5, 'قرار الشركة — تثبيت طلب صاحب العمل («ثنينهم») ثم حسم الحالة الحرجة');
@@ -571,7 +576,7 @@ const lk1 = D2.lookupCard(SERIAL);
 check('عرض الزبون يبيّن «تم توظيف بإحدى الفرصتين» ولا فرص متبقية', lk1.ok && lk1.card.succeeded === true &&
   Number(lk1.card.chancesLeft) === 0);
 
-const DB4 = D2.exportJson();
+const DB4 = JSON.stringify(D2.db());
 
 /* ═══ 6) نقطة البيع عبر الموقع + طلب صاحب العمل وإلغاء الشركة ══════════ */
 step(6, 'نقطة البيع عبر الموقع — تعبئة بطاقة فارغة بخطوتين ثم طلب «لم يتم التوظيف» وإلغاء الشركة للتوظيف');
@@ -712,7 +717,7 @@ await wait(900);
   check('بيع نقطة البيع من الموقع موثّق بسجل التدقيق',
     P2.listAudit().some((l) => /بيع وتعبئة بطاقة فارغة/.test(l.action)));
 }
-const DB5 = pub2.w.HRCStore.exportJson();
+const DB5 = JSON.stringify(pub2.w.HRCStore.db());
 
 /* ═══ ج10) سباق الوظيفة: حُجزت من لحظة اختيارها حتى «إتمام» ═══════════════
    بيع متزامن (صفحة بقيت مفتوحة أو تبويب ثانٍ) يفوز بالوظيفة — وفشل «إتمام»
@@ -831,7 +836,7 @@ await wait(900);
 /* موظف الشركة يرى «إجراءات مطلوبة» بالسبب، وقراره: إرجاع متاحة أو حذف */
 const dash3 = await open('dashboard.html', undefined, { session: 'staff' });
 const D3 = dash3.w.HRCStore;
-D3.importJson(emp2.w.HRCStore.exportJson());
+injectFixture(D3,JSON.stringify(emp2.w.HRCStore.db()));
 dash3.w.HRCRefresh && dash3.w.HRCRefresh();
 await wait(250);
 click(dash3.w, dash3.doc.querySelector('#side-nav button[data-view="overview"]'));
@@ -874,7 +879,7 @@ check('كل قرارات الرحلة موثقة بسجل التدقيق (' + D3
    صاحبُ البطاقة وظيفتَي فرصتيه بنفسه من صفحة باركود بطاقته (apply.html). */
 step('6ب', 'بيع بطاقة بلا وظيفة — فرصتان فارغتان يختارهما صاحب البطاقة بنفسه');
 const SERIAL_SKIP = blankSerials[2];
-const pubSkip = await open('index.html', '?role=pos#card=' + encodeURIComponent(SERIAL_SKIP), { db: D3.exportJson() });
+const pubSkip = await open('index.html', '?role=pos#card=' + encodeURIComponent(SERIAL_SKIP), { db: JSON.stringify(D3.db()) });
 await wait(900);
 {
   const box = lastModal(pubSkip.doc);
@@ -926,14 +931,14 @@ await wait(900);
   if (closeBtn) { click(pubSkip.w, closeBtn); await wait(200); }
 }
 
-const DB6 = D3.exportJson();
+const DB6 = JSON.stringify(D3.db());
 
 /* ═══ 7) صفحة التحقق: الموظف يفحص البطاقة — والزائر محجوب ═══════════════ */
 step(7, 'صفحة التحقق — الموظف يفحص البطاقة من باركود QR والزائر محجوب');
 
 const q = '?form=' + encodeURIComponent(SERIAL) + '&t=' + TOKEN;
 const ver = await open('verify.html', q, { session: 'staff' });
-ver.w.HRCStore.importJson(DB6);
+injectFixture(ver.w.HRCStore,DB6);
 ver.w.HRCVerify.mount(q);
 await wait(250);
 {
@@ -948,14 +953,14 @@ await wait(250);
 /* بصمة مزيفة: تحذير أمني */
 const qf = '?form=' + encodeURIComponent(SERIAL) + '&t=deadbeef';
 const fake = await open('verify.html', qf, { session: 'staff' });
-fake.w.HRCStore.importJson(DB6);
+injectFixture(fake.w.HRCStore,DB6);
 fake.w.HRCVerify.mount(qf);
 await wait(250);
 check('تحذير التلاعب ظاهر للبصمة المزيفة', /تحذير أمني|غير مطابق/.test(fake.doc.body.textContent));
 
 /* الزائر: بوابة تحجب أي بيانات */
 const visitor = await open('verify.html', q);
-visitor.w.HRCStore.importJson(DB6);
+injectFixture(visitor.w.HRCStore,DB6);
 visitor.w.HRCVerify.mount(q);
 await wait(250);
 {
@@ -969,7 +974,7 @@ step(8, 'إعادة الطباعة — الزبون يعيد طباعة بطاق
 
 const pubCard = await open('index.html');
 const P3C = pubCard.w.HRCStore;
-P3C.importJson(DB6);
+injectFixture(P3C,DB6);
 await wait(250);
 const printedBefore = P3C.getApplicant(SERIAL).printedCount;
 
@@ -994,7 +999,7 @@ await wait(150);
   click(pubCard.w, box.querySelector('#bk-print'));
   await wait(300);
   const errHost = pubCard.doc.querySelector('[data-bk-err="rcode"]');
-  check('إعادة الطباعة برمز خاطئ مرفوضة', !!errHost && /رمز الفرصة/.test(errHost.textContent) &&
+  check('إعادة الطباعة برمز خاطئ مرفوضة', !!errHost && /رمز التحقق/.test(errHost.textContent) &&
     errHost.style.display !== 'none', 'لم يظهر خطأ الرمز');
 
   setVal(pubCard.w, box.querySelector('#bk-rcode'), CHANCES[1].code);
@@ -1002,7 +1007,7 @@ await wait(150);
   await wait(450);
 }
 const reprintHtml = pubCard.doc.getElementById('print-root').innerHTML;
-check('إعادة طباعة البطاقة نجحت: الوجهان بالباركود والرمزين — وبلا اسم زبون',
+check('إعادة طباعة البطاقة القديمة نجحت: وجهان وباركود ورمزا الفرصتين — وبلا اسم زبون',
   (reprintHtml.match(/class="hrc-card[" ]/g) || []).length === 2 && reprintHtml.includes(SERIAL) &&
   reprintHtml.includes(CHANCES[0].code) && reprintHtml.includes(CHANCES[1].code) &&
   !reprintHtml.includes('مرتضى كريم جبر'));
@@ -1031,7 +1036,7 @@ check('استمارة A4 المعاد طباعتها لا تكشف رموز ال
 step(9, 'الملف المستقل — التحقق بالمسار الهاشي والتنقل (بجلسة موظف)');
 
 const solo = await open('hrc-standalone.html', '#!verify?form=' + encodeURIComponent(SERIAL) + '&t=' + TOKEN, { session: 'staff' });
-solo.w.HRCStore.importJson(DB6);
+injectFixture(solo.w.HRCStore,DB6);
 solo.w.dispatchEvent(new solo.w.Event('hashchange'));
 await wait(450);
 {

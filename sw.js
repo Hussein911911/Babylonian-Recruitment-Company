@@ -1,4 +1,4 @@
-// Service Worker للعمل أوفلاين — hrc-cache-v10
+// Service Worker للعمل أوفلاين — hrc-cache-v45
 // ---------------------------------------------------------------------------
 // سياسة التخزين منذ v4:
 //   • HTML و JS  → network-first: الشبكة أولاً (الزائر يرى آخر نسخة)، والكاش
@@ -15,6 +15,7 @@
 //   • v9 (2026-10-06): البطاقة الجديدة كانت تفقد فرصتيها فتظهر «انتهت فرصك» بلا
 //     سبب — الإصلاح: ترميم تلقائي لخانات الفرص الناقصة عند قراءة البطاقة، ومنع
 //     المزامنة من حذف خانات بطاقة معروفة، وزر «إعادة فحص البطاقة» في صفحة التقديم.
+//   • v11 (2026-10-15): إبطال نسخ الدخول المحلي القديمة بعد قفل Supabase Auth.
 //   • skipWaiting + clients.claim: النسخة الجديدة تتسلّم فوراً بلا انتظار إغلاق
 //     كل التبويبات — وإلا بقي موظف على سواها يوماً كاملاً.
 //
@@ -27,16 +28,27 @@
    إن كان مطابقاً. إبقاء الرقم ثابتاً يُبقي الزوار القدامى على نسخة قديمة
    من index.html مهما أعدت النشر (ظهر فعلاً: زر دخول محذوف بقي على حاسبة
    زارت الموقع قبل الحذف، بينما اختفى على هاتف لم يزره من قبل). */
-const CACHE_NAME = 'hrc-cache-v10';
+const CACHE_NAME = 'hrc-cache-v45';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/assets/js/apply-navigation.js',
   '/apply.html',
+  '/employer.html',
+  '/assets/css/employer.css',
+  '/assets/js/employer.js',
   '/dashboard.html',
+  '/assets/js/card-archive.js',
   '/verify.html',
   '/404.html',
   '/assets/css/style.css',
+  '/assets/css/workspace-layout.css',
+  '/assets/css/fonts.css',
+  '/assets/css/public-polish.css',
+  '/assets/css/notifications.css',
+  '/assets/js/notifications.js',
   '/assets/js/config.js',
+  '/assets/js/supabase-config.js',
   '/assets/js/store.js',
   '/assets/js/ui.js',
   '/assets/js/nav.js',
