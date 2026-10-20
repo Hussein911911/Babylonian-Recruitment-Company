@@ -40,6 +40,7 @@ function makeMock(opts = {}) {
   let seq = 1;
 
   function query(table) {
+    table=table.replace(/^working_/, ''); // Invoker views use the same synthetic base rows.
     const q = { table, _op: null, _payload: null, _filters: [] };
     const api = {
       select() { if (!q._op) q._op = 'select'; return api; },
@@ -90,6 +91,7 @@ function makeMock(opts = {}) {
     rpc(name, args) {
       calls.push({ rpc: name, args });
       /* PostgREST يُرجع قيمة الدالة في data مباشرةً */
+      if(name==='staff_issuance_registry'&&!opts.failAll&&opts.session!==null)return Promise.resolve({data:args.p_serial==null?{version:1,bitmap:Buffer.alloc(595125).toString('base64')}:{used:false},error:null});
       if (opts.rpc && opts.rpc[name]) return Promise.resolve({ data: opts.rpc[name](args), error: null });
       return Promise.resolve({ data: null, error: { message: 'unknown rpc ' + name } });
     },
@@ -575,6 +577,16 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
   check('الرمز الخام لا يدخل المخزن أو التخزين المحلي أو عمليات المزامنة',!JSON.stringify(Store.db()).includes('058297')&&!JSON.stringify(localStorage).includes('058297')&&!JSON.stringify(mock.__calls.filter(c=>c.table)).includes('058297'));
   const before=JSON.stringify(Store.getJob('HRC-5001'));mock.rpc=()=>Promise.resolve({data:null,error:{message:'failed'}});
   check('فشل RPC لا يعطي نجاحاً ولا يعدل الوظيفة محلياً',!(await Store.saveJobWithPin('HRC-5001',{title:'لا تحفظ'},'123450')).ok&&JSON.stringify(Store.getJob('HRC-5001'))===before);
+}
+
+// Archive eviction must never become a client DELETE on authoritative tables.
+{
+ const rows=cloudRows();rows.applicants[0].attempt_limit=1;rows.applicants[0].status='exhausted';rows.job_attempts[0].slot_status='succeeded';rows.job_attempts[0].closed_at=new Date(Date.now()-61*86400000).toISOString();
+ const mock=makeMock({rows});const {Store}=bootStore(mock);Store.init();await sleep(150);const serial=rows.applicants[0].serial;
+ mock.__channel.fire('applicants',{eventType:'UPDATE',new:{...rows.applicants[0],archived_at:new Date().toISOString()}});await sleep(140);
+ check('الأرشفة اللحظية تزيل البطاقة وفرصها من ذاكرة العمل فقط',!Store.getApplicant(serial)&&Store.getAttempts(serial).length===0);
+ const result=await Store.pushCloud();check('إخلاء البطاقة من الكاش لا يولد حذفاً في القاعدة',!result.failed&&!mock.__calls.some(c=>c.op==='delete'&&['applicants','job_attempts'].includes(c.table)));
+ check('سجل الباركود المحلي المصغّر لا يحتفظ بصفوف الأرشيف',!Store.db().usedSerials.includes(serial));
 }
 
 console.log('\n' + '═'.repeat(74));

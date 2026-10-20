@@ -2,6 +2,13 @@
 (function (root) {
   'use strict';
 
+  var chanceBitmap=null;
+  function chanceIndex(code){var m=/^([1-9][0-9]{3})-([A-HJKMNP-Z])([A-HJKMNP-Z])$/.exec(code||'');if(!m)return -1;var letters='ABCDEFGHJKMNPQRSTUVWXYZ';return (Number(m[1])-1000)*529+letters.indexOf(m[2])*23+letters.indexOf(m[3]);}
+  function chanceUsed(code){var i=chanceIndex(code);return !!(chanceBitmap&&i>=0&&(chanceBitmap[i>>3]&(1<<(i%8))));}
+  function rememberChance(code){var i=chanceIndex(code);if(chanceBitmap&&i>=0)chanceBitmap[i>>3]|=1<<(i%8);}
+  function clearChanceRegistry(){chanceBitmap=null;}
+  function setChanceRegistry(data){if(!data||data.version!==1||typeof data.bitmap!=='string')throw Error('سجل رموز الفرص غير متاح');var raw=(root.atob||atob)(data.bitmap);if(raw.length!==595125)throw Error('سجل رموز غير مكتمل');chanceBitmap=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)chanceBitmap[i]=raw.charCodeAt(i);}
+
   /* ---------------------------- أدوات مساعدة ---------------------------- */
   var ISO_RE = /^\d{4}-\d{2}-\d{2}T/;
 
@@ -91,7 +98,7 @@
   function applicantFromDb(r) {
     return {
       id: r.id,
-      serial: r.serial,
+      serial: r.serial, archivedAt: r.archived_at || null,
       cardPrintCode: r.card_print_code || null,
       fullName: r.full_name,
       phone: r.phone,
@@ -317,6 +324,7 @@
   // also handle API row caps SMALLER than our requested 500 rows.
   function readPages(client, table, maximum) {
     var keys = { jobs: 'code', applicants: 'serial', job_attempts: 'id', audit_log: 'id', settings: 'key', staff: 'id', public_jobs: 'code' };
+    keys.working_jobs='code';keys.working_applicants='serial';keys.working_job_attempts='id';
     var key = keys[table], rows = [], expected = null, seen = Object.create(null);
     function query() {
       var q = client.from(table).select('*', { count: 'exact' });
@@ -357,20 +365,24 @@
     var limit = opts.auditLimit || 2000;
 
     var queries = TABLES.map(function (t) {
-      return readPages(client, t, t === 'audit_log' ? limit : 100000);
+      var source=opts.workspace&&['jobs','applicants','job_attempts'].indexOf(t)>=0?'working_'+t:t;
+      return readPages(client, source, t === 'audit_log' ? limit : 100000);
     });
 
+    if(opts.workspace){queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_card_report',{p_from:null,p_to:null});}).catch(function(){return {error:true};}));queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_issuance_registry',{p_serial:null});}).then(function(r){if(r.error)throw Error('تعذر قراءة سجل الرموز');setChanceRegistry(r.data);return {ok:true};}).catch(function(e){return {error:{message:e.message,code:'REGISTRY_REQUIRED'}};}));}
     return Promise.all(queries).then(function (results) {
       var failed = [];
       var data = {};
-      results.forEach(function (res, i) {
+      results.slice(0,TABLES.length).forEach(function (res, i) {
         var t = TABLES[i];
         if (res && res.error) { failed.push({ table: t, error: res.error }); data[t] = []; }
         else data[t] = (res && res.data) || [];
       });
       var db = buildDb(data);
+      if(opts.workspace&&results[TABLES.length+1].error&&!failed.some(function(f){return f.table==='job_attempts';}))failed.push({table:'job_attempts',error:results[TABLES.length+1].error});
       db.meta.failedTables = failed.map(function (f) { return f.table; });
       db.meta.errors = failed;
+      if(opts.workspace){db.meta.workspace=true;db.meta.partialTables=['jobs','applicants','job_attempts'];var report=results[TABLES.length];if(report&&!report.error&&report.data&&report.data.stats&&Array.isArray(report.data.rows))db.meta.serverReport=report.data;}
       return db;
     });
   }
@@ -500,6 +512,7 @@
     }
 
     if (table === 'applicants') {
+      if(db.meta&&db.meta.workspace&&row&&row.archived_at){removeFrom(db.applicants,row.serial,function(x){return x.serial;});db.attempts=db.attempts.filter(function(t){if(t.serial===row.serial){rememberChance(t.code);return false;}return true;});if(Array.isArray(db.usedSerials))db.usedSerials=db.usedSerials.filter(function(s){return s!==row.serial;});return db;}
       if (type === 'DELETE') removeFrom(db.applicants, old.serial, function (x) { return x.serial; });
       else replaceIn(db.applicants, applicantFromDb(row), function (x) { return x.serial; });
       return db;
@@ -736,7 +749,7 @@
     staffFromDb: staffFromDb,
     settingsFromDb: settingsFromDb, settingsToDb: settingsToDb,
     /* بيانات */
-    buildDb: buildDb, fetchAll: fetchAll, TABLES: TABLES,
+    chanceUsed:chanceUsed,rememberChance:rememberChance,clearChanceRegistry:clearChanceRegistry, rpcCall:rpcCall, buildDb: buildDb, fetchAll: fetchAll, TABLES: TABLES,
 
     fetchPublicJobs: fetchPublicJobs, verifyForm: verifyForm,
     lookupCard: lookupCardRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,

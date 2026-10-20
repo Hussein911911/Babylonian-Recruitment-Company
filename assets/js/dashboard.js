@@ -4,7 +4,7 @@
   var CFG = root.HRC_CONFIG, Store = root.HRCStore, UI = root.HRCUI, V = root.HRCVoucher;
   if (!document.getElementById('app-shell')) return;
 
-  var lastSessionKey = null;
+  var lastSessionKey = null, reportTimer=null,financeTicket=0;
 
 
   /* مفتاح الجلسة: يُستخدم لرصد الدخول/الخروج وإعادة ضبط الواجهة والصلاحيات */
@@ -81,6 +81,7 @@
       }
       renderCurrent();
       updateHamburgerNotif();
+      if(Store.db().meta.workspace){clearTimeout(reportTimer);reportTimer=setTimeout(function(){Store.cardReport().then(function(){if(state.view==='overview')renderOverview();}).catch(function(){});},750);}
     });
     setInterval(tick, 30000);
     setInterval(renderClock, 1000);
@@ -976,6 +977,7 @@
       { icon: 'check',     cls: 'purple', val: s.hires,      lbl: 'توظيف ناجح', hint: 'منذ بداية التشغيل' },
       { icon: 'chart',     cls: 'ok',     val: Store.money(fin.expected), lbl: 'التحصيل المتوقع', hint: fin.printed + ' مرة طباعة' }
     ];
+    if(Store.db().meta.workspace&&!Store.db().meta.serverReport){[2,4,5].forEach(function(i){stats[i].val='—';stats[i].hint='الإجمالي الكامل غير متاح؛ لا نستبدله ببيانات العمل الجزئية';});}
     document.getElementById('ov-stats').innerHTML = stats.map(function (x) {
       return '<div class="ov-stat">' +
         '<div class="ov-icon ' + x.cls + '"><svg class="ic"><use href="#i-' + x.icon + '" xlink:href="#i-' + x.icon + '"/></svg></div>' +
@@ -1357,8 +1359,10 @@
   /* ======================= الباحثون والاستمارات ======================= */
   function renderApplicants() {
     var rows = Store.listApplicants(state.a);
+    var filterKey=JSON.stringify(state.a);if(state.aFilterKey!==filterKey){state.aFilterKey=filterKey;state.aPage=0;}
+    state.aPage=Math.min(state.aPage||0,Math.max(0,Math.ceil(rows.length/50)-1));
     var label = document.getElementById('apps-count-label');
-    if (label) label.textContent = rows.length + ' بطاقة';
+    if (label) label.textContent = rows.length + (Store.db().meta.workspace?' بطاقة ضمن العمل الحالي':' بطاقة');
 
     // ═══ إحصائيات سريعة ═══
     var statsHost = document.getElementById('cards-stats');
@@ -1375,12 +1379,12 @@
         if (a.holds) reserved++;
       });
       var stats = [
-        { icon: 'card', cls: 'total', val: all.length, lbl: 'إجمالي البطاقات' },
+        { icon: 'card', cls: 'total', val: all.length, lbl: Store.db().meta.workspace?'بطاقات العمل الحالية':'إجمالي البطاقات' },
         { icon: 'check-circle', cls: 'ok', val: active, lbl: 'سارية' },
         { icon: 'card', cls: 'gold', val: blank, lbl: 'فارغة بالمخزن' },
         { icon: 'clock', cls: 'info', val: pending, lbl: 'قيد المراجعة' },
         { icon: 'hourglass', cls: 'warn', val: reserved, lbl: 'حجوزات جارية' },
-        { icon: 'alert', cls: 'danger', val: expired + exhausted, lbl: 'منتهية / مستهلكة' }
+        { icon: 'alert', cls: 'danger', val: expired + exhausted, lbl: Store.db().meta.workspace?'منتهية / مستهلكة حديثاً':'منتهية / مستهلكة' }
       ];
       statsHost.innerHTML = stats.map(function (s) {
         return '<div class="cards-stat ' + s.cls + '">' +
@@ -1393,7 +1397,10 @@
     // ═══ الجدول ═══
     var tbody = document.getElementById('apps-table-body');
 
-    tbody.innerHTML = rows.map(function (a) {
+    var pager=document.getElementById('apps-pager');if(!pager){pager=document.createElement('div');pager.id='apps-pager';pager.className='flex';pager.style.cssText='gap:12px;flex-wrap:wrap;margin:12px 0';(tbody.closest('.table-wrap')||tbody.closest('table')).insertAdjacentElement('afterend',pager);}
+    pager.innerHTML='<button class="btn btn-outline btn-sm" data-page-prev '+(state.aPage===0?'disabled':'')+'>السابق</button><span class="tiny">صفحة '+(state.aPage+1)+' من '+Math.max(1,Math.ceil(rows.length/50))+' · 50 بطاقة للصفحة · السجل القديم عبر بحث السجل الكامل</span><button class="btn btn-outline btn-sm" data-page-next '+((state.aPage+1)*50>=rows.length?'disabled':'')+'>التالي</button>';
+    pager.querySelector('[data-page-prev]').onclick=function(){state.aPage--;renderApplicants();};pager.querySelector('[data-page-next]').onclick=function(){state.aPage++;renderApplicants();};
+    tbody.innerHTML = rows.slice(state.aPage*50,(state.aPage+1)*50).map(function (a) {
       var st = Store.formStatus(a);
       var left = Store.attemptsLeft(a.serial);
       var hold = a.holds ? '<span class="badge warn">حجز جارٍ</span>' : '';
@@ -2107,9 +2114,15 @@
   }
 
   /* ======================= اللوحة المالية ======================= */
-  function renderFinance() {
-    var rows = Store.financials(state.fin.from, state.fin.to);
-    var totals = Store.financialTotals(state.fin.from, state.fin.to);
+  function renderFinance(report) {
+    if(Store.db().meta.workspace&&!report){
+      var ticket=++financeTicket,key=JSON.stringify(state.fin),owner=sessionKey();
+      document.getElementById('fin-stats').textContent='جاري قراءة التقرير الكامل من القاعدة، بما فيه المؤرشف…';document.getElementById('fin-bars').replaceChildren();document.getElementById('fin-table-body').replaceChildren();
+      Store.cardReport(state.fin.from,state.fin.to).then(function(data){if(ticket===financeTicket&&key===JSON.stringify(state.fin)&&owner===sessionKey()&&state.view==='finance')renderFinance(data);}).catch(function(e){if(ticket===financeTicket&&owner===sessionKey())document.getElementById('fin-stats').textContent=e.message+' — لم تستخدم بيانات العمل الجزئية بدلاً من الإجمالي';});return;
+    }
+    var rows = report?report.rows:Store.financials(state.fin.from, state.fin.to);
+    var totals = report?rows.reduce(function(t,r){['forms','printed','expected','collected','hires','holds'].forEach(function(k){t[k]+=Number(r[k]||0);});return t;},{forms:0,printed:0,expected:0,collected:0,hires:0,holds:0}):Store.financialTotals(state.fin.from, state.fin.to);
+    document.getElementById('finance-scope').textContent=Store.db().meta.workspace?'التقرير يشمل السجل الكامل والمؤرشف. تعديلات رسوم البطاقات الحالية تظهر بعد نجاح المزامنة.':'';
     var stats = [
       { icon: 'file', label: 'إجمالي الاستمارات', value: totals.forms, hint: totals.printed + ' عملية طباعة' },
       { icon: 'money', label: 'المتوقع تحصيله', value: Store.money(totals.expected), hint: 'سعر البطاقة ' + Store.money(Store.settings().formFee), accent: true },
@@ -2133,7 +2146,7 @@
       return '<tr><td><b>' + UI.esc(r.name) + '</b><div class="tiny muted mono">' + UI.esc(r.user) + '</div></td>' +
         '<td>' + r.forms + '</td><td>' + r.printed + '</td><td>' + Store.money(Store.settings().formFee) + '</td>' +
         '<td><b>' + Store.money(r.expected) + '</b></td>' +
-        '<td><input type="number" class="fin-collected" data-user="' + UI.esc(r.user) + '" value="' + r.collected + '" min="0" step="1000" style="width:120px;padding:4px 8px;border:1px solid #ddd;border-radius:6px"></td>' +
+        '<td><input '+(Store.db().meta.workspace?'disabled title="إجمالي شامل للأرشيف؛ تعديل رسم بطاقة حالية من تفاصيلها" ':'')+'type="number" class="fin-collected" data-user="' + UI.esc(r.user) + '" value="' + r.collected + '" min="0" step="1000" style="width:120px;padding:4px 8px;border:1px solid #ddd;border-radius:6px"></td>' +
         '<td><span class="badge ok">' + r.paid + ' مدفوع</span> <span class="badge warn">' + r.partial + ' جزئي</span> <span class="badge danger">' + r.unpaid + ' غير مدفوع</span></td>' +
         '<td>' + r.hires + '</td><td>' + r.holds + '</td></tr>';
     }).join('') || '<tr><td colspan="9" class="table-empty">لا بيانات</td></tr>';
@@ -2392,6 +2405,7 @@
   }
 
   function bindActions() {
+    var history=document.getElementById('btn-card-history');if(history)history.onclick=function(){if(root.HRCArchive)return root.HRCArchive.open(Store,UI);history.disabled=true;var js=document.createElement('script');js.src='assets/js/card-archive.js';js.onload=function(){history.disabled=false;root.HRCArchive.open(Store,UI);};js.onerror=function(){history.disabled=false;UI.toast('err','تعذر فتح السجل','تحقق من الاتصال وأعد المحاولة');};document.head.appendChild(js);};
     var nj = document.getElementById('btn-new-job');
     if (nj) nj.addEventListener('click', function () { jobModal(null); });
     var na = document.getElementById('btn-new-app');
@@ -2562,11 +2576,15 @@
           codeInp.value = Store.suggestSerial();
           errBox.style.display = 'none';
         });
-        box.querySelector('#c-save').addEventListener('click', function () {
+        box.querySelector('#c-save').addEventListener('click', async function () {
           var serial = String(codeInp.value || '').trim();
           var notes = box.querySelector('#c-notes').value.trim();
           errBox.style.display = 'none';
           if (!serial) { codeInp.focus(); return; }
+          if(Store.db().meta.workspace&&Store.isCardSerial(serial)&&!Store.getApplicant(Store.normalizeCardSerial(serial))){
+            var btn=box.querySelector('#c-save'),gen=box.querySelector('#c-gen'),owner=sessionKey();btn.disabled=true;codeInp.disabled=true;gen.disabled=true;
+            try{var used=await Store.serialWasIssued(serial);if(!document.contains(box)||owner!==sessionKey())return;if(used){errBox.textContent='هذا الباركود مسجّل سابقاً، بما فيه الأرشيف؛ لا يمكن إصداره مجدداً';errBox.style.display='block';return;}}catch(e){errBox.textContent=e.message;errBox.style.display='block';return;}finally{btn.disabled=false;codeInp.disabled=false;gen.disabled=false;}
+          }
           var r = Store.createCardWithSerial(serial, notes);
           if (!r.ok) { errBox.textContent = r.error; errBox.style.display = 'block'; codeInp.focus(); return; }
           close();

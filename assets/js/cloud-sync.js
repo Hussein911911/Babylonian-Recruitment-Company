@@ -113,6 +113,7 @@
       });
       Object.keys(snapshot[spec.table]).forEach(function (k) {
         if (seen[k]) return;
+        if(db.meta&&db.meta.partialTables&&db.meta.partialTables.indexOf(spec.table)>=0&&!(db.meta.explicitDeletes&&db.meta.explicitDeletes[spec.table]&&db.meta.explicitDeletes[spec.table].indexOf(k)>=0))return;
         /* ⚠️ حماية 2026-10-06 (عطل حقيقي مُشاهد): كانت المزامنة تحذف خانات فرص
            بطاقة **موجودة محلياً لكن خاناتها غير محمّلة** (جهاز جديد، ذاكرة
            متصفح ممسوحة، سحب ناقص) — فتُصبح البطاقة الجديدة بلا أي فرصة في
@@ -418,6 +419,7 @@
             if (op.table === 'applicants' && op.op === 'insert') freshParents[op.key] = true;
             /* نجحت: نُقدّم اللقطة لهذه العملية وحدها */
             advanceSnapshot(snapshot, op);
+            if(op.op==='delete'&&db.meta&&db.meta.explicitDeletes&&db.meta.explicitDeletes[op.table])db.meta.explicitDeletes[op.table]=db.meta.explicitDeletes[op.table].filter(function(k){return k!==op.key;});
             done++;
           });
         }).catch(function (err) {

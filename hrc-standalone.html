@@ -3500,6 +3500,7 @@ to{opacity:1;transform:none}
           <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
           <input type="text" id="quick-code" placeholder="بحث سريع بكود الوظيفة (HRC-1042)" aria-label="بحث بكود الوظيفة">
         </form>
+        <button class="btn btn-outline btn-sm" id="btn-card-history">بحث السجل الكامل والأرشيف</button>
         <button class="btn btn-lapis btn-sm" id="btn-new-app"><svg class="ic"><use href="#i-user-plus" xlink:href="#i-user-plus"/></svg> بيع وتعبئة بطاقة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-batch" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-card" data-admin-only="true" title="بطاقة واحدة فارغة بكودها — للمدير فقط"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
@@ -3682,6 +3683,7 @@ to{opacity:1;transform:none}
               </table>
             </div>
           </div>
+          <div id="apps-pager" class="flex" style="gap:12px;flex-wrap:wrap;margin:12px 0"></div>
 
           <!-- ملاحظة سفلية -->
           <div class="footnote-premium">
@@ -3778,6 +3780,7 @@ to{opacity:1;transform:none}
 
     <!-- ================= اللوحة المالية (مدير) ================= -->
     <section class="view" id="view-finance">
+      <p id="finance-scope" class="tiny muted"></p>
       <div class="stat-grid" id="fin-stats"></div>
       <div class="panel">
         <div class="panel-head">
@@ -5369,11 +5372,7 @@ to{opacity:1;transform:none}
     memSession = session;
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) { }
     audit('تسجيل دخول', 'auth', username, 'دخول ناجح إلى المنظومة (' + (u.role === 'admin' ? 'مدير عام' : 'موظف') + ')');
-    /* ⚠️ خطر حقيقي في الوضع الانتقالي: لو كان في هذا المتصفح توكن جلسة سحابية
-       لموظف آخر، ثم دخل شخص بكلمة المرور المحلية، لصارت كل كتاباته تُنسب إلى
-       **ذلك الموظف** في القاعدة (التوكن هو من يكتب لا الشاشة). القاعدة هنا
-       صريحة: إمّا أنت المستخدم السحابي، وإمّا وضع محلي بلا أي كتابة سحابية —
-       لذلك نفصل الجلسة السحابية عند الدخول المحلي. */
+
     if (cloud.state === 'on' && cloud.role === 'staff') {
       console.warn('[HRC] دخول محلي مع جلسة سحابية قائمة — تُفصل الجلسة السحابية حتى لا تُنسب الكتابات لصاحبها');
       saveLocal(); emit();
@@ -5387,6 +5386,7 @@ to{opacity:1;transform:none}
   function logout() {
     var s = currentUser();
     if (s) audit('تسجيل خروج', 'auth', s.username, 'إنهاء الجلسة');
+    if(root.HRCCloud&&root.HRCCloud.clearChanceRegistry)root.HRCCloud.clearChanceRegistry();
     memSession = null;
     try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { }
     saveLocal(); emit();
@@ -5444,12 +5444,7 @@ to{opacity:1;transform:none}
     return null;
   }
 
-  /* إضافة مستخدم جديد.
-     ⚠️ تمييز مقصود: تكرار الاسم مع سطر **محلي** يُرفض دائماً (شخصان بنفس اسم
-     الدخول = خطأ). أما سطر في القاعدة فليس تكراراً بل نفس الحساب: الحساب أُنشئ
-     في القاعدة قبل لحظات (cloudLinked=true) وما نكتبه هنا هو نسخة الدخول المحلي
-     الاحتياطية له — وهي التي تُسند اسم موظف القاعدة إلى اسم دخول محلي عند
-     انقطاع الإنترنت في الوضع الانتقالي. */
+
   function addUser(data) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     if (!data.username || !data.password || !data.name) return { ok: false, error: 'الاسم واسم المستخدم وكلمة المرور مطلوبة' };
@@ -5487,10 +5482,7 @@ to{opacity:1;transform:none}
     return { ok: true, user: newUser };
   }
 
-  /* تعديل مستخدم — يعمل على المصدرين: السطر المحلي وسطر القاعدة (brc.staff).
-     ⚠️ علّة مُصلَحة: كان التعديل يفشل بـ«المستخدم غير موجود محلياً» لأي موظف
-     أُنشئ من جهاز آخر (سطر في القاعدة بلا نظير محلي)، فيظهر الموظف في الجدول
-     ولا يستطيع المدير تعديله ولا تعطيله. */
+
   function updateUser(username, data) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     var users = db.settings.users || [];
@@ -5716,6 +5708,7 @@ to{opacity:1;transform:none}
       }
       if(t.jobId===job.id)t.jobId=null;
     });
+    if(db.meta&&db.meta.workspace){db.meta.explicitDeletes=db.meta.explicitDeletes||{};db.meta.explicitDeletes.jobs=(db.meta.explicitDeletes.jobs||[]).concat(code);}
     db.jobs = db.jobs.filter(function (j) { return j.code !== code; });
     audit('حذف وظيفة', 'job', code, job.title + ' — ' + job.region);
     save(); emit();
@@ -5724,11 +5717,7 @@ to{opacity:1;transform:none}
 
   /* ======================= الباحثون عن العمل والبطاقات ======================= */
 
-  /* ===== صيغة باركود البطاقة (قرار الإدارة 2026-10-10) =====
-     10 خانات: أحرف إنجليزية كبيرة وأرقام مختلطة — بلا بادئة وبلا شرطة وبلا فاصل.
-     نستبعد الأشكال المتشابهة (0/O و1/I/L) حتى لا يخلط الكاتب اليدوي بينها.
-     الصيغة القديمة HRC-BC-###### تبقى مقبولة للبطاقات المطبوعة سابقاً.
-     التوليد عشوائي غير متسلسل (قرار 2026-09-30 محفوظ): لا نمط يُخمَّن ولا يُتتبَّع. */
+
   var CARD_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
   var CARD_LEN = 10;
   var CARD_RE = /^[2-9A-HJKMNP-Z]{10}$/;
@@ -5796,14 +5785,15 @@ to{opacity:1;transform:none}
     var letters = 'ABCDEFGHJKMNPQRSTUVWXYZ';
     /* pool اختياري: يُمرَّر أثناء seedDb لأن المتغير العام db ما زال null حينها */
     var attempts = pool || (db ? db.attempts : []);
-    for (var guard = 0; guard < 50; guard++) {
+    for (var guard = 0; guard < 50+9000*529; guard++) {
       var code = pad(Math.floor(1000 + Math.random() * 9000), 4) + '-' +
         letters[Math.floor(Math.random() * letters.length)] +
         letters[Math.floor(Math.random() * letters.length)];
-      var taken = attempts.some(function (t) { return t.code === code; });
-      if (!taken) return code;
+      if(guard>=50){var n=guard-50;code=pad(1000+Math.floor(n/529),4)+'-'+letters[Math.floor(n%529/23)]+letters[n%23];}
+      var taken = attempts.some(function (t) { return t.code === code; })||(root.HRCCloud&&root.HRCCloud.chanceUsed&&root.HRCCloud.chanceUsed(code));
+      if (!taken) {if(root.HRCCloud&&root.HRCCloud.rememberChance)root.HRCCloud.rememberChance(code);return code;}
     }
-    return pad(Math.floor(1000 + Math.random() * 9000), 4) + '-XX';
+    throw new Error('نفدت رموز الفرص الفريدة؛ لا يمكن طباعة رمز مكرر');
   }
 
   function createApplicant(data) {
@@ -5864,10 +5854,7 @@ to{opacity:1;transform:none}
     return made;
   }
 
-  /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
-     المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة.
-     الكود 10 خانات حروف وأرقام (أو 6 أرقام للقديمة فتُسبَق بـ HRC-BC) ويجب أن يكون
-     فريداً ولم يُستعمل أبداً — سجل usedSerials يمنع عودة أي باركود. */
+
   function createCardWithSerial(serial, notes) {
     if (!isAdmin()) return { ok: false, error: 'إضافة البطاقات صلاحية للمدير العام فقط' };
     serial = normalizeCardSerial(serial);
@@ -6028,12 +6015,7 @@ to{opacity:1;transform:none}
     };
   }
 
-  /* طلب صاحب العمل من صفحة الباركود (توظيف / رفض بالسبب) — قرار 2026-10-06:
-     • «تم التوظيف»: الوظيفة والفرصة «جاري التوظيف» (مجمّدة بلا مهلة) حتى
-       يثبّت موظفو الشركة القرار النهائي.
-     • «رفض التوظيف» بسبب مكتوب: الوظيفة والفرصة إلى الحالة «الحرجة» المعلّقة،
-       ويقرّر موظف الشركة: إرجاع الوظيفة متاحة أو حذفها (أو التوظيف).
-     لا رمز مطلوب: الباركود وحده يكفي (حيازة الورقة). */
+
   function employerDecide(serial, decision, reason) {
     serial = String(serial || '').trim().toUpperCase();
     if (decision !== 'hire' && decision !== 'reject')
@@ -6527,10 +6509,7 @@ to{opacity:1;transform:none}
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الرقم', serial: serial };
     var validToken = token(serial);
     var tokenOk = !!t && t === validToken;
-    /* ⚠️ بلا بصمة مطابقة تُقنَّع بيانات الباحث في الرد نفسه (لا في العرض فقط):
-       الأرقام التسلسلية متتابعة، فلو أظهرنا الاسم والهاتف لكل من يُدخل رقماً
-       لتساءل أي زائر أسماء وهواتف كل الباحثين بنداءات متسلسلة. البصمة المطبوعة
-       في الكيو آر كود هي المفتاح؛ ومن يُدخل الرقم يدوياً يراه مقنّعاً. */
+
     var masked = !tokenOk;
     var payload = {
       ok: true,
@@ -6568,6 +6547,7 @@ to{opacity:1;transform:none}
   /* ======================= الإحصاءات والمالية ======================= */
 
   function stats() {
+    if(db.meta&&db.meta.workspace&&db.meta.serverReport)return Object.assign({},db.meta.serverReport.stats,{available:db.jobs.filter(function(j){return j.status==='available';}).length,reserved:db.jobs.filter(function(j){return j.status==='reserved';}).length});
     return {
       totalJobs: db.jobs.length,
       available: db.jobs.filter(function (j) { return j.status === 'available'; }).length,
@@ -6584,6 +6564,7 @@ to{opacity:1;transform:none}
 
   /* لوحة مالية: عدد البطاقات المطبوعة والمبالغ المتوقعة لكل موظف */
   function financials(from, to) {
+    if(db.meta&&db.meta.workspace){var cached=db.meta.financialReport;if(cached&&cached.key===String(from||'')+'|'+String(to||''))return cached.data.rows;if(!from&&!to&&db.meta.serverReport)return db.meta.serverReport.rows;return [];}
     var rows = {};
     db.applicants.forEach(function (a) {
       /* استمارة قيد الطلب (issueDate = null) لا تنتمي لأي يوم: كانت تُقارَن
@@ -6599,7 +6580,7 @@ to{opacity:1;transform:none}
       var fee = Number(a.fee != null ? a.fee : db.settings.formFee);
       rows[key].printed += Number(a.printedCount || 0);
       rows[key].expected += fee;
-      
+
       // Track payment status
       var paidAmount = Number(a.paidAmount || 0);
       if (paidAmount >= fee) {
@@ -6614,7 +6595,7 @@ to{opacity:1;transform:none}
       } else {
         rows[key].unpaid++;
       }
-      
+
       rows[key].hires += getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'succeeded'; }).length;
       rows[key].holds += getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'reserved'; }).length;
     });
@@ -6668,13 +6649,13 @@ to{opacity:1;transform:none}
   function setFeePaid(serial, paid, amount) {
     var app = getApplicant(serial); if (!app) return;
     var fee = Number(app.fee != null ? app.fee : db.settings.formFee);
-    
+
     if (amount !== undefined) {
       // Partial or full payment with specific amount
       var paidAmount = Number(amount) || 0;
       app.paidAmount = paidAmount;
       app.feePaid = paidAmount >= fee;
-      
+
       if (paidAmount >= fee) {
         audit('تسجيل استلام رسم كامل', 'applicant', serial, 'المبلغ: ' + money(paidAmount) + ' من ' + money(fee));
       } else if (paidAmount > 0) {
@@ -6688,7 +6669,7 @@ to{opacity:1;transform:none}
       app.paidAmount = paid ? fee : 0;
       audit(paid ? 'تسجيل استلام رسم' : 'إلغاء تسجيل الرسم', 'applicant', serial, 'رسم الاستمارة: ' + money(fee));
     }
-    
+
     save(); emit();
   }
 
@@ -6708,6 +6689,7 @@ to{opacity:1;transform:none}
   }
 
   function exportJson() {
+    if(db.meta&&db.meta.workspace)throw new Error('هذه بيانات العمل فقط؛ استخدم النسخة الكاملة من إدارة الاسترجاع');
     if (enforceAuth() && !isAdmin()) throw new Error('التصدير السحابي للمدير فقط');
     return JSON.stringify(db, null, 2);
   }
@@ -6715,6 +6697,7 @@ to{opacity:1;transform:none}
   function previewBackup(text) {
     if (typeof text !== 'string' || text.length > 32 * 1024 * 1024) throw new Error('حجم النسخة غير صالح');
     var p = JSON.parse(text);
+    if(p&&p.meta&&p.meta.partialTables&&p.meta.partialTables.length)throw new Error('نسخة عمل جزئية وليست نسخة استرجاع كاملة');
     if (!p || !p.meta || p.meta.version !== 2 || !p.settings || !p.counters) throw new Error('إصدار نسخة غير مدعوم');
     ['jobs', 'applicants', 'attempts', 'audit'].forEach(function (k) {
       if (!Array.isArray(p[k]) || p[k].length > 100000) throw new Error('جدول غير صالح: ' + k);
@@ -6747,12 +6730,7 @@ to{opacity:1;transform:none}
     save(); emit();
   }
 
-  /* ======================= النسخ الاحتياطي المجدول =======================
-   *  ⚠ هذه الدوال يجب أن تبقى *داخل* نطاق الوحدة (IIFE) لأنها تستخدم
-   *    db / save / emit / audit / nowISO. وضعها بعد قوس الإغلاق يجعل كل
-   *    أزرار النسخ الاحتياطي والجدولة تفشل بصمت في المتصفح
-   *    (ReferenceError: nowISO is not defined) — وهذا ما حدث سابقاً.
-   * ===================================================================== */
+
 
   var BACKUP_KEY = 'hrc-scheduled-backups';
   var SCHEDULE_KEY = 'hrc-auto-backup-schedule';
@@ -7026,11 +7004,7 @@ to{opacity:1;transform:none}
   function cloudStatus() {
     return {
       configured: cloudConfigured(), enforceAuth: enforceAuth(), devAccountsActive: devAccountsActive(),
-      /* هل سيُقلع الاتصال بالقاعدة فعلاً؟ (الإعداد مفعّل + المتصفح يوفر fetch +
-         مكتبة عميل محمّلة). الصفحة العامة تعتمد عليه لقرار مهم: مع willBoot=true
-         لا تُعرض للزائر أي بيانات متصفح (seed/كاش) إطلاقاً — بل هيكل تحميل ثم
-         بيانات القاعدة أو رسالة فشل. أما بلا fetch (متصفح قديم جداً أو بيئة
-         اختبار محلية) فلا معنى لإخفاء البيانات المحلية عن نسخة لا تملك غيرها. */
+
       willBoot: cloudWillBoot(),
       state: cloud.state, role: cloud.role,
       readOnly: cloud.readOnly, error: cloud.error, detail: cloud.detail,
@@ -7068,10 +7042,7 @@ to{opacity:1;transform:none}
     if (code === '42501' || /permission denied/i.test(msg)) {
       return { text: 'لا صلاحية كافية (RLS/منح مفقود)', hint: 'راجع سياسات ومنح §8 و§9 في docs/schema.sql' };
     }
-    /* ⚠️ 42703 «عمود مفقود»: أشهر سببه قاعدة أُنشئت قبل إضافة عمود إلى المخطط
-       (create table if not exists لا يُضيف أعمدة لجدول قائم). الواجهة تكتب
-       governorate في كل وظيفة، فقد تفشل «إضافة وظيفة» وحدها بينما كل شيء آخر
-       سليم — فيبدو العطل غامضاً. نُسمّي العمود ونعطي ملف الإصلاح بالاسم. */
+
     if (code === '42703' || /column .* does not exist/i.test(msg)) {
       return {
         text: 'عمود مفقود في القاعدة' + (/jobs|governorate/i.test(msg) ? ' (governorate في brc.jobs)' : ''),
@@ -7160,7 +7131,7 @@ to{opacity:1;transform:none}
   }
 
   function loadFromCloud() {
-    return root.HRCCloud.fetchAll(cloud.client).then(function (cdb) {
+    return root.HRCCloud.fetchAll(cloud.client,{workspace:true}).then(function (cdb) {
       var failed = (cdb.meta && cdb.meta.failedTables) || [];
       cloud.failedTables = failed;
       var coreFailed = failed.filter(function (t) { return CORE_TABLES.indexOf(t) >= 0; });
@@ -7215,6 +7186,7 @@ to{opacity:1;transform:none}
       db.attempts = cdb.attempts || [];
       db.audit = cdb.audit || [];
       db.staff = cdb.staff || [];
+      if(db.meta.workspace)db.usedSerials=[]; // Server issued_serials remains the permanent authority.
       normalizeSerialLog();
     } finally { cloud.applying = false; }
     saveLocal();
@@ -7303,7 +7275,7 @@ to{opacity:1;transform:none}
   /* إعادة قراءة كاملة — بعد تغيير من موظف آخر أو بعد استعادة الاتصال */
   function reloadFromCloud() {
     if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client) return Promise.resolve(cloudStatus());
-    return root.HRCCloud.fetchAll(cloud.client).then(function (cdb) {
+    return root.HRCCloud.fetchAll(cloud.client,{workspace:true}).then(function (cdb) {
       if (((cdb.meta && cdb.meta.failedTables) || []).length) return cloudStatus();
       adoptCloudDb(cdb);
       if (cloud.sync) cloud.sync.setSnapshot(db);
@@ -7311,19 +7283,17 @@ to{opacity:1;transform:none}
     }).catch(function (e) { setCloudError(e); return cloudStatus(); });
   }
 
-  /* --------------------------- Realtime ---------------------------
-   *  تغيير من موظف آخر: نُطبّقه على الذاكرة ونُبلّغ الواجهة. المهم بعد
-   *  التطبيق أن نُقدّم لقطة المزامنة للسطر المتغيّر وحده، وإلا أعاد الدفع
-   *  إدراج سطر أدرجه غيرنا (تصادم مفتاح ← صف مكرر برقم جديد!) أو حذف سطر
-   *  حُذف مسبقاً. نُقدّم السطر وحده لا اللقطة كلها، حتى لا نُوسم تعديلاً
-   *  محلياً معلّقاً بأنه مُزامَن فيضيع.
-   * ---------------------------------------------------------------- */
+
   function absorbRealtime(table, payload) {
     if (!cloud.sync) return;
     var type = payload.eventType || payload.type;
     var row = payload.new || payload.record || null;
     var old = payload.old || payload.old_record || null;
     var snap = cloud.sync.getSnapshot();
+    if(table==='applicants'&&row&&row.archived_at&&db.meta&&db.meta.workspace){
+      root.HRCSync.advanceSnapshot(snap,{table:'applicants',op:'delete',key:row.serial});
+      Object.keys(snap.job_attempts).forEach(function(k){if(k.indexOf(row.serial+':')===0)root.HRCSync.advanceSnapshot(snap,{table:'job_attempts',op:'delete',key:k});});return;
+    }
     var op = { table: table, op: type === 'DELETE' ? 'delete' : 'update', key: null, local: null };
 
     if (table === 'jobs') {
@@ -7358,11 +7328,35 @@ to{opacity:1;transform:none}
     return null;
   }
 
+  function cardReport(from,to) {
+    if(!currentUser()||cloud.state!=='on'||cloud.role!=='staff')return Promise.reject(new Error('التقرير الكامل يحتاج اتصالاً وحساب موظف فعالاً'));
+    var owner=JSON.stringify(currentUser());
+    return root.HRCCloud.rpcCall(cloud.client,'staff_card_report',{p_from:from||null,p_to:to||null}).then(function(r){
+      if(owner!==JSON.stringify(currentUser())||r.error||!r.data||!r.data.stats||!Array.isArray(r.data.rows))throw new Error('تعذر قراءة التقرير الكامل');
+      db.meta.financialReport={key:String(from||'')+'|'+String(to||''),data:r.data};if(!from&&!to)db.meta.serverReport=r.data;return r.data;
+    });
+  }
+
+  function serialWasIssued(serial) {
+    if(!currentUser()||cloud.state!=='on'||cloud.role!=='staff')return Promise.reject(new Error('تعذر التحقق من الباركود في السجل الكامل'));
+    return root.HRCCloud.rpcCall(cloud.client,'staff_issuance_registry',{p_serial:normalizeCardSerial(serial)}).then(function(r){if(r.error||!r.data||typeof r.data.used!=='boolean')throw new Error('تعذر التحقق من الباركود؛ أعد المحاولة');return r.data.used;});
+  }
+
+  function searchCardHistory(query,page) {
+    if(!currentUser()||cloud.state!=='on'||cloud.role!=='staff')return Promise.reject(new Error('بحث السجل الكامل يحتاج اتصالاً وحساب موظف فعالاً'));
+    return root.HRCCloud.rpcCall(cloud.client,'staff_card_history',{p_query:String(query||'').trim(),p_page:Number(page||0)}).then(function(r){
+      if(r.error||!r.data||!Array.isArray(r.data.cards))throw new Error(r.error&&r.error.message||'تعذر قراءة السجل؛ تحقق من تحديث القاعدة');return r.data;
+    });
+  }
+
   function startRealtime() {
     if (cloud.unsubscribe || !root.HRCCloud.subscribeAll) return;
     cloud.unsubscribe = root.HRCCloud.subscribeAll(cloud.client, db, function (table, payload) {
       try { absorbRealtime(table, payload); } catch (e) { console.warn('[HRC/realtime] ' + (e && e.message || e)); }
-      saveLocal();   // الكاش المحلي يبقى مطابقاً لما نعرضه
+      if(table==='applicants'&&payload.new&&payload.new.archived_at){
+        clearTimeout(cloud.archiveTimer);var owner=JSON.stringify(currentUser());cloud.archiveTimer=setTimeout(function(){if(owner===JSON.stringify(currentUser())){saveLocal();emit();}},100);return;
+      }
+      saveLocal();
       emit();
     }, function (e) {
       console.warn('[HRC/realtime] ' + ((e && e.message) || e));
@@ -7404,10 +7398,7 @@ to{opacity:1;transform:none}
       applyStaffSession(r.profile);
       saveLocal();
       emit();
-      /* كان الإقلاع السابق كزائر (الوظائف العامة فقط). بعد الدخول نُعيد الإقلاع
-         لنجلب جداول الموظفين كاملة — وإلا بقي الموظف يرى نصف البيانات.
-         ⚠️ ترتيب مقصود: التدقيق **بعد** تبني بيانات القاعدة، لأن التبنّي يستبدل
-         db.audit بما في القاعدة فيضيع السطر المكتوب قبله. */
+
       cloud.bootPromise = null;
       return bootCloud().then(function () {
         audit('تسجيل دخول', 'auth', r.profile.username,
@@ -7456,10 +7447,7 @@ to{opacity:1;transform:none}
     });
   }
 
-  /* إدارة حسابات الموظفين في القاعدة (تعديل/حذف/كلمة مرور).
-     تُنادى من لوحة المدير بعد نجاح العملية محلياً أو قبلها بحسب الاتجاه:
-       • الإنشاء: القاعدة أولاً ثم المحلي (فلا يبقى حساب نصف جاهز يُوعد به الموظف).
-       • التعديل/الحذف: القاعدة أولاً ثم المحلي (فلا تبقى شاشة تقول شيئاً والقاعدة غيره). */
+
   function updateCloudAccount(serviceKey, data) {
     if (!cloud.client || !root.HRCCloudAuth) {
       return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
@@ -7497,14 +7485,7 @@ to{opacity:1;transform:none}
     return auth.probeServiceKey(serviceKey);
   }
 
-  /* ---------------------------------------------------------------------------
-   *  إدارة الحسابات عبر الدالة السحابية (hrc-staff-admin) — بلا أي مفتاح في المتصفح
-   *  ---------------------------------------------------------------------------
-   *  action: 'create' | 'update' | 'delete' | 'set-password' | 'whoami'
-   *  تعمل لأي مدير **مُسجَّل دخوله سحابياً** من أي متصفح: الدالة تتحقق من التوكن
-   *  ومن كونه مديراً نشطاً في brc.staff. وإن لم تكن منشورة تُرجع code='not_deployed'
-   *  فيسلك المستدعي مسار مفتاح الخدمة (إن وُجد).
-   * ------------------------------------------------------------------------- */
+
   function staffAdmin(action, payload) {
     if (!cloud.client || !root.HRCCloudAuth) {
       return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
@@ -7518,6 +7499,7 @@ to{opacity:1;transform:none}
   }
 
   function signOutCloud() {
+    if(root.HRCCloud&&root.HRCCloud.clearChanceRegistry)root.HRCCloud.clearChanceRegistry();
     var out = (cloud.auth && cloud.auth.logout) ? cloud.auth.logout() : Promise.resolve({ ok: true });
     var unsub = cloud.unsubscribe;
     return out.catch(function () { return { ok: true }; }).then(function () {
@@ -7545,6 +7527,7 @@ to{opacity:1;transform:none}
       if (!r.data || !r.data.ok) throw new Error('لم تكتمل العملية؛ لم يتم تأكيد نجاحها');
       if (r.data.requiresLogin) {
         if (cloud.timer) clearTimeout(cloud.timer);
+        if(root.HRCCloud&&root.HRCCloud.clearChanceRegistry)root.HRCCloud.clearChanceRegistry();
         cloud.sync = null; memSession = null;
         try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
         return signOutCloud().then(function () { return r.data; });
@@ -7559,21 +7542,7 @@ to{opacity:1;transform:none}
     return auth.changePassword(newPassword);
   }
 
-  /* ---------------------------------------------------------------------------
-   *  تسجيل طلب استمارة — لم يبقَ له مستدعٍ من الموقع العام
-   *  ---------------------------------------------------------------------------
-   *  ⚠️ سياسة الشركة: الزائر لا يقدّم طلباً من الموقع — يتصفّح الوظائف ثم يخابر
-   *  المكتب أو يراجعه، والموظف يسجّل الطلب من المنظومة الداخلية. لذلك أُزيل نموذج
-   *  الطلب من الموقع العام نهائياً. هذه الدالة تبقى للمسار الداخلي/الاختبارات،
-   *  ودالة القاعدة brc.request_form تضع الحالة 'pending' دائماً — فلا يستطيع
-   *  أي مسار إصدار استمارة سارية من خارج المنظومة.
-   *  الزائر لا يملك — ولا يجب أن يملك — صلاحية إدراج في brc.applicants. لذلك
-   *  الطلب يمرّ عبر دالة القاعدة brc.request_form التي تتحقق من المدخلات وتضع
-   *  الحالة 'pending' دائماً. الإدراج المباشر من الواجهة كان يعني: إمّا منح
-   *  anon صلاحية كتابة على جدول الاستمارات (مرفوض)، أو طلب يُرفض بـ 42501
-   *  ويبقى في قائمة الانتظار يحاول بلا نهاية.
-   *  في الوضع المحلي (بلا سحابة) نُكمل بالمسار المحلي كما كان تماماً.
-   * ------------------------------------------------------------------------- */
+
   /* التحقق السحابي (صفحة التحقق للزائر): دالة القاعدة تتحقق من البصمة
      وتُرجع استمارة واحدة — بخلاف قراءة الجدول الذي يسحب بيانات الجميع. */
   function verifyCloud(serial, t) {
@@ -7644,7 +7613,7 @@ to{opacity:1;transform:none}
     probeServiceKey: probeServiceKey,
     staffAdmin: staffAdmin, recoveryRPC: recoveryRPC,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
-    reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
+    serialWasIssued:serialWasIssued, cardReport:cardReport, searchCardHistory:searchCardHistory, reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,
     waitForCloud: function () { return cloud.bootPromise || Promise.resolve(cloudStatus()); },
     /* العمليات المعلّقة الآن (للتشخيص والعرض) — لا تُرسل شيئاً */
@@ -10772,7 +10741,7 @@ to{opacity:1;transform:none}
   var CFG = root.HRC_CONFIG, Store = root.HRCStore, UI = root.HRCUI, V = root.HRCVoucher;
   if (!document.getElementById('app-shell')) return;
 
-  var lastSessionKey = null;
+  var lastSessionKey = null, reportTimer=null,financeTicket=0;
 
 
   /* مفتاح الجلسة: يُستخدم لرصد الدخول/الخروج وإعادة ضبط الواجهة والصلاحيات */
@@ -10849,6 +10818,7 @@ to{opacity:1;transform:none}
       }
       renderCurrent();
       updateHamburgerNotif();
+      if(Store.db().meta.workspace){clearTimeout(reportTimer);reportTimer=setTimeout(function(){Store.cardReport().then(function(){if(state.view==='overview')renderOverview();}).catch(function(){});},750);}
     });
     setInterval(tick, 30000);
     setInterval(renderClock, 1000);
@@ -11744,6 +11714,7 @@ to{opacity:1;transform:none}
       { icon: 'check',     cls: 'purple', val: s.hires,      lbl: 'توظيف ناجح', hint: 'منذ بداية التشغيل' },
       { icon: 'chart',     cls: 'ok',     val: Store.money(fin.expected), lbl: 'التحصيل المتوقع', hint: fin.printed + ' مرة طباعة' }
     ];
+    if(Store.db().meta.workspace&&!Store.db().meta.serverReport){[2,4,5].forEach(function(i){stats[i].val='—';stats[i].hint='الإجمالي الكامل غير متاح؛ لا نستبدله ببيانات العمل الجزئية';});}
     document.getElementById('ov-stats').innerHTML = stats.map(function (x) {
       return '<div class="ov-stat">' +
         '<div class="ov-icon ' + x.cls + '"><svg class="ic"><use href="#i-' + x.icon + '" xlink:href="#i-' + x.icon + '"/></svg></div>' +
@@ -12125,8 +12096,10 @@ to{opacity:1;transform:none}
   /* ======================= الباحثون والاستمارات ======================= */
   function renderApplicants() {
     var rows = Store.listApplicants(state.a);
+    var filterKey=JSON.stringify(state.a);if(state.aFilterKey!==filterKey){state.aFilterKey=filterKey;state.aPage=0;}
+    state.aPage=Math.min(state.aPage||0,Math.max(0,Math.ceil(rows.length/50)-1));
     var label = document.getElementById('apps-count-label');
-    if (label) label.textContent = rows.length + ' بطاقة';
+    if (label) label.textContent = rows.length + (Store.db().meta.workspace?' بطاقة ضمن العمل الحالي':' بطاقة');
 
     // ═══ إحصائيات سريعة ═══
     var statsHost = document.getElementById('cards-stats');
@@ -12143,12 +12116,12 @@ to{opacity:1;transform:none}
         if (a.holds) reserved++;
       });
       var stats = [
-        { icon: 'card', cls: 'total', val: all.length, lbl: 'إجمالي البطاقات' },
+        { icon: 'card', cls: 'total', val: all.length, lbl: Store.db().meta.workspace?'بطاقات العمل الحالية':'إجمالي البطاقات' },
         { icon: 'check-circle', cls: 'ok', val: active, lbl: 'سارية' },
         { icon: 'card', cls: 'gold', val: blank, lbl: 'فارغة بالمخزن' },
         { icon: 'clock', cls: 'info', val: pending, lbl: 'قيد المراجعة' },
         { icon: 'hourglass', cls: 'warn', val: reserved, lbl: 'حجوزات جارية' },
-        { icon: 'alert', cls: 'danger', val: expired + exhausted, lbl: 'منتهية / مستهلكة' }
+        { icon: 'alert', cls: 'danger', val: expired + exhausted, lbl: Store.db().meta.workspace?'منتهية / مستهلكة حديثاً':'منتهية / مستهلكة' }
       ];
       statsHost.innerHTML = stats.map(function (s) {
         return '<div class="cards-stat ' + s.cls + '">' +
@@ -12161,7 +12134,10 @@ to{opacity:1;transform:none}
     // ═══ الجدول ═══
     var tbody = document.getElementById('apps-table-body');
 
-    tbody.innerHTML = rows.map(function (a) {
+    var pager=document.getElementById('apps-pager');if(!pager){pager=document.createElement('div');pager.id='apps-pager';pager.className='flex';pager.style.cssText='gap:12px;flex-wrap:wrap;margin:12px 0';(tbody.closest('.table-wrap')||tbody.closest('table')).insertAdjacentElement('afterend',pager);}
+    pager.innerHTML='<button class="btn btn-outline btn-sm" data-page-prev '+(state.aPage===0?'disabled':'')+'>السابق</button><span class="tiny">صفحة '+(state.aPage+1)+' من '+Math.max(1,Math.ceil(rows.length/50))+' · 50 بطاقة للصفحة · السجل القديم عبر بحث السجل الكامل</span><button class="btn btn-outline btn-sm" data-page-next '+((state.aPage+1)*50>=rows.length?'disabled':'')+'>التالي</button>';
+    pager.querySelector('[data-page-prev]').onclick=function(){state.aPage--;renderApplicants();};pager.querySelector('[data-page-next]').onclick=function(){state.aPage++;renderApplicants();};
+    tbody.innerHTML = rows.slice(state.aPage*50,(state.aPage+1)*50).map(function (a) {
       var st = Store.formStatus(a);
       var left = Store.attemptsLeft(a.serial);
       var hold = a.holds ? '<span class="badge warn">حجز جارٍ</span>' : '';
@@ -12875,9 +12851,15 @@ to{opacity:1;transform:none}
   }
 
   /* ======================= اللوحة المالية ======================= */
-  function renderFinance() {
-    var rows = Store.financials(state.fin.from, state.fin.to);
-    var totals = Store.financialTotals(state.fin.from, state.fin.to);
+  function renderFinance(report) {
+    if(Store.db().meta.workspace&&!report){
+      var ticket=++financeTicket,key=JSON.stringify(state.fin),owner=sessionKey();
+      document.getElementById('fin-stats').textContent='جاري قراءة التقرير الكامل من القاعدة، بما فيه المؤرشف…';document.getElementById('fin-bars').replaceChildren();document.getElementById('fin-table-body').replaceChildren();
+      Store.cardReport(state.fin.from,state.fin.to).then(function(data){if(ticket===financeTicket&&key===JSON.stringify(state.fin)&&owner===sessionKey()&&state.view==='finance')renderFinance(data);}).catch(function(e){if(ticket===financeTicket&&owner===sessionKey())document.getElementById('fin-stats').textContent=e.message+' — لم تستخدم بيانات العمل الجزئية بدلاً من الإجمالي';});return;
+    }
+    var rows = report?report.rows:Store.financials(state.fin.from, state.fin.to);
+    var totals = report?rows.reduce(function(t,r){['forms','printed','expected','collected','hires','holds'].forEach(function(k){t[k]+=Number(r[k]||0);});return t;},{forms:0,printed:0,expected:0,collected:0,hires:0,holds:0}):Store.financialTotals(state.fin.from, state.fin.to);
+    document.getElementById('finance-scope').textContent=Store.db().meta.workspace?'التقرير يشمل السجل الكامل والمؤرشف. تعديلات رسوم البطاقات الحالية تظهر بعد نجاح المزامنة.':'';
     var stats = [
       { icon: 'file', label: 'إجمالي الاستمارات', value: totals.forms, hint: totals.printed + ' عملية طباعة' },
       { icon: 'money', label: 'المتوقع تحصيله', value: Store.money(totals.expected), hint: 'سعر البطاقة ' + Store.money(Store.settings().formFee), accent: true },
@@ -12901,7 +12883,7 @@ to{opacity:1;transform:none}
       return '<tr><td><b>' + UI.esc(r.name) + '</b><div class="tiny muted mono">' + UI.esc(r.user) + '</div></td>' +
         '<td>' + r.forms + '</td><td>' + r.printed + '</td><td>' + Store.money(Store.settings().formFee) + '</td>' +
         '<td><b>' + Store.money(r.expected) + '</b></td>' +
-        '<td><input type="number" class="fin-collected" data-user="' + UI.esc(r.user) + '" value="' + r.collected + '" min="0" step="1000" style="width:120px;padding:4px 8px;border:1px solid #ddd;border-radius:6px"></td>' +
+        '<td><input '+(Store.db().meta.workspace?'disabled title="إجمالي شامل للأرشيف؛ تعديل رسم بطاقة حالية من تفاصيلها" ':'')+'type="number" class="fin-collected" data-user="' + UI.esc(r.user) + '" value="' + r.collected + '" min="0" step="1000" style="width:120px;padding:4px 8px;border:1px solid #ddd;border-radius:6px"></td>' +
         '<td><span class="badge ok">' + r.paid + ' مدفوع</span> <span class="badge warn">' + r.partial + ' جزئي</span> <span class="badge danger">' + r.unpaid + ' غير مدفوع</span></td>' +
         '<td>' + r.hires + '</td><td>' + r.holds + '</td></tr>';
     }).join('') || '<tr><td colspan="9" class="table-empty">لا بيانات</td></tr>';
@@ -13160,6 +13142,7 @@ to{opacity:1;transform:none}
   }
 
   function bindActions() {
+    var history=document.getElementById('btn-card-history');if(history)history.onclick=function(){if(root.HRCArchive)return root.HRCArchive.open(Store,UI);history.disabled=true;var js=document.createElement('script');js.src='assets/js/card-archive.js';js.onload=function(){history.disabled=false;root.HRCArchive.open(Store,UI);};js.onerror=function(){history.disabled=false;UI.toast('err','تعذر فتح السجل','تحقق من الاتصال وأعد المحاولة');};document.head.appendChild(js);};
     var nj = document.getElementById('btn-new-job');
     if (nj) nj.addEventListener('click', function () { jobModal(null); });
     var na = document.getElementById('btn-new-app');
@@ -13330,11 +13313,15 @@ to{opacity:1;transform:none}
           codeInp.value = Store.suggestSerial();
           errBox.style.display = 'none';
         });
-        box.querySelector('#c-save').addEventListener('click', function () {
+        box.querySelector('#c-save').addEventListener('click', async function () {
           var serial = String(codeInp.value || '').trim();
           var notes = box.querySelector('#c-notes').value.trim();
           errBox.style.display = 'none';
           if (!serial) { codeInp.focus(); return; }
+          if(Store.db().meta.workspace&&Store.isCardSerial(serial)&&!Store.getApplicant(Store.normalizeCardSerial(serial))){
+            var btn=box.querySelector('#c-save'),gen=box.querySelector('#c-gen'),owner=sessionKey();btn.disabled=true;codeInp.disabled=true;gen.disabled=true;
+            try{var used=await Store.serialWasIssued(serial);if(!document.contains(box)||owner!==sessionKey())return;if(used){errBox.textContent='هذا الباركود مسجّل سابقاً، بما فيه الأرشيف؛ لا يمكن إصداره مجدداً';errBox.style.display='block';return;}}catch(e){errBox.textContent=e.message;errBox.style.display='block';return;}finally{btn.disabled=false;codeInp.disabled=false;gen.disabled=false;}
+          }
           var r = Store.createCardWithSerial(serial, notes);
           if (!r.ok) { errBox.textContent = r.error; errBox.style.display = 'block'; codeInp.focus(); return; }
           close();
@@ -14125,6 +14112,43 @@ function bindLegacyEvents(){
 root.HRCLegacyBackup={mount:function(){if(Store.cloudStatus().enforceAuth)return;var box=document.getElementById('recovery-tools');if(!box)return;if(!box.dataset.legacyReady){box.dataset.legacyReady='yes';box.innerHTML="<div class=\"panel settings-quick-backup\"><div><h3>نسخة احتياطية</h3><p class=\"small muted mb-0\">تنزيل لقطة مشفّرة بكلمة مرور؛ لا تعادل نسخة كاملة من قاعدة الموقع.</p></div><button class=\"btn btn-gold\" id=\"btn-quick-backup\"><svg class=\"ic\"><use href=\"#i-download\" xlink:href=\"#i-download\"></use></svg> تنزيل نسخة مشفّرة</button></div><div class=\"panel\" id=\"settings-backup-tools\">\n<div class=\"panel-head\"><h3><svg class=\"ic\"><use href=\"#i-server\" xlink:href=\"#i-server\"></use></svg> النسخ الاحتياطي والصيانة</h3></div>\n<div class=\"panel-body\">\n<div class=\"backup-assurance\"><span class=\"backup-eyebrow\">حماية البيانات · بدون وعود مضللة</span><h4>ثلاث طبقات، لكل واحدة دور واضح</h4><div class=\"backup-layers\"><article><b>01 · نسخة المتصفح</b><p>تصدير مشفّر للبيانات المحملة فقط؛ ليست نسخة PostgreSQL ولا تشمل ملفات المشروع.</p><small id=\"backup-last-export\">لم يجهز ملف على هذا الجهاز بعد</small></article><article><b>02 · قاعدة الشركة</b><p>وكيل مستقل مشفّر + مهمة ويندوز. يحتاج إعداد اللابتوب ومفتاح استرداد منفصل.</p><small>التشغيل وآخر نجاح غير متحققين في هذه الصفحة</small></article><article><b>03 · عمل المكتب المحلي</b><p>طلبات مشتركة أثناء الانقطاع، ثم تحقق ومزامنة؛ ليست حجوزات نهائية قبل الاعتماد.</p><small>يتطلب تثبيت بوابة المكتب وHTTPS على شبكة الشركة</small></article></div></div>\n<p id=\"backup-legacy-warning\" class=\"tiny muted\" hidden></p>\n<div class=\"flex flex-wrap\" style=\"gap:8px\">\n<button class=\"btn btn-outline\" id=\"btn-export\"><svg class=\"ic\"><use href=\"#i-download\" xlink:href=\"#i-download\"></use></svg> تصدير آمن</button>\n<button class=\"btn btn-outline\" id=\"btn-export-encrypted\"><svg class=\"ic\"><use href=\"#i-lock\" xlink:href=\"#i-lock\"></use></svg> نسخة مشفّرة للابتوب</button>\n<button class=\"btn btn-outline\" id=\"btn-import\"><svg class=\"ic\"><use href=\"#i-upload\" xlink:href=\"#i-upload\"></use></svg> معاينة ملف نسخة</button>\n<button class=\"btn btn-ok\" id=\"btn-import-encrypted\"><svg class=\"ic\"><use href=\"#i-lock\" xlink:href=\"#i-lock\"></use></svg> فك تشفير ومعاينة</button>\n<button class=\"btn btn-lapis\" id=\"btn-schedule-backup\"><svg class=\"ic\"><use href=\"#i-calendar\" xlink:href=\"#i-calendar\"></use></svg> خيارات الجدولة</button>\n<button class=\"btn btn-outline\" id=\"btn-view-backups\"><svg class=\"ic\"><use href=\"#i-list\" xlink:href=\"#i-list\"></use></svg> عرض اللقطات القديمة</button>\n<button class=\"btn btn-warn\" id=\"btn-maintenance\"><svg class=\"ic\"><use href=\"#i-refresh\" xlink:href=\"#i-refresh\"></use></svg> فحص الحجوزات والحالات الحرجة</button>\n<button class=\"btn btn-danger\" id=\"btn-reset\"><svg class=\"ic\"><use href=\"#i-trash\" xlink:href=\"#i-trash\"></use></svg> إعادة ضبط البيانات التجريبية</button>\n</div>\n<input type=\"file\" id=\"import-file\" accept=\"application/json\" class=\"hidden\" aria-label=\"اختيار ملف النسخة الاحتياطية للاستيراد\">\n<input type=\"file\" id=\"import-enc-file\" accept=\".json,.enc,application/json\" class=\"hidden\" aria-label=\"اختيار ملف النسخة الاحتياطية المشفّرة للاسترداد\">\n<div class=\"panel mt-3\" style=\"background:#f9f6ef;border:1px solid var(--line)\">\n<div class=\"panel-body\">\n<h4 style=\"margin-bottom:12px;display:flex;align-items:center;gap:8px\">\n<svg class=\"ic\" style=\"color:var(--gold-3)\"><use href=\"#i-clock\" xlink:href=\"#i-clock\"></use></svg>\n                  حالة النسخ والجدولة المستقلة\n                </h4>\n<div id=\"schedule-status\" class=\"tiny muted\">لم يتم تفعيل الجدولة بعد</div>\n<div class=\"flex flex-wrap mt-2\" style=\"gap:8px\">\n<button class=\"btn btn-outline btn-sm\" id=\"btn-edit-schedule\"><svg class=\"ic\"><use href=\"#i-edit\" xlink:href=\"#i-edit\"></use></svg> تعديل الجدولة</button>\n<button class=\"btn btn-gold btn-sm\" id=\"btn-run-auto-backup\"><svg class=\"ic\"><use href=\"#i-download\" xlink:href=\"#i-download\"></use></svg> نفّذ نسخة الآن</button>\n<button class=\"btn btn-outline btn-sm\" id=\"btn-disable-schedule\"><svg class=\"ic\"><use href=\"#i-x\" xlink:href=\"#i-x\"></use></svg> إيقاف الجدولة</button>\n</div>\n<p class=\"tiny muted mt-2 mb-0\">الاستعادة على الموقع السحابي محظورة من المتصفح حتى للمدير. فحص سلامة الملف لا يعني نجاح استعادته؛ تجربة قاعدة منفصلة لازمة. اللقطات القديمة لا تحذف تلقائياً.</p>\n</div>\n</div>\n<div class=\"data-grid mt-3\">\n<div class=\"data-item\"><div class=\"k\">الوظائف المخزّنة</div><div class=\"v\" id=\"db-jobs\">0</div></div>\n<div class=\"data-item\"><div class=\"k\">الاستمارات</div><div class=\"v\" id=\"db-apps\">0</div></div>\n<div class=\"data-item\"><div class=\"k\">الفرص (خانات)</div><div class=\"v\" id=\"db-attempts\">0</div></div>\n<div class=\"data-item\"><div class=\"k\">سجلات التدقيق</div><div class=\"v\" id=\"db-audit\">0</div></div>\n<div class=\"data-item\"><div class=\"k\">النسخ الاحتياطية</div><div class=\"v\" id=\"db-backups\">0</div></div>\n</div>\n</div>\n</div>";bindLegacyEvents();}bindBackupActions();renderLegacyStatus();}};
 if(root.HRCLegacyBackup)root.HRCLegacyBackup.mount();
 })(window);
+
+;
+/* ===================== card-archive.js ===================== */
+/* On-demand, read-only historical search. Never imports records into the sync DB. */
+(function(root){
+'use strict';
+root.HRCArchive={open:function(Store,UI){
+ if(!Store.currentUser())return;
+ var owner=JSON.stringify(Store.currentUser()),page=0,ticket=0,query='';
+ function permitted(box){return document.contains(box)&&JSON.stringify(Store.currentUser())===owner;}
+ UI.modal({title:'السجل الكامل والأرشيف',wide:true,
+ body:'<p class="tiny muted">البطاقات محفوظة بدون حذف. الأرشفة بعد 60 يوماً من الحسم النهائي أو انتهاء الصلاحية، ولا تشمل أي تقديم معلّق. النتائج للمراجعة فقط؛ لا تعيد فرصة أو شاغراً.</p><form id="history-form" class="flex" style="gap:8px;flex-wrap:wrap"><label for="history-query">رقم البطاقة أو الاسم أو الهاتف</label><input id="history-query" maxlength="120" autocomplete="off"><button class="btn btn-lapis" type="submit">بحث في القاعدة</button></form><p id="history-status" role="status" aria-live="polite"></p><div id="history-results"></div><div class="flex" style="gap:12px;flex-wrap:wrap"><button id="history-prev" class="btn btn-outline">السابق</button><span id="history-page"></span><button id="history-next" class="btn btn-outline">التالي</button></div>',
+ footer:'<button class="btn btn-outline" data-close>إغلاق</button>',
+ onMount:function(box){
+  var status=box.querySelector('#history-status'),results=box.querySelector('#history-results'),prev=box.querySelector('#history-prev'),next=box.querySelector('#history-next');
+  function load(){
+   var id=++ticket;status.textContent='جاري البحث…';prev.disabled=next.disabled=true;results.replaceChildren();
+   Store.searchCardHistory(query,page).then(function(data){
+    if(id!==ticket||!permitted(box))return;
+    status.textContent=data.cards.length?'50 بطاقة كحد أقصى لكل صفحة؛ البحث يشمل السجل الحالي والمؤرشف.':'لا توجد بطاقات مطابقة.';
+    box.querySelector('#history-page').textContent='صفحة '+(page+1);prev.disabled=page===0;next.disabled=!data.hasMore;
+    results.innerHTML=data.cards.map(function(a,i){return '<div class="data-item" style="margin:10px 0"><b class="mono">'+UI.esc(a.serial)+'</b> · '+UI.esc(a.fullName||'بدون اسم')+' · '+(a.archivedAt?'مؤرشفة':'غير مؤرشفة')+' <button class="btn btn-outline btn-sm" data-history-card="'+i+'">عرض التفاصيل</button></div>';}).join('');
+    results.querySelectorAll('[data-history-card]').forEach(function(b){b.onclick=function(){
+     if(!permitted(box))return;var a=data.cards[Number(b.dataset.historyCard)];
+     function row(k,v){return '<div class="data-item"><b>'+UI.esc(k)+'</b>: '+UI.esc(v||'—')+'</div>';}
+     var body=row('الاسم',a.fullName)+row('الهاتف',a.phone)+row('العنوان',a.address)+row('حالة البطاقة',(((root.HRC_CONFIG||{}).formStatus||{})[a.status]||{}).ar||a.status)+row('تاريخ التفعيل',a.issueDate)+row('انتهاء الصلاحية',a.expiryDate)+row('آخر حسم',a.finishedAt)+row('الأرشفة',a.archivedAt)+row('الملاحظات',a.notes);
+     body+=(a.attempts||[]).map(function(t){return '<section class="data-item">'+row('فرصة البطاقة',String(t.no))+row('الوظيفة',(t.jobCode||'—')+' · '+(t.jobTitle||''))+row('شاغر الوظيفة',t.vacancyNo?String(t.vacancyNo):'لم يحدد')+UI.slotBadge(t.slotStatus)+row('التقديم',t.selectedAt)+row('الحسم',t.closedAt)+row('قرار صاحب العمل',t.employerDecision)+row('السبب',t.reason)+row('ملاحظة',t.note)+'</section>';}).join('');
+     UI.modal({title:'مراجعة البطاقة '+a.serial,wide:true,body:body,footer:'<button class="btn btn-outline" data-close>إغلاق</button>'});
+    };});
+   }).catch(function(e){if(id!==ticket||!permitted(box))return;status.textContent=e.message||'تعذر البحث؛ تحقق من الاتصال';prev.disabled=page===0;});
+  }
+  box.querySelector('#history-form').onsubmit=function(e){e.preventDefault();query=box.querySelector('#history-query').value.trim();page=0;load();};
+  prev.onclick=function(){if(page>0){page--;load();}};next.onclick=function(){page++;load();};load();
+ }
+ });
+}};
+})(typeof window!=='undefined'?window:globalThis);
 
 </script>
 <script>

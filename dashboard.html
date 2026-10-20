@@ -13,8 +13,8 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=72716c0c9e">
-<link rel="stylesheet" href="assets/css/notifications.css?v=72716c0c9e"><link rel="stylesheet" href="assets/css/backup.css?v=72716c0c9e"><link rel="stylesheet" href="assets/css/workspace-layout.css?v=72716c0c9e"></head>
+<link rel="stylesheet" href="assets/css/style.css?v=d89836e6c8">
+<link rel="stylesheet" href="assets/css/notifications.css?v=d89836e6c8"><link rel="stylesheet" href="assets/css/backup.css?v=d89836e6c8"><link rel="stylesheet" href="assets/css/workspace-layout.css?v=d89836e6c8"></head>
 <body>
 <!-- ===========================================================================
      مكتبة الأيقونات والرموز (SVG Sprite) — تُدرج مرة واحدة في كل صفحة
@@ -387,6 +387,7 @@
           <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
           <input type="text" id="quick-code" placeholder="بحث سريع بكود الوظيفة (HRC-1042)" aria-label="بحث بكود الوظيفة">
         </form>
+        <button class="btn btn-outline btn-sm" id="btn-card-history">بحث السجل الكامل والأرشيف</button>
         <button class="btn btn-lapis btn-sm" id="btn-new-app"><svg class="ic"><use href="#i-user-plus" xlink:href="#i-user-plus"/></svg> بيع وتعبئة بطاقة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-batch" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-card" data-admin-only="true" title="بطاقة واحدة فارغة بكودها — للمدير فقط"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
@@ -569,6 +570,7 @@
               </table>
             </div>
           </div>
+          <div id="apps-pager" class="flex" style="gap:12px;flex-wrap:wrap;margin:12px 0"></div>
 
           <!-- ملاحظة سفلية -->
           <div class="footnote-premium">
@@ -665,6 +667,7 @@
 
     <!-- ================= اللوحة المالية (مدير) ================= -->
     <section class="view" id="view-finance">
+      <p id="finance-scope" class="tiny muted"></p>
       <div class="stat-grid" id="fin-stats"></div>
       <div class="panel">
         <div class="panel-head">
@@ -873,18 +876,18 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=72716c0c9e"></script>
-<script src="assets/vendor/supabase.js?v=72716c0c9e"></script>
-<script src="assets/js/supabase-config.js?v=72716c0c9e"></script>
-<script src="assets/js/qr.js?v=72716c0c9e"></script>
-<script src="assets/js/cloud.js?v=72716c0c9e"></script>
-<script src="assets/js/cloud-auth.js?v=72716c0c9e"></script>
-<script src="assets/js/cloud-sync.js?v=72716c0c9e"></script>
-<script src="assets/js/store.js?v=72716c0c9e"></script>
-<script src="assets/js/ui.js?v=72716c0c9e"></script>
-<script src="assets/js/nav.js?v=72716c0c9e"></script>
-<script src="assets/js/voucher.js?v=72716c0c9e"></script>
-<script src="assets/js/dashboard.js?v=72716c0c9e"></script>
-<script src="assets/js/notifications.js?v=72716c0c9e"></script>
+<script src="assets/js/config.js?v=d89836e6c8"></script>
+<script src="assets/vendor/supabase.js?v=d89836e6c8"></script>
+<script src="assets/js/supabase-config.js?v=d89836e6c8"></script>
+<script src="assets/js/qr.js?v=d89836e6c8"></script>
+<script src="assets/js/cloud.js?v=d89836e6c8"></script>
+<script src="assets/js/cloud-auth.js?v=d89836e6c8"></script>
+<script src="assets/js/cloud-sync.js?v=d89836e6c8"></script>
+<script src="assets/js/store.js?v=d89836e6c8"></script>
+<script src="assets/js/ui.js?v=d89836e6c8"></script>
+<script src="assets/js/nav.js?v=d89836e6c8"></script>
+<script src="assets/js/voucher.js?v=d89836e6c8"></script>
+<script src="assets/js/dashboard.js?v=d89836e6c8"></script>
+<script src="assets/js/notifications.js?v=d89836e6c8"></script>
 </body>
 </html>

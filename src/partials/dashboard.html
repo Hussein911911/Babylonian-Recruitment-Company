@@ -110,6 +110,7 @@
           <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg>
           <input type="text" id="quick-code" placeholder="بحث سريع بكود الوظيفة (HRC-1042)" aria-label="بحث بكود الوظيفة">
         </form>
+        <button class="btn btn-outline btn-sm" id="btn-card-history">بحث السجل الكامل والأرشيف</button>
         <button class="btn btn-lapis btn-sm" id="btn-new-app"><svg class="ic"><use href="#i-user-plus" xlink:href="#i-user-plus"/></svg> بيع وتعبئة بطاقة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-batch" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-card" data-admin-only="true" title="بطاقة واحدة فارغة بكودها — للمدير فقط"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
@@ -292,6 +293,7 @@
               </table>
             </div>
           </div>
+          <div id="apps-pager" class="flex" style="gap:12px;flex-wrap:wrap;margin:12px 0"></div>
 
           <!-- ملاحظة سفلية -->
           <div class="footnote-premium">
@@ -388,6 +390,7 @@
 
     <!-- ================= اللوحة المالية (مدير) ================= -->
     <section class="view" id="view-finance">
+      <p id="finance-scope" class="tiny muted"></p>
       <div class="stat-grid" id="fin-stats"></div>
       <div class="panel">
         <div class="panel-head">

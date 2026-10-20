@@ -143,7 +143,7 @@ function makeFetch(server, browser) {
     /* ───────────── PostgREST ───────────── */
     const rest = /\/rest\/v1\/([a-z_]+)/.exec(url);
     if (rest) {
-      const table = rest[1];
+      const table = rest[1].replace(/^working_/, '');
       /* ⚠️ RLS حقيقية السلوك: بلا جلسة موظف ولا مفتاح خدمة — لا قراءة لجداول
          الموظفين. هذا ما يجعل اختبار «الزائر لا يقرأ» واختبار «الدخول يفتح
          البيانات» ذا معنى (لو سمحنا للجميع لصار كل شيء أخضر بلا فائدة). */
@@ -151,6 +151,7 @@ function makeFetch(server, browser) {
       if (!allowed && table !== 'public_jobs') {
         return Promise.resolve(reply(401, { code: '42501', message: 'permission denied for table ' + table }));
       }
+      if(table==='rpc'&&url.includes('/staff_issuance_registry')&&server.staff.some(s=>s.auth_id===sessionUserId&&s.active!==false)){const args=JSON.parse(init.body||'{}');return Promise.resolve(reply(200,args.p_serial==null?{version:1,bitmap:Buffer.alloc(595125).toString('base64')}:{used:false}));}
       if (table === 'staff' && sessionUserId && !isService) {
         /* الموظف يقرأ سطره هو — كما في سياسة staff_self_read */
         let rows = server.staff.filter((r) => r.auth_id === sessionUserId);

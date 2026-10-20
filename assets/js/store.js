@@ -311,11 +311,7 @@
     memSession = session;
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) { }
     audit('تسجيل دخول', 'auth', username, 'دخول ناجح إلى المنظومة (' + (u.role === 'admin' ? 'مدير عام' : 'موظف') + ')');
-    /* ⚠️ خطر حقيقي في الوضع الانتقالي: لو كان في هذا المتصفح توكن جلسة سحابية
-       لموظف آخر، ثم دخل شخص بكلمة المرور المحلية، لصارت كل كتاباته تُنسب إلى
-       **ذلك الموظف** في القاعدة (التوكن هو من يكتب لا الشاشة). القاعدة هنا
-       صريحة: إمّا أنت المستخدم السحابي، وإمّا وضع محلي بلا أي كتابة سحابية —
-       لذلك نفصل الجلسة السحابية عند الدخول المحلي. */
+
     if (cloud.state === 'on' && cloud.role === 'staff') {
       console.warn('[HRC] دخول محلي مع جلسة سحابية قائمة — تُفصل الجلسة السحابية حتى لا تُنسب الكتابات لصاحبها');
       saveLocal(); emit();
@@ -329,6 +325,7 @@
   function logout() {
     var s = currentUser();
     if (s) audit('تسجيل خروج', 'auth', s.username, 'إنهاء الجلسة');
+    if(root.HRCCloud&&root.HRCCloud.clearChanceRegistry)root.HRCCloud.clearChanceRegistry();
     memSession = null;
     try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { }
     saveLocal(); emit();
@@ -386,12 +383,7 @@
     return null;
   }
 
-  /* إضافة مستخدم جديد.
-     ⚠️ تمييز مقصود: تكرار الاسم مع سطر **محلي** يُرفض دائماً (شخصان بنفس اسم
-     الدخول = خطأ). أما سطر في القاعدة فليس تكراراً بل نفس الحساب: الحساب أُنشئ
-     في القاعدة قبل لحظات (cloudLinked=true) وما نكتبه هنا هو نسخة الدخول المحلي
-     الاحتياطية له — وهي التي تُسند اسم موظف القاعدة إلى اسم دخول محلي عند
-     انقطاع الإنترنت في الوضع الانتقالي. */
+
   function addUser(data) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     if (!data.username || !data.password || !data.name) return { ok: false, error: 'الاسم واسم المستخدم وكلمة المرور مطلوبة' };
@@ -429,10 +421,7 @@
     return { ok: true, user: newUser };
   }
 
-  /* تعديل مستخدم — يعمل على المصدرين: السطر المحلي وسطر القاعدة (brc.staff).
-     ⚠️ علّة مُصلَحة: كان التعديل يفشل بـ«المستخدم غير موجود محلياً» لأي موظف
-     أُنشئ من جهاز آخر (سطر في القاعدة بلا نظير محلي)، فيظهر الموظف في الجدول
-     ولا يستطيع المدير تعديله ولا تعطيله. */
+
   function updateUser(username, data) {
     if (!isAdmin()) return { ok: false, error: 'هذه الصلاحية للمدير العام فقط' };
     var users = db.settings.users || [];
@@ -658,6 +647,7 @@
       }
       if(t.jobId===job.id)t.jobId=null;
     });
+    if(db.meta&&db.meta.workspace){db.meta.explicitDeletes=db.meta.explicitDeletes||{};db.meta.explicitDeletes.jobs=(db.meta.explicitDeletes.jobs||[]).concat(code);}
     db.jobs = db.jobs.filter(function (j) { return j.code !== code; });
     audit('حذف وظيفة', 'job', code, job.title + ' — ' + job.region);
     save(); emit();
@@ -666,11 +656,7 @@
 
   /* ======================= الباحثون عن العمل والبطاقات ======================= */
 
-  /* ===== صيغة باركود البطاقة (قرار الإدارة 2026-10-10) =====
-     10 خانات: أحرف إنجليزية كبيرة وأرقام مختلطة — بلا بادئة وبلا شرطة وبلا فاصل.
-     نستبعد الأشكال المتشابهة (0/O و1/I/L) حتى لا يخلط الكاتب اليدوي بينها.
-     الصيغة القديمة HRC-BC-###### تبقى مقبولة للبطاقات المطبوعة سابقاً.
-     التوليد عشوائي غير متسلسل (قرار 2026-09-30 محفوظ): لا نمط يُخمَّن ولا يُتتبَّع. */
+
   var CARD_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
   var CARD_LEN = 10;
   var CARD_RE = /^[2-9A-HJKMNP-Z]{10}$/;
@@ -738,14 +724,15 @@
     var letters = 'ABCDEFGHJKMNPQRSTUVWXYZ';
     /* pool اختياري: يُمرَّر أثناء seedDb لأن المتغير العام db ما زال null حينها */
     var attempts = pool || (db ? db.attempts : []);
-    for (var guard = 0; guard < 50; guard++) {
+    for (var guard = 0; guard < 50+9000*529; guard++) {
       var code = pad(Math.floor(1000 + Math.random() * 9000), 4) + '-' +
         letters[Math.floor(Math.random() * letters.length)] +
         letters[Math.floor(Math.random() * letters.length)];
-      var taken = attempts.some(function (t) { return t.code === code; });
-      if (!taken) return code;
+      if(guard>=50){var n=guard-50;code=pad(1000+Math.floor(n/529),4)+'-'+letters[Math.floor(n%529/23)]+letters[n%23];}
+      var taken = attempts.some(function (t) { return t.code === code; })||(root.HRCCloud&&root.HRCCloud.chanceUsed&&root.HRCCloud.chanceUsed(code));
+      if (!taken) {if(root.HRCCloud&&root.HRCCloud.rememberChance)root.HRCCloud.rememberChance(code);return code;}
     }
-    return pad(Math.floor(1000 + Math.random() * 9000), 4) + '-XX';
+    throw new Error('نفدت رموز الفرص الفريدة؛ لا يمكن طباعة رمز مكرر');
   }
 
   function createApplicant(data) {
@@ -806,10 +793,7 @@
     return made;
   }
 
-  /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
-     المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة.
-     الكود 10 خانات حروف وأرقام (أو 6 أرقام للقديمة فتُسبَق بـ HRC-BC) ويجب أن يكون
-     فريداً ولم يُستعمل أبداً — سجل usedSerials يمنع عودة أي باركود. */
+
   function createCardWithSerial(serial, notes) {
     if (!isAdmin()) return { ok: false, error: 'إضافة البطاقات صلاحية للمدير العام فقط' };
     serial = normalizeCardSerial(serial);
@@ -970,12 +954,7 @@
     };
   }
 
-  /* طلب صاحب العمل من صفحة الباركود (توظيف / رفض بالسبب) — قرار 2026-10-06:
-     • «تم التوظيف»: الوظيفة والفرصة «جاري التوظيف» (مجمّدة بلا مهلة) حتى
-       يثبّت موظفو الشركة القرار النهائي.
-     • «رفض التوظيف» بسبب مكتوب: الوظيفة والفرصة إلى الحالة «الحرجة» المعلّقة،
-       ويقرّر موظف الشركة: إرجاع الوظيفة متاحة أو حذفها (أو التوظيف).
-     لا رمز مطلوب: الباركود وحده يكفي (حيازة الورقة). */
+
   function employerDecide(serial, decision, reason) {
     serial = String(serial || '').trim().toUpperCase();
     if (decision !== 'hire' && decision !== 'reject')
@@ -1469,10 +1448,7 @@
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الرقم', serial: serial };
     var validToken = token(serial);
     var tokenOk = !!t && t === validToken;
-    /* ⚠️ بلا بصمة مطابقة تُقنَّع بيانات الباحث في الرد نفسه (لا في العرض فقط):
-       الأرقام التسلسلية متتابعة، فلو أظهرنا الاسم والهاتف لكل من يُدخل رقماً
-       لتساءل أي زائر أسماء وهواتف كل الباحثين بنداءات متسلسلة. البصمة المطبوعة
-       في الكيو آر كود هي المفتاح؛ ومن يُدخل الرقم يدوياً يراه مقنّعاً. */
+
     var masked = !tokenOk;
     var payload = {
       ok: true,
@@ -1510,6 +1486,7 @@
   /* ======================= الإحصاءات والمالية ======================= */
 
   function stats() {
+    if(db.meta&&db.meta.workspace&&db.meta.serverReport)return Object.assign({},db.meta.serverReport.stats,{available:db.jobs.filter(function(j){return j.status==='available';}).length,reserved:db.jobs.filter(function(j){return j.status==='reserved';}).length});
     return {
       totalJobs: db.jobs.length,
       available: db.jobs.filter(function (j) { return j.status === 'available'; }).length,
@@ -1526,6 +1503,7 @@
 
   /* لوحة مالية: عدد البطاقات المطبوعة والمبالغ المتوقعة لكل موظف */
   function financials(from, to) {
+    if(db.meta&&db.meta.workspace){var cached=db.meta.financialReport;if(cached&&cached.key===String(from||'')+'|'+String(to||''))return cached.data.rows;if(!from&&!to&&db.meta.serverReport)return db.meta.serverReport.rows;return [];}
     var rows = {};
     db.applicants.forEach(function (a) {
       /* استمارة قيد الطلب (issueDate = null) لا تنتمي لأي يوم: كانت تُقارَن
@@ -1541,7 +1519,7 @@
       var fee = Number(a.fee != null ? a.fee : db.settings.formFee);
       rows[key].printed += Number(a.printedCount || 0);
       rows[key].expected += fee;
-      
+
       // Track payment status
       var paidAmount = Number(a.paidAmount || 0);
       if (paidAmount >= fee) {
@@ -1556,7 +1534,7 @@
       } else {
         rows[key].unpaid++;
       }
-      
+
       rows[key].hires += getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'succeeded'; }).length;
       rows[key].holds += getAttempts(a.serial).filter(function (t) { return t.slotStatus === 'reserved'; }).length;
     });
@@ -1610,13 +1588,13 @@
   function setFeePaid(serial, paid, amount) {
     var app = getApplicant(serial); if (!app) return;
     var fee = Number(app.fee != null ? app.fee : db.settings.formFee);
-    
+
     if (amount !== undefined) {
       // Partial or full payment with specific amount
       var paidAmount = Number(amount) || 0;
       app.paidAmount = paidAmount;
       app.feePaid = paidAmount >= fee;
-      
+
       if (paidAmount >= fee) {
         audit('تسجيل استلام رسم كامل', 'applicant', serial, 'المبلغ: ' + money(paidAmount) + ' من ' + money(fee));
       } else if (paidAmount > 0) {
@@ -1630,7 +1608,7 @@
       app.paidAmount = paid ? fee : 0;
       audit(paid ? 'تسجيل استلام رسم' : 'إلغاء تسجيل الرسم', 'applicant', serial, 'رسم الاستمارة: ' + money(fee));
     }
-    
+
     save(); emit();
   }
 
@@ -1650,6 +1628,7 @@
   }
 
   function exportJson() {
+    if(db.meta&&db.meta.workspace)throw new Error('هذه بيانات العمل فقط؛ استخدم النسخة الكاملة من إدارة الاسترجاع');
     if (enforceAuth() && !isAdmin()) throw new Error('التصدير السحابي للمدير فقط');
     return JSON.stringify(db, null, 2);
   }
@@ -1657,6 +1636,7 @@
   function previewBackup(text) {
     if (typeof text !== 'string' || text.length > 32 * 1024 * 1024) throw new Error('حجم النسخة غير صالح');
     var p = JSON.parse(text);
+    if(p&&p.meta&&p.meta.partialTables&&p.meta.partialTables.length)throw new Error('نسخة عمل جزئية وليست نسخة استرجاع كاملة');
     if (!p || !p.meta || p.meta.version !== 2 || !p.settings || !p.counters) throw new Error('إصدار نسخة غير مدعوم');
     ['jobs', 'applicants', 'attempts', 'audit'].forEach(function (k) {
       if (!Array.isArray(p[k]) || p[k].length > 100000) throw new Error('جدول غير صالح: ' + k);
@@ -1689,12 +1669,7 @@
     save(); emit();
   }
 
-  /* ======================= النسخ الاحتياطي المجدول =======================
-   *  ⚠ هذه الدوال يجب أن تبقى *داخل* نطاق الوحدة (IIFE) لأنها تستخدم
-   *    db / save / emit / audit / nowISO. وضعها بعد قوس الإغلاق يجعل كل
-   *    أزرار النسخ الاحتياطي والجدولة تفشل بصمت في المتصفح
-   *    (ReferenceError: nowISO is not defined) — وهذا ما حدث سابقاً.
-   * ===================================================================== */
+
 
   var BACKUP_KEY = 'hrc-scheduled-backups';
   var SCHEDULE_KEY = 'hrc-auto-backup-schedule';
@@ -1968,11 +1943,7 @@
   function cloudStatus() {
     return {
       configured: cloudConfigured(), enforceAuth: enforceAuth(), devAccountsActive: devAccountsActive(),
-      /* هل سيُقلع الاتصال بالقاعدة فعلاً؟ (الإعداد مفعّل + المتصفح يوفر fetch +
-         مكتبة عميل محمّلة). الصفحة العامة تعتمد عليه لقرار مهم: مع willBoot=true
-         لا تُعرض للزائر أي بيانات متصفح (seed/كاش) إطلاقاً — بل هيكل تحميل ثم
-         بيانات القاعدة أو رسالة فشل. أما بلا fetch (متصفح قديم جداً أو بيئة
-         اختبار محلية) فلا معنى لإخفاء البيانات المحلية عن نسخة لا تملك غيرها. */
+
       willBoot: cloudWillBoot(),
       state: cloud.state, role: cloud.role,
       readOnly: cloud.readOnly, error: cloud.error, detail: cloud.detail,
@@ -2010,10 +1981,7 @@
     if (code === '42501' || /permission denied/i.test(msg)) {
       return { text: 'لا صلاحية كافية (RLS/منح مفقود)', hint: 'راجع سياسات ومنح §8 و§9 في docs/schema.sql' };
     }
-    /* ⚠️ 42703 «عمود مفقود»: أشهر سببه قاعدة أُنشئت قبل إضافة عمود إلى المخطط
-       (create table if not exists لا يُضيف أعمدة لجدول قائم). الواجهة تكتب
-       governorate في كل وظيفة، فقد تفشل «إضافة وظيفة» وحدها بينما كل شيء آخر
-       سليم — فيبدو العطل غامضاً. نُسمّي العمود ونعطي ملف الإصلاح بالاسم. */
+
     if (code === '42703' || /column .* does not exist/i.test(msg)) {
       return {
         text: 'عمود مفقود في القاعدة' + (/jobs|governorate/i.test(msg) ? ' (governorate في brc.jobs)' : ''),
@@ -2102,7 +2070,7 @@
   }
 
   function loadFromCloud() {
-    return root.HRCCloud.fetchAll(cloud.client).then(function (cdb) {
+    return root.HRCCloud.fetchAll(cloud.client,{workspace:true}).then(function (cdb) {
       var failed = (cdb.meta && cdb.meta.failedTables) || [];
       cloud.failedTables = failed;
       var coreFailed = failed.filter(function (t) { return CORE_TABLES.indexOf(t) >= 0; });
@@ -2157,6 +2125,7 @@
       db.attempts = cdb.attempts || [];
       db.audit = cdb.audit || [];
       db.staff = cdb.staff || [];
+      if(db.meta.workspace)db.usedSerials=[]; // Server issued_serials remains the permanent authority.
       normalizeSerialLog();
     } finally { cloud.applying = false; }
     saveLocal();
@@ -2245,7 +2214,7 @@
   /* إعادة قراءة كاملة — بعد تغيير من موظف آخر أو بعد استعادة الاتصال */
   function reloadFromCloud() {
     if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client) return Promise.resolve(cloudStatus());
-    return root.HRCCloud.fetchAll(cloud.client).then(function (cdb) {
+    return root.HRCCloud.fetchAll(cloud.client,{workspace:true}).then(function (cdb) {
       if (((cdb.meta && cdb.meta.failedTables) || []).length) return cloudStatus();
       adoptCloudDb(cdb);
       if (cloud.sync) cloud.sync.setSnapshot(db);
@@ -2253,19 +2222,17 @@
     }).catch(function (e) { setCloudError(e); return cloudStatus(); });
   }
 
-  /* --------------------------- Realtime ---------------------------
-   *  تغيير من موظف آخر: نُطبّقه على الذاكرة ونُبلّغ الواجهة. المهم بعد
-   *  التطبيق أن نُقدّم لقطة المزامنة للسطر المتغيّر وحده، وإلا أعاد الدفع
-   *  إدراج سطر أدرجه غيرنا (تصادم مفتاح ← صف مكرر برقم جديد!) أو حذف سطر
-   *  حُذف مسبقاً. نُقدّم السطر وحده لا اللقطة كلها، حتى لا نُوسم تعديلاً
-   *  محلياً معلّقاً بأنه مُزامَن فيضيع.
-   * ---------------------------------------------------------------- */
+
   function absorbRealtime(table, payload) {
     if (!cloud.sync) return;
     var type = payload.eventType || payload.type;
     var row = payload.new || payload.record || null;
     var old = payload.old || payload.old_record || null;
     var snap = cloud.sync.getSnapshot();
+    if(table==='applicants'&&row&&row.archived_at&&db.meta&&db.meta.workspace){
+      root.HRCSync.advanceSnapshot(snap,{table:'applicants',op:'delete',key:row.serial});
+      Object.keys(snap.job_attempts).forEach(function(k){if(k.indexOf(row.serial+':')===0)root.HRCSync.advanceSnapshot(snap,{table:'job_attempts',op:'delete',key:k});});return;
+    }
     var op = { table: table, op: type === 'DELETE' ? 'delete' : 'update', key: null, local: null };
 
     if (table === 'jobs') {
@@ -2300,11 +2267,35 @@
     return null;
   }
 
+  function cardReport(from,to) {
+    if(!currentUser()||cloud.state!=='on'||cloud.role!=='staff')return Promise.reject(new Error('التقرير الكامل يحتاج اتصالاً وحساب موظف فعالاً'));
+    var owner=JSON.stringify(currentUser());
+    return root.HRCCloud.rpcCall(cloud.client,'staff_card_report',{p_from:from||null,p_to:to||null}).then(function(r){
+      if(owner!==JSON.stringify(currentUser())||r.error||!r.data||!r.data.stats||!Array.isArray(r.data.rows))throw new Error('تعذر قراءة التقرير الكامل');
+      db.meta.financialReport={key:String(from||'')+'|'+String(to||''),data:r.data};if(!from&&!to)db.meta.serverReport=r.data;return r.data;
+    });
+  }
+
+  function serialWasIssued(serial) {
+    if(!currentUser()||cloud.state!=='on'||cloud.role!=='staff')return Promise.reject(new Error('تعذر التحقق من الباركود في السجل الكامل'));
+    return root.HRCCloud.rpcCall(cloud.client,'staff_issuance_registry',{p_serial:normalizeCardSerial(serial)}).then(function(r){if(r.error||!r.data||typeof r.data.used!=='boolean')throw new Error('تعذر التحقق من الباركود؛ أعد المحاولة');return r.data.used;});
+  }
+
+  function searchCardHistory(query,page) {
+    if(!currentUser()||cloud.state!=='on'||cloud.role!=='staff')return Promise.reject(new Error('بحث السجل الكامل يحتاج اتصالاً وحساب موظف فعالاً'));
+    return root.HRCCloud.rpcCall(cloud.client,'staff_card_history',{p_query:String(query||'').trim(),p_page:Number(page||0)}).then(function(r){
+      if(r.error||!r.data||!Array.isArray(r.data.cards))throw new Error(r.error&&r.error.message||'تعذر قراءة السجل؛ تحقق من تحديث القاعدة');return r.data;
+    });
+  }
+
   function startRealtime() {
     if (cloud.unsubscribe || !root.HRCCloud.subscribeAll) return;
     cloud.unsubscribe = root.HRCCloud.subscribeAll(cloud.client, db, function (table, payload) {
       try { absorbRealtime(table, payload); } catch (e) { console.warn('[HRC/realtime] ' + (e && e.message || e)); }
-      saveLocal();   // الكاش المحلي يبقى مطابقاً لما نعرضه
+      if(table==='applicants'&&payload.new&&payload.new.archived_at){
+        clearTimeout(cloud.archiveTimer);var owner=JSON.stringify(currentUser());cloud.archiveTimer=setTimeout(function(){if(owner===JSON.stringify(currentUser())){saveLocal();emit();}},100);return;
+      }
+      saveLocal();
       emit();
     }, function (e) {
       console.warn('[HRC/realtime] ' + ((e && e.message) || e));
@@ -2346,10 +2337,7 @@
       applyStaffSession(r.profile);
       saveLocal();
       emit();
-      /* كان الإقلاع السابق كزائر (الوظائف العامة فقط). بعد الدخول نُعيد الإقلاع
-         لنجلب جداول الموظفين كاملة — وإلا بقي الموظف يرى نصف البيانات.
-         ⚠️ ترتيب مقصود: التدقيق **بعد** تبني بيانات القاعدة، لأن التبنّي يستبدل
-         db.audit بما في القاعدة فيضيع السطر المكتوب قبله. */
+
       cloud.bootPromise = null;
       return bootCloud().then(function () {
         audit('تسجيل دخول', 'auth', r.profile.username,
@@ -2398,10 +2386,7 @@
     });
   }
 
-  /* إدارة حسابات الموظفين في القاعدة (تعديل/حذف/كلمة مرور).
-     تُنادى من لوحة المدير بعد نجاح العملية محلياً أو قبلها بحسب الاتجاه:
-       • الإنشاء: القاعدة أولاً ثم المحلي (فلا يبقى حساب نصف جاهز يُوعد به الموظف).
-       • التعديل/الحذف: القاعدة أولاً ثم المحلي (فلا تبقى شاشة تقول شيئاً والقاعدة غيره). */
+
   function updateCloudAccount(serviceKey, data) {
     if (!cloud.client || !root.HRCCloudAuth) {
       return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
@@ -2439,14 +2424,7 @@
     return auth.probeServiceKey(serviceKey);
   }
 
-  /* ---------------------------------------------------------------------------
-   *  إدارة الحسابات عبر الدالة السحابية (hrc-staff-admin) — بلا أي مفتاح في المتصفح
-   *  ---------------------------------------------------------------------------
-   *  action: 'create' | 'update' | 'delete' | 'set-password' | 'whoami'
-   *  تعمل لأي مدير **مُسجَّل دخوله سحابياً** من أي متصفح: الدالة تتحقق من التوكن
-   *  ومن كونه مديراً نشطاً في brc.staff. وإن لم تكن منشورة تُرجع code='not_deployed'
-   *  فيسلك المستدعي مسار مفتاح الخدمة (إن وُجد).
-   * ------------------------------------------------------------------------- */
+
   function staffAdmin(action, payload) {
     if (!cloud.client || !root.HRCCloudAuth) {
       return Promise.resolve({ ok: false, code: 'no_client', error: 'عميل قاعدة الشركة غير جاهز — أعد تحميل الصفحة' });
@@ -2460,6 +2438,7 @@
   }
 
   function signOutCloud() {
+    if(root.HRCCloud&&root.HRCCloud.clearChanceRegistry)root.HRCCloud.clearChanceRegistry();
     var out = (cloud.auth && cloud.auth.logout) ? cloud.auth.logout() : Promise.resolve({ ok: true });
     var unsub = cloud.unsubscribe;
     return out.catch(function () { return { ok: true }; }).then(function () {
@@ -2487,6 +2466,7 @@
       if (!r.data || !r.data.ok) throw new Error('لم تكتمل العملية؛ لم يتم تأكيد نجاحها');
       if (r.data.requiresLogin) {
         if (cloud.timer) clearTimeout(cloud.timer);
+        if(root.HRCCloud&&root.HRCCloud.clearChanceRegistry)root.HRCCloud.clearChanceRegistry();
         cloud.sync = null; memSession = null;
         try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
         return signOutCloud().then(function () { return r.data; });
@@ -2501,21 +2481,7 @@
     return auth.changePassword(newPassword);
   }
 
-  /* ---------------------------------------------------------------------------
-   *  تسجيل طلب استمارة — لم يبقَ له مستدعٍ من الموقع العام
-   *  ---------------------------------------------------------------------------
-   *  ⚠️ سياسة الشركة: الزائر لا يقدّم طلباً من الموقع — يتصفّح الوظائف ثم يخابر
-   *  المكتب أو يراجعه، والموظف يسجّل الطلب من المنظومة الداخلية. لذلك أُزيل نموذج
-   *  الطلب من الموقع العام نهائياً. هذه الدالة تبقى للمسار الداخلي/الاختبارات،
-   *  ودالة القاعدة brc.request_form تضع الحالة 'pending' دائماً — فلا يستطيع
-   *  أي مسار إصدار استمارة سارية من خارج المنظومة.
-   *  الزائر لا يملك — ولا يجب أن يملك — صلاحية إدراج في brc.applicants. لذلك
-   *  الطلب يمرّ عبر دالة القاعدة brc.request_form التي تتحقق من المدخلات وتضع
-   *  الحالة 'pending' دائماً. الإدراج المباشر من الواجهة كان يعني: إمّا منح
-   *  anon صلاحية كتابة على جدول الاستمارات (مرفوض)، أو طلب يُرفض بـ 42501
-   *  ويبقى في قائمة الانتظار يحاول بلا نهاية.
-   *  في الوضع المحلي (بلا سحابة) نُكمل بالمسار المحلي كما كان تماماً.
-   * ------------------------------------------------------------------------- */
+
   /* التحقق السحابي (صفحة التحقق للزائر): دالة القاعدة تتحقق من البصمة
      وتُرجع استمارة واحدة — بخلاف قراءة الجدول الذي يسحب بيانات الجميع. */
   function verifyCloud(serial, t) {
@@ -2586,7 +2552,7 @@
     probeServiceKey: probeServiceKey,
     staffAdmin: staffAdmin, recoveryRPC: recoveryRPC,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
-    reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
+    serialWasIssued:serialWasIssued, cardReport:cardReport, searchCardHistory:searchCardHistory, reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,
     waitForCloud: function () { return cloud.bootPromise || Promise.resolve(cloudStatus()); },
     /* العمليات المعلّقة الآن (للتشخيص والعرض) — لا تُرسل شيئاً */

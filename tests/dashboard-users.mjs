@@ -43,6 +43,7 @@ const MOCK_SRC = `
 window.__brcMock = (function () {
   var st = window.__state;
   function q(table) {
+    table=table.replace(/^working_/, '');
     var api = {
       select: function () { return api; }, insert: function () { return api; }, update: function () { return api; },
       upsert: function () { return api; }, delete: function () { return api; }, eq: function () { return api; },
@@ -112,7 +113,7 @@ window.__brcMock = (function () {
         return Promise.resolve({ data: { ok: false, code: 'bad_action', error: 'إجراء غير معروف' }, error: null });
       }
     },
-    rpc: function () { return Promise.resolve({ data: null, error: { message: 'no rpc in mock' } }); },
+    rpc: function (name,args) {if(name==='staff_issuance_registry'&&st.cloudSession&&st.staff.some(function(s){return s.active!==false;}))return Promise.resolve({data:args.p_serial==null?{version:1,bitmap:btoa(String.fromCharCode(0).repeat(595125))}:{used:false},error:null});return Promise.resolve({ data: null, error: { message: 'no rpc in mock' } }); },
     channel: function () { return ch; }, removeChannel: function () { },
     auth: {
       signInWithPassword: function (credentials) {
