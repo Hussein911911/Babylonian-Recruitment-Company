@@ -1118,12 +1118,199 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .bk-field.has-error .bk-err, .bk-err.show { display: flex; }
 .bk-hint { display: block; font-size: .76rem; color: var(--muted); margin-top: 6px; }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   شاشة «قدّم ببطاقتك» — واجهة الزبون الأولى (بيانات + مسح + إدخال يدوي)
+   لازورد بابل + ذهب · حركات هادئة · تقليل الحركة محترم (@media reduce)
+   ══════════════════════════════════════════════════════════════════════════ */
+.modal-booking { width: min(760px, 100%); }
+.modal-booking .modal-head {
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(200,162,74,.20), transparent 58%),
+    linear-gradient(135deg, #0b1a3a, #17376c);
+  border-bottom: none; color: #f6f1e3;
+}
+.modal-booking .modal-head h3 { color: #fff; letter-spacing: -.2px; }
+.modal-booking .modal-head .tiny { color: #b9c7e2 !important; }
+.modal-booking .modal-head .icon-btn { color: #dbe4f5; border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.06); }
+.modal-booking .modal-head .icon-btn:hover { background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.4); }
+.modal-booking .modal-body { background: linear-gradient(180deg, #fbfaf6, #fff 40%); }
+
+.bk-entry { display: grid; gap: 16px; animation: bkFade .34s cubic-bezier(.22,1,.36,1) both; }
+.bk-entry-hero { display: grid; gap: 10px; }
+.bk-eyebrow {
+  display: inline-flex; align-items: center; gap: 7px; font-size: .75rem; font-weight: 800;
+  color: var(--gold-3); background: rgba(200,162,74,.12); border: 1px solid rgba(200,162,74,.3);
+  border-radius: 999px; padding: 5px 12px; width: fit-content; letter-spacing: .2px;
+}
+.bk-eyebrow svg { width: 15px; height: 15px; }
+.bk-entry-head h4 { margin: 2px 0 4px; font-size: 1.3rem; color: var(--lapis); }
+.bk-entry-head p { margin: 0; font-size: .9rem; color: var(--muted); line-height: 1.8; }
+
+/* شريط الوظيفة المختارة القادمة من زر «قدّم ببطاقتك» */
+.bk-jobtap {
+  display: flex; align-items: center; gap: 11px; padding: 10px 14px; border-radius: 13px;
+  background: linear-gradient(120deg, rgba(31,143,150,.09), rgba(200,162,74,.10));
+  border: 1px solid rgba(31,143,150,.28); animation: bkSlide .4s cubic-bezier(.22,1,.36,1) both;
+}
+.bk-jobtap > svg { width: 22px; height: 22px; color: var(--ok,#1f8f4e); flex: none; }
+.bk-jobtap small { display: block; font-size: .72rem; color: var(--muted); font-weight: 700; }
+.bk-jobtap b { font-size: .95rem; color: var(--lapis); letter-spacing: .04em; }
+
+.bk-entry-grid { display: grid; grid-template-columns: 236px minmax(0,1fr); gap: 18px; align-items: start; }
+.bk-entry-side { display: grid; gap: 12px; }
+.bk-entry-main { display: grid; gap: 12px; min-width: 0; }
+
+/* ── وجه البطاقة (بصمة بصرية) ── */
+.bk-card {
+  position: relative; overflow: hidden; border-radius: 18px; padding: 15px 16px 13px;
+  background:
+    radial-gradient(140% 120% at 100% 0%, rgba(200,162,74,.34), transparent 55%),
+    radial-gradient(100% 120% at 0% 100%, rgba(63,193,196,.16), transparent 60%),
+    linear-gradient(140deg, #0b1a3a, #17376c 58%, #12294f);
+  color: #f6f1e3; box-shadow: 0 16px 34px -18px rgba(11,26,58,.75), inset 0 0 0 1px rgba(232,208,137,.28);
+  animation: bkRise .45s cubic-bezier(.22,1,.36,1) both;
+}
+.bk-card::after {
+  content: ''; position: absolute; inset: 6px; border-radius: 13px; pointer-events: none;
+  border: 1px solid rgba(232,208,137,.16);
+}
+.bk-card-shine {
+  position: absolute; inset: -40% -60%; pointer-events: none;
+  background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.16) 50%, transparent 58%);
+  transform: translateX(-40%); animation: bkShine 5.6s ease-in-out 1.2s infinite;
+}
+.bk-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; position: relative; }
+.bk-card-brand { display: inline-flex; align-items: center; gap: 7px; font-size: .82rem; color: #f0d98a; }
+.bk-card-brand svg { width: 22px; height: 22px; }
+.bk-card-brand b { font-weight: 900; letter-spacing: .1px; }
+.bk-card-live {
+  display: inline-flex; align-items: center; gap: 5px; font-size: .66rem; font-weight: 800;
+  color: #8ff0b4; background: rgba(31,143,78,.18); border: 1px solid rgba(31,143,78,.4);
+  border-radius: 999px; padding: 3px 8px; white-space: nowrap;
+}
+.bk-card-live svg { width: 12px; height: 12px; }
+.bk-card-bars { display: flex; align-items: flex-end; gap: 2px; height: 34px; margin: 14px 0 8px; opacity: .92; }
+.bk-card-bars i { display: block; width: 2px; height: 60%; background: rgba(246,241,227,.86); border-radius: .5px; transition: height .35s ease; }
+.bk-card.has-code .bk-card-bars i { background: rgba(232,208,137,.92); }
+.bk-card-num {
+  font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: .95rem; font-weight: 700;
+  letter-spacing: .16em; color: #fff; min-height: 1.4em; transition: color .2s;
+}
+.bk-card.has-code .bk-card-num { color: #ffe9a8; text-shadow: 0 0 18px rgba(232,208,137,.5); }
+.bk-card-foot { display: flex; justify-content: space-between; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(232,208,137,.18); }
+.bk-card-foot span { display: grid; gap: 1px; }
+.bk-card-foot small { font-size: .64rem; color: #a9b6d2; font-weight: 700; }
+.bk-card-foot b { font-size: .82rem; color: #f0d98a; }
+
+.bk-points { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.bk-points li { display: flex; align-items: flex-start; gap: 8px; font-size: .8rem; color: #3c4763; line-height: 1.65; }
+.bk-points svg { width: 15px; height: 15px; color: var(--ok, #1f8f4e); flex: none; margin-top: 3px; }
+
+/* ── المسح الضوئي: الزر الكبير ── */
+.bk-scanbox { display: grid; gap: 9px; }
+.bk-scanbig {
+  position: relative; overflow: hidden; width: 100%; text-align: right; cursor: pointer;
+  display: grid; grid-template-columns: 56px minmax(0,1fr); grid-template-rows: auto auto;
+  column-gap: 13px; align-items: center; padding: 15px 16px; border-radius: 16px; font: inherit;
+  color: #f6f1e3; border: 1px solid rgba(200,162,74,.45);
+  background:
+    radial-gradient(120% 160% at 100% 0%, rgba(200,162,74,.30), transparent 60%),
+    linear-gradient(135deg, #0e2147, #1b3f79);
+  box-shadow: 0 14px 28px -18px rgba(11,26,58,.8);
+  transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .22s, border-color .22s;
+}
+.bk-scanbig::before {
+  content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .22s;
+  background: radial-gradient(80% 120% at 50% 0%, rgba(232,208,137,.22), transparent 70%);
+}
+.bk-scanbig:hover { transform: translateY(-2px); border-color: var(--gold-2); box-shadow: 0 20px 34px -18px rgba(11,26,58,.9); }
+.bk-scanbig:hover::before { opacity: 1; }
+.bk-scanbig:active { transform: translateY(0) scale(.995); }
+.bk-scanbig:focus-visible { outline: 3px solid rgba(232,208,137,.65); outline-offset: 2px; }
+.bk-scanbig-ic {
+  grid-row: 1 / span 2; position: relative; width: 56px; height: 56px; border-radius: 15px;
+  display: grid; place-items: center; color: #241a05;
+  background: linear-gradient(145deg, #e8d089, #c8a24a);
+  box-shadow: 0 8px 20px -8px rgba(200,162,74,.9), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.bk-scanbig-ic svg { width: 27px; height: 27px; }
+.bk-scanbig-pulse {
+  position: absolute; inset: 0; border-radius: 15px; border: 2px solid rgba(232,208,137,.7);
+  animation: bkPulse 2.6s ease-out infinite;
+}
+.bk-scanbig-t { font-size: 1.02rem; font-weight: 900; letter-spacing: .1px; }
+.bk-scanbig-s { font-size: .78rem; color: #b9c7e2; line-height: 1.7; margin-top: 2px; }
+.bk-scanbig.is-busy { opacity: .72; pointer-events: none; }
+.bk-scanbig.is-busy .bk-scanbig-ic { animation: bkSpin 1.1s linear infinite; }
+.bk-scanbig[data-unsupported] { filter: grayscale(.35); }
+.bk-scan-alt { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: .8rem; }
+.bk-scan-link {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--lapis-2);
+  font-weight: 800; background: transparent; border: none; padding: 4px 2px; font: inherit; font-size: .8rem;
+  border-radius: 7px; transition: color .16s;
+}
+.bk-scan-link svg { width: 15px; height: 15px; color: var(--gold-3); }
+.bk-scan-link:hover { color: var(--gold-3); text-decoration: underline; text-underline-offset: 3px; }
+.bk-scan-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.bk-scan-sep { color: #c9cfdd; }
+
+/* فاصل «أو» */
+.bk-or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: .76rem; font-weight: 700; }
+.bk-or::before, .bk-or::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--line-soft), transparent); }
+
+/* ── الإدخال اليدوي ── */
+.bk-manual { transition: .2s; }
+.bk-manual .bk-field { margin-bottom: 10px; }
+.bk-manual.is-focus .bk-scan-row input { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(200,162,74,.16); }
+.bk-scan-row { position: relative; }
+.bk-input-ic { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); color: var(--gold-3); pointer-events: none; display: grid; }
+.bk-input-ic svg { width: 18px; height: 18px; }
+.bk-scan-row input { padding-inline-start: 40px !important; }
+.bk-entry-cta { display: grid; }
+.bk-cta { width: 100%; justify-content: center; position: relative; overflow: hidden; }
+.bk-cta svg { transition: transform .2s; }
+.bk-cta:hover svg { transform: translateX(-3px); }
+.bk-cta.is-ready { animation: bkReady 1.6s ease-in-out infinite; }
+.bk-entry-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 4px; }
+.bk-help { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 800; color: var(--ok, #1f8f4e); }
+.bk-help svg { width: 15px; height: 15px; }
+.bk-help:hover { text-decoration: underline; text-underline-offset: 3px; }
+.bk-entry-note {
+  display: flex; align-items: flex-start; gap: 8px; font-size: .75rem; color: var(--muted);
+  background: #fbf8f0; border: 1px dashed rgba(200,162,74,.4); border-radius: 12px; padding: 9px 12px; line-height: 1.75;
+}
+.bk-entry-note svg { width: 15px; height: 15px; color: var(--gold-3); flex: none; margin-top: 2px; }
+
+@keyframes bkRise { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes bkSlide { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@keyframes bkShine { 0%, 62% { transform: translateX(-45%); } 88%, 100% { transform: translateX(45%); } }
+@keyframes bkPulse { 0% { transform: scale(1); opacity: .8; } 70% { transform: scale(1.22); opacity: 0; } 100% { opacity: 0; } }
+@keyframes bkReady { 0%,100% { box-shadow: 0 0 0 0 rgba(200,162,74,.55); } 50% { box-shadow: 0 0 0 7px rgba(200,162,74,0); } }
+@keyframes bkSpin { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+  .bk-entry-grid { grid-template-columns: 1fr; }
+  .bk-entry-side { order: 1; }
+  .bk-entry-main { order: 2; }
+  .bk-card { padding: 13px 14px 11px; }
+  .bk-entry-head h4 { font-size: 1.15rem; }
+  .bk-scanbig { grid-template-columns: 46px minmax(0,1fr); padding: 13px; }
+  .bk-scanbig-ic { width: 46px; height: 46px; border-radius: 13px; }
+  .bk-scanbig-ic svg { width: 23px; height: 23px; }
+  .bk-entry-foot { justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-entry, .bk-card, .bk-jobtap, .bk-card-shine, .bk-scanbig-pulse, .bk-cta.is-ready, .bk-scanbig.is-busy .bk-scanbig-ic { animation: none !important; }
+  .bk-scanbig:hover { transform: none; }
+}
+
 /* حقل الباركود + زر المسح الضوئي بجانبه (نافذة بطاقتي / التقديم)
    الزر يبقى ملاصقاً للحقل على الشاشات العريضة، وينتقل تحته بعرض كامل على
    الهاتف لأن العرض المشترك يضغط الحقل حتى يصير غير مقروء. */
 .bk-scan-row { display: flex; align-items: stretch; gap: 9px; flex-wrap: wrap; }
 .bk-scan-row input { flex: 1 1 170px; min-width: 0; width: auto; }
 .bk-scan-row .bk-scan-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 46px; white-space: nowrap; }
+.bk-scan-row input { min-height: 46px; }
 .bk-scan-row .bk-scan-btn svg { width: 18px; height: 18px; }
 @media (max-width: 540px) {
   .bk-scan-row .bk-scan-btn { width: 100%; flex-basis: 100%; }

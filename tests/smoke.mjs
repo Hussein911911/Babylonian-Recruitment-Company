@@ -253,13 +253,30 @@ await (async () => {
   if (jobBtn) jobBtn.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
   const modal = lastModal(site.doc);
 
-  check('بطاقتي: زر «مسح الباركود» ملاصق لحقل إدخال الرقم', () => {
+  check('بطاقتي: زر «مسح الباركود» كبير في نفس شاشة رقم البطاقة', () => {
     const scan = modal && modal.querySelector('#bk-scan');
     if (!scan) return 'لا يوجد زر مسح في شاشة إدخال الباركود';
-    if (!/مسح/.test(scan.textContent)) return 'نص الزر: ' + scan.textContent;
-    const row = scan.parentNode;
-    if (!row || !row.querySelector('#bk-serial')) return 'زر المسح ليس بجانب حقل الباركود';
+    if (!/امسح باركود البطاقة/.test(scan.textContent)) return 'نص الزر: ' + scan.textContent;
+    const entry = modal.querySelector('.bk-entry');
+    if (!entry || !entry.querySelector('#bk-scan') || !entry.querySelector('#bk-serial')) {
+      return 'زر المسح وحقل الرقم ليسا في شاشة واحدة';
+    }
+    if (!modal.querySelector('#bk-manual-toggle')) return 'لا يوجد مسار إدخال يدوي صريح';
     return true;
+  });
+  check('بطاقتي: شكل البطاقة البصرية يعكس الرقم المكتوب فوراً', () => {
+    const inp = modal.querySelector('#bk-serial');
+    inp.value = ' 7kq4-m9tr2x ';
+    inp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
+    const num = modal.querySelector('.bk-card-num');
+    const face = modal.querySelector('.bk-card');
+    if (!num || !face) return 'وجه البطاقة غير موجود';
+    if (!/7KQ4M9TR2X/.test(num.textContent)) return 'الرقم في وجه البطاقة: ' + num.textContent;
+    if (!face.classList.contains('has-code')) return 'البطاقة لم تتفعّل بصرياً';
+    const ready = modal.querySelector('#bk-apply').classList.contains('is-ready');
+    inp.value = '';
+    inp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
+    return ready || 'زر التقديم لم يتوهّج عند اكتمال الصيغة';
   });
   check('بطاقتي: النافذة تعرف كود الوظيفة الذي جاءت منه', () =>
     (site.window.HRCBooking.state().job === jobCode) ||
@@ -278,7 +295,18 @@ await (async () => {
     if (!isFile && !can) return 'الانتقال معطّل على الويب';
     return true;
   });
-  check('مُحلّل الباركود الممسوح: رابط apply · باركود مجرد · بطاقة قديمة · نص غريب', () => {
+  check('بطاقتي: رقم مُلصق بشكل مختلف (شرطة/مسافات/صيغة قديمة ملتصقة) يُطبَّع ويُقبل', () => {
+  const f = site.window.HRCBooking.normalize;
+  if (typeof f !== 'function') return 'دالة التطبيع غير مُصدَّرة';
+  const cases = [['hrc-bc-000117', 'HRC-BC-000117'], ['HRCBC000117', 'HRC-BC-000117'],
+    ['000117', 'HRC-BC-000117'], [' 7kq4-m9tr2x ', '7KQ4M9TR2X']];
+  for (const [inp, want] of cases) {
+    const got = f(inp);
+    if (got !== want) return '«' + inp + '» ⇒ ' + got + ' والمتوقع ' + want;
+  }
+  return true;
+});
+check('مُحلّل الباركود الممسوح: رابط apply · باركود مجرد · بطاقة قديمة · نص غريب', () => {
     const f = site.window.HRCQRScan && site.window.HRCQRScan.serialFrom;
     if (typeof f !== 'function') return 'دالة serialFrom غير موجودة';
     const cases = [

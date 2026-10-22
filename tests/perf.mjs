@@ -75,8 +75,12 @@ const BUDGET = {
      صيغ الباركود) وشاشة إدخال الباركود بزرَّي «مسح» و«ابدأ التقديم» في booking.js.
      قابلة للقياس: 586KB. لا سكربت جديد ولا طلب قاعدة جديد للزائر (20 طلباً كما
      هي)، وبقيت بقية السقوف دون تغيير. الغرض باقٍ: التقاط القفزات الكبيرة. */
-  'index.html': { raw: 592, requests: 20 },
-  'verify.html': { raw: 480, requests: 20 },
+  /* 2026-10-23 (+26KB index / +20KB verify): شاشة «قدّم ببطاقتك» الجديدة —
+     وجه بطاقة بصري، زر مسح كبير، إدخال يدوي، وأنماط `.bk-entry*` في style.css
+     المشتركة، مع نافذة المسح الموحّدة. القياس بعد البناء: 607KB و490KB.
+     بلا سكربت أو طلب قاعدة جديد للزائر (20 طلباً كما هي). */
+  'index.html': { raw: 618, requests: 20 },
+  'verify.html': { raw: 500, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */
   'dashboard.html': { raw: 964, requests: 20 }
