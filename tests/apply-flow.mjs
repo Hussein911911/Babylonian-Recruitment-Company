@@ -347,6 +347,31 @@ check('الضغط عليها يفتح بوابة تحقق صاحب العمل ب
 sandbox.location.href = '';
 
 /* ===========================================================================
+ *  3ب) الوظيفة القادمة من الموقع (زر «قدّم ببطاقتك» في صفحة الوظائف)
+ *      الرابط: apply.html?form=<الباركود>&job=HRC-#### — تُعيَّن تلقائياً
+ *      للزبون حتى لا يبحث عنها من جديد في خطوة اختيار الوظيفة.
+ * =========================================================================== */
+step('1ب', 'الوظيفة القادمة من زر «قدّم ببطاقتك» تُعيَّن تلقائياً في خطوة الوظائف');
+const pickedCount = () => vm.runInContext("['HRC-1042','HRC-1047','HRC-1049'].filter(function(c){return G.pickedIndex(c)>=0;}).length", ctx);
+check('بلا بارامتر job في الرابط لا يوجد تعيين تلقائي',
+  vm.runInContext('G.preJobCode', ctx) === '', JSON.stringify(vm.runInContext('G.preJobCode', ctx)));
+vm.runInContext("G.preJobCode='HRC-1047'", ctx);
+vm.runInContext('G.applyPreJob()', ctx);
+check('كود الوظيفة القادم من الموقع يُعيَّن لفرصة الزبون تلقائياً',
+  vm.runInContext("G.pickedIndex('HRC-1047')", ctx) >= 0 && pickedCount() === 1,
+  'عدد المعيَّن: ' + pickedCount());
+vm.runInContext('G.applyPreJob()', ctx);
+check('لا يُعاد التعيين مرتين (البارامتر يُستهلك مرة واحدة)',
+  pickedCount() === 1 && vm.runInContext('G.preJobCode', ctx) === '');
+vm.runInContext("G.preJobCode='HRC-9999'", ctx);
+vm.runInContext('G.applyPreJob()', ctx);
+check('كود وظيفة غير موجود / غير متاحة لا يُعيّن شيئاً ولا يُربك الشاشة',
+  pickedCount() === 1 && active() === 'pg-welcome', activePages().join(','));
+vm.runInContext('G.removePickedJob(0)', ctx);
+check('إلغاء التعيين يعيد الاختيار فارغاً قبل متابعة المسار الطبيعي',
+  pickedCount() === 0);
+
+/* ===========================================================================
  *  4) الخطوة 1 — الاسم الثلاثي
  * =========================================================================== */
 step(2, 'الخطوة ١ — الاسم الثلاثي ثم «التالي»');

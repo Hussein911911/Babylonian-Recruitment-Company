@@ -243,6 +243,71 @@ await (async () => {
     return ok(name);
   } catch (e) { bad(name, e.message); }
 })();
+
+/* ═══ المسح الضوئي للبطاقة وفتح صفحة التقديم (طلب صاحب الشركة 2026-10-23) ═══ */
+await (async () => {
+  const jobBtn = [...site.doc.querySelectorAll('#jobs-grid .job-card [data-action="open-booking"]')]
+    .find((b) => /^HRC-\d{3,}$/.test(b.getAttribute('data-code') || ''));
+  const jobCode = jobBtn ? jobBtn.getAttribute('data-code') : '';
+  site.window.HRCBooking.close();
+  if (jobBtn) jobBtn.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+  const modal = lastModal(site.doc);
+
+  check('بطاقتي: زر «مسح الباركود» ملاصق لحقل إدخال الرقم', () => {
+    const scan = modal && modal.querySelector('#bk-scan');
+    if (!scan) return 'لا يوجد زر مسح في شاشة إدخال الباركود';
+    if (!/مسح/.test(scan.textContent)) return 'نص الزر: ' + scan.textContent;
+    const row = scan.parentNode;
+    if (!row || !row.querySelector('#bk-serial')) return 'زر المسح ليس بجانب حقل الباركود';
+    return true;
+  });
+  check('بطاقتي: النافذة تعرف كود الوظيفة الذي جاءت منه', () =>
+    (site.window.HRCBooking.state().job === jobCode) ||
+    'كود الوظيفة في النافذة: ' + site.window.HRCBooking.state().job + ' والمتوقع ' + jobCode);
+  check('بطاقتي: زر «ابدأ التقديم» يُنتج رابط صفحة التقديم بالباركود وكود الوظيفة', () => {
+    if (!modal || !modal.querySelector('#bk-apply')) return 'زر «ابدأ التقديم» غير موجود';
+    const url = site.window.HRCBooking.applyUrl('7kq4m9tr2x');
+    if (!/^apply\.html\?form=7KQ4M9TR2X/.test(url)) return 'الرابط: ' + url;
+    if (!url.includes('&job=' + jobCode)) return 'الرابط بلا كود وظيفة: ' + url;
+    return true;
+  });
+  check('حارس صفحة التقديم: لا انتقال إلى apply.html من القرص (الملف المستقل)', () => {
+    const isFile = /^file:/.test(site.window.location.protocol);
+    const can = site.window.HRCBooking.canApply();
+    if (isFile && can) return 'يُسمح بالانتقال من file:// فتقع الصفحة المفقودة';
+    if (!isFile && !can) return 'الانتقال معطّل على الويب';
+    return true;
+  });
+  check('مُحلّل الباركود الممسوح: رابط apply · باركود مجرد · بطاقة قديمة · نص غريب', () => {
+    const f = site.window.HRCQRScan && site.window.HRCQRScan.serialFrom;
+    if (typeof f !== 'function') return 'دالة serialFrom غير موجودة';
+    const cases = [
+      ['https://hrc.example/apply.html?form=7KQ4M9TR2X', '7KQ4M9TR2X'],
+      ['7kq4m9tr2x', '7KQ4M9TR2X'],
+      ['HRC-BC-000117', 'HRC-BC-000117'],
+      ['HRC-BC-123456', 'HRC-BC-123456'],
+      ['كلام غير مفهوم', '']
+    ];
+    for (const [inp, want] of cases) {
+      const got = f(inp);
+      if (got !== want) return '«' + inp + '» ⇒ ' + (got || '(فارغ)') + ' والمتوقع ' + (want || '(فارغ)');
+    }
+    return true;
+  });
+  check('زر المسح في متصفح بلا دعم: تنبيه عربي بلا انهيار ولا انتقال لشاشة أخرى', () => {
+    const scan = modal && modal.querySelector('#bk-scan');
+    if (!scan) return 'زر المسح غير موجود';
+    scan.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    const v = site.window.HRCBooking.state().view;
+    return v === 'entry' || 'تغيّرت الشاشة إلى ' + v;
+  });
+
+  /* إعادة النافذة إلى شاشة الحالة حتى تكمل الاختبارات التالية مسارها */
+  site.window.HRCBooking.close();
+  site.window.HRCBooking.open({ serial: 'HRC-BC-000117' });
+  await new Promise((r) => setTimeout(r, 180));
+})();
+
 await (async () => {
   const name = 'بطاقتي: استخدام فرصة برمز خاطئ يُرفض ثم برمز صحيح يثبّت التقديم';
   try {

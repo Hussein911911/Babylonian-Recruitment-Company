@@ -182,6 +182,13 @@ try {
   check('cloud verifier never grants protected data on server rejection', !(await C.verifyCardCode(client, other.serial, other.cardPrintCode)).ok);
   client.rpc = async () => { throw new Error('offline'); };
   check('cloud verifier fails closed on network failure', !(await C.verifyCardCode(client, other.serial, other.cardPrintCode)).ok);
-  check('new-card legacy wizard routes to barcode-first application without asking for a chance code', /if \(card\.usesCardPrintCode\) \{ location\.assign\('apply\.html\?form='/.test(read('assets/js/booking.js')));
+  /* البطاقات الجديدة تُوجَّه إلى صفحة التقديم التي تقرأ الباركود (لا رمز فرصة).
+     المسار صار عبر goApply(s) الموحّد: يفتح apply.html?form=… مع كود الوظيفة
+     إن وُجد، ويتنحّى في الملف المستقل/القرص حيث لا صفحة تقديم. */
+  const bookingSrc = read('assets/js/booking.js');
+  check('new-card legacy wizard routes to barcode-first application without asking for a chance code',
+    /if \(card\.usesCardPrintCode && goApply\(serial\)\) return;/.test(bookingSrc) &&
+    /apply\.html\?form=' \+ encodeURIComponent\(s\)/.test(bookingSrc) &&
+    /function applyPageAvailable\(\)/.test(bookingSrc));
 } finally { dom.window.close(); }
 console.log(`\nIndependent reprint code: ${checks} checks passed.`);

@@ -1044,7 +1044,7 @@ var G={
       if(cardData&&cardData.phone&&!$('f-phone').value)$('f-phone').value=cardData.phone;
       G.updatePhoneMeter();
     }
-    if(target===6){G.renderChances();G.renderFilters();G.renderJobs();}
+    if(target===6){G.renderChances();G.renderFilters();G.renderJobs();G.applyPreJob();}
     if(target===7){G.renderReview();}
   },
 
@@ -1219,6 +1219,7 @@ var G={
   maxPick:function(){return Math.max(0,Math.min(2,chancesLeft));},
   chanceNumber:function(index){var empty=(cardData&&cardData.chances||[]).filter(function(ch){return ch.slotStatus==='empty';}).sort(function(a,b){return a.no-b.no;});return empty[index]?Number(empty[index].no):index+1;},
 
+  preJobCode:'',   /* كود الوظيفة القادم من الموقع (apply.html?…&job=HRC-####) قبل تعيينه */
   pickedIndex:function(code){
     for(var i=0;i<pickedJobs.length;i++){if(pickedJobs[i].code===code)return i;}
     return -1;
@@ -1346,6 +1347,19 @@ var G={
     });
     c.innerHTML=h;
     G.syncJobsFooter();
+  },
+
+  /* تعيين الوظيفة القادمة من زر «قدّم ببطاقتك» في الموقع (مرة واحدة فقط).
+     لا تُلغى اختيارات الزبون إن كان قد اختار بنفسه، ولا تُعيَّن وظيفة أُقدّم
+     عليها من قبل أو لم تبق فيها فرصة. */
+  applyPreJob:function(){
+    if(!G.preJobCode)return;
+    var code=G.preJobCode;G.preJobCode='';
+    if(chancesLeft<=0)return;
+    if(pickedJobs.length)return;
+    if(appliedJobs.some(function(a){return a.jobCode===code;}))return;
+    if(!jobs.some(function(x){return x.code===code;}))return;
+    G.pickJob(code);
   },
 
   /* تعيين وظيفة لفرصة (أو إلغاء تعيينها بالضغط عليها مرة ثانية) */
@@ -1911,6 +1925,9 @@ function loadData(){
   dataLoading=true;
   var p=new URLSearchParams(window.location.search);
   var serial=p.get('form')||p.get('serial')||p.get('s')||'';
+  /* زر «قدّم ببطاقتك» في الموقع يمرّر كود الوظيفة — نعيَّنه للزبون تلقائياً
+     عند وصوله لخطوة اختيار الوظيفة بدل أن يبحث عنها من جديد. */
+  G.preJobCode=String(p.get('job')||p.get('code')||'').trim().toUpperCase();
   if(!serial){
     fatal('لا يوجد رقم بطاقة في الرابط — امسح باركود البطاقة كاملاً من جديد.',
       'إن كنت كتبت الرابط يدوياً فتأكد من وجود <b dir="ltr">?form=HRC-BC-……</b> في آخره.');
@@ -1993,6 +2010,15 @@ function loadData(){
     dataReady=true;
     dataLoading=false;
     clearFatal();   /* كان الخطأ معروضاً وتأخّرت الشبكة: نعرض الترحيب الآن */
+
+    /* تعريف الزبون بالوظيفة التي جاء من أجلها من الموقع (تُعيَّن في خطوة الوظائف) */
+    if(G.preJobCode&&chancesLeft>0){
+      var preJob=jobs.filter(function(j){return j.code===G.preJobCode;})[0];
+      var ws=$('welcome-status');
+      if(preJob&&ws&&!ws.textContent){
+        ws.textContent='الوظيفة المختارة: '+preJob.title+' ('+preJob.code+')';
+      }
+    }
 
     /* فرص البطاقة مستنفدة: لا معنى لمسار الإدخال — رسالة واضحة للزبون */
     if(chancesLeft<=0){

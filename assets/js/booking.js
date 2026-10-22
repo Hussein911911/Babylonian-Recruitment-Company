@@ -22,6 +22,7 @@
   var POS_STEPS = 6;     // نقطة البيع · الاسم · الهاتف · العنوان · الجنس/الميلاد · الوظيفة
   var jobF = { q: '', region: '', shift: '' };   // فلاتر متصفح الوظائف (الخطوة 6)
   var posErr = '';      // سبب فشل «إتمام» الأخير — يبقى معروضاً داخل الشاشة لا توستاً يختفي بعد ثوانٍ
+  var applyJob = '';    // كود الوظيفة القادم من زر «قدّم ببطاقتك» — يُمرَّر لصفحة التقديم
 
   /* ======================= أدوات ======================= */
   function esc(v) { return UI.esc(String(v == null ? '' : v)); }
@@ -102,25 +103,107 @@
     return '<span class="chip ' + cls + ' tiny">' + esc(s.ar) + '</span>';
   }
 
-  /* ======================= 1) الدخول بالباركود ======================= */
+  /* ======================= 1) الدخول بالباركود =======================
+   * شاشة واحدة لمسارين: «قدّم ببطاقتك» من وظيفة → إدخال/مسح الباركود ثم
+   * apply.html?form=<الباركود>[&job=<كود الوظيفة>] التي تقرأ البطاقة وتُكمل
+   * التقديم، و«بطاقتي» للحالة وإعادة الطباعة (الزر الثانوي كما كان).
+   * ================================================================== */
+  function applyPageAvailable() {
+    /* لا صفحة تقديم في الملف المستقل ولا عند الفتح من القرص */
+    try {
+      if (!location || location.protocol === 'file:') return false;
+      if (document.getElementById('route-site') || document.getElementById('route-dashboard')) return false;
+    } catch (e) { return false; }
+    return true;
+  }
+  function applyPageUrl(s) {
+    return 'apply.html?form=' + encodeURIComponent(s) + (applyJob ? '&job=' + encodeURIComponent(applyJob) : '');
+  }
+  function goApply(s) {
+    if (!applyPageAvailable()) return false;
+    try { location.assign(applyPageUrl(s)); } catch (e) { return false; }
+    return true;
+  }
+
+  /* مسح باركود البطاقة (كاميرا أو صورة) ثم فتح صفحة التقديم */
+  function openScan() {
+    var scan = root.HRCQRScan;
+    function manual(reason) {
+      UI.toast('warn', 'المسح غير متاح', reason + ' — اكتب رقم البطاقة يدوياً في الحقل.');
+      var f = document.getElementById('bk-serial');
+      if (f) { try { f.focus(); } catch (e) { } }
+    }
+    if (!scan || !scan.supported()) return manual('هذا المتصفح لا يدعم مسح الباركود بالكاميرا');
+    if (!scan.open({
+      title: 'مسح باركود البطاقة',
+      subtitle: 'وجّه الكاميرا إلى باركود QR المطبوع على وجه بطاقتك — أو ارفع صورة له.',
+      onResult: function (text) {
+        var code = scan.serialFrom ? scan.serialFrom(text) : '';
+        if (!code) {
+          UI.toast('warn', 'باركود غير معروف',
+            'الرمز الممسوح ليس باركود بطاقة توظيف — امسح الباركود المطبوع على وجه البطاقة، أو اكتب الرقم يدوياً.');
+          return;
+        }
+        serial = code;
+        var inp = document.getElementById('bk-serial');
+        if (inp) inp.value = code;
+        setErr('serial', '');
+        doApply();
+      }
+    })) manual('تعذّر فتح نافذة الكاميرا');
+  }
+
+  /* الزر الأساسي: صيغة صحيحة ثم صفحة التقديم (أو الحالة داخل النافذة محلياً) */
+  function doApply() {
+    var v = String(serial || '').trim().toUpperCase();
+    if (!serialPattern(v)) {
+      setErr('serial', 'اكتب الباركود كما هو مطبوع على البطاقة — 10 خانات من حروف وأرقام، أو استخدم زر المسح.');
+      return;
+    }
+    serial = Store.normalizeCardSerial ? Store.normalizeCardSerial(v) : v;
+    setErr('serial', '');
+    if (goApply(serial)) return;
+    UI.toast('info', 'وضع العرض', 'صفحة التقديم تعمل على الموقع المنشور — سنعرض بطاقتك هنا لمتابعة الفرص.');
+    doLookup();
+  }
+
   function renderEntry(host) {
-    host.innerHTML = stepHead('بطاقتي', 'أدخل باركود بطاقتك المطبوع أسفل الوجه الأمامي — أو امسحه بكاميرة موبايلك من الرابط نفسه.', 'card') +
+    var fromJob = !!applyJob;
+    host.innerHTML = stepHead(
+      fromJob ? 'قدّم ببطاقتك' : 'بطاقتي',
+      fromJob
+        ? 'أدخل رقم بطاقة التوظيف أو امسح باركودها بالكاميرا، ثم تُفتح صفحة التقديم مباشرة.'
+        : 'أدخل رقم بطاقتك أو امسح باركودها لمتابعة فرصك والتقديم وإعادة الطباعة.',
+      'card') +
+      (fromJob ? '<div class="bk-info" style="margin:-4px 0 14px">' + UI.ic('briefcase') +
+        ' الوظيفة المختارة: <b class="mono" dir="ltr">' + esc(applyJob) + '</b>' +
+        ' — بعد إدخال الباركود أو مسحه تُفتح صفحة التقديم عليها.</div>' : '') +
       fieldHtml('serial', 'باركود البطاقة (10 خانات)',
-        inputHtml('serial', 'text', 'مثال: 7KQ4M9TR2X', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.04em" inputmode="latin"'),
-        'الرقم المطبوع تحت الباركود وعلى واجهة بطاقتك.') +
+        '<div class="bk-scan-row">' +
+          inputHtml('serial', 'text', 'مثال: 7KQ4M9TR2X', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.04em" inputmode="latin"') +
+          '<button type="button" class="btn btn-lapis bk-scan-btn" id="bk-scan" title="مسح باركود البطاقة بالكاميرا">' +
+            UI.ic('qr') + ' مسح الباركود</button>' +
+        '</div>',
+        'الرقم المطبوع تحت الباركود على وجه بطاقتك — أو امسحه بالكاميرا مباشرة.') +
       '<div class="bk-info" style="margin-top:14px">' + UI.ic('alert') +
         ' <b>ما عندك بطاقة؟</b> بطاقة التوظيف تُشترى كاشاً من نقاط البيع المعتمدة ' +
         '(مكاتب الاستنساخ) وفيها فرصتان مستقلتان للتقديم وصلاحيتها 30 يوماً — ' +
         'للاستفسار خابر الشركة: <b dir="ltr">' + esc(CFG.company.phones[0]) + '</b></div>' +
-      btnRow('<button class="btn btn-gold" id="bk-lookup">' + UI.ic('search') + ' اعرض بطاقتي</button>');
-    var go = document.getElementById('bk-lookup');
+      btnRow('<button class="btn btn-gold" id="bk-apply">' + UI.ic('arrow-right') + ' ابدأ التقديم</button>' +
+        '<button class="btn btn-outline" id="bk-lookup">' + UI.ic('search') + ' حالة بطاقتي وإعادة الطباعة</button>');
+
+    var goBtn = document.getElementById('bk-apply');
+    var lookBtn = document.getElementById('bk-lookup');
+    var scanBtn = document.getElementById('bk-scan');
     var inp = document.getElementById('bk-serial');
     if (inp) {
       inp.addEventListener('input', function () { serial = inp.value; setErr('serial', ''); });
-      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLookup(); });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') doApply(); });
       setTimeout(function () { try { inp.focus(); } catch (e) { } }, 60);
     }
-    if (go) go.addEventListener('click', doLookup);
+    if (goBtn) goBtn.addEventListener('click', doApply);
+    if (lookBtn) lookBtn.addEventListener('click', doLookup);
+    if (scanBtn) scanBtn.addEventListener('click', openScan);
     if (routeErr) {
       setErr('serial', routeErr);
       routeErr = '';
@@ -786,13 +869,15 @@
       '<div class="bk-info" style="margin-top:12px">' + UI.ic('clock') +
         ' عند التقديم تُحجز الوظيفة لك <b>24 ساعة</b> بانتظار نتيجة المقابلة؛ وبعدها تقرر الشركة: التوظيف أو إرجاع الوظيفة أو حذفها — والفرصة تُستهلك بالتقديم ولا تعود.</div>' +
       btnRow(
-        (canUse ? '<button class="btn btn-gold" id="bk-use">' + UI.ic('briefcase') + ' استخدم فرصة على وظيفة</button>' : '') +
+        (canUse && applyPageAvailable() ? '<button class="btn btn-gold" id="bk-apply-page">' + UI.ic('arrow-right') + ' ابدأ التقديم على وظيفة</button>' : '') +
+        (canUse ? '<button class="btn ' + (applyPageAvailable() ? 'btn-outline' : 'btn-gold') + '" id="bk-use">' + UI.ic('briefcase') + ' استخدم فرصة على وظيفة</button>' : '') +
         '<button class="btn btn-lapis" id="bk-reprint">' + UI.ic('print') + ' إعادة الطباعة (البطاقة أو الاستمارة)</button>' +
         '<button class="btn btn-outline" id="bk-emp-open">' + UI.ic('briefcase') + ' أنا صاحب العمل</button>' +
         '<button class="btn btn-ghost" id="bk-back">' + UI.ic('arrow-right') + ' بطاقة أخرى</button>');
     var b;
+    if ((b = document.getElementById('bk-apply-page'))) b.addEventListener('click', function () { goApply(serial); });
     if ((b = document.getElementById('bk-use'))) b.addEventListener('click', function () {
-      if (card.usesCardPrintCode) { location.assign('apply.html?form=' + encodeURIComponent(serial)); return; }
+      if (card.usesCardPrintCode && goApply(serial)) return;
       view = 'use'; render();
     });
     if ((b = document.getElementById('bk-reprint'))) b.addEventListener('click', function () { view = 'reprint'; render(); });
@@ -983,6 +1068,7 @@
     if (m) { try { m.close(); } catch (e) { } m = null; }
     card = null; doneInfo = null; busy = false;
     directEmployer = false;
+    applyJob = String(opts.code || '').trim().toUpperCase();
     emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' }; posErr = '';
     view = 'entry';
     serial = String(opts.serial || '').trim().toUpperCase();
@@ -1003,7 +1089,7 @@
 
   function close() {
     if (m) { try { m.close(); } catch (e) { } m = null; }
-    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' }; posErr = '';
+    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' }; posErr = ''; applyJob = '';
     view = 'entry';
   }
 
@@ -1029,7 +1115,7 @@
     var t = e.target.closest ? e.target.closest('[data-action="open-booking"]') : null;
     if (!t) return;
     e.preventDefault();
-    open({ serial: t.getAttribute('data-serial') || '' });
+    open({ serial: t.getAttribute('data-serial') || '', code: t.getAttribute('data-code') || '' });
   });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', openFromHash);
@@ -1038,10 +1124,13 @@
   root.HRCBooking = {
     open: open,
     close: close,
+    /* رابط صفحة التقديم لهذا الباركود (يُستعمل من ماسح الباركود في الموقع) */
+    applyUrl: function (s) { return applyPageUrl(String(s || '').trim().toUpperCase()); },
+    canApply: applyPageAvailable,
     /* الحالة الحالية للنافذة — للاختبارات والتشخيص */
     state: function () {
       return {
-        view: view, serial: serial, posStep: posStep,
+        view: view, serial: serial, posStep: posStep, job: applyJob,
         card: card ? JSON.parse(JSON.stringify(card)) : null,
         emp: emp ? JSON.parse(JSON.stringify(emp)) : null
       };

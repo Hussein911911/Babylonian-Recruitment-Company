@@ -214,86 +214,19 @@
   }
 
   function openQRScanner() {
-    if (!root.HRCQRScan || !root.HRCQRScan.supported()) {
+    var scan = root.HRCQRScan;
+    if (!scan || !scan.supported() || typeof scan.open !== 'function') {
       UI.toast('warn', 'متصفح غير مدعوم', 'متصفحك لا يدعم مسح الكيو آر كود. اكتب الكود يدوياً أو استخدم متصفح كروم على الجوال/الكمبيوتر.');
       return;
     }
-
-    var stream = null, raf = null, stopped = false;
-
-    function stop() {
-      stopped = true;
-      if (raf) cancelAnimationFrame(raf);
-      if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
-    }
-
-    var body =
-      '<div class="scan-stage">' +
-        '<video id="scan-video" playsinline muted autoplay></video>' +
-        '<div class="scan-frame"></div>' +
-        '<div class="scan-line"></div>' +
-      '</div>' +
-      '<p class="scan-status" id="scan-status">وجّه الكاميرا نحو الكيو آر كود...</p>' +
-      '<div class="scan-actions">' +
-        '<label class="btn btn-outline btn-sm" for="scan-file">' + UI.ic('upload') + ' ارفع صورة للكود بدلاً من الكاميرا</label>' +
-        '<input type="file" id="scan-file" accept="image/*" hidden>' +
-      '</div>';
-
-    UI.modal({
+    /* نافذة المسح موحّدة في qr-scan.js (كاميرا + رفع صورة) ويستعملها أيضاً
+       زر مسح باركود البطاقة في نافذة «بطاقتي» — تنفيذ واحد لا نسختان. */
+    var opened = scan.open({
       title: 'البحث بمسح الكيو آر كود',
-      subtitle: 'امسح رمز QR المطبوع على بطاقة الوظيفة للوصول إليها مباشرة',
-      body: body,
-      onMount: function (box, close) {
-        var video = box.querySelector('#scan-video');
-        var fileInput = box.querySelector('#scan-file');
-        var status = box.querySelector('#scan-status');
-
-        function setStatus(t, cls) {
-          if (status) { status.textContent = t; status.className = 'scan-status' + (cls ? ' ' + cls : ''); }
-        }
-
-        // رفع صورة بديلة عن الكاميرا
-        fileInput.addEventListener('change', function () {
-          var f = fileInput.files && fileInput.files[0];
-          if (!f) return;
-          setStatus('جارٍ قراءة الصورة...');
-          Promise.resolve(typeof createImageBitmap === 'function' ? createImageBitmap(f) : f)
-            .then(function (bmp) { return root.HRCQRScan.detectImage(bmp); })
-            .then(function (vals) {
-              if (vals && vals.length) { stop(); close(); applyScannedText(vals[0]); }
-              else setStatus('لم يُعثر على رمز QR في الصورة — جرّب صورة أوضح.', 'error');
-            })
-            .catch(function () { setStatus('تعذّرت قراءة الصورة.', 'error'); });
-        });
-
-        // بث الكاميرا
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-            .then(function (s) {
-              if (stopped) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
-              stream = s;
-              video.srcObject = s;
-              video.play().catch(function () {});
-              tick(video, close);
-            })
-            .catch(function () {
-              setStatus('تعذّر الوصول إلى الكاميرا — استخدم «رفع صورة للكود».', 'error');
-            });
-        } else {
-          setStatus('الكاميرا غير متاحة في هذا المتصفح — ارفع صورة للكود.', 'error');
-        }
-      },
-      onClose: stop
+      subtitle: 'امسح رمز QR المطبوع على بطاقة الوظيفة أو بطاقة التوظيف للوصول إليها مباشرة',
+      onResult: applyScannedText
     });
-
-    function tick(video, close) {
-      if (stopped) return;
-      root.HRCQRScan.detectVideoFrame(video).then(function (vals) {
-        if (stopped) return;
-        if (vals && vals.length) { stop(); close(); applyScannedText(vals[0]); return; }
-        raf = requestAnimationFrame(function () { tick(video, close); });
-      });
-    }
+    if (!opened) UI.toast('warn', 'متصفح غير مدعوم', 'تعذّر فتح الكاميرا — استخدم البحث بالكود يدوياً.');
   }
 
   /* تحليل نص الرمز الممسوح: كود وظيفة / باركود بطاقة / نص حر */
@@ -311,8 +244,16 @@
     else { var legacy = text.match(/HRC-BC-\d+/i); if (legacy) cand = legacy[0]; }
     var serial = cand && Store.isCardSerial(cand) ? [Store.normalizeCardSerial(cand)] : null;
     if (serial) {
-      if (root.HRCBooking && root.HRCBooking.open) {
-        root.HRCBooking.open({ serial: serial[0] });
+      /* باركود البطاقة نفسه مرتبط بصفحة التقديم (apply.html?form=…) — نفتحها
+         مباشرة كما لو مُسح الرمز بكاميرا الهاتف. وإن لم تكن الصفحة متاحة
+         (الملف المستقل) أو كانت الصفحة الحالية هي صفحتها، نعرض الحالة. */
+      var B = root.HRCBooking;
+      if (B && B.canApply && B.canApply() && !/apply\.html/i.test(String(location.pathname || ''))) {
+        location.assign(B.applyUrl(serial[0]));
+        return;
+      }
+      if (B && B.open) {
+        B.open({ serial: serial[0] });
       } else {
         UI.toast('info', 'بطاقة توظيف شركة الهدف',
           'افتح الموقع الرئيسي وأدخل باركود بطاقتك من نافذة «بطاقتي».', 8000);

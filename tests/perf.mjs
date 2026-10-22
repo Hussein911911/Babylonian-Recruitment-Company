@@ -70,7 +70,12 @@ const BUDGET = {
   /* +30KB للأخيرة (2026-10-13): إدارة حسابات الموظفين عبر الدالة السحابية
      hrc-staff-admin — نداء الدوال في cloud-auth.js ومسارات staffWrite في
      dashboard.js (تُقاس مقيسةً: 940KB خاماً). تبقى الرسالة: منع القفزات. */
-  'index.html': { raw: 580, requests: 20 },
+  /* 2026-10-23: +12KB (580→592) لميزة المسح الضوئي لبطاقة التوظيف في نافذة
+     «بطاقتي»: نافذة مسح موحّدة في qr-scan.js (كاميرا + رفع صورة + تفاوض على
+     صيغ الباركود) وشاشة إدخال الباركود بزرَّي «مسح» و«ابدأ التقديم» في booking.js.
+     قابلة للقياس: 586KB. لا سكربت جديد ولا طلب قاعدة جديد للزائر (20 طلباً كما
+     هي)، وبقيت بقية السقوف دون تغيير. الغرض باقٍ: التقاط القفزات الكبيرة. */
+  'index.html': { raw: 592, requests: 20 },
   'verify.html': { raw: 480, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */

@@ -1118,6 +1118,17 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .bk-field.has-error .bk-err, .bk-err.show { display: flex; }
 .bk-hint { display: block; font-size: .76rem; color: var(--muted); margin-top: 6px; }
 
+/* حقل الباركود + زر المسح الضوئي بجانبه (نافذة بطاقتي / التقديم)
+   الزر يبقى ملاصقاً للحقل على الشاشات العريضة، وينتقل تحته بعرض كامل على
+   الهاتف لأن العرض المشترك يضغط الحقل حتى يصير غير مقروء. */
+.bk-scan-row { display: flex; align-items: stretch; gap: 9px; flex-wrap: wrap; }
+.bk-scan-row input { flex: 1 1 170px; min-width: 0; width: auto; }
+.bk-scan-row .bk-scan-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 46px; white-space: nowrap; }
+.bk-scan-row .bk-scan-btn svg { width: 18px; height: 18px; }
+@media (max-width: 540px) {
+  .bk-scan-row .bk-scan-btn { width: 100%; flex-basis: 100%; }
+}
+
 /* بلا وظائف متاحة */
 .bk-empty {
   display: grid; place-items: center; gap: 6px; text-align: center; padding: 26px 14px;

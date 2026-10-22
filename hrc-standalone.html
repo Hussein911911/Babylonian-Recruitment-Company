@@ -1135,6 +1135,17 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .bk-field.has-error .bk-err, .bk-err.show { display: flex; }
 .bk-hint { display: block; font-size: .76rem; color: var(--muted); margin-top: 6px; }
 
+/* حقل الباركود + زر المسح الضوئي بجانبه (نافذة بطاقتي / التقديم)
+   الزر يبقى ملاصقاً للحقل على الشاشات العريضة، وينتقل تحته بعرض كامل على
+   الهاتف لأن العرض المشترك يضغط الحقل حتى يصير غير مقروء. */
+.bk-scan-row { display: flex; align-items: stretch; gap: 9px; flex-wrap: wrap; }
+.bk-scan-row input { flex: 1 1 170px; min-width: 0; width: auto; }
+.bk-scan-row .bk-scan-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 46px; white-space: nowrap; }
+.bk-scan-row .bk-scan-btn svg { width: 18px; height: 18px; }
+@media (max-width: 540px) {
+  .bk-scan-row .bk-scan-btn { width: 100%; flex-basis: 100%; }
+}
+
 /* بلا وظائف متاحة */
 .bk-empty {
   display: grid; place-items: center; gap: 6px; text-align: center; padding: 26px 14px;
@@ -5015,45 +5026,159 @@ to{opacity:1;transform:none}
 ;
 /* ===================== qr-scan.js ===================== */
 /* ===========================================================================
- *  HRC QR Scanner — مسح رموز QR داخل المتصفح (بدون أي مكتبات خارجية)
- *  ---------------------------------------------------------------------------
- *  يعتمد على واجهة BarcodeDetector الأصلية المتوفرة في كروم / إيدج / أندرويد،
- *  ويعمل دون اتصال بالإنترنت. يدعم القراءة من بث الكاميرا الحي أو من صورة ثابتة
- *  (ملف مرفوع أو صورة مضمّنة). عند غياب الواجهة يُرجع supported() = false.
+ *  HRC Scanner — مسح باركود/QR داخل المتصفح (بلا مكتبات خارجية)
+ *  Arabic QR على وجه البطاقة + الباركودات الخطية (Code 128/39 · EAN · ITF).
+ *  واجهتان: detectImage/detectVideoFrame للقراءة الصامتة، وopen() لنافذة
+ *  مسح كاملة (كاميرا + رفع صورة) يستعملها الموقع وبطاقة التوظيف معاً.
+ *  ⚠️ الكاميرا تحتاج https أو localhost — والبديل رفع صورة أو الإدخال اليدوي.
  * =========================================================================== */
 (function (root) {
   'use strict';
 
-  var detector = null;
-  try {
-    if (typeof BarcodeDetector !== 'undefined') {
-      detector = new BarcodeDetector({ formats: ['qr_code'] });
-    }
-  } catch (e) { detector = null; }
+  var WANTED = ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'itf', 'codabar'];
+  var hasApi = (typeof BarcodeDetector !== 'undefined');
+  var detector = null, waiting = null;
 
   function read(codes) {
     var out = [];
-    (codes || []).forEach(function (c) {
-      if (c && c.rawValue != null) out.push(String(c.rawValue));
-    });
+    (codes || []).forEach(function (c) { if (c && c.rawValue != null) out.push(String(c.rawValue)); });
     return out;
   }
 
-  root.HRCQRScan = {
-    /* هل يدعم المتصفح الحالي مسح QR؟ */
-    supported: function () { return !!detector; },
+  /* بناء الكاشف مرة واحدة بعد سؤال المتصفح عن الصيغ المدعومة فعلاً
+     (تمرير صيغة غير مدعومة يرمي استثناءً في بعض الإصدارات فتضيع القراءة). */
+  function build() {
+    if (!hasApi) return Promise.resolve(null);
+    if (detector) return Promise.resolve(detector);
+    if (waiting) return waiting;
+    var asked = (typeof BarcodeDetector.getSupportedFormats === 'function')
+      ? Promise.resolve(BarcodeDetector.getSupportedFormats()).catch(function () { return null; })
+      : Promise.resolve(null);
+    waiting = asked.then(function (list) {
+      var formats = WANTED.filter(function (f) { return !list || list.indexOf(f) >= 0; });
+      if (!formats.length) formats = ['qr_code'];
+      try { detector = new BarcodeDetector({ formats: formats }); }
+      catch (e) { try { detector = new BarcodeDetector(); } catch (e2) { detector = null; } }
+      return detector;
+    });
+    return waiting;
+  }
 
-    /* قراءة صورة ثابتة: ImageBitmap أو <img> أو <canvas> */
-    detectImage: function (source) {
-      if (!detector) return Promise.reject(new Error('unsupported'));
-      return detector.detect(source).then(read);
-    },
+  function detectImage(source) {
+    return build().then(function (d) {
+      if (!d) return Promise.reject(new Error('unsupported'));
+      return d.detect(source).then(read);
+    });
+  }
 
-    /* قراءة إطار فيديو حي */
-    detectVideoFrame: function (video) {
-      if (!detector || !video || !video.videoWidth) return Promise.resolve([]);
-      return detector.detect(video).then(read).catch(function () { return []; });
+  function detectVideoFrame(video) {
+    if (!video || !video.videoWidth) return Promise.resolve([]);
+    return build().then(function (d) {
+      if (!d) return [];
+      return d.detect(video).then(read).catch(function () { return []; });
+    });
+  }
+
+  /* باركود البطاقة من نص مقروء: رابط apply.html?form=… · باركود مجرد · HRC-BC-###### */
+  function serialFrom(text) {
+    var t = String(text == null ? '' : text).trim();
+    if (!t) return '';
+    var S = root.HRCStore;
+    var norm = (S && S.normalizeCardSerial) ? S.normalizeCardSerial : function (v) {
+      return String(v == null ? '' : v).trim().toUpperCase().replace(/\s+/g, '');
+    };
+    var isCard = (S && S.isCardSerial) ? S.isCardSerial : function (v) {
+      return /^(?:HRC-BC-\d{6}|[A-Z0-9]{10})$/.test(v);
+    };
+    var cand = '';
+    var q = /[?&#](?:form|card|bc|serial|s)=([A-Za-z0-9-]+)/i.exec(t);
+    if (q) cand = q[1];
+    else if (/^\s*[A-Za-z0-9-]+\s*$/.test(t)) cand = t;
+    else { var legacy = t.match(/HRC-BC-\d{6}/i); if (legacy) cand = legacy[0]; }
+    if (!cand) return '';
+    var v = norm(cand);
+    return isCard(v) ? v : '';
+  }
+
+  /* نافذة مسح كاملة: { title, subtitle, onResult(text) } — تُرجع false بلا دعم */
+  function open(opts) {
+    opts = opts || {};
+    var UI = root.HRCUI;
+    if (!UI || typeof UI.modal !== 'function' || !hasApi) return false;
+
+    var stream = null, raf = null, stopped = false;
+    function stop() {
+      stopped = true;
+      if (raf) { try { cancelAnimationFrame(raf); } catch (e) { } raf = null; }
+      if (stream) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { } stream = null; }
     }
+
+    var modal = UI.modal({
+      title: opts.title || 'مسح الباركود',
+      subtitle: opts.subtitle || 'وجّه الكاميرا نحو الباركود — القراءة تلقائية.',
+      body: '<div class="scan-stage"><video id="scan-video" playsinline muted autoplay></video>' +
+        '<div class="scan-frame"></div><div class="scan-line"></div></div>' +
+        '<p class="scan-status" id="scan-status">وجّه الكاميرا نحو الباركود المطبوع...</p>' +
+        '<div class="scan-actions"><label class="btn btn-outline btn-sm" for="scan-file">' +
+        UI.ic('upload') + ' ارفع صورة للباركود بدلاً من الكاميرا</label>' +
+        '<input type="file" id="scan-file" accept="image/*" hidden></div>',
+      onMount: function (box, close) {
+        var video = box.querySelector('#scan-video');
+        var file = box.querySelector('#scan-file');
+        var status = box.querySelector('#scan-status');
+        function say(t, cls) { if (status) { status.textContent = t; status.className = 'scan-status' + (cls ? ' ' + cls : ''); } }
+        function done(vals) {
+          if (!vals || !vals.length) return false;
+          stop(); close();
+          if (opts.onResult) opts.onResult(vals[0]);
+          return true;
+        }
+        function tick(v) {
+          if (stopped) return;
+          detectVideoFrame(v).then(function (vals) {
+            if (stopped) return;
+            if (vals && vals.length) { done(vals); return; }
+            raf = requestAnimationFrame(function () { tick(v); });
+          }).catch(function () { if (!stopped) raf = requestAnimationFrame(function () { tick(v); }); });
+        }
+        file.addEventListener('change', function () {
+          var f = file.files && file.files[0];
+          if (!f) return;
+          say('جارٍ قراءة الصورة...');
+          var src = (typeof createImageBitmap === 'function')
+            ? Promise.resolve(createImageBitmap(f)).catch(function () { return f; })
+            : Promise.resolve(f);
+          src.then(detectImage).then(function (vals) {
+            if (!done(vals)) say('لم يُعثر على باركود واضح في الصورة — جرّب صورة أوضح.', 'error');
+          }).catch(function () { say('تعذّرت قراءة الصورة.', 'error'); });
+        });
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(function (s) {
+              if (stopped) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
+              stream = s; video.srcObject = s;
+              video.play().catch(function () { });
+              say('وجّه الكاميرا نحو الباركود — القراءة تلقائية...');
+              tick(video);
+            })
+            .catch(function () { say('تعذّر الوصول إلى الكاميرا — ارفع صورة أو اكتب الرقم يدوياً.', 'error'); });
+        } else {
+          say('الكاميرا غير متاحة في هذا المتصفح — ارفع صورة للباركود.', 'error');
+        }
+      },
+      onClose: stop
+    });
+    if (!modal) { stop(); return false; }
+    return true;
+  }
+
+  root.HRCQRScan = {
+    supported: function () { return !!hasApi; },
+    formats: WANTED.slice(),
+    detectImage: detectImage,
+    detectVideoFrame: detectVideoFrame,
+    serialFrom: serialFrom,
+    open: open
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -8774,6 +8899,7 @@ to{opacity:1;transform:none}
   var POS_STEPS = 6;     // نقطة البيع · الاسم · الهاتف · العنوان · الجنس/الميلاد · الوظيفة
   var jobF = { q: '', region: '', shift: '' };   // فلاتر متصفح الوظائف (الخطوة 6)
   var posErr = '';      // سبب فشل «إتمام» الأخير — يبقى معروضاً داخل الشاشة لا توستاً يختفي بعد ثوانٍ
+  var applyJob = '';    // كود الوظيفة القادم من زر «قدّم ببطاقتك» — يُمرَّر لصفحة التقديم
 
   /* ======================= أدوات ======================= */
   function esc(v) { return UI.esc(String(v == null ? '' : v)); }
@@ -8854,25 +8980,107 @@ to{opacity:1;transform:none}
     return '<span class="chip ' + cls + ' tiny">' + esc(s.ar) + '</span>';
   }
 
-  /* ======================= 1) الدخول بالباركود ======================= */
+  /* ======================= 1) الدخول بالباركود =======================
+   * شاشة واحدة لمسارين: «قدّم ببطاقتك» من وظيفة → إدخال/مسح الباركود ثم
+   * apply.html?form=<الباركود>[&job=<كود الوظيفة>] التي تقرأ البطاقة وتُكمل
+   * التقديم، و«بطاقتي» للحالة وإعادة الطباعة (الزر الثانوي كما كان).
+   * ================================================================== */
+  function applyPageAvailable() {
+    /* لا صفحة تقديم في الملف المستقل ولا عند الفتح من القرص */
+    try {
+      if (!location || location.protocol === 'file:') return false;
+      if (document.getElementById('route-site') || document.getElementById('route-dashboard')) return false;
+    } catch (e) { return false; }
+    return true;
+  }
+  function applyPageUrl(s) {
+    return 'apply.html?form=' + encodeURIComponent(s) + (applyJob ? '&job=' + encodeURIComponent(applyJob) : '');
+  }
+  function goApply(s) {
+    if (!applyPageAvailable()) return false;
+    try { location.assign(applyPageUrl(s)); } catch (e) { return false; }
+    return true;
+  }
+
+  /* مسح باركود البطاقة (كاميرا أو صورة) ثم فتح صفحة التقديم */
+  function openScan() {
+    var scan = root.HRCQRScan;
+    function manual(reason) {
+      UI.toast('warn', 'المسح غير متاح', reason + ' — اكتب رقم البطاقة يدوياً في الحقل.');
+      var f = document.getElementById('bk-serial');
+      if (f) { try { f.focus(); } catch (e) { } }
+    }
+    if (!scan || !scan.supported()) return manual('هذا المتصفح لا يدعم مسح الباركود بالكاميرا');
+    if (!scan.open({
+      title: 'مسح باركود البطاقة',
+      subtitle: 'وجّه الكاميرا إلى باركود QR المطبوع على وجه بطاقتك — أو ارفع صورة له.',
+      onResult: function (text) {
+        var code = scan.serialFrom ? scan.serialFrom(text) : '';
+        if (!code) {
+          UI.toast('warn', 'باركود غير معروف',
+            'الرمز الممسوح ليس باركود بطاقة توظيف — امسح الباركود المطبوع على وجه البطاقة، أو اكتب الرقم يدوياً.');
+          return;
+        }
+        serial = code;
+        var inp = document.getElementById('bk-serial');
+        if (inp) inp.value = code;
+        setErr('serial', '');
+        doApply();
+      }
+    })) manual('تعذّر فتح نافذة الكاميرا');
+  }
+
+  /* الزر الأساسي: صيغة صحيحة ثم صفحة التقديم (أو الحالة داخل النافذة محلياً) */
+  function doApply() {
+    var v = String(serial || '').trim().toUpperCase();
+    if (!serialPattern(v)) {
+      setErr('serial', 'اكتب الباركود كما هو مطبوع على البطاقة — 10 خانات من حروف وأرقام، أو استخدم زر المسح.');
+      return;
+    }
+    serial = Store.normalizeCardSerial ? Store.normalizeCardSerial(v) : v;
+    setErr('serial', '');
+    if (goApply(serial)) return;
+    UI.toast('info', 'وضع العرض', 'صفحة التقديم تعمل على الموقع المنشور — سنعرض بطاقتك هنا لمتابعة الفرص.');
+    doLookup();
+  }
+
   function renderEntry(host) {
-    host.innerHTML = stepHead('بطاقتي', 'أدخل باركود بطاقتك المطبوع أسفل الوجه الأمامي — أو امسحه بكاميرة موبايلك من الرابط نفسه.', 'card') +
+    var fromJob = !!applyJob;
+    host.innerHTML = stepHead(
+      fromJob ? 'قدّم ببطاقتك' : 'بطاقتي',
+      fromJob
+        ? 'أدخل رقم بطاقة التوظيف أو امسح باركودها بالكاميرا، ثم تُفتح صفحة التقديم مباشرة.'
+        : 'أدخل رقم بطاقتك أو امسح باركودها لمتابعة فرصك والتقديم وإعادة الطباعة.',
+      'card') +
+      (fromJob ? '<div class="bk-info" style="margin:-4px 0 14px">' + UI.ic('briefcase') +
+        ' الوظيفة المختارة: <b class="mono" dir="ltr">' + esc(applyJob) + '</b>' +
+        ' — بعد إدخال الباركود أو مسحه تُفتح صفحة التقديم عليها.</div>' : '') +
       fieldHtml('serial', 'باركود البطاقة (10 خانات)',
-        inputHtml('serial', 'text', 'مثال: 7KQ4M9TR2X', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.04em" inputmode="latin"'),
-        'الرقم المطبوع تحت الباركود وعلى واجهة بطاقتك.') +
+        '<div class="bk-scan-row">' +
+          inputHtml('serial', 'text', 'مثال: 7KQ4M9TR2X', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.04em" inputmode="latin"') +
+          '<button type="button" class="btn btn-lapis bk-scan-btn" id="bk-scan" title="مسح باركود البطاقة بالكاميرا">' +
+            UI.ic('qr') + ' مسح الباركود</button>' +
+        '</div>',
+        'الرقم المطبوع تحت الباركود على وجه بطاقتك — أو امسحه بالكاميرا مباشرة.') +
       '<div class="bk-info" style="margin-top:14px">' + UI.ic('alert') +
         ' <b>ما عندك بطاقة؟</b> بطاقة التوظيف تُشترى كاشاً من نقاط البيع المعتمدة ' +
         '(مكاتب الاستنساخ) وفيها فرصتان مستقلتان للتقديم وصلاحيتها 30 يوماً — ' +
         'للاستفسار خابر الشركة: <b dir="ltr">' + esc(CFG.company.phones[0]) + '</b></div>' +
-      btnRow('<button class="btn btn-gold" id="bk-lookup">' + UI.ic('search') + ' اعرض بطاقتي</button>');
-    var go = document.getElementById('bk-lookup');
+      btnRow('<button class="btn btn-gold" id="bk-apply">' + UI.ic('arrow-right') + ' ابدأ التقديم</button>' +
+        '<button class="btn btn-outline" id="bk-lookup">' + UI.ic('search') + ' حالة بطاقتي وإعادة الطباعة</button>');
+
+    var goBtn = document.getElementById('bk-apply');
+    var lookBtn = document.getElementById('bk-lookup');
+    var scanBtn = document.getElementById('bk-scan');
     var inp = document.getElementById('bk-serial');
     if (inp) {
       inp.addEventListener('input', function () { serial = inp.value; setErr('serial', ''); });
-      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLookup(); });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') doApply(); });
       setTimeout(function () { try { inp.focus(); } catch (e) { } }, 60);
     }
-    if (go) go.addEventListener('click', doLookup);
+    if (goBtn) goBtn.addEventListener('click', doApply);
+    if (lookBtn) lookBtn.addEventListener('click', doLookup);
+    if (scanBtn) scanBtn.addEventListener('click', openScan);
     if (routeErr) {
       setErr('serial', routeErr);
       routeErr = '';
@@ -9538,13 +9746,15 @@ to{opacity:1;transform:none}
       '<div class="bk-info" style="margin-top:12px">' + UI.ic('clock') +
         ' عند التقديم تُحجز الوظيفة لك <b>24 ساعة</b> بانتظار نتيجة المقابلة؛ وبعدها تقرر الشركة: التوظيف أو إرجاع الوظيفة أو حذفها — والفرصة تُستهلك بالتقديم ولا تعود.</div>' +
       btnRow(
-        (canUse ? '<button class="btn btn-gold" id="bk-use">' + UI.ic('briefcase') + ' استخدم فرصة على وظيفة</button>' : '') +
+        (canUse && applyPageAvailable() ? '<button class="btn btn-gold" id="bk-apply-page">' + UI.ic('arrow-right') + ' ابدأ التقديم على وظيفة</button>' : '') +
+        (canUse ? '<button class="btn ' + (applyPageAvailable() ? 'btn-outline' : 'btn-gold') + '" id="bk-use">' + UI.ic('briefcase') + ' استخدم فرصة على وظيفة</button>' : '') +
         '<button class="btn btn-lapis" id="bk-reprint">' + UI.ic('print') + ' إعادة الطباعة (البطاقة أو الاستمارة)</button>' +
         '<button class="btn btn-outline" id="bk-emp-open">' + UI.ic('briefcase') + ' أنا صاحب العمل</button>' +
         '<button class="btn btn-ghost" id="bk-back">' + UI.ic('arrow-right') + ' بطاقة أخرى</button>');
     var b;
+    if ((b = document.getElementById('bk-apply-page'))) b.addEventListener('click', function () { goApply(serial); });
     if ((b = document.getElementById('bk-use'))) b.addEventListener('click', function () {
-      if (card.usesCardPrintCode) { location.assign('apply.html?form=' + encodeURIComponent(serial)); return; }
+      if (card.usesCardPrintCode && goApply(serial)) return;
       view = 'use'; render();
     });
     if ((b = document.getElementById('bk-reprint'))) b.addEventListener('click', function () { view = 'reprint'; render(); });
@@ -9735,6 +9945,7 @@ to{opacity:1;transform:none}
     if (m) { try { m.close(); } catch (e) { } m = null; }
     card = null; doneInfo = null; busy = false;
     directEmployer = false;
+    applyJob = String(opts.code || '').trim().toUpperCase();
     emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' }; posErr = '';
     view = 'entry';
     serial = String(opts.serial || '').trim().toUpperCase();
@@ -9755,7 +9966,7 @@ to{opacity:1;transform:none}
 
   function close() {
     if (m) { try { m.close(); } catch (e) { } m = null; }
-    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' }; posErr = '';
+    card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' }; posErr = ''; applyJob = '';
     view = 'entry';
   }
 
@@ -9781,7 +9992,7 @@ to{opacity:1;transform:none}
     var t = e.target.closest ? e.target.closest('[data-action="open-booking"]') : null;
     if (!t) return;
     e.preventDefault();
-    open({ serial: t.getAttribute('data-serial') || '' });
+    open({ serial: t.getAttribute('data-serial') || '', code: t.getAttribute('data-code') || '' });
   });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', openFromHash);
@@ -9790,10 +10001,13 @@ to{opacity:1;transform:none}
   root.HRCBooking = {
     open: open,
     close: close,
+    /* رابط صفحة التقديم لهذا الباركود (يُستعمل من ماسح الباركود في الموقع) */
+    applyUrl: function (s) { return applyPageUrl(String(s || '').trim().toUpperCase()); },
+    canApply: applyPageAvailable,
     /* الحالة الحالية للنافذة — للاختبارات والتشخيص */
     state: function () {
       return {
-        view: view, serial: serial, posStep: posStep,
+        view: view, serial: serial, posStep: posStep, job: applyJob,
         card: card ? JSON.parse(JSON.stringify(card)) : null,
         emp: emp ? JSON.parse(JSON.stringify(emp)) : null
       };
@@ -10020,86 +10234,19 @@ to{opacity:1;transform:none}
   }
 
   function openQRScanner() {
-    if (!root.HRCQRScan || !root.HRCQRScan.supported()) {
+    var scan = root.HRCQRScan;
+    if (!scan || !scan.supported() || typeof scan.open !== 'function') {
       UI.toast('warn', 'متصفح غير مدعوم', 'متصفحك لا يدعم مسح الكيو آر كود. اكتب الكود يدوياً أو استخدم متصفح كروم على الجوال/الكمبيوتر.');
       return;
     }
-
-    var stream = null, raf = null, stopped = false;
-
-    function stop() {
-      stopped = true;
-      if (raf) cancelAnimationFrame(raf);
-      if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
-    }
-
-    var body =
-      '<div class="scan-stage">' +
-        '<video id="scan-video" playsinline muted autoplay></video>' +
-        '<div class="scan-frame"></div>' +
-        '<div class="scan-line"></div>' +
-      '</div>' +
-      '<p class="scan-status" id="scan-status">وجّه الكاميرا نحو الكيو آر كود...</p>' +
-      '<div class="scan-actions">' +
-        '<label class="btn btn-outline btn-sm" for="scan-file">' + UI.ic('upload') + ' ارفع صورة للكود بدلاً من الكاميرا</label>' +
-        '<input type="file" id="scan-file" accept="image/*" hidden>' +
-      '</div>';
-
-    UI.modal({
+    /* نافذة المسح موحّدة في qr-scan.js (كاميرا + رفع صورة) ويستعملها أيضاً
+       زر مسح باركود البطاقة في نافذة «بطاقتي» — تنفيذ واحد لا نسختان. */
+    var opened = scan.open({
       title: 'البحث بمسح الكيو آر كود',
-      subtitle: 'امسح رمز QR المطبوع على بطاقة الوظيفة للوصول إليها مباشرة',
-      body: body,
-      onMount: function (box, close) {
-        var video = box.querySelector('#scan-video');
-        var fileInput = box.querySelector('#scan-file');
-        var status = box.querySelector('#scan-status');
-
-        function setStatus(t, cls) {
-          if (status) { status.textContent = t; status.className = 'scan-status' + (cls ? ' ' + cls : ''); }
-        }
-
-        // رفع صورة بديلة عن الكاميرا
-        fileInput.addEventListener('change', function () {
-          var f = fileInput.files && fileInput.files[0];
-          if (!f) return;
-          setStatus('جارٍ قراءة الصورة...');
-          Promise.resolve(typeof createImageBitmap === 'function' ? createImageBitmap(f) : f)
-            .then(function (bmp) { return root.HRCQRScan.detectImage(bmp); })
-            .then(function (vals) {
-              if (vals && vals.length) { stop(); close(); applyScannedText(vals[0]); }
-              else setStatus('لم يُعثر على رمز QR في الصورة — جرّب صورة أوضح.', 'error');
-            })
-            .catch(function () { setStatus('تعذّرت قراءة الصورة.', 'error'); });
-        });
-
-        // بث الكاميرا
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-            .then(function (s) {
-              if (stopped) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
-              stream = s;
-              video.srcObject = s;
-              video.play().catch(function () {});
-              tick(video, close);
-            })
-            .catch(function () {
-              setStatus('تعذّر الوصول إلى الكاميرا — استخدم «رفع صورة للكود».', 'error');
-            });
-        } else {
-          setStatus('الكاميرا غير متاحة في هذا المتصفح — ارفع صورة للكود.', 'error');
-        }
-      },
-      onClose: stop
+      subtitle: 'امسح رمز QR المطبوع على بطاقة الوظيفة أو بطاقة التوظيف للوصول إليها مباشرة',
+      onResult: applyScannedText
     });
-
-    function tick(video, close) {
-      if (stopped) return;
-      root.HRCQRScan.detectVideoFrame(video).then(function (vals) {
-        if (stopped) return;
-        if (vals && vals.length) { stop(); close(); applyScannedText(vals[0]); return; }
-        raf = requestAnimationFrame(function () { tick(video, close); });
-      });
-    }
+    if (!opened) UI.toast('warn', 'متصفح غير مدعوم', 'تعذّر فتح الكاميرا — استخدم البحث بالكود يدوياً.');
   }
 
   /* تحليل نص الرمز الممسوح: كود وظيفة / باركود بطاقة / نص حر */
@@ -10117,8 +10264,16 @@ to{opacity:1;transform:none}
     else { var legacy = text.match(/HRC-BC-\d+/i); if (legacy) cand = legacy[0]; }
     var serial = cand && Store.isCardSerial(cand) ? [Store.normalizeCardSerial(cand)] : null;
     if (serial) {
-      if (root.HRCBooking && root.HRCBooking.open) {
-        root.HRCBooking.open({ serial: serial[0] });
+      /* باركود البطاقة نفسه مرتبط بصفحة التقديم (apply.html?form=…) — نفتحها
+         مباشرة كما لو مُسح الرمز بكاميرا الهاتف. وإن لم تكن الصفحة متاحة
+         (الملف المستقل) أو كانت الصفحة الحالية هي صفحتها، نعرض الحالة. */
+      var B = root.HRCBooking;
+      if (B && B.canApply && B.canApply() && !/apply\.html/i.test(String(location.pathname || ''))) {
+        location.assign(B.applyUrl(serial[0]));
+        return;
+      }
+      if (B && B.open) {
+        B.open({ serial: serial[0] });
       } else {
         UI.toast('info', 'بطاقة توظيف شركة الهدف',
           'افتح الموقع الرئيسي وأدخل باركود بطاقتك من نافذة «بطاقتي».', 8000);
