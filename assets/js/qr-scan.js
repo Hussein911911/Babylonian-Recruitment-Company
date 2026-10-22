@@ -73,18 +73,27 @@
     return isCard(v) ? v : '';
   }
 
-  /* نافذة مسح كاملة: { title, subtitle, onResult(text) } — تُرجع false بلا دعم */
+  /* نافذة مسح كاملة — تُرجع false إن كان المتصفح لا يدعم المسح.
+     opts = { title, subtitle, validate(text) → bool, onResult(text) }
+     • validate: ترفض الرمز *داخل* النافذة (رسالة هادئة) بدل إغلاقها برسالة خطأ.
+     • القراءة تُهذَّب إلى إطار كل 160ms: بطارية أقل وضجيج أقل من كل إطار.
+     • الكاميرا تُوقف عند الإغلاق أو عند ترك التبويب، وتُستأنف عند العودة. */
   function open(opts) {
     opts = opts || {};
     var UI = root.HRCUI;
     if (!UI || typeof UI.modal !== 'function' || !hasApi) return false;
 
-    var stream = null, raf = null, stopped = false;
+    var stream = null, timer = null, stopped = false, paused = false, hintShown = false, hintTimer = null;
+
+    function clearTimer() { if (timer) { try { clearTimeout(timer); } catch (e) { } timer = null; } }
     function stop() {
       stopped = true;
-      if (raf) { try { cancelAnimationFrame(raf); } catch (e) { } raf = null; }
+      clearTimer();
+      if (hintTimer) { try { clearTimeout(hintTimer); } catch (e) { } hintTimer = null; }
       if (stream) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { } stream = null; }
+      try { document.removeEventListener('visibilitychange', onVisibility); } catch (e) { }
     }
+    function onVisibility() { paused = !!(document.hidden); }
 
     var modal = UI.modal({
       title: opts.title || 'مسح الباركود',
@@ -99,20 +108,34 @@
         var video = box.querySelector('#scan-video');
         var file = box.querySelector('#scan-file');
         var status = box.querySelector('#scan-status');
-        function say(t, cls) { if (status) { status.textContent = t; status.className = 'scan-status' + (cls ? ' ' + cls : ''); } }
-        function done(vals) {
+        function say(t, cls) {
+          if (!status) return;
+          status.textContent = t;
+          status.className = 'scan-status' + (cls ? ' ' + cls : '');
+        }
+        function accept(vals) {
           if (!vals || !vals.length) return false;
-          stop(); close();
-          if (opts.onResult) opts.onResult(vals[0]);
+          var text = vals[0];
+          /* الرمز غير صالح لصاحب الشاشة؟ نُبقي الكاميرا تعمل ونشرح بهدوء */
+          if (typeof opts.validate === 'function' && opts.validate(text) === false) {
+            say('هذا الرمز ليس باركود بطاقة توظيف — جرّب الباركود المطبوع على وجه البطاقة.', 'error');
+            return false;
+          }
+          stop();
+          close();
+          if (opts.onResult) opts.onResult(text);
           return true;
         }
-        function tick(v) {
+        function tick() {
           if (stopped) return;
-          detectVideoFrame(v).then(function (vals) {
+          if (paused) { timer = setTimeout(tick, 400); return; }
+          detectVideoFrame(video).then(function (vals) {
             if (stopped) return;
-            if (vals && vals.length) { done(vals); return; }
-            raf = requestAnimationFrame(function () { tick(v); });
-          }).catch(function () { if (!stopped) raf = requestAnimationFrame(function () { tick(v); }); });
+            if (vals && vals.length && accept(vals)) return;
+            timer = setTimeout(tick, 160);
+          }).catch(function () {
+            if (!stopped) timer = setTimeout(tick, 260);
+          });
         }
         file.addEventListener('change', function () {
           var f = file.files && file.files[0];
@@ -122,19 +145,33 @@
             ? Promise.resolve(createImageBitmap(f)).catch(function () { return f; })
             : Promise.resolve(f);
           src.then(detectImage).then(function (vals) {
-            if (!done(vals)) say('لم يُعثر على باركود واضح في الصورة — جرّب صورة أوضح.', 'error');
-          }).catch(function () { say('تعذّرت قراءة الصورة.', 'error'); });
+            if (!accept(vals)) say('لم يُعثر على باركود واضح — جرّب صورة أقرب وأوضح.', 'error');
+          }).catch(function () { say('تعذّرت قراءة الصورة — جرّب صورة أخرى.', 'error'); });
+          try { file.value = ''; } catch (e) { }
         });
+        document.addEventListener('visibilitychange', onVisibility);
+        onVisibility();
+
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
           navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
             .then(function (s) {
               if (stopped) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
-              stream = s; video.srcObject = s;
-              video.play().catch(function () { });
+              stream = s;
+              video.srcObject = s;
+              var play = video.play();
+              if (play && play.catch) play.catch(function () { });
               say('وجّه الكاميرا نحو الباركود — القراءة تلقائية...');
-              tick(video);
+              tick();
+              /* بعد 12 ثانية بلا قراءة: تلميح عملي بلا إزعاج */
+              hintTimer = setTimeout(function () {
+                if (stopped || hintShown) return;
+                hintShown = true;
+                say('لم يُقرأ بعد — قرّب الكاميرا وأضئ الورقة، أو ارفع صورة للباركود.');
+              }, 12000);
             })
-            .catch(function () { say('تعذّر الوصول إلى الكاميرا — ارفع صورة أو اكتب الرقم يدوياً.', 'error'); });
+            .catch(function () {
+              say('تعذّر الوصول إلى الكاميرا — ارفع صورة للباركود أو اكتب الرقم يدوياً.', 'error');
+            });
         } else {
           say('الكاميرا غير متاحة في هذا المتصفح — ارفع صورة للباركود.', 'error');
         }

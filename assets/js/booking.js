@@ -23,6 +23,7 @@
   var jobF = { q: '', region: '', shift: '' };   // فلاتر متصفح الوظائف (الخطوة 6)
   var posErr = '';      // سبب فشل «إتمام» الأخير — يبقى معروضاً داخل الشاشة لا توستاً يختفي بعد ثوانٍ
   var applyJob = '';    // كود الوظيفة القادم من زر «قدّم ببطاقتك» — يُمرَّر لصفحة التقديم
+  var gen = 0;          // جيل النافذة: نتيجة قراءة قديمة لا تُكتب في نافذة أُعيد فتحها
 
   /* ======================= أدوات ======================= */
   function esc(v) { return UI.esc(String(v == null ? '' : v)); }
@@ -145,8 +146,11 @@
       var f = document.getElementById('bk-serial');
       if (f) { try { f.focus(); } catch (e) { } }
     }
+    function serialFromText(text) {
+      return (scan && scan.serialFrom) ? scan.serialFrom(text) : '';
+    }
     function accept(text) {
-      var code = scan.serialFrom ? scan.serialFrom(text) : '';
+      var code = serialFromText(text);
       if (!code) {
         UI.toast('warn', 'باركود غير معروف',
           'الرمز الممسوح ليس باركود بطاقة توظيف — امسح الباركود المطبوع على وجه البطاقة، أو اكتب الرقم يدوياً.');
@@ -184,9 +188,12 @@
     }
 
     if (!scan || !scan.supported()) return manual('هذا المتصفح لا يدعم مسح الباركود بالكاميرا');
+    /* الرمز غير المطابق يُشرح داخل نافذة المسح نفسها (validate) بدل إغلاقها
+       برسالة خطأ ثم إعادة الفتح — تجربة أهدأ للزبون. */
     if (!scan.open({
       title: 'مسح باركود البطاقة',
-      subtitle: 'وجّه الكاميرا إلى باركود QR المطبوع على وجه بطاقتك — أو ارفع صورة له.',
+      subtitle: 'وجّه الكاميرا إلى الباركود المطبوع على وجه بطاقتك — أو ارفع صورة له.',
+      validate: function (text) { return !!serialFromText(text); },
       onResult: accept
     })) manual('تعذّر فتح نافذة الكاميرا');
   }
@@ -233,33 +240,39 @@
     doLookup();
   }
 
-  /* ---------------- واجهة الدخول: بطاقة تعريف + مسح + إدخال يدوي ----------------
-   * ثلاث «بطاقات» بترتيب بصري واضح:
-   *   1) وجه بطاقة التوظيف (بصمة بصرية تعرّف الزبون على ورقته)
-   *   2) زر المسح الضوئي الكبير (الطريق الأسرع) — مع «رفع صورة» كبديل
-   *   3) الإدخال اليدوي (للبطاقة المتضررة أو الباركود غير المقروء)
-   * وكل مسار ينتهي في مكان واحد: doApply() ⇒ صفحة التقديم.
-   * ------------------------------------------------------------------------- */
+  /* ---------------- واجهة الدخول: هادئة وواضحة ----------------
+   * ترتيب واحد لا يتغيّر: (١) وجه البطاقة للتعريف، (٢) زر المسح كإجراء رئيسي،
+   * (٣) بديلان صريحان (صورة / إدخال يدوي)، (٤) متابعة الحالة أو واتساب.
+   * الإدخال اليدوي مطويّ افتراضياً حتى لا تزدحم الشاشة؛ يُفتح بطلبه أو تلقائياً
+   * إذا لم يدعم المتصفح المسح، أو إذا وصل رقم جاهز من رابط سابق.
+   * ------------------------------------------------------------------ */
   var scanBusy = false;
 
-  /* وجه البطاقة: بنفسج بابل + ذهب، يُعاد رسم الباركود المصغّر من الرقم المكتوب */
-  function cardFaceHtml() {
-    var v = cleanSerial(serial).slice(0, 14);
-    var cells = '';
-    var seed = 0;
+  /* هل يستطيع هذا المتصفح قراءة الباركود أصلاً؟ */
+  function scannerSupported() {
+    return !!(root.HRCQRScan && root.HRCQRScan.supported && root.HRCQRScan.supported());
+  }
+
+  /* أعمدة باركود تُشتق من الرقم — بلا أي معنى تشفيري، للتعريف البصري وحده */
+  function cardBars(v) {
+    var seed = 0, out = '';
     for (var i = 0; i < v.length; i++) seed = (seed * 31 + v.charCodeAt(i)) % 9973;
     for (var b = 0; b < 46; b++) {
       seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      var h = 26 + (seed % 62);
-      cells += '<i style="width:' + (b % 9 === 0 ? 4 : (b % 4 === 0 ? 3 : 2)) + 'px;height:' + h + '%"></i>';
+      out += '<i style="width:' + (b % 9 === 0 ? 4 : (b % 4 === 0 ? 3 : 2)) + 'px;height:' + (26 + (seed % 62)) + '%"></i>';
     }
-    return '<div class="bk-card' + (v ? ' has-code' : '') + '">' +
-      '<div class="bk-card-shine" aria-hidden="true"></div>' +
+    return out;
+  }
+
+  /* وجه البطاقة: بصمة بصرية فقط (لا تُرسل ولا تُحفظ) */
+  function cardFaceHtml() {
+    var v = cleanSerial(serial);
+    return '<div class="bk-card">' +
       '<div class="bk-card-top">' +
         '<span class="bk-card-brand">' + UI.ic('emblem') + '<b>بطاقة التوظيف</b></span>' +
         '<span class="bk-card-live">' + UI.ic('shield') + ' موثّقة</span>' +
       '</div>' +
-      '<div class="bk-card-bars" aria-hidden="true">' + cells + '</div>' +
+      '<div class="bk-card-bars" aria-hidden="true">' + cardBars(v) + '</div>' +
       '<div class="bk-card-num" dir="ltr">' + (v ? esc(v) : '• • • • • • • • • •') + '</div>' +
       '<div class="bk-card-foot">' +
         '<span><small>فرصتان</small><b>٢</b></span>' +
@@ -269,79 +282,69 @@
     '</div>';
   }
 
-  /* زر مسح كبير + رفع صورة (بديل الكاميرا) */
-  function scanBlockHtml() {
-    var supports = !!(root.HRCQRScan && root.HRCQRScan.supported && root.HRCQRScan.supported());
-    return '<div class="bk-scanbox">' +
-      '<button type="button" class="bk-scanbig" id="bk-scan"' + (supports ? '' : ' data-unsupported="1"') + '>' +
-        '<span class="bk-scanbig-ic">' + UI.ic('scan') +
-          '<span class="bk-scanbig-pulse" aria-hidden="true"></span>' +
-        '</span>' +
-        '<span class="bk-scanbig-t">امسح باركود البطاقة</span>' +
-        '<span class="bk-scanbig-s">وجّه كاميرا الجوال نحو الكيو آر المطبوع على وجه البطاقة</span>' +
-      '</button>' +
-      '<div class="bk-scan-alt">' +
-        '<label class="bk-scan-link" for="bk-scan-file">' + UI.ic('upload') + ' أو ارفع صورة للباركود</label>' +
-        '<input type="file" id="bk-scan-file" accept="image/*" hidden>' +
-        '<span class="bk-scan-sep" aria-hidden="true">•</span>' +
-        '<button type="button" class="bk-scan-link" id="bk-manual-toggle">' + UI.ic('edit') + ' إدخال الرقم يدوياً</button>' +
-      '</div>' +
-    '</div>';
-  }
-
   function renderEntry(host) {
     var fromJob = !!applyJob;
+    var canScan = scannerSupported();
     host.innerHTML =
       '<div class="bk-entry">' +
+
         '<div class="bk-entry-hero">' +
-          '<div class="bk-entry-head">' +
-            '<span class="bk-eyebrow">' + UI.ic(fromJob ? 'briefcase' : 'card') +
-              (fromJob ? ' التقديم على وظيفة' : ' متابعة البطاقة') + '</span>' +
-            '<h4>' + (fromJob ? 'قدّم ببطاقتك في خطوتين' : 'بطاقتي — بطاقة التوظيف') + '</h4>' +
-            '<p>' + (fromJob
-              ? 'امسح باركود بطاقتك أو أدخل رقمها، ونفتح لك استمارة التقديم مباشرة.'
-              : 'امسح باركود بطاقتك أو أدخل رقمها لمتابعة فرصك وإعادة الطباعة.') + '</p>' +
-          '</div>' +
-          (fromJob ? '<div class="bk-jobtap">' + UI.ic('check-circle') +
-            '<span><small>الوظيفة المختارة</small><b class="mono" dir="ltr">' + esc(applyJob) + '</b></span>' +
-            '</div>' : '') +
+          '<span class="bk-eyebrow">' + UI.ic(fromJob ? 'briefcase' : 'card') +
+            (fromJob ? ' التقديم على وظيفة' : ' بطاقة التوظيف') + '</span>' +
+          (fromJob
+            ? '<div class="bk-jobtap">' + UI.ic('briefcase') +
+                '<span><small>الوظيفة المختارة</small><b class="mono" dir="ltr">' + esc(applyJob) + '</b></span>' +
+              '</div>'
+            : '') +
         '</div>' +
 
-        '<div class="bk-entry-grid">' +
-          '<div class="bk-entry-side">' + cardFaceHtml() +
-            '<ul class="bk-points">' +
-              '<li>' + UI.ic('check') + ' فرصتان مستقلتان للتقديم</li>' +
-              '<li>' + UI.ic('check') + ' حجز الوظيفة 24 ساعة باسمك</li>' +
-              '<li>' + UI.ic('check') + ' صلاحية ٣٠ يوماً من التفعيل</li>' +
-            '</ul>' +
-          '</div>' +
+        '<div class="bk-entry-body">' +
+          '<aside class="bk-entry-side">' + cardFaceHtml() + '</aside>' +
 
           '<div class="bk-entry-main">' +
-            scanBlockHtml() +
-            '<div class="bk-or"><span>أو أدخل الرقم يدوياً</span></div>' +
+            /* الإجراء الرئيسي: المسح — أو إدخال يدوي إذا لم يكن مدعوماً */
+            '<button type="button" class="bk-scanbig' + (canScan ? '' : ' is-off') + '" id="bk-scan"' +
+              (canScan ? '' : ' data-unsupported="1"') + '>' +
+              '<span class="bk-scanbig-ic">' + UI.ic(canScan ? 'scan' : 'edit') + '</span>' +
+              '<span class="bk-scanbig-t">' + (canScan ? 'امسح باركود البطاقة' : 'أدخل رقم البطاقة') + '</span>' +
+              '<span class="bk-scanbig-s">' + (canScan
+                ? 'وجّه كاميرا الجوال نحو الكيو آر المطبوع على وجه البطاقة'
+                : 'هذا المتصفح لا يقرأ الباركود — اكتب الرقم المطبوع تحت الباركود') + '</span>' +
+            '</button>' +
+
+            '<div class="bk-scan-alt">' +
+              (canScan
+                ? '<label class="bk-link" for="bk-scan-file">' + UI.ic('upload') + ' ارفع صورة للباركود</label>' +
+                  '<span class="bk-dot" aria-hidden="true"></span>'
+                : '') +
+              '<button type="button" class="bk-link" id="bk-manual-toggle" aria-expanded="false" aria-controls="bk-manual">' +
+                UI.ic('edit') + ' <span>إدخال الرقم يدوياً</span></button>' +
+              '<input type="file" id="bk-scan-file" accept="image/*" hidden>' +
+            '</div>' +
+
             '<div class="bk-manual" id="bk-manual">' +
               fieldHtml('serial', 'باركود البطاقة (10 خانات)',
                 '<div class="bk-scan-row">' +
                   '<span class="bk-input-ic">' + UI.ic('card') + '</span>' +
-                  inputHtml('serial', 'text', 'مثال: 7KQ4M9TR2X', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.08em;text-transform:uppercase" inputmode="latin" autocomplete="off" spellcheck="false" maxlength="18" aria-describedby="bk-serial-hint"') +
+                  inputHtml('serial', 'text', 'مثال: 7KQ4M9TR2X', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.08em;text-transform:uppercase" inputmode="latin" autocomplete="off" spellcheck="false" maxlength="18"') +
                 '</div>',
                 'عشر خانات من حروف وأرقام مطبوعة تحت الباركود على وجه البطاقة.') +
-              '<div class="bk-entry-cta">' +
-                '<button class="btn btn-gold bk-cta" id="bk-apply">' + UI.ic('arrow-right') + ' ابدأ التقديم</button>' +
-              '</div>' +
+              '<button class="btn btn-gold bk-cta" id="bk-apply">' + UI.ic('arrow-right') + ' ابدأ التقديم</button>' +
             '</div>' +
 
             '<div class="bk-entry-foot">' +
-              '<button class="btn btn-ghost btn-sm" id="bk-lookup">' + UI.ic('search') + ' حالة بطاقتي وإعادة الطباعة</button>' +
+              '<button type="button" class="bk-footbtn" id="bk-lookup">' + UI.ic('search') + ' حالة بطاقتي وإعادة الطباعة</button>' +
               (CFG.company && CFG.company.phones && CFG.company.phones[0]
-                ? '<a class="bk-help" href="https://wa.me/' + String(CFG.company.phones[0]).replace(/\D/g, '').replace(/^0/, '964') +
-                  '" target="_blank" rel="noopener">' + UI.ic('whatsapp') + ' ما عندك بطاقة؟ خابرنا</a>' : '') +
+                ? '<a class="bk-footbtn is-wa" href="https://wa.me/' +
+                  String(CFG.company.phones[0]).replace(/\D/g, '').replace(/^0/, '964') +
+                  '" target="_blank" rel="noopener">' + UI.ic('whatsapp') + ' ما عندك بطاقة؟ خابرنا</a>'
+                : '') +
             '</div>' +
           '</div>' +
         '</div>' +
 
-        '<div class="bk-entry-note">' + UI.ic('lock') +
-          ' لا نطلب رمز الفرصة هنا، ولا نحفظ أي بيانات إضافية من جهازك — القراءة من قاعدة شركة الهدف فقط.</div>' +
+        '<p class="bk-entry-note">' + UI.ic('lock') +
+          ' لا نطلب رمز الفرصة هنا، ولا نحفظ أي بيانات من جهازك — القراءة من قاعدة الشركة فقط.</p>' +
       '</div>';
 
     /* ---------------- الربط ---------------- */
@@ -350,16 +353,32 @@
     var scanBtn = document.getElementById('bk-scan');
     var fileInp = document.getElementById('bk-scan-file');
     var manualBtn = document.getElementById('bk-manual-toggle');
-    var inp = document.getElementById('bk-serial');
     var manual = document.getElementById('bk-manual');
+    var inp = document.getElementById('bk-serial');
 
-    /* تهيئة بصرية موحّدة: وجه البطاقة + توهّج زر التقديم عند اكتمال الصيغة */
+    function openManual(focus) {
+      if (manual) manual.classList.add('is-open');
+      if (manualBtn) {
+        manualBtn.setAttribute('aria-expanded', 'true');
+        manualBtn.classList.add('is-open');
+      }
+      if (focus && inp) setTimeout(function () { try { inp.focus(); } catch (e) { } }, 40);
+    }
+    function toggleManual() {
+      if (!manual) return;
+      if (manual.classList.contains('is-open')) {
+        manual.classList.remove('is-open');
+        if (manualBtn) { manualBtn.setAttribute('aria-expanded', 'false'); manualBtn.classList.remove('is-open'); }
+        return;
+      }
+      openManual(true);
+    }
+
     function paintState() {
       paintCardFace();
       if (goBtn) goBtn.classList.toggle('is-ready', !!serialPattern(serial));
     }
 
-    /* الإدخال اليدوي: تنسيق تلقائي + زر تقديم يتوهّج عند اكتمال الصيغة */
     if (inp) {
       inp.addEventListener('input', function () {
         var typed = inp.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
@@ -369,29 +388,33 @@
         paintState();
       });
       inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') doApply(); });
-      inp.addEventListener('focus', function () { if (manual) manual.classList.add('is-focus'); });
-      inp.addEventListener('blur', function () { if (manual) manual.classList.remove('is-focus'); });
     }
     if (goBtn) goBtn.addEventListener('click', doApply);
+    if (manualBtn) manualBtn.addEventListener('click', toggleManual);
     if (lookBtn) lookBtn.addEventListener('click', function () {
       if (!String(serial || '').trim()) {
+        openManual(true);
         setErr('serial', 'اكتب رقم البطاقة أو امسحه أولاً لعرض حالتها.');
-        if (inp) { try { inp.focus(); } catch (e) { } }
         return;
       }
       doLookup();
     });
-    if (scanBtn) scanBtn.addEventListener('click', openScan);
+    if (scanBtn) scanBtn.addEventListener('click', function () {
+      if (!scannerSupported()) { openManual(true); return; }
+      openScan();
+    });
     if (fileInp) fileInp.addEventListener('change', function () {
       var f = fileInp.files && fileInp.files[0];
       if (f) openScan(f);
       try { fileInp.value = ''; } catch (e) { }   /* نفس الصورة قابلة للاختيار مرة أخرى */
     });
-    if (manualBtn) manualBtn.addEventListener('click', function () {
-      if (inp) { try { inp.focus(); inp.select(); } catch (e) { } }
-    });
 
-    paintState();   /* رقم موجود في الـstate (بعد مسح/رجوع) يظهر على وجه البطاقة فوراً */
+    paintState();
+
+    /* رقم جاهز (من رابط أو مسح سابق) يفتح الإدخال اليدوي ويُظهر الحالة */
+    if (serial && serialPattern(serial)) openManual(false);
+    /* متصفح بلا مسح: لا نُخفي البديل عن الزبون */
+    else if (!canScan) openManual(false);
 
     if (routeErr) {
       setErr('serial', routeErr);
@@ -416,10 +439,12 @@
     storeWaits = 0;
     busy = true;
     serial = v;
+    var my = gen;
     var btn = document.getElementById('bk-lookup');
     if (btn) { btn.disabled = true; btn.textContent = 'جارٍ التحقق…'; }
     setErr('serial', '');
     Promise.resolve(Store.cardLookup(serial)).then(function (r) {
+      if (my !== gen) return;        /* أُغلقت النافذة أو أُعيد فتحها — لا تكتب هنا */
       busy = false;
       if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
       if (!r || !r.ok) {
@@ -430,6 +455,7 @@
       view = 'status';
       render();
     }).catch(function (e) {
+      if (my !== gen) return;
       busy = false;
       if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
       setErr('serial', 'تعذّر الاتصال — حاول مرة أخرى.');
@@ -1255,6 +1281,7 @@
   function open(opts) {
     opts = opts || {};
     if (m) { try { m.close(); } catch (e) { } m = null; }
+    gen++;                       /* أي رد غير متزامن من نافذة سابقة يُهمَل */
     card = null; doneInfo = null; busy = false;
     directEmployer = false;
     applyJob = String(opts.code || '').trim().toUpperCase();
@@ -1262,10 +1289,11 @@
     view = 'entry';
     serial = String(opts.serial || '').trim().toUpperCase();
     m = UI.modal({
-      title: 'بطاقتي — بطاقة التوظيف',
-      subtitle: 'تابع بطاقتك · استخدم فرصتك · أعد طباعتها من أي مكتب استنساخ',
-      body: '<div class="bk-wrap" id="bk-wrap"></div>',
-      footer: '<span></span>'
+      title: applyJob ? 'التقديم على وظيفة — بطاقة التوظيف' : 'بطاقتي — بطاقة التوظيف',
+      subtitle: applyJob
+        ? 'امسح باركود بطاقتك أو أدخل رقمها للانتقال إلى استمارة التقديم'
+        : 'تابع بطاقتك · استخدم فرصتك · أعد طباعتها من أي مكتب استنساخ',
+      body: '<div class="bk-wrap" id="bk-wrap"></div>'
     });
     if (!m) return;
     m.root.classList.add('modal-booking');

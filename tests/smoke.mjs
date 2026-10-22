@@ -253,15 +253,26 @@ await (async () => {
   if (jobBtn) jobBtn.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
   const modal = lastModal(site.doc);
 
-  check('بطاقتي: زر «مسح الباركود» كبير في نفس شاشة رقم البطاقة', () => {
+  check('بطاقتي: الإجراء الرئيسي مسح كبير + إدخال يدوي في نفس الشاشة', () => {
     const scan = modal && modal.querySelector('#bk-scan');
     if (!scan) return 'لا يوجد زر مسح في شاشة إدخال الباركود';
-    if (!/امسح باركود البطاقة/.test(scan.textContent)) return 'نص الزر: ' + scan.textContent;
     const entry = modal.querySelector('.bk-entry');
     if (!entry || !entry.querySelector('#bk-scan') || !entry.querySelector('#bk-serial')) {
       return 'زر المسح وحقل الرقم ليسا في شاشة واحدة';
     }
     if (!modal.querySelector('#bk-manual-toggle')) return 'لا يوجد مسار إدخال يدوي صريح';
+    const supported = site.window.HRCQRScan.supported();
+    if (supported && !/امسح باركود البطاقة/.test(scan.textContent)) return 'نص الزر: ' + scan.textContent;
+    /* متصفح بلا قراءة باركود: الزر يصير إرشاداً صريحاً بدل وعد لا يُنفَّذ */
+    if (!supported && !/أدخل رقم البطاقة/.test(scan.textContent)) return 'حالة عدم الدعم غير مشروحة: ' + scan.textContent;
+    return true;
+  });
+  check('بطاقتي: بلا دعم مسح يُفتح الإدخال اليدوي تلقائياً (لا طريق مسدود)', () => {
+    if (site.window.HRCQRScan.supported()) return true;   /* مدعوم: لا حاجة */
+    const man = modal.querySelector('#bk-manual');
+    const tog = modal.querySelector('#bk-manual-toggle');
+    if (!man.classList.contains('is-open')) return 'الإدخال اليدوي مطويّ في متصفح لا يقرأ الباركود';
+    if (tog.getAttribute('aria-expanded') !== 'true') return 'aria-expanded لا يطابق الحالة';
     return true;
   });
   check('بطاقتي: شكل البطاقة البصرية يعكس الرقم المكتوب فوراً', () => {
@@ -329,6 +340,73 @@ check('مُحلّل الباركود الممسوح: رابط apply · بارك�
     const v = site.window.HRCBooking.state().view;
     return v === 'entry' || 'تغيّرت الشاشة إلى ' + v;
   });
+
+  /* ═══ الماسح: النافذة، التحقق داخل النافذة، رفع الصورة، فتح/طي الإدخال ═══ */
+  const realScan = site.window.HRCQRScan;
+  let scanOpts = null;
+  site.window.HRCQRScan = Object.assign({}, realScan, {
+    supported: () => true,
+    open: (o) => { scanOpts = o; return true; }
+  });
+  site.window.HRCBooking.close();
+  check('بطاقتي (بماسح مدعوم): الإدخال اليدوي مطويّ افتراضياً وزر المسح يفتح النافذة', () => {
+    const a = site.doc.querySelector('#jobs-grid .job-card [data-action="open-booking"]');
+    a.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    const box = lastModal(site.doc);
+    const man = box.querySelector('#bk-manual');
+    const tog = box.querySelector('#bk-manual-toggle');
+    if (man.classList.contains('is-open')) return 'الإدخال مفتوح افتراضياً رغم دعم المسح';
+    if (tog.getAttribute('aria-expanded') !== 'false') return 'aria-expanded ابتدائي خاطئ';
+    box.querySelector('#bk-scan').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    return !!scanOpts || 'لم تُفتح نافذة المسح';
+  });
+  check('بطاقتي: نافذة المسح ترفض كود الوظيفة وتقبل رابط باركود البطاقة', () =>
+    (scanOpts && scanOpts.validate('HRC-1042') === false && scanOpts.validate('apply.html?form=7KQ4M9TR2X') === true) ||
+    'دالة التحقق غير سليمة');
+  check('بطاقتي: نتيجة المسح تملأ الحقل وتُطبَّع', () => {
+    scanOpts.onResult('https://hrc.example/apply.html?form=7kq4m9tr2x');
+    const inp = lastModal(site.doc).querySelector('#bk-serial');
+    return (site.window.HRCBooking.state().serial === '7KQ4M9TR2X') || ('الحالة: ' + site.window.HRCBooking.state().serial);
+  });
+  await (async () => {
+    const name = 'بطاقتي: «ارفع صورة» يقرأ الباركود بنفس المحرّك ويملأ الرقم';
+    site.window.HRCBooking.close();
+    site.window.HRCQRScan = Object.assign({}, realScan, {
+      supported: () => true,
+      detectImage: () => Promise.resolve(['9TRX2KQ4M7'])
+    });
+    site.window.HRCBooking.open({ code: 'HRC-1042' });
+    const box = lastModal(site.doc);
+    const file = box.querySelector('#bk-scan-file');
+    if (!file) return bad(name, 'حقل الصورة غير موجود');
+    Object.defineProperty(file, 'files', {
+      value: [new site.window.File(['x'], 'card.png', { type: 'image/png' })], configurable: true
+    });
+    file.dispatchEvent(new site.window.Event('change', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const got = site.window.HRCBooking.state().serial;
+    if (got !== '9TRX2KQ4M7') return bad(name, 'الحالة: ' + got);
+    return ok(name);
+  })();
+  check('بطاقتي: زر «إدخال الرقم يدوياً» يفتح ويطوي مع aria-expanded', () => {
+    const box = lastModal(site.doc);
+    const tog = box.querySelector('#bk-manual-toggle');
+    const man = box.querySelector('#bk-manual');
+    tog.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    if (!man.classList.contains('is-open') || tog.getAttribute('aria-expanded') !== 'true') return 'لم يُفتح';
+    tog.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    return (!man.classList.contains('is-open') && tog.getAttribute('aria-expanded') === 'false') || 'لم يُطوَ';
+  });
+  check('بطاقتي: «حالة بطاقتي» بلا رقم تُرشد للحقل ولا تغادر الشاشة', () => {
+    const box = lastModal(site.doc);
+    const inp = box.querySelector('#bk-serial');
+    inp.value = ''; inp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
+    box.querySelector('#bk-lookup').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    const err = box.querySelector('[data-bk-err="serial"]');
+    return (/اكتب رقم البطاقة/.test((err && err.textContent) || '') && site.window.HRCBooking.state().view === 'entry') ||
+      ('الرسالة: ' + (err && err.textContent) + ' | الشاشة: ' + site.window.HRCBooking.state().view);
+  });
+  site.window.HRCQRScan = realScan;
 
   /* إعادة النافذة إلى شاشة الحالة حتى تكمل الاختبارات التالية مسارها */
   site.window.HRCBooking.close();
