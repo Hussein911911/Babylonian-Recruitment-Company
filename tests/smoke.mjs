@@ -253,26 +253,28 @@ await (async () => {
   if (jobBtn) jobBtn.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
   const modal = lastModal(site.doc);
 
-  check('بطاقتي: الإجراء الرئيسي مسح كبير + إدخال يدوي في نفس الشاشة', () => {
-    const scan = modal && modal.querySelector('#bk-scan');
-    if (!scan) return 'لا يوجد زر مسح في شاشة إدخال الباركود';
-    const entry = modal.querySelector('.bk-entry');
-    if (!entry || !entry.querySelector('#bk-scan') || !entry.querySelector('#bk-serial')) {
-      return 'زر المسح وحقل الرقم ليسا في شاشة واحدة';
+  check('بطاقتي: مبدّل واحد «مسح الباركود ⟷ كتابة الرقم» ولوحة واحدة ظاهرة', () => {
+    const sheet = modal && modal.querySelector('.bk-sheet');
+    if (!sheet) return 'الشاشة الجديدة (.bk-sheet) غير موجودة';
+    const scanTab = sheet.querySelector('#bk-tab-scan');
+    const manTab = sheet.querySelector('#bk-manual-toggle');
+    if (!scanTab || !manTab) return 'التبويبان غير موجودين';
+    if (!/مسح الباركود/.test(scanTab.textContent) || !/كتابة الرقم/.test(manTab.textContent)) {
+      return 'نصوص التبويبين: ' + scanTab.textContent + ' / ' + manTab.textContent;
     }
-    if (!modal.querySelector('#bk-manual-toggle')) return 'لا يوجد مسار إدخال يدوي صريح';
-    const supported = site.window.HRCQRScan.supported();
-    if (supported && !/امسح باركود البطاقة/.test(scan.textContent)) return 'نص الزر: ' + scan.textContent;
-    /* متصفح بلا قراءة باركود: الزر يصير إرشاداً صريحاً بدل وعد لا يُنفَّذ */
-    if (!supported && !/أدخل رقم البطاقة/.test(scan.textContent)) return 'حالة عدم الدعم غير مشروحة: ' + scan.textContent;
+    const openPanels = [...sheet.querySelectorAll('.bk-panel')].filter((p) => p.classList.contains('is-open'));
+    if (openPanels.length !== 1) return 'لوحات ظاهرة: ' + openPanels.length;
+    /* زر رئيسي واحد فقط في اللوحة الظاهرة */
+    const ctas = [...openPanels[0].querySelectorAll('.btn')];
+    if (ctas.length !== 1) return 'أزرار رئيسية في اللوحة: ' + ctas.length;
     return true;
   });
-  check('بطاقتي: بلا دعم مسح يُفتح الإدخال اليدوي تلقائياً (لا طريق مسدود)', () => {
+  check('بطاقتي: بلا دعم مسح تبدأ الشاشة على «كتابة الرقم» (لا طريق مسدود)', () => {
     if (site.window.HRCQRScan.supported()) return true;   /* مدعوم: لا حاجة */
     const man = modal.querySelector('#bk-manual');
     const tog = modal.querySelector('#bk-manual-toggle');
-    if (!man.classList.contains('is-open')) return 'الإدخال اليدوي مطويّ في متصفح لا يقرأ الباركود';
-    if (tog.getAttribute('aria-expanded') !== 'true') return 'aria-expanded لا يطابق الحالة';
+    if (!man.classList.contains('is-open')) return 'لوحة الكتابة غير مفتوحة في متصفح لا يقرأ الباركود';
+    if (tog.getAttribute('aria-selected') !== 'true') return 'التبويب النشط ليس الكتابة';
     return true;
   });
   check('بطاقتي: شكل البطاقة البصرية يعكس الرقم المكتوب فوراً', () => {
@@ -349,14 +351,14 @@ check('مُحلّل الباركود الممسوح: رابط apply · بارك�
     open: (o) => { scanOpts = o; return true; }
   });
   site.window.HRCBooking.close();
-  check('بطاقتي (بماسح مدعوم): الإدخال اليدوي مطويّ افتراضياً وزر المسح يفتح النافذة', () => {
+  check('بطاقتي (بماسح مدعوم): يبدأ على المسح، وزر «افتح الكاميرا» يفتح النافذة', () => {
     const a = site.doc.querySelector('#jobs-grid .job-card [data-action="open-booking"]');
     a.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
     const box = lastModal(site.doc);
     const man = box.querySelector('#bk-manual');
-    const tog = box.querySelector('#bk-manual-toggle');
-    if (man.classList.contains('is-open')) return 'الإدخال مفتوح افتراضياً رغم دعم المسح';
-    if (tog.getAttribute('aria-expanded') !== 'false') return 'aria-expanded ابتدائي خاطئ';
+    const scanTab = box.querySelector('#bk-tab-scan');
+    if (man.classList.contains('is-open')) return 'لوحة الكتابة مفتوحة رغم دعم المسح';
+    if (scanTab.getAttribute('aria-selected') !== 'true') return 'تبويب المسح غير نشط ابتدائياً';
     box.querySelector('#bk-scan').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
     return !!scanOpts || 'لم تُفتح نافذة المسح';
   });
@@ -388,14 +390,20 @@ check('مُحلّل الباركود الممسوح: رابط apply · بارك�
     if (got !== '9TRX2KQ4M7') return bad(name, 'الحالة: ' + got);
     return ok(name);
   })();
-  check('بطاقتي: زر «إدخال الرقم يدوياً» يفتح ويطوي مع aria-expanded', () => {
+  check('بطاقتي: التبديل بين «مسح» و«كتابة» يبدّل اللوحة والتبويب معاً', () => {
     const box = lastModal(site.doc);
-    const tog = box.querySelector('#bk-manual-toggle');
-    const man = box.querySelector('#bk-manual');
-    tog.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-    if (!man.classList.contains('is-open') || tog.getAttribute('aria-expanded') !== 'true') return 'لم يُفتح';
-    tog.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-    return (!man.classList.contains('is-open') && tog.getAttribute('aria-expanded') === 'false') || 'لم يُطوَ';
+    const scanTab = box.querySelector('#bk-tab-scan');
+    const manTab = box.querySelector('#bk-manual-toggle');
+    const scanPanel = box.querySelector('#bk-panel-scan');
+    const manPanel = box.querySelector('#bk-manual');
+    const click = (el) => el.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    click(manTab);
+    if (!manPanel.classList.contains('is-open') || scanPanel.classList.contains('is-open')) return 'لوحة الكتابة لم تُفتح';
+    if (manTab.getAttribute('aria-selected') !== 'true' || scanTab.getAttribute('aria-selected') !== 'false') return 'حالة التبويبين غير صحيحة';
+    click(scanTab);
+    if (!scanPanel.classList.contains('is-open') || manPanel.classList.contains('is-open')) return 'لم تُفتح لوحة المسح';
+    if (scanTab.getAttribute('aria-selected') !== 'true') return 'تبويب المسح غير نشط بعد الرجوع';
+    return true;
   });
   check('بطاقتي: «حالة بطاقتي» بلا رقم تُرشد للحقل ولا تغادر الشاشة', () => {
     const box = lastModal(site.doc);

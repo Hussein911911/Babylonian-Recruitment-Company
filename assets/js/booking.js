@@ -240,144 +240,150 @@
     doLookup();
   }
 
-  /* ---------------- واجهة الدخول: هادئة وواضحة ----------------
-   * ترتيب واحد لا يتغيّر: (١) وجه البطاقة للتعريف، (٢) زر المسح كإجراء رئيسي،
-   * (٣) بديلان صريحان (صورة / إدخال يدوي)، (٤) متابعة الحالة أو واتساب.
-   * الإدخال اليدوي مطويّ افتراضياً حتى لا تزدحم الشاشة؛ يُفتح بطلبه أو تلقائياً
-   * إذا لم يدعم المتصفح المسح، أو إذا وصل رقم جاهز من رابط سابق.
+  /* ---------------- واجهة الدخول: لوحة واحدة تتبدّل ----------------
+   * بدل رصف أزرار فوق بعضها: وجه بطاقة صغير للتعريف، ثم مبدّل واحد
+   * «مسح الباركود ⟷ كتابة الرقم» بحركة شريط واحدة، ولوحة واحدة تظهر
+   * حسب الاختيار. زر واحد رئيسي في كل وضع، ومسارا المساعدة في التذييل.
    * ------------------------------------------------------------------ */
   var scanBusy = false;
 
-  /* هل يستطيع هذا المتصفح قراءة الباركود أصلاً؟ */
   function scannerSupported() {
     return !!(root.HRCQRScan && root.HRCQRScan.supported && root.HRCQRScan.supported());
   }
 
-  /* أعمدة باركود تُشتق من الرقم — بلا أي معنى تشفيري، للتعريف البصري وحده */
+  /* أعمدة باركود تُشتق من الرقم — بصمة بصرية فقط (لا تُرسل ولا تُحفظ) */
   function cardBars(v) {
     var seed = 0, out = '';
     for (var i = 0; i < v.length; i++) seed = (seed * 31 + v.charCodeAt(i)) % 9973;
-    for (var b = 0; b < 46; b++) {
+    for (var b = 0; b < 40; b++) {
       seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      out += '<i style="width:' + (b % 9 === 0 ? 4 : (b % 4 === 0 ? 3 : 2)) + 'px;height:' + (26 + (seed % 62)) + '%"></i>';
+      out += '<i style="width:' + (b % 8 === 0 ? 3 : 2) + 'px;height:' + (30 + (seed % 60)) + '%"></i>';
     }
     return out;
   }
 
-  /* وجه البطاقة: بصمة بصرية فقط (لا تُرسل ولا تُحفظ) */
-  function cardFaceHtml() {
+  /* شريط تعريف البطاقة: هوية الشركة + الرقم كما يُكتب — عنصر واحد هادئ */
+  function cardStripHtml() {
     var v = cleanSerial(serial);
     return '<div class="bk-card">' +
-      '<div class="bk-card-top">' +
-        '<span class="bk-card-brand">' + UI.ic('emblem') + '<b>بطاقة التوظيف</b></span>' +
-        '<span class="bk-card-live">' + UI.ic('shield') + ' موثّقة</span>' +
-      '</div>' +
-      '<div class="bk-card-bars" aria-hidden="true">' + cardBars(v) + '</div>' +
-      '<div class="bk-card-num" dir="ltr">' + (v ? esc(v) : '• • • • • • • • • •') + '</div>' +
-      '<div class="bk-card-foot">' +
-        '<span><small>فرصتان</small><b>٢</b></span>' +
-        '<span><small>الصلاحية</small><b>٣٠ يوماً</b></span>' +
-        '<span><small>الدفع</small><b>كاش</b></span>' +
-      '</div>' +
+      '<span class="bk-card-brand">' + UI.ic('emblem') + ' بطاقة التوظيف</span>' +
+      '<span class="bk-card-bars" aria-hidden="true">' + cardBars(v) + '</span>' +
+      '<span class="bk-card-num" dir="ltr">' + (v ? esc(v) : '— — — — — —') + '</span>' +
+      '<span class="bk-card-tags"><b>فرصتان</b><b>٣٠ يوماً</b></span>' +
     '</div>';
+  }
+
+  /* رسم QR توضيحي ساكن داخل إطار المسح (بلا حركة دائمة) */
+  function qrArtHtml() {
+    var cells = '', seed = 7;
+    for (var i = 0; i < 49; i++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      var corner = (i < 3) || (i > 45) || (i % 7 === 0) || (i % 7 === 6);
+      cells += '<i class="' + ((corner || seed % 3 === 0) ? 'on' : '') + '"></i>';
+    }
+    return '<div class="bk-qr" aria-hidden="true">' + cells + '</div>';
   }
 
   function renderEntry(host) {
     var fromJob = !!applyJob;
     var canScan = scannerSupported();
     host.innerHTML =
-      '<div class="bk-entry">' +
+      '<div class="bk-entry bk-sheet" id="bk-sheet">' +
 
-        '<div class="bk-entry-hero">' +
+        '<div class="bk-top">' +
           '<span class="bk-eyebrow">' + UI.ic(fromJob ? 'briefcase' : 'card') +
             (fromJob ? ' التقديم على وظيفة' : ' بطاقة التوظيف') + '</span>' +
           (fromJob
-            ? '<div class="bk-jobtap">' + UI.ic('briefcase') +
-                '<span><small>الوظيفة المختارة</small><b class="mono" dir="ltr">' + esc(applyJob) + '</b></span>' +
-              '</div>'
+            ? '<span class="bk-jobtap">' + UI.ic('check-circle') +
+                '<b class="mono" dir="ltr">' + esc(applyJob) + '</b></span>'
             : '') +
         '</div>' +
 
-        '<div class="bk-entry-body">' +
-          '<aside class="bk-entry-side">' + cardFaceHtml() + '</aside>' +
+        cardStripHtml() +
 
-          '<div class="bk-entry-main">' +
-            /* الإجراء الرئيسي: المسح — أو إدخال يدوي إذا لم يكن مدعوماً */
-            '<button type="button" class="bk-scanbig' + (canScan ? '' : ' is-off') + '" id="bk-scan"' +
-              (canScan ? '' : ' data-unsupported="1"') + '>' +
-              '<span class="bk-scanbig-ic">' + UI.ic(canScan ? 'scan' : 'edit') + '</span>' +
-              '<span class="bk-scanbig-t">' + (canScan ? 'امسح باركود البطاقة' : 'أدخل رقم البطاقة') + '</span>' +
-              '<span class="bk-scanbig-s">' + (canScan
-                ? 'وجّه كاميرا الجوال نحو الكيو آر المطبوع على وجه البطاقة'
-                : 'هذا المتصفح لا يقرأ الباركود — اكتب الرقم المطبوع تحت الباركود') + '</span>' +
-            '</button>' +
+        '<div class="bk-switch" role="tablist" aria-label="طريقة إدخال البطاقة">' +
+          '<span class="bk-switch-thumb" aria-hidden="true"></span>' +
+          '<button type="button" class="bk-tab" id="bk-tab-scan" role="tab" aria-selected="true" tabindex="0" aria-controls="bk-panel-scan">' +
+            UI.ic('scan') + ' مسح الباركود</button>' +
+          '<button type="button" class="bk-tab" id="bk-manual-toggle" role="tab" aria-selected="false" aria-expanded="false" tabindex="-1" aria-controls="bk-manual">' +
+            UI.ic('edit') + ' كتابة الرقم</button>' +
+        '</div>' +
 
-            '<div class="bk-scan-alt">' +
-              (canScan
-                ? '<label class="bk-link" for="bk-scan-file">' + UI.ic('upload') + ' ارفع صورة للباركود</label>' +
-                  '<span class="bk-dot" aria-hidden="true"></span>'
-                : '') +
-              '<button type="button" class="bk-link" id="bk-manual-toggle" aria-expanded="false" aria-controls="bk-manual">' +
-                UI.ic('edit') + ' <span>إدخال الرقم يدوياً</span></button>' +
-              '<input type="file" id="bk-scan-file" accept="image/*" hidden>' +
-            '</div>' +
-
-            '<div class="bk-manual" id="bk-manual">' +
-              fieldHtml('serial', 'باركود البطاقة (10 خانات)',
-                '<div class="bk-scan-row">' +
-                  '<span class="bk-input-ic">' + UI.ic('card') + '</span>' +
-                  inputHtml('serial', 'text', 'مثال: 7KQ4M9TR2X', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.08em;text-transform:uppercase" inputmode="latin" autocomplete="off" spellcheck="false" maxlength="18"') +
-                '</div>',
-                'عشر خانات من حروف وأرقام مطبوعة تحت الباركود على وجه البطاقة.') +
-              '<button class="btn btn-gold bk-cta" id="bk-apply">' + UI.ic('arrow-right') + ' ابدأ التقديم</button>' +
-            '</div>' +
-
-            '<div class="bk-entry-foot">' +
-              '<button type="button" class="bk-footbtn" id="bk-lookup">' + UI.ic('search') + ' حالة بطاقتي وإعادة الطباعة</button>' +
-              (CFG.company && CFG.company.phones && CFG.company.phones[0]
-                ? '<a class="bk-footbtn is-wa" href="https://wa.me/' +
-                  String(CFG.company.phones[0]).replace(/\D/g, '').replace(/^0/, '964') +
-                  '" target="_blank" rel="noopener">' + UI.ic('whatsapp') + ' ما عندك بطاقة؟ خابرنا</a>'
-                : '') +
-            '</div>' +
+        /* ── لوحة المسح ── */
+        '<section class="bk-panel bk-panel-scan is-open" id="bk-panel-scan" role="tabpanel" aria-labelledby="bk-tab-scan">' +
+          '<div class="bk-cam">' + qrArtHtml() +
+            '<p class="bk-cam-hint">وجّه الكاميرا نحو الباركود المطبوع على وجه البطاقة — القراءة تلقائية.</p>' +
           '</div>' +
+          '<button type="button" class="btn btn-gold bk-cta" id="bk-scan">' + UI.ic('scan') + ' افتح الكاميرا</button>' +
+          '<label class="bk-link" for="bk-scan-file">' + UI.ic('upload') + ' أو ارفع صورة للباركود</label>' +
+          '<input type="file" id="bk-scan-file" accept="image/*" hidden>' +
+        '</section>' +
+
+        /* ── لوحة الكتابة ── */
+        '<section class="bk-panel bk-panel-manual" id="bk-manual" role="tabpanel" aria-labelledby="bk-manual-toggle">' +
+          fieldHtml('serial', 'باركود البطاقة (10 خانات)',
+            '<div class="bk-scan-row">' +
+              '<span class="bk-input-ic">' + UI.ic('card') + '</span>' +
+              inputHtml('serial', 'text', 'مثال: 7KQ4M9TR2X', serial, 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.1em;text-transform:uppercase" inputmode="latin" autocomplete="off" spellcheck="false" maxlength="18"') +
+            '</div>',
+            'عشر خانات من حروف وأرقام مطبوعة تحت الباركود.') +
+          '<button type="button" class="btn btn-gold bk-cta" id="bk-apply">' + UI.ic('arrow-right') + ' متابعة التقديم</button>' +
+        '</section>' +
+
+        '<div class="bk-entry-foot">' +
+          '<button type="button" class="bk-footbtn" id="bk-lookup">' + UI.ic('search') + ' حالة بطاقتي وإعادة الطباعة</button>' +
+          (CFG.company && CFG.company.phones && CFG.company.phones[0]
+            ? '<a class="bk-footbtn is-wa" href="https://wa.me/' +
+              String(CFG.company.phones[0]).replace(/\D/g, '').replace(/^0/, '964') +
+              '" target="_blank" rel="noopener">' + UI.ic('whatsapp') + ' ما عندك بطاقة؟ خابرنا</a>'
+            : '') +
         '</div>' +
 
         '<p class="bk-entry-note">' + UI.ic('lock') +
-          ' لا نطلب رمز الفرصة هنا، ولا نحفظ أي بيانات من جهازك — القراءة من قاعدة الشركة فقط.</p>' +
+          ' لا نطلب رمز الفرصة هنا، ولا نحفظ أي بيانات من جهازك.</p>' +
       '</div>';
 
-    /* ---------------- الربط ---------------- */
-    var goBtn = document.getElementById('bk-apply');
-    var lookBtn = document.getElementById('bk-lookup');
+    /* ---------------- المنطق ---------------- */
+    var sheet = document.getElementById('bk-sheet');
+    var scanTab = document.getElementById('bk-tab-scan');
+    var manTab = document.getElementById('bk-manual-toggle');
+    var scanPanel = document.getElementById('bk-panel-scan');
+    var manPanel = document.getElementById('bk-manual');
     var scanBtn = document.getElementById('bk-scan');
     var fileInp = document.getElementById('bk-scan-file');
-    var manualBtn = document.getElementById('bk-manual-toggle');
-    var manual = document.getElementById('bk-manual');
+    var goBtn = document.getElementById('bk-apply');
+    var lookBtn = document.getElementById('bk-lookup');
     var inp = document.getElementById('bk-serial');
+    var mode = 'scan';
 
-    function openManual(focus) {
-      if (manual) manual.classList.add('is-open');
-      if (manualBtn) {
-        manualBtn.setAttribute('aria-expanded', 'true');
-        manualBtn.classList.add('is-open');
-      }
-      if (focus && inp) setTimeout(function () { try { inp.focus(); } catch (e) { } }, 40);
-    }
-    function toggleManual() {
-      if (!manual) return;
-      if (manual.classList.contains('is-open')) {
-        manual.classList.remove('is-open');
-        if (manualBtn) { manualBtn.setAttribute('aria-expanded', 'false'); manualBtn.classList.remove('is-open'); }
-        return;
-      }
-      openManual(true);
+    function paintCard() { paintCardFace(); }
+
+    function setMode(next, focus) {
+      mode = next === 'manual' ? 'manual' : 'scan';
+      var manual = mode === 'manual';
+      sheet.classList.toggle('bk-mode-manual', manual);
+      sheet.classList.toggle('bk-mode-scan', !manual);
+      if (scanTab) { scanTab.setAttribute('aria-selected', String(!manual)); scanTab.tabIndex = manual ? -1 : 0; }
+      if (manTab) { manTab.setAttribute('aria-selected', String(manual)); manTab.setAttribute('aria-expanded', String(manual)); manTab.tabIndex = manual ? 0 : -1; }
+      if (scanPanel) scanPanel.classList.toggle('is-open', !manual);
+      if (manPanel) manPanel.classList.toggle('is-open', manual);
+      if (manual && focus && inp) setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) { } }, 60);
+      paintCard();
     }
 
-    function paintState() {
-      paintCardFace();
-      if (goBtn) goBtn.classList.toggle('is-ready', !!serialPattern(serial));
-    }
+    if (scanTab) scanTab.addEventListener('click', function () { setMode('scan'); });
+    if (manTab) manTab.addEventListener('click', function () { setMode('manual', true); });
+    /* مفاتيح الأسهم بين التبويبين (سلوك tablist المعتاد) */
+    [scanTab, manTab].forEach(function (tab) {
+      if (!tab) return;
+      tab.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        e.preventDefault();
+        setMode(mode === 'scan' ? 'manual' : 'scan', true);
+        var t = (mode === 'scan' ? scanTab : manTab);
+        if (t) { try { t.focus(); } catch (err) { } }
+      });
+    });
 
     if (inp) {
       inp.addEventListener('input', function () {
@@ -385,36 +391,34 @@
         if (typed !== inp.value) inp.value = typed;
         serial = typed;
         setErr('serial', '');
-        paintState();
+        paintCard();
+        if (goBtn) goBtn.classList.toggle('is-ready', !!serialPattern(serial));
       });
       inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') doApply(); });
     }
     if (goBtn) goBtn.addEventListener('click', doApply);
-    if (manualBtn) manualBtn.addEventListener('click', toggleManual);
     if (lookBtn) lookBtn.addEventListener('click', function () {
       if (!String(serial || '').trim()) {
-        openManual(true);
+        setMode('manual', true);
         setErr('serial', 'اكتب رقم البطاقة أو امسحه أولاً لعرض حالتها.');
         return;
       }
       doLookup();
     });
-    if (scanBtn) scanBtn.addEventListener('click', function () {
-      if (!scannerSupported()) { openManual(true); return; }
-      openScan();
-    });
+    if (scanBtn) scanBtn.addEventListener('click', function () { openScan(); });
     if (fileInp) fileInp.addEventListener('change', function () {
       var f = fileInp.files && fileInp.files[0];
       if (f) openScan(f);
-      try { fileInp.value = ''; } catch (e) { }   /* نفس الصورة قابلة للاختيار مرة أخرى */
+      try { fileInp.value = ''; } catch (e) { }
     });
 
-    paintState();
+    paintCard();
+    if (goBtn) goBtn.classList.toggle('is-ready', !!serialPattern(serial));
 
-    /* رقم جاهز (من رابط أو مسح سابق) يفتح الإدخال اليدوي ويُظهر الحالة */
-    if (serial && serialPattern(serial)) openManual(false);
-    /* متصفح بلا مسح: لا نُخفي البديل عن الزبون */
-    else if (!canScan) openManual(false);
+    /* متصفح بلا قارئ باركود: نبدأ مباشرةً على الكتابة (بلا طريق مسدود) */
+    if (!canScan) setMode('manual', false);
+    /* رقم جاهز من رابط أو مسح سابق: يظهر على شريط البطاقة ويُعرَض في الكتابة */
+    else if (serial && serialPattern(serial)) setMode('manual', false);
 
     if (routeErr) {
       setErr('serial', routeErr);
