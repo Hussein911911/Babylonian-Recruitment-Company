@@ -118,12 +118,12 @@ try {
   app.cardPrintCode = '7A2C9E4B1D8F6C03'; other.cardPrintCode = '8B3DAF5C2E906D14'; // Already-printed transition cards.
   const attempts = S.getAttempts(app.serial);
   check('already-issued independent-code fixtures retain their distinct verification codes', /^[A-F0-9]{16}$/.test(app.cardPrintCode) && app.cardPrintCode !== other.cardPrintCode && attempts.every((a) => a.code !== app.cardPrintCode));
-  check('local new cards reject every chance code and another card secret', attempts.every((a) => !S.cardVerifyCode(app.serial, a.code).ok) && !S.cardVerifyCode(app.serial, other.cardPrintCode).ok);
+  check('local new cards reject every chance code and another card secret', attempts.filter((a) => a.code).every((a) => !S.cardVerifyCode(app.serial, a.code).ok) && !S.cardVerifyCode(app.serial, other.cardPrintCode).ok);
   check('local formatted independent code authorizes reprint', S.cardVerifyCode(app.serial, app.cardPrintCode.toLowerCase().match(/.{4}/g).join('-')).ok);
   const safe = S.lookupCard(app.serial).card;
   check('local barcode lookup marks new flow without leaking secrets', safe.usesCardPrintCode === true && !JSON.stringify(safe).includes(app.cardPrintCode));
   const html = w.HRCVoucher.buildHtml(app);
-  check('wallet prints exactly one secret, no chance codes or customer PII', (html.match(/class="code"/g) || []).length === 1 && html.includes(app.cardPrintCode.match(/.{4}/g).join('-')) && attempts.every((a) => !html.includes(a.code)) && !html.includes(app.fullName) && !html.includes(app.phone));
+  check('wallet prints exactly one secret, no chance codes or customer PII', (html.match(/class="code"/g) || []).length === 1 && html.includes(app.cardPrintCode.match(/.{4}/g).join('-')) && attempts.map((a) => a.code).filter(Boolean).every((c) => !html.includes(c)) && !/رمز الفرصة/.test(html) && !html.includes(app.fullName) && !html.includes(app.phone));
   // Exercise the actual public dialog with the newly issued card, not just APIs.
   let printed = 0;
   w.print = () => { printed++; };

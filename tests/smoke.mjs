@@ -236,9 +236,10 @@ await (async () => {
     if (!txt.includes('HRC-BC-000117')) return bad(name, 'الباركود غير ظاهر');
     if (txt.includes('علي حسين محمد')) return bad(name, '⚠️ الاسم الكامل ظهر بلا تقنيع');
     if (txt.includes('07701112233')) return bad(name, '⚠️ الهاتف الكامل ظهر بلا تقنيع');
-    const codes = site.window.HRCStore.getAttempts('HRC-BC-000117').map((t) => t.code);
-    const leaked = codes.some((c) => txt.includes(c));
+    const codes = site.window.HRCStore.getAttempts('HRC-BC-000117').map((t) => t.code).filter(Boolean);
+    const leaked = codes.length ? codes.some((c) => txt.includes(c)) : false;
     if (leaked) return bad(name, '⚠️ رمز فرصة ظهر في شاشة الحالة');
+    if (/رمز الفرصة/.test(txt)) return bad(name, '⚠️ ما زالت الشاشة تعرض «رمز الفرصة»');
     if (!/فرصة متاحة|الفرص|فرصت/.test(txt)) return bad(name, 'حالة الفرص غير ظاهرة');
     return ok(name);
   } catch (e) { bad(name, e.message); }
@@ -475,24 +476,15 @@ check('مُحلّل الباركود الممسوح: رابط apply · بارك�
 })();
 
 await (async () => {
-  const name = 'بطاقتي: استخدام فرصة برمز خاطئ يُرفض ثم برمز صحيح يثبّت التقديم';
+  const name = 'بطاقتي: استخدام فرصة بالباركود وحده (بلا أي رمز)';
   try {
     lastModal(site.doc).querySelector('#bk-use').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 60));
     const sel = lastModal(site.doc).querySelector('#bk-job');
     if (!sel) return bad(name, 'قائمة الوظائف المتاحة غير ظاهرة');
+    if (lastModal(site.doc).querySelector('#bk-code')) return bad(name, 'ما زال حقل رمز الفرصة موجوداً');
     sel.value = 'HRC-1046';
     sel.dispatchEvent(new site.window.Event('change', { bubbles: true }));
-    const codeInp = lastModal(site.doc).querySelector('#bk-code');
-    codeInp.value = '0000-ZZ';
-    codeInp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
-    lastModal(site.doc).querySelector('#bk-confirm').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 160));
-    const err = lastModal(site.doc).querySelector('[data-bk-err="code"]');
-    if (!err || !/رمز الفرصة غير صحيح/.test(err.textContent)) return bad(name, 'رمز خاطئ مرّ بلا اعتراض: ' + (err && err.textContent));
-    const real = site.window.HRCStore.getAttempts('HRC-BC-000117').find((t) => t.slotStatus === 'empty').code;
-    codeInp.value = real;
-    codeInp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
     lastModal(site.doc).querySelector('#bk-confirm').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 260));
     const job = site.window.HRCStore.getJob('HRC-1046');
@@ -511,13 +503,8 @@ await (async () => {
     lastModal(site.doc).querySelector('#bk-reprint').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 60));
     const rc = lastModal(site.doc).querySelector('#bk-rcode');
-    if (!rc) return bad(name, 'شاشة إعادة الطباعة لا تطلب رمز الفرصة');
-    rc.value = '1111-AA';
-    rc.dispatchEvent(new site.window.Event('input', { bubbles: true }));
-    lastModal(site.doc).querySelector('#bk-print').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 160));
-    const err = lastModal(site.doc).querySelector('[data-bk-err="rcode"]');
-    if (!err || !/رمز التحقق غير صحيح/.test(err.textContent)) return bad(name, 'رمز خاطئ مرّ في إعادة الطباعة');
+    /* بعد إلغاء رموز الفرص: البطاقة بلا رمز → تعود شاشة الحالة مباشرة (لا رمز) */
+    if (!rc) return ok(name + ' — البطاقة بلا رمز فلا يُطلب أي رمز');
     const real = site.window.HRCStore.getAttempts('HRC-BC-000117')[0].code;
     rc.value = real;
     rc.dispatchEvent(new site.window.Event('input', { bubbles: true }));
@@ -605,13 +592,11 @@ check('تصميم البطاقة يعرض رمز تحقق واحداً مستق�
   const style = site.doc.getElementById('hrc-card-style').textContent;
   return (/box-sizing:border-box;width:86mm;height:54mm/.test(style) && /size:86mm 54mm/.test(style)) || 'تغير المقاس الفعلي';
 });
-check('البطاقة الأصلية تُطبع برمزي الفرصتين مع حفظ الشروط', () => {
+check('البطاقة الأصلية تُطبع بلا أي رمز فرصة مع حفظ الشروط', () => {
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
-  const attempts = site.window.HRCStore.getAttempts('HRC-BC-000120');
   const html = site.window.HRCVoucher.buildHtml(app);
-  const codes = attempts.map((t) => t.code);
-  if (!codes.every((c) => /^\d{4}-[A-HJ-NP-Z]{2}$/.test(c || ''))) return 'رمز فرصة بصيغة خاطئة: ' + codes.join(',');
-  if (!codes.every((code) => html.includes(code))) return 'لم تُسترجع رموز الفرص الأصلية';
+  if (/رمز الفرصة/.test(html)) return 'ما زال الظهر يطبع «رمز الفرصة»';
+  if (/\b\d{4}-[A-HJ-NP-Z]{2}\b/.test(html)) return 'ظهر البطاقة يحمل رمزاً بصيغة رمز الفرصة';
   const rules = ['فرصتين مستقلتين', '24 ساعة', 'ولا تعود', 'مكتب استنساخ'];
   const miss = rules.filter((r) => !html.includes(r));
   return miss.length === 0 || 'تعليمات ناقصة بالظهر: ' + miss.join(' , ');
@@ -706,25 +691,22 @@ check('الاختبارات الذاتية لمولّد الباركود تنج�
 /* ======================= 3) منطق العمل ======================= */
 console.log('\n=== 3) منطق الفرصتين والحجز 24 ساعة والحالة الحرجة ===');
 const S = site.window.HRCStore;
-check('البطاقة الجديدة تُصدر بباركود HRC-BC وفرصتين برموز مستقلة', () => {
+check('البطاقة الجديدة تُصدر بباركود وفرصتين بلا أي رموز', () => {
   const app = S.createApplicant({ fullName: 'فحص البطاقة', phone: '07711111110', address: 'الحلة', posName: 'مكتب فحص — شارع 40' });
   if (!/^[2-9A-HJKMNP-Z]{10}$/.test(app.serial)) return 'الباركود: ' + app.serial;
   if (app.feePaid !== true) return 'البطاقة تُباع كاشاً — يجب أن تكون مدفوعة عند الإصدار';
   if (!app.posName) return 'نقطة البيع غير مسجلة';
   const att = S.getAttempts(app.serial);
   if (att.length !== 2) return 'عدد الفرص: ' + att.length;
-  const codes = att.map((t) => t.code);
-  if (!codes.every((c) => /^\d{4}-[A-HJ-NP-Z]{2}$/.test(c || ''))) return 'صيغة رمز فرصة: ' + codes.join(',');
-  if (codes[0] === codes[1]) return 'الرمزان متطابقان!';
+  if (att.some((t) => t.code)) return 'ما زال يُولَّد رمز فرصة: ' + att.map((t) => t.code).join(',');
   if (S.listPosNames().indexOf('مكتب فحص — شارع 40') < 0) return 'نقطة البيع غير مدرجة بقائمة الإكمال';
   return true;
 });
 await (async () => {
-  const name = 'التقديم الذاتي (باركود + رمز فرصة) يحجز الوظيفة 24 ساعة';
+  const name = 'التقديم الذاتي بالباركود وحده يحجز الوظيفة 24 ساعة';
   try {
     const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
-    const code = S.getAttempts(serial).find((t) => t.slotStatus === 'empty').code;
-    const res = await S.cardUseChance(serial, code, 'HRC-1042');
+    const res = await S.cardUseChance(serial, 'HRC-1042');
     if (!res || !res.ok) return bad(name, (res && res.error) || 'رفض غير متوقع');
     const job = S.getJob('HRC-1042');
     const hours = S.diffHours(job.holdExpiresAt, new Date());
@@ -733,23 +715,30 @@ await (async () => {
   } catch (e) { bad(name, e.message); }
 })();
 await (async () => {
-  const name = 'التقديم الذاتي برمز فرصة خاطئ مرفوض ولا يستهلك الفرصة';
+  const name = 'التقديم الذاتي على وظيفة غير متاحة يُرفض ولا يستهلك الفرصة';
   try {
     const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
     const left = S.attemptsLeft(serial);
-    const res = await S.cardUseChance(serial, '9999-QQ', 'HRC-1042');
-    const pass = (!res.ok && /رمز الفرصة غير صحيح/.test(res.error) && S.attemptsLeft(serial) === left);
+    const res = await S.cardUseChance(serial, 'HRC-1049');
+    const pass = (!res.ok && S.attemptsLeft(serial) === left);
     return pass ? ok(name) : bad(name, JSON.stringify({ res: res.error, left: left, now: S.attemptsLeft(serial) }));
   } catch (e) { bad(name, e.message); }
 })();
-check('رمز التحقق المستقل يكشف بيانات الطباعة بعد إثبات الحيازة', () => {
+check('إعادة الطباعة: بطاقة بلا رمز تُفتح بالباركود، وبطاقة برمز ترفض الخطأ', () => {
   const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
-  const code = S.getAttempts(serial)[0].code;
-  const r = S.cardVerifyCode(serial, code);
+  const r = S.cardVerifyCode(serial, '');
   const bad1 = !r.ok || !r.app || r.app.serial !== serial || !r.attempts || r.attempts.length !== 2;
   if (bad1) return 'شكل الرد: ' + JSON.stringify({ ok: r.ok, app: r.app && r.app.serial });
-  const r2 = S.cardVerifyCode(serial, '0000-AA');
-  return r2.ok === false || 'رمز خاطئ قُبل!';
+  /* بطاقة لها رمز تحقق مطبوع: لا تُفتح إلا به */
+  let withCode = S.listApplicants({}).find((a) => a.cardPrintCode);
+  if (!withCode) {
+    withCode = S.createApplicant({ fullName: 'بطاقة برمز', phone: '07711111111' });
+    /* رمز التحقق المستقل يُضبط عند الإصدار من القاعدة/اللوحة */
+    S.getApplicant(withCode.serial).cardPrintCode = '7A2C9E4B1D8F6C03';
+  }
+  const okCode = S.cardVerifyCode(withCode.serial, '7A2C9E4B1D8F6C03');
+  const badCode = S.cardVerifyCode(withCode.serial, '0000-AA');
+  return (okCode.ok && badCode.ok === false) || 'حماية رمز التحقق لا تعمل';
 });
 check('رفض المرشح يعيد الوظيفة «متاحة» والفرصة مستهلكة لا تعود', () => {
   const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
@@ -764,8 +753,7 @@ await (async () => {
   const name = 'انتهاء مهلة 24 ساعة يدخل الوظيفة «حالة حرجة» — لا إفراج تلقائي';
   try {
   const serial = S.listApplicants({ q: 'فحص البطاقة' })[0].serial;
-  const code = S.getAttempts(serial).find((t) => t.slotStatus === 'empty').code;
-  const r = await S.cardUseChance(serial, code, 'HRC-1047');
+  const r = await S.cardUseChance(serial, 'HRC-1047');
   if (!r.ok) return bad(name, r.error);
   // إرجاع المهلة إلى الماضي لمحاكاة انتهاء الـ24 ساعة
   const job = S.getJob('HRC-1047');
@@ -1000,7 +988,7 @@ check('إصدار دفعة بطاقات فارغة: باركودات عشوائ�
   if (!blanks.every((b) => b.status === 'blank' && !b.fullName && !b.issueDate && !b.expiryDate))
     return 'بطاقة فارغة ببيانات زبون أو تواريخ';
   const codes = blanks.flatMap((b) => dash.window.HRCStore.getAttempts(b.serial).map((t) => t.code));
-  if (codes.length !== 10 || new Set(codes).size !== 10) return 'رموز الفرص: ' + codes.length + ' منها فريد ' + new Set(codes).size;
+  if (codes.some(Boolean)) return 'ما زالت الدفعة تُولّد رموز فرص';
   return true;
 });
 check('إضافة البطاقات للمدير فقط: الموظف مرفوض في المتجر نفسه', () => {

@@ -753,22 +753,12 @@
     });
   }
 
-  /* رمز خاص لكل فرصة داخل البطاقة (4 أرقام + شرطة + حرفان) — يستخدمه الزبون
-     للتقديم الذاتي أونلاين: الباركود وحده لا يكفي لاستهلاك فرصة. */
-  function chanceCode(pool) {
-    var letters = 'ABCDEFGHJKMNPQRSTUVWXYZ';
-    /* pool اختياري: يُمرَّر أثناء seedDb لأن المتغير العام db ما زال null حينها */
-    var attempts = pool || (db ? db.attempts : []);
-    for (var guard = 0; guard < 50+9000*529; guard++) {
-      var code = pad(Math.floor(1000 + Math.random() * 9000), 4) + '-' +
-        letters[Math.floor(Math.random() * letters.length)] +
-        letters[Math.floor(Math.random() * letters.length)];
-      if(guard>=50){var n=guard-50;code=pad(1000+Math.floor(n/529),4)+'-'+letters[Math.floor(n%529/23)]+letters[n%23];}
-      var taken = attempts.some(function (t) { return t.code === code; })||(root.HRCCloud&&root.HRCCloud.chanceUsed&&root.HRCCloud.chanceUsed(code));
-      if (!taken) {if(root.HRCCloud&&root.HRCCloud.rememberChance)root.HRCCloud.rememberChance(code);return code;}
-    }
-    throw new Error('نفدت رموز الفرص الفريدة؛ لا يمكن طباعة رمز مكرر');
-  }
+  /* ⛔ أُلغي توليد رموز الفرص نهائياً (قرار 2026-10-25).
+     لم تعد البطاقة تحمل أي رمز على ظهرها، ولا تُطبع رموز في أي مكان.
+     الاستخدام صار بالباركود وحده: حيازة البطاقة = التحكم (نفس سياسة صفحة
+     التقديم والتحقق منذ 2026-10-06). تُترك هذه الدالة لإرجاع نص فارغ كي تبقى
+     بنية سجل الفرصة كما هي في القاعدة ولا تنكسر المزامنة. */
+  function chanceCode() { return ''; }
 
   function createApplicant(data) {
     var issue = new Date();
@@ -1199,7 +1189,7 @@
 
     audit('حجز مؤقت لوظيفة', 'job', job.code,
       'الفرصة #' + slot.no + ' للبطاقة ' + serial + ' — تعليق الوظيفة ' + hours + ' ساعة حتى ' + fmtDateTime(slot.holdExpiresAt) +
-      (opts.byCustomer ? ' | تقديم ذاتي من الزبون برمز الفرصة' : ''));
+      (opts.byCustomer ? ' | تقديم ذاتي من الزبون بالباركود' : ''));
     save(); emit();
     return { ok: true, attempt: slot, job: job };
   }
@@ -1212,6 +1202,9 @@
     var app = getApplicant(serial);
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود' };
     var normalized = code.replace(/[^A-Z0-9]/g, '');
+    /* بطاقة بلا رمز تحقق مطبوع (جديدة أو قديمة بعد إلغاء رموز الفرص):
+       الحيازة نفسها هي الإثبات — يكفي الباركود. */
+    if (!app.cardPrintCode) return { ok: true, app: app, attempts: getAttempts(serial) };
     var valid = !!normalized && (app.cardPrintCode
       ? normalized === app.cardPrintCode
       : getAttempts(serial).some(function (t) { return String(t.code || '').replace(/[^A-Z0-9]/g, '') === normalized; }));
@@ -1253,21 +1246,20 @@
     };
   }
 
-  /* التقديم الذاتي من الزبون: الباركود + رمز الفرصة + الوظيفة.
-     الرمز سرّ مطبوع على ظهر بطاقته — لا تُستهلك فرصة بدونه. */
+  /* استخدام فرصة من الزبون: الباركود وحده كافٍ — أُلغيت رموز الفرص 2026-10-25.
+     تُستهلك أول فرصة فارغة بالترتيب. */
   function useChance(serial, code, jobCode) {
+    /* توافق: كانت البصمة (serial, code, jobCode) — نقبل الآن (serial, jobCode) */
+    if (jobCode === undefined && code) { jobCode = code; code = ''; }
     serial = String(serial || '').trim().toUpperCase();
-    code = String(code || '').trim().toUpperCase();
     var app = getApplicant(serial);
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود' };
     var st = formStatus(app);
     if (st === 'blank') return { ok: false, error: 'هذه البطاقة فارغة ولم تُبع بعد' };
     if (st === 'expired') return { ok: false, error: 'انتهت صلاحية البطاقة (30 يوماً)' };
     if (st === 'exhausted') return { ok: false, error: 'استُهلكت فرص البطاقة — تشترى بطاقة جديدة من نقاط البيع' };
-    var slot = getAttempts(serial).filter(function (t) {
-      return t.slotStatus === 'empty' && String(t.code || '').toUpperCase() === code;
-    })[0];
-    if (!slot) return { ok: false, error: 'رمز الفرصة غير صحيح — انسخ الرمز المطبوع على ظهر بطاقتك كما هو' };
+    var slot = getAttempts(serial).filter(function (t) { return t.slotStatus === 'empty'; })[0];
+    if (!slot) return { ok: false, error: 'لا توجد فرصة متاحة في هذه البطاقة' };
     var res = selectAttempt(serial, jobCode, { byCustomer: true });
     if (!res.ok) return res;
     audit('تقديم ذاتي ببطاقة', 'applicant', serial,
@@ -1287,6 +1279,7 @@
   }
 
   function cardUseChance(serial, code, jobCode) {
+    if (jobCode === undefined && code) { jobCode = code; code = ''; }
     var st = cloudStatus();
     if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.useChance && cloud.client) {
       return root.HRCCloud.useChance(cloud.client, serial, code, jobCode);

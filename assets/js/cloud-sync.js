@@ -274,17 +274,23 @@
             if ((!op.independentCard && !op.freshCard) || row.slot_status !== 'empty') throw err;
             return finish(client.from('job_attempts').select('*').eq('serial', row.serial).eq('attempt_no', row.attempt_no), op, null).then(function (res) {
               var existing = res && res.data && res.data[0];
-              if (!existing || existing.serial !== row.serial || Number(existing.attempt_no) !== Number(row.attempt_no) || existing.slot_status !== 'empty' || !existing.chance_code) throw err;
+              /* الحارس: نفس البطاقة ونفس رقم الفرصة وحالتها «فارغة» — ولا ننظر
+                 إلى رمز الفرصة إطلاقاً (أُلغيت الرموز 2026-10-25). */
+              if (!existing || existing.serial !== row.serial || Number(existing.attempt_no) !== Number(row.attempt_no) || existing.slot_status !== 'empty') throw err;
               if (op.independentCard) {
-                op.local.code = existing.chance_code;
+                if (existing.chance_code) op.local.code = existing.chance_code;
                 if (hooks && hooks.onOp) hooks.onOp(op, res);
                 return res;
               }
-              // For an original card just created by THIS sync, retain exactly
-              // the two codes sent to the printer. Never edit an older card.
+              /* بطاقة أصلية أُنشئت بهذه المزامنة: لا نكتب رمزاً إطلاقاً؛ يكفي أن
+                 الشاغل موجود وفارغ. (كان يُعاد كتابة رمزي الطباعة القديمين.) */
+              if (!row.chance_code) {
+                if (hooks && hooks.onOp) hooks.onOp(op, res);
+                return res;
+              }
               return finish(client.from('job_attempts').update({ chance_code: row.chance_code })
                 .eq('serial', row.serial).eq('attempt_no', row.attempt_no)
-                .eq('slot_status', 'empty').eq('chance_code', existing.chance_code).select(), op, hooks)
+                .eq('slot_status', 'empty').select(), op, hooks)
                 .then(function (updated) {
                   if (!updated || !updated.data || updated.data.length !== 1) throw err;
                   return updated;

@@ -176,7 +176,7 @@
       employerPhone: job ? job.employer.phone : null,
       vacancyNo: r.vacancy_no || null,
       slotStatus: r.slot_status || 'empty',
-      code: r.chance_code || null,          /* رمز الفرصة السري (ظهر البطاقة) */
+      code: r.chance_code || null,          /* تاريخي: رموز الفرص أُلغيت ولا تُطبع */
       selectedAt: toISO(r.selected_at),
       holdExpiresAt: toISO(r.hold_expires_at),
       closedAt: toISO(r.closed_at),
@@ -202,7 +202,7 @@
       job_id: UUID_RE.test(String(o.jobId || '')) ? o.jobId : null,
       job_code: o.jobCode || null,
       slot_status: o.slotStatus || 'empty',
-      chance_code: o.code || null,          /* رمز الفرصة السري (ظهر البطاقة) */
+      chance_code: o.code || null,          /* تاريخي: أُلغيت رموز الفرص ولا تُطبع */
       selected_at: o.selectedAt || null, hold_expires_at: o.holdExpiresAt || null,
       closed_at: o.closedAt || null, outcome_note: o.note || '',
       employer_decision: o.employerDecision || null, decision_at: o.decisionAt || null,
@@ -783,12 +783,15 @@
       });
   }
 
-  /* التقديم الذاتي: الباركود + رمز الفرصة + الوظيفة */
+  /* التقديم الذاتي: الباركود + الوظيفة (رموز الفرص أُلغيت 2026-10-25) */
+  /* استخدام فرصة: الباركود وحده كافٍ — أُلغيت رموز الفرص (2026-10-25).
+     يُمرَّر p_code فارغاً فتُستهلك أول فرصة فارغة بالترتيب. */
   function useChanceRpc(client, serial, code, jobCode) {
-    if (!serial || !code || !jobCode)
-      return Promise.resolve({ ok: false, error: 'أكمل الباركود ورمز الفرصة والوظيفة' });
+    if (jobCode === undefined && code) { jobCode = code; code = ''; }
+    if (!serial || !jobCode)
+      return Promise.resolve({ ok: false, error: 'أكمل الباركود والوظيفة' });
     return rpcCall(client, 'use_chance', {
-      p_serial: String(serial).trim(), p_code: String(code).trim(), p_job_code: String(jobCode).trim()
+      p_serial: String(serial).trim(), p_code: String(code || '').trim(), p_job_code: String(jobCode).trim()
     })
       .then(function (res) {
         if (res && res.error) {

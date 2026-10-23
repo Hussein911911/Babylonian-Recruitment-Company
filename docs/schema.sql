@@ -252,7 +252,7 @@ create table if not exists brc.job_attempts (
   job_id            uuid references brc.jobs (id) on delete set null,
   job_code          text,
   slot_status       brc.slot_status not null default 'empty',
-  chance_code       text not null default brc.chance_code(),
+  chance_code       text,                    -- تاريخي فقط: أُلغيت رموز الفرص 2026-10-25
   selected_at       timestamptz,
   hold_expires_at   timestamptz,
   closed_at         timestamptz,
@@ -263,8 +263,7 @@ create table if not exists brc.job_attempts (
   decision_at       timestamptz,
   /* ج5 2026-10-06: سبب عدم التوظيف المكتوب من صاحب العمل (إلزامي عند الرفض) */
   employer_reason   text,
-  unique (serial, attempt_no),
-  unique (chance_code)
+  unique (serial, attempt_no)
 );
 create index if not exists attempts_serial_idx on brc.job_attempts (serial);
 create index if not exists attempts_job_idx on brc.job_attempts (job_id);
@@ -916,12 +915,14 @@ begin
     return jsonb_build_object('ok', false, 'error', 'استُهلكت فرص البطاقة — تشترى بطاقة جديدة من نقاط البيع');
   end if;
 
-  -- الفرصة: خانة فارغة رمزها هو المُرسل (الرمز سرّي على ظهر البطاقة)
+  -- ⛔ أُلغيت رموز الفرص (2026-10-25): تُستهلك أول خانة فارغة بالترتيب.
+  --    يُقبل p_code للتوافق مع نسخ قديمة، ويُتجاهل إن كان فارغاً.
   select * into a from brc.job_attempts
-   where serial = f.serial and slot_status = 'empty' and chance_code = upper(btrim(coalesce(p_code, '')))
+   where serial = f.serial and slot_status = 'empty'
+     and (coalesce(btrim(p_code), '') = '' or chance_code = upper(btrim(p_code)))
    order by attempt_no limit 1;
   if a.id is null then
-    return jsonb_build_object('ok', false, 'error', 'رمز الفرصة غير صحيح — انسخ الرمز المطبوع على ظهر بطاقتك كما هو');
+    return jsonb_build_object('ok', false, 'error', 'لا توجد فرصة متاحة في هذه البطاقة');
   end if;
 
   select * into j from brc.jobs where code = upper(btrim(coalesce(p_job_code, ''))) for update;
@@ -958,6 +959,19 @@ begin
     'job', jsonb_build_object('code', j.code, 'title', j.title, 'region', j.region)
   );
 end $$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 2026-10-25 — إلغاء رموز الفرص نهائياً
+-- ---------------------------------------------------------------------------
+--  • لم تعد البطاقة تحمل أي رمز على ظهرها، ولا يُطبع أي رمز فرصة.
+--  • لا يُولَّد رمز لفرصة جديدة: أُزيل default العمود وأُزيل شرط not null.
+--  • استخدام الفرصة صار بالباركود وحده (حيازة البطاقة = التحكم) — نفس سياسة
+--    صفحة التقديم والتحقق منذ 2026-10-06.
+--  • الصفوف القديمة تحتفظ بقيمها التاريخية (لا تُطبع ولا تُطلب)، حفاظاً على
+--    بصمات سجلات الاسترجاع recovery_chances التي تُقارن hash للرمز.
+-- ═══════════════════════════════════════════════════════════════════════════
+alter table brc.job_attempts alter column chance_code drop default;
+alter table brc.job_attempts alter column chance_code drop not null;
 
 create or replace function brc.new_card_print_code() returns text
 language sql volatile set search_path = pg_catalog
@@ -997,15 +1011,15 @@ begin
   if failures >= 8 then
     return jsonb_build_object('ok', false, 'error', 'محاولات كثيرة — حاول بعد 10 دقائق');
   end if;
-  if supplied <> '' then
-    if f.card_print_code is not null then
-      valid := supplied = upper(f.card_print_code);
-    else
-      -- Compatibility ONLY for cards issued before this migration.
-      select exists(select 1 from brc.job_attempts a where a.serial = f.serial
-        and supplied = upper(regexp_replace(coalesce(a.chance_code, ''), '[^A-Za-z0-9]', '', 'g')))
-        into valid;
-    end if;
+  if f.card_print_code is not null then
+    -- بطاقة لها رمز تحقق مطبوع: لا تُطبع إلا به.
+    valid := supplied = upper(f.card_print_code);
+  else
+    -- بطاقة بلا رمز (بعد إلغاء رموز الفرص 2026-10-25): الحيازة هي الإثبات،
+    -- ويُقبل أيضاً أي رمز فرصة قديم مطبوع على بطاقة سبق طبعها.
+    valid := supplied = '' or exists(
+      select 1 from brc.job_attempts a where a.serial = f.serial
+        and supplied = upper(regexp_replace(coalesce(a.chance_code, ''), '[^A-Za-z0-9]', '', 'g')));
   end if;
   if not valid then
     insert into brc.audit_log(username, role, action, entity, entity_id, details)

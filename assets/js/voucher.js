@@ -97,7 +97,6 @@
 
   function esc(v) { return UI ? UI.esc(String(v == null ? '' : v)) : String(v == null ? '' : v); }
 
-  function fmtCode(code) { return String(code || '————'); }
 
   /* الوجه الأمامي بلا بيانات شخصية؛ الصلاحية تبدأ عند البيع. */
   function isBlank(app) {
@@ -138,14 +137,12 @@
       '<span class="addr">' + esc(CFG.company.addressShort) + '</span></div><div class="disc">' + esc(DISCLAIMER) + '</div></div></div>';
   }
 
+  /* ظهر البطاقة بلا أي رموز فرص (قرار 2026-10-25): الشروط والتواصل فقط.
+     البطاقة نفسها بباركودها هي إثبات الحيازة عند التقديم. */
   function backHtml(app, attempts) {
     if (app.cardPrintCode) return independentBackHtml(app, attempts);
-    var layout = attempts.length === 1 ? ' single' : attempts.length > 6 ? ' many dense' : attempts.length > 2 ? ' many' : '';
     return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف"><div class="frame"></div>' +
-      '<div class="hc-back-head"><b>رموز فرص البطاقة</b><span>احتفظ بالبطاقة ورموزها</span></div>' +
-      '<div class="hc-codes' + layout + '">' + attempts.map(function (t, i) {
-        return '<div class="hc-codebox"><div class="clbl">رمز الفرصة ' + (i + 1) + '</div><div class="code">' + esc(fmtCode(t.code)) + '</div></div>';
-      }).join('') + '</div>' +
+      '<div class="hc-back-head"><b>شروط استخدام البطاقة</b><span>لا تحتاج أي رمز — باركود البطاقة يكفي</span></div>' +
       '<ul class="hc-terms">' + TERMS.map(function (n) {
         return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>';
       }).join('') + '</ul>' +

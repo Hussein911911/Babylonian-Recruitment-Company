@@ -227,9 +227,9 @@ check('الباركودات بصيغة 10 خانات (حروف وأرقام) و�
   check('الباركودات عشوائية غير متسلسلة (لا تُخمَّن)', !(nums[1] - nums[0] === 1 && nums[2] - nums[1] === 1),
     blankSerials.join('،'));
 }
-const blankCodes = BLANKS.flatMap((b) => D.getAttempts(b.serial).map((t) => t.code));
-check('رموز الفرص الستة (بطاقتان × فرصتان × 3) فريدة بصيغة NNNN-AA',
-  blankCodes.length === 6 && new Set(blankCodes).size === 6 && blankCodes.every((c) => /^\d{4}-[A-HJ-NP-Z]{2}$/.test(c)));
+const blankCodes = BLANKS.flatMap((b) => D.getAttempts(b.serial).map((t) => t.code)).filter(Boolean);
+check('البطاقات الجديدة لا تحمل أي رمز فرصة (أُلغيت نهائياً 2026-10-25)',
+  blankCodes.length === 0, 'رموز مولّدة: ' + blankCodes.join(','));
 const batchPrintHtml = dash.doc.getElementById('print-root').innerHTML;
 check('ورق الدفعة المطبوع: 3 بطاقات بوجهيها (6 أوجه) بلا أسماء زبائن',
   (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length === 6 &&
@@ -320,9 +320,11 @@ check('البطاقة سارية والفرصة الأولى استُهلكت ب
   D.getJob('HRC-1043').status === 'reserved',
   'المتبقي ' + D.attemptsLeft(SERIAL) + ' / ' + (D.getAttempts(SERIAL)[0] || {}).slotStatus);
 const CHANCES = D.getAttempts(SERIAL);
-check('رموز فرص البطاقة القديمة لا تتغير عند تعبئتها',
-  CHANCES.every((t) => blankCodes.indexOf(t.code) >= 0));
-console.log('   ℹ  البطاقة: ' + SERIAL + ' | الفرصة ١: ' + (CHANCES[0] || {}).code + ' | الفرصة ٢: ' + (CHANCES[1] || {}).code);
+check('تعبئة البطاقة القديمة لا تُنشئ أي رمز فرصة',
+  D.getAttempts(SERIAL).every((t) => !t.code) &&
+  D.getAttempts(SERIAL).length === 2,
+  'رموز: ' + D.getAttempts(SERIAL).map((t) => t.code).join(','));
+console.log('   ℹ  البطاقة: ' + SERIAL + ' | الفرصتان بلا رموز (الباركود وحده)');
 
 /* موديل 2026-10-01: استمارة التوظيف A4 تُطبع تلقائياً جزءاً من عملية البيع —
    هي الوثيقة التي تحمل بيانات الزبون والوظيفة وبيانات صاحب العمل.
@@ -411,26 +413,13 @@ await wait(150);
   if (useBtn) { click(pub.w, useBtn); await wait(250); }
 }
 
-/* استخدام الفرصة: رمز غلط يُرفض، ثم الرمز الصحيح يثبّت التقديم */
+/* استخدام الفرصة: الباركود وحده — بلا أي رمز (قرار 2026-10-25) */
 {
   const box = lastModal(pub.doc);
-  check('خطوة الاستخدام تعرض الوظائف المتاحة وخانة رمز الفرصة', !!box.querySelector('#bk-job') && !!box.querySelector('#bk-code'));
+  check('خطوة الاستخدام تعرض الوظائف المتاحة بلا خانة رمز',
+    !!box.querySelector('#bk-job') && !box.querySelector('#bk-code') &&
+    /لا حاجة لأي رمز/.test(box.textContent));
   setVal(pub.w, box.querySelector('#bk-job'), 'HRC-1042');
-  setVal(pub.w, box.querySelector('#bk-code'), '0000-ZZ');
-  click(pub.w, box.querySelector('#bk-confirm'));
-  await wait(300);
-  const errHost = pub.doc.querySelector('[data-bk-err="code"]');
-  check('رمز الفرصة الخاطئ يُرفض برسالة واضحة', !!errHost && /رمز الفرصة/.test(errHost.textContent) &&
-    errHost.style.display !== 'none', 'لم يظهر خطأ الرمز');
-
-  /* رمز الفرصة الأولى (المستهلكة بوظيفة نقطة البيع) لا يُقبل أيضاً */
-  setVal(pub.w, box.querySelector('#bk-code'), CHANCES[0].code);
-  click(pub.w, box.querySelector('#bk-confirm'));
-  await wait(300);
-  check('رمز فرصة مستهلكة لا يُقبل (الفرصة تُستهلك بالتقديم)', !!errHost && /رمز الفرصة/.test(errHost.textContent));
-
-  /* الرمز الصحيح: رمز الفرصة الثانية */
-  setVal(pub.w, box.querySelector('#bk-code'), CHANCES[1].code);
   click(pub.w, box.querySelector('#bk-confirm'));
   await wait(400);
 }
@@ -469,8 +458,8 @@ await wait(900);
     text.includes('مرتضى كريم جبر') && text.includes('07811234599'));
   check('التقديم الجاري (HRC-1042) وبيانات صاحب العمل ظاهرة', text.includes('HRC-1042') &&
     /مكان المقابلة/.test(text) && text.includes('07701234567'));
-  check('صفحة صاحب العمل لا تكشف رموز الفرص (سرّ الزبون)',
-    !CHANCES.some((c) => c && text.includes(c.code)));
+  check('صفحة صاحب العمل لا تعرض أي رمز فرصة (لم تعد موجودة)',
+    !/رمز الفرصة/.test(text));
   const hire = box.querySelector('#bk-emp-hire');
   check('زر «تم التوظيف» ظاهر', !!hire);
   if (hire) click(emp.w, hire);
@@ -994,23 +983,16 @@ await wait(150);
 }
 {
   const box = lastModal(pubCard.doc);
-  /* رمز خاطئ أولاً: إثبات الحيازة إلزامي */
-  setVal(pubCard.w, box.querySelector('#bk-rcode'), '0000-ZZ');
-  click(pubCard.w, box.querySelector('#bk-print'));
-  await wait(300);
-  const errHost = pubCard.doc.querySelector('[data-bk-err="rcode"]');
-  check('إعادة الطباعة برمز خاطئ مرفوضة', !!errHost && /رمز التحقق/.test(errHost.textContent) &&
-    errHost.style.display !== 'none', 'لم يظهر خطأ الرمز');
-
-  setVal(pubCard.w, box.querySelector('#bk-rcode'), CHANCES[1].code);
+  /* بعد إلغاء رموز الفرص: البطاقة بلا رمز تحقق → الطباعة بالباركود مباشرة */
+  check('بطاقة بلا رمز تحقق: لا تطلب شاشة إعادة الطباعة أي رمز',
+    !box.querySelector('#bk-rcode') && /لا حاجة لأي رمز/.test(box.textContent));
   click(pubCard.w, box.querySelector('#bk-print'));
   await wait(450);
 }
 const reprintHtml = pubCard.doc.getElementById('print-root').innerHTML;
-check('إعادة طباعة البطاقة القديمة نجحت: وجهان وباركود ورمزا الفرصتين — وبلا اسم زبون',
+check('إعادة طباعة البطاقة القديمة نجحت: وجهان وباركود بلا أي رموز — وبلا اسم زبون',
   (reprintHtml.match(/class="hrc-card[" ]/g) || []).length === 2 && reprintHtml.includes(SERIAL) &&
-  reprintHtml.includes(CHANCES[0].code) && reprintHtml.includes(CHANCES[1].code) &&
-  !reprintHtml.includes('مرتضى كريم جبر'));
+  !/رمز الفرصة/.test(reprintHtml) && !reprintHtml.includes('مرتضى كريم جبر'));
 check('نافذة الطباعة استُدعيت لإعادة الطباعة', pubCard.w.__printed > 0, 'عدد الاستدعاءات ' + pubCard.w.__printed);
 check('عدّاد طباعة البطاقة زاد (' + printedBefore + ' → ' + P3C.getApplicant(SERIAL).printedCount + ')',
   P3C.getApplicant(SERIAL).printedCount > printedBefore);
@@ -1020,7 +1002,6 @@ check('عدّاد طباعة البطاقة زاد (' + printedBefore + ' → ' 
   const box = lastModal(pubCard.doc);
   const pf = box.querySelector('#bk-print-form');
   check('زر «تحقق واطبع استمارة A4» ظاهر بإعادة الطباعة', !!pf);
-  setVal(pubCard.w, box.querySelector('#bk-rcode'), CHANCES[1].code);
   if (pf) click(pubCard.w, pf);
   await wait(450);
 }
@@ -1029,8 +1010,9 @@ const formReprint = pubCard.doc.getElementById('print-root').innerHTML;
 check('إعادة طباعة استمارة A4 نجحت: الاسم وآخر وظيفة مقدَّم عليها',
   /استمارة توظيف/.test(formReprint) && formReprint.includes(SERIAL) &&
   formReprint.includes('مرتضى كريم جبر') && formReprint.includes('HRC-1042'));
-check('استمارة A4 المعاد طباعتها لا تكشف رموز الفرص',
-  !CHANCES.some((c) => c && formReprint.includes(c.code)));
+check('استمارة A4 المعاد طباعتها لا تحمل أي رمز فرصة',
+  !/رمز الفرصة/.test(formReprint) &&
+  !CHANCES.map((c) => c && c.code).filter(Boolean).some((c) => formReprint.includes(c)));
 
 /* ═══ 9) الملف المستقل: التحقق بالمسار الهاشي بجلسة موظف ═════════════════ */
 step(9, 'الملف المستقل — التحقق بالمسار الهاشي والتنقل (بجلسة موظف)');
