@@ -455,28 +455,45 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
   background: linear-gradient(90deg, var(--gold), var(--turq));
   z-index: 2;
 }
+/** ═══ إطار صورة الوظيفة — مقاس واحد في كل الموقع (2026-10-25) ══════════════
+    المشكلة التي أُصلحت: كانت الصورة تُعرض بثلاث طرق مختلفة (مكبّرة/مقصوصة
+    النصف في مكان، ومصغّرة داخل حدود بيضاء في مكان آخر) فيبدو كل إعلان بمقاس.
+    الآن: إطار واحد بنسبة 10:7 في كل مكان (بطاقة الموقع · نافذة التفاصيل ·
+    بطاقة التقديم · جدول اللوحة)، والصورة داخله:
+      • لا تُقصّ أبداً: object-fit: contain.
+      • ولا تترك فراغاً: خلفها نسخة مكبّرة ضبابية من الصورة نفسها تملأ الإطار
+        (blur fill) فيبدو الإطار ممتلئاً مهما كانت نسبة الصورة.
+    النسبة تُمرَّر عبر متغيّر CSS ‎--img‎ من جافاسكربت. */
 .job-image {
-  width: 100%; height: auto; aspect-ratio: 10 / 7; max-height: 240px;
-  overflow: hidden; position: relative;
-  background: linear-gradient(135deg, #f4f6fb, #e8ecf5);
-  display: grid; place-items: center;
-  padding: 8px;                    /* هامش داخلي يمنع التصاق الصورة بالحدود */
+  position: relative; width: 100%; aspect-ratio: 10 / 7; max-height: 260px;
+  overflow: hidden; display: grid; place-items: center;
+  background: #0e2138;
+  border-radius: 0;
+  --img: none;                     /* تُملأ من جافاسكربت برابط صورة الوظيفة */
 }
-/* الصورة كاملة بلا أي قص: تُحتوى داخل الإطار (contain) ويبقى الإطار ثابتاً
-   فتتساوى البطاقات. كانت cover تقصّ أطراف الصورة — وهذا ما أُصلح 2026-10-24. */
+.job-image::before {
+  content: ''; position: absolute; inset: -6%; z-index: 0; pointer-events: none;
+  background-image: var(--img, none);
+  background-size: cover; background-position: center;
+  filter: blur(16px) saturate(1.15) brightness(.85);
+  opacity: .85;
+  transform: scale(1.08);
+}
+.job-image::after {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(11, 26, 58, .05), rgba(11, 26, 58, .28));
+}
 .job-image img {
+  position: relative; z-index: 1; grid-area: 1 / 1;
   width: 100%; height: 100%; object-fit: contain; object-position: center;
   transition: transform .3s ease;
-  grid-area: 1 / 1; position: relative; z-index: 1;
 }
-/* بديل رمزي يظهر أثناء التحميل أو عند تعذّره — بدل أيقونة الصورة المكسورة */
-.job-image .job-ph { grid-area: 1 / 1; color: #b9c3d6; display: grid; place-items: center; }
-.job-image .job-ph .ic { width: 46px; height: 46px; }
-/* بلا تكبير/قصّ عند المرور — الصورة تبقى كاملة دائماً */
+.job-image .job-ph { grid-area: 1 / 1; z-index: 1; color: #8ea3c0; display: grid; place-items: center; }
+.job-image .job-ph .ic { width: 42px; height: 42px; }
+.job-image.has-img .job-ph { display: none; }
 .job-card:hover .job-image img { transform: scale(1.02); }
-@media (max-width: 720px) {
-  .job-image { aspect-ratio: 4 / 3; max-height: 220px; }
-}
+/* لا نغيّر النسبة على الهاتف: نفس الإطار في كل الأجهزة = مقاس موحّد */
+
 .job-card:hover { transform: translateY(-5px); box-shadow: var(--shadow); border-color: var(--line); }
 .job-card.is-reserved::before { background: linear-gradient(90deg, var(--warn), var(--gold)); }
 .job-card.is-closed::before { background: linear-gradient(90deg, #9aa5bd, #c3cbd9); }
@@ -2563,15 +2580,23 @@ to{opacity:1;transform:none}
 
 
 /* ── صورة الوظيفة داخل نافذة التفاصيل (كاملة بلا قص) ── */
+/* نفس إطار الصورة الموحّد (10:7) داخل نافذة التفاصيل */
 .job-detail-image {
-  width: 100%; max-height: 260px; border-radius: 14px; overflow: hidden;
-  background: linear-gradient(135deg, #f4f6fb, #e8ecf5);
-  border: 1px solid var(--line-soft); margin-bottom: 16px;
-  display: grid; place-items: center; padding: 10px;
+  position: relative; width: 100%; aspect-ratio: 10 / 7; max-height: 320px;
+  border-radius: 14px; overflow: hidden; margin-bottom: 16px;
+  background: #0e2138; display: grid; place-items: center;
+  border: 1px solid var(--line-soft);
+}
+.job-detail-image::before {
+  content: ''; position: absolute; inset: -6%; z-index: 0; pointer-events: none;
+  background-image: var(--img, none);
+  background-size: cover; background-position: center;
+  filter: blur(18px) saturate(1.15) brightness(.85);
+  opacity: .85; transform: scale(1.08);
 }
 .job-detail-image img {
-  width: 100%; height: 100%; max-height: 240px;
-  object-fit: contain; object-position: center; display: block;
+  position: relative; z-index: 1;
+  width: 100%; height: 100%; object-fit: contain; object-position: center; display: block;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2586,6 +2611,7 @@ img { max-width: 100%; height: auto; }
 .job-image img,
 .job-detail-image img,
 .job-thumb img,
+.job-photo img,
 .verify-photo img { object-fit: contain; object-position: center; }
 /* لا تكبير لصور البطاقات عند المرور — يحافظ على كامل الصورة */
 .job-card:hover .job-image img { transform: none; }
@@ -3148,6 +3174,20 @@ img { max-width: 100%; height: auto; }
  .modal { display:block;overflow-y:auto;overscroll-behavior:contain; }
  .modal-body { overflow:visible; }
 }
+
+/* صورة الوظيفة في جدول اللوحة — نفس إطار الموقع (10:7) بتعبئة ضبابية */
+.job-cell-photo{
+  position:relative; display:grid; place-items:center; width:56px; aspect-ratio:10 / 7;
+  border-radius:9px; overflow:hidden; background:#eef1f7;
+  border:1px solid var(--line-soft); flex:none;
+}
+.job-cell-photo::before{
+  content:''; position:absolute; inset:-8%; z-index:0; pointer-events:none;
+  background-image:var(--img, none); background-size:cover; background-position:center;
+  filter:blur(8px) saturate(1.1) brightness(.9); opacity:.9;
+}
+.job-cell-photo img{ position:relative; z-index:1; width:100%; height:100%; object-fit:contain; object-position:center; display:block; }
+.job-cell-photo.is-empty{ background:linear-gradient(135deg,#eef1f7,#d9dfeb); }
 
 </style>
 </head>
@@ -11396,7 +11436,7 @@ img { max-width: 100%; height: auto; }
        صورة مكسورة في القائمة */
     var imageHtml = '';
     if (j.imageUrl) {
-      imageHtml = '<div class="job-image">' +
+      imageHtml = '<div class="job-image" style="--img:url(&quot;' + UI.esc(j.imageUrl) + '&quot;)">' +
         '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
         '<img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async" referrerpolicy="no-referrer"' +
         ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()"></div>';
@@ -11446,7 +11486,8 @@ img { max-width: 100%; height: auto; }
     var attempts = Store.currentUser() ? '' : '';
     /* صورة الوظيفة كاملة أعلى نافذة التفاصيل (إن وُجدت) */
     var imgHtml = j.imageUrl
-      ? '<div class="job-detail-image"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) +
+      ? '<div class="job-detail-image" style="--img:url(&quot;' + UI.esc(j.imageUrl) + '&quot;)">' +
+        '<img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) +
         '" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>'
       : '';
     var body = '' +
@@ -12973,8 +13014,8 @@ img { max-width: 100%; height: auto; }
       }
       if(Number(j.vacancies||1)>1)holdCell='<div class="tiny">'+v.available+' متاح · '+v.held+' محجوز · '+v.filled+' ممتلئ<br>المجموع '+v.total+'</div>';
       var imageCell = j.imageUrl
-        ? '<img src="' + UI.esc(j.imageUrl) + '" style="width:48px;height:48px;object-fit:contain;object-position:center;padding:2px;background:linear-gradient(135deg,#f4f6fb,#e8ecf5);border-radius:10px;border:2px solid var(--line-soft)" alt="' + UI.esc(j.title) + '">'
-        : '<div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#eef1f7,#d9dfeb);display:flex;align-items:center;justify-content:center"><svg class="ic" style="width:20px;height:20px;color:#8fa0c4"><use href="#i-briefcase"/></svg></div>';
+        ? '<span class="job-cell-photo" style="--img:url(&quot;' + UI.esc(j.imageUrl) + '&quot;)"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '"></span>'
+        : '<span class="job-cell-photo is-empty"><svg class="ic" style="width:18px;height:18px;color:#8fa0c4"><use href="#i-briefcase"/></svg></span>';
       return '<tr>' +
         '<td>' + imageCell + '</td>' +
         '<td><span class="chip chip-code mono" style="font-size:.8rem">' + UI.esc(j.code) + '</span><div class="tiny muted" style="margin-top:5px">' + (j.employerPinSet ? '🔒 رمز صاحب العمل مفعّل' : '⚠ يحتاج تعيين رمز صاحب العمل') + '</div></td>' +
@@ -13067,7 +13108,7 @@ img { max-width: 100%; height: auto; }
             '</div>' +
             '<div class="img-tools">' +
               '<button type="button" class="img-tool" id="img-zoom-out" aria-label="تصغير الصورة">−</button>' +
-              '<input type="range" id="img-zoom" min="100" max="250" step="5" value="100" aria-label="نسبة تكبير الصورة">' +
+              '<input type="range" id="img-zoom" min="60" max="250" step="5" value="100" aria-label="نسبة تكبير الصورة (100% = ملء الإطار)">' +
               '<button type="button" class="img-tool" id="img-zoom-in" aria-label="تكبير الصورة">+</button>' +
               '<span class="img-zoom-val" id="img-zoom-val">100%</span>' +
               '<button type="button" class="img-tool-text" id="img-reset">إعادة الضبط</button>' +
@@ -13118,7 +13159,10 @@ img { max-width: 100%; height: auto; }
         var dirty = false;                    /* هل عدّل الموظف الصورة؟ */
         var cur = { zoom: 1, x: 0, y: 0 };    /* الحالة الحالية للإطار */
         var nat = { w: 0, h: 0 };
-        var MIN_Z = 1, MAX_Z = 2.5, STEP_Z = 0.2;
+        /* ١٠٠٪ تعني «ملء الإطار» بنسبة 10:7 — فلا فراغ ولا أشرطة بعد الحفظ،
+           وكل صور الوظائف تخرج بمقاس واحد. النزول إلى ٦٠٪ يسمح بإظهار الصورة
+           كاملة (وخلفها تعبئة ضبابية في الموقع فلا تبدو ناقصة). */
+        var MIN_Z = 0.6, MAX_Z = 2.5, STEP_Z = 0.2;
 
         function clampNum(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
@@ -13131,11 +13175,13 @@ img { max-width: 100%; height: auto; }
           if (hint) {
             hint.textContent = cur.zoom > 1.001
               ? 'تكبير ' + pctNow + '% — اسحب الصورة لاختيار الجزء الظاهر.'
-              : 'الصورة كاملة داخل الإطار · استخدم + و− للتكبير أو اسحبها للتحريك.';
+              : (cur.zoom < 0.999
+                ? 'الصورة كاملة مع خلفية موحّدة — استخدم + لملء الإطار.'
+                : 'الإطار ممتلئ بالصورة · اسحب للتحريك أو استخدم + و− للتكبير.');
           }
           if (!nat.w || !stageEl || !stageEl.clientWidth) return;   /* بلا قياسات: لا تخطيط */
           var sw = stageEl.clientWidth, sh = stageEl.clientHeight;
-          var base = Math.min(sw / nat.w, sh / nat.h);   /* «احتواء» بلا قص عند 100% */
+          var base = Math.max(sw / nat.w, sh / nat.h);   /* ملء الإطار عند 100% */
           var k = base * cur.zoom;
           var w = nat.w * k, h = nat.h * k;
           var maxX = Math.max(0, (w - sw) / 2);

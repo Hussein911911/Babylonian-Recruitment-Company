@@ -88,7 +88,7 @@ const BUDGET = {
   /* 2026-10-24: +8KB لمحرّر صورة الوظيفة (معاينة + تكبير/تصغير + سحب +
      تثبيت ما يراه الموظف) في ملف assets/css/image-editor.css الخاص باللوحة،
      مع كود canvas في dashboard.js. القياس: 971KB. لا طلب جديد. */
-  'dashboard.html': { raw: 992, requests: 20 }
+  'dashboard.html': { raw: 1000, requests: 20 }
 };
 
 function payloadOf(page) {

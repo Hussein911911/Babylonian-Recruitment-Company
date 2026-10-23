@@ -424,7 +424,7 @@
        صورة مكسورة في القائمة */
     var imageHtml = '';
     if (j.imageUrl) {
-      imageHtml = '<div class="job-image">' +
+      imageHtml = '<div class="job-image" style="--img:url(&quot;' + UI.esc(j.imageUrl) + '&quot;)">' +
         '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
         '<img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async" referrerpolicy="no-referrer"' +
         ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()"></div>';
@@ -474,7 +474,8 @@
     var attempts = Store.currentUser() ? '' : '';
     /* صورة الوظيفة كاملة أعلى نافذة التفاصيل (إن وُجدت) */
     var imgHtml = j.imageUrl
-      ? '<div class="job-detail-image"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) +
+      ? '<div class="job-detail-image" style="--img:url(&quot;' + UI.esc(j.imageUrl) + '&quot;)">' +
+        '<img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) +
         '" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>'
       : '';
     var body = '' +

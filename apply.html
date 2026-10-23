@@ -1158,13 +1158,24 @@ body{
   display:flex; align-items:flex-start; gap:12px;
   padding:15px 16px 12px; margin:0;
 }
+/* ═══ مصغّرة صورة الوظيفة — نفس إطار الموقع (10:7) بلا حواف بيضاء ═══════════
+   كانت مربّعة ٥٨px بخلفية بيضاء وإطار، فتبدو مختلفة عن صورة البطاقة في الموقع.
+   الآن: ٧٢×٥٠ (10:7) بتعبئة ضبابية خلف الصورة، فلا فراغ ولا قصّ ولا حدود. */
 .job-thumb{
-  position:relative; flex:none; width:58px; height:58px; border-radius:14px; overflow:hidden;
-  border:1px solid rgba(255,214,120,.30); background:linear-gradient(150deg,#12324f,#0d2238);
+  position:relative; flex:none; width:72px; aspect-ratio:10 / 7; height:auto;
+  border-radius:10px; overflow:hidden; background:#0e2138;
+  border:1px solid rgba(255,214,120,.28);
   box-shadow:0 10px 20px -14px rgba(0,0,0,.9);
 }
-.job-thumb img{ width:100%; height:100%; object-fit:contain; object-position:center; display:block; padding:3px; }
-.job-thumb{ background:#fff; }   /* خلفية بيضاء: الصور الشفافة تُقرأ كاملة */
+.job-thumb::before{
+  content:''; position:absolute; inset:-8%; z-index:0; pointer-events:none;
+  background-image:var(--img, none); background-size:cover; background-position:center;
+  filter:blur(10px) saturate(1.1) brightness(.85); opacity:.85; transform:scale(1.1);
+}
+.job-thumb img{
+  position:relative; z-index:1; width:100%; height:100%;
+  object-fit:contain; object-position:center; display:block;
+}
 .job-id{ flex:1 1 auto; min-width:0; }
 #jobs-list .title{
   margin:0 0 7px; font-size:12.5pt; font-weight:900; line-height:1.5;
@@ -1292,7 +1303,7 @@ body{
   #jobs-list .job-actions{ padding:11px 13px; }
   #jobs-list .job-actions .btn{ flex:1 1 100%; }
   #jobs-list .job-actions .job-details-btn{ flex:1 1 100%; }
-  .job-thumb{ width:50px; height:50px; border-radius:12px; }
+  .job-thumb{ width:60px; border-radius:9px; }
   #jobs-list .title{ font-size:11.5pt; }
 }
 @media (prefers-reduced-motion: reduce){
@@ -2348,7 +2359,7 @@ var G={
         /* ── رأس البطاقة: صورة + عنوان + كود + حالة ── */
         +'<header class="job-head">'
           +(j.imageUrl
-            ? '<span class="job-thumb"><img src="'+esc(j.imageUrl)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"'
+            ? '<span class="job-thumb" style="--img:url(&quot;'+esc(j.imageUrl)+'&quot;)"><img src="'+esc(j.imageUrl)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"'
               +' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.remove()"></span>'
             : '')
           +'<div class="job-id">'

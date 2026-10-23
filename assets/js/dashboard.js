@@ -1120,8 +1120,8 @@
       }
       if(Number(j.vacancies||1)>1)holdCell='<div class="tiny">'+v.available+' متاح · '+v.held+' محجوز · '+v.filled+' ممتلئ<br>المجموع '+v.total+'</div>';
       var imageCell = j.imageUrl
-        ? '<img src="' + UI.esc(j.imageUrl) + '" style="width:48px;height:48px;object-fit:contain;object-position:center;padding:2px;background:linear-gradient(135deg,#f4f6fb,#e8ecf5);border-radius:10px;border:2px solid var(--line-soft)" alt="' + UI.esc(j.title) + '">'
-        : '<div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#eef1f7,#d9dfeb);display:flex;align-items:center;justify-content:center"><svg class="ic" style="width:20px;height:20px;color:#8fa0c4"><use href="#i-briefcase"/></svg></div>';
+        ? '<span class="job-cell-photo" style="--img:url(&quot;' + UI.esc(j.imageUrl) + '&quot;)"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '"></span>'
+        : '<span class="job-cell-photo is-empty"><svg class="ic" style="width:18px;height:18px;color:#8fa0c4"><use href="#i-briefcase"/></svg></span>';
       return '<tr>' +
         '<td>' + imageCell + '</td>' +
         '<td><span class="chip chip-code mono" style="font-size:.8rem">' + UI.esc(j.code) + '</span><div class="tiny muted" style="margin-top:5px">' + (j.employerPinSet ? '🔒 رمز صاحب العمل مفعّل' : '⚠ يحتاج تعيين رمز صاحب العمل') + '</div></td>' +
@@ -1214,7 +1214,7 @@
             '</div>' +
             '<div class="img-tools">' +
               '<button type="button" class="img-tool" id="img-zoom-out" aria-label="تصغير الصورة">−</button>' +
-              '<input type="range" id="img-zoom" min="100" max="250" step="5" value="100" aria-label="نسبة تكبير الصورة">' +
+              '<input type="range" id="img-zoom" min="60" max="250" step="5" value="100" aria-label="نسبة تكبير الصورة (100% = ملء الإطار)">' +
               '<button type="button" class="img-tool" id="img-zoom-in" aria-label="تكبير الصورة">+</button>' +
               '<span class="img-zoom-val" id="img-zoom-val">100%</span>' +
               '<button type="button" class="img-tool-text" id="img-reset">إعادة الضبط</button>' +
@@ -1265,7 +1265,10 @@
         var dirty = false;                    /* هل عدّل الموظف الصورة؟ */
         var cur = { zoom: 1, x: 0, y: 0 };    /* الحالة الحالية للإطار */
         var nat = { w: 0, h: 0 };
-        var MIN_Z = 1, MAX_Z = 2.5, STEP_Z = 0.2;
+        /* ١٠٠٪ تعني «ملء الإطار» بنسبة 10:7 — فلا فراغ ولا أشرطة بعد الحفظ،
+           وكل صور الوظائف تخرج بمقاس واحد. النزول إلى ٦٠٪ يسمح بإظهار الصورة
+           كاملة (وخلفها تعبئة ضبابية في الموقع فلا تبدو ناقصة). */
+        var MIN_Z = 0.6, MAX_Z = 2.5, STEP_Z = 0.2;
 
         function clampNum(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
@@ -1278,11 +1281,13 @@
           if (hint) {
             hint.textContent = cur.zoom > 1.001
               ? 'تكبير ' + pctNow + '% — اسحب الصورة لاختيار الجزء الظاهر.'
-              : 'الصورة كاملة داخل الإطار · استخدم + و− للتكبير أو اسحبها للتحريك.';
+              : (cur.zoom < 0.999
+                ? 'الصورة كاملة مع خلفية موحّدة — استخدم + لملء الإطار.'
+                : 'الإطار ممتلئ بالصورة · اسحب للتحريك أو استخدم + و− للتكبير.');
           }
           if (!nat.w || !stageEl || !stageEl.clientWidth) return;   /* بلا قياسات: لا تخطيط */
           var sw = stageEl.clientWidth, sh = stageEl.clientHeight;
-          var base = Math.min(sw / nat.w, sh / nat.h);   /* «احتواء» بلا قص عند 100% */
+          var base = Math.max(sw / nat.w, sh / nat.h);   /* ملء الإطار عند 100% */
           var k = base * cur.zoom;
           var w = nat.w * k, h = nat.h * k;
           var maxX = Math.max(0, (w - sw) / 2);
