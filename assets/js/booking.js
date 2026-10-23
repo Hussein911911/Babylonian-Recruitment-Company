@@ -331,16 +331,19 @@
         '</section>' +
 
         '<div class="bk-entry-foot">' +
-          '<button type="button" class="bk-footbtn" id="bk-lookup">' + UI.ic('search') + ' حالة بطاقتي وإعادة الطباعة</button>' +
+          '<button type="button" class="bk-footbtn" id="bk-lookup">' +
+            '<span class="bk-footbtn-ic">' + UI.ic('search') + '</span>' +
+            '<span class="bk-footbtn-t">حالة بطاقتي وإعادة الطباعة</span>' +
+          '</button>' +
           (CFG.company && CFG.company.phones && CFG.company.phones[0]
             ? '<a class="bk-footbtn is-wa" href="https://wa.me/' +
               String(CFG.company.phones[0]).replace(/\D/g, '').replace(/^0/, '964') +
-              '" target="_blank" rel="noopener">' + UI.ic('whatsapp') + ' ما عندك بطاقة؟ خابرنا</a>'
+              '" target="_blank" rel="noopener">' +
+              '<span class="bk-footbtn-ic">' + UI.ic('whatsapp') + '</span>' +
+              '<span class="bk-footbtn-t">ما عندي بطاقة؟ اتصل بنا</span>' +
+            '</a>'
             : '') +
         '</div>' +
-
-        '<p class="bk-entry-note">' + UI.ic('lock') +
-          ' لا نطلب رمز الفرصة هنا، ولا نحفظ أي بيانات من جهازك.</p>' +
       '</div>';
 
     /* ---------------- المنطق ---------------- */

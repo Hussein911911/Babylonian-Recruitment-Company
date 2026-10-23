@@ -372,6 +372,29 @@ check('إلغاء التعيين يعيد الاختيار فارغاً قبل �
   pickedCount() === 0);
 
 /* ===========================================================================
+ *  3ج) زر «عرض تفاصيل البطاقة» — يظهر بعد قراءة الباركود ويُظهر بيانات البطاقة
+ * =========================================================================== */
+step('1ج', 'زر «عرض تفاصيل البطاقة» في شاشة الترحيب');
+check('الزر مخفيّ في الوسم الأصلي (لا يظهر قبل قراءة بطاقة معبّأة)',
+  doc.getElementById('welcome-details-wrap').attrs.hidden !== undefined);
+check('بطاقة لم تُعبّأ بعد: الزر لا يظهر (لا تفاصيل بلا بيانات)',
+  doc.getElementById('welcome-details-wrap').attrs.hidden !== undefined);
+check('النافذة مغلقة ابتدائياً (hidden)',
+  doc.getElementById('card-details').attrs.hidden !== undefined);
+vm.runInContext('G.cardDetails()', ctx);
+await tick(20);
+check('النافذة تفتح وتضع رقم البطاقة وحالة كل فرصة',
+  doc.getElementById('card-details').attrs.hidden === undefined &&
+  $('card-details-serial').textContent === 'HRC-BC-000120' &&
+  /الفرصة ١/.test($('card-details-body').textContent) &&
+  /متاحة للاستخدام/.test($('card-details-body').textContent),
+  'الرقم: ' + $('card-details-serial').textContent);
+check('بطاقة لم تُعبّأ: شارة الحالة تقول «بانتظار التعبئة»',
+  /بانتظار التعبئة/.test($('card-details-status').textContent), $('card-details-status').textContent);
+vm.runInContext('G.closeCardDetails()', ctx);
+check('الإغلاق يُخفي النافذة', doc.getElementById('card-details').attrs.hidden !== undefined);
+
+/* ===========================================================================
  *  4) الخطوة 1 — الاسم الثلاثي
  * =========================================================================== */
 step(2, 'الخطوة ١ — الاسم الثلاثي ثم «التالي»');
@@ -392,6 +415,18 @@ setVal('f-name', 'أحمد محمد علي');
 click(findByOnclick('G.next()'));
 await tick(30);
 check('اسم ثلاثي صحيح ⇒ صفحة السكن', active() === 'pg-addr', activePages().join(','));
+
+check('بعد تعبئة الاسم: زر «عرض تفاصيل البطاقة» يظهر مع عدّاد الفرص',
+  doc.getElementById('welcome-details-wrap').attrs.hidden === undefined &&
+  /الفرص المتاحة/.test($('bcd-count').textContent),
+  'العدّاد: «' + $('bcd-count').textContent + '»');
+vm.runInContext('G.cardDetails()', ctx);
+await tick(20);
+check('التفاصيل تعرض الاسم الذي كتبه الزبون وحالة البطاقة',
+  /أحمد محمد علي/.test($('card-details-body').textContent) &&
+  /سارية|بانتظار التعبئة/.test($('card-details-status').textContent),
+  'الشارة: ' + $('card-details-status').textContent);
+vm.runInContext('G.closeCardDetails()', ctx);
 
 /* ===========================================================================
  *  5) الخطوة 2 — السكن (محافظة ← قضاء ← ناحية ← نقطة دالة)

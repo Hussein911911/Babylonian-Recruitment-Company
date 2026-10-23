@@ -578,6 +578,93 @@ body{
 }
 
 
+/* ═══ تفاصيل البطاقة: زر في شاشة الترحيب + نافذة أنيقة ═══ */
+.welcome-details{width:min(100%,600px);margin-top:12px}
+@supports not (display:grid){.welcome-details{display:block}}
+.btn-card-details{
+  display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+  min-height:56px;padding:12px 20px;cursor:pointer;
+  font:800 17px/1.5 'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;
+  color:#f2dca3;background:#132a48;border:1px solid #d8ba6b4d;border-radius:14px;
+  transition:background .2s,border-color .2s,box-shadow .2s;
+}
+.btn-card-details:hover{border-color:#e2c77f;background:#1a3457}
+.btn-card-details:focus-visible{outline:3px solid #e2c77f;outline-offset:4px}
+.btn-card-details svg{flex:none;color:#e8d089}
+.bcd-count{
+  font-size:12.5px;font-weight:700;color:#0f2440;background:#e8d089;
+  border-radius:999px;padding:2px 10px;white-space:nowrap
+}
+.card-sheet{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:18px}
+.card-sheet[hidden]{display:none}
+.card-sheet-veil{position:absolute;inset:0;background:rgba(4,10,24,.72);backdrop-filter:blur(3px)}
+.card-sheet-box{
+  position:relative;width:min(560px,100%);max-height:min(88vh,720px);display:flex;flex-direction:column;
+  background:linear-gradient(160deg,#132a48,#0d1e37);color:#f4efe2;border:1px solid #d8ba6b40;
+  border-radius:20px;box-shadow:0 30px 70px -30px rgba(0,0,0,.75);
+  animation:csIn .24s cubic-bezier(.22,1,.36,1) both;overflow:hidden
+}
+@keyframes csIn{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}
+.card-sheet-head{
+  display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid #ffffff14;
+  background:linear-gradient(135deg,#17325a,#122745)
+}
+.cs-emblem{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#0c1d33;border:1px solid #d8ba6b3d;flex:none}
+.cs-title{flex:1 1 auto;min-width:0}
+.cs-title h2{margin:0;font-size:16.5px;font-weight:900;color:#fff}
+.cs-title p{margin:2px 0 0;font-size:12px;color:#a9b8d2;letter-spacing:.1em}
+.cs-chip{font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.cs-chip.is-ok{color:#9be8b8;background:#1f8f4e29;border:1px solid #1f8f4e5c}
+.cs-chip.is-warn{color:#f2dca3;background:#c8871a29;border:1px solid #c8871a5c}
+.cs-close{
+  width:36px;height:36px;flex:none;border-radius:10px;cursor:pointer;font-size:22px;line-height:1;
+  color:#cfdbef;background:#ffffff10;border:1px solid #ffffff26
+}
+.cs-close:hover{background:#ffffff1f;color:#fff}
+.cs-close:focus-visible{outline:2px solid #e2c77f;outline-offset:2px}
+.card-sheet-body{padding:16px 18px;overflow-y:auto}
+.cs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.cs-f{background:#ffffff08;border:1px solid #ffffff12;border-radius:11px;padding:9px 12px;min-width:0}
+.cs-f span{display:block;font-size:11px;font-weight:700;color:#93a3bf;margin-bottom:3px}
+.cs-f b{display:block;font-size:13.5px;font-weight:800;color:#f4efe2;word-break:break-word}
+.cs-sub{margin:16px 0 8px;font-size:13px;font-weight:900;color:#e8d089;display:flex;align-items:center;gap:7px}
+.cs-sub::before{content:'';width:4px;height:14px;border-radius:2px;background:#c8a24a}
+.cs-chances{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.cs-chance{
+  display:grid;grid-template-columns:78px minmax(0,1fr) auto;align-items:center;gap:10px;
+  background:#ffffff08;border:1px solid #ffffff12;border-radius:11px;padding:10px 12px
+}
+.cs-chance-no{font-size:11.5px;font-weight:800;color:#93a3bf}
+.cs-chance-job{font-size:13px;font-weight:700;color:#f4efe2;min-width:0;word-break:break-word}
+.cs-chance-job b{font-size:11.5px;color:#c5d0e2;font-weight:700}
+.cs-chance-state{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.cs-chance.is-open .cs-chance-state{color:#9be8b8;background:#1f8f4e29;border:1px solid #1f8f4e4d}
+.cs-chance.is-live .cs-chance-state{color:#f2dca3;background:#c8871a29;border:1px solid #c8871a4d}
+.cs-chance.is-done .cs-chance-state{color:#9be8b8;background:#1f8f4e33;border:1px solid #1f8f4e66}
+.cs-chance.is-closed .cs-chance-state{color:#f3b0ad;background:#a8322f29;border:1px solid #a8322f5c}
+.cs-note{margin:14px 0 0;font-size:11.5px;line-height:1.9;color:#93a3bf;border-top:1px dashed #ffffff14;padding-top:10px}
+.card-sheet-foot{
+  display:flex;gap:10px;padding:14px 18px;border-top:1px solid #ffffff14;background:#0e2038
+}
+.card-sheet-foot .btn{flex:1 1 auto;min-height:48px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.btn-sheet-close{
+  flex:0 0 auto;min-height:48px;padding:0 20px;cursor:pointer;border-radius:12px;
+  font:800 14px 'IBM Plex Sans Arabic',sans-serif;color:#cfdbef;background:#ffffff0f;border:1px solid #ffffff26
+}
+.btn-sheet-close:hover{background:#ffffff1f;color:#fff}
+.btn-sheet-close:focus-visible{outline:2px solid #e2c77f;outline-offset:2px}
+@media (max-width:560px){
+  .cs-grid{grid-template-columns:1fr}
+  .cs-chance{grid-template-columns:1fr auto;row-gap:4px}
+  .cs-chance-no{grid-column:1/-1}
+  .card-sheet{padding:10px}
+  .card-sheet-box{max-height:92vh;border-radius:16px}
+  .card-sheet-foot{flex-direction:column-reverse}
+  .btn-sheet-close{width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  .card-sheet-box{animation:none}
+}
 @media screen{.welcome .employer-link{display:flex;align-items:center;justify-content:center;min-height:56px;width:min(100%,600px);padding:12px 20px;margin-top:20px;border:1px solid #d8ba6b55;background:#152c49;color:#f2dca3;border-radius:14px;text-decoration:none;font-weight:800;font-size:18px}.welcome .employer-link:hover{border-color:#e2c77f;background:#1b3658}.welcome .employer-link:focus-visible{outline:3px solid #e2c77f;outline-offset:4px}}
 /* Large navigation below the fields; keyboard docking is progressive enhancement. */
 @media screen {
@@ -671,7 +758,36 @@ body{
         <div class="gold-line anim-fade-up"></div>
         <div id="welcome-status" aria-live="polite" style="min-height:1.5em;color:#e8d089;font-size:9pt"></div>
         <div class="anim-fade-up2"><button class="btn btn-primary" id="btn-start" onclick="G.start()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>ابدأ الآن</button></div>
+        <!-- تفاصيل البطاقة: تظهر فقط بعد قراءة الباركود وتعبئة بيانات البطاقة -->
+        <div class="anim-fade-up2 welcome-details" id="welcome-details-wrap" hidden>
+          <button type="button" class="btn-card-details" id="btn-card-details" onclick="G.cardDetails()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.6"/><path d="M2.5 9.6h19M6 14.5h3.2M12 14.5h2.4"/></svg>
+            <span>عرض تفاصيل البطاقة</span>
+            <span class="bcd-count" id="bcd-count"></span>
+          </button>
+        </div>
         <button type="button" class="employer-link" onclick="G.openEmployer()">صاحب العمل؟ دخول آمن بالرمز السري</button>
+      </div>
+    </div>
+
+    <!-- ═══ نافذة تفاصيل البطاقة ═══ -->
+    <div class="card-sheet" id="card-details" hidden role="dialog" aria-modal="true" aria-labelledby="card-details-title">
+      <div class="card-sheet-veil" onclick="G.closeCardDetails()"></div>
+      <div class="card-sheet-box">
+        <header class="card-sheet-head">
+          <span class="cs-emblem"><svg viewBox="0 0 120 120" width="30" height="30"><use href="#i-emblem" xlink:href="#i-emblem"/></svg></span>
+          <div class="cs-title">
+            <h2 id="card-details-title">تفاصيل البطاقة</h2>
+            <p id="card-details-serial" dir="ltr">—</p>
+          </div>
+          <span class="cs-chip" id="card-details-status">—</span>
+          <button type="button" class="cs-close" onclick="G.closeCardDetails()" aria-label="إغلاق التفاصيل">×</button>
+        </header>
+        <div class="card-sheet-body" id="card-details-body"></div>
+        <footer class="card-sheet-foot">
+          <button type="button" class="btn btn-primary" id="card-details-start" onclick="G.cardDetailsStart()">ابدأ التقديم الآن</button>
+          <button type="button" class="btn-sheet-close" onclick="G.closeCardDetails()">إغلاق</button>
+        </footer>
       </div>
     </div>
 
@@ -925,6 +1041,12 @@ function esc(v){var s=String(v==null?'':v);return s.replace(/&/g,'&amp;').replac
 function printApplication(){var fonts=document.fonts;var ready=fonts&&fonts.load?Promise.all([400,600,700,800,900].map(function(w){return fonts.load(w+' 12px Cairo','العراق ABC 123');})).catch(function(){}):Promise.resolve();ready.then(function(){window.print();});}
 function iraqYear(){return Number(new Intl.DateTimeFormat('en',{timeZone:'Asia/Baghdad',year:'numeric',calendar:'gregory'}).format(new Date()));}
 function money(n){return(n==null||isNaN(n))?'—':Number(n).toLocaleString('en-US')+' د.ع';}
+/* إظهار/إخفاء عنصر بسمة hidden — يعمل في المتصفح وفي DOM الاختبار المصغّر */
+function showEl(el,show){
+  if(!el)return;
+  if(show){try{el.removeAttribute('hidden');}catch(e){} if(el.attrs)delete el.attrs.hidden; el.hidden=false;}
+  else{try{el.setAttribute('hidden','hidden');}catch(e){} el.hidden=true;}
+}
 function ar(n){var a=['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];return String(n).replace(/\d/g,function(d){return a[+d];});}
 function pad2(v){var s=String(v||'');return s.length<2?'0'+s:s;}
 function $(id){return document.getElementById(id);}
@@ -964,6 +1086,93 @@ var pickedJobs=[];       /* وظائف الزبون المعيَّنة لفرص�
 
 var G={
   printApplication:printApplication,
+
+  /* ═══ تفاصيل البطاقة (بعد قراءة الباركود) ═══
+     الزر يظهر فقط إذا كانت البطاقة مُعبّأة/مُفعّلة، ويجمع كل ما تعرفه الصفحة
+     عن البطاقة (البيانات + الفرص) في نافذة واحدة بلا أي طلب قاعدة إضافي. */
+  cardFilled:function(){
+    if(!cardData)return false;
+    var cp=cardData.profile||{}, lp=G.readProfile()||{};
+    return !!(cp.fullName||cp.phone||cp.address||lp.fullName||lp.phone||lp.address||
+      (cardData.status&&cardData.status!=='blank'));
+  },
+  refreshCardDetails:function(){
+    var filled=G.cardFilled();
+    showEl($('welcome-details-wrap'),filled);
+    if(!filled)return;
+    var bcd=$('bcd-count');
+    if(bcd)bcd.textContent=cardData&&cardData.chancesLeft>0
+      ? 'الفرص المتاحة: '+ar(cardData.chancesLeft) : 'انتهت الفرص';
+  },
+  cardDetails:function(){
+    if(!cardData){
+      var ws=$('welcome-status');
+      if(ws)ws.textContent='جارٍ قراءة بيانات البطاقة… أعد المحاولة بعد لحظة.';
+      return;
+    }
+    var p=cardData.profile||{}, lp=G.readProfile()||{};
+    p={fullName:p.fullName||lp.fullName,phone:p.phone||lp.phone,
+       address:p.address||[lp.province,lp.district,lp.landmark].filter(Boolean).join(' - ')||lp.address,
+       dob:p.dob||lp.dob,gender:p.gender||lp.gender};
+    var statusTxt=cardData.chancesLeft<=0?'مستنفدة الفرص':(cardData.status==='blank'?'بانتظار التعبئة':'سارية');
+    var statusCls=cardData.chancesLeft<=0?'is-warn':'is-ok';
+    var dob=p.dob?String(p.dob).slice(0,10).split('-').reverse().join('/'):'—';
+    var addr=[p.address,p.province,p.district].filter(Boolean).join(' — ')||'—';
+    var chanceRows=(cardData.chances||[]).map(function(ch){
+      var label=ch.slotStatus==='empty'?'متاحة للاستخدام'
+        :(ch.slotStatus==='succeeded'?'تم التوظيف'
+        :(ch.slotStatus==='rejected'?'مرفوض'
+        :(ch.slotStatus==='expired'?'انتهت':'قيد المتابعة')));
+      var cls=ch.slotStatus==='empty'?'is-open':(ch.slotStatus==='succeeded'?'is-done':(ch.slotStatus==='rejected'||ch.slotStatus==='expired'?'is-closed':'is-live'));
+      return '<li class="cs-chance '+cls+'">'+
+        '<span class="cs-chance-no">الفرصة '+ar(ch.no||0)+'</span>'+
+        '<span class="cs-chance-job">'+(ch.jobTitle?esc(ch.jobTitle):'لم تُستخدم بعد')+
+          (ch.jobCode?' <b class="mono" dir="ltr">('+esc(ch.jobCode)+')</b>':'')+'</span>'+
+        '<span class="cs-chance-state">'+label+'</span></li>';
+    }).join('');
+
+    $('card-details-serial').textContent=cardData.serial||cardSerial||'—';
+    var st=$('card-details-status');
+    st.textContent=statusTxt;
+    st.className='cs-chip '+statusCls;
+    $('card-details-body').innerHTML=
+      '<div class="cs-grid">'+
+        '<div class="cs-f"><span>اسم صاحب البطاقة</span><b>'+(p.fullName?esc(p.fullName):'— لم تُعبّأ بعد —')+'</b></div>'+
+        '<div class="cs-f"><span>رقم الهاتف</span><b class="mono" dir="ltr">'+(p.phone?esc(p.phone):'—')+'</b></div>'+
+        '<div class="cs-f"><span>السكن</span><b>'+addr+'</b></div>'+
+        '<div class="cs-f"><span>تاريخ الميلاد</span><b dir="ltr">'+dob+'</b></div>'+
+        '<div class="cs-f"><span>الفرص المتاحة</span><b>'+ar(cardData.chancesLeft||0)+' من '+ar(2)+'</b></div>'+
+        '<div class="cs-f"><span>طريقة الدفع</span><b>كاش عند نقطة البيع</b></div>'+
+      '</div>'+
+      '<h3 class="cs-sub">الفرص على هذه البطاقة</h3>'+
+      '<ul class="cs-chances">'+(chanceRows||'<li class="cs-chance is-open">لا توجد فرص مسجَّلة بعد</li>')+'</ul>'+
+      '<p class="cs-note">التفاصيل محدَّثة من قاعدة الشركة عند فتح هذه الصفحة — تُحجز الوظيفة ٢٤ ساعة بعد التقديم، والقرار النهائي للشركة.</p>';
+
+    var sheet=$('card-details');
+    if(!sheet)return;
+    showEl(sheet,true);
+    sheet.classList.add('is-open');
+    try{document.body.style.overflow='hidden';}catch(e){}
+    showEl($('card-details-start'),chancesLeft>0);
+    setTimeout(function(){
+      var b=(cardData&&cardData.chancesLeft>0)?$('card-details-start'):null;
+      try{(b||document.querySelector('.cs-close')).focus();}catch(e){}
+    },40);
+  },
+  closeCardDetails:function(){
+    var sheet=$('card-details');
+    if(!sheet)return;
+    sheet.classList.remove('is-open');
+    showEl(sheet,false);
+    try{document.body.style.overflow='';}catch(e){}
+    var btn=$('btn-card-details');
+    if(btn){try{btn.focus();}catch(e){}}
+  },
+  cardDetailsStart:function(){
+    G.closeCardDetails();
+    G.start();
+  },
+
   openEmployer:function(){
     var base=location.pathname.replace(/[^/]*$/,'');
     location.href=base+'employer.html?form='+encodeURIComponent(cardSerial||'');
@@ -1045,6 +1254,7 @@ var G={
       G.updatePhoneMeter();
     }
     if(target===6){G.renderChances();G.renderFilters();G.renderJobs();G.applyPreJob();}
+    G.refreshCardDetails();
     if(target===7){G.renderReview();}
   },
 
@@ -1970,6 +2180,14 @@ function loadData(){
       chances:(c.chances||[]).map(function(ch){return{no:ch.no,slotStatus:ch.slotStatus,code:'',jobCode:ch.jobCode||'',jobTitle:ch.jobTitle||''};})
     };
     chancesLeft=cardData.chancesLeft;
+
+    /* زر «عرض تفاصيل البطاقة» يظهر فقط إذا كانت البطاقة مُعبّأة أو مُفعّلة
+       (بطاقة فارغة لم تُبع بعد لا معنى لعرض تفاصيلها). */
+    G.refreshCardDetails();
+    var bbtn=$('btn-card-details');
+    if(bbtn&&cardData.serial&&!bbtn.getAttribute('aria-label')){
+      bbtn.setAttribute('aria-label','عرض تفاصيل البطاقة '+cardData.serial);
+    }
     if(cardData.profile.fullName)G.fillProfile(cardData.profile);
     if(c.profileLocked===true||(c.status&&c.status!=='blank')||(c.chances||[]).some(function(ch){return ch.slotStatus!=='empty'&&!!ch.jobCode;}))G.lockProfile(cardData.profile);
 

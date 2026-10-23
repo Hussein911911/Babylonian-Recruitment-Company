@@ -1269,24 +1269,26 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .bk-input-ic svg { width: 17px; height: 17px; }
 .bk-scan-row input { padding-inline-start: 38px !important; min-height: 46px; letter-spacing: .1em; }
 
-/* ── التذييل: مسارا مساعدة هادئان ── */
+/* ── التذييل: زران واضحان (لا روابط نصية) ── */
 .bk-entry-foot {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
-  border-top: 1px solid #eef1f6; padding-top: 6px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 9px;
+  border-top: 1px solid #eef1f6; padding-top: 12px;
 }
 .bk-footbtn {
-  display: inline-flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer;
-  font: inherit; font-size: .77rem; font-weight: 700; color: #5b6784; padding: 9px 4px; min-height: 40px;
-  border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 46px; padding: 9px 12px; cursor: pointer; text-align: center;
+  font: inherit; font-size: .79rem; font-weight: 800; line-height: 1.5;
+  color: var(--lapis-2); background: #fff; border: 1px solid #e2e7f0; border-radius: 11px;
+  transition: border-color .16s ease, background .16s ease, color .16s ease;
 }
-.bk-footbtn svg { width: 15px; height: 15px; color: #8d7c50; }
-.bk-footbtn:hover { color: var(--lapis); text-decoration: underline; text-underline-offset: 3px; }
+.bk-footbtn-ic { display: grid; place-items: center; flex: none; }
+.bk-footbtn svg { width: 16px; height: 16px; color: #8d7c50; }
+.bk-footbtn:hover { border-color: rgba(200, 162, 74, .6); background: #fdfaf2; color: var(--lapis); }
+.bk-footbtn:active { background: #faf5e8; }
 .bk-footbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-.bk-footbtn.is-wa, .bk-footbtn.is-wa svg { color: #1c7a45; }
-.bk-entry-note {
-  display: flex; align-items: center; gap: 7px; margin: 0; font-size: .72rem; color: #7b869c;
-}
-.bk-entry-note svg { width: 13px; height: 13px; color: #9a8347; flex: none; }
+.bk-footbtn.is-wa { color: #1c7a45; border-color: #d6e8dd; background: #f7fbf8; }
+.bk-footbtn.is-wa svg { color: #1c7a45; }
+.bk-footbtn.is-wa:hover { border-color: #9fd0b4; background: #f1f9f4; }
 
 @keyframes bkEnter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 @keyframes bkFade { from { opacity: 0; } to { opacity: 1; } }
@@ -1295,7 +1297,8 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .modal-booking .modal-body { padding: 15px 14px; }
   .bk-card { padding: 11px 12px 10px; }
   .bk-card-num { font-size: .84rem; letter-spacing: .16em; }
-  .bk-entry-foot { justify-content: center; }
+  .bk-entry-foot { grid-template-columns: 1fr; }
+  .bk-footbtn { font-size: .82rem; }
   .bk-switch-thumb { transition-duration: .22s; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -9407,16 +9410,19 @@ to{opacity:1;transform:none}
         '</section>' +
 
         '<div class="bk-entry-foot">' +
-          '<button type="button" class="bk-footbtn" id="bk-lookup">' + UI.ic('search') + ' حالة بطاقتي وإعادة الطباعة</button>' +
+          '<button type="button" class="bk-footbtn" id="bk-lookup">' +
+            '<span class="bk-footbtn-ic">' + UI.ic('search') + '</span>' +
+            '<span class="bk-footbtn-t">حالة بطاقتي وإعادة الطباعة</span>' +
+          '</button>' +
           (CFG.company && CFG.company.phones && CFG.company.phones[0]
             ? '<a class="bk-footbtn is-wa" href="https://wa.me/' +
               String(CFG.company.phones[0]).replace(/\D/g, '').replace(/^0/, '964') +
-              '" target="_blank" rel="noopener">' + UI.ic('whatsapp') + ' ما عندك بطاقة؟ خابرنا</a>'
+              '" target="_blank" rel="noopener">' +
+              '<span class="bk-footbtn-ic">' + UI.ic('whatsapp') + '</span>' +
+              '<span class="bk-footbtn-t">ما عندي بطاقة؟ اتصل بنا</span>' +
+            '</a>'
             : '') +
         '</div>' +
-
-        '<p class="bk-entry-note">' + UI.ic('lock') +
-          ' لا نطلب رمز الفرصة هنا، ولا نحفظ أي بيانات من جهازك.</p>' +
       '</div>';
 
     /* ---------------- المنطق ---------------- */
