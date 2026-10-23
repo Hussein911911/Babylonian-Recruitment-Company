@@ -147,6 +147,29 @@ try {
       return /عرض/.test(t) && /مختارة/.test(t) && /[٠-٩]/.test(t);
     })());
   /* ── صورة الوظيفة داخل البطاقة ── */
+  check('active filters render as removable chips (not raw values scattered in fields)',
+    (() => {
+      reset();
+      set('jf-shift', 'مسائي');
+      const chips = [...w.document.querySelectorAll('#jf-chips .jf-chip')];
+      if (chips.length !== 1) return false;
+      if (!/مسائي/.test(chips[0].textContent)) return false;
+      chips[0].click();
+      const after = w.document.querySelectorAll('#jf-chips .jf-chip').length;
+      return after === 0 && $('jf-shift').value === '' && w.document.getElementById('jf-chips').hidden === true;
+    })());
+  check('job card is structured: state badge + 4 meta cells + pay row + actions',
+    (() => {
+      reset();
+      const card = w.document.querySelector('#jobs-list .job-card');
+      if (!card) return false;
+      const state = card.querySelector('.job-state');
+      const meta = card.querySelectorAll('.job-meta .jm');
+      const pay = card.querySelector('.job-pay .job-pay-v');
+      const acts = card.querySelectorAll('.job-actions .btn');
+      return !!state && meta.length === 4 && !!pay && acts.length >= 2 &&
+        card.querySelectorAll('.jm .jm-ic').length === 4;
+    })());
   check('job cards render a thumbnail only when the job has an image',
     (() => {
       /* الوظائف المعروضة في الصفحة (وليست مخزن المتصفح) */
