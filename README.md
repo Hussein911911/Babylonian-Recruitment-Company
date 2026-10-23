@@ -371,7 +371,7 @@ npm run build        # = node tools/build.mjs
 | المحافظات والدوامات والتصنيفات | `assets/js/config.js` → `governorates` (١٩) / `shifts` / `jobCategories` |
 | مناطق العمل (بيانات الوظيفة فقط — لا فلتر) | `assets/js/config.js` → `regions` |
 | المستخدمون | `assets/js/config.js` → `users` |
-| الألوان والخطوط والهوية | `assets/css/style.css` → المتغيرات `--lapis` `--gold` `--turq` … |
+| الألوان والخطوط والهوية | `assets/css/style.css` → `--lapis` `--gold` `--turq` + `--lux-gold` `--lux-neon` (بطاقات الوظائف) |
 | الشعار (بوابة عشتار) | `src/partials/sprite.html` → الرمز `#i-emblem` + `assets/img/favicon.svg` |
 
 ---

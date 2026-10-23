@@ -710,6 +710,259 @@ body{
   .fs-td,.fs-f,.fs-tr{break-inside:avoid;page-break-inside:avoid}
   .form-sheet{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   الواجهة الفاخرة — فلتر الوظائف وبطاقاتها (2026-10-24)
+   نيون تركوازي + ذهب على لازورد داكن · البطاقة المختارة ترتفع فوق البقية
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --lux-navy:#071426;
+  --lux-navy-2:#0b1d33;
+  --lux-navy-3:#0f2742;
+  --lux-gold:#ffd977;
+  --lux-gold-2:#e8b64c;
+  --lux-gold-3:#a8842f;
+  --lux-neon:#38e8d4;
+  --lux-neon-2:#7ff8ec;
+  --lux-line:rgba(255,214,120,.22);
+  --lux-line-soft:rgba(255,255,255,.08);
+}
+
+/* ─── لوحة الفلترة ─── */
+.job-filters{
+  position:relative; isolation:isolate; overflow:hidden;
+  padding:22px 22px 18px; border-radius:22px; margin-bottom:20px;
+  border:1px solid var(--lux-line);
+  background:
+    radial-gradient(120% 150% at 100% 0%, rgba(56,232,212,.12), transparent 55%),
+    radial-gradient(90% 130% at 0% 0%, rgba(255,214,120,.13), transparent 60%),
+    linear-gradient(160deg, #0a1729, #0c2038 55%, #0a1729);
+  box-shadow:
+    0 30px 70px -42px rgba(0,0,0,.95),
+    inset 0 1px 0 rgba(255,255,255,.06);
+}
+/* خط ذهبي علوي + هالة نيون في الزاوية */
+.job-filters::before{
+  content:''; position:absolute; inset-inline:18%; top:0; height:2px; border-radius:2px;
+  background:linear-gradient(90deg,transparent,var(--lux-gold),var(--lux-neon),transparent);
+  opacity:.85;
+}
+.job-filters::after{
+  content:''; position:absolute; z-index:-1; width:220px; height:220px; border-radius:50%;
+  inset-inline-end:-70px; top:-90px; pointer-events:none;
+  background:radial-gradient(circle, rgba(56,232,212,.20), transparent 68%);
+}
+.job-filters:focus-within{ border-color:rgba(255,214,120,.42); box-shadow:0 0 0 1px rgba(255,214,120,.25),0 30px 70px -42px rgba(0,0,0,.95); }
+
+/* رأس اللوحة */
+.jf-top{ align-items:center; gap:16px; margin-bottom:18px; }
+.jf-top > div:first-child{ position:relative; padding-inline-start:0; }
+.jf-top b{
+  display:inline-flex; align-items:center; gap:9px; font-size:15pt; letter-spacing:-.2px;
+  color:#fff; text-shadow:0 0 22px rgba(255,214,120,.35);
+}
+.jf-top b::before{
+  content:''; width:30px; height:30px; border-radius:10px; flex:none;
+  background:linear-gradient(140deg,var(--lux-gold),var(--lux-gold-3));
+  box-shadow:0 6px 16px -6px rgba(255,214,120,.8), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.jf-top p{ color:#a9bad4; font-size:11.5pt; line-height:1.85; margin:6px 0 0; max-width:52ch; }
+.jf-top .btn{
+  background:transparent; border:1px solid rgba(255,214,120,.42); color:var(--lux-gold);
+  border-radius:11px; font-weight:800; min-height:42px; padding:8px 16px;
+  transition:background .18s,border-color .18s,box-shadow .18s;
+}
+.jf-top .btn:hover{ background:rgba(255,214,120,.12); border-color:var(--lux-gold); box-shadow:0 0 18px -4px rgba(255,214,120,.55); }
+
+/* شبكة الحقول */
+.jf-grid{ gap:14px; }
+.jf-primary{ grid-template-columns:minmax(240px,1.6fr) repeat(3,minmax(0,1fr)); }
+.job-filters label{
+  font-size:11pt; font-weight:800; color:#cfdcf0; margin:0 0 7px; letter-spacing:.1px;
+}
+.job-filters input:not([type=checkbox]), .job-filters select{
+  min-height:50px; border-radius:13px; padding:10px 14px; font-size:12pt; font-weight:600;
+  color:#f7fbff; border:1px solid rgba(255,255,255,.14);
+  background:linear-gradient(180deg, rgba(9,24,42,.95), rgba(12,32,56,.95));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  transition:border-color .16s, box-shadow .16s, background .16s;
+}
+.job-filters input::placeholder{ color:#7d8dab; font-weight:500; }
+.job-filters input:hover, .job-filters select:hover{ border-color:rgba(255,214,120,.4); }
+.job-filters input:focus, .job-filters select:focus{
+  outline:none; border-color:var(--lux-gold);
+  box-shadow:0 0 0 3px rgba(255,214,120,.18), 0 0 22px -6px rgba(56,232,212,.5);
+}
+.job-filters option{ background:#0b1d33; color:#f7fbff; }
+.job-filters select:disabled{
+  opacity:1; color:#9ff3d6; border-color:rgba(56,232,212,.35);
+  background:linear-gradient(180deg, rgba(10,40,38,.9), rgba(8,30,32,.9));
+}
+
+/* فلاتر متقدمة */
+.jf-advanced{
+  margin-top:16px; padding:14px 16px; border-radius:14px;
+  border:1px dashed rgba(255,214,120,.26); background:rgba(255,255,255,.02);
+}
+.jf-advanced[open]{ border-style:solid; border-color:rgba(255,214,120,.34); background:rgba(255,255,255,.035); }
+.jf-advanced summary{
+  cursor:pointer; font-size:11pt; font-weight:800; color:var(--lux-gold); padding:2px 0;
+  list-style:none; display:flex; align-items:center; gap:8px;
+}
+.jf-advanced summary::-webkit-details-marker{ display:none; }
+.jf-advanced summary::before{
+  content:''; width:8px; height:8px; border-radius:2px; background:var(--lux-neon);
+  box-shadow:0 0 10px rgba(56,232,212,.9); transition:transform .2s;
+}
+.jf-advanced[open] summary::before{ transform:rotate(45deg); }
+.jf-advanced .jf-grid{ margin-top:14px; }
+
+/* سطر الأدوات */
+.jf-bottom{ gap:14px; margin-top:16px; align-items:center; }
+.jf-bottom > .btn{
+  border-radius:12px; min-height:44px; font-weight:800;
+  border:1px solid rgba(56,232,212,.4); color:var(--lux-neon-2);
+  background:linear-gradient(180deg, rgba(13,44,52,.9), rgba(9,30,40,.9));
+  transition:box-shadow .18s, border-color .18s, transform .18s;
+}
+.jf-bottom > .btn:hover{ border-color:var(--lux-neon); box-shadow:0 0 22px -6px rgba(56,232,212,.7); transform:translateY(-1px); }
+.job-filters .jf-check{
+  gap:9px; font-size:11pt; font-weight:700; color:#cfdcf0;
+  border:1px solid rgba(255,255,255,.1); border-radius:11px; padding:8px 13px;
+  background:rgba(255,255,255,.03);
+}
+.jf-check input{ width:20px; height:20px; accent-color:var(--lux-gold); }
+
+/* عدّاد النتائج كشارة نيون */
+.job-filters #jobs-count{
+  display:inline-flex; align-items:center; gap:8px; width:auto;
+  font-size:11pt; font-weight:800; color:#d7f7f1;
+  border:1px solid rgba(56,232,212,.32); border-radius:999px;
+  padding:7px 16px; margin-top:16px; background:rgba(56,232,212,.09);
+  box-shadow:0 0 20px -8px rgba(56,232,212,.6);
+}
+.job-filters #jobs-count::before{
+  content:''; width:8px; height:8px; border-radius:50%; background:var(--lux-neon);
+  box-shadow:0 0 8px var(--lux-neon);
+}
+.job-filters #jf-error{ color:#ffb0a6; font-size:11pt; margin-top:10px; }
+
+/* ─── بطاقات الوظائف ─── */
+#jobs-list{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr));
+  gap:20px; align-items:start; padding:16px 4px 26px; overflow:visible;
+}
+#jobs-list .job-card{
+  position:relative; isolation:isolate; overflow:hidden;
+  padding:18px; border-radius:18px; margin:0;
+  border:1px solid rgba(255,214,120,.16);
+  background:
+    radial-gradient(120% 100% at 100% 0%, rgba(56,232,212,.07), transparent 58%),
+    linear-gradient(165deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+  box-shadow:0 18px 40px -32px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.05);
+  transition:transform .26s cubic-bezier(.22,1,.36,1), box-shadow .26s, border-color .26s, background .26s;
+  z-index:1;
+}
+#jobs-list .job-card::before{
+  content:''; position:absolute; inset-inline:0; top:0; height:3px;
+  background:linear-gradient(90deg,var(--lux-gold),var(--lux-neon));
+  opacity:.55; transition:opacity .25s;
+}
+#jobs-list .job-card:hover{
+  transform:translateY(-4px); border-color:rgba(255,214,120,.42);
+  box-shadow:0 26px 50px -28px rgba(0,0,0,.95), 0 0 26px -12px rgba(255,214,120,.55);
+  z-index:2;
+}
+#jobs-list .job-card:hover::before{ opacity:1; }
+
+/* العنوان والشارات */
+#jobs-list .job-head{ align-items:flex-start; gap:12px; margin-bottom:10px; }
+#jobs-list .job-head .title{
+  font-size:13.5pt; font-weight:900; color:#fff; line-height:1.55; letter-spacing:-.2px;
+}
+#jobs-list .job-head .badge{
+  border-radius:999px; padding:5px 11px; font-size:9pt; font-weight:800;
+  border:1px solid rgba(56,232,212,.4); color:#b6f7ee; background:rgba(56,232,212,.12);
+}
+#jobs-list .job-category{
+  font-size:10pt; font-weight:700; color:var(--lux-gold); opacity:.9; margin:2px 0 14px;
+}
+#jobs-list .job-grid{ gap:9px; }
+#jobs-list .job-item{
+  padding:9px 12px; border-radius:11px; border:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.03);
+}
+#jobs-list .job-item .k{ font-size:10pt; color:#93a6c2; font-weight:700; }
+#jobs-list .job-item .v{ font-size:11pt; color:#eef4ff; font-weight:800; }
+#jobs-list .job-actions{ gap:9px; margin-top:16px; }
+#jobs-list .job-actions .btn{
+  border-radius:11px; min-height:44px; font-weight:800; font-size:11pt;
+  border:1px solid rgba(255,214,120,.3); color:#f4e9c8; background:rgba(255,255,255,.04);
+  transition:border-color .18s, background .18s, box-shadow .18s;
+}
+#jobs-list .job-actions .btn:hover{ border-color:var(--lux-gold); background:rgba(255,214,120,.1); }
+#jobs-list .job-actions .btn-primary{
+  background:linear-gradient(140deg,var(--lux-gold),var(--lux-gold-2));
+  color:#20180a; border-color:transparent; box-shadow:0 10px 24px -14px rgba(255,214,120,.9);
+}
+#jobs-list .job-actions .btn-primary:hover{ box-shadow:0 14px 30px -12px rgba(255,214,120,.95); }
+#jobs-list .job-actions .btn-success{
+  background:linear-gradient(140deg,#4ff0d6,#12b39c); color:#04211d; border-color:transparent;
+  box-shadow:0 10px 24px -14px rgba(56,232,212,.9);
+}
+
+/* ═══ البطاقة المختارة: ترتفع فوق بقية الوظائف ═══ */
+#jobs-list .job-card.selected{
+  z-index:9; transform:translateY(-10px) scale(1.018);
+  border-color:var(--lux-gold);
+  background:
+    radial-gradient(120% 110% at 100% 0%, rgba(255,214,120,.22), transparent 60%),
+    radial-gradient(90% 110% at 0% 100%, rgba(56,232,212,.16), transparent 62%),
+    linear-gradient(165deg,#122a45,#0d2138);
+  box-shadow:
+    0 0 0 1px rgba(255,217,119,.95),
+    0 0 30px -4px rgba(255,214,120,.5),
+    0 0 60px -16px rgba(56,232,212,.45),
+    0 34px 60px -24px rgba(0,0,0,.95);
+}
+#jobs-list .job-card.selected::before{ height:4px; opacity:1; }
+#jobs-list .job-card.selected .job-head .title{ color:#fff5d6; text-shadow:0 0 18px rgba(255,214,120,.45); }
+#jobs-list .job-card.selected .job-item{ border-color:rgba(255,214,120,.22); background:rgba(255,214,120,.06); }
+#jobs-list .job-card.selected .job-item .v{ color:#fff; }
+#jobs-list .job-card .pick-mark{
+  top:-13px; inset-inline-start:-13px; width:34px; height:34px; font-size:15pt;
+  background:linear-gradient(145deg,#fff3c9,var(--lux-gold-2));
+  color:#1c1508; border:1px solid rgba(255,255,255,.6);
+  box-shadow:0 8px 20px -6px rgba(255,214,120,.9), 0 0 0 4px rgba(255,214,120,.14);
+}
+/* توهّج ناعم أسفل البطاقة المختارة */
+#jobs-list .job-card.selected::after{
+  content:''; position:absolute; inset:auto 12% -14px 12%; height:22px; border-radius:50%;
+  background:radial-gradient(ellipse at center, rgba(255,214,120,.5), transparent 70%);
+  filter:blur(9px); z-index:-1;
+}
+
+/* ─── استجابة ─── */
+@media (max-width:1100px){
+  .jf-primary{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .jf-search{ grid-column:1/-1; }
+}
+@media (max-width:760px){
+  .job-filters{ padding:18px 16px 16px; border-radius:18px; }
+  .jf-top{ flex-wrap:wrap; gap:12px; }
+  .jf-top b{ font-size:13pt; }
+  .jf-primary{ grid-template-columns:1fr; }
+  .jf-top > .btn{ width:100%; }
+  #jobs-list{ grid-template-columns:1fr; gap:16px; }
+  #jobs-list .job-head .title{ font-size:12.5pt; }
+  /* على الهاتف: ارتفاع أقل كي لا تخرج البطاقة عن الإطار */
+  #jobs-list .job-card.selected{ transform:translateY(-6px) scale(1.008); }
+}
+@media (prefers-reduced-motion:reduce){
+  #jobs-list .job-card,
+  #jobs-list .job-card.selected{ transform:none; }
+}
+
 </style>
 </head>
 <body>
