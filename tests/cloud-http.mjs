@@ -130,10 +130,12 @@ try {
   const miniClient = {
     rpc() { return Promise.resolve({ data: { ok: false, code: 'blank', error: 'فارغة' }, error: null }); }
   };
-  const er = await C.employerView(miniClient, 'HRC-BC-000001');
+  const er = await C.lookupCard(miniClient, 'HRC-BC-000001');
   miniOk = er && er.ok === false;
-  check('employerView عبر عميل بلا rest (المصغّر): يعمل بلا انكسار',
-    miniOk === true && er.code === 'blank');
+  check('lookupCard عبر عميل بلا rest (المصغّر): يعمل بلا انكسار',
+    miniOk === true && /فارغة/.test(er.error || ''));
+  check('لا بقايا لدوال صاحب العمل المحذوفة في طبقة السحابة',
+    typeof C.employerView === 'undefined' && typeof C.employerDecide === 'undefined');
 
   /* القيمة الافتراضية brc تُحترم حتى بلا HRCSupabaseConfig بالنافذة */
   check('السكيما الافتراضية brc عند غياب الإعداد', headerSets.every(function (p) { return p[1] === 'brc'; }));

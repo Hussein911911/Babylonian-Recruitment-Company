@@ -37,7 +37,6 @@
   /* ------------------------- تحويل الوظائف (jobs) ------------------------- */
   function jobFromDb(r) {
     return {
-      employerPinSet: r.employer_pin_set === true,
       id: r.id,
       code: r.code,
       title: r.title,
@@ -171,7 +170,7 @@
       jobId: r.job_id || null,
       jobCode: r.job_code || (job ? job.code : null),
       jobTitle: job ? job.title : null,
-      location: job ? job.region : null,
+      location: job ? (job.governorate || '') : null,
       employerName: job ? job.employer.name : null,
       employerPhone: job ? job.employer.phone : null,
       vacancyNo: r.vacancy_no || null,
@@ -745,7 +744,7 @@
         /* تحديث البيانات المُسطّحة في المحاولات المرتبطة بهذه الوظيفة */
         db.attempts.forEach(function (a) {
           if (a.jobId === job.id || (a.jobCode && a.jobCode === job.code)) {
-            a.jobTitle = job.title; a.location = job.region;
+            a.jobTitle = job.title; a.location = job.governorate || '';
             a.employerName = job.employer.name; a.employerPhone = job.employer.phone;
             if (!a.jobId) a.jobId = job.id;
           }
@@ -943,49 +942,8 @@
       });
   }
 
-  /* صفحة صاحب العمل: الباركود وحده يكفي — بلا رمز صاحب عمل وبلا رموز فرص
-     (قرار الإدارة 2026-10-06). ترجّع {ok, card} بنفس شكل employerView المحلية. */
-  function employerViewRpc(client, serial) {
-    if (!serial) return Promise.resolve({ ok: false, code: 'not_found', error: 'أدخل باركود البطاقة' });
-    return rpcCall(client, 'employer_view', { p_serial: String(serial).trim() })
-      .then(function (res) {
-        if (res && res.error) {
-          return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
-        }
-        var d = res && res.data;
-        if (!d || typeof d !== 'object') return { ok: false, code: 'empty', error: 'لا نتيجة من الخادم' };
-        if (d.ok === false) return { ok: false, code: d.code || 'not_found', error: d.error || 'لا توجد بطاقة بهذا الباركود' };
-        return { ok: true, card: d.card || null };
-      })
-      .catch(function (e) {
-        return { ok: false, code: 'network', error: 'تعذّر الاتصال: ' + (e && e.message || e) };
-      });
-  }
-
-  /* طلب صاحب العمل من صفحة الباركود — بلا رمز:
-     • hire   ⇒ الوظيفة «جاري التوظيف» حتى تثبيت الشركة
-     • reject ⇒ الوظيفة والفرصة «حرجة» مع السبب، والشركة تقرر: إرجاع أو حذف */
-  function employerDecideRpc(client, serial, decision, reason) {
-    if (!serial || !decision) return Promise.resolve({ ok: false, error: 'وسائط ناقصة' });
-    return rpcCall(client, 'employer_decide', {
-      p_serial: String(serial).trim(),
-      p_decision: String(decision).trim(),
-      p_reason: String(reason || '').trim()
-    })
-      .then(function (res) {
-        if (res && res.error) {
-          return { ok: false, error: res.error.message || 'تعذّر تسجيل القرار' };
-        }
-        var d = res && res.data;
-        if (!d || typeof d !== 'object') return { ok: false, error: 'لا نتيجة من الخادم' };
-        if (d.ok === false) return { ok: false, error: d.error || 'تعذّر تسجيل القرار' };
-        return { ok: true, attempt: d.attempt || null, job: d.job || null, decision: d.decision, reason: d.reason || '' };
-      })
-      .catch(function (e) {
-        return { ok: false, error: 'تعذّر الاتصال: ' + (e && e.message || e) };
-      });
-  }
-
+  /* حُذف مسار صاحب العمل من الويب (2026-10-25): لا صفحة ولا رمز سري ولا
+     قرار من الويب — طلب صاحب العمل يُسجَّل من لوحة الموظفين. */
   root.HRCCloud = {
     /* تحويل */
     jobFromDb: jobFromDb, jobToDb: jobToDb,
@@ -999,7 +957,7 @@
 
     fetchPublicJobs: fetchPublicJobs, readPublicCache: readPublicCache, clearPublicCache: clearPublicCache, verifyForm: verifyForm,
     lookupCard: lookupCardRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,
-    activateCard: activateCardRpc, employerView: employerViewRpc, employerDecide: employerDecideRpc,
+    activateCard: activateCardRpc,
     requestForm: requestForm,
     applyChange: applyChange, subscribeAll: subscribeAll,
     synthId: synthId

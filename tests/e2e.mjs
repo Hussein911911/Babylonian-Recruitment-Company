@@ -438,78 +438,37 @@ check('التقديم الذاتي موثّق في سجل التدقيق', P.lis
 
 const DB2 = JSON.stringify(P.db());
 
-/* ═══ 3ب) صاحب العمل: يمسح الباركود ويسجّل طلبه — والقرار للشركة ═══════ */
-step('3ب', 'صاحب العمل — يمسح الباركود ويسجّل طلب توظيف (الوظيفة «جاري التوظيف» حتى قرار الشركة)');
-
-const emp = await open('index.html', '?role=employer#card=' + encodeURIComponent(SERIAL), { db: DB2 });
-await wait(900);
+/* ═══ 3ب) صاحب العمل — مساره أُزيل نهائياً (2026-10-25) ═══════════════════ */
+step('3ب', 'بوابة صاحب العمل — محذوفة: لا صفحة ولا رمز سري ولا قرار من الويب');
 {
-  const box = lastModal(emp.doc);
-  /* قرار 2026-10-06: رابط «صاحب العمل؟» يفتح صفحته مباشرة — بلا بوابة دور وبلا رمز */
-  check('رابط صاحب العمل (role=employer) يفتح صفحة صاحب العمل مباشرة بلا بوابة ولا رمز',
-    !!box && /تعريف المتقدم/.test(box.textContent) && !box.querySelector('#bk-gate-emp') &&
-    !/اكتب رمز|رمز صاحب العمل/.test(box.textContent));
-  await wait(50);
-}
-{
-  const box = lastModal(emp.doc);
-  const text = box ? box.textContent : '';
-  check('صفحة صاحب العمل تعرض تعريف المتقدم وبياناته', /تعريف المتقدم/.test(text) &&
-    text.includes('مرتضى كريم جبر') && text.includes('07811234599'));
-  check('التقديم الجاري (HRC-1042) وبيانات صاحب العمل ظاهرة', text.includes('HRC-1042') &&
-    /مكان المقابلة/.test(text) && text.includes('07701234567'));
-  check('صفحة صاحب العمل لا تعرض أي رمز فرصة (لم تعد موجودة)',
-    !/رمز الفرصة/.test(text));
-  const hire = box.querySelector('#bk-emp-hire');
-  check('زر «تم التوظيف» ظاهر', !!hire);
-  if (hire) click(emp.w, hire);
-  await wait(350);
-}
-{
-  const box = lastModal(emp.doc);
-  const yes = box && box.querySelector('[data-ok]');
-  check('نافذة تسجيل طلب التوظيف توضّح أن القرار بيد الشركة', !!yes &&
-    /سجّل طلب التوظيف|بانتظار تثبيت/.test(box.textContent));
-  if (yes) click(emp.w, yes);
-  await wait(450);
-}
-{
-  const box = lastModal(emp.doc);
-  check('شاشة «سُجّل طلب التوظيف» تبيّن انتظار قرار الشركة', !!box &&
-    /سُجّل طلب التوظيف/.test(box.textContent) && /جاري التوظيف/.test(box.textContent));
-}
-{
-  const E = emp.w.HRCStore;
-  check('الوظيفة HRC-1042 تحولت لـ«جاري التوظيف» — لم تُغلق فوراً',
-    E.getJob('HRC-1042').status === 'hiring' && E.getJob('HRC-1042').critical === false,
-    E.getJob('HRC-1042').status);
-  check('الفرصة الثانية «جاري التوظيف» بطلب صاحب العمل — والبطاقة سارية',
-    E.getAttempts(SERIAL)[1].slotStatus === 'hiring' &&
-    E.getAttempts(SERIAL)[1].employerDecision === 'hire' &&
-    E.getAttempts(SERIAL)[0].slotStatus === 'reserved' &&
-    E.formStatus(E.getApplicant(SERIAL)) === 'active');
-  check('طلب صاحب العمل موثّق بسجل التدقيق', E.listAudit().some((l) => /طلب توظيف من صاحب العمل/.test(l.action)));
-}
-/* الطلب مسجَّل: صفحة صاحب العمل تعرض بانتظار الشركة — بلا أزرار قرار */
-{
-  const box = lastModal(emp.doc);
-  const again = box.querySelector('#bk-empd-close');
-  if (again) { click(emp.w, again); await wait(250); }
-  const emp2 = await open('index.html', '?role=employer#card=' + encodeURIComponent(SERIAL), { db: JSON.stringify(emp.w.HRCStore.db()) });
+  const src = await (await import('node:fs/promises')).readFile(new URL('../assets/js/booking.js', import.meta.url), 'utf8');
+  check('نافذة «بطاقتي» بلا أي زر أو مسار لصاحب العمل',
+    !/bk-emp-open|employerRoute|renderEmployer/.test(src) && !/أنا صاحب العمل/.test(src));
+  /* رابط role=employer القديم لا يفتح صفحة صاحب عمل — يفتح بطاقة الزبون */
+  const legacy = await open('index.html', '?role=employer#card=' + encodeURIComponent(SERIAL), { db: DB2 });
   await wait(900);
-  {
-    const b2 = lastModal(emp2.doc);
-    const g = b2 && b2.querySelector('#bk-gate-emp');
-    if (g) { click(emp2.w, g); await wait(350); }
-    const b3 = b2 && /تعريف المتقدم/.test(b2.textContent) ? b2 : lastModal(emp2.doc);
-    const t3 = b3 ? b3.textContent : '';
-    check('صفحة صاحب العمل بعد الطلب: «بانتظار تثبيت الشركة» وبلا أزرار قرار',
-      /بانتظار تثبيت الشركة/.test(t3) && !b3.querySelector('#bk-emp-hire') && !b3.querySelector('#bk-emp-reject'));
-  }
+  const box = lastModal(legacy.doc);
+  check('رابط role=employer القديم يفتح بطاقة الزبون بلا صفحة صاحب عمل',
+    !!box && !/تعريف المتقدم/.test(box.textContent), box ? box.textContent.slice(0, 60) : 'لا نافذة');
 }
-const DB2B = JSON.stringify(emp.w.HRCStore.db());
 
-/* ═══ 4) انتهاء مهلة 24 ساعة ⇒ حالة «حرجة» (لا إفراج تلقائي) ════════════ */
+/* حالة «طلب توظيف من صاحب العمل» صارت تُسجَّل من لوحة الموظفين (حُذف مسار
+   صاحب العمل من الويب 2026-10-25) — نجهّز الحالة نفسها لتستمر بقية الرحلة. */
+const DB2B = (function () {
+  const snapshot = JSON.parse(DB2);
+  const at = snapshot.attempts.find((t) => t.serial === SERIAL && t.no === 2);
+  if (at) {
+    at.slotStatus = 'hiring';
+    at.employerDecision = 'hire';
+    at.decisionAt = new Date().toISOString();
+    at.outcomeNote = 'طلب توظيف — بانتظار تثبيت الشركة';
+    at.holdExpiresAt = null;
+    const job = snapshot.jobs.find((j) => j.id === at.jobId);
+    if (job) { job.status = 'hiring'; job.critical = false; job.holdExpiresAt = null; }
+  }
+  return JSON.stringify(snapshot);
+})();
+
 step(4, 'انتهاء مهلة الحجز — حالة «حرجة» بانتظار قرار الموظف (لا إفراج تلقائي)');
 
 const dash2 = await open('dashboard.html', undefined, { session: 'staff' });
@@ -648,10 +607,12 @@ await wait(900);
   /* الاختيار بالضغط على البطاقة */
   click(pub2.w, box.querySelector('[data-bk-pick="HRC-1046"]'));
   await wait(200);
-  check('اختيار البطاقة يميزها بالذهبي مع ملخص فوري (الأجر والمنطقة والدوام)',
+  check('اختيار البطاقة يميزها بالذهبي مع ملخص فوري (الأجر والمحافظة والدوام)',
     box.querySelector('[data-bk-pick="HRC-1046"]').classList.contains('is-picked') &&
     /باريستا/.test(box.querySelector('#bk-job-sum').textContent) &&
-    /الهاشمية/.test(box.querySelector('#bk-job-sum').textContent));
+    /بابل/.test(box.querySelector('#bk-job-sum').textContent),
+    'picked=' + box.querySelector('[data-bk-pick="HRC-1046"]').classList.contains('is-picked') +
+    ' | sum=' + (box.querySelector('#bk-job-sum') || {}).textContent);
   click(pub2.w, box.querySelector('#bk-pos-next'));
   await wait(350);
 }
@@ -683,7 +644,7 @@ await wait(900);
     text.includes('07709876543') && text.includes('HRC-1046'));
   check('المراجعة لا تكشف أي بيانات لصاحب العمل قبل ضغطة «إتمام»',
     !/مكان المقابلة/.test(text) && !text.includes('07751234567') && !text.includes('كافيه دجلة'));
-  const confirmBtn = box.querySelector('#bk-pos-confirm');
+  const confirmBtn = lastModal(pub2.doc).querySelector('#bk-pos-confirm');
   check('زر «إتمام» بيد الزبون نفسه', !!confirmBtn && /إتمام/.test(confirmBtn.textContent));
   if (confirmBtn) click(pub2.w, confirmBtn);
   await wait(1000);   /* يشمل الطباعة التلقائية لاستمارة A4 ببيانات صاحب العمل */
@@ -774,58 +735,47 @@ const DB5 = JSON.stringify(pub2.w.HRCStore.db());
   B2.close();
 }
 
-/* صاحب العمل يرفض التوظيف بسبب مكتوب — الوظيفة «معلّقة/حرجة» والقرار للشركة */
-const emp2 = await open('index.html', '?role=employer#card=' + encodeURIComponent(SERIAL2), { db: DB5 });
-await wait(900);
+/* رفض التوظيف من صاحب العمل — حُذف مسار صاحب العمل من الويب (2026-10-25)،
+   فصار الموظف يسجّل الرفض من اللوحة بعد إبلاغ صاحب العمل هاتفياً. نجهّز هنا
+   الحالة نفسها كما تُسجَّل: الفرصة «حرجة» بقرار رفض وسبب مكتوب، والوظيفة
+   «معلّقة/حرجة» بانتظار قرار الشركة (إرجاع متاحة أو حذف). */
+const DB5R = (function () {
+  const snapshot = JSON.parse(JSON.stringify(pub2.w.HRCStore.db()));
+  const REASON = 'العدد مكتمل ولا حاجة لمزيد من العاملين';
+  const at = snapshot.attempts.find((t) => t.serial === SERIAL2 && t.no === 1);
+  if (at) {
+    at.slotStatus = 'critical';
+    at.employerDecision = 'reject';
+    at.decisionAt = new Date().toISOString();
+    at.holdExpiresAt = null;
+    at.reason = REASON;
+    at.note = 'رفض صاحب العمل — السبب: ' + REASON + ' | القرار الآن بيد الشركة: إرجاع الوظيفة متاحة أو حذفها';
+    const job = snapshot.jobs.find((j) => j.id === at.jobId);
+    if (job) { job.status = 'reserved'; job.critical = true; job.holdExpiresAt = null; }
+  }
+  snapshot.audit.unshift({
+    id: 'log-e2e-reject', ts: new Date().toISOString(), user: 'staff', role: 'staff', name: 'موظف توظيف',
+    ip: '127.0.0.1', action: 'رفض من صاحب العمل مع السبب', entity: 'applicant', entityId: SERIAL2,
+    details: 'سجّل الموظف رفض صاحب العمل على الوظيفة HRC-1046 — الفرصة #1 | السبب: ' + REASON
+  });
+  return JSON.stringify(snapshot);
+})();
 {
-  const b = lastModal(emp2.doc);
-  const g = b && b.querySelector('#bk-gate-emp');
-  if (g) { click(emp2.w, g); await wait(350); }
-  const b2 = lastModal(emp2.doc);
-  const reject = b2 && b2.querySelector('#bk-emp-reject');
-  check('زر «لم يتم التوظيف» ظاهر لصاحب العمل', !!reject);
-  if (reject) { click(emp2.w, reject); await wait(300); }
-  /* السبب إلزامي: الضغط بلا سبب يوقف مع رسالة ولا يسجّل شيئاً */
-  const b3 = lastModal(emp2.doc);
-  check('نافذة الرفض تطلب سبباً مكتوباً (إلزامي)',
-    !!b3 && !!b3.querySelector('#bk-reason') && /السبب إلزامي/.test(b3.textContent));
-  const okNoReason = b3.querySelector('#bk-reason-ok');
-  if (okNoReason) { click(emp2.w, okNoReason); await wait(250); }
-  const b4 = lastModal(emp2.doc);
-  const E2Sx = emp2.w.HRCStore;
-  check('الرفض بلا سبب مرفوض ولا يُسجَّل أي قرار',
-    !!b4 && b4.querySelector('#bk-reason-err').style.display !== 'none' &&
-    !E2Sx.getAttempts(SERIAL2)[0].employerDecision,
-    E2Sx.getAttempts(SERIAL2)[0].employerDecision || 'بلا قرار');
-  /* السبب مكتوباً: يُحفظ ويُنقل الوظيفة والفرصة إلى «حرجة / معلّقة» */
-  setVal(emp2.w, b4.querySelector('#bk-reason'), 'العدد مكتمل ولا حاجة لمزيد من العاملين');
-  click(emp2.w, b4.querySelector('#bk-reason-ok'));
-  await wait(500);
-  const E2S = emp2.w.HRCStore;
-  const att2 = E2S.getAttempts(SERIAL2)[0];
-  const job2 = E2S.getJob('HRC-1046');
-  check('الفرصة انتقلت لحالة «حرجة» مع قرار الرفض وسببه',
-    att2.slotStatus === 'critical' && att2.employerDecision === 'reject' &&
-    /العدد مكتمل/.test(att2.reason || ''), att2.slotStatus + ' / ' + att2.reason);
+  const S5 = JSON.parse(DB5R);
+  const att2 = S5.attempts.find((t) => t.serial === SERIAL2 && t.no === 1);
+  const job2 = S5.jobs.find((j) => j.id === att2.jobId);
+  check('رفض صاحب العمل مسجَّل على الفرصة بحالتها الحرجة والسبب',
+    att2.slotStatus === 'critical' && att2.employerDecision === 'reject' && /العدد مكتمل/.test(att2.reason || ''),
+    att2.slotStatus + ' / ' + att2.reason);
   check('الوظيفة HRC-1046 رجعت «معلّقة/حرجة» — لا إغلاق ولا حجز مؤقت',
     job2.status === 'reserved' && job2.critical === true && !job2.holdExpiresAt,
     job2.status + ' / critical=' + job2.critical);
-  check('طلبه لم يُحسم معه شيء: لا «جاري توظيف» على الوظيفة',
-    E2S.pendingActions().hiring.every((h) => h.job.code !== 'HRC-1046'));
-  check('طلب الرفض موثّق بسجل التدقيق مع السبب',
-    E2S.listAudit().some((l) => /رفض من صاحب العمل مع السبب/.test(l.action) && /العدد مكتمل/.test(l.details || '')));
-  /* شاشة صاحب العمل بعد الرفض: «حرجة/معلّقة» + السبب المسجَّل + بلا أزرار قرار */
-  const b5 = lastModal(emp2.doc);
-  const t5 = b5 ? b5.textContent : '';
-  check('شاشة صاحب العمل بعد الرفض تُظهر «حرجة — معلّقة» والسبب المسجَّل وبلا أزرار قرار',
-    /سُجّل رفض التوظيف/.test(t5) && /حرجة — معلّقة/.test(t5) && /العدد مكتمل/.test(t5) &&
-    !b5.querySelector('#bk-emp-hire') && !b5.querySelector('#bk-emp-reject'));
 }
 
 /* موظف الشركة يرى «إجراءات مطلوبة» بالسبب، وقراره: إرجاع متاحة أو حذف */
 const dash3 = await open('dashboard.html', undefined, { session: 'staff' });
 const D3 = dash3.w.HRCStore;
-injectFixture(D3,JSON.stringify(emp2.w.HRCStore.db()));
+injectFixture(D3,DB5R);
 dash3.w.HRCRefresh && dash3.w.HRCRefresh();
 await wait(250);
 click(dash3.w, dash3.doc.querySelector('#side-nav button[data-view="overview"]'));

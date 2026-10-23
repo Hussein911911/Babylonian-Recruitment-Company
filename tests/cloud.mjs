@@ -45,7 +45,7 @@ check('الوحدة تُحمّل وتُصدّر HRCCloud', !!C);
  * ------------------------------------------------------------------------- */
 const JOB_ROW = {
   id: '11111111-1111-4111-8111-111111111111',
-  code: 'HRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة',
+  code: 'HRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة', governorate: 'بابل',
   shift: 'صباحي', salary_min: 600000, salary_max: 750000, gender: 'لا فرق',
   vacancies: 2, requirements: ['لياقة بدنية', 'خبرة سنة'], description: 'وصف',
   employer_name: 'مخازن الفرات', employer_phone: '07701234567',
@@ -182,7 +182,7 @@ step(3, 'المحاولات: تعبئة jobTitle/location/employer من جدول
 
   const t = C.attemptFromDb(ATTEMPT_ROW, jobsById, jobsByCode, staffById);
   check('jobTitle مُشتقّ من الوظيفة (غير موجود في SQL)', t.jobTitle === 'عامل مخزن', t.jobTitle);
-  check('location مُشتقّ من منطقة الوظيفة', t.location === 'الحلة');
+  check('location مُشتقّ من محافظة الوظيفة (لا المنطقة المحذوفة)', t.location === 'بابل', t.location);
   check('employerName/employerPhone مُشتقّان', t.employerName === 'مخازن الفرات' && t.employerPhone === '07701234567');
   check('slotStatus من slot_status', t.slotStatus === 'reserved');
   check('staff يحمل username لا uuid', t.staff === 'staff', String(t.staff));

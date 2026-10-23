@@ -568,15 +568,15 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
 /* ===========================================================================
  *  النتيجة
  * =========================================================================== */
-// PIN save uses authenticated RPC and must never contaminate cached job or sync payloads.
+/* 2026-10-25: حُذف رمز صاحب العمل من النظام — لا دالة حفظ بالرمز ولا حقل حالة. */
 {
-  const mock=makeMock({rows:cloudRows()});const {Store,localStorage}=bootStore(mock);Store.init();await sleep(150);
-  let requests=0,received;const oldRpc=mock.rpc;mock.rpc=(name,args)=>{if(name!=='staff_save_job_pin')return oldRpc(name,args);requests++;received=args;return Promise.resolve({data:{ok:true,job:{...cloudRows().jobs[0],title:'عنوان محفوظ بالرمز',employer_pin_set:true}},error:null});};
-  const result=await Store.saveJobWithPin('HRC-5001',{title:'عنوان محفوظ بالرمز'},'058297');await sleep(150);
-  check('حفظ رمز الوظيفة يستخدم RPC الموظف دون نشره ببيانات الوظيفة',result.ok&&requests===1&&received.p_pin==='058297'&&Store.getJob('HRC-5001').employerPinSet);
-  check('الرمز الخام لا يدخل المخزن أو التخزين المحلي أو عمليات المزامنة',!JSON.stringify(Store.db()).includes('058297')&&!JSON.stringify(localStorage).includes('058297')&&!JSON.stringify(mock.__calls.filter(c=>c.table)).includes('058297'));
-  const before=JSON.stringify(Store.getJob('HRC-5001'));mock.rpc=()=>Promise.resolve({data:null,error:{message:'failed'}});
-  check('فشل RPC لا يعطي نجاحاً ولا يعدل الوظيفة محلياً',!(await Store.saveJobWithPin('HRC-5001',{title:'لا تحفظ'},'123450')).ok&&JSON.stringify(Store.getJob('HRC-5001'))===before);
+  const mock = makeMock({ rows: cloudRows() });
+  const { Store } = bootStore(mock); Store.init(); await sleep(150);
+  const job = Store.getJob('HRC-5001');
+  check('الوظيفة لم تعد تحمل حالة «رمز صاحب العمل»', !('employerPinSet' in job), JSON.stringify(Object.keys(job).filter(k => /pin/i.test(k))));
+  check('لا دالة saveJobWithPin في المتجر', typeof Store.saveJobWithPin === 'undefined');
+  check('لا نداء staff_save_job_pin من أي مسار تخزين',
+    !mock.__calls.some((c) => c.rpc === 'staff_save_job_pin' || String(c.table) === 'staff_save_job_pin'));
 }
 
 // Archive eviction must never become a client DELETE on authoritative tables.

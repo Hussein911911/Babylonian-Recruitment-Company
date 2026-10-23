@@ -427,28 +427,23 @@ check('التفاصيل تعرض الاسم الذي كتبه الزبون وح�
 vm.runInContext('G.closeCardDetails()', ctx);
 
 /* ===========================================================================
- *  5) الخطوة 2 — السكن (محافظة ← قضاء ← ناحية ← نقطة دالة)
+ *  5) الخطوة 2 — السكن (محافظة + أقرب نقطة دالة فقط)
  * =========================================================================== */
-step(3, 'الخطوة ٢ — السكن بالترتيب: محافظة · قضاء · ناحية · أقرب نقطة دالة');
+step(3, 'الخطوة ٢ — السكن: محافظة · أقرب نقطة دالة (حُذف القضاء/المنطقة)');
 const provs = [...$('f-prov').children].map((o) => o.attrs.value).filter(Boolean);
 check('قائمة المحافظات مملوءة من الإعدادات', provs.length > 10, provs.length + ' محافظة');
-check('القضاء معطّل في الوسم قبل اختيار المحافظة (disabled)', $('f-dist').attrs.disabled !== undefined, JSON.stringify($('f-dist').attrs.disabled));
+check('حقلا القضاء والمنطقة أُزيلا من النموذج', !$('f-dist') && !$('f-sub'), '');
 
 click(findByOnclick('G.next()'));
 await tick(20);
 check('بلا اختيار محافظة يُرفض الانتقال', active() === 'pg-addr' && /اختر المحافظة/.test($('err-addr').innerHTML));
 
 setVal('f-prov', 'بابل');
-vm.runInContext('G.noop=0', ctx);
 $('f-prov').dispatchEvent({ type: 'change', target: $('f-prov') });
 await tick(10);
-const dists = [...$('f-dist').children].map((o) => o.attrs.value).filter(Boolean);
-check('أقضية بابل تُملأ بعد اختيار المحافظة', dists.length > 0, dists.join(', '));
+check('المحافظة المختارة محفوظة في البيانات', vm.runInContext("G.readProfile().province", ctx) === 'بابل');
+check('القضاء غير مطلوب في البيانات المحفوظة', !('district' in vm.runInContext('G.readProfile()', ctx)));
 
-setVal('f-dist', dists[0]);
-$('f-dist').dispatchEvent({ type: 'change', target: $('f-dist') });
-await tick(10);
-check('حقل الناحية أُزيل من النموذج', !$('f-sub'), '');
 setVal('f-lm', 'قرب مجمع الكرعاوي');
 click(findByOnclick('G.next()'));
 await tick(30);
@@ -617,8 +612,8 @@ check('الاسم المُرسل هو آخر تعديل (لا نسخة قديم�
 check('الهاتف والميلاد والجنس والمحافظة مُرسلة صحيحة',
   sent.phone === '07712345678' && sent.dob === '1996-06-15' && sent.gender === 'أنثى' && sent.province === 'بابل',
   JSON.stringify({ p: sent.phone, d: sent.dob, g: sent.gender, pr: sent.province }));
-check('نقطة الدالة والحقول الأربعة للحقول المطلوبة موجودة',
-  !!sent.landmark && !!sent.district && !sent.subdistrict, JSON.stringify(sent));
+check('نقطة الدالة مطلوبة، والقضاء/المنطقة لم يبقَ لهما وجود في البيانات',
+  !!sent.landmark && !('district' in sent) && !('subdistrict' in sent), JSON.stringify(sent));
 
 /* ===========================================================================
  *  12) صفحة النتيجة: النجاح + الاستمارة + الباركود

@@ -523,7 +523,7 @@ await (async () => {
   } catch (e) { bad(name, e.message); }
 })();
 await (async () => {
-  const name = 'بطاقتي: إعادة الطباعة تتطلب رمز فرصة صحيحاً';
+  const name = 'بطاقتي: إعادة الطباعة بالباركود (بلا أي رمز)';
   try {
     closeAllModals(site.doc);
     site.window.HRCBooking.open({ serial: 'HRC-BC-000117' });
@@ -1138,18 +1138,37 @@ check('نموذج إضافة وظيفة يُنتج كود HRC-#### جديداً'
   const newJob = dash.window.HRCStore.listJobs({}).find((j) => j.title === 'فني تبريد');
   return (after === before + 1 && newJob && /^HRC-\d{4}$/.test(newJob.code)) || ('عدد ' + after + ' / كود ' + (newJob && newJob.code));
 });
-check('نموذج رمز صاحب العمل: ست خانات مقنّعة، تطبيع عربي، تأكيد، وحفظ منفصل عن بيانات الوظيفة', () => {
-  closeAllModals(dash.doc);const S=dash.window.HRCStore,originalStatus=S.cloudStatus,originalSave=S.saveJobWithPin;
-  let captured=null;S.cloudStatus=()=>({state:'on',role:'staff'});S.saveJobWithPin=(code,data,pin)=>{captured={code,data,pin};return Promise.resolve({ok:false,error:'فشل اختباري بلا كتابة'});};
-  try{
-    dash.doc.getElementById('btn-new-job').click();const box=lastModal(dash.doc),pin=box.querySelector('#f-epin'),confirmation=box.querySelector('#f-epin-confirm');
-    if(!pin.required||pin.type!=='password'||pin.value!==''||!confirmation)return 'الرمز ليس مطلوباً ومقنّعاً وفارغاً';
-    box.querySelector('#f-title').value='وظيفة اختبار آمن';box.querySelector('#f-ename').value='صاحب عمل';box.querySelector('#f-ephone').value='07700000000';
-    pin.value='٠٥٨٢٩٧';pin.dispatchEvent(new dash.window.Event('input'));if(pin.value!=='058297')return 'فشل تطبيع الرمز';
-    confirmation.value='123456';box.querySelector('#job-save').click();if(captured)return 'قبل رمزين غير متطابقين';
-    confirmation.value='058297';box.querySelector('#job-save').click();
-    return !!captured&&captured.pin==='058297'&&!JSON.stringify(captured.data).includes('058297')||'الرمز لم يرسل منفصلاً إلى RPC';
-  }finally{S.cloudStatus=originalStatus;S.saveJobWithPin=originalSave;closeAllModals(dash.doc);}
+check('نموذج الوظيفة بلا رمز صاحب العمل وبلا منطقة (قرار 2026-10-25)', () => {
+  closeAllModals(dash.doc);
+  dash.doc.getElementById('btn-new-job').click();
+  const box = lastModal(dash.doc);
+  const gone = !box.querySelector('#f-epin') && !box.querySelector('#f-epin-confirm') &&
+    !box.querySelector('#f-region') && !/الرمز السري/.test(box.textContent) &&
+    !/المنطقة/.test(box.textContent);
+  const hasGov = !!box.querySelector('#f-governorate');
+  closeAllModals(dash.doc);
+  return (gone && hasGov) || ('رموز/منطقة باقية: ' + JSON.stringify({ gone, hasGov }));
+});
+check('نموذج «بيع وتعبئة بطاقة» يطلب المحافظة لا المنطقة (قرار 2026-10-25)', () => {
+  closeAllModals(dash.doc);
+  const btn = dash.doc.getElementById('btn-new-app');
+  if (!btn) return 'زر «بيع وتعبئة بطاقة» غير موجود';
+  btn.click();
+  const box = lastModal(dash.doc);
+  const txt = box ? box.textContent : '';
+  const out = {
+    gov: !!(box && box.querySelector('#n-gov')),
+    govList: !!(box && box.querySelector('#n-gov') && box.querySelector('#n-gov').options.length >= 18),
+    noRegion: !(box && box.querySelector('#n-region')) && !/المنطقة/.test(txt)
+  };
+  closeAllModals(dash.doc);
+  return (out.gov && out.govList && out.noRegion) || JSON.stringify(out);
+});
+check('قائمة «مناطق العمل» حُذفت من الإعدادات — المحافظة وحدها', () => {
+  const cfg = dash.window.HRCCONFIG || dash.window.HRC_CONFIG || dash.window.HRCConfig || dash.window.CFG;
+  const noRegions = !cfg || !('regions' in cfg);
+  const govs = !cfg || (cfg.governorates || []).length >= 18;
+  return (noRegions && govs) || JSON.stringify({ noRegions, govs: cfg && (cfg.governorates || []).length });
 });
 check('شاشة الحجوزات تعرض الحجوزات الجارية مع العدّاد التنازلي', () => {
   const r = dash.window.HRCStore.selectAttempt('HRC-BC-000117', 'HRC-1049');

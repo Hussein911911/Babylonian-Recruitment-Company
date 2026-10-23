@@ -445,7 +445,7 @@
         '</div>' +
         '<div class="job-body">' +
           '<div class="job-meta">' +
-            '<div class="mi">' + UI.ic('pin') + '<span>' + UI.esc(j.region) + (j.governorate ? ' — ' + UI.esc(j.governorate) : '') + '</span></div>' +
+            '<div class="mi">' + UI.ic('pin') + '<span>' + UI.esc(j.governorate || '—') + '</span></div>' +
             '<div class="mi">' + UI.ic('clock') + '<span>' + UI.esc(j.shift) + '</span></div>' +
             '<div class="mi">' + UI.ic('money') + '<span>' + Store.money(j.salaryMin) + ' – ' + Store.money(j.salaryMax) + '</span></div>' +
             '<div class="mi">' + UI.ic('users') + '<span>' + UI.esc(j.gender || 'لا فرق') + '</span></div>' +
@@ -488,7 +488,6 @@
         UI.jobBadge(j.status) +
       '</div>' +
         '<div class="data-grid mb-3">' +
-        '<div class="data-item"><div class="k">المنطقة</div><div class="v">' + UI.esc(j.region) + '</div></div>' +
         '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || 'بابل') + '</div></div>' +
         '<div class="data-item"><div class="k">الأجر الشهري</div><div class="v">' + Store.money(j.salaryMin) + ' – ' + Store.money(j.salaryMax) + '</div></div>' +
         '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
@@ -513,7 +512,7 @@
       '</div></div>';
 
     UI.modal({
-      title: j.title, subtitle: 'تفاصيل الوظيفة — ' + j.region, body: body, wide: true,
+      title: j.title, subtitle: 'تفاصيل الوظيفة — ' + (j.governorate || '—'), body: body, wide: true,
       footer: (j.status === 'available'
         ? '<button class="btn btn-gold" data-action="open-booking" data-code="' + UI.esc(j.code) + '">' +
           UI.ic('card') + ' قدّم على هذه الوظيفة ببطاقتك</button>' +

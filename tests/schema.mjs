@@ -77,7 +77,9 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 /* 30 = 29 السابقة + إصلاح 2026-10-06: ترميم خانات الفرص الناقصة
    (ensure_card_attempts) — بطاقة جديدة كانت تظهر «انتهت فرصك» بلا أي تقديم
    لأن مزامنة لوحة الموظفين كانت تحذف خاناتها من القاعدة. */
-check('تعريفات الدوال: 59 تعريفاً، 56 دالة فعلية (3 تحديثات مقصودة)', funcs.length === 59 && new Set(funcs.map(x=>x.name)).size === 56, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+check('تعريفات الدوال: 55 تعريفاً، 53 دالة فعلية (تحديثان مقصودان)',
+  funcs.length === 55 && new Set(funcs.map(x=>x.name)).size === 53,
+  funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
 const EXPECTED_FUNCS = ['brc.recovery_manage', 'brc.office_submit', 'brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
@@ -86,7 +88,8 @@ const EXPECTED_FUNCS = ['brc.recovery_manage', 'brc.office_submit', 'brc.next_jo
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
   'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold',
   'brc.activate_card', 'brc.employer_view', 'brc.employer_decide',
-  'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts', 'brc.employer_otp_issue', 'brc.employer_otp_delivery', 'brc.employer_otp_verify', 'brc.employer_otp_action', 'brc.staff_save_job_pin', 'brc.employer_pin_login', 'brc.employer_pin_action'];
+  'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts'];
+/* 2026-10-25: حُذف رمز صاحب العمل — لا دوال OTP ولا PIN تُتوقَّع بعد اليوم. */
 check('كل الدوال المتوقّعة موجودة بالاسم', EXPECTED_FUNCS.every((n) => funcs.some((x) => x.name === n)),
   'المفقود: ' + EXPECTED_FUNCS.filter((n) => !funcs.some((x) => x.name === n)).join(', '));
 

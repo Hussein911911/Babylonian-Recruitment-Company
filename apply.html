@@ -1505,16 +1505,12 @@ body{
     <!-- ═══ 3 — السكن ═══ -->
     <div class="page profile-page" id="pg-addr">
       <div class="card profile-card">
-        <div class="step-intro"><span class="step-eyebrow">بيانات المتقدم / ٠٢</span><h1>وين تسكن؟</h1><p>حدّد محافظتك ومنطقتك وأقرب نقطة دالة. بيانات السكن تساعدك على اختيار فرصة عمل قريبة منك.</p><div class="step-assurance">بطاقتك نفسها · بياناتك تُراجع قبل الإتمام</div></div>
+        <div class="step-intro"><span class="step-eyebrow">بيانات المتقدم / ٠٢</span><h1>وين تسكن؟</h1><p>حدّد محافظتك وأقرب نقطة دالة. بيانات السكن تساعدك على اختيار فرصة عمل قريبة منك.</p><div class="step-assurance">بطاقتك نفسها · بياناتك تُراجع قبل الإتمام</div></div>
         <div class="step-fields"><div class="section-title">السكن</div>
         <div id="err-addr"></div>
         <div class="form-group">
           <label for="f-prov"><span class="req">*</span> المحافظة</label>
           <select id="f-prov"><option value="">اختر المحافظة</option></select>
-        </div>
-        <div class="form-group">
-          <label for="f-dist"><span class="req">*</span> القضاء / المنطقة</label>
-          <select id="f-dist" disabled><option value="">اختر المحافظة أولاً</option></select>
         </div>
         <div class="form-group">
           <label for="f-lm"><span class="req">*</span> أقرب نقطة دالة</label>
@@ -1853,12 +1849,12 @@ var G={
     }
     var p=cardData.profile||{}, lp=G.readProfile()||{};
     p={fullName:p.fullName||lp.fullName,phone:p.phone||lp.phone,
-       address:p.address||[lp.province,lp.district,lp.landmark].filter(Boolean).join(' - ')||lp.address,
+       address:p.address||[lp.province,lp.landmark].filter(Boolean).join(' - ')||lp.address,
        dob:p.dob||lp.dob,gender:p.gender||lp.gender};
     var statusTxt=cardData.chancesLeft<=0?'مستنفدة الفرص':(cardData.status==='blank'?'بانتظار التعبئة':'سارية');
     var statusCls=cardData.chancesLeft<=0?'is-warn':'is-ok';
     var dob=p.dob?String(p.dob).slice(0,10).split('-').reverse().join('/'):'—';
-    var addr=[p.address,p.province,p.district].filter(Boolean).join(' — ')||'—';
+    var addr=[p.address,p.province].filter(Boolean).join(' — ')||'—';
     var chanceRows=(cardData.chances||[]).map(function(ch){
       var label=ch.slotStatus==='empty'?'متاحة للاستخدام'
         :(ch.slotStatus==='succeeded'?'تم التوظيف'
@@ -2082,15 +2078,13 @@ var G={
         if(/[0-9]/.test(v)){setInvalid(el,'err-name','⚠️','الاسم لا يجب أن يحتوي أرقام — اكتب الاسم بالحروف فقط');return false;}
         setValid(el);clearErr('err-name');
         return true;
-      case 2: /* السكن — كله إجباري */
+      case 2: /* السكن — محافظة + أقرب نقطة دالة (حُذف القضاء/المنطقة 2026-10-25) */
         el=$('f-prov');
         if(!el.value){setInvalid(el,'err-addr','📍','اختر المحافظة من القائمة');return false;}
-        el=$('f-dist');
-        if(!el.value){setInvalid(el,'err-addr','📍','اختر القضاء / المنطقة من القائمة');return false;}
         el=$('f-lm');
         if(!el.value.trim()){setInvalid(el,'err-addr','📍','اكتب أقرب نقطة دالة — مثال: قرب مجمع الكرعاوي أو مقابل مستشفى الحلة');return false;}
         if(el.value.trim().length<3){setInvalid(el,'err-addr','📍','نقطة الدالة قصيرة — اكتب وصفاً أوضح (3 أحرف على الأقل)');return false;}
-        setValid($('f-prov'));setValid($('f-dist'));setValid($('f-lm'));
+        setValid($('f-prov'));setValid($('f-lm'));
         clearErr('err-addr');
         return true;
       case 3: /* المواليد */
@@ -2124,7 +2118,7 @@ var G={
     if(lockedProfile)return JSON.parse(JSON.stringify(lockedProfile));
     var dob=$('f-yr').value+'-'+pad2($('f-mon').value)+'-'+pad2($('f-day').value);
     return{fullName:$('f-name').value.trim(),phone:$('f-phone').value.trim(),
-      province:$('f-prov').value,district:$('f-dist').value,
+      province:$('f-prov').value,
       landmark:$('f-lm').value.trim(),dob:dob,gender:selectedGender};
   },
 
@@ -2138,11 +2132,10 @@ var G={
   },
 
   fillProfile:function(p){
-    if(lockedProfile){p=lockedProfile;['f-prov','f-dist','f-day','f-mon','f-yr'].forEach(function(id){$(id).value='';});selectedGender=p.gender||'';}
+    if(lockedProfile){p=lockedProfile;['f-prov','f-day','f-mon','f-yr'].forEach(function(id){$(id).value='';});selectedGender=p.gender||'';}
     if(!p)return;
     $('f-name').value=p.fullName||'';$('f-phone').value=p.phone||'';$('f-lm').value=p.landmark||'';
     if(p.province){$('f-prov').value=p.province;$('f-prov').dispatchEvent(new Event('change'));}
-    if(p.district){$('f-dist').value=p.district;$('f-dist').dispatchEvent(new Event('change'));}
     if(p.gender){selectedGender=p.gender;document.querySelectorAll('.gender-opt').forEach(function(g){g.classList.toggle('selected',g.dataset.v===p.gender);});}
     if(p.dob){var bits=String(p.dob).slice(0,10).split('-');if(bits.length===3){$('f-yr').value=String(Number(bits[0]));$('f-mon').value=String(Number(bits[1]));$('f-day').value=String(Number(bits[2]));}}
     if(lockedProfile)document.querySelectorAll('.step-fields input,.step-fields select').forEach(function(el){el.disabled=true;});
@@ -2304,7 +2297,7 @@ var G={
     var province=jobFilters.province,profileProvince=jobProvince($('f-prov').value);
     var matching=jobs.map(function(j,index){return{job:j,index:index};}).filter(function(entry){
       var j=entry.job,g=jobNorm(j.gender),any=g==='لا فرق'||g==='كلا الجنسين'||g==='الجنسين';
-      var text=jobNorm([j.code,j.title,j.category,j.governorate,j.region,j.shift,j.description].concat(j.requirements||[]).join(' '));
+      var text=jobNorm([j.code,j.title,j.category,j.governorate,j.shift,j.description].concat(j.requirements||[]).join(' '));
       return min!==null && (!province||jobProvince(j.governorate)===province) &&
         (currentFilter==='الكل'||j.category===currentFilter) &&
         (!jobFilters.shift||j.shift===jobFilters.shift) &&
@@ -2351,7 +2344,7 @@ var G={
       var reqs=j.requirements.map(function(r){return'<li>'+esc(r)+'</li>';}).join('');
       var stateCls = done ? 'is-done' : (picked ? 'is-picked' : 'is-open');
       var stateTxt = done ? '✓ تم التقديم' : (picked ? '★ الفرصة ' + ar(G.chanceNumber(slotNo)) : 'متاحة');
-      var place = [j.region, jobProvince(j.governorate)].filter(Boolean).join(' — ');
+      var place = jobProvince(j.governorate) || '';
       h+='<article class="job-card'+(picked?' selected':'')+(done?' is-done':'')+'" data-job="'+esc(j.code)+'"'
         +(done?'':' onclick="G.pickJob(\''+esc(j.code)+'\')"')+'>'
         +'<span class="pick-mark" aria-hidden="true">'+(picked?ar(G.chanceNumber(slotNo)):'✓')+'</span>'
@@ -2497,7 +2490,7 @@ var G={
     if(lockedProfile)G.fillProfile(lockedProfile);
     var p=G.readProfile();
     var dobTxt=G.dobText();
-    var place=[p.province,p.district].filter(function(x){return !!x;}).join(' – ');
+    var place=[p.province].filter(function(x){return !!x;}).join(' – ');
 
     function row(k,v,step,ltr){
       return '<div class="rv-row"><div class="rv-k">'+k+'</div>'
@@ -2526,7 +2519,7 @@ var G={
         h+='<div class="rv-sub">الفرصة '+ar(G.chanceNumber(i))+'</div>'
           +row('الوظيفة',j.title,6)
           +row('الكود',j.code,6,1)
-          +row('المنطقة',j.region,6)
+          +row('المحافظة',j.governorate||'—',6)
           +row('الأجر',sal,6)
           +'<div class="rv-chips">'
           +'<span class="rv-chip">⏱ الدوام: '+esc(j.shift)+'</span>'
@@ -2689,7 +2682,7 @@ var G={
     var empL=att.interviewLocation||(att.employer&&att.employer.interviewLocation)||jR.interview_location||job.interviewLocation||'—';
     var sal=money(job.salaryMin)+' – '+money(job.salaryMax);
     var savedProfile=G.readProfile();
-    var addr=savedProfile.address||[savedProfile.province,savedProfile.district].filter(Boolean).join(' - ');
+    var addr=savedProfile.address||[savedProfile.province].filter(Boolean).join(' - ');
     var lm=savedProfile.landmark||'';if(lm&&!savedProfile.address)addr+=' ('+lm+')';
     var dob=savedProfile.dob?String(savedProfile.dob).slice(0,10).split('-').reverse().join('/'):'—';
     var cUrl=(location.origin||'https://hrc-babil.com')+location.pathname.replace(/[^/]*$/,'')+'apply.html?form='+encodeURIComponent(cardSerial);
@@ -2745,7 +2738,7 @@ var G={
       +'<div class="fs-tbl">'
       +'<div class="fs-td"><span class="k">الوظيفة:</span><span class="v">'+esc(job.title)+'</span></div>'
       +'<div class="fs-td mono"><span class="k">الكود:</span><span class="v">'+esc(job.code)+'</span></div>'
-      +'<div class="fs-td"><span class="k">المنطقة:</span><span class="v">'+esc(job.region)+'</span></div>'
+      +'<div class="fs-td"><span class="k">المحافظة:</span><span class="v">'+esc(job.governorate||'—')+'</span></div>'
       +'<div class="fs-td"><span class="k">الأجر الشهري:</span><span class="v">'+esc(sal)+'</span></div>'
       +'<div class="fs-td"><span class="k">الدوام:</span><span class="v">'+esc(job.shift)+'</span></div>'
       +'<div class="fs-td"><span class="k">حالة الطلب:</span><span class="v" style="color:#1e9e55">'+esc(jobStatus)+'</span></div>'
@@ -2902,15 +2895,10 @@ window.G=G;
    تهيئة قوائم المحافظات
    ═══════════════════════════════════════════════════════════════ */
 function initProvince(){
+  /* المحافظات وحدها (حُذف القضاء/المنطقة 2026-10-25): قائمة واحدة من config */
   var sel=$('f-prov');
-  Object.keys(IRAQ).forEach(function(p){var o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);});
-  sel.addEventListener('change',function(){
-    var dist=$('f-dist');
-    dist.innerHTML='<option value="">اختر القضاء</option>';
-    var pd=IRAQ[sel.value];
-    if(pd){dist.disabled=false;Object.keys(pd).forEach(function(d){var o=document.createElement('option');o.value=d;o.textContent=d;dist.appendChild(o);});}
-    else dist.disabled=true;
-  });
+  var list=(window.HRC_CONFIG&&window.HRC_CONFIG.governorates)||Object.keys(IRAQ);
+  list.forEach(function(p){var o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);});
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3138,11 +3126,11 @@ function startApp(){
       var eid=errMap[id];if(eid)$(eid).innerHTML='';
     });
   });
-  ['f-prov','f-dist','f-day','f-mon','f-yr'].forEach(function(id){
+  ['f-prov','f-day','f-mon','f-yr'].forEach(function(id){
     var el=$(id);if(!el)return;
     el.addEventListener('change',function(){
       el.classList.remove('invalid');
-      var errMap={'f-prov':'err-addr','f-dist':'err-addr','f-day':'err-dob','f-mon':'err-dob','f-yr':'err-dob'};
+      var errMap={'f-prov':'err-addr','f-day':'err-dob','f-mon':'err-dob','f-yr':'err-dob'};
       var eid=errMap[id];if(eid)$(eid).innerHTML='';
     });
   });

@@ -1124,9 +1124,9 @@
         : '<span class="job-cell-photo is-empty"><svg class="ic" style="width:18px;height:18px;color:#8fa0c4"><use href="#i-briefcase"/></svg></span>';
       return '<tr>' +
         '<td>' + imageCell + '</td>' +
-        '<td><span class="chip chip-code mono" style="font-size:.8rem">' + UI.esc(j.code) + '</span><div class="tiny muted" style="margin-top:5px">' + (j.employerPinSet ? '🔒 رمز صاحب العمل مفعّل' : '⚠ يحتاج تعيين رمز صاحب العمل') + '</div></td>' +
+        '<td><span class="chip chip-code mono" style="font-size:.8rem">' + UI.esc(j.code) + '</span></td>' +
         '<td><b style="color:var(--lapis-2)">' + UI.esc(j.title) + '</b><div class="tiny muted" style="margin-top:2px">' + UI.esc(j.category) + '</div></td>' +
-        '<td><span style="font-weight:600">' + UI.esc(j.region) + '</span>' + (j.governorate ? '<br><span class="tiny muted">' + UI.esc(j.governorate) + '</span>' : '') + '</td>' +
+        '<td><span style="font-weight:600">' + UI.esc(j.governorate || '—') + '</span></td>' +
         '<td class="nowrap tiny"><b>' + Store.money(j.salaryMin) + '</b><br><span class="muted">إلى ' + Store.money(j.salaryMax) + '</span></td>' +
         '<td class="tiny"><span style="background:#eef1f7;padding:3px 8px;border-radius:6px;font-weight:600">' + UI.esc(j.shift) + '</span></td>' +
         '<td>' + UI.jobBadge(j.status) + '</td>' +
@@ -1191,8 +1191,6 @@
   /* نموذج إضافة/تعديل وظيفة */
   function jobModal(code) {
     var j = code ? Store.getJob(code) : null;
-    var pinCloud=Store.cloudStatus().state==='on'&&Store.cloudStatus().role==='staff';
-    var regionsList = CFG.regions.map(function (r) { return '<option' + (j && j.region === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
     var governoratesList = CFG.governorates.map(function (r) { return '<option' + (j && j.governorate === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
     var shiftsList = CFG.shifts.map(function (r) { return '<option' + (j && j.shift === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
     var cats = CFG.jobCategories.map(function (r) { return '<option' + (j && j.category === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
@@ -1225,7 +1223,6 @@
         '</div></div>' +
       '<div class="field"><label for="f-title">عنوان الوظيفة *</label><input type="text" id="f-title" required value="' + UI.esc(j ? j.title : '') + '"></div>' +
       '<div class="field"><label for="f-cat">التصنيف</label><select id="f-cat">' + cats + '</select></div>' +
-      '<div class="field"><label for="f-region">المنطقة *</label><select id="f-region">' + regionsList + '</select></div>' +
       '<div class="field"><label for="f-governorate">المحافظة</label><select id="f-governorate">' + governoratesList + '</select></div>' +
       '<div class="field"><label for="f-shift">الدوام</label><select id="f-shift">' + shiftsList + '</select></div>' +
       '<div class="field"><label for="f-min">الأجر الأدنى (د.ع)</label><input type="number" id="f-min" min="0" step="25000" value="' + (j ? j.salaryMin : 500000) + '"></div>' +
@@ -1236,8 +1233,6 @@
       '<div class="field" style="grid-column:1/-1"><label for="f-req">الشروط (نقطة لكل شرط)</label><textarea id="f-req" placeholder="خبرة سنة&#10;شهادة جنسية">' + UI.esc(j ? (j.requirements || []).join('\n') : '') + '</textarea></div>' +
       '<div class="field"><label for="f-ename">اسم صاحب العمل (داخلي) *</label><input type="text" id="f-ename" required value="' + UI.esc(e.name) + '"></div>' +
       '<div class="field"><label for="f-ephone">هاتف صاحب العمل *</label><input type="tel" id="f-ephone" required dir="ltr" value="' + UI.esc(e.phone) + '"></div>' +
-      '<div class="field"><label for="f-epin">الرمز السري لصاحب العمل · ٦ أرقام'+(!j||!j.employerPinSet?' *':'')+'</label><input type="password" id="f-epin" inputmode="numeric" autocomplete="new-password" maxlength="6" pattern="[0-9]{6}" dir="ltr" '+(pinCloud?(!j||!j.employerPinSet?'required':''):'disabled')+' placeholder="'+(j&&j.employerPinSet?'اتركه فارغاً للإبقاء على الرمز':'يختاره صاحب العمل')+'"><small class="muted">'+(pinCloud?'لا يظهر للمتقدم ولا يمكن استرجاعه. تغييره ينهي جلسات هذه الوظيفة.':'تعيين الرمز متاح عند اتصال الموظف بقاعدة الشركة فقط.')+'</small></div>' +
-      '<div class="field"><label for="f-epin-confirm">تأكيد الرمز السري</label><input type="password" id="f-epin-confirm" inputmode="numeric" autocomplete="new-password" maxlength="6" dir="ltr" '+(pinCloud?'':'disabled')+'></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="f-eaddr">عنوان صاحب العمل (داخلي)</label><input type="text" id="f-eaddr" value="' + UI.esc(e.address) + '"></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="f-interview">مكان المقابلة</label><input type="text" id="f-interview" value="' + UI.esc(j ? j.interviewLocation : 'مقر الشركة - الحلة') + '"></div>' +
       '</form>' +
@@ -1428,14 +1423,12 @@
           }
         }
         
-        ['f-epin','f-epin-confirm'].forEach(function(id){box.querySelector('#'+id).addEventListener('input',function(){this.value=this.value.replace(/[٠-٩۰-۹]/g,function(c){return String(c.charCodeAt(0)-(c<='٩'?1632:1776));}).replace(/\D/g,'').slice(0,6);});});
         box.querySelector('#job-save').addEventListener('click', function () {
           var f = box.querySelector('#job-form');
           if (!f.reportValidity()) return;
           var data = {
             title: box.querySelector('#f-title').value.trim(),
             category: box.querySelector('#f-cat').value,
-            region: box.querySelector('#f-region').value,
             governorate: box.querySelector('#f-governorate').value,
             shift: box.querySelector('#f-shift').value,
             salaryMin: Number(box.querySelector('#f-min').value),
@@ -1449,19 +1442,9 @@
             interviewLocation: box.querySelector('#f-interview').value.trim(),
             imageUrl: bakeImage()
           };
-          if(pinCloud){
-            var pin=box.querySelector('#f-epin').value,confirmation=box.querySelector('#f-epin-confirm').value;
-            if(pin!==confirmation){UI.toast('err','الرمزان غير متطابقين','أعد كتابة الرمز السري وتأكيده.');return;}
-            var button=box.querySelector('#job-save');if(button.disabled)return;button.disabled=true;
-            Store.saveJobWithPin(j?j.code:'',data,pin).then(function(result){
-              if(!result.ok){UI.toast('err','لم يُؤكَّد الحفظ',result.error);button.disabled=false;return;}
-              box.querySelector('#f-epin').value='';box.querySelector('#f-epin-confirm').value='';
-              UI.toast('ok','حُفظت الوظيفة بأمان',result.job.code+' — الرمز السري لا يُعرض بعد الحفظ.');close();
-            });return;
-          }
           if (j) {
             Store.updateJob(j.code, {
-              title: data.title, category: data.category, region: data.region, governorate: data.governorate, shift: data.shift,
+              title: data.title, category: data.category, governorate: data.governorate, shift: data.shift,
               salaryMin: data.salaryMin, salaryMax: data.salaryMax, gender: data.gender,
               vacancies: data.vacancies, requirements: data.requirements,
               employer: { name: data.employerName, phone: data.employerPhone, address: data.employerAddress },
@@ -1501,7 +1484,7 @@
       }).join('') + '</tbody></table></div></div>';
 
     UI.modal({
-      title: 'ترشيح على الوظيفة ' + code, subtitle: job.title + ' — ' + job.region, wide: true, body: body,
+      title: 'ترشيح على الوظيفة ' + code, subtitle: job.title + ' — ' + job.governorate, wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إغلاق</button>',
       onMount: function (box, close) {
         box.querySelectorAll('[data-pick]').forEach(function (b) {
@@ -1789,7 +1772,7 @@
         '<div class="data-item"><div class="k">الجنس</div><div class="v">' + UI.esc(app.gender || '—') + '</div></div>' +
         '<div class="data-item"><div class="k">العنوان</div><div class="v">' + UI.esc(app.address || '—') + '</div></div>' +
         '<div class="data-item" style="grid-column:1/-1"><div class="k">الوظيفة المطلوبة</div><div class="v">' +
-          (job ? '<span class="chip chip-code mono">' + UI.esc(job.code) + '</span> ' + UI.esc(job.title) + ' — ' + UI.esc(job.region) : (UI.esc(app.requestedCode || '—') + ' <span class="tiny muted">(كود غير معروف)</span>')) +
+          (job ? '<span class="chip chip-code mono">' + UI.esc(job.code) + '</span> ' + UI.esc(job.title) + ' — ' + UI.esc(job.governorate) : (UI.esc(app.requestedCode || '—') + ' <span class="tiny muted">(كود غير معروف)</span>')) +
         '</div></div>' +
       '</div>' +
       (rejectMode
@@ -1976,7 +1959,7 @@
       '<p class="muted small">اختر الوظيفة المطلوبة للفرصة رقم <b>#' + no + '</b>. الوظيفة ستُحجز مؤقتاً ' +
       Store.settings().holdHours + ' ساعة بانتظار نتيجة المقابلة؛ بعدها تصبح حرجة بانتظار قرار الشركة، ولا تُتاح تلقائياً.</p>' +
       '<div class="search-wrap mb-2"><svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>' +
-      '<input type="search" id="pick-q" placeholder="ابحث بالكود أو العنوان أو المنطقة..."></div>' +
+      '<input type="search" id="pick-q" placeholder="ابحث بالكود أو عنوان الوظيفة..."></div>' +
       '<div id="pick-list">' + pickListHtml(jobs) + '</div>';
 
     UI.modal({
@@ -2009,11 +1992,11 @@
   function pickListHtml(jobs) {
     if (!jobs.length) return '<div class="table-empty">لا توجد وظائف متاحة مطابقة</div>';
     return '<div class="table-wrap"><div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:620px">' +
-      '<thead><tr><th>الكود</th><th>الوظيفة</th><th>المنطقة</th><th>الأجر</th><th>الدوام</th><th>اختيار</th></tr></thead><tbody>' +
+      '<thead><tr><th>الكود</th><th>الوظيفة</th><th>المحافظة</th><th>الأجر</th><th>الدوام</th><th>اختيار</th></tr></thead><tbody>' +
       jobs.map(function (j) {
         return '<tr><td><span class="chip chip-code mono">' + UI.esc(j.code) + '</span></td>' +
           '<td><b>' + UI.esc(j.title) + '</b><div class="tiny muted">' + UI.esc(j.employer.name) + ' · <span dir="ltr">' + UI.esc(j.employer.phone) + '</span></div></td>' +
-          '<td>' + UI.esc(j.region) + '</td><td class="tiny nowrap">' + Store.money(j.salaryMin) + '</td>' +
+          '<td>' + UI.esc(j.governorate || '—') + '</td><td class="tiny nowrap">' + Store.money(j.salaryMin) + '</td>' +
           '<td class="tiny">' + UI.esc(j.shift) + '</td>' +
           '<td><button class="btn btn-gold btn-sm" data-assign-job="' + UI.esc(j.code) + '">ترشيح</button></td></tr>';
       }).join('') + '</tbody></table></div></div>';
@@ -2073,7 +2056,7 @@
     var empReason = (t && (t.reason || '')) || '';
     UI.modal({
       title: (hiring ? '🔵 قرار توظيف صاحب العمل — ' : empReject ? '🔴 رفض صاحب العمل — قرارك بالوظيفة — ' : critical ? '🔴 قرار حالة حرجة — ' : 'إدارة الحجز المؤقت — ') + job.code,
-      subtitle: job.title + ' · ' + job.region + ' · الشاغر ' + Number(t.vacancyNo||1) + ' من ' + Number(job.vacancies||1),
+      subtitle: job.title + ' · ' + job.governorate + ' · الشاغر ' + Number(t.vacancyNo||1) + ' من ' + Number(job.vacancies||1),
       body: '<div class="data-grid mb-3">' +
         '<div class="data-item"><div class="k">البطاقة المحجوزة</div><div class="v mono">' + UI.esc(serial) + '</div></div>' +
         '<div class="data-item"><div class="k">الفرصة</div><div class="v">#' + (t ? t.no : '—') + '</div></div>' +
@@ -2151,7 +2134,7 @@
     var hiringHtml = (pa.hiring || []).length ? pa.hiring.map(function (h) {
       return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;border-color:#bcd0ea;background:#f2f6fc">' +
         '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) +
-        '<small>' + UI.esc(h.job.region) + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
+        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
         '<div class="tiny muted mt-1">مكان المقابلة: ' + UI.esc(h.job.interviewLocation) + '</div></div>' +
         '<div><div class="tiny muted">البطاقة</div><div class="mono">' + UI.esc(h.serial || '—') + '</div><div class="tiny">الشاغر '+Number(h.vacancyNo||1)+'</div>' +
         '<span class="badge info">' + (h.decision === 'hire' ? 'طلب توظيف ✅ — ثبتّه أو ألغه' : 'طلب عدم توظيف — القرار بيدك') + '</span>' +
@@ -2164,7 +2147,7 @@
     var criticalHtml = (pa.critical || []).length ? pa.critical.map(function (h) {
       return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;border-color:#f0c3c1;background:#fdf5f4">' +
         '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) +
-        '<small>' + UI.esc(h.job.region) + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
+        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
         '<div class="tiny muted mt-1">مكان المقابلة: ' + UI.esc(h.job.interviewLocation) + '</div></div>' +
         '<div><div class="tiny muted">البطاقة</div><div class="mono">' + UI.esc(h.serial || '—') + '</div><div class="tiny">الشاغر '+Number(h.vacancyNo||1)+'</div>' +
         (h.decidedBy === 'employer'
@@ -2181,7 +2164,7 @@
       return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;' +
         (urgent ? 'border-color:#f0c3c1;background:#fdf5f4' : '') + '">' +
         '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) +
-        '<small>' + UI.esc(h.job.region) + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
+        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
         '<div class="tiny muted mt-1">مكان المقابلة: ' + UI.esc(h.job.interviewLocation) + '</div></div>' +
         '<div><div class="tiny muted">البطاقة</div><div class="mono">' + UI.esc(h.serial || '—') + '</div><div class="tiny">الشاغر '+Number(h.vacancyNo||1)+'</div>' +
         UI.holdHtml(h.job.holdExpiresAt) + '</div>' +
@@ -2518,7 +2501,7 @@
     var attempts = Store.db().attempts.filter(function (t) { return t.jobCode === code; });
     var body = '<div class="data-grid mb-3">' +
       '<div class="data-item"><div class="k">الحالة</div><div class="v">' + CFG.jobStatus[j.status].ar + '</div></div>' +
-      '<div class="data-item"><div class="k">المنطقة</div><div class="v">' + UI.esc(j.region) + '</div></div>' +
+      '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || '—') + '</div></div>' +
       '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || 'بابل') + '</div></div>' +
       '<div class="data-item"><div class="k">الأجر</div><div class="v">' + Store.money(j.salaryMin) + ' - ' + Store.money(j.salaryMax) + '</div></div>' +
       '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
@@ -2624,7 +2607,7 @@
      والصلاحية (30 يوماً) تبدأ من هذه اللحظة لا من إصدار الدفعة. */
   function newApplicantModal(prefillSerial) {
     var blanks = Store.listBlankCards();
-    var regionsList = CFG.regions.map(function (r) { return '<option>' + UI.esc(r) + '</option>'; }).join('');
+    var govList = CFG.governorates.map(function (g) { return '<option>' + UI.esc(g) + '</option>'; }).join('');
     var posList = (Store.listPosNames ? Store.listPosNames() : []).map(function (n) { return '<option>' + UI.esc(n) + '</option>'; }).join('');
 
     if (!blanks.length) {
@@ -2648,7 +2631,7 @@
        الفرصة الأولى بحجز 24 ساعة بانتظار قرار صاحب العمل. */
     var jobsAvail = (Store.listJobs() || []).filter(function (j) { return j.status === 'available'; });
     var jobOptions = jobsAvail.map(function (j) {
-      return '<option value="' + UI.esc(j.code) + '">' + UI.esc(j.code + ' — ' + j.title + ' (' + j.region + ')') + '</option>';
+      return '<option value="' + UI.esc(j.code) + '">' + UI.esc(j.code + ' — ' + j.title + ' (' + (j.governorate || '—') + ')') + '</option>';
     }).join('');
 
     var body = '<form id="app-form" class="grid grid-2" style="gap:14px">' +
@@ -2659,7 +2642,7 @@
       '<div class="field"><label for="n-phone">هاتف الزبون *</label><input type="tel" id="n-phone" required dir="ltr" placeholder="07XXXXXXXXX"></div>' +
       '<div class="field"><label for="n-dob">تاريخ الميلاد</label><input type="date" id="n-dob"></div>' +
       '<div class="field"><label for="n-gender">الجنس</label><select id="n-gender"><option>ذكر</option><option>أنثى</option></select></div>' +
-      '<div class="field"><label for="n-region">منطقة السكن</label><select id="n-region">' + regionsList + '</select></div>' +
+      '<div class="field"><label for="n-gov">المحافظة</label><select id="n-gov">' + govList + '</select></div>' +
       '<div class="field"><label for="n-fee">سعر البطاقة (د.ع — كاش)</label><input type="number" id="n-fee" value="' + Store.settings().formFee + '" step="500"></div>' +
       '<div class="field"><label for="n-pos">نقطة البيع *</label><input type="text" id="n-pos" required list="pos-names" placeholder="مثال: مكتب استنساخ — شارع 40">' +
         '<datalist id="pos-names">' + posList + '</datalist></div>' +
@@ -2692,7 +2675,7 @@
             phone: box.querySelector('#n-phone').value.trim(),
             dob: box.querySelector('#n-dob').value,
             gender: box.querySelector('#n-gender').value,
-            address: box.querySelector('#n-address').value.trim() || box.querySelector('#n-region').value,
+            address: box.querySelector('#n-address').value.trim() || box.querySelector('#n-gov').value,
             fee: Number(box.querySelector('#n-fee').value),
             feePaid: true,
             posName: box.querySelector('#n-pos').value.trim(),

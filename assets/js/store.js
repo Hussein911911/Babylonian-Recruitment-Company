@@ -89,7 +89,8 @@
       var extra = CFG.seed.jobsExtras[j.code] || {};
       var created = addDays(new Date(), -(idx + 3));
       d.jobs.push({
-        id: uid('job'), code: j.code, title: j.title, category: j.category, region: j.region,
+        id: uid('job'), code: j.code, title: j.title, category: j.category, region: j.region || '',
+        governorate: j.governorate || 'بابل',
         salaryMin: j.salaryMin, salaryMax: j.salaryMax, shift: j.shift, gender: j.gender || 'لا فرق',
         description: j.description || '', requirements: j.requirements || [],
         employer: j.employer, interviewLocation: j.interviewLocation,
@@ -139,7 +140,7 @@
           id: uid('att'), serial: app.serial, no: i, code: chanceCode(d.attempts),
           jobId: job ? job.id : null,
           jobCode: job ? job.code : null, jobTitle: job ? job.title : null,
-          location: job ? job.region : null,
+          location: job ? (job.governorate || '') : null,
           employerName: job ? job.employer.name : null, employerPhone: job ? job.employer.phone : null,
           slotStatus: t ? t.slotStatus : 'empty',
           selectedAt: t ? selected.toISOString() : null,
@@ -603,7 +604,7 @@
     if (f.q) {
       var q = f.q.trim().toLowerCase();
       rows = rows.filter(function (j) {
-        return (j.code + ' ' + j.title + ' ' + j.region + ' ' + (j.governorate || '') + ' ' + j.category + ' ' + (j.employer ? j.employer.name : ''))
+        return (j.code + ' ' + j.title + ' ' + (j.governorate || '') + ' ' + j.category + ' ' + (j.employer ? j.employer.name : ''))
           .toLowerCase().indexOf(q) >= 0;
       });
     }
@@ -622,7 +623,7 @@
   function createJob(data) {
     var job = {
       id: uid('job'), code: nextJobCode(), title: data.title, category: data.category || 'خدمات',
-      region: data.region, governorate: data.governorate || 'بابل', salaryMin: data.salaryMin, salaryMax: data.salaryMax, shift: data.shift,
+      region: data.region || '', governorate: data.governorate || 'بابل', salaryMin: data.salaryMin, salaryMax: data.salaryMax, shift: data.shift,
       gender: data.gender || 'لا فرق', description: data.description || '',
       requirements: (data.requirements || []).filter(Boolean),
       employer: { name: data.employerName, phone: data.employerPhone, address: data.employerAddress },
@@ -633,27 +634,16 @@
       imageUrl: data.imageUrl || ''
     };
     db.jobs.unshift(job);
-    audit('إضافة وظيفة', 'job', job.code, job.title + ' — ' + job.region + ' — الأجر ' + money(job.salaryMin) + ' إلى ' + money(job.salaryMax));
+    audit('إضافة وظيفة', 'job', job.code, job.title + ' — ' + (job.governorate || '—') + ' — الأجر ' + money(job.salaryMin) + ' إلى ' + money(job.salaryMax));
     save(); emit();
     return job;
   }
 
-  // Credential never enters db, audit details, localStorage or the cloud sync queue.
-  function saveJobWithPin(code, data, pin) {
-    if (cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client) return Promise.resolve({ok:false,error:'حفظ الرمز السري يتطلب اتصال الموظف بقاعدة الشركة.'});
-    return cloud.client.rpc('staff_save_job_pin',{p_code:code||'',p_data:data,p_pin:pin||''}).then(function(res){
-      if(res.error||!res.data||!res.data.ok)return {ok:false,error:res.data&&res.data.error||'تعذّر حفظ الوظيفة والرمز. تأكد من تطبيق تحديث قاعدة البيانات.'};
-      var job=root.HRCCloud.jobFromDb(res.data.job);
-      db.jobs=db.jobs.filter(function(j){return j.code!==job.code;});db.jobs.unshift(job);save();emit();
-      return {ok:true,job:job};
-    }).catch(function(){return {ok:false,error:'تعذّر تأكيد الحفظ. أعد تحميل الوظائف قبل إعادة المحاولة.'};});
-  }
-
   function updateJob(code, patch) {
     var job = getJob(code); if (!job) return null;
-    var before = JSON.stringify({ t: job.title, r: job.region, s: job.status });
+    var before = JSON.stringify({ t: job.title, g: job.governorate, s: job.status });
     Object.keys(patch).forEach(function (k) { if (patch[k] !== undefined) job[k] = patch[k]; });
-    audit('تعديل وظيفة', 'job', job.code, 'تحديث بيانات الوظيفة (' + before + ' ← ' + JSON.stringify({ t: job.title, r: job.region, s: job.status }) + ')');
+    audit('تعديل وظيفة', 'job', job.code, 'تحديث بيانات الوظيفة (' + before + ' ← ' + JSON.stringify({ t: job.title, g: job.governorate, s: job.status }) + ')');
     save(); emit();
     return job;
   }
@@ -685,7 +675,7 @@
     });
     if(db.meta&&db.meta.workspace){db.meta.explicitDeletes=db.meta.explicitDeletes||{};db.meta.explicitDeletes.jobs=(db.meta.explicitDeletes.jobs||[]).concat(code);}
     db.jobs = db.jobs.filter(function (j) { return j.code !== code; });
-    audit('حذف وظيفة', 'job', code, job.title + ' — ' + job.region);
+    audit('حذف وظيفة', 'job', code, job.title + ' — ' + (job.governorate || '—'));
     save(); emit();
     return true;
   }
@@ -929,103 +919,7 @@
     return list[0] || null;
   }
 
-  /* عرض صاحب العمل (قرار الإدارة: الباركود وحده يكفي — الورقة بيد صاحب
-     العمل): تفاصيل الزبون والتقديم الجاري وبيانات التواصل بصاحب العمل،
-     وبلا رموز الفرص (سرّ الزبون لفرصته الثانية). */
-  function employerView(serial) {
-    serial = String(serial || '').trim().toUpperCase();
-    var app = getApplicant(serial);
-    if (!app) return { ok: false, code: 'not_found', error: 'لا توجد بطاقة بهذا الباركود' };
-    if (app.status === 'blank') return { ok: false, code: 'blank', error: 'هذه البطاقة فارغة ولم تُبع بعد' };
-    if (app.status === 'pending') return { ok: false, code: 'pending', error: 'هذه البطاقة قيد المراجعة لدى الشركة' };
-    var attempts = getAttempts(app.serial);
-    var current = latestInPlay(app.serial);
-    var job = current && current.jobId
-      ? db.jobs.filter(function (j) { return j.id === current.jobId; })[0] : null;
-    return {
-      ok: true,
-      card: {
-        serial: app.serial,
-        fullName: app.fullName,
-        phone: app.phone,
-        address: app.address || '',
-        gender: app.gender || '',
-        dob: app.dob || '',
-        status: formStatus(app),
-        issueDate: app.issueDate,
-        expiryDate: app.expiryDate,
-        posName: app.posName || '',
-        chancesLeft: attemptsLeft(app.serial),
-        succeeded: attempts.some(function (t) { return t.slotStatus === 'succeeded'; }),
-        applied: current ? {
-          no: current.no,
-          jobCode: current.jobCode,
-          jobTitle: current.jobTitle,
-          region: current.location,
-          appliedAt: current.selectedAt,
-          holdExpiresAt: current.holdExpiresAt,
-          slotStatus: current.slotStatus,
-          employerDecision: current.employerDecision || null,
-          decisionAt: current.decisionAt || null,
-          reason: current.reason || '',
-          note: current.note || '',
-          employer: job ? {
-            name: job.employer.name,
-            phone: job.employer.phone,
-            address: job.employer.address,
-            interviewLocation: job.interviewLocation
-          } : null
-        } : null
-      }
-    };
-  }
-
-
-  function employerDecide(serial, decision, reason) {
-    serial = String(serial || '').trim().toUpperCase();
-    if (decision !== 'hire' && decision !== 'reject')
-      return { ok: false, error: 'قرار غير صحيح — hire أو reject فقط' };
-    var why = String(reason || '').trim();
-    if (decision === 'reject' && !why)
-      return { ok: false, error: 'سبب عدم التوظيف مطلوب — اكتب سبباً واضحاً للشركة وللمتقدم' };
-    var app = getApplicant(serial);
-    if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود' };
-    if (app.status === 'blank') return { ok: false, error: 'هذه البطاقة فارغة ولم تُبع بعد' };
-    var slot = latestInPlay(app.serial);
-    if (!slot) return { ok: false, error: 'لا يوجد تقديم قيد القرار على هذه البطاقة — راجع الشركة' };
-    if (slot.slotStatus === 'hiring' || slot.employerDecision)
-      return { ok: false, error: 'طلبك مسجَّل بالفعل — الوظيفة بانتظار قرار الشركة' };
-    var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
-
-    slot.employerDecision = decision;
-    slot.decisionAt = nowISO();
-    slot.holdExpiresAt = null;   /* لا مهلة بعد قرار صاحب العمل: القرار بيد الشركة */
-
-    if (decision === 'hire') {
-      slot.slotStatus = 'hiring';
-      slot.reason = '';
-      slot.note = 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة';
-      if (job) { job.status = 'hiring'; job.critical = false; job.holdExpiresAt = null; }
-    } else {
-      slot.slotStatus = 'critical';
-      slot.reason = why;
-      slot.note = 'رفض صاحب العمل — السبب: ' + why + ' | القرار الآن بيد الشركة: إرجاع الوظيفة متاحة أو حذفها';
-      if (job) { job.status = 'reserved'; job.critical = true; job.holdExpiresAt = null; }
-    }
-
-    refreshVacancies(job);
-    audit(decision === 'hire' ? 'طلب توظيف من صاحب العمل' : 'رفض من صاحب العمل مع السبب',
-      'applicant', app.serial,
-      'صاحب العمل سجّل عبر صفحة الباركود ' +
-      (decision === 'hire' ? 'طلب التوظيف' : 'رفض التوظيف') +
-      ' على الوظيفة ' + slot.jobCode + ' — الفرصة #' + slot.no + ' — الزبون ' + app.fullName +
-      (decision === 'hire'
-        ? ' | الوظيفة «جاري التوظيف» بانتظار قرار الشركة (تثبيت/إلغاء)'
-        : ' | السبب: ' + why + ' | الوظيفة «حرجة — معلّقة» بانتظار قرار الشركة: إرجاع متاحة أو حذف'));
-    save(); emit();
-    return { ok: true, attempt: slot, job: job, decision: decision, reason: why, pending: true };
-  }
-
+  /* البطاقات الفارغة المتاحة للبيع عند نقطة البيع */
   function listBlankCards() {
     return db.applicants.filter(function (a) { return a.status === 'blank'; })
       .sort(function (a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
@@ -1180,7 +1074,7 @@
     if(!freeSeat)return {ok:false,error:'لا يوجد شاغر متاح'};
     slot.vacancyNo=freeSeat;
     slot.jobId = job.id; slot.jobCode = job.code; slot.jobTitle = job.title;
-    slot.location = job.region; slot.employerName = job.employer.name; slot.employerPhone = job.employer.phone;
+    slot.location = job.governorate || ''; slot.employerName = job.employer.name; slot.employerPhone = job.employer.phone;
     slot.slotStatus = 'reserved';
     slot.selectedAt = nowISO();
     slot.holdExpiresAt = addHours(new Date(), hours).toISOString();
@@ -1295,25 +1189,6 @@
       return root.HRCCloud.activateCard(cloud.client, serial, data);
     }
     return Promise.resolve(activateCard(serial, data));
-  }
-
-  /* صفحة صاحب العمل: الباركود وحده يكفي — بلا أي رمز وبلا نافذة prompt
-     (قرار الإدارة 2026-10-06: حيازة الورقة = التحكم). */
-  function cardEmployerView(serial) {
-    var st = cloudStatus();
-    if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.employerView && cloud.client) {
-      return root.HRCCloud.employerView(cloud.client, serial);
-    }
-    return Promise.resolve(employerView(serial));
-  }
-
-  /* قرار صاحب العمل (توظيف / رفض بالسبب) من صفحة الباركود — بلا رمز */
-  function cardEmployerDecide(serial, decision, reason) {
-    var st = cloudStatus();
-    if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.employerDecide && cloud.client) {
-      return root.HRCCloud.employerDecide(cloud.client, serial, decision, reason);
-    }
-    return Promise.resolve(employerDecide(serial, decision, reason));
   }
 
   function cardVerify(serial, code) {
@@ -2686,7 +2561,7 @@
     diffCloud: function () { return (cloud.sync && cloud.state === 'on') ? cloud.sync.diff(db) : []; },
     // وظائف
     vacancySummary: vacancySummary, refreshVacancies: refreshVacancies,
-    listJobs: listJobs, govKey: govKey, getJob: getJob, createJob: createJob, updateJob: updateJob, saveJobWithPin: saveJobWithPin,
+    listJobs: listJobs, govKey: govKey, getJob: getJob, createJob: createJob, updateJob: updateJob,
     setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'HRC-' + (db.counters.jobCode + 1); },
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,
@@ -2704,9 +2579,8 @@
     maskName: maskName, maskPhone: maskPhone,
     // بطاقتي (الزبون)
     lookupCard: lookupCard, useChance: useChance,
-    cardLookup: cardLookup, cardUseChance: cardUseChance, cardVerify: cardVerify, cardVerifyCode: cardVerifyCode, listPosNames: listPosNames,
-    activateCard: activateCard, employerView: employerView, employerDecide: employerDecide,
-    cardActivate: cardActivate, cardEmployerView: cardEmployerView, cardEmployerDecide: cardEmployerDecide,
+    cardLookup: cardLookup, cardActivate: cardActivate, cardUseChance: cardUseChance,
+    cardVerify: cardVerify, cardVerifyCode: cardVerifyCode, listPosNames: listPosNames,
     // مالية
     stats: stats, financials: financials, financialTotals: financialTotals,
     markPrinted: markPrinted, setFeePaid: setFeePaid,
