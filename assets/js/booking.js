@@ -206,14 +206,14 @@
     if (!face || !num) return;
     num.textContent = v || '• • • • • •';
     face.classList.toggle('has-code', !!v);
-    /* أعد رسم الباركود الحقيقي في الشريط وفي منصّة القراءة معاً */
-    var uri = barcodeSvg(v);
+    /* أعد توليد مربّع الكيو آر في الشريط وفي منصّة القراءة والعدسة معاً */
+    var uri = qrImage(v);
     var strip = face.querySelector('.bk-card-bc');
-    if (strip) strip.style.backgroundImage = 'url("' + barcodeSvg(v, { digits: false }) + '")';
+    if (strip) strip.style.backgroundImage = 'url("' + uri + '")';
     var slip = document.querySelector('.bk-slip');
     if (slip) slip.style.backgroundImage = 'url("' + uri + '")';
-    var lens = document.querySelector('.bk-lens');
-    if (lens) lens.style.setProperty('--bk-bc', 'url("' + uri + '")');
+    var loupe = document.querySelector('.bk-loupe');
+    if (loupe) loupe.style.setProperty('--bk-bc', 'url("' + uri + '")');
   }
 
   /* يعكس الرقم المطبَّع داخل الحقل ووجه البطاقة (بعد المسح أو التطبيع) */
@@ -250,78 +250,85 @@
   }
 
   /* ──────────────────────────────────────────────────────────────────────
-   *  باركود حقيقي الشكل
-   *  أعمدة متفاوتة العرض بمسافات بيضاء، وأعمدة حراسة أطول في الطرفين،
-   *  والرقم مقروءاً تحت الأعمدة — كباركود Code-128 المطبوع على البطاقة.
-   *  يُرسم SVG ويُحوَّل إلى data-URI كي يكون خلفيةً للشريط وللعدسة معاً
-   *  (فتُكبَّر النسخة داخل العدسة بلا صورة ثانية ولا طلب شبكة).
+   *  مربّع الكيو آر — كيو آر كود حقيقي
+   *  يُولَّد بمولّد المشروع (assets/js/qr.js · ISO/IEC 18004) من رابط بطاقة
+   *  الزبون نفسه (apply.html?form=…) — أي أن مسحه بالكاميرا يفتح استمارته.
+   *  ويُعاد كـ data-URI ليُستخدم في المربع وفي العدسة المكبّرة معاً.
    * ────────────────────────────────────────────────────────────────────── */
-  function barcodeSvg(text, opts) {
-    opts = opts || {};
-    var label = String(text || '').replace(/[^A-Z0-9]/gi, '');
-    var seed = 7;
-    for (var i = 0; i < label.length; i++) seed = (seed * 131 + label.charCodeAt(i)) % 100003;
-    function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+  function cardLink(serial) {
+    var s = cleanSerial(serial);
+    if (!s) return '';
+    try {
+      if (Store && Store.cardUrl) return Store.cardUrl(s);
+    } catch (e) { }
+    return 'apply.html?form=' + encodeURIComponent(s);
+  }
 
-    var W = 240, H = 84, BAR_H = 62, x = 6, out = '';
-    function bar(w, h) {
-      out += '<rect x="' + x.toFixed(2) + '" y="0" width="' + w.toFixed(2) +
-        '" height="' + (h || BAR_H) + '" rx=".25" fill="#12253f"/>';
+  /* كيو آر احتياطي (شكل فقط) إن لم يكن مولّد QR محمّلاً */
+  function fallbackQrSvg(text) {
+    var n = 25, seed = 7, path = '';
+    for (var i = 0; i < text.length; i++) seed = (seed * 131 + text.charCodeAt(i)) % 100003;
+    for (var r = 0; r < n; r++) {
+      for (var c = 0; c < n; c++) {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        var finder = (r < 7 && c < 7) || (r < 7 && c > n - 8) || (r > n - 8 && c < 7);
+        var edge = (r === 0 || c === 0 || r === 6 || c === 6 ||
+          r === n - 7 || c === n - 7 || r === n - 1 || c === n - 1);
+        var on = finder ? edge || (r > 1 && r < 5 && c > 1 && c < 5) : (seed % 2 === 0);
+        if (on) path += 'M' + c + ' ' + r + 'h1v1h-1z';
+      }
     }
-    /* علامة البداية: عمودان رفيعان طويلان */
-    bar(1.7, BAR_H + 4); x += 3.6;
-    bar(1.7, BAR_H + 4); x += 4.4;
-    while (x < W - 16) {
-      var w = 1 + Math.round(rnd() * 3) * 0.62;          /* 1.0 – 2.86 */
-      bar(w);
-      x += w + 1.1 + Math.round(rnd() * 2) * 0.75;        /* فراغ 1.1 – 2.6 */
-    }
-    /* علامة النهاية */
-    x = W - 12;
-    bar(1.7, BAR_H + 4); x += 3.6;
-    bar(1.7, BAR_H + 4);
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" shape-rendering="crispEdges">' +
+      '<rect width="25" height="25" fill="#ffffff"/>' +
+      '<path fill="#0d1f42" d="' + path + '"/></svg>';
+  }
 
-    /* الشريط المصغّر بلا أرقام (الرقم مكتوب بجانبه)؛ منصّة القراءة بأرقامها */
-    var digits = opts.digits === false ? '' :
-      '<text x="' + (W / 2) + '" y="' + (H - 3) + '" text-anchor="middle" ' +
-      'font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" letter-spacing="2.6" ' +
-      'fill="#12253f">' + (label ? label.replace(/(.{4})/g, '$1 ').trim() : 'H R C   C A R D') + '</text>';
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
-      '<rect width="' + W + '" height="' + H + '" fill="#ffffff"/>' +
-      '<g>' + out + '</g>' + digits +
-      '</svg>';
+  /* صورة الكيو آر (data-URI) لرقم بطاقة معيّن */
+  function qrImage(serial) {
+    var text = cardLink(serial) || 'HRC-CARD';
+    var svg = '';
+    try {
+      if (root.HRCQR && root.HRCQR.encode && root.HRCQR.renderSVG) {
+        svg = root.HRCQR.renderSVG(root.HRCQR.encode(text, 'M'), { margin: 2, dark: '#0d1f42', light: '#ffffff' });
+      }
+    } catch (e) { svg = ''; }
+    if (!svg) svg = fallbackQrSvg(text);
     return 'data:image/svg+xml,' + encodeURIComponent(svg);
   }
 
-  /* شريط تعريف البطاقة: هوية الشركة + باركودها الحقيقي + الرقم */
+  /* شريط تعريف البطاقة: هوية الشركة + مربّع الكيو آر + الرقم */
   function cardStripHtml() {
     var v = cleanSerial(serial);
     return '<div class="bk-card">' +
-      '<span class="bk-card-brand">' + UI.ic('emblem') + ' بطاقة التوظيف</span>' +
-      '<span class="bk-card-num" dir="ltr">' + (v ? esc(v) : '• • • • • •') + '</span>' +
+      '<span class="bk-card-qr bk-card-bc" aria-hidden="true" style="background-image:url(&quot;' + qrImage(v) + '&quot;)"></span>' +
+      '<span class="bk-card-main">' +
+        '<span class="bk-card-brand">' + UI.ic('emblem') + ' بطاقة التوظيف</span>' +
+        '<span class="bk-card-num" dir="ltr">' + (v ? esc(v) : '• • • • • •') + '</span>' +
+      '</span>' +
       '<span class="bk-card-tags"><b>فرصتان</b><b>٣٠ يوماً</b></span>' +
-      '<span class="bk-card-bc" aria-hidden="true" style="background-image:url(&quot;' + barcodeSvg(v, { digits: false }) + '&quot;)"></span>' +
     '</div>';
   }
 
-  /* منصّة القراءة: بطاقة بيضاء بباركود حقيقي، وعدسة مكبّرة تمسح عليها */
+  /* منصّة القراءة: مربّع كيو آر كبير، وفوقه عدسة مكبّرة لها يد تتحرك */
   function scannerHtml() {
-    var v = cleanSerial(serial);
-    var bc = barcodeSvg(v);
+    var uri = qrImage(serial);
     return '<div class="bk-scanner">' +
       '<div class="bk-scanner-vp">' +
         '<span class="bk-corner tl" aria-hidden="true"></span>' +
         '<span class="bk-corner tr" aria-hidden="true"></span>' +
         '<span class="bk-corner bl" aria-hidden="true"></span>' +
         '<span class="bk-corner br" aria-hidden="true"></span>' +
-        '<div class="bk-slip" style="background-image:url(&quot;' + bc + '&quot;)"></div>' +
-        '<div class="bk-lens" aria-hidden="true" style="--bk-bc:url(&quot;' + bc + '&quot;)">' +
-          '<span class="bk-lens-glass"></span>' +
-          '<span class="bk-lens-line"></span>' +
+        '<div class="bk-qrslot">' +
+          '<span class="bk-slip" style="background-image:url(&quot;' + uri + '&quot;)" role="img" aria-label="كيو آر كود بطاقة التوظيف"></span>' +
+          /* العدسة: زجاج دائري + يد معدنية، تُظهر تكبيراً حقيقياً للكيو آر */
+          '<div class="bk-loupe" aria-hidden="true" style="--bk-bc:url(&quot;' + uri + '&quot;)">' +
+            '<span class="bk-loupe-lens"><span class="bk-loupe-glass"></span></span>' +
+            '<span class="bk-loupe-handle"><span class="bk-loupe-grip"></span></span>' +
+          '</div>' +
         '</div>' +
       '</div>' +
       '<p class="bk-scanner-hint">' + UI.ic('scan') +
-        ' ضع الباركود داخل الإطار — تُقرأ البطاقة تلقائياً.</p>' +
+        ' ضع مربّع الكيو آر داخل الإطار — تُقرأ البطاقة تلقائياً.</p>' +
     '</div>';
   }
 
