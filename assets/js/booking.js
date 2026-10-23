@@ -24,6 +24,13 @@
   var posErr = '';      // سبب فشل «إتمام» الأخير — يبقى معروضاً داخل الشاشة لا توستاً يختفي بعد ثوانٍ
   var applyJob = '';    // كود الوظيفة القادم من زر «قدّم ببطاقتك» — يُمرَّر لصفحة التقديم
   var gen = 0;          // جيل النافذة: نتيجة قراءة قديمة لا تُكتب في نافذة أُعيد فتحها
+  var entryCamStop = null;   // يُغلق كاميرا شاشة الدخول نهائياً عند مغادرتها
+  var entryCamPause = null;  // يوقف البث مؤقتاً (إخفاء التبويب) دون إغلاق الشاشة
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && entryCamPause) { try { entryCamPause(); } catch (e) { } }
+    });
+  }
 
   /* ======================= أدوات ======================= */
   function esc(v) { return UI.esc(String(v == null ? '' : v)); }
@@ -210,10 +217,7 @@
     var uri = qrImage(v);
     var strip = face.querySelector('.bk-card-bc');
     if (strip) strip.style.backgroundImage = 'url("' + uri + '")';
-    var slip = document.querySelector('.bk-slip');
-    if (slip) slip.style.backgroundImage = 'url("' + uri + '")';
-    var loupe = document.querySelector('.bk-loupe');
-    if (loupe) loupe.style.setProperty('--bk-bc', 'url("' + uri + '")');
+    /* الباركود في الشريط فقط — منصّة المسح صارت كاميرا حيّة */
   }
 
   /* يعكس الرقم المطبَّع داخل الحقل ووجه البطاقة (بعد المسح أو التطبيع) */
@@ -309,26 +313,38 @@
     '</div>';
   }
 
-  /* منصّة القراءة: مربّع كيو آر كبير، وفوقه عدسة مكبّرة لها يد تتحرك */
+  /* ──────────────────────────────────────────────────────────────────────
+   *  منصّة المسح: كاميرا حيّة داخل الشاشة
+   *  كان هنا مربّع كيو آر «توضيحي» مع عدسة متحركة — لكنه كان يوهم الزبون بأن
+   *  عليه مسح الشاشة نفسها، ولا يفتح الكاميرا إلا بزر منفصل في نافذة أخرى.
+   *  الآن: إطار كاميرا حقيقي في مكانه، يُشغَّل بزر واحد، ويقرأ الباركود مباشرة
+   *  ويحوّله إلى شاشة التقديم — بلا نوافذ متداخلة.
+   * ────────────────────────────────────────────────────────────────────── */
   function scannerHtml() {
-    var uri = qrImage(serial);
     return '<div class="bk-scanner">' +
-      '<div class="bk-scanner-vp">' +
+      '<div class="bk-cam" id="bk-cam" data-state="idle">' +
+        '<video id="bk-cam-video" playsinline muted autoplay aria-label="كاميرا مسح باركود البطاقة"></video>' +
         '<span class="bk-corner tl" aria-hidden="true"></span>' +
         '<span class="bk-corner tr" aria-hidden="true"></span>' +
         '<span class="bk-corner bl" aria-hidden="true"></span>' +
         '<span class="bk-corner br" aria-hidden="true"></span>' +
-        '<div class="bk-qrslot">' +
-          '<span class="bk-slip" style="background-image:url(&quot;' + uri + '&quot;)" role="img" aria-label="كيو آر كود بطاقة التوظيف"></span>' +
-          /* العدسة: زجاج دائري + يد معدنية، تُظهر تكبيراً حقيقياً للكيو آر */
-          '<div class="bk-loupe" aria-hidden="true" style="--bk-bc:url(&quot;' + uri + '&quot;)">' +
-            '<span class="bk-loupe-lens"><span class="bk-loupe-glass"></span></span>' +
-            '<span class="bk-loupe-handle"><span class="bk-loupe-grip"></span></span>' +
-          '</div>' +
+        '<span class="bk-cam-line" aria-hidden="true"></span>' +
+        '<div class="bk-cam-overlay" id="bk-cam-overlay" aria-live="polite">' +
+          '<span class="bk-cam-ic">' + UI.ic('scan') + '</span>' +
+          '<b id="bk-cam-title">الكاميرا متوقفة</b>' +
+          '<span class="bk-cam-sub" id="bk-cam-sub">اضغط «تشغيل الكاميرا» ثم وجّهها نحو الباركود المطبوع على وجه بطاقتك.</span>' +
         '</div>' +
       '</div>' +
-      '<p class="bk-scanner-hint">' + UI.ic('scan') +
-        ' ضع مربّع الكيو آر داخل الإطار — تُقرأ البطاقة تلقائياً.</p>' +
+      '<button type="button" class="btn btn-gold bk-cta" id="bk-cam-toggle">' +
+        UI.ic('scan') + ' تشغيل الكاميرا</button>' +
+      '<div class="bk-cam-alt">' +
+        '<label class="bk-link" for="bk-scan-file">' + UI.ic('upload') + ' رفع صورة للباركود</label>' +
+        '<span class="bk-dot" aria-hidden="true">•</span>' +
+        '<button type="button" class="bk-link" id="bk-cam-manual">' + UI.ic('edit') + ' كتابة الرقم يدوياً</button>' +
+        '<input type="file" id="bk-scan-file" accept="image/*" hidden>' +
+      '</div>' +
+      '<p class="bk-scanner-hint">' + UI.ic('lock') +
+        ' الباركود مطبوع على وجه البطاقة تحت شعار الشركة — القراءة تجري داخل جهازك ولا تُرسَل صورة.</p>' +
     '</div>';
   }
 
@@ -360,9 +376,6 @@
         /* ── لوحة المسح ── */
         '<section class="bk-panel bk-panel-scan is-open" id="bk-panel-scan" role="tabpanel" aria-labelledby="bk-tab-scan">' +
           scannerHtml() +
-          '<button type="button" class="btn btn-gold bk-cta" id="bk-scan">' + UI.ic('scan') + ' افتح الكاميرا</button>' +
-          '<label class="bk-link" for="bk-scan-file">' + UI.ic('upload') + ' أو ارفع صورة للباركود</label>' +
-          '<input type="file" id="bk-scan-file" accept="image/*" hidden>' +
         '</section>' +
 
         /* ── لوحة الكتابة ── */
@@ -398,8 +411,99 @@
     var manTab = document.getElementById('bk-manual-toggle');
     var scanPanel = document.getElementById('bk-panel-scan');
     var manPanel = document.getElementById('bk-manual');
-    var scanBtn = document.getElementById('bk-scan');
+    var camBox = document.getElementById('bk-cam');
+    var camVideo = document.getElementById('bk-cam-video');
+    var camTitle = document.getElementById('bk-cam-title');
+    var camSub = document.getElementById('bk-cam-sub');
+    var camToggle = document.getElementById('bk-cam-toggle');
+    var camManual = document.getElementById('bk-cam-manual');
     var fileInp = document.getElementById('bk-scan-file');
+    var camStream = null, camRaf = null, camWarned = false, camTeardown = false;
+
+    function camSet(state, title, sub) {
+      if (camBox) camBox.setAttribute('data-state', state);
+      if (title && camTitle) camTitle.textContent = title;
+      if (sub && camSub) camSub.textContent = sub;
+      if (camToggle) {
+        var live = state === 'live';
+        camToggle.innerHTML = live
+          ? UI.ic('x-circle') + ' إيقاف الكاميرا'
+          : UI.ic('scan') + ' تشغيل الكاميرا';
+        camToggle.disabled = state === 'starting';
+        camToggle.classList.toggle('is-ready', false);
+      }
+    }
+
+    function stopCam(silent) {
+      if (camRaf) { try { cancelAnimationFrame(camRaf); } catch (e) { } camRaf = null; }
+      if (camStream) { try { camStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { } camStream = null; }
+      if (camVideo) { try { camVideo.srcObject = null; } catch (e) { } }
+      camWarned = false;
+      if (!silent) camSet('idle', 'الكاميرا متوقفة',
+        'اضغط «تشغيل الكاميرا» ثم وجّهها نحو الباركود المطبوع على وجه بطاقتك.');
+    }
+
+    /* يقبل الرمز الممسوح ثم ينتقل مباشرةً إلى شاشة التقديم */
+    function onScanned(text) {
+      var scan = root.HRCQRScan;
+      var code = (scan && scan.serialFrom) ? scan.serialFrom(text) : '';
+      if (!code) {
+        if (!camWarned) {
+          camWarned = true;
+          camSet('live', '', 'هذا الرمز ليس باركود بطاقة توظيف — جرّب الباركود المطبوع على وجه البطاقة.');
+          setTimeout(function () { camWarned = false; }, 3200);
+        }
+        return false;
+      }
+      stopCam(true);
+      serial = code;
+      var inp2 = document.getElementById('bk-serial');
+      if (inp2) inp2.value = code;
+      setErr('serial', '');
+      doApply();
+      return true;
+    }
+
+    function camTick() {
+      if (!camStream || camTeardown) return;
+      Promise.resolve(root.HRCQRScan.detectVideoFrame(camVideo)).then(function (vals) {
+        if (!camStream || camTeardown) return;
+        if (vals && vals.length && onScanned(vals[0])) return;
+        camRaf = requestAnimationFrame(camTick);
+      }).catch(function () {
+        if (camStream && !camTeardown) camRaf = requestAnimationFrame(camTick);
+      });
+    }
+
+    function startCam() {
+      if (!scannerSupported()) return openScan();
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        camSet('error', 'الكاميرا غير متاحة',
+          'هذا المتصفح لا يسمح بالكاميرا — ارفع صورة للباركود أو اكتب الرقم يدوياً.');
+        return;
+      }
+      camSet('starting', 'جارٍ تشغيل الكاميرا…', 'اسمح للموقع باستخدام الكاميرا من نافذة المتصفح.');
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(function (st) {
+          if (camTeardown) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
+          camStream = st;
+          if (camVideo) {
+            camVideo.srcObject = st;
+            var pl = camVideo.play();
+            if (pl && pl.catch) pl.catch(function () { });
+          }
+          camSet('live', '', '');
+          camTick();
+        })
+        .catch(function () {
+          camSet('error', 'تعذّر تشغيل الكاميرا',
+            'لم يُسمح بالكاميرا أو لا توجد كاميرا. ارفع صورة للباركود أو اكتب الرقم يدوياً.');
+        });
+    }
+
+    entryCamPause = function () { if (camStream) stopCam(true); };
+    entryCamStop = function () { camTeardown = true; stopCam(true); };
+
     var goBtn = document.getElementById('bk-apply');
     var lookBtn = document.getElementById('bk-lookup');
     var inp = document.getElementById('bk-serial');
@@ -416,6 +520,7 @@
       if (manTab) { manTab.setAttribute('aria-selected', String(manual)); manTab.setAttribute('aria-expanded', String(manual)); manTab.tabIndex = manual ? 0 : -1; }
       if (scanPanel) scanPanel.classList.toggle('is-open', !manual);
       if (manPanel) manPanel.classList.toggle('is-open', manual);
+      if (manual) stopCam(true);          /* لا تبقى الكاميرا تعمل في الخلفية */
       if (manual && focus && inp) setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) { } }, 60);
       paintCard();
     }
@@ -454,12 +559,17 @@
       }
       doLookup();
     });
-    if (scanBtn) scanBtn.addEventListener('click', function () { openScan(); });
+    if (camToggle) camToggle.addEventListener('click', function () {
+      if (camStream) stopCam();
+      else startCam();
+    });
+    if (camManual) camManual.addEventListener('click', function () { setMode('manual', true); });
     if (fileInp) fileInp.addEventListener('change', function () {
       var f = fileInp.files && fileInp.files[0];
       if (f) openScan(f);
       try { fileInp.value = ''; } catch (e) { }
     });
+    /* إخفاء التبويب يوقف الكاميرا — عبر مستمع واحد على مستوى الوحدة */
 
     paintCard();
     if (goBtn) goBtn.classList.toggle('is-ready', !!serialPattern(serial));
@@ -1313,6 +1423,8 @@
   function render() {
     var host = document.getElementById('bk-wrap');
     if (!host || !m) return;
+    /* أي انتقال خارج شاشة الدخول يُوقف الكاميرا فوراً */
+    if (view !== 'entry' && entryCamStop) { try { entryCamStop(); } catch (e) { } entryCamStop = null; entryCamPause = null; }
     if (view === 'routewait') renderRouteWait(host);
     else if (view === 'gate') renderGate(host);
     else if (view === 'employer') renderEmployer(host);
@@ -1329,6 +1441,7 @@
 
   function open(opts) {
     opts = opts || {};
+    if (entryCamStop) { try { entryCamStop(); } catch (e) { } entryCamStop = null; entryCamPause = null; }
     if (m) { try { m.close(); } catch (e) { } m = null; }
     gen++;                       /* أي رد غير متزامن من نافذة سابقة يُهمَل */
     card = null; doneInfo = null; busy = false;
@@ -1354,6 +1467,7 @@
   }
 
   function close() {
+    if (entryCamStop) { try { entryCamStop(); } catch (e) { } entryCamStop = null; entryCamPause = null; }
     if (m) { try { m.close(); } catch (e) { } m = null; }
     card = null; doneInfo = null; emp = null; posResult = null; empDone = null; routeErr = ''; posDraft = null; posStep = 1; jobF = { q: '', region: '', shift: '' }; posErr = ''; applyJob = '';
     view = 'entry';

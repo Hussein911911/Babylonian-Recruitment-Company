@@ -108,97 +108,96 @@
 .bk-panel-manual.is-open { gap: 12px; }
 .bk-panel-manual .bk-field { margin: 0; }
 
-/* ── منصّة القراءة: مربّع كيو آر + عدسة مكبّرة لها يد تتحرك فوقه ──
-   العدسة: قرص زجاجي بحدود ذهبية + يد معدنية مائلة إلى الأسفل، وداخل القرص
-   نسخة مكبّرة من الكيو آر نفسه (نفس الصورة بنسبة أكبر) فتبدو عدسة حقيقية
-   تكبّر ما تحتها. الحركة بطيئة وتُلغى مع prefers-reduced-motion. */
-.bk-scanner { display: grid; gap: 9px; }
-.bk-scanner-vp {
-  position: relative; overflow: hidden; border-radius: 14px;
-  padding: 20px 30px; display: grid; place-items: center;
+/* ══════════════════════════════════════════════════════════════════════════
+   منصّة المسح — كاميرا حيّة داخل الشاشة (2026-10-25)
+   ---------------------------------------------------------------------------
+   بدل مربّع كيو آر «توضيحي» بعدسة متحركة (كان يوهم الزبون بأن عليه مسح
+   الشاشة)، صار إطار كاميرا حقيقي: يعرض البث عند التشغيل، خط مسح نيون أثناء
+   القراءة، وطبقة شرح واضحة قبل التشغيل وعند الخطأ أو رفض الإذن.
+   ══════════════════════════════════════════════════════════════════════════ */
+.bk-scanner { display: grid; gap: 10px; }
+
+.bk-cam {
+  position: relative; overflow: hidden; border-radius: 16px;
+  aspect-ratio: 16 / 10; max-height: 232px; display: grid; place-items: center;
   background:
-    radial-gradient(120% 140% at 50% 0%, rgba(63, 193, 196, .10), transparent 62%),
+    radial-gradient(120% 140% at 50% 0%, rgba(63, 193, 196, .12), transparent 62%),
     linear-gradient(160deg, #0d1f42, #102a4f 60%, #0b1a35);
-  border: 1px solid rgba(232, 208, 137, .26);
+  border: 1px solid rgba(232, 208, 137, .30);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+  transition: border-color .2s ease, box-shadow .2s ease;
 }
-/* مربّع الكيو آر: ورقة بيضاء بحجم ثابت */
-.bk-qrslot { position: relative; width: 128px; height: 128px; }
-.bk-slip {
-  display: block; width: 100%; height: 100%; border-radius: 9px; background-color: #fff;
-  background-repeat: no-repeat; background-size: 90% 90%; background-position: center;
-  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, .65);
+.bk-cam[data-state="live"] {
+  border-color: rgba(56, 232, 212, .55);
+  box-shadow: 0 0 0 1px rgba(56, 232, 212, .25), 0 12px 30px -20px rgba(0, 0, 0, .9);
 }
-/* زوايا الإطار (منظّر الكاميرا) */
+.bk-cam[data-state="starting"] { border-color: rgba(232, 208, 137, .6); }
+.bk-cam[data-state="error"] { border-color: rgba(201, 96, 92, .6); }
+
+/* بث الكاميرا */
+.bk-cam video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; opacity: 0; transition: opacity .25s ease;
+  background: #07111f;
+}
+.bk-cam[data-state="live"] video { opacity: 1; }
+
+/* زوايا الإطار */
 .bk-corner {
-  position: absolute; width: 18px; height: 18px; border: 2px solid rgba(232, 208, 137, .8);
+  position: absolute; width: 20px; height: 20px; z-index: 3;
+  border: 2.5px solid rgba(232, 208, 137, .9);
+  filter: drop-shadow(0 0 6px rgba(232, 208, 137, .35));
 }
-.bk-corner.tl { top: 10px; inset-inline-start: 10px; border-width: 2px 0 0 2px; border-start-start-radius: 7px; }
-.bk-corner.tr { top: 10px; inset-inline-end: 10px; border-width: 2px 2px 0 0; border-start-end-radius: 7px; }
-.bk-corner.bl { bottom: 10px; inset-inline-start: 10px; border-width: 0 0 2px 2px; border-end-start-radius: 7px; }
-.bk-corner.br { bottom: 10px; inset-inline-end: 10px; border-width: 0 2px 2px 0; border-end-end-radius: 7px; }
+.bk-corner.tl { top: 12px; inset-inline-start: 12px; border-width: 2.5px 0 0 2.5px; border-start-start-radius: 8px; }
+.bk-corner.tr { top: 12px; inset-inline-end: 12px; border-width: 2.5px 2.5px 0 0; border-start-end-radius: 8px; }
+.bk-corner.bl { bottom: 12px; inset-inline-start: 12px; border-width: 0 0 2.5px 2.5px; border-end-start-radius: 8px; }
+.bk-corner.br { bottom: 12px; inset-inline-end: 12px; border-width: 0 2.5px 2.5px 0; border-end-end-radius: 8px; }
 
-/* ── العدسة المكبّرة مع يدها ── */
-.bk-loupe {
-  --bk-bc: none;
-  position: absolute; top: 0; left: 0; width: 54px; height: 54px;
-  pointer-events: none; z-index: 2;
-  animation: bkLoupePath 7s cubic-bezier(.45, 0, .55, 1) infinite;
-  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .45));
+/* خط المسح: يظهر أثناء البث فقط */
+.bk-cam-line {
+  position: absolute; inset-inline: 14%; top: 22%; height: 2px; z-index: 2;
+  border-radius: 2px; opacity: 0;
+  background: linear-gradient(90deg, transparent, #38e8d4 22%, #a9fff5 50%, #38e8d4 78%, transparent);
+  box-shadow: 0 0 14px rgba(56, 232, 212, .85);
+  transition: opacity .2s ease;
 }
-/* القرص الزجاجي */
-.bk-loupe-lens {
-  position: absolute; inset: 0; border-radius: 50%; overflow: hidden;
-  border: 3px solid #e8d089;
-  background: #fff;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .55), 0 0 0 1px rgba(11, 26, 58, .35);
-}
-/* التكبير: نفس صورة الكيو آر بنسبة 260% تتحرك عكس اتجاه العدسة */
-.bk-loupe-glass {
-  position: absolute; inset: 0;
-  background-image: var(--bk-bc); background-repeat: no-repeat;
-  background-size: 300% 300%; background-position: 50% 50%;
-  animation: bkLoupePan 7s cubic-bezier(.45, 0, .55, 1) infinite;
-}
-/* لمعة زجاجية ثابتة أعلى القرص */
-.bk-loupe-lens::after {
-  content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .55), rgba(255, 255, 255, .05) 42%, transparent 62%);
-}
-/* اليد: عمود ذهبي مائل بيد سوداء ناعمة */
-.bk-loupe-handle {
-  position: absolute; width: 9px; height: 30px; top: 46px; left: 41px;
-  transform: rotate(-38deg); transform-origin: top center; border-radius: 0 0 5px 5px;
-  background: linear-gradient(90deg, #b3924a, #f0dc9e 45%, #a8873f);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .4);
-}
-.bk-loupe-grip {
-  position: absolute; inset-inline: 0; bottom: 0; height: 13px;
-  border-radius: 0 0 5px 5px;
-  background: linear-gradient(180deg, #2a1e0c, #0d1420);
+.bk-cam[data-state="live"] .bk-cam-line { opacity: 1; animation: bkCamSweep 2.6s ease-in-out infinite; }
+@keyframes bkCamSweep {
+  0%, 100% { top: 20%; opacity: .55; }
+  50% { top: 78%; opacity: 1; }
 }
 
-/* مسار العدسة: دورتان هادئتان فوق المربّع */
-@keyframes bkLoupePath {
-  0%   { transform: translate(14px, 10px) rotate(-3deg); }
-  22%  { transform: translate(74px, 16px) rotate(4deg); }
-  45%  { transform: translate(78px, 74px) rotate(-2deg); }
-  68%  { transform: translate(22px, 78px) rotate(5deg); }
-  100% { transform: translate(14px, 10px) rotate(-3deg); }
+/* طبقة الشرح (قبل التشغيل / جارٍ / خطأ) */
+.bk-cam-overlay {
+  position: relative; z-index: 4; display: grid; justify-items: center; gap: 7px;
+  text-align: center; padding: 20px 22px; max-width: 36ch;
 }
-/* تحرّك المحتوى المكبَّر عكسياً ليبدو كأن العدسة تقرأ ما تحتها */
-@keyframes bkLoupePan {
-  0%   { background-position: 12% 12%; }
-  22%  { background-position: 82% 18%; }
-  45%  { background-position: 86% 84%; }
-  68%  { background-position: 18% 86%; }
-  100% { background-position: 12% 12%; }
+.bk-cam[data-state="live"] .bk-cam-overlay { display: none; }
+.bk-cam-ic {
+  width: 48px; height: 48px; border-radius: 15px; display: grid; place-items: center;
+  color: #241a05; background: linear-gradient(145deg, #e8d089, #c8a24a);
+  box-shadow: 0 10px 22px -12px rgba(200, 162, 74, .95), inset 0 1px 0 rgba(255, 255, 255, .5);
 }
+.bk-cam-ic svg { width: 24px; height: 24px; }
+.bk-cam[data-state="starting"] .bk-cam-ic { animation: bkCamPulse 1.2s ease-in-out infinite; }
+@keyframes bkCamPulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+.bk-cam[data-state="error"] .bk-cam-ic {
+  color: #2a0a09; background: linear-gradient(145deg, #f6b7b3, #c9605c);
+  box-shadow: 0 10px 22px -12px rgba(201, 96, 92, .9);
+}
+.bk-cam-overlay b { font-size: .96rem; font-weight: 900; color: #f4f7ff; line-height: 1.6; }
+.bk-cam-sub { font-size: .79rem; line-height: 1.75; color: #c2cee4; }
+.bk-cam[data-state="error"] .bk-cam-sub { color: #ffc9c4; }
 
+/* روابط بديلة أسفل الزر */
+.bk-cam-alt {
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+}
 .bk-scanner-hint {
-  margin: 0; display: flex; align-items: center; justify-content: center; gap: 7px;
-  font-size: .77rem; color: var(--muted); line-height: 1.7; text-align: center;
+  margin: 0; display: flex; align-items: flex-start; gap: 7px;
+  font-size: .74rem; color: var(--muted); line-height: 1.7; text-align: start;
 }
-.bk-scanner-hint svg { width: 15px; height: 15px; color: #a2811f; flex: none; }
+.bk-scanner-hint svg { width: 14px; height: 14px; color: #9a8347; flex: none; margin-top: 2px; }
 
 /* الأزرار: واحد ذهبي في كل لوحة، والباقي روابط نصية */
 .bk-cta { width: 100%; justify-content: center; min-height: 46px; font-weight: 800; }
@@ -252,10 +251,10 @@
   .bk-card { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 9px; }
   .bk-card-qr { width: 38px; height: 38px; }
   .bk-card-tags { flex-direction: row; }
-  .bk-scanner-vp { padding: 16px 22px; }
-  .bk-qrslot { width: 112px; height: 112px; }
-  .bk-loupe { width: 48px; height: 48px; }
-  .bk-loupe-handle { top: 41px; left: 36px; height: 27px; }
+  .bk-cam { aspect-ratio: 4 / 3; max-height: 208px; border-radius: 14px; }
+  .bk-cam-overlay { padding: 16px 16px; }
+  .bk-cam-ic { width: 42px; height: 42px; border-radius: 13px; }
+  .bk-cam-sub { font-size: .76rem; }
   .bk-entry-foot { grid-template-columns: 1fr; }
   .bk-footbtn { font-size: .82rem; }
   .bk-switch-thumb { transition-duration: .22s; }
@@ -263,9 +262,9 @@
 @media (prefers-reduced-motion: reduce) {
   .bk-sheet, .bk-panel.is-open { animation: none !important; }
   .bk-switch-thumb { transition: none; }
-  /* العدسة تبقى ظاهرة لكن بلا حركة: تثبت في وسط المربّع */
-  .bk-loupe { animation: none !important; transform: translate(37px, 37px); }
-  .bk-loupe-glass { animation: none !important; background-position: 50% 50%; }
+  /* لا خط مسح متحرك ولا نبض — البث نفسه يبقى ظاهراً */
+  .bk-cam-line { animation: none !important; top: 50%; }
+  .bk-cam[data-state="starting"] .bk-cam-ic { animation: none !important; }
 }
 
 

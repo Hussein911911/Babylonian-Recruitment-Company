@@ -301,34 +301,36 @@ await (async () => {
     if (tog.getAttribute('aria-selected') !== 'true') return 'التبويب النشط ليس الكتابة';
     return true;
   });
-  check('بطاقتي: مربّع كيو آر حقيقي (SVG) في الشريط وفي منصّة القراءة', () => {
+  check('بطاقتي: باركود حقيقي (SVG) في شريط البطاقة يتغيّر مع الرقم', () => {
     const bcEl = modal.querySelector('.bk-card-bc');
-    const slip = modal.querySelector('.bk-slip');
-    if (!bcEl || !slip) return 'عنصر الباركود أو منصّة القراءة غير موجود';
+    if (!bcEl) return 'شريط البطاقة بلا باركود';
     const uriOf = (el) => (el.getAttribute('style') || '');
     const isSvg = (t) => /data:image\/svg\+xml/.test(t);
-    if (!isSvg(uriOf(bcEl))) return 'شريط البطاقة بلا صورة باركود';
-    if (!isSvg(uriOf(slip))) return 'منصّة القراءة بلا صورة باركود';
-    /* الباركود يجب أن يختلف من رقم لآخر (لا صورة ثابتة) */
-    const before = uriOf(slip);
+    if (!isSvg(uriOf(bcEl))) return 'الباركود ليس صورة SVG';
+    const before = uriOf(bcEl);
     const inp = modal.querySelector('#bk-serial');
     inp.value = 'HRC-BC-000117';
     inp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
-    const after = uriOf(modal.querySelector('.bk-slip'));
-    if (before === after) return 'الباركود لا يتغيّر مع الرقم';
+    return (before !== uriOf(modal.querySelector('.bk-card-bc'))) || 'الباركود لا يتغيّر مع الرقم';
+  });
+  check('بطاقتي: منصّة مسح بكاميرا حيّة داخل الشاشة (بلا مربّع QR توضيحي)', () => {
+    const cam = modal.querySelector('#bk-cam');
+    if (!cam) return 'منصّة الكاميرا غير موجودة';
+    if (modal.querySelector('.bk-slip') || modal.querySelector('.bk-loupe')) {
+      return 'ما زال المربّع التوضيحي/العدسة موجودين — يوهمان الزبون بمسح الشاشة';
+    }
+    if (!modal.querySelector('#bk-cam video')) return 'عنصر الفيديو غير موجود';
+    if (!/الكاميرا متوقفة/.test(cam.textContent)) return 'لا شرح قبل التشغيل';
+    if (cam.getAttribute('data-state') !== 'idle') return 'الحالة الابتدائية: ' + cam.getAttribute('data-state');
+    if (modal.querySelectorAll('.bk-corner').length !== 4) return 'زوايا الإطار ناقصة';
+    const toggle = modal.querySelector('#bk-cam-toggle');
+    if (!toggle || !/تشغيل الكاميرا/.test(toggle.textContent)) return 'زر التشغيل غير موجود';
     return true;
   });
-  check('بطاقتي: عدسة مكبّرة لها يد فوق مربّع الكيو آر (تكبير + إطار)', () => {
-    const loupe = modal.querySelector('.bk-loupe');
-    const glass = modal.querySelector('.bk-loupe-glass');
-    const handle = modal.querySelector('.bk-loupe-handle');
-    const qr = modal.querySelector('.bk-slip');
-    if (!loupe || !glass || !handle) return 'العدسة أو يدها غير موجودة';
-    if (!qr) return 'مربّع الكيو آر غير موجود';
-    const style = loupe.getAttribute('style') || '';
-    if (!/--bk-bc:\s*url\(/.test(style)) return 'العدسة بلا صورة مكبَّرة';
-    if (!modal.querySelectorAll('.bk-corner').length) return 'زوايا إطار الكاميرا غير موجودة';
-    return true;
+  check('بطاقتي: بدائل المسح ظاهرة معه (رفع صورة + كتابة الرقم)', () => {
+    const box = modal;
+    return (!!box.querySelector('#bk-scan-file') && !!box.querySelector('#bk-cam-manual')) ||
+      'بديل رفع الصورة أو الكتابة مفقود';
   });
   check('بطاقتي: شكل البطاقة البصرية يعكس الرقم المكتوب فوراً', () => {
     const inp = modal.querySelector('#bk-serial');
@@ -388,41 +390,67 @@ check('مُحلّل الباركود الممسوح: رابط apply · بارك�
     }
     return true;
   });
-  check('زر المسح في متصفح بلا دعم: تنبيه عربي بلا انهيار ولا انتقال لشاشة أخرى', () => {
-    const scan = modal && modal.querySelector('#bk-scan');
-    if (!scan) return 'زر المسح غير موجود';
-    scan.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-    const v = site.window.HRCBooking.state().view;
-    return v === 'entry' || 'تغيّرت الشاشة إلى ' + v;
-  });
+  await (async () => {
+    const name = 'زر تشغيل الكاميرا بلا دعم أو بلا إذن: رسالة عربية ولا انتقال لشاشة أخرى';
+    const btn = modal && modal.querySelector('#bk-cam-toggle');
+    if (!btn) return bad(name, 'زر تشغيل الكاميرا غير موجود');
+    btn.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 150));
+    const cam = modal.querySelector('#bk-cam');
+    const state = cam && cam.getAttribute('data-state');
+    /* إمّا فتح نافذة المسح (دعم كامل) أو رسالة خطأ واضحة داخل المنصّة */
+    const okState = state === 'error' || state === 'starting' || state === 'live' ||
+      site.window.HRCBooking.state().view === 'entry';
+    return okState ? ok(name) : bad(name, 'حالة غير متوقعة: ' + state);
+  })();
 
-  /* ═══ الماسح: النافذة، التحقق داخل النافذة، رفع الصورة، فتح/طي الإدخال ═══ */
+  /* ═══ الكاميرا المضمّنة: تشغيل، قراءة، تحويل إلى شاشة الحالة ═══ */
   const realScan = site.window.HRCQRScan;
-  let scanOpts = null;
+  const realMedia = site.window.navigator.mediaDevices;
+  const fakeTrack = { stop: () => { fakeTrack.stopped = true; } };
+  site.window.navigator.mediaDevices = Object.assign({}, realMedia, {
+    getUserMedia: () => Promise.resolve({ getTracks: () => [fakeTrack] })
+  });
+  let tickCount = 0;
   site.window.HRCQRScan = Object.assign({}, realScan, {
     supported: () => true,
-    open: (o) => { scanOpts = o; return true; }
+    detectVideoFrame: () => { tickCount++; return Promise.resolve(['https://hrc.example/apply.html?form=hrc-bc-000117']); }
   });
   site.window.HRCBooking.close();
-  check('بطاقتي (بماسح مدعوم): يبدأ على المسح، وزر «افتح الكاميرا» يفتح النافذة', () => {
+  await (async () => {
+    const name = 'بطاقتي (كاميرا حيّة): التشغيل يقرأ الباركود ويحوّله لشاشة الحالة';
     const a = site.doc.querySelector('#jobs-grid .job-card [data-action="open-booking"]');
     a.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
     const box = lastModal(site.doc);
-    const man = box.querySelector('#bk-manual');
-    const scanTab = box.querySelector('#bk-tab-scan');
-    if (man.classList.contains('is-open')) return 'لوحة الكتابة مفتوحة رغم دعم المسح';
-    if (scanTab.getAttribute('aria-selected') !== 'true') return 'تبويب المسح غير نشط ابتدائياً';
-    box.querySelector('#bk-scan').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-    return !!scanOpts || 'لم تُفتح نافذة المسح';
-  });
-  check('بطاقتي: نافذة المسح ترفض كود الوظيفة وتقبل رابط باركود البطاقة', () =>
-    (scanOpts && scanOpts.validate('HRC-1042') === false && scanOpts.validate('apply.html?form=7KQ4M9TR2X') === true) ||
-    'دالة التحقق غير سليمة');
-  check('بطاقتي: نتيجة المسح تملأ الحقل وتُطبَّع', () => {
-    scanOpts.onResult('https://hrc.example/apply.html?form=7kq4m9tr2x');
-    const inp = lastModal(site.doc).querySelector('#bk-serial');
-    return (site.window.HRCBooking.state().serial === '7KQ4M9TR2X') || ('الحالة: ' + site.window.HRCBooking.state().serial);
-  });
+    if (box.querySelector('#bk-manual').classList.contains('is-open')) return bad(name, 'لوحة الكتابة مفتوحة رغم دعم المسح');
+    if (box.querySelector('#bk-tab-scan').getAttribute('aria-selected') !== 'true') return bad(name, 'تبويب المسح غير نشط');
+    box.querySelector('#bk-cam-toggle').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 800));
+    const st = site.window.HRCBooking.state();
+    if (!fakeTrack.stopped) return bad(name, 'الكاميرا لم تُوقف بعد القراءة | serial=' + st.serial + ' | view=' + st.view);
+    if (st.serial !== 'HRC-BC-000117') return bad(name, 'الرقم المقروء: ' + st.serial);
+    if (st.view !== 'status') return bad(name, 'الشاشة بعد المسح: ' + st.view);
+    return ok(name);
+  })();
+  await (async () => {
+    const name = 'بطاقتي: رمز ليس باركود بطاقة يُرفض داخل المنصّة والكاميرا تبقى تعمل';
+    site.window.HRCQRScan = Object.assign({}, realScan, {
+      supported: () => true,
+      detectVideoFrame: () => Promise.resolve(['HRC-1042'])
+    });
+    site.window.HRCBooking.close();
+    site.window.HRCBooking.open({ code: 'HRC-1042' });
+    await new Promise((r) => setTimeout(r, 80));
+    const box = lastModal(site.doc);
+    box.querySelector('#bk-cam-toggle').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 220));
+    const cam = box.querySelector('#bk-cam');
+    const st = site.window.HRCBooking.state();
+    if (st.view !== 'entry') return bad(name, 'انتقلت الشاشة إلى ' + st.view + ' برمز غير صالح');
+    if (!/ليس باركود بطاقة/.test(cam.textContent)) return bad(name, 'لا رسالة توضيحية داخل المنصّة');
+    return ok(name);
+  })();
+  site.window.navigator.mediaDevices = realMedia;
   await (async () => {
     const name = 'بطاقتي: «ارفع صورة» يقرأ الباركود بنفس المحرّك ويملأ الرقم';
     site.window.HRCBooking.close();
