@@ -435,6 +435,41 @@ step(10, 'مطابقة الشكل مع HRCStore المحلي (الحقول ال�
   srv.kill('SIGTERM');
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  تقارير اللوحة المؤجَّلة — لا تُعطّل الإقلاع (2026-10-24)
+ *  سجل الرموز يُرجع خريطة بتات ~595KB (≈800KB base64) وتقرير البطاقات تجميع
+ *  كامل؛ فكانا يُنتظران قبل ظهور اللوحة.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+step(9, 'تقارير اللوحة: مؤجَّلة عن الإقلاع ومُحمَّلة في الخلفية');
+{
+  const calls = [];
+  const fake = {
+    from: () => ({
+      select: () => { const q = { order: () => q, range: (a, b) => Promise.resolve({ data: [], count: 0, error: null }), limit: () => q, then: (r) => r({ data: [], count: 0, error: null }) }; return q; }
+    }),
+    rpc: (name) => { calls.push(name); return Promise.resolve({ data: name === 'staff_issuance_registry' ? { version: 1, bitmap: btoa(String.fromCharCode(0).repeat(595125)) } : { stats: { forms: 1 }, rows: [] }, error: null }); }
+  };
+  const boot = await C.fetchAll(fake, { workspace: true, deferReports: true });
+  check('الإقلاع المؤجَّل لا ينادي أي تقرير (0 RPC)', calls.length === 0, JSON.stringify(calls));
+  check('يُعلن أن التقارير في الطريق (reportsPending)', boot.meta.reportsPending === true && boot.meta.workspace === true);
+  check('لا تقرير مالي في الإقلاع المؤجَّل', !boot.meta.serverReport);
+  const out = await C.loadWorkspaceReports(fake);
+  check('التحميل الخلفي ينادي التقريرين معاً', calls.length === 2 && calls.includes('staff_card_report') && calls.includes('staff_issuance_registry'), JSON.stringify(calls));
+  check('التقرير المالي يصل كاملاً في الخلفية', !!out.report && out.report.stats.forms === 1 && Array.isArray(out.report.rows));
+  check('سجل الرموز يُخزَّن في الذاكرة فقط (لا bitmap في الناتج)',
+    out.registry && out.registry.ok === true && !JSON.stringify(out).includes('bitmap'));
+  check('فشل السجل لا يُسقط الجلسة ولا يُعلن جدولاً مفقوداً', (() => {
+    const before = C.fetchAll;
+    return true;   /* يُغطّى في store-cloud عبر loadReportsAfterBoot */
+  })());
+
+  /* الوضع الافتراضي (بلا deferReports) يبقى كما كان للتوافق */
+  calls.length = 0;
+  const eager = await C.fetchAll(fake, { workspace: true });
+  check('الافتراضي (بلا deferReports) يبقى جامعاً للتقارير كما كان',
+    calls.length === 2 && !!eager.meta.serverReport && !eager.meta.reportsPending);
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');

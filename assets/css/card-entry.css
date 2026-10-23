@@ -268,3 +268,22 @@
   .bk-loupe-glass { animation: none !important; background-position: 50% 50%; }
 }
 
+
+/* مؤشر الاتصال بقاعدة الشركة (يظهر بعد ثانيتين إن تأخّر الرد) */
+.job-connecting {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  margin: 0 0 14px; padding: 10px 14px; border-radius: 12px;
+  font-size: .85rem; font-weight: 700; color: #5b6472;
+  background: #fbf8f0; border: 1px dashed rgba(200, 162, 74, .45);
+}
+.skel-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex: none;
+  background: #c8a24a; box-shadow: 0 0 0 0 rgba(200, 162, 74, .5);
+  animation: connPulse 1.4s ease-out infinite;
+}
+@keyframes connPulse {
+  0% { box-shadow: 0 0 0 0 rgba(200, 162, 74, .55); }
+  70% { box-shadow: 0 0 0 9px rgba(200, 162, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(200, 162, 74, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .skel-dot { animation: none; } }

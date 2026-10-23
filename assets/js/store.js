@@ -2104,8 +2104,31 @@
     }).catch(function () { return loadFromCloud(); });
   }
 
+  /* بعد الإقلاع: تحميل تقارير اللوحة (المالية + سجل الرموز ~800KB) في الخلفية.
+     لا تُعطّل ظهور اللوحة، وعند وصولها نُحدّث البيانات ونُعيد الرسم. */
+  function loadReportsAfterBoot() {
+    if (!root.HRCCloud.loadWorkspaceReports || !cloud.client) return;
+    Promise.resolve().then(function () {
+      return root.HRCCloud.loadWorkspaceReports(cloud.client);
+    }).then(function (out) {
+      out = out || {};
+      var d = db;
+      if (d && d.meta) {
+        d.meta.reportsPending = false;
+        if (out.report) d.meta.serverReport = out.report;
+        var regErr = (out.errors || []).filter(function (e) { return e.scope === 'registry'; })[0];
+        d.meta.registryMissing = !!regErr;
+        if (regErr) cloud.registryMissing = true;
+      }
+      emit();
+    }).catch(function () {
+      if (db && db.meta) { db.meta.reportsPending = false; emit(); }
+    });
+  }
+
   function loadFromCloud() {
-    return root.HRCCloud.fetchAll(cloud.client,{workspace:true}).then(function (cdb) {
+    /* الجداول أولاً (سريعة)، ثم التقارير الثقيلة في الخلفية — لا في مسار الإقلاع */
+    return root.HRCCloud.fetchAll(cloud.client,{workspace:true, deferReports:true}).then(function (cdb) {
       var failed = (cdb.meta && cdb.meta.failedTables) || [];
       cloud.failedTables = failed;
       var coreFailed = failed.filter(function (t) { return CORE_TABLES.indexOf(t) >= 0; });
@@ -2124,6 +2147,7 @@
       cloud.role = 'staff'; cloud.readOnly = false;
       cloud.state = 'on'; cloud.error = null; cloud.detail = null;
       startSync(); startRealtime();
+      loadReportsAfterBoot();      /* خلفية: لا تُبطئ أول رسم للوحة */
       return cloudStatus();
     });
   }

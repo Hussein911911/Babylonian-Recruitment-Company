@@ -484,7 +484,14 @@
       return readPages(client, source, t === 'audit_log' ? limit : 100000);
     });
 
-    if(opts.workspace){queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_card_report',{p_from:null,p_to:null});}).catch(function(){return {error:true};}));queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_issuance_registry',{p_serial:null});}).then(function(r){if(r.error)throw Error('تعذر قراءة سجل الرموز');setChanceRegistry(r.data);return {ok:true};}).catch(function(e){return {error:{message:e.message,code:'REGISTRY_REQUIRED'}};}));}
+    /* ⚠️ تقريران ثقيلان كانا يُنتظران في إقلاع اللوحة:
+       • staff_card_report: تجميع كل البطاقات (المالية والإحصاءات الكلية)
+       • staff_issuance_registry: يُرجع خريطة بتات **~595KB** (base64 ≈ 800KB)
+         لسجل الرموز المطبوعة — أي أكبر من كل الجداول مجتمعة.
+       لذلك صار الإقلاع يقرأ الجداول فقط (opts.deferReports)، ويُحمَّل التقريران
+       في الخلفية بعد ظهور اللوحة عبر loadWorkspaceReports. الوضع الافتراضي
+       (بلا deferReports) يبقى كما كان كي لا تتغيّر بقية الاستدعاءات. */
+    if(opts.workspace && !opts.deferReports){queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_card_report',{p_from:null,p_to:null});}).catch(function(){return {error:true};}));queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_issuance_registry',{p_serial:null});}).then(function(r){if(r.error)throw Error('تعذر قراءة سجل الرموز');setChanceRegistry(r.data);return {ok:true};}).catch(function(e){return {error:{message:e.message,code:'REGISTRY_REQUIRED'}};}));}
     return Promise.all(queries).then(function (results) {
       var failed = [];
       var data = {};
@@ -494,11 +501,56 @@
         else data[t] = (res && res.data) || [];
       });
       var db = buildDb(data);
-      if(opts.workspace&&results[TABLES.length+1].error&&!failed.some(function(f){return f.table==='job_attempts';}))failed.push({table:'job_attempts',error:results[TABLES.length+1].error});
+      if(opts.workspace && opts.deferReports){
+        /* التقارير مؤجَّلة: نعلن ذلك في meta كي تعرف الواجهة أنها قادمة */
+        db.meta.reportsPending = true;
+      }
+      if(opts.workspace && !opts.deferReports && results[TABLES.length+1] && results[TABLES.length+1].error && !failed.some(function(f){return f.table==='job_attempts';}))failed.push({table:'job_attempts',error:results[TABLES.length+1].error});
       db.meta.failedTables = failed.map(function (f) { return f.table; });
       db.meta.errors = failed;
-      if(opts.workspace){db.meta.workspace=true;db.meta.partialTables=['jobs','applicants','job_attempts'];var report=results[TABLES.length];if(report&&!report.error&&report.data&&report.data.stats&&Array.isArray(report.data.rows))db.meta.serverReport=report.data;}
+      if(opts.workspace){db.meta.workspace=true;db.meta.partialTables=['jobs','applicants','job_attempts'];if(!opts.deferReports){var report=results[TABLES.length];if(report&&!report.error&&report.data&&report.data.stats&&Array.isArray(report.data.rows))db.meta.serverReport=report.data;}}
       return db;
+    });
+  }
+
+  /* ═════════════════════════════════════════════════════════════════════════
+   *  تحميل تقارير اللوحة بعد الإقلاع (خلفية)
+   *  -------------------------------------------------------------------------
+   *  تُنفّذ النداءين معاً (متوازيين) وتُرجع:
+   *    { report, registry, errors[] } — وreport/registry = null عند الفشل.
+   *  • report: بيانات staff_card_report (إحصاءات كلية + صفوف مالية).
+   *  • registry: سجل الرموز المطبوعة (~800KB) يُخزَّن في الذاكرة فقط
+   *    (chanceBitmap) ولا يُسلسَل إلى أي ملف أو كاش.
+   *  ⚠️ فشل السجل لا يُسقط الجلسة ولا يُعلن جدولاً مفقوداً — كان سابقاً يضع
+   *     job_attempts في failedTables فيعود الموظف إلى واجهة الزائر.
+   * ═══════════════════════════════════════════════════════════════════════ */
+  function loadWorkspaceReports(client) {
+    var errors = [];
+    var pReport = Promise.resolve()
+      .then(function () { return rpcCall(client, 'staff_card_report', { p_from: null, p_to: null }); })
+      .then(function (r) {
+        if (r.error || !r.data || !r.data.stats || !Array.isArray(r.data.rows)) {
+          errors.push({ scope: 'report', error: r.error || { message: 'تقرير غير مكتمل' } });
+          return null;
+        }
+        return r.data;
+      })
+      .catch(function (e) { errors.push({ scope: 'report', error: { message: String(e && e.message || e) } }); return null; });
+
+    var pRegistry = Promise.resolve()
+      .then(function () { return rpcCall(client, 'staff_issuance_registry', { p_serial: null }); })
+      .then(function (r) {
+        if (r.error) throw Error(r.error.message || 'تعذر قراءة سجل الرموز');
+        setChanceRegistry(r.data);
+        return { ok: true };
+      })
+      .catch(function (e) {
+        errors.push({ scope: 'registry', error: { message: String(e && e.message || e), code: 'REGISTRY_REQUIRED' } });
+        return null;
+      });
+
+    return Promise.all([pReport, pRegistry]).then(function (out) {
+      return { report: out[0], registry: out[1], errors: errors };
     });
   }
 
@@ -866,7 +918,7 @@
     staffFromDb: staffFromDb,
     settingsFromDb: settingsFromDb, settingsToDb: settingsToDb,
     /* بيانات */
-    chanceUsed:chanceUsed,rememberChance:rememberChance,clearChanceRegistry:clearChanceRegistry, rpcCall:rpcCall, buildDb: buildDb, fetchAll: fetchAll, TABLES: TABLES,
+    chanceUsed:chanceUsed,rememberChance:rememberChance,clearChanceRegistry:clearChanceRegistry, rpcCall:rpcCall, buildDb: buildDb, fetchAll: fetchAll, loadWorkspaceReports: loadWorkspaceReports, TABLES: TABLES,
 
     fetchPublicJobs: fetchPublicJobs, verifyForm: verifyForm,
     lookupCard: lookupCardRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,

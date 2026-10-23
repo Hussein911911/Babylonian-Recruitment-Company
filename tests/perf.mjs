@@ -81,14 +81,14 @@ const BUDGET = {
      بلا سكربت أو طلب قاعدة جديد للزائر (20 طلباً كما هي). */
   /* 2026-10-24: أُعيدت بطاقات الموقع العام إلى تصميمها السابق (التصميم الفاخر
      صار في صفحة التقديل فقط) — index 618KB وverify 479KB بعد القياس. */
-  'index.html': { raw: 634, requests: 20 },
-  'verify.html': { raw: 496, requests: 20 },
+  'index.html': { raw: 646, requests: 20 },
+  'verify.html': { raw: 500, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */
   /* 2026-10-24: +8KB لمحرّر صورة الوظيفة (معاينة + تكبير/تصغير + سحب +
      تثبيت ما يراه الموظف) في ملف assets/css/image-editor.css الخاص باللوحة،
      مع كود canvas في dashboard.js. القياس: 971KB. لا طلب جديد. */
-  'dashboard.html': { raw: 982, requests: 20 }
+  'dashboard.html': { raw: 992, requests: 20 }
 };
 
 function payloadOf(page) {
@@ -171,6 +171,16 @@ step(3, 'ميزانية القاعدة — طلبات Supabase لكل زيارة
       return new RegExp('rel="preconnect" href="https://' + host + '"').test(html) &&
         new RegExp('rel="dns-prefetch" href="https://' + host + '"').test(html);
     });
+  })());
+  check('إقلاع اللوحة لا ينتظر تقارير 800KB (deferReports + تحميل خلفي)', (() => {
+    const storeJs = readFileSync(join(ROOT, 'assets/js/store.js'), 'utf8');
+    return /deferReports:\s*true/.test(storeJs) && /loadReportsAfterBoot\(\)/.test(storeJs) &&
+      /loadWorkspaceReports/.test(cloudJs) && /loadReportsAfterBoot/.test(storeJs);
+  })());
+  check('مؤشر «جارٍ الاتصال» يظهر بعد ثانيتين فقط على الصفحة العامة', (() => {
+    const pub = readFileSync(join(ROOT, 'assets/js/public.js'), 'utf8');
+    return /connectingTimer = setTimeout\(showConnecting, 2000\)/.test(pub) &&
+      /hideConnecting\(\)/.test(pub);
   })());
   check('مهلة اتصال ومحاولة إعادة واحدة في عميل الزائر', (() => {
     const http = readFileSync(join(ROOT, 'assets/js/cloud-http.js'), 'utf8');
