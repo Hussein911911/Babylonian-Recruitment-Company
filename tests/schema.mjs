@@ -77,8 +77,12 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 /* 30 = 29 السابقة + إصلاح 2026-10-06: ترميم خانات الفرص الناقصة
    (ensure_card_attempts) — بطاقة جديدة كانت تظهر «انتهت فرصك» بلا أي تقديم
    لأن مزامنة لوحة الموظفين كانت تحذف خاناتها من القاعدة. */
-check('تعريفات الدوال: 55 تعريفاً، 53 دالة فعلية (تحديثان مقصودان)',
-  funcs.length === 55 && new Set(funcs.map(x=>x.name)).size === 53,
+/* 2026-10-25: حُذفت 6 دوال ميتة بلا أي مستخدم — employer_view · employer_decide
+   (ومعهما employer_decide_original على القاعدة) وemployer_otp_issue/delivery/
+   verify/action — بعد حذف مسار صاحب العمل من الويب. فصار العدد 49 تعريفاً
+   و47 دالة فعلية (trg_attempt_hold وrun_auto_release معرَّفتان مرتين). */
+check('تعريفات الدوال: 49 تعريفاً، 47 دالة فعلية (تحديثان مقصودان)',
+  funcs.length === 49 && new Set(funcs.map(x=>x.name)).size === 47,
   funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
@@ -87,9 +91,10 @@ const EXPECTED_FUNCS = ['brc.recovery_manage', 'brc.office_submit', 'brc.next_jo
   'brc.run_auto_release', 'brc.is_staff', 'brc.is_admin', 'brc.current_staff_id',
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
   'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold',
-  'brc.activate_card', 'brc.employer_view', 'brc.employer_decide',
+  'brc.activate_card',
   'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts'];
-/* 2026-10-25: حُذف رمز صاحب العمل — لا دوال OTP ولا PIN تُتوقَّع بعد اليوم. */
+/* 2026-10-25: حُذف رمز صاحب العمل — لا دوال OTP ولا PIN ولا employer_view/
+   employer_decide تُتوقَّع بعد اليوم. */
 check('كل الدوال المتوقّعة موجودة بالاسم', EXPECTED_FUNCS.every((n) => funcs.some((x) => x.name === n)),
   'المفقود: ' + EXPECTED_FUNCS.filter((n) => !funcs.some((x) => x.name === n)).join(', '));
 
@@ -437,6 +442,22 @@ step(13, 'إعادة الطباعة — لا قراءة مباشرة لعمود 
     migNames.includes(fix) &&
     !/alter\s+table[^;]*add\s+column[^;]*card_print_code/i.test(readFileSync(join(MIG_DIR, fix), 'utf8')),
     fix);
+}
+
+/* ── 2026-10-25: دوال صاحب العمل الميتة لا تعود ──
+   employer_view · employer_decide · employer_decide_original · employer_otp_* ‎
+   بلا أي مستخدم: لا واجهة تنادي عليها، ولا دالة/عرض يعتمد عليها، وصلاحيتها
+   مسحوبة من anon/authenticated/service_role. حُذفت من المصدر والقاعدة. */
+step(14, 'دوال صاحب العمل القديمة — محذوفة ولا تُعاد إلى المصدر');
+{
+  const DEAD = /create\s+or\s+replace\s+function\s+brc\.(employer_view|employer_decide|employer_decide_original|employer_otp_\w+)/i;
+  check('المصدر (schema.sql) لا يعرّف أي دالة employer_* ميتة', !DEAD.test(RAW));
+  const guarded = readFileSync(join(MIG_DIR, '20261026110000_drop_dormant_employer_functions.sql'), 'utf8');
+  check('هجرة الحذف تستعمل drop function if exists (آمنة للتكرار)',
+    /drop\s+function\s+if\s+exists\s+brc\.employer_view/i.test(guarded) &&
+    /drop\s+function\s+if\s+exists\s+brc\.employer_decide/i.test(guarded));
+  check('هجرة الحذف لا تمسّ الجداول التي تلتقطها نسخ الاسترجاع',
+    !/drop\s+table/i.test(guarded));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

@@ -234,7 +234,9 @@ npm run test:all       # كل ما سبق دفعة واحدة
   `?role=employer` يفتح بطاقة الزبون). الهجرة:
   `supabase/migrations/20261026000000_remove_employer_pin_and_region.sql`.
   وطُبِّقت على قاعدة الإنتاج فعلاً (مع `20261025000000` و`20261026100000`
-  لإصلاح `verify_card_code` على قاعدة بلا عمود `card_print_code`).
+  لإصلاح `verify_card_code` على قاعدة بلا عمود `card_print_code`، و
+  `20261026110000` لحذف دوال صاحب العمل الميتة `employer_view`/`employer_decide`
+  ودوال OTP — بلا واجهة ولا معتمد ولا صلاحية نداء).
   التفاصيل: `docs/region-and-employer-pin-removed-2026-10-25.md`.
 
 - 🖼 **صور الوظائف بمقاس واحد في كل الموقع (2026-10-25)**: كانت تُعرض بأربع

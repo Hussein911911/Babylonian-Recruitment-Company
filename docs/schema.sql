@@ -1048,13 +1048,13 @@ end $$;
 revoke all on function brc.verify_card_code(text, text) from public;
 grant execute on function brc.verify_card_code(text, text) to anon, authenticated;
 
--- 7.1ج بيع نقطة البيع عبر الموقع + صفحة صاحب العمل (قرار الإدارة 2026-10-01)
+-- 7.1ج بيع نقطة البيع عبر الموقع (قرار الإدارة 2026-10-01)
 -- ---------------------------------------------------------------------------/
 --  activate_card: نقطة البيع تمسح باركود البطاقة الفارغة فتُعبّأ بيانات الزبون
---                 مع اختيار الوظيفة (إلزامي) وتُستهلك الفرصة الأولى بحجز 24 ساعة.
---  employer_view: صاحب العمل يمسح نفس الباركود فيرى تعريف المتقدم والوظيفة
---                 وبيانات التواصل — بلا رموز فرص (سرّ الزبون).
---  employer_decide: قرار صاحب العمل (توظيف/رفض) يُسجَّل فوراً ويوثّق بالتدقيق.
+--                 مع اختيار الوظيفة (اختياري) وتُستهلك الفرصة الأولى بحجز 24 ساعة.
+--  ⚠️ 2026-10-25: حُذف مسار صاحب العمل من الويب، فحُذفت دالتاه employer_view
+--     وemployer_decide (وemployer_decide_original) من هنا ومن القاعدة —
+--     طلب صاحب العمل يُسجَّل من لوحة الموظفين.
 -- 1) بيع وتعبئة بطاقة فارغة من نقطة البيع عبر الموقع العام
 --    p_data: { fullName, phone, address, dob, gender, posName, fee?, feePaid?, notes?, jobCode }
 create or replace function brc.activate_card(p_serial text, p_data jsonb)
@@ -1172,192 +1172,6 @@ begin
                      where x.serial = f.serial and x.slot_status = 'empty'));
 exception when others then
   /* أخطاء المشغّلات (P0001) نصوص عربية نظيفة تمر كما هي للواجهة */
-  return jsonb_build_object('ok', false, 'error', sqlerrm);
-end $$;
-
--- 2) صفحة صاحب العمل: الباركود وحده يكفي — تعريف المتقدم والتقديم الجاري
---    وبيانات التواصل. لا رموز فرص إطلاقاً (سرّ الزبون لفرصته الثانية).
-create or replace function brc.employer_view(p_serial text)
-returns jsonb
-language plpgsql security definer
-set search_path = brc, public
-as $$
-declare
-  f    record;
-  a    record;
-  j    record;
-  v_st text;
-begin
-  select * into f from brc.applicants
-   where serial = upper(btrim(coalesce(p_serial, '')));
-  if f.serial is null then
-    return jsonb_build_object('ok', false, 'code', 'not_found', 'error', 'لا توجد بطاقة بهذا الباركود');
-  end if;
-  if f.status = 'blank' then
-    return jsonb_build_object('ok', false, 'code', 'blank', 'error', 'هذه البطاقة فارغة ولم تُبع بعد');
-  end if;
-  if f.status = 'pending' then
-    return jsonb_build_object('ok', false, 'code', 'pending', 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
-  end if;
-
-  select * into a from brc.job_attempts
-   where serial = f.serial and slot_status in ('reserved', 'critical', 'hiring')
-   order by selected_at desc nulls last, attempt_no desc limit 1;
-  if a.id is not null then
-    select * into j from brc.jobs where id = a.job_id;
-  end if;
-
-  v_st := case
-    when f.status in ('pending', 'rejected') then f.status::text
-    when f.expiry_date is not null and now() > f.expiry_date then 'expired'
-    when (select count(*) from brc.job_attempts x where x.serial = f.serial and x.slot_status = 'empty') = 0
-         and not exists (select 1 from brc.job_attempts x
-                          where x.serial = f.serial and x.slot_status in ('reserved', 'critical', 'hiring'))
-      then 'exhausted'
-    else 'active' end;
-
-  if a.id is not null then
-    insert into brc.audit_log (username, role, action, entity, entity_id, details)
-    values ('public', 'employer', 'صاحب العمل شاهد تعريف المتقدم', 'applicant', f.serial,
-            'فتح صفحة الباركود — التقديم الجاري على ' || coalesce(a.job_code, '—') ||
-            ' — الزبون ' || f.full_name);
-  end if;
-
-  return jsonb_build_object(
-    'ok', true,
-    'card', jsonb_build_object(
-      'serial', f.serial, 'fullName', f.full_name, 'phone', f.phone,
-      'address', coalesce(f.address, ''), 'gender', coalesce(f.gender, ''), 'dob', f.dob,
-      'status', v_st, 'issueDate', f.issue_date, 'expiryDate', f.expiry_date,
-      'posName', coalesce(f.pos_name, ''),
-      'chancesLeft', (select count(*) from brc.job_attempts x where x.serial = f.serial and x.slot_status = 'empty'),
-      'succeeded', exists (select 1 from brc.job_attempts x where x.serial = f.serial and x.slot_status = 'succeeded'),
-      'applied', case when a.id is null then null else jsonb_build_object(
-        'no', a.attempt_no, 'jobCode', a.job_code, 'jobTitle', j.title, 'region', j.region,
-        'appliedAt', a.selected_at, 'holdExpiresAt', a.hold_expires_at,
-        'slotStatus', a.slot_status::text,
-        'employerDecision', a.employer_decision,
-        'decisionAt', a.decision_at,
-        /* ج5 2026-10-06: سبب الرفض المكتوب يعود لصاحب العمل نفسه ليقرأه */
-        'reason', coalesce(a.employer_reason, ''),
-        'employer', jsonb_build_object(
-          'name', j.employer_name, 'phone', j.employer_phone,
-          'address', j.employer_address, 'interviewLocation', j.interview_location)
-      ) end));
-exception when others then
-  return jsonb_build_object('ok', false, 'error', sqlerrm);
-end $$;
-
-
--- 3) قرار صاحب العمل من صفحة الباركود مباشرة: توظيف/رفض — يُسجَّل لدى الشركة
---    ويوثّق بسجل التدقيق، والفرصة مستهلكة بالتقديم ولا تعود.
---    ج5 2026-10-06: «تم التوظيف» ⇒ الوظيفة «جاري التوظيف» حتى تثبيت الشركة،
---    و«رفض التوظيف» ⇒ الوظيفة «حرجة — معلّقة» ليقرّر الموظف: إرجاع متاحة أو
---    حذف. نسخة القاعدة الحيّة تضيف وسيط السبب الإلزامي:
---    brc.employer_decide(p_serial, p_decision, p_reason) — انظر
---    supabase/migrations/20261006030000_barcode_first_two_jobs.sql و
---    docs/UPDATE-2026-10-06-two-jobs.sql (وهي التي تسجّل السبب في
---    brc.job_attempts.employer_reason).
-create or replace function brc.employer_decide(p_serial text, p_decision text)
-returns jsonb
-language plpgsql security definer
-set search_path = brc, public
-as $$
-declare
-  f       record;
-  a       record;
-  j       record;
-begin
-  if p_decision not in ('hire', 'reject') then
-    return jsonb_build_object('ok', false, 'error', 'قرار غير صحيح — hire أو reject فقط');
-  end if;
-
-  select * into f from brc.applicants
-   where serial = upper(btrim(coalesce(p_serial, '')));
-  if f.serial is null then
-    return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود');
-  end if;
-  if f.status = 'blank' then
-    return jsonb_build_object('ok', false, 'error', 'هذه البطاقة فارغة ولم تُبع بعد');
-  end if;
-
-  /* أحدث تقديم قيد اللعب (قد تكون الفرصتان محجوزتين معاً) — وإن كان الطلب
-     مسجَّلاً بالفعل (hiring) نرفض التكرار */
-  select * into a from brc.job_attempts
-   where serial = f.serial and slot_status in ('reserved', 'critical', 'hiring')
-   order by selected_at desc nulls last, attempt_no desc limit 1 for update;
-  if a.id is null then
-    return jsonb_build_object('ok', false, 'error', 'لا يوجد تقديم قيد القرار على هذه البطاقة — راجع الشركة');
-  end if;
-  if a.slot_status = 'hiring' then
-    return jsonb_build_object('ok', false, 'error', 'طلبك مسجَّل بالفعل — الوظيفة بانتظار قرار الشركة');
-  end if;
-
-  select * into j from brc.jobs where id = a.job_id for update;
-
-  if p_decision = 'hire' then
-    update brc.job_attempts
-       set slot_status = 'hiring',
-           employer_decision = 'hire',
-           employer_reason = null,
-           decision_at = now(),
-           hold_expires_at = null,             /* تجميد المهلة: القرار بيد الشركة */
-           outcome_note = 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة'
-     where id = a.id
-    returning * into a;
-
-    update brc.jobs
-       set status = 'hiring',
-           critical = false,
-           hold_expires_at = null,
-           updated_at = now()
-     where id = j.id
-    returning * into j;
-
-    insert into brc.audit_log (username, role, action, entity, entity_id, details)
-    values ('public', 'employer', 'طلب توظيف من صاحب العمل', 'applicant', f.serial,
-            'صاحب العمل طلب عبر صفحة الباركود التوظيف' ||
-            ' على الوظيفة ' || coalesce(a.job_code, '—') || ' — الفرصة #' || a.attempt_no ||
-            ' — الزبون ' || f.full_name ||
-            ' | الوظيفة «جاري التوظيف» بانتظار قرار الشركة (تثبيت/إلغاء)');
-  else
-    update brc.job_attempts
-       set slot_status = 'critical',
-           employer_decision = 'reject',
-           decision_at = now(),
-           hold_expires_at = null,
-           outcome_note = 'رفض صاحب العمل — القرار الآن بيد الشركة: إرجاع الوظيفة متاحة أو حذفها'
-     where id = a.id
-    returning * into a;
-
-    update brc.jobs
-       set status = 'reserved',
-           critical = true,
-           hold_expires_at = null,
-           updated_at = now()
-     where id = j.id
-    returning * into j;
-
-    insert into brc.audit_log (username, role, action, entity, entity_id, details)
-    values ('public', 'employer', 'رفض من صاحب العمل', 'applicant', f.serial,
-            'صاحب العمل رفض التوظيف عبر صفحة الباركود' ||
-            ' على الوظيفة ' || coalesce(a.job_code, '—') || ' — الفرصة #' || a.attempt_no ||
-            ' — الزبون ' || f.full_name ||
-            ' | الوظيفة «حرجة — معلّقة» بانتظار قرار الشركة: إرجاع متاحة أو حذف');
-  end if;
-
-  return jsonb_build_object(
-    'ok', true,
-    'attempt', jsonb_build_object(
-      'no', a.attempt_no, 'slotStatus', a.slot_status::text,
-      'jobCode', a.job_code, 'jobTitle', j.title, 'location', j.governorate,
-      'selectedAt', a.selected_at, 'decisionAt', a.decision_at,
-      'employerDecision', a.employer_decision,
-      'reason', coalesce(a.employer_reason, '')),
-    'job', jsonb_build_object('code', j.code, 'title', j.title, 'region', j.region,
-                              'status', j.status::text),
-    'decision', p_decision, 'pending', true);
-exception when others then
   return jsonb_build_object('ok', false, 'error', sqlerrm);
 end $$;
 
@@ -1912,8 +1726,6 @@ grant execute on function brc.use_chance(text, text, text)      to anon, authent
 grant execute on function brc.verify_card_code(text, text)      to anon, authenticated;
 /* موديل 2026-10-01: مسح نقطة البيع وصاحب العمل من الموقع العام — بلا جلسة */
 grant execute on function brc.activate_card(text, jsonb)        to anon, authenticated;
-grant execute on function brc.employer_view(text)               to service_role;
-grant execute on function brc.employer_decide(text, text)       to service_role;
 /* موديل 2026-10-06: التقديم الذاتي من باركود البطاقة (apply.html) — مسار عام
    بلا جلسة: الباركود بيان الحيازة، والدالتان لا تكشفان اسماً ولا هاتفاً ولا
    رموز فرص. تُنزعان من PUBLIC أولاً (PostgreSQL يمنح EXECUTE لـ PUBLIC تلقائياً
@@ -2015,90 +1827,16 @@ create index if not exists employer_otp_phone_time on brc.employer_otp(phone,cre
 create index if not exists employer_otp_ip_time on brc.employer_otp(ip_hash,created_at);
 create unique index if not exists employer_otp_session on brc.employer_otp(session_hash) where session_hash is not null;
 
-create or replace function brc.employer_otp_issue(p_id uuid,p_serial text,p_job text,p_hash text,p_ip text)
-returns jsonb language plpgsql security definer set search_path=brc,public as $$
-declare a record; destination text;
-begin
- perform pg_advisory_xact_lock(17150000);
- select x.id,j.employer_phone into a from brc.job_attempts x join brc.jobs j on j.id=x.job_id
- where x.serial=upper(btrim(p_serial)) and j.code=upper(btrim(p_job))
- and x.slot_status in ('reserved','critical','hiring') order by x.attempt_no desc limit 1;
- if a.id is null then return jsonb_build_object('ok',false); end if;
- destination:=regexp_replace(coalesce(a.employer_phone,''),'[^0-9]','','g');
- if destination like '00964%' then destination:=substr(destination,3);
- elsif destination like '07%' then destination:='964'||substr(destination,2); end if;
- if destination !~ '^9647[3-9][0-9]{8}$' or p_hash !~ '^[a-f0-9]{64}$' or p_ip !~ '^[a-f0-9]{64}$' then return jsonb_build_object('ok',false); end if;
- if exists(select 1 from brc.employer_otp where attempt_id=a.id and created_at>now()-interval '60 seconds')
- or (select count(*) from brc.employer_otp where phone=destination and created_at>now()-interval '1 hour')>=3
- or (select count(*) from brc.employer_otp where phone=destination and created_at>now()-interval '1 day')>=10
- or (select count(*) from brc.employer_otp where ip_hash=p_ip and created_at>now()-interval '1 hour')>=10
- or (select count(*) from brc.employer_otp where created_at>now()-interval '1 day')>=200 then
- return jsonb_build_object('ok',false,'code','rate_limit'); end if;
- -- Supersede unverified codes only. A requester cannot revoke a verified owner session.
- update brc.employer_otp set used=true where attempt_id=a.id and session_hash is null;
- insert into brc.employer_otp(id,attempt_id,phone,ip_hash,code_hash) values(p_id,a.id,destination,p_ip,p_hash);
- -- Bounded retention: OTP material and sessions are short-lived, not an audit trail.
- delete from brc.employer_otp where created_at<now()-interval '2 days';
- return jsonb_build_object('ok',true,'phone',destination);
-end $$;
-
-create or replace function brc.employer_otp_delivery(p_id uuid,p_success boolean)
-returns void language sql security definer set search_path=brc,public as $$
- update brc.employer_otp set delivered=p_success,used=not p_success where id=p_id and not used;
-$$;
-
-create or replace function brc.employer_otp_verify(p_id uuid,p_hash text,p_session text)
-returns jsonb language plpgsql security definer set search_path=brc,public as $$
-declare c record;
-begin
- select * into c from brc.employer_otp where id=p_id for update;
- if c.id is null or c.used or not c.delivered or c.expires_at<=now() or c.failures>=5 then return jsonb_build_object('ok',false); end if;
- if c.code_hash<>p_hash then
- update brc.employer_otp set failures=failures+1 where id=p_id;
- return jsonb_build_object('ok',false);
- end if;
- if p_session !~ '^[a-f0-9]{64}$' then return jsonb_build_object('ok',false); end if;
- update brc.employer_otp set used=true,session_hash=p_session,session_expires_at=now()+interval '20 minutes',code_hash=repeat('0',64) where id=p_id;
- return jsonb_build_object('ok',true);
-end $$;
-
-create or replace function brc.employer_otp_action(p_session text,p_decision text default '',p_reason text default '')
-returns jsonb language plpgsql security definer set search_path=brc,public as $$
-declare c record; a record; j record; f record; phone_now text;
-begin
- select * into c from brc.employer_otp where session_hash=p_session and session_expires_at>now() for update;
- if c.id is null then return jsonb_build_object('ok',false,'code','session_expired'); end if;
- if p_decision='logout' then update brc.employer_otp set session_expires_at=now() where id=c.id;return jsonb_build_object('ok',true);end if;
- -- Lock in the same order as card application (card -> attempt -> job).
- select x.serial into a from brc.job_attempts x where x.id=c.attempt_id;
- select * into f from brc.applicants where serial=a.serial for update;
- select * into a from brc.job_attempts where id=c.attempt_id for update;
- select * into j from brc.jobs where id=a.job_id for update;
- phone_now:=regexp_replace(coalesce(j.employer_phone,''),'[^0-9]','','g');
- if phone_now like '00964%' then phone_now:=substr(phone_now,3); elsif phone_now like '07%' then phone_now:='964'||substr(phone_now,2); end if;
- if j.id is null or phone_now<>c.phone or a.slot_status not in ('reserved','critical','hiring') then return jsonb_build_object('ok',false,'code','session_expired'); end if;
- if coalesce(p_decision,'')<>'' then
- if p_decision not in ('hire','reject') or a.employer_decision is not null or a.slot_status='hiring' then return jsonb_build_object('ok',false,'code','decision_unavailable'); end if;
- if p_decision='reject' and (length(btrim(coalesce(p_reason,'')))<3 or length(p_reason)>300) then return jsonb_build_object('ok',false,'code','reason_required'); end if;
- if p_decision='hire' then
- update brc.job_attempts set slot_status='hiring',employer_decision='hire',employer_reason=null,decision_at=now(),hold_expires_at=null,outcome_note='طلب صاحب العمل — بانتظار تثبيت الشركة' where id=a.id;
- update brc.jobs set status='hiring',critical=false,hold_expires_at=null,updated_at=now() where id=j.id;
- else
- update brc.job_attempts set slot_status='critical',employer_decision='reject',employer_reason=btrim(p_reason),decision_at=now(),hold_expires_at=null,outcome_note='رفض صاحب العمل — بانتظار قرار الشركة' where id=a.id;
- update brc.jobs set critical=true,hold_expires_at=null,updated_at=now() where id=j.id;
- end if;
- insert into brc.audit_log(username,role,action,entity,entity_id,details) values('verified-employer','employer','قرار صاحب العمل بعد تحقق واتساب','applicant',f.serial,'الوظيفة '||j.code||' — '||p_decision);
- end if;
- return jsonb_build_object('ok',true,'applicant',jsonb_build_object('name',f.full_name,'phone',f.phone,'address',f.address,'gender',f.gender),
- 'job',jsonb_build_object('code',j.code,'title',j.title,'region',j.region),'decision',coalesce(nullif(p_decision,''),a.employer_decision),'reason',case when p_decision='reject' then btrim(p_reason) else a.employer_reason end);
-end $$;
-
--- Close every legacy barcode-only overload, including historical gateway backups.
+-- 2026-10-25: حُذفت دوال بوابة الواتساب (employer_otp_issue/delivery/verify/action)
+-- ومعها employer_view/employer_decide — لا واجهة تنادي عليها بعد حذف مسار صاحب
+-- العمل. الجداول تبقى فارغة لأن دوال الاسترجاع التشغيلي تلتقط لقطاتها.
+-- 2026-10-25: حُذفت دوال صاحب العمل نهائياً (employer_view · employer_decide ·
+-- employer_decide_original) ودوال employer_otp_%، فلا شيء تسحبه هذه الحلقة.
+-- تُبقى شبكة أمان لأي قاعدة قديمة ما زالت تحمل نسخة مشغولة بالرمز:
 do $$ declare r record; begin
  for r in select p.oid::regprocedure as signature from pg_proc p join pg_namespace n on n.oid=p.pronamespace
- where n.nspname='brc' and (p.proname like 'employer_view%' or p.proname like 'employer_decide%' or p.proname like 'employer_otp_%') loop
- execute format('revoke all on function %s from public,anon,authenticated',r.signature);
- execute format('grant execute on function %s to service_role',r.signature);
+ where n.nspname='brc' and (p.proname like 'employer\_pin%' or p.proname like 'employer\_otp\_%' or p.proname = 'staff_save_job_pin') loop
+ execute format('drop function if exists %s',r.signature);
  end loop;
 end $$;
 

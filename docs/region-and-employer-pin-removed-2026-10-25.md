@@ -96,6 +96,7 @@
 | `retire_chance_codes` | `chance_code` صار بلا default وبلا NOT NULL، و`use_chance` تقبل الباركود وحده |
 | `remove_employer_pin_and_region` | صفر دوال PIN/OTP، العمود `jobs.employer_pin_set` انحذف، `region` اختياري بقيمة `''`، والعرض `working_jobs` أُعيد إنشاؤه بالتعريف نفسه وبصلاحياته |
 | `fix_verify_card_code_print_column` | إصلاح عطل حيّ (تحت) |
+| `drop_dormant_employer_functions` | صفر دوال `employer%` على القاعدة (تحت) |
 
 **عطل حيّ اكتُشف أثناء التطبيق:** قاعدة الإنتاج أُنشئت قبل الهجرة
 `20261016090000` فليس فيها العمود `card_print_code`، وكانت `verify_card_code`
@@ -113,6 +114,30 @@
 
 بعد الفحص: `HRC-BC-TST%` = 0 صف (لا بيانات اختبار باقية)، وعدد البطاقات الحقيقية 440 كما هو.
 
+## 5ب) حذف دوال صاحب العمل الميتة (2026-10-25)
+
+بقيت ثلاث دوال على القاعدة بعد حذف المسار، ففحصناها قبل الحذف وثبت أنها بلا أي فائدة:
+
+| الفحص | النتيجة |
+|---|---|
+| أي واجهة تنادي عليها (JS/HTML) | ❌ لا شيء |
+| أي دالة أو عرض يعتمد عليها (`pg_depend` + مسح نصوص الدوال) | ❌ لا شيء |
+| أي مهمة `pg_cron` تلمسها | ❌ لا شيء (المهام: `run_auto_release` · `recovery_weekly` · `archive_finished_cards`) |
+| صلاحية النداء | `postgres` وحده — مسحوبة من `anon` و`authenticated` و`service_role` |
+
+المحذوفة: `employer_view(text)` · `employer_decide(text,text)` ·
+`employer_decide(text,text,text)` · `employer_decide_original(text,text)` (نسخة منسية)
+و`employer_otp_issue/delivery/verify/action`.
+
+**الجداول بقيت** (`employer_otp` · `employer_job_credentials` · `employer_login_budget`)
+فارغة ومسحوبة الصلاحيات، لأن `recovery_save`/`recovery_restore` تلتقطها في نسخها.
+نُظّفت أيضاً من **المصدر** `docs/schema.sql` (كان يعيد إنشاء دوال OTP في أي قاعدة جديدة)
+وصار عدد تعريفات الدوال 49 (47 فعلية).
+
+فحص وظيفي بعد الحذف (داخل معاملة أُلغيت — بلا أثر): `use_chance` ✅ ·
+`lookup_card` ✅ (`location` = بابل) · `verify_card_code` ✅ · `recovery_save` ✅
+(أنشأ نسخة سليمة) — والبطاقات 440 كما هي.
+
 ## 6) خطوات مطلوبة على القاعدة الحيّة (لأي بيئة أخرى)
 
 ```bash
@@ -122,6 +147,8 @@
 #    supabase/migrations/20261026000000_remove_employer_pin_and_region.sql
 # 3) إصلاح verify_card_code على قاعدة بلا card_print_code
 #    supabase/migrations/20261026100000_fix_verify_card_code_print_column.sql
+# 4) حذف دوال صاحب العمل الميتة (employer_view · employer_decide · employer_otp_*)
+#    supabase/migrations/20261026110000_drop_dormant_employer_functions.sql
 ```
 
 الهجرة آمنة للتكرار، وتُعدّل نص دوال القاعدة القائمة (`pg_get_functiondef` +
