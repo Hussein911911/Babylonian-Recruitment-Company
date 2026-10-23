@@ -72,6 +72,18 @@ const NOTIFICATION_CSS = read('assets/css/notifications.css');
 const BACKUP_CSS = read('assets/css/backup.css');
 const WORKSPACE_CSS = read('assets/css/workspace-layout.css');
 const CARD_CSS = read('assets/css/card-entry.css');
+/* مضيف قاعدة الشركة — يُقرأ من إعداد الاتصال نفسه كي يتبعه preconnect تلقائياً */
+const SUPABASE_HOST = (function () {
+  const cfg = read('assets/js/supabase-config.js');
+  const m = /url:\s*'([^']+)'/.exec(cfg);
+  try { return m ? new URL(m[1]).origin : ''; } catch (e) { return ''; }
+})();
+/* preconnect/dns-prefetch: يبدأ DNS وTLS للقاعدة قبل أن يطلبها JS، فيوفّر
+   رحلة كاملة (~100–300ms على شبكات العراق) من زمن أول تحميل للبيانات. */
+const SUPABASE_HINTS = SUPABASE_HOST
+  ? '<link rel="preconnect" href="' + SUPABASE_HOST + '" crossorigin>\n' +
+    '<link rel="dns-prefetch" href="' + SUPABASE_HOST + '">\n'
+  : '';
 const EDITOR_CSS = read('assets/css/image-editor.css');
 /* ---------------------------------------------------------------------------
  *  بذرة العرض للملف المستقل
@@ -156,6 +168,7 @@ function docHead({ title, desc, css = null, icon = 'assets/img/favicon.svg', ext
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="${icon}">
+${SUPABASE_HINTS}
 ${css ? `<link rel="stylesheet" href="${verQ(css)}">` : ''}
 ${extra}</head>
 <body>

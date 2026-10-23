@@ -322,42 +322,157 @@
 
   // Stable, bounded pages: never silently adopt a truncated table. Exact counts
   // also handle API row caps SMALLER than our requested 500 rows.
-  function readPages(client, table, maximum) {
+  /* ═════════════════════════════════════════════════════════════════════════
+   *  قراءة جدول كامل بأقل عدد رحلات ممكنة إلى القاعدة
+   *  -------------------------------------------------------------------------
+   *  ما كان يحدث قبل 2026-10-24 (وسبب «تأخّر الاتصال» الذي شكا منه صاحب الشركة):
+   *    • كل صفحة ٥٠٠ صف، وكل صفحة **طلب منفصل بالتسلسل** (job_attempts بصفحتين
+   *      أو ثلاث، وaudit_log بأربع) فمجموع الانتظار = عدد الصفحات × زمن الرحلة.
+   *    • **كل** صفحة تطلب `count=exact` أي COUNT كامل للجدول بعد ترتيبه — وهذا
+   *      مكلف جداً، وعلى واجهة `public_jobs` أخطر: فيها استعلام فرعي مترابط
+   *      (عدّ المحاولات لكل وظيفة) يُنفَّذ لكل صف من أجل العدّ وحده.
+   *  الآن:
+   *    • صفحة ١٠٠٠ صف (حد Supabase الافتراضي) بدل ٥٠٠.
+   *    • العدّ الدقيق يُطلب **مرة واحدة** (الصفحة الأولى) ويمكن إلغاؤه للقراءة
+   *      العامة عبر `{ count:false }`.
+   *    • بقية الصفحات تُطلب **بالتوازي** (٤ في وقت واحد) بعد معرفة العدد،
+   *      فزمن الجدول الكبير ≈ زمن صفحتين لا خمس.
+   *    • تبقى كل حراسات السلامة: كشف تغيّر العدد أثناء التحميل، وتكرار المفاتيح،
+   *      وحدّ الحجم الأقصى — والنتيجة نفسها بالضبط.
+   * ═══════════════════════════════════════════════════════════════════════ */
+  var PAGE_SIZE = 1000;      /* حد PostgREST الافتراضي في سوبابيس */
+  var PAGE_PARALLEL = 4;     /* عدد الصفحات المتوازية */
+
+  /* تنفيذ مهام محدودة التوازي مع الحفاظ على الترتيب */
+  function mapLimit(items, limit, worker) {
+    var out = new Array(items.length), i = 0, active = 0;
+    return new Promise(function (resolve, reject) {
+      if (!items.length) return resolve(out);
+      var failed = false;
+      function next() {
+        if (failed) return;
+        if (i >= items.length && active === 0) return resolve(out);
+        while (active < limit && i < items.length) {
+          (function (index) {
+            active++;
+            Promise.resolve(worker(items[index], index)).then(function (v) {
+              out[index] = v; active--; next();
+            }, function (e) { failed = true; reject(e); });
+          })(i++);
+        }
+      }
+      next();
+    });
+  }
+
+  function readPages(client, table, maximum, opts) {
+    opts = opts || {};
     var keys = { jobs: 'code', applicants: 'serial', job_attempts: 'id', audit_log: 'id', settings: 'key', staff: 'id', public_jobs: 'code' };
-    keys.working_jobs='code';keys.working_applicants='serial';keys.working_job_attempts='id';
-    var key = keys[table], rows = [], expected = null, seen = Object.create(null);
-    function query() {
-      var q = client.from(table).select('*', { count: 'exact' });
+    keys.working_jobs = 'code'; keys.working_applicants = 'serial'; keys.working_job_attempts = 'id';
+    var key = keys[table] || 'id';
+    var rows = [], seen = Object.create(null), expected = null;
+    var wantCount = opts.count !== false;
+
+    function failure(message) { return { data: null, error: { message: message, code: 'INCOMPLETE_LOAD' } }; }
+
+    function query(withCount) {
+      var q = client.from(table).select('*', withCount ? { count: 'exact' } : {});
       if (table === 'audit_log') q = q.order('ts', { ascending: false });
       return q.order(key, { ascending: true });
     }
-    var first = query();
-    // Compatibility with older injected adapters. All shipped production clients
-    // implement range; dedicated capped-API tests exercise that path.
-    if (typeof first.range !== 'function') return table === 'audit_log' ? first.limit(maximum) : first;
-    function failure(message) { return { data: null, error: { message: message, code: 'INCOMPLETE_LOAD' } }; }
-    function next(q) {
-      return Promise.resolve(q.range(rows.length, Math.min(rows.length + 499, maximum - 1))).then(function (res) {
-        if (!res || res.error) return res || failure('لا نتيجة من القاعدة');
-        var count = typeof res.count === 'number' ? res.count : null;
-        if (expected !== null && count !== null && count !== expected) return failure('تغير عدد السجلات أثناء التحميل؛ أعد التحديث');
-        if (expected === null) expected = count;
-        if (table !== 'audit_log' && count > maximum) return failure('حجم الجدول يتجاوز حد التحميل الآمن؛ يلزم تقسيم البيانات');
-        var page = Array.isArray(res.data) ? res.data : [];
-        for (var i = 0; i < page.length; i++) {
-          var id = String(page[i][key]);
-          if (seen[id]) return failure('تكرر سجل أثناء التحميل؛ أعد التحديث');
-          seen[id] = true; rows.push(page[i]);
-        }
-        var target = expected === null ? null : Math.min(expected, maximum);
-        if (target !== null && rows.length >= target) return { data: rows, error: null };
-        if (!page.length) return target === null ? { data: rows, error: null } : failure('لم يكتمل تحميل الجدول');
-        if (rows.length >= maximum) return table === 'audit_log' ? { data: rows, error: null } : failure('تجاوز حد التحميل الآمن');
-        if (target === null && page.length < 500) return { data: rows, error: null };
-        return next(query());
+
+    function fetchRange(from, to, withCount) {
+      var q = query(withCount);
+      if (typeof q.range !== 'function') {
+        return Promise.resolve(q.limit(maximum)).then(function (res) {
+          return { res: res, from: 0, to: maximum - 1 };
+        });
+      }
+      return Promise.resolve(q.range(from, to)).then(function (res) {
+        return { res: res || failure('لا نتيجة من القاعدة'), from: from, to: to };
       });
     }
-    return next(first);
+
+    /* يجمع صفحة في المصفوفة مع كشف التكرار */
+    function absorb(page) {
+      var list = Array.isArray(page) ? page : [];
+      for (var i = 0; i < list.length; i++) {
+        var id = String(list[i][key]);
+        if (seen[id]) return false;          /* تكرار = عدم اكتمال موثوق */
+        seen[id] = true; rows.push(list[i]);
+      }
+      return true;
+    }
+
+    var first = query(wantCount);
+    /* متوافق مع المحوّلات القديمة التي لا تدعم range */
+    if (typeof first.range !== 'function') {
+      return Promise.resolve().then(function () {
+        return table === 'audit_log' ? first.limit(maximum) : first;
+      });
+    }
+
+    /* 1) الصفحة الأولى: تجلب الصفوف والعدد معاً (العدّ مرة واحدة فقط) */
+    return Promise.resolve(first.range(0, Math.min(PAGE_SIZE, maximum) - 1)).then(function (res) {
+      if (!res || res.error) return res || failure('لا نتيجة من القاعدة');
+      var count = typeof res.count === 'number' ? res.count : null;
+      expected = count;
+      if (count !== null && table !== 'audit_log' && count > maximum) {
+        return failure('حجم الجدول يتجاوز حد التحميل الآمن؛ يلزم تقسيم البيانات');
+      }
+      if (!absorb(res.data)) return failure('تكرر سجل أثناء التحميل؛ أعد التحديث');
+      var target = count === null ? null : Math.min(count, maximum);
+      if (target !== null && rows.length >= target) return { data: rows, error: null };
+      var page = Array.isArray(res.data) ? res.data : [];
+      if (!page.length) return target === null ? { data: rows, error: null } : failure('لم يكتمل تحميل الجدول');
+      if (rows.length >= maximum) return table === 'audit_log' ? { data: rows, error: null } : failure('تجاوز حد التحميل الآمن');
+
+      /* 2) العدد غير معروف: نُكمل بالتسلسل حتى صفحة قصيرة (نادر — القراءة العامة) */
+      if (target === null) {
+        if (page.length < PAGE_SIZE) return { data: rows, error: null };
+        return (function step(stepSize) {
+          var from = rows.length, to = Math.min(from + stepSize, maximum) - 1;
+          return fetchRange(from, to, false).then(function (r) {
+            if (r.res && r.res.error) return r.res;
+            if (!absorb(r.res.data)) return failure('تكرر سجل أثناء التحميل؛ أعد التحديث');
+            var got = Array.isArray(r.res.data) ? r.res.data : [];
+            if (!got.length || got.length < stepSize) return { data: rows, error: null };
+            if (rows.length >= maximum) return table === 'audit_log' ? { data: rows, error: null } : failure('تجاوز حد التحميل الآمن');
+            return step(stepSize);
+          });
+        })(Math.min(PAGE_SIZE, Math.max(1, page.length)));
+      }
+
+      /* 3) العدد معروف: نطلب بقية الصفحات بالتوازي (٤ في وقت واحد).
+         حجم الخطوة يتبع ما عاد فعلاً: بعض إعدادات PostgREST تحدّ الصفحة بأقل
+         من المطلوب (max-rows)، فنكيّف الخطوة مع الحد الفعلي بدل الانقطاع. */
+      var stepSize = Math.min(PAGE_SIZE, Math.max(1, page.length));
+      var ranges = [];
+      for (var from = rows.length; from < target; from += stepSize) {
+        ranges.push({ from: from, to: Math.min(from + stepSize, target, maximum) - 1 });
+      }
+      /* الصفحة الأخيرة وحدها تطلب العدّ مرة ثانية: يكشف تغيّر عدد السجلات أثناء
+         التحميل (سلامة البيانات) بكلفة COUNT واحدة إضافية بدل واحدة لكل صفحة. */
+      var lastIndex = ranges.length - 1;
+      return mapLimit(ranges, PAGE_PARALLEL, function (r, index) {
+        /* القراءة العامة لا تطلب عدّاً إطلاقاً (أثقل استعلام على الواجهة) */
+        return fetchRange(r.from, r.to, wantCount && index === lastIndex);
+      }).then(function (pages) {
+        /* نُدخل الصفحات بترتيبها الأصلي (mapLimit يحفظ الترتيب) */
+        for (var i = 0; i < pages.length; i++) {
+          var r = pages[i];
+          if (!r || !r.res || r.res.error) return r && r.res && r.res.error ? r.res : failure('لم يكتمل تحميل الجدول');
+          if (!absorb(r.res.data)) return failure('تكرر سجل أثناء التحميل؛ أعد التحديث');
+        }
+        var last = pages[pages.length - 1];
+        var finalCount = last && last.res && typeof last.res.count === 'number' ? last.res.count : null;
+        if (finalCount !== null && expected !== null && finalCount !== expected) {
+          return failure('تغير عدد السجلات أثناء التحميل؛ أعد التحديث');
+        }
+        if (rows.length !== target) return failure('تغير عدد السجلات أثناء التحميل؛ أعد التحديث');
+        return { data: rows, error: null };
+      });
+    });
   }
 
   function fetchAll(client, opts) {
@@ -389,7 +504,9 @@
 
   // Public reads use the RLS-safe public_jobs view, never the jobs table.
   function fetchPublicJobs(client) {
-    return readPages(client, 'public_jobs', 100000).then(function (res) {
+    /* بلا count=exact: العدّ على public_jobs يُنفّذ استعلامه الفرعي المترابط
+       لكل صف — وهو أثقل ما يواجهه كل زائر. نقرأ حتى صفحة قصيرة بدلاً منه. */
+    return readPages(client, 'public_jobs', 100000, { count: false }).then(function (res) {
       if (res && res.error) {
         return { ok: false, error: res.error, jobs: [] };
       }

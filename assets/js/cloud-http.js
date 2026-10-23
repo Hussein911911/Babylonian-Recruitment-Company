@@ -54,14 +54,20 @@
       return { message: msg, code: code || ('HTTP_' + status) };
     }
 
-    function request(method, path, body, write, both, exactCount) {
-      var init = { method: method, headers: headers(write, both) };
-      if (exactCount) init.headers.Prefer = 'count=exact';
-      if (body !== undefined) {
-        init.headers['Content-Type'] = 'application/json';
-        init.body = JSON.stringify(body);
+    /* مهلة الاتصال: بلا سقف كان أي اتصال متعثّر يُبقي الزائر على «جارٍ التحميل»
+       إلى ما لا نهاية. الآن يفشل بوضوح بعد `timeout` ويُعيد المحاولة مرة واحدة
+       عند خطأ شبكة عابر (لا عند خطأ قاعدة حقيقي). */
+    var TIMEOUT_MS = opts.timeout || 15000;
+
+    function once(url, init) {
+      var ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+      var timer = null;
+      if (ctrl) {
+        init.signal = ctrl.signal;
+        timer = setTimeout(function () { try { ctrl.abort(); } catch (e) { } }, TIMEOUT_MS);
       }
-      return fetch(base + path, init).then(function (res) {
+      return fetch(url, init).then(function (res) {
+        if (timer) clearTimeout(timer);
         return res.text().then(function (txt) {
           if (!res.ok) return { data: null, error: toError(res.status, txt), status: res.status };
           var data = null;
@@ -72,8 +78,32 @@
           if (total) result.count = Number(total[1]);
           return result;
         });
-      }).catch(function (e) {
-        return { data: null, error: { message: 'تعذّر الاتصال: ' + (e && e.message || e), code: 'NETWORK' } };
+      }, function (e) {
+        if (timer) clearTimeout(timer);
+        var aborted = e && (e.name === 'AbortError' || /abort/i.test(String(e.message || '')));
+        return { data: null, error: { code: aborted ? 'TIMEOUT' : 'NETWORK', message: aborted ? 'انتهت مهلة الاتصال' : ('تعذّر الاتصال: ' + (e && e.message || e)) }, network: true };
+      });
+    }
+
+    function request(method, path, body, write, both, exactCount) {
+      var init = { method: method, headers: headers(write, both) };
+      if (exactCount) init.headers.Prefer = 'count=exact';
+      if (body !== undefined) {
+        init.headers['Content-Type'] = 'application/json';
+        init.body = JSON.stringify(body);
+      }
+      var url = base + path;
+      return once(url, init).then(function (r) {
+        /* إعادة محاولة واحدة للأخطاء الشبكية/المهلة في قراءات GET فقط */
+        if (!r.network || method !== 'GET') return r;
+        return once(url, init).then(function (r2) {
+          if (r2.network) {
+            r2.error.message = r2.error.code === 'TIMEOUT'
+              ? 'انتهت مهلة الاتصال بقاعدة الشركة — تحقّق من الإنترنت وأعد المحاولة.'
+              : 'تعذّر الاتصال بقاعدة الشركة — تحقّق من الإنترنت وأعد المحاولة.';
+          }
+          return r2;
+        });
       });
     }
 

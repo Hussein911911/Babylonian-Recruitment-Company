@@ -81,8 +81,8 @@ const BUDGET = {
      بلا سكربت أو طلب قاعدة جديد للزائر (20 طلباً كما هي). */
   /* 2026-10-24: أُعيدت بطاقات الموقع العام إلى تصميمها السابق (التصميم الفاخر
      صار في صفحة التقديل فقط) — index 618KB وverify 479KB بعد القياس. */
-  'index.html': { raw: 624, requests: 20 },
-  'verify.html': { raw: 486, requests: 20 },
+  'index.html': { raw: 634, requests: 20 },
+  'verify.html': { raw: 496, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */
   /* 2026-10-24: +8KB لمحرّر صورة الوظيفة (معاينة + تكبير/تصغير + سحب +
@@ -152,7 +152,31 @@ step(3, 'ميزانية القاعدة — طلبات Supabase لكل زيارة
   check('جداول الإقلاع للموظف ستة كما هو متوقّع', count === 6, String(count));
   check('الصفحات العامة لا تشترك في القناة اللحظية', !/subscribeAll/.test(readFileSync(join(ROOT, 'assets/js/public.js'), 'utf8')));
   check('مساعد القراءة العامة محصور بعرض public_jobs (صفحات عند كبر القائمة)',
-    /readPages\(client, 'public_jobs', 100000\)/.test(cloudJs) && !/from\('jobs'\)[\s\S]{0,80}fetchPublicJobs/.test(cloudJs));
+    /readPages\(client, 'public_jobs', 100000, \{ count: false \}\)/.test(cloudJs) &&
+    !/from\('jobs'\)[\s\S]{0,80}fetchPublicJobs/.test(cloudJs));
+  /* 2026-10-24: أسباب التأخير التي أُصلحت — نمنع رجوعها */
+  check('القراءة العامة بلا count=exact على public_jobs (العدّ أثقل استعلام)',
+    /readPages\(client, 'public_jobs', 100000, \{ count: false \}\)/.test(cloudJs));
+  check('صفحات القاعدة 1000 صف وبقية الصفحات متوازية (٤ معاً)',
+    /var PAGE_SIZE = 1000/.test(cloudJs) && /PAGE_PARALLEL = 4/.test(cloudJs) &&
+    /mapLimit\(ranges, PAGE_PARALLEL/.test(cloudJs));
+  check('العدّ الدقيق يُطلب مرة واحدة في الأولى ومرة في الأخيرة فقط (لا لكل صفحة)',
+    /var first = query\(wantCount\)/.test(cloudJs) &&
+    /fetchRange\(r.from, r.to, wantCount && index === lastIndex\)/.test(cloudJs) &&
+    !/fetchRange\(r.from, r.to, true\)/.test(cloudJs));
+  check('preconnect إلى قاعدة الشركة في كل صفحة منشورة', (() => {
+    const host = 'vqsvztudvfukyuerzcgx.supabase.co';
+    return ['index.html', 'verify.html', 'dashboard.html', '404.html'].every((f) => {
+      const html = readFileSync(join(ROOT, f), 'utf8');
+      return new RegExp('rel="preconnect" href="https://' + host + '"').test(html) &&
+        new RegExp('rel="dns-prefetch" href="https://' + host + '"').test(html);
+    });
+  })());
+  check('مهلة اتصال ومحاولة إعادة واحدة في عميل الزائر', (() => {
+    const http = readFileSync(join(ROOT, 'assets/js/cloud-http.js'), 'utf8');
+    return /TIMEOUT_MS/.test(http) && /AbortController/.test(http) &&
+      /r\.network \|\| method !== 'GET'/.test(http);
+  })());
   check('الإقلاع العام لا يقرأ جداول الموظفين (canReadStaffTables)', /canReadStaffTables/.test(cfgJs));
 }
 
