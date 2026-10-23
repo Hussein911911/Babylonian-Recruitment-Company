@@ -87,13 +87,41 @@
 
 ---
 
-## 5) خطوات مطلوبة على القاعدة الحيّة
+## 5) ما طُبِّق فعلاً على قاعدة الإنتاج (2026-10-25)
+
+المشروع `vqsvztudvfukyuerzcgx` — نُفِّذت ثلاث هجرات وتم التحقق منها استعلامياً:
+
+| الهجرة | الأثر المُتحقَّق |
+|---|---|
+| `retire_chance_codes` | `chance_code` صار بلا default وبلا NOT NULL، و`use_chance` تقبل الباركود وحده |
+| `remove_employer_pin_and_region` | صفر دوال PIN/OTP، العمود `jobs.employer_pin_set` انحذف، `region` اختياري بقيمة `''`، والعرض `working_jobs` أُعيد إنشاؤه بالتعريف نفسه وبصلاحياته |
+| `fix_verify_card_code_print_column` | إصلاح عطل حيّ (تحت) |
+
+**عطل حيّ اكتُشف أثناء التطبيق:** قاعدة الإنتاج أُنشئت قبل الهجرة
+`20261016090000` فليس فيها العمود `card_print_code`، وكانت `verify_card_code`
+تقرأه مباشرةً (`f.card_print_code`) ⇒ **كل** نداءات «إعادة طباعة البطاقة» تفشل
+بـ `42703`. صار الحقل يُقرأ عبر `to_jsonb(f)->>'card_print_code'` (يعيد NULL
+بلا خطأ إن غاب العمود). **لم نُضف العمود** لأن أي تغيير في مخطّط `brc` يغيّر
+`recovery_schema_hash()` فيُبطل نسخ الاسترجاع القديمة (`recovery_read` يرفضها).
+
+**فحص وظيفي داخل معاملة تُلغى (rollback) — بلا أي أثر على البيانات:**
+- إنشاء بطاقة اختبار ⇒ إنشاء فرصتين تلقائياً = 2 ✅
+- `use_chance(serial, '', job)` = `ok:true` والفرصة الأولى `reserved` ✅
+- `activate_card(...)` من نقطة البيع = `ok:true` والفرصة `reserved` و`chance_code` = NULL بلا خطأ ✅
+- `lookup_card` ⇒ `location` = **المحافظة** (`بابل`) لا المنطقة ✅
+- `verify_card_code(serial, '')` = `ok:true` مع فرصتين للطباعة ✅
+
+بعد الفحص: `HRC-BC-TST%` = 0 صف (لا بيانات اختبار باقية)، وعدد البطاقات الحقيقية 440 كما هو.
+
+## 6) خطوات مطلوبة على القاعدة الحيّة (لأي بيئة أخرى)
 
 ```bash
-# 1) إلغاء رموز الفرص (إن لم تُطبَّق بعد)
+# 1) إلغاء رموز الفرص
 #    supabase/migrations/20261025000000_retire_chance_codes.sql
 # 2) حذف رمز صاحب العمل + تحرير عمود المنطقة + مكان العمل = المحافظة
 #    supabase/migrations/20261026000000_remove_employer_pin_and_region.sql
+# 3) إصلاح verify_card_code على قاعدة بلا card_print_code
+#    supabase/migrations/20261026100000_fix_verify_card_code_print_column.sql
 ```
 
 الهجرة آمنة للتكرار، وتُعدّل نص دوال القاعدة القائمة (`pg_get_functiondef` +

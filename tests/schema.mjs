@@ -414,6 +414,31 @@ step(12, 'مسار التحديث — كل دالة يناديها باركود 
     /isMissingFunction/.test(applySrc) && /docs\/schema\.sql/.test(applySrc) && /الهجرات الحديثة/.test(applySrc));
 }
 
+/* ── 2026-10-25: عطل حيّ في الإنتاج — verify_card_code وعمود غائب ──
+   قاعدة الإنتاج أُنشئت قبل الهجرة 20261016090000 فليس فيها العمود
+   card_print_code، وكانت الدالة تقرأه مباشرةً (f.card_print_code) فتفشل كل
+   نداءات إعادة الطباعة بـ42703. القراءة عبر to_jsonb لا تفشل عند غياب العمود.
+   هذا الفحص يمنع عودة القراءة المباشرة في المصدر أو في أي هجرة. */
+step(13, 'إعادة الطباعة — لا قراءة مباشرة لعمود قد يكون غائباً (42703)');
+{
+  const SRC = [join(ROOT, 'docs', 'schema.sql')]
+    .concat(readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql')).map((f) => join(MIG_DIR, f)));
+  /* الهجرة التاريخية 20261016090000 تضيف العمود بنفسها فقراءتها المباشرة سليمة
+     هناك ولا تُعدَّل (ملفات الهجرات لا تُحرَّر بعد تطبيقها). الفحص على غيرها. */
+  const direct = SRC.filter((f) => {
+    const body = readFileSync(f, 'utf8').replace(/--[^\n]*/g, '');
+    return /\bf\.card_print_code\b/.test(body) && !/add column if not exists card_print_code/i.test(body);
+  });
+  check('لا قراءة مباشرة لـ f.card_print_code في المصدر أو الهجرات (عدا التي تُنشئ العمود)',
+    direct.length === 0, direct.map((f) => f.split('/').pop()).join(', '));
+  check('verify_card_code يقرأ رمز التحقق عبر to_jsonb(f)', /to_jsonb\(f\)->>'card_print_code'/.test(RAW));
+  const fix = '20261026100000_fix_verify_card_code_print_column.sql';
+  check('هجرة إصلاح verify_card_code موجودة وتُبقي المخطط كما هو (بلا إضافة عمود)',
+    migNames.includes(fix) &&
+    !/alter\s+table[^;]*add\s+column[^;]*card_print_code/i.test(readFileSync(join(MIG_DIR, fix), 'utf8')),
+    fix);
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');

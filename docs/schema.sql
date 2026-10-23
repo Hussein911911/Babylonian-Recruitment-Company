@@ -995,6 +995,9 @@ set search_path = pg_catalog, brc, public
 as $$
 declare
   f record;
+  -- رمز التحقق يُقرأ عبر to_jsonb: بعض قواعد الإنتاج أُنشئت قبل إضافة العمود
+  -- (card_print_code)، وقراءته مباشرةً تُفشل الدالة كلها بـ42703.
+  print_code text;
   supplied text := upper(regexp_replace(coalesce(p_code, ''), '[^A-Za-z0-9]', '', 'g'));
   valid boolean := false;
   failures integer;
@@ -1011,9 +1014,10 @@ begin
   if failures >= 8 then
     return jsonb_build_object('ok', false, 'error', 'محاولات كثيرة — حاول بعد 10 دقائق');
   end if;
-  if f.card_print_code is not null then
+  print_code := to_jsonb(f)->>'card_print_code';
+  if print_code is not null then
     -- بطاقة لها رمز تحقق مطبوع: لا تُطبع إلا به.
-    valid := supplied = upper(f.card_print_code);
+    valid := supplied = upper(print_code);
   else
     -- بطاقة بلا رمز (بعد إلغاء رموز الفرص 2026-10-25): الحيازة هي الإثبات،
     -- ويُقبل أيضاً أي رمز فرصة قديم مطبوع على بطاقة سبق طبعها.
@@ -1032,7 +1036,7 @@ begin
     'id', f.id, 'serial', f.serial, 'fullName', f.full_name, 'phone', f.phone,
     'address', f.address, 'dob', f.dob, 'gender', f.gender, 'nationality', f.nationality,
     'status', f.status, 'issueDate', f.issue_date, 'expiryDate', f.expiry_date,
-    'posName', coalesce(f.pos_name, ''), 'cardPrintCode', f.card_print_code,
+    'posName', coalesce(f.pos_name, ''), 'cardPrintCode', print_code,
     'attempts', (select coalesce(jsonb_agg(jsonb_build_object(
       'no', a.attempt_no, 'code', a.chance_code, 'slotStatus', a.slot_status,
       'jobCode', a.job_code, 'jobTitle', j.title, 'location', j.governorate,

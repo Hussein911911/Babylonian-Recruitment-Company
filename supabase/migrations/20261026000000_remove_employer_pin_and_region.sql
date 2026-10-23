@@ -36,7 +36,16 @@ begin
 end $$;
 
 -- 3) عمود إشارة الرمز في جدول الوظائف
+--    العرض brc.working_jobs يعتمد عليه (select j.* تتحوّل لقائمة أعمدة مُثبَّتة)
+--    فيُسقَط العرض ويُعاد إنشاؤه بالتعريف نفسه وبلا العمود.
+drop view if exists brc.working_jobs;
 alter table if exists brc.jobs drop column if exists employer_pin_set;
+create or replace view brc.working_jobs with(security_invoker=true) as
+ select j.* from brc.jobs j where j.status<>'closed'
+ or coalesce(j.closed_at,j.created_at)>now()-interval '60 days'
+ or exists(select 1 from brc.working_job_attempts t where t.job_id=j.id);
+revoke all on brc.working_jobs from public,anon;
+grant select on brc.working_jobs to authenticated;
 
 -- 4) المنطقة اختيارية — المحافظة هي المرجع الجغرافي
 alter table if exists brc.jobs alter column region drop not null;
