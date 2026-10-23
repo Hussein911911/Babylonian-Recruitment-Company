@@ -112,5 +112,53 @@ try {
   w.document.head.appendChild(printStyle);
   check('print removes result actions and the separate back-navigation row',w.getComputedStyle($('result-actions')).display==='none'&&w.getComputedStyle(w.document.querySelector('#pg-result > .btn-row')).display==='none');
   check('A4 pages use breaks before subsequent forms, not a trailing blank page',printStyle.textContent.includes('.form-sheet + .form-sheet')&&printStyle.textContent.includes('break-before: page'));
+
+  /* ── فلتر مضغوط (2026-10-24) ── */
+  reset();
+  check('compact filter is one bar with only the four primary controls',
+    !!w.document.querySelector('.job-filters.jf-compact .jf-bar.jf-primary') &&
+    w.document.querySelectorAll('.jf-bar input, .jf-bar select').length === 4 &&
+    w.document.querySelector('.jf-bar #jf-query') && w.document.querySelector('.jf-bar #jf-province'));
+  check('advanced filters live in a collapsed panel, not the main bar',
+    w.document.getElementById('jf-advanced').hidden === true &&
+    !w.document.getElementById('jf-advanced').classList.contains('jf-primary') &&
+    w.document.getElementById('jf-advanced').contains(w.document.getElementById('jf-category')));
+  check('«فلاتر» button opens the panel and syncs aria-expanded',
+    (() => {
+      const btn = w.document.getElementById('jf-more');
+      btn.click();
+      const opened = w.document.getElementById('jf-advanced').hidden === false && btn.getAttribute('aria-expanded') === 'true';
+      btn.click();
+      const closed = w.document.getElementById('jf-advanced').hidden === true && btn.getAttribute('aria-expanded') === 'false';
+      return opened && closed;
+    })());
+  check('filter badge counts active filters and hides when none',
+    (() => {
+      const badge = w.document.getElementById('jf-badge');
+      if (!badge.hidden) return false;
+      set('jf-shift', 'مسائي'); set('jf-gender', 'أنثى');
+      return badge.hidden === false && badge.textContent.trim() === '٢' &&
+        w.document.getElementById('jf-more').classList.contains('has-filters');
+    })());
+  check('compact result counter still announces total and selection',
+    (() => {
+      reset();
+      const t = w.document.getElementById('jobs-count').textContent;
+      return /عرض/.test(t) && /مختارة/.test(t) && /[٠-٩]/.test(t);
+    })());
+  /* ── صورة الوظيفة داخل البطاقة ── */
+  check('job cards render a thumbnail only when the job has an image',
+    (() => {
+      /* الوظائف المعروضة في الصفحة (وليست مخزن المتصفح) */
+      const list = w.G.currentJobs();
+      list.forEach((j, i) => { j.imageUrl = i === 0 ? 'assets/img/jobs/truck.svg' : ''; });
+      w.G.renderJobs();
+      const cards = [...w.document.querySelectorAll('#jobs-list .job-card')];
+      const withThumb = cards.filter((c) => c.querySelector('.job-thumb img'));
+      const first = withThumb.length ? withThumb[0].querySelector('.job-thumb img') : null;
+      return withThumb.length === 1 && !!first &&
+        /truck\.svg$/.test(first.getAttribute('src')) &&
+        first.getAttribute('loading') === 'lazy';
+    })());
   console.log(`\nJob filters: ${checks} checks passed.`);
 } finally {dom.window.close();}

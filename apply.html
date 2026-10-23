@@ -942,6 +942,136 @@ body{
   filter:blur(9px); z-index:-1;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   فلتر مضغوط + صورة الوظيفة داخل البطاقة (2026-10-24)
+   الشريط سطر واحد: بحث + محافظة + دوام + حالة + «فلاتر» + تصفير.
+   الباقي داخل لوحة تُفتح عند الحاجة، فلا يشغل الفلتر نصف الشاشة.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── الشريط ── */
+.job-filters.jf-compact{
+  padding:12px 14px; border-radius:16px; margin-bottom:16px;
+}
+.jf-bar{
+  display:grid; align-items:center; gap:8px;
+  grid-template-columns:minmax(150px,1.7fr) repeat(3,minmax(0,1fr)) auto auto;
+}
+.jf-bar .jf-search{ position:relative; }
+.jf-bar .jf-search input{ padding-inline-start:14px; }
+.jf-bar input:not([type=checkbox]),
+.jf-bar select{
+  min-height:40px; padding:7px 11px; font-size:10.5pt; font-weight:700;
+  border-radius:10px;
+}
+.jf-sr{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+/* زر «فلاتر» */
+.jf-more{
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  min-height:40px; padding:7px 14px; cursor:pointer; white-space:nowrap;
+  font:inherit; font-size:10.5pt; font-weight:800; border-radius:10px;
+  color:var(--lux-gold); border:1px solid rgba(255,214,120,.4);
+  background:rgba(255,214,120,.07);
+  transition:background .16s, border-color .16s, box-shadow .16s;
+}
+.jf-more:hover{ background:rgba(255,214,120,.14); border-color:var(--lux-gold); }
+.jf-more[aria-expanded="true"]{
+  background:rgba(255,214,120,.18); border-color:var(--lux-gold);
+  box-shadow:0 0 18px -6px rgba(255,214,120,.7);
+}
+.jf-more.has-filters{ color:#20180a; background:linear-gradient(140deg,var(--lux-gold),var(--lux-gold-2)); border-color:transparent; }
+.jf-badge{
+  min-width:19px; height:19px; border-radius:999px; display:inline-grid; place-items:center;
+  font-size:9pt; font-weight:900; background:#20180a; color:var(--lux-gold); padding:0 5px;
+}
+.jf-more.has-filters .jf-badge{ background:rgba(32,24,10,.9); color:#fff3c9; }
+/* زر التصفير */
+.jf-reset{
+  width:40px; height:40px; display:inline-grid; place-items:center; cursor:pointer;
+  border-radius:10px; color:#c6d3e8; border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.04); transition:border-color .16s, color .16s, background .16s;
+}
+.jf-reset:hover{ color:var(--lux-gold); border-color:rgba(255,214,120,.5); background:rgba(255,214,120,.08); }
+.jf-reset:focus-visible, .jf-more:focus-visible{ outline:2px solid var(--lux-gold); outline-offset:2px; }
+
+/* ── لوحة الفلاتر ── */
+.jf-panel[hidden]{ display:none; }
+.jf-panel{
+  margin-top:12px; padding:14px; border-radius:13px;
+  border:1px dashed rgba(255,214,120,.28); background:rgba(255,255,255,.025);
+  animation:jfPanelIn .22s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes jfPanelIn{ from{opacity:0; transform:translateY(-4px)} to{opacity:1; transform:none} }
+.jf-panel .jf-grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.jf-panel label{ display:block; font-size:9.5pt; font-weight:800; color:#cfdcf0; margin:0 0 5px; }
+.jf-panel input:not([type=checkbox]), .jf-panel select{ min-height:40px; padding:7px 11px; font-size:10.5pt; }
+.jf-panel-foot{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.08);
+}
+.jf-panel-foot .btn{ min-height:38px; font-size:10pt; border-radius:10px; }
+.job-filters .jf-check{ font-size:10pt; padding:6px 11px; }
+
+/* ── سطر المعلومات ── */
+.jf-meta{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,.07);
+}
+.jf-meta .jf-note{ margin:0; font-size:9.5pt; color:#8fa1bd; }
+.job-filters #jobs-count{
+  margin:0; margin-inline-start:auto; padding:4px 12px; font-size:9.5pt;
+  border-radius:999px;
+}
+.job-filters #jobs-count b{ color:#fff; font-weight:900; }
+.jf-dot{ opacity:.45; margin:0 6px; }
+.job-filters #jf-error{ margin:0; font-size:9.5pt; }
+
+/* ── صورة الوظيفة داخل البطاقة ── */
+.job-card .job-thumb{
+  position:relative; flex:none; width:54px; height:54px; border-radius:12px; overflow:hidden;
+  display:grid; place-items:center; align-self:flex-start; margin-top:2px;
+  border:1px solid rgba(255,214,120,.28); background:linear-gradient(150deg,#12304c,#0d2238);
+  box-shadow:0 8px 18px -12px rgba(0,0,0,.9);
+  transition:width .28s cubic-bezier(.22,1,.36,1), height .28s, border-color .25s;
+}
+.job-card .job-thumb img{
+  position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
+  opacity:0; transition:opacity .25s ease, transform .3s ease;
+}
+.job-card .job-thumb.has-img img{ opacity:1; }
+.job-card .job-thumb-ph{ font-size:18px; color:rgba(255,214,120,.5); }
+.job-card .job-thumb.has-img .job-thumb-ph{ display:none; }
+.job-card:hover .job-thumb img{ transform:scale(1.06); }
+.job-card.selected .job-thumb,
+.job-card.is-lifted .job-thumb{ border-color:var(--lux-gold); width:64px; height:64px; }
+/* رأس البطاقة يرتّب الصورة بجانب العنوان */
+.job-card .job-head{ display:flex; align-items:flex-start; gap:11px; }
+.job-card .job-head .title{ flex:1 1 auto; min-width:0; }
+.job-card .job-head .badge{ flex:none; }
+
+/* ── استجابة ── */
+@media (max-width: 980px){
+  .jf-bar{ grid-template-columns:minmax(140px,1.6fr) repeat(2,minmax(0,1fr)) auto auto; }
+  .jf-bar #jf-status{ display:none; }        /* الحالة ثابتة «متاحة» أصلاً */
+  .jf-panel .jf-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 640px){
+  .job-filters.jf-compact{ padding:10px; border-radius:14px; }
+  .jf-bar{ grid-template-columns:1fr 1fr auto auto; gap:7px; }
+  .jf-bar .jf-search{ grid-column:1 / -1; }
+  .jf-bar #jf-shift{ grid-column:auto; }
+  .jf-more{ padding:7px 10px; font-size:10pt; }
+  .jf-more svg{ display:none; }
+  .jf-panel .jf-grid{ grid-template-columns:1fr; }
+  .jf-meta .jf-note{ display:none; }         /* توفير مساحة على الهاتف */
+  .job-filters #jobs-count{ margin-inline-start:0; }
+  .job-card .job-thumb{ width:48px; height:48px; border-radius:11px; }
+  .job-card.selected .job-thumb,
+  .job-card.is-lifted .job-thumb{ width:54px; height:54px; }
+}
+
 /* ═══ تأثير «البورتريه»: المختارة تبرز أمام البقية، والبقية تُغبَّش وتُعتَّم ═══
    يعتمد على صنف .has-focus يُضاف إلى #jobs-list من renderJobs() عند وجود اختيار.
    الطبقات: المختارة z-index 20 فوق طبقة تعتيم + blur على البقية، فتظهر وحدها
@@ -1233,23 +1363,47 @@ body{
       <div id="profile-lock-notice" class="identity-notice" role="status" hidden></div>
       <div id="chances-bar" class="chances-bar has2"></div>
       <div class="section-title">اختر الوظيفة المناسبة لك</div>
-      <section class="job-filters" aria-label="فلترة الوظائف">
-        <div class="jf-top"><div><b>ابحث عن فرصتك</b><p>تصفّح الوظائف بنفس ترتيب الموقع، وحدّد ما يناسبك. البحث والفلترة لا يستهلكان أي فرصة.</p></div><button type="button" class="btn btn-outline btn-sm" onclick="G.resetJobFilters()">مسح الفلاتر</button></div>
-        <div class="jf-grid jf-primary">
-          <div class="jf-search"><label for="jf-query">بحث بالكود أو العنوان أو المهارة</label><input id="jf-query" type="search" placeholder="مثال: مبيعات، سائق، HRC-1042" autocomplete="off" oninput="G.setJobFilter('q',this.value)"></div>
-          <div><label for="jf-province">المحافظة</label><select id="jf-province" onchange="G.setJobFilter('province',this.value)"><option value="">كل المحافظات</option></select></div>
-          <div><label for="jf-shift">الدوام</label><select id="jf-shift" onchange="G.setJobFilter('shift',this.value)"><option value="">كل الأوقات</option></select></div>
-          <div><label for="jf-status">الحالة</label><select id="jf-status" disabled aria-describedby="jf-availability"><option value="available">متاحة للتقديم</option></select></div>
+      <section class="job-filters jf-compact" aria-label="فلترة الوظائف">
+        <!-- شريط واحد مضغوط: بحث + المحافظة + الدوام + الحالة + زر الفلاتر + تصفير -->
+        <div class="jf-bar jf-primary">
+          <div class="jf-search">
+            <label class="jf-sr" for="jf-query">بحث بالكود أو العنوان أو المهارة</label>
+            <input id="jf-query" type="search" placeholder="ابحث بالكود أو الوظيفة…" autocomplete="off" oninput="G.setJobFilter('q',this.value)">
+          </div>
+          <label class="jf-sr" for="jf-province">المحافظة</label>
+          <select id="jf-province" onchange="G.setJobFilter('province',this.value)"><option value="">كل المحافظات</option></select>
+          <label class="jf-sr" for="jf-shift">الدوام</label>
+          <select id="jf-shift" onchange="G.setJobFilter('shift',this.value)"><option value="">كل الأوقات</option></select>
+          <label class="jf-sr" for="jf-status">الحالة</label>
+          <select id="jf-status" disabled aria-describedby="jf-availability"><option value="available">متاحة للتقديم</option></select>
+          <button type="button" class="jf-more" id="jf-more" aria-expanded="false" aria-controls="jf-advanced" onclick="G.toggleAdvanced()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+            فلاتر <span class="jf-badge" id="jf-badge" hidden>0</span>
+          </button>
+          <button type="button" class="jf-reset" onclick="G.resetJobFilters()" title="مسح كل الفلاتر" aria-label="مسح كل الفلاتر">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+          </button>
         </div>
-        <p id="jf-availability" class="jf-note">نفس ترتيب قسم الوظائف؛ تُعرض هنا الوظائف المتاحة للتقديم فقط، دون المحجوزة أو المغلقة.</p>
-        <details class="jf-advanced"><summary>فلاتر إضافية — نوع الوظيفة، الجنس والأجر والترتيب</summary><div class="jf-grid">
-          <div><label for="jf-category">نوع الوظيفة</label><select id="jf-category" onchange="G.filter(this.value)"><option value="الكل">كل التخصصات</option></select></div>
-          <div><label for="jf-gender">الجنس المطلوب بالإعلان</label><select id="jf-gender" onchange="G.setJobFilter('gender',this.value)"><option value="">الكل</option><option value="ذكر">ذكر أو لا فرق</option><option value="أنثى">أنثى أو لا فرق</option><option value="لا فرق">لا فرق فقط</option></select></div>
-          <div><label for="jf-salary">بداية الأجر الشهري من (د.ع)</label><input id="jf-salary" type="text" inputmode="numeric" placeholder="مثال: 500000" oninput="G.setJobFilter('salary',this.value)"></div>
-          <div><label for="jf-sort">ترتيب النتائج</label><select id="jf-sort" onchange="G.setJobFilter('sort',this.value)"><option value="site">مثل قسم الوظائف — الأحدث أولاً</option><option value="recommended">المقترح حسب بياناتي</option><option value="salary-desc">الأجر الأعلى أولاً</option><option value="salary-asc">الأجر الأقل أولاً</option><option value="newest">الأحدث أولاً</option></select></div>
-        </div></details>
-        <div class="jf-bottom"><button type="button" class="btn btn-outline btn-sm" onclick="G.useMyJobFilters()">وظائف محافظتي المناسبة لبياناتي</button><label class="jf-check"><input id="jf-picked" type="checkbox" onchange="G.setJobFilter('picked',this.checked)"> مختاراتي فقط</label></div>
-        <p id="jf-error" role="alert" hidden></p><div id="jobs-count" role="status" aria-live="polite"></div>
+
+        <!-- لوحة الفلاتر (تفتح بزر «فلاتر») -->
+        <div class="jf-panel" id="jf-advanced" hidden>
+          <div class="jf-grid">
+            <div><label for="jf-category">نوع الوظيفة</label><select id="jf-category" onchange="G.filter(this.value)"><option value="الكل">كل التخصصات</option></select></div>
+            <div><label for="jf-gender">الجنس المطلوب</label><select id="jf-gender" onchange="G.setJobFilter('gender',this.value)"><option value="">الكل</option><option value="ذكر">ذكر أو لا فرق</option><option value="أنثى">أنثى أو لا فرق</option><option value="لا فرق">لا فرق فقط</option></select></div>
+            <div><label for="jf-salary">الأجر من (د.ع)</label><input id="jf-salary" type="text" inputmode="numeric" placeholder="مثال: 500000" oninput="G.setJobFilter('salary',this.value)"></div>
+            <div><label for="jf-sort">ترتيب النتائج</label><select id="jf-sort" onchange="G.setJobFilter('sort',this.value)"><option value="site">الأحدث أولاً</option><option value="recommended">المقترح حسب بياناتي</option><option value="salary-desc">الأجر الأعلى</option><option value="salary-asc">الأجر الأقل</option><option value="newest">الأحدث</option></select></div>
+          </div>
+          <div class="jf-panel-foot">
+            <button type="button" class="btn btn-outline btn-sm" onclick="G.useMyJobFilters()">وظائف محافظتي المناسبة لبياناتي</button>
+            <label class="jf-check"><input id="jf-picked" type="checkbox" onchange="G.setJobFilter('picked',this.checked)"> مختاراتي فقط</label>
+          </div>
+        </div>
+
+        <div class="jf-meta">
+          <p id="jf-availability" class="jf-note">تُعرض الوظائف المتاحة للتقديم فقط.</p>
+          <p id="jf-error" role="alert" hidden></p>
+          <div id="jobs-count" role="status" aria-live="polite"></div>
+        </div>
       </section>
       <div id="jobs-list"></div>
       <div id="jobs-empty" style="display:none;text-align:center;padding:24px;color:#c4cbd7">
@@ -1783,6 +1937,46 @@ var G={
     });
   },
 
+  /* فتح/إغلاق لوحة الفلاتر الإضافية */
+  toggleAdvanced:function(){
+    var panel=$('jf-advanced'),btn=$('jf-more');
+    if(!panel)return;
+    var open=panel.hidden;
+    panel.hidden=!open;
+    if(btn)btn.setAttribute('aria-expanded',open?'true':'false');
+    if(open){
+      var first=$('jf-category');
+      if(first&&first.focus)try{first.focus();}catch(e){}
+    }
+  },
+
+  /* عدد الفلاتر النشطة — يظهر كشارة على زر «فلاتر» */
+  activeFilterCount:function(){
+    var n=0;
+    if(jobFilters.q)n++;
+    if(jobFilters.province)n++;
+    if(jobFilters.shift)n++;
+    if(jobFilters.gender)n++;
+    if(jobFilters.salary)n++;
+    if(currentFilter&&currentFilter!=='الكل')n++;
+    if(jobFilters.sort&&jobFilters.sort!=='site')n++;
+    if(jobFilters.picked)n++;
+    return n;
+  },
+
+  /* الوظائف المحمَّلة كما هي (للتشخيص والاختبار فقط — لا تُعدَّل أثناء العمل) */
+  currentJobs:function(){return jobs;},
+
+  /* مزامنة شارة عدد الفلاتر النشطة على زر «فلاتر» */
+  syncFilterBadge:function(){
+    var badge=$('jf-badge'),n=G.activeFilterCount();
+    if(badge){
+      if(n>0){badge.textContent=ar(n);badge.hidden=false;}else{badge.hidden=true;badge.textContent='0';}
+    }
+    var moreBtn=$('jf-more');
+    if(moreBtn)moreBtn.classList.toggle('has-filters',n>0);
+  },
+
   renderFilters:function(){
     function options(id,values,all,value){var el=$(id);if(!el)return;el.innerHTML='<option value="'+esc(all==='كل التخصصات'?'الكل':'')+'">'+all+'</option>'+values.map(function(v){return'<option value="'+esc(v)+'">'+esc(v||'المحافظة غير مذكورة')+'</option>';}).join('');el.value=value;}
     /* قائمة المحافظات: كل محافظات العراق (١٩) + أي محافظة تأتي من القاعدة.
@@ -1798,17 +1992,19 @@ var G={
     options('jf-shift',distinct('shift'),'كل أوقات الدوام',jobFilters.shift);
     $('jf-gender').value=jobFilters.gender;$('jf-sort').value=jobFilters.sort;
     $('jf-query').value=jobFilters.q;$('jf-salary').value=jobFilters.salary;$('jf-picked').checked=jobFilters.picked;
+    G.syncFilterBadge();
   },
 
   setJobFilter:function(key,value){
     if(!Object.prototype.hasOwnProperty.call(jobFilters,key))return;
     jobFilters[key]=key==='picked'?!!value:String(value||'');
     if(key==='province'){jobFilters.province=jobProvince(jobFilters.province);G.renderFilters();}
+    G.syncFilterBadge();
     G.renderJobs();
   },
-  filter:function(c){currentFilter=c||'الكل';G.renderFilters();G.renderJobs();},
-  resetJobFilters:function(){jobFilters={q:'',province:'',shift:'',gender:'',salary:'',sort:'site',picked:false};currentFilter='الكل';G.renderFilters();G.renderJobs();},
-  useMyJobFilters:function(){jobFilters={q:'',province:jobProvince($('f-prov').value),shift:'',gender:selectedGender,salary:'',sort:'recommended',picked:false};currentFilter='الكل';G.renderFilters();G.renderJobs();},
+  filter:function(c){currentFilter=c||'الكل';G.renderFilters();G.syncFilterBadge();G.renderJobs();},
+  resetJobFilters:function(){jobFilters={q:'',province:'',shift:'',gender:'',salary:'',sort:'site',picked:false};currentFilter='الكل';G.renderFilters();G.syncFilterBadge();G.renderJobs();},
+  useMyJobFilters:function(){jobFilters={q:'',province:jobProvince($('f-prov').value),shift:'',gender:selectedGender,salary:'',sort:'recommended',picked:false};currentFilter='الكل';G.renderFilters();G.syncFilterBadge();G.renderJobs();},
   removePickedJob:function(index){if(index<0||index>=pickedJobs.length)return;pickedJobs.splice(index,1);G.renderChances();G.renderJobs();},
   filteredJobs:function(){
     var min=jobSalary(jobFilters.salary),terms=jobNorm(jobFilters.q).split(' ').filter(Boolean);
@@ -1836,7 +2032,8 @@ var G={
     var invalidSalary=jobSalary(jobFilters.salary)===null;
     $('jf-error').hidden=!invalidSalary;
     $('jf-error').textContent=invalidSalary?'أدخل الأجر بالأرقام فقط، مثل 500000؛ الأجر بالدينار العراقي.':'';
-    $('jobs-count').textContent='عرض '+ar(f.length)+' من '+ar(jobs.length)+' وظيفة — المختارة: '+ar(pickedJobs.length)+' (تغيير الفلاتر لا يلغي الاختيارات)';
+    $('jobs-count').innerHTML='عرض <b>'+ar(f.length)+'</b> من '+ar(jobs.length)+
+      ' وظيفة<span class="jf-dot">·</span>مختارة: <b>'+ar(pickedJobs.length)+'</b>';
     var c=$('jobs-list'),e=$('jobs-empty');
     if(!f.length){c.innerHTML='';e.style.display='block';G.syncJobsFooter();return;}
     e.style.display='none';
@@ -1850,7 +2047,13 @@ var G={
       h+='<div class="job-card'+(picked?' selected':'')+(done?' is-done':'')+'" data-job="'+esc(j.code)+'"'
         +(done?'':' onclick="G.pickJob(\''+esc(j.code)+'\')"')+'>'
         +'<div class="pick-mark">'+(picked?ar(G.chanceNumber(slotNo)):'✓')+'</div>'
-        +'<div class="job-head"><div class="title">'+esc(j.title)+'</div>'
+        +'<div class="job-head">'
+        +(j.imageUrl
+          ? '<span class="job-thumb"><span class="job-thumb-ph" aria-hidden="true">◈</span>'
+            +'<img src="'+esc(j.imageUrl)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"'
+            +' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()"></span>'
+          : '')
+        +'<div class="title">'+esc(j.title)+'</div>'
         +'<div class="badge badge-open">'+(done?'✓ تم التقديم':(picked?'★ الفرصة '+ar(G.chanceNumber(slotNo)):'🟢 متوفرة'))+'</div></div>'
         +'<div class="job-category">✦ '+esc(j.category)+' · '+esc(j.code)+'</div>'
         +'<div class="job-grid">'
