@@ -470,6 +470,33 @@ step(9, 'تقارير اللوحة: مؤجَّلة عن الإقلاع ومُح�
     calls.length === 2 && !!eager.meta.serverReport && !eager.meta.reportsPending);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  ذاكرة العرض الفورية للوظائف العامة (2026-10-25)
+ *  بيانات القاعدة نفسها، عمر أقصى ٥ دقائق، ثم تُهمَل ولا تُعرض.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+step(10, 'ذاكرة العرض الفورية: صالحة ٥ دقائق ثم تُهمَل');
+{
+  const mem = new Map();
+  sandbox.localStorage = {
+    getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+    setItem: (k, v) => mem.set(k, String(v)),
+    removeItem: (k) => mem.delete(k),
+    clear: () => mem.clear()
+  };
+  const KEY = 'hrc_public_jobs_v1';
+  check('بلا ذاكرة: لا شيء يُعرض', C.readPublicCache() === null);
+  mem.set(KEY, JSON.stringify({ at: Date.now() - 6 * 60 * 1000, jobs: [{ code: 'HRC-1' }] }));
+  check('ذاكرة أقدم من ٥ دقائق تُهمَل ولا تُعرض', C.readPublicCache() === null);
+  check('المنتهية تُمسح من التخزين', !mem.has(KEY));
+  mem.set(KEY, JSON.stringify({ at: Date.now(), jobs: [{ code: 'HRC-1' }] }));
+  const fresh = C.readPublicCache();
+  check('ذاكرة حديثة تُعرض فوراً', Array.isArray(fresh) && fresh.length === 1 && fresh[0].code === 'HRC-1');
+  C.clearPublicCache();
+  check('المسح اليدوي يُفرغ الذاكرة', !mem.has(KEY) && C.readPublicCache() === null);
+  mem.set(KEY, JSON.stringify({ at: Date.now(), jobs: 'oops' }));
+  check('محتوى تالف لا يكسر الصفحة', C.readPublicCache() === null);
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');

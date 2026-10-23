@@ -46,7 +46,6 @@
     cloudMode = !!(st && st.configured && st.willBoot);
     if (cloudMode) {
       renderSkeleton();
-      armConnecting();
       Store.waitForCloud().then(settleCloud, settleCloud);
     } else {
       renderAll();
@@ -71,7 +70,6 @@
   /* وصول رد القاعدة: عرض المعلن، أو رسالة الفشل — لا شيء بينهما */
   function settleCloud(st) {
     cloudSettled = true;
-    hideConnecting();
     st = st || (Store.cloudStatus ? Store.cloudStatus() : null);
     if (st && st.state === 'on') renderAll();
     else renderCloudError();
@@ -298,30 +296,6 @@
       '</div>' +
       '<div class="skel-foot"><span class="skel-line sq"></span><span class="skel-line sq" style="width:96px"></span></div>' +
     '</article>';
-  }
-
-  /* شبكة تحميل + مؤشر اتصال يظهر بعد ٢ ثانية فقط: يشرح للزائر أن العمل جارٍ
-     بدل هيكل صامت يُحسب «موقع معلّق» على اتصال بطيء. */
-  var connectingTimer = null;
-  function showConnecting() {
-    var host = document.getElementById('jobs-grid');
-    if (!host || cloudSettled) return;
-    if (document.getElementById('job-connecting')) return;
-    var note = document.createElement('p');
-    note.id = 'job-connecting';
-    note.className = 'job-connecting';
-    note.setAttribute('role', 'status');
-    note.innerHTML = '<span class="skel-dot" aria-hidden="true"></span> جارٍ الاتصال بقاعدة الشركة… قد يتأخر قليلاً على الشبكات البطيئة.';
-    host.parentNode.insertBefore(note, host);
-  }
-  function hideConnecting() {
-    if (connectingTimer) { clearTimeout(connectingTimer); connectingTimer = null; }
-    var n = document.getElementById('job-connecting');
-    if (n && n.parentNode) n.parentNode.removeChild(n);
-  }
-  function armConnecting() {
-    hideConnecting();
-    connectingTimer = setTimeout(showConnecting, 2000);
   }
 
   function renderSkeleton() {

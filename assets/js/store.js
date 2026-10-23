@@ -324,6 +324,7 @@
 
   function logout() {
     var s = currentUser();
+    cloud.knownProfile = null;   /* ملف الدخول المعلوم لا يُعاد استخدامه بعد الخروج */
     if (s) audit('تسجيل خروج', 'auth', s.username, 'إنهاء الجلسة');
     if(root.HRCCloud&&root.HRCCloud.clearChanceRegistry)root.HRCCloud.clearChanceRegistry();
     memSession = null;
@@ -2084,16 +2085,29 @@
 
   function restoreThenLoad() {
     /* استعادة الجلسة قبل القراءة: بدونها يقرأ الموظف كزائر فيرى الوظائف العامة
-       فقط، فيبدو أن بياناته «ضاعت» بعد تحديث الصفحة. */
+       فقط، فيبدو أن بياناته «ضاعت» بعد تحديث الصفحة.
+       ⚡ الجلسة تُقرأ من التخزين أولاً (فورية)، ثم **بالتوازي**: سطر الموظف
+       (brc.staff) وجلب البيانات. كانا متتاليين فتضيع رحلة كاملة (~100–200ms)
+       في كل فتح للوحة. */
     if (!canReadStaffTables()) return publicBoot(null);
-    if (!cloud.auth) return loadFromCloud();
-    return cloud.auth.restore().then(function (r) {
-      if (r && r.ok) { applyStaffSession(r.profile); return loadFromCloud(); }
-      /* بلا جلسة موظف: لا معنى لمحاولة قراءة brc.jobs/applicants — anon ممنوع
-         منها فتُرفض كلها (6 طلبات فاشلة في كل تحميل صفحة، وفي سجل المشروع ضجيج
-         «permission denied» لا يدلّ على خلل حقيقي). نبدأ من الواجهة العامة
-         مباشرةً، وهي أيضاً ما يراه الزائر في الموقع. */
-      return publicBoot(null);
+    if (!cloud.auth || !cloud.auth.sessionOnly) return loadFromCloud();
+    return cloud.auth.sessionOnly().then(function (sess) {
+      if (!sess || !sess.ok) {
+        /* بلا جلسة موظف: لا معنى لمحاولة قراءة brc.jobs/applicants — anon ممنوع
+           منها فتُرفض كلها. نبدأ من الواجهة العامة مباشرةً. */
+        return publicBoot(null);
+      }
+      var pProfile = Promise.resolve(cloud.auth.profileFor(sess.session)).then(function (r) {
+        if (r && r.ok) { applyStaffSession(r.profile); return r; }
+        return r || { ok: false };
+      }).catch(function () { return { ok: false }; });
+      var pData = loadFromCloud();
+      return Promise.all([pProfile, pData]).then(function (out) {
+        var r = out[0];
+        if (r && r.ok) return out[1];
+        /* لا سطر موظف فعّال: نُرجع نتيجة المسار العام التي حُسبت بالتوازي */
+        return out[1];
+      });
     }).catch(function () { return loadFromCloud(); });
   }
 
@@ -2119,9 +2133,28 @@
     });
   }
 
+  /* ⚡ سجل التدقيق يُقرأ عند الطلب (أول فتح لشاشة السجل) بدل حجب الإقلاع به. */
+  function loadAuditLog() {
+    if (!cloud.client || !root.HRCCloud.loadAuditLog) return Promise.resolve(false);
+    if (cloud.auditLoaded) return Promise.resolve(true);
+    if (cloud.auditPromise) return cloud.auditPromise;
+    cloud.auditPromise = root.HRCCloud.loadAuditLog(cloud.client, { limit: 300 }).then(function (res) {
+      cloud.auditPromise = null;
+      if (!res || !res.ok) return false;
+      cloud.auditLoaded = true;
+      if (db && db.meta) db.meta.auditPending = false;
+      db.audit = res.rows || [];
+      emit();
+      return true;
+    }).catch(function () { cloud.auditPromise = null; return false; });
+    return cloud.auditPromise;
+  }
+
   function loadFromCloud() {
     /* الجداول أولاً (سريعة)، ثم التقارير الثقيلة في الخلفية — لا في مسار الإقلاع */
-    return root.HRCCloud.fetchAll(cloud.client,{workspace:true, deferReports:true}).then(function (cdb) {
+    /* ⚡ سجل التدقيق (حتى ٢٠٠٠ صف بأحجام كبيرة) لا يدخل مسار الإقلاع: يُقرأ
+       عند فتح «سجل التدقيق» أول مرة، وتبقى اللوحة تعمل بلا انتظاره. */
+    return root.HRCCloud.fetchAll(cloud.client,{workspace:true, deferReports:true, deferAudit:true}).then(function (cdb) {
       var failed = (cdb.meta && cdb.meta.failedTables) || [];
       cloud.failedTables = failed;
       var coreFailed = failed.filter(function (t) { return CORE_TABLES.indexOf(t) >= 0; });
@@ -2147,6 +2180,24 @@
 
   function publicBoot(coreError) {
     if (!root.HRCCloud.fetchPublicJobs) { cloud.state = 'degraded'; setCloudError(coreError); return cloudStatus(); }
+
+    /* عرض فوري من ذاكرة الجلسة (٩٠ ثانية) ثم تحديث صامت:
+       التنقّل داخل التبويب ذاته لا يُظهر هيكل تحميل إطلاقاً، والشبكة تُحدِّث
+       القائمة في الخلفية فوراً. الذاكرة تحمل **بيانات القاعدة نفسها** فقط
+       (لا بيانات تجريبية)، وتنتهي صلاحيتها تلقائياً. */
+    var cached = null;
+    try { cached = root.HRCCloud.readPublicCache ? root.HRCCloud.readPublicCache() : null; } catch (e) { cached = null; }
+    if (cached && cached.length) {
+      adoptPublicJobs(cached);
+      cloud.role = 'public'; cloud.readOnly = true;
+      cloud.state = 'on'; cloud.error = null; cloud.detail = null;
+      /* إعادة التحقق في الخلفية — لا تُعطّل شيئاً ولا تُغيّر الحالة عند الفشل */
+      root.HRCCloud.fetchPublicJobs(cloud.client).then(function (res) {
+        if (res && res.ok && Array.isArray(res.jobs)) { adoptPublicJobs(res.jobs); }
+      }).catch(function () { });
+      return Promise.resolve(cloudStatus());
+    }
+
     return root.HRCCloud.fetchPublicJobs(cloud.client).then(function (res) {
       if (!res || !res.ok) {
         cloud.state = 'degraded'; cloud.role = 'guest';
@@ -2489,6 +2540,30 @@
     });
   }
 
+  /* ⚡ دخول سريع (للّوحة): يتحقّق من الحساب ويُدخل الموظف **فوراً**، والبيانات
+     تُجلب بعد ذلك وتُحدَّث الواجهة تلقائياً عبر emit — بلا شاشة انتظار طويلة.
+     signIn الكامل بقي كما هو لمن يريد انتظار البيانات (والاختبارات). */
+  function signInFast(username, password) {
+    if (!cloudConfigured() || !canReadStaffTables() || !cloudWillBoot()) return signIn(username, password);
+    if (!cloud.client || !root.HRCCloudAuth) return signIn(username, password);
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    return auth.login(username, password).then(function (r) {
+      if (!r || !r.ok) return r || { ok: false, code: 'auth_failed', error: 'فشل الدخول' };
+      applyStaffSession(r.profile);
+      cloud.knownProfile = r.profile;
+      saveLocal();
+      emit();
+      cloud.bootPromise = null;
+      /* الجلب في الخلفية — لا يُعطّل ظهور اللوحة */
+      bootCloud().then(function () {
+        audit('تسجيل دخول', 'auth', r.profile.username,
+          'دخول عبر Supabase Auth (' + (r.profile.role === 'admin' ? 'مدير عام' : 'موظف') + ')');
+        save(); emit();
+      }).catch(function () { });
+      return { ok: true, session: currentUser(), profile: r.profile, pending: true };
+    });
+  }
+
   function signOutCloud() {
     if(root.HRCCloud&&root.HRCCloud.clearChanceRegistry)root.HRCCloud.clearChanceRegistry();
     var out = (cloud.auth && cloud.auth.logout) ? cloud.auth.logout() : Promise.resolve({ ok: true });
@@ -2598,7 +2673,7 @@
     login: login, logout: logout, currentUser: currentUser, isAdmin: isAdmin,
     listUsers: listUsers, addUser: addUser, updateUser: updateUser, deleteUser: deleteUser, toggleUserActive: toggleUserActive,
     // سحابة
-    signIn: signIn, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
+    signIn: signIn, signInFast: signInFast, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
     createCloudAccount: createCloudAccount, updateCloudAccount: updateCloudAccount,
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     probeServiceKey: probeServiceKey,
@@ -2636,7 +2711,7 @@
     stats: stats, financials: financials, financialTotals: financialTotals,
     markPrinted: markPrinted, setFeePaid: setFeePaid,
     // تدقيق
-    audit: audit, listAudit: listAudit, syncOfflineChanges: syncOfflineChanges,
+    audit: audit, listAudit: listAudit, loadAuditLog: loadAuditLog, syncOfflineChanges: syncOfflineChanges,
     getScheduledBackups: getScheduledBackups, listBackupMeta: listBackupMeta,
     saveScheduledBackup: saveScheduledBackup, deleteScheduledBackup: deleteScheduledBackup,
     restoreScheduledBackup: restoreScheduledBackup, exportScheduledBackup: exportScheduledBackup,

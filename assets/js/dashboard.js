@@ -664,26 +664,13 @@
          متاحة (store.login يرفضه بنفسه أيضاً — حماية مزدوجة مقصودة).
          ⚠️ إن كنا نعلم مسبقاً أن الاتصال ساقط (degraded) فلا معنى لانتظار طلب
          شبكي محكوم عليه بالفشل: نُدخل الموظف محلياً فوراً مع بقاء التنبيه ظاهراً. */
-      if (cs && cs.configured && cs.state === 'connecting' && Store.signIn && Store.waitForCloud) {
-        busy(true, 'جارٍ الاتصال…');
-        Store.waitForCloud().then(function (st) {
-          busy(false, '');
-          if (st && st.state === 'on') { cloudLogin(); return; }
-          var stLocal = Store.cloudStatus ? Store.cloudStatus() : null;
-          UI.toast('warn', 'وضع محلي مؤقّت',
-            (stLocal && stLocal.enforceAuth && !stLocal.devAccountsActive)
-              ? 'تعذّر الاتصال بقاعدة الشركة — الدخول يتطلب إنترنت، والبيانات المعروضة نسخة محفوظة.'
-              : 'تعذّر الاتصال بالسحابة — الدخول محلي والبيانات غير مشتركة.');
-          localLogin();
-        });
-        return;
-      }
       if (cs && cs.configured && cs.state === 'on' && Store.signIn) { cloudLogin(); return; }
       localLogin();
 
       function cloudLogin() {
         busy(true, 'جارٍ التحقق…');
-        Store.signIn(u, p).then(function (r) {
+        /* signInFast: يتحقّق من الحساب ويُظهر اللوحة فوراً، والبيانات تُجلب بعدها */
+        (Store.signInFast || Store.signIn)(u, p).then(function (r) {
           busy(false, '');
           /* ✅ نجح الدخول السحابي */
           if (r && r.ok) {
@@ -2241,6 +2228,14 @@
   }
 
   function renderAudit() {
+    /* السجل مؤجَّل عن الإقلاع: أول فتح يطلبه في الخلفية ثم يُعاد الرسم */
+    if (Store.db().meta && Store.db().meta.auditPending && !renderAudit._asked) {
+      renderAudit._asked = true;
+      Store.loadAuditLog().then(function (done) {
+        renderAudit._asked = false;
+        if (done && state.view === 'audit') renderAudit();
+      }).catch(function () { renderAudit._asked = false; });
+    }
     var available = Store.listAudit({});
     [['user', 'user', 'كل المستخدمين'], ['action', 'action', 'كل العمليات'], ['entity', 'entity', 'كل الأنواع']].forEach(function (spec) {
       var select = document.getElementById('log-' + spec[0]);

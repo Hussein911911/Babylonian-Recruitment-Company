@@ -589,6 +589,34 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
  check('سجل الباركود المحلي المصغّر لا يحتفظ بصفوف الأرشيف',!Store.db().usedSerials.includes(serial));
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  دخول سريع (2026-10-25): الجلسة تظهر فوراً والبيانات تصل بعدها
+ * ═══════════════════════════════════════════════════════════════════════════ */
+{
+  const mock = makeMock({
+    rows: cloudRows(),
+    auth: (email, password) => (password === 'correct-password'
+      ? { data: { user: { id: 'auth-1', email }, session: { access_token: 'tk' } }, error: null }
+      : { data: null, error: { message: 'Invalid login credentials' } })
+  });
+  const { Store } = bootStore(mock, { enforceAuth: true });
+  Store.init();
+  await sleep(120);
+  check('signInFast متاحة في الواجهة العامة', typeof Store.signInFast === 'function');
+  let ok = false, jobsAtResolve = null;
+  await Store.signInFast('hussein', 'correct-password').then(function (r) {
+    ok = !!(r && r.ok);
+    jobsAtResolve = Store.listJobs({}).length;
+  });
+  const u = Store.currentUser();
+  check('الدخول السريع ينجح ويضع الجلسة فوراً (قبل وصول البيانات)',
+    ok && u && u.username === 'hussein', JSON.stringify({ ok, u: u && u.username, jobsAtResolve }));
+  await sleep(300);
+  check('البيانات تصل بعد الدخول وتُحدَّث الواجهة تلقائياً',
+    Store.listJobs({}).length > 0 && Store.cloudStatus().state === 'on',
+    JSON.stringify({ jobs: Store.listJobs({}).length, state: Store.cloudStatus().state }));
+}
+
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail ? '❌ ' : '✅ ') + pass + ' ناجح | ' + (fail ? '❌ ' : '') + fail + ' فاشل');
 console.log('═'.repeat(74) + '\n');

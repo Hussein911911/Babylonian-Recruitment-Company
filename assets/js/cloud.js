@@ -376,7 +376,7 @@
     function failure(message) { return { data: null, error: { message: message, code: 'INCOMPLETE_LOAD' } }; }
 
     function query(withCount) {
-      var q = client.from(table).select('*', withCount ? { count: 'exact' } : {});
+      var q = client.from(table).select(opts.cols || '*', withCount ? { count: 'exact' } : {});
       if (table === 'audit_log') q = q.order('ts', { ascending: false });
       return q.order(key, { ascending: true });
     }
@@ -480,6 +480,9 @@
     var limit = opts.auditLimit || 2000;
 
     var queries = TABLES.map(function (t) {
+      /* سجل التدقيق مؤجَّل عند الطلب: أكبر جدول في الحمولة، ولا حاجة له قبل
+         فتح «سجل التدقيق». يُقرأ عبر loadAuditLog() عند الحاجة فقط. */
+      if (t === 'audit_log' && opts.deferAudit) return Promise.resolve({ data: [], error: null, deferred: true });
       var source=opts.workspace&&['jobs','applicants','job_attempts'].indexOf(t)>=0?'working_'+t:t;
       return readPages(client, source, t === 'audit_log' ? limit : 100000);
     });
@@ -506,6 +509,7 @@
         db.meta.reportsPending = true;
       }
       if(opts.workspace && !opts.deferReports && results[TABLES.length+1] && results[TABLES.length+1].error && !failed.some(function(f){return f.table==='job_attempts';}))failed.push({table:'job_attempts',error:results[TABLES.length+1].error});
+      if (opts.deferAudit) db.meta.auditPending = true;
       db.meta.failedTables = failed.map(function (f) { return f.table; });
       db.meta.errors = failed;
       if(opts.workspace){db.meta.workspace=true;db.meta.partialTables=['jobs','applicants','job_attempts'];if(!opts.deferReports){var report=results[TABLES.length];if(report&&!report.error&&report.data&&report.data.stats&&Array.isArray(report.data.rows))db.meta.serverReport=report.data;}}
@@ -554,15 +558,85 @@
     });
   }
 
+  /* سجل التدقيق عند الطلب (٣٠٠ صف افتراضياً — يكفي العرض والتصفية الأخيرة).
+     يُرتَّب من الأحدث، ويُدمج في الواجهة بلا تكرار. */
+  function loadAuditLog(client, opts) {
+    opts = opts || {};
+    var limit = opts.limit || 300;
+    return readPages(client, 'audit_log', limit).then(function (res) {
+      if (res && res.error) return { ok: false, error: res.error, rows: [] };
+      var rows = (res && res.data) || [];
+      return {
+        ok: true,
+        rows: rows.map(auditFromDb).sort(function (a, b) { return String(b.ts).localeCompare(String(a.ts)); })
+      };
+    }).catch(function (e) { return { ok: false, error: { message: String(e && e.message || e) }, rows: [] }; });
+  }
+
   // Public reads use the RLS-safe public_jobs view, never the jobs table.
+  /* أعمدة الواجهة العامة فقط — كانت select('*') تنزل حقولاً لا تعرضها القائمة
+     فيكبر الرد بلا داعٍ على شبكة بطيئة. */
+  var PUBLIC_JOB_COLS = 'code,title,category,region,governorate,shift,salary_min,salary_max,' +
+    'gender,vacancies,requirements,status,hold_expires_at,created_at,description,image_url,available_vacancies';
+
+  /* ⚡ ذاكرة عرض فورية لبيانات الوظائف العامة (٥ دقائق كحد أقصى)
+     -----------------------------------------------------------------------
+     • تحمل **بيانات قاعدة الشركة نفسها** التي وصلت آخر مرة — لا بيانات تجريبية.
+     • تُعرض فوراً (بلا هيكل انتظار)، ثم يُعاد التحقق من القاعدة **فوراً** في
+       الخلفية فتُستبدل بأحدث نسخة خلال أقل من ثانية.
+     • تنتهي صلاحيتها بعد ٥ دقائق فتُهمَل ولا تُعرض إطلاقاً.
+     • في التبويب نفسه تُستخدم من الذاكرة الفورية دائماً (تنقّل بلا انتظار). */
+  var PUB_CACHE_KEY = 'hrc_public_jobs_v1';
+  var PUB_CACHE_TTL = 5 * 60 * 1000;   /* أقصى عمر مقبول للعرض الفوري */
+  var pubMemCache = null;              /* نفس التبويب: بلا قراءة من التخزين */
+  var pubMemAt = 0;
+
+  /* التخزين يُقرأ من الجذر (window/localStorage) — يعمل في المتصفح وفي الاختبار */
+  function cacheStorage() {
+    try {
+      if (root.localStorage) return root.localStorage;
+      if (typeof localStorage !== 'undefined') return localStorage;
+    } catch (e) { /* تخزين محجوب */ }
+    return null;
+  }
+
+  function savePublicCache(jobs) {
+    pubMemCache = jobs; pubMemAt = Date.now();
+    var st = cacheStorage();
+    if (!st) return;
+    try { st.setItem(PUB_CACHE_KEY, JSON.stringify({ at: pubMemAt, jobs: jobs })); } catch (e) { }
+  }
+  function readPublicCache() {
+    if (pubMemCache && (Date.now() - pubMemAt) <= PUB_CACHE_TTL) return pubMemCache;
+    var st = cacheStorage();
+    if (!st) return null;
+    try {
+      var raw = st.getItem(PUB_CACHE_KEY);
+      if (!raw) return null;
+      var box = JSON.parse(raw);
+      if (!box || !Array.isArray(box.jobs) || !box.at) return null;
+      if (Date.now() - box.at > PUB_CACHE_TTL) { clearPublicCache(); return null; }
+      pubMemCache = box.jobs; pubMemAt = box.at;
+      return box.jobs;
+    } catch (e) { return null; }
+  }
+  function clearPublicCache() {
+    pubMemCache = null; pubMemAt = 0;
+    var st = cacheStorage();
+    if (!st) return;
+    try { st.removeItem(PUB_CACHE_KEY); } catch (e) { }
+  }
+
   function fetchPublicJobs(client) {
     /* بلا count=exact: العدّ على public_jobs يُنفّذ استعلامه الفرعي المترابط
        لكل صف — وهو أثقل ما يواجهه كل زائر. نقرأ حتى صفحة قصيرة بدلاً منه. */
-    return readPages(client, 'public_jobs', 100000, { count: false }).then(function (res) {
+    return readPages(client, 'public_jobs', 100000, { count: false, cols: PUBLIC_JOB_COLS }).then(function (res) {
       if (res && res.error) {
         return { ok: false, error: res.error, jobs: [] };
       }
-      return { ok: true, jobs: (res && res.data || []).map(jobFromDb) };
+      var jobs = (res && res.data || []).map(jobFromDb);
+      savePublicCache(jobs);
+      return { ok: true, jobs: jobs };
     });
   }
 
@@ -921,9 +995,9 @@
     staffFromDb: staffFromDb,
     settingsFromDb: settingsFromDb, settingsToDb: settingsToDb,
     /* بيانات */
-    chanceUsed:chanceUsed,rememberChance:rememberChance,clearChanceRegistry:clearChanceRegistry, rpcCall:rpcCall, buildDb: buildDb, fetchAll: fetchAll, loadWorkspaceReports: loadWorkspaceReports, TABLES: TABLES,
+    chanceUsed:chanceUsed,rememberChance:rememberChance,clearChanceRegistry:clearChanceRegistry, rpcCall:rpcCall, buildDb: buildDb, fetchAll: fetchAll, loadWorkspaceReports: loadWorkspaceReports, loadAuditLog: loadAuditLog, TABLES: TABLES,
 
-    fetchPublicJobs: fetchPublicJobs, verifyForm: verifyForm,
+    fetchPublicJobs: fetchPublicJobs, readPublicCache: readPublicCache, clearPublicCache: clearPublicCache, verifyForm: verifyForm,
     lookupCard: lookupCardRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,
     activateCard: activateCardRpc, employerView: employerViewRpc, employerDecide: employerDecideRpc,
     requestForm: requestForm,

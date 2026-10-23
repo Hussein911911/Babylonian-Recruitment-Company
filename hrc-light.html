@@ -2859,26 +2859,6 @@ img { max-width: 100%; height: auto; }
   .bk-cam[data-state="starting"] .bk-cam-ic { animation: none !important; }
 }
 
-
-/* مؤشر الاتصال بقاعدة الشركة (يظهر بعد ثانيتين إن تأخّر الرد) */
-.job-connecting {
-  display: flex; align-items: center; justify-content: center; gap: 9px;
-  margin: 0 0 14px; padding: 10px 14px; border-radius: 12px;
-  font-size: .85rem; font-weight: 700; color: #5b6472;
-  background: #fbf8f0; border: 1px dashed rgba(200, 162, 74, .45);
-}
-.skel-dot {
-  width: 9px; height: 9px; border-radius: 50%; flex: none;
-  background: #c8a24a; box-shadow: 0 0 0 0 rgba(200, 162, 74, .5);
-  animation: connPulse 1.4s ease-out infinite;
-}
-@keyframes connPulse {
-  0% { box-shadow: 0 0 0 0 rgba(200, 162, 74, .55); }
-  70% { box-shadow: 0 0 0 9px rgba(200, 162, 74, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(200, 162, 74, 0); }
-}
-@media (prefers-reduced-motion: reduce) { .skel-dot { animation: none; } }
-
 /* Horizontal public-page rhythm; screen only, no functional or print changes. */
 @media screen {
   .jobs-grid { grid-template-columns: repeat(auto-fill,minmax(min(100%,325px),1fr)); }
@@ -5976,6 +5956,7 @@ img { max-width: 100%; height: auto; }
 
   function logout() {
     var s = currentUser();
+    cloud.knownProfile = null;   /* ملف الدخول المعلوم لا يُعاد استخدامه بعد الخروج */
     if (s) audit('تسجيل خروج', 'auth', s.username, 'إنهاء الجلسة');
     if(root.HRCCloud&&root.HRCCloud.clearChanceRegistry)root.HRCCloud.clearChanceRegistry();
     memSession = null;
@@ -7736,16 +7717,29 @@ img { max-width: 100%; height: auto; }
 
   function restoreThenLoad() {
     /* استعادة الجلسة قبل القراءة: بدونها يقرأ الموظف كزائر فيرى الوظائف العامة
-       فقط، فيبدو أن بياناته «ضاعت» بعد تحديث الصفحة. */
+       فقط، فيبدو أن بياناته «ضاعت» بعد تحديث الصفحة.
+       ⚡ الجلسة تُقرأ من التخزين أولاً (فورية)، ثم **بالتوازي**: سطر الموظف
+       (brc.staff) وجلب البيانات. كانا متتاليين فتضيع رحلة كاملة (~100–200ms)
+       في كل فتح للوحة. */
     if (!canReadStaffTables()) return publicBoot(null);
-    if (!cloud.auth) return loadFromCloud();
-    return cloud.auth.restore().then(function (r) {
-      if (r && r.ok) { applyStaffSession(r.profile); return loadFromCloud(); }
-      /* بلا جلسة موظف: لا معنى لمحاولة قراءة brc.jobs/applicants — anon ممنوع
-         منها فتُرفض كلها (6 طلبات فاشلة في كل تحميل صفحة، وفي سجل المشروع ضجيج
-         «permission denied» لا يدلّ على خلل حقيقي). نبدأ من الواجهة العامة
-         مباشرةً، وهي أيضاً ما يراه الزائر في الموقع. */
-      return publicBoot(null);
+    if (!cloud.auth || !cloud.auth.sessionOnly) return loadFromCloud();
+    return cloud.auth.sessionOnly().then(function (sess) {
+      if (!sess || !sess.ok) {
+        /* بلا جلسة موظف: لا معنى لمحاولة قراءة brc.jobs/applicants — anon ممنوع
+           منها فتُرفض كلها. نبدأ من الواجهة العامة مباشرةً. */
+        return publicBoot(null);
+      }
+      var pProfile = Promise.resolve(cloud.auth.profileFor(sess.session)).then(function (r) {
+        if (r && r.ok) { applyStaffSession(r.profile); return r; }
+        return r || { ok: false };
+      }).catch(function () { return { ok: false }; });
+      var pData = loadFromCloud();
+      return Promise.all([pProfile, pData]).then(function (out) {
+        var r = out[0];
+        if (r && r.ok) return out[1];
+        /* لا سطر موظف فعّال: نُرجع نتيجة المسار العام التي حُسبت بالتوازي */
+        return out[1];
+      });
     }).catch(function () { return loadFromCloud(); });
   }
 
@@ -7771,9 +7765,28 @@ img { max-width: 100%; height: auto; }
     });
   }
 
+  /* ⚡ سجل التدقيق يُقرأ عند الطلب (أول فتح لشاشة السجل) بدل حجب الإقلاع به. */
+  function loadAuditLog() {
+    if (!cloud.client || !root.HRCCloud.loadAuditLog) return Promise.resolve(false);
+    if (cloud.auditLoaded) return Promise.resolve(true);
+    if (cloud.auditPromise) return cloud.auditPromise;
+    cloud.auditPromise = root.HRCCloud.loadAuditLog(cloud.client, { limit: 300 }).then(function (res) {
+      cloud.auditPromise = null;
+      if (!res || !res.ok) return false;
+      cloud.auditLoaded = true;
+      if (db && db.meta) db.meta.auditPending = false;
+      db.audit = res.rows || [];
+      emit();
+      return true;
+    }).catch(function () { cloud.auditPromise = null; return false; });
+    return cloud.auditPromise;
+  }
+
   function loadFromCloud() {
     /* الجداول أولاً (سريعة)، ثم التقارير الثقيلة في الخلفية — لا في مسار الإقلاع */
-    return root.HRCCloud.fetchAll(cloud.client,{workspace:true, deferReports:true}).then(function (cdb) {
+    /* ⚡ سجل التدقيق (حتى ٢٠٠٠ صف بأحجام كبيرة) لا يدخل مسار الإقلاع: يُقرأ
+       عند فتح «سجل التدقيق» أول مرة، وتبقى اللوحة تعمل بلا انتظاره. */
+    return root.HRCCloud.fetchAll(cloud.client,{workspace:true, deferReports:true, deferAudit:true}).then(function (cdb) {
       var failed = (cdb.meta && cdb.meta.failedTables) || [];
       cloud.failedTables = failed;
       var coreFailed = failed.filter(function (t) { return CORE_TABLES.indexOf(t) >= 0; });
@@ -7799,6 +7812,24 @@ img { max-width: 100%; height: auto; }
 
   function publicBoot(coreError) {
     if (!root.HRCCloud.fetchPublicJobs) { cloud.state = 'degraded'; setCloudError(coreError); return cloudStatus(); }
+
+    /* عرض فوري من ذاكرة الجلسة (٩٠ ثانية) ثم تحديث صامت:
+       التنقّل داخل التبويب ذاته لا يُظهر هيكل تحميل إطلاقاً، والشبكة تُحدِّث
+       القائمة في الخلفية فوراً. الذاكرة تحمل **بيانات القاعدة نفسها** فقط
+       (لا بيانات تجريبية)، وتنتهي صلاحيتها تلقائياً. */
+    var cached = null;
+    try { cached = root.HRCCloud.readPublicCache ? root.HRCCloud.readPublicCache() : null; } catch (e) { cached = null; }
+    if (cached && cached.length) {
+      adoptPublicJobs(cached);
+      cloud.role = 'public'; cloud.readOnly = true;
+      cloud.state = 'on'; cloud.error = null; cloud.detail = null;
+      /* إعادة التحقق في الخلفية — لا تُعطّل شيئاً ولا تُغيّر الحالة عند الفشل */
+      root.HRCCloud.fetchPublicJobs(cloud.client).then(function (res) {
+        if (res && res.ok && Array.isArray(res.jobs)) { adoptPublicJobs(res.jobs); }
+      }).catch(function () { });
+      return Promise.resolve(cloudStatus());
+    }
+
     return root.HRCCloud.fetchPublicJobs(cloud.client).then(function (res) {
       if (!res || !res.ok) {
         cloud.state = 'degraded'; cloud.role = 'guest';
@@ -8141,6 +8172,30 @@ img { max-width: 100%; height: auto; }
     });
   }
 
+  /* ⚡ دخول سريع (للّوحة): يتحقّق من الحساب ويُدخل الموظف **فوراً**، والبيانات
+     تُجلب بعد ذلك وتُحدَّث الواجهة تلقائياً عبر emit — بلا شاشة انتظار طويلة.
+     signIn الكامل بقي كما هو لمن يريد انتظار البيانات (والاختبارات). */
+  function signInFast(username, password) {
+    if (!cloudConfigured() || !canReadStaffTables() || !cloudWillBoot()) return signIn(username, password);
+    if (!cloud.client || !root.HRCCloudAuth) return signIn(username, password);
+    var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
+    return auth.login(username, password).then(function (r) {
+      if (!r || !r.ok) return r || { ok: false, code: 'auth_failed', error: 'فشل الدخول' };
+      applyStaffSession(r.profile);
+      cloud.knownProfile = r.profile;
+      saveLocal();
+      emit();
+      cloud.bootPromise = null;
+      /* الجلب في الخلفية — لا يُعطّل ظهور اللوحة */
+      bootCloud().then(function () {
+        audit('تسجيل دخول', 'auth', r.profile.username,
+          'دخول عبر Supabase Auth (' + (r.profile.role === 'admin' ? 'مدير عام' : 'موظف') + ')');
+        save(); emit();
+      }).catch(function () { });
+      return { ok: true, session: currentUser(), profile: r.profile, pending: true };
+    });
+  }
+
   function signOutCloud() {
     if(root.HRCCloud&&root.HRCCloud.clearChanceRegistry)root.HRCCloud.clearChanceRegistry();
     var out = (cloud.auth && cloud.auth.logout) ? cloud.auth.logout() : Promise.resolve({ ok: true });
@@ -8250,7 +8305,7 @@ img { max-width: 100%; height: auto; }
     login: login, logout: logout, currentUser: currentUser, isAdmin: isAdmin,
     listUsers: listUsers, addUser: addUser, updateUser: updateUser, deleteUser: deleteUser, toggleUserActive: toggleUserActive,
     // سحابة
-    signIn: signIn, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
+    signIn: signIn, signInFast: signInFast, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,
     createCloudAccount: createCloudAccount, updateCloudAccount: updateCloudAccount,
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     probeServiceKey: probeServiceKey,
@@ -8288,7 +8343,7 @@ img { max-width: 100%; height: auto; }
     stats: stats, financials: financials, financialTotals: financialTotals,
     markPrinted: markPrinted, setFeePaid: setFeePaid,
     // تدقيق
-    audit: audit, listAudit: listAudit, syncOfflineChanges: syncOfflineChanges,
+    audit: audit, listAudit: listAudit, loadAuditLog: loadAuditLog, syncOfflineChanges: syncOfflineChanges,
     getScheduledBackups: getScheduledBackups, listBackupMeta: listBackupMeta,
     saveScheduledBackup: saveScheduledBackup, deleteScheduledBackup: deleteScheduledBackup,
     restoreScheduledBackup: restoreScheduledBackup, exportScheduledBackup: exportScheduledBackup,
@@ -10963,7 +11018,6 @@ img { max-width: 100%; height: auto; }
     cloudMode = !!(st && st.configured && st.willBoot);
     if (cloudMode) {
       renderSkeleton();
-      armConnecting();
       Store.waitForCloud().then(settleCloud, settleCloud);
     } else {
       renderAll();
@@ -10988,7 +11042,6 @@ img { max-width: 100%; height: auto; }
   /* وصول رد القاعدة: عرض المعلن، أو رسالة الفشل — لا شيء بينهما */
   function settleCloud(st) {
     cloudSettled = true;
-    hideConnecting();
     st = st || (Store.cloudStatus ? Store.cloudStatus() : null);
     if (st && st.state === 'on') renderAll();
     else renderCloudError();
@@ -11215,30 +11268,6 @@ img { max-width: 100%; height: auto; }
       '</div>' +
       '<div class="skel-foot"><span class="skel-line sq"></span><span class="skel-line sq" style="width:96px"></span></div>' +
     '</article>';
-  }
-
-  /* شبكة تحميل + مؤشر اتصال يظهر بعد ٢ ثانية فقط: يشرح للزائر أن العمل جارٍ
-     بدل هيكل صامت يُحسب «موقع معلّق» على اتصال بطيء. */
-  var connectingTimer = null;
-  function showConnecting() {
-    var host = document.getElementById('jobs-grid');
-    if (!host || cloudSettled) return;
-    if (document.getElementById('job-connecting')) return;
-    var note = document.createElement('p');
-    note.id = 'job-connecting';
-    note.className = 'job-connecting';
-    note.setAttribute('role', 'status');
-    note.innerHTML = '<span class="skel-dot" aria-hidden="true"></span> جارٍ الاتصال بقاعدة الشركة… قد يتأخر قليلاً على الشبكات البطيئة.';
-    host.parentNode.insertBefore(note, host);
-  }
-  function hideConnecting() {
-    if (connectingTimer) { clearTimeout(connectingTimer); connectingTimer = null; }
-    var n = document.getElementById('job-connecting');
-    if (n && n.parentNode) n.parentNode.removeChild(n);
-  }
-  function armConnecting() {
-    hideConnecting();
-    connectingTimer = setTimeout(showConnecting, 2000);
   }
 
   function renderSkeleton() {
@@ -12488,26 +12517,13 @@ img { max-width: 100%; height: auto; }
          متاحة (store.login يرفضه بنفسه أيضاً — حماية مزدوجة مقصودة).
          ⚠️ إن كنا نعلم مسبقاً أن الاتصال ساقط (degraded) فلا معنى لانتظار طلب
          شبكي محكوم عليه بالفشل: نُدخل الموظف محلياً فوراً مع بقاء التنبيه ظاهراً. */
-      if (cs && cs.configured && cs.state === 'connecting' && Store.signIn && Store.waitForCloud) {
-        busy(true, 'جارٍ الاتصال…');
-        Store.waitForCloud().then(function (st) {
-          busy(false, '');
-          if (st && st.state === 'on') { cloudLogin(); return; }
-          var stLocal = Store.cloudStatus ? Store.cloudStatus() : null;
-          UI.toast('warn', 'وضع محلي مؤقّت',
-            (stLocal && stLocal.enforceAuth && !stLocal.devAccountsActive)
-              ? 'تعذّر الاتصال بقاعدة الشركة — الدخول يتطلب إنترنت، والبيانات المعروضة نسخة محفوظة.'
-              : 'تعذّر الاتصال بالسحابة — الدخول محلي والبيانات غير مشتركة.');
-          localLogin();
-        });
-        return;
-      }
       if (cs && cs.configured && cs.state === 'on' && Store.signIn) { cloudLogin(); return; }
       localLogin();
 
       function cloudLogin() {
         busy(true, 'جارٍ التحقق…');
-        Store.signIn(u, p).then(function (r) {
+        /* signInFast: يتحقّق من الحساب ويُظهر اللوحة فوراً، والبيانات تُجلب بعدها */
+        (Store.signInFast || Store.signIn)(u, p).then(function (r) {
           busy(false, '');
           /* ✅ نجح الدخول السحابي */
           if (r && r.ok) {
@@ -14065,6 +14081,14 @@ img { max-width: 100%; height: auto; }
   }
 
   function renderAudit() {
+    /* السجل مؤجَّل عن الإقلاع: أول فتح يطلبه في الخلفية ثم يُعاد الرسم */
+    if (Store.db().meta && Store.db().meta.auditPending && !renderAudit._asked) {
+      renderAudit._asked = true;
+      Store.loadAuditLog().then(function (done) {
+        renderAudit._asked = false;
+        if (done && state.view === 'audit') renderAudit();
+      }).catch(function () { renderAudit._asked = false; });
+    }
     var available = Store.listAudit({});
     [['user', 'user', 'كل المستخدمين'], ['action', 'action', 'كل العمليات'], ['entity', 'entity', 'كل الأنواع']].forEach(function (spec) {
       var select = document.getElementById('log-' + spec[0]);
