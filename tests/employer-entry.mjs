@@ -1,4 +1,4 @@
-// Rescanned, exhausted cards must expose only the employer entry, never a new application.
+// Rescanned, exhausted cards must never expose a new application — and since 2026-10-24 no employer entry either.
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
@@ -14,7 +14,7 @@ for(const remaining of [0,1,2])for(const feedFails of [false,true]){
  w.eval(inline);await new Promise(r=>setTimeout(r,80));
  if(remaining===0){
   check('exhausted rescan keeps welcome, even if jobs feed fails='+feedFails,$('pg-welcome').classList.contains('active')&&!$('pg-error').classList.contains('active'));
-  check('only employer button remains visible, feedFails='+feedFails,$('btn-start').disabled&&$('btn-start').parentNode.style.display==='none'&&!!w.document.querySelector('.employer-link'));
+  check('exhausted card exposes no entry button and no employer entry, feedFails='+feedFails,$('btn-start').disabled&&$('btn-start').parentNode.style.display==='none'&&!w.document.querySelector('.employer-link'));
   check('welcome does not reveal applied jobs or owner',!$('welcome-status').textContent.includes('خاص'));
   w.G.start();await new Promise(r=>setTimeout(r,350));
   check('start cannot reopen exhausted application',$('pg-welcome').classList.contains('active')&&writes===0);

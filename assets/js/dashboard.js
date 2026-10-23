@@ -22,7 +22,7 @@
 
   var state = {
     view: 'overview',
-    j: { q: '', status: 'all', region: 'all', governorate: 'all', shift: 'all' },
+    j: { q: '', status: 'all', governorate: 'all', shift: 'all' },
     a: { q: '', status: 'all', user: 'all' },
     log: { q: '', user: 'all', role: 'all', action: 'all', entity: 'all', from: '', to: '', sort: 'newest' },
     logPage: 1, logPageSize: 25,
@@ -56,9 +56,9 @@
         if (n.view === 'holds' && job && ['reserved', 'hiring'].indexOf(job.status) >= 0) {
           setView('holds'); openHoldsModal(n.jobCode); return;
         }
-        state.j = { q: n.jobCode, status: 'all', region: 'all', governorate: 'all', shift: 'all' };
+        state.j = { q: n.jobCode, status: 'all', governorate: 'all', shift: 'all' };
         document.getElementById('jq').value = n.jobCode;
-        ['j-status', 'j-region', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });
+        ['j-status', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });
         setView('jobs');
       } else if (n.view === 'applicants' && Store.isAdmin()) {
         state.a = { q: n.serial || '', status: 'all', user: 'all' };
@@ -135,7 +135,6 @@
 
   function fillStatic() {
     // الوظائف
-    UI.fillSelect(document.getElementById('j-region'), CFG.regions, 'كل المناطق');
     UI.fillSelect(document.getElementById('j-governorate'), CFG.governorates, 'كل المحافظات');
     UI.fillSelect(document.getElementById('j-shift'), CFG.shifts, 'كل الأوقات');
     // المستخدمون في الفلاتر
@@ -2242,7 +2241,6 @@
     };
     bindInput('jq', state.j, 'q', renderJobs);
     bindInput('j-status', state.j, 'status', renderJobs);
-    bindInput('j-region', state.j, 'region', renderJobs);
     bindInput('j-governorate', state.j, 'governorate', renderJobs);
     bindInput('j-shift', state.j, 'shift', renderJobs);
     bindInput('aq', state.a, 'q', renderApplicants);

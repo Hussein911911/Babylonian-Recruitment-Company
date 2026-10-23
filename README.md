@@ -368,7 +368,8 @@ npm run build        # = node tools/build.mjs
 | أرقام الهاتف، العنوان، اسم الشركة | `assets/js/config.js` → `company` |
 | عدد المحاولات / مدة الصلاحية / مدة الحجز / الرسم | `assets/js/config.js` → `rules` (أو من لوحة الإعدادات) |
 | رابط التحقق المطبوع في الكيو آر كود | `assets/js/config.js` → `verifyBase` |
-| المناطق والدوامات والتصنيفات | `assets/js/config.js` → `regions` / `shifts` / `jobCategories` |
+| المحافظات والدوامات والتصنيفات | `assets/js/config.js` → `governorates` (١٩) / `shifts` / `jobCategories` |
+| مناطق العمل (بيانات الوظيفة فقط — لا فلتر) | `assets/js/config.js` → `regions` |
 | المستخدمون | `assets/js/config.js` → `users` |
 | الألوان والخطوط والهوية | `assets/css/style.css` → المتغيرات `--lapis` `--gold` `--turq` … |
 | الشعار (بوابة عشتار) | `src/partials/sprite.html` → الرمز `#i-emblem` + `assets/img/favicon.svg` |

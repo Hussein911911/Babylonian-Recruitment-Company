@@ -294,7 +294,7 @@ a.hc-item:hover { color: var(--gold-2); }
 
 .qs-field { position: relative; }
 .qs-field.qs-main { flex: 1 1 220px; min-width: 200px; }
-.qs-field.qs-region { flex: 0 1 160px; min-width: 140px; }
+.qs-field.qs-gov { flex: 0 1 160px; min-width: 140px; }
 .qs-field > svg {
   position: absolute; inset-inline-start: 13px; top: 50%; transform: translateY(-50%);
   width: 17px; height: 17px; color: var(--gold); opacity: .85; pointer-events: none; z-index: 1;
@@ -2430,7 +2430,7 @@ table.data tbody tr:hover { background: #faf8f3; }
   .hero-stats { grid-template-columns: 1fr 1fr; }
   .site-footer .foot-main { grid-template-columns: 1fr; }
   .quick-search { flex-direction: column; }
-  .qs-field.qs-main, .qs-field.qs-region { flex: 1 1 100%; }
+  .qs-field.qs-main, .qs-field.qs-gov { flex: 1 1 100%; }
 }
 
 /* Settings: daily tasks first; technical and recovery tools stay opt-in. */
@@ -2845,7 +2845,7 @@ to{opacity:1;transform:none}
   .quick-search { flex-direction: row; flex-wrap: wrap; align-items: center; }
   .quick-search .qs-label { flex: 0 0 auto; }
   .quick-search .qs-main { flex: 2 1 260px; min-width: 0; }
-  .quick-search .qs-region { flex: 1 1 180px; min-width: 0; }
+  .quick-search .qs-gov { flex: 1 1 180px; min-width: 0; }
   .quick-search .qs-scan, .quick-search .qs-submit { flex: 0 1 auto; min-height: 44px; }
   .contact-card a { text-underline-offset: 5px; }
   .contact-card .contact-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
@@ -2854,7 +2854,7 @@ to{opacity:1;transform:none}
   .service, .contact-card, .steps .step { padding: 20px; column-gap: 12px; }
   .hero-cta .btn { flex: 1 1 200px; }
   .quick-search .qs-label, .quick-search .qs-main { flex-basis: 100%; }
-  .quick-search .qs-region { flex: 1 1 150px; }
+  .quick-search .qs-gov { flex: 1 1 150px; }
   .quick-search .qs-scan, .quick-search .qs-submit { flex: 1 1 90px; }
   .site-footer .foot-main { row-gap: 28px; }
 }
@@ -3320,9 +3320,9 @@ to{opacity:1;transform:none}
       <button type="button" class="btn btn-ghost qs-scan" id="qs-scan" title="البحث بمسح الكيو آر كود">
         <svg class="ic"><use href="#i-scan" xlink:href="#i-scan"/></svg> مسح QR
       </button>
-      <div class="qs-field qs-region">
+      <div class="qs-field qs-gov">
         <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
-        <select id="qs-region" aria-label="المنطقة"><option value="all">كل مناطق بابل</option></select>
+        <select id="qs-governorate" aria-label="المحافظة"><option value="all">كل المحافظات</option></select>
       </div>
       <button class="btn btn-gold qs-submit" type="submit">
         <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث
@@ -3349,10 +3349,6 @@ to{opacity:1;transform:none}
       <div class="f-field f-search">
         <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
         <input type="search" id="filter-q" placeholder="بحث بالكود أو العنوان..." aria-label="بحث بالكود أو العنوان">
-      </div>
-      <div class="f-field">
-        <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
-        <select id="filter-region" aria-label="المنطقة"><option value="all">كل المناطق</option></select>
       </div>
       <div class="f-field">
         <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
@@ -3862,10 +3858,6 @@ to{opacity:1;transform:none}
               </select>
             </div>
             <div class="field">
-              <label for="j-region">المنطقة</label>
-              <select id="j-region"><option value="all">كل المناطق</option></select>
-            </div>
-            <div class="field">
               <label for="j-governorate">المحافظة</label>
               <select id="j-governorate"><option value="all">كل المحافظات</option></select>
             </div>
@@ -4332,10 +4324,14 @@ to{opacity:1;transform:none}
     ],
 
     /* محافظات العراق */
+    /* محافظات العراق كاملة (١٩): الثمانية عشر الرسمية + حلبجة.
+       القادسية (الديوانية) كانت ناقصة سهواً — أُضيفت 2026-10-24 بعد مراجعة
+       قائمة الفلاتر. أي إضافة هنا تظهر تلقائياً في كل فلاتر الموقع واللوحة. */
     governorates: [
       'بغداد', 'البصرة', 'نينوى', 'أربيل', 'السليمانية', 'كركوك',
       'بابل', 'كربلاء', 'النجف', 'ديالى', 'الأنبار', 'واسط',
-      'ميسان', 'ذي قار', 'المثنى', 'صلاح الدين', 'دهوك', 'حلبجة'
+      'ميسان', 'ذي قار', 'المثنى', 'صلاح الدين', 'دهوك', 'حلبجة',
+      'القادسية'
     ],
 
     shifts: ['صباحي', 'مسائي', 'ليلي', 'صباحي + مسائي', 'دوام كامل', 'نوبات'],
@@ -6044,12 +6040,47 @@ to{opacity:1;transform:none}
     return code;
   }
 
+  /* تطبيع اسم المحافظة: همزات/تاء مربوطة/ياء ومسافات، مع أسماء بديلة شائعة
+     (الديوانية = القادسية · اربيل = أربيل · حلبجه = حلبجة …) — كي يطابق فلتر
+     المحافظة الصفوفَ القادمة من القاعدة بأي كتابة. */
+  var GOV_ALIASES = {
+    'الديوانية': 'القادسية', 'الديوانيه': 'القادسية', 'الديوانة': 'القادسية',
+    'قادسية': 'القادسية', 'ديوانية': 'القادسية',
+    'اربيل': 'أربيل', 'اربیل': 'أربيل', 'هولير': 'أربيل',
+    'الانبار': 'الأنبار', 'انبار': 'الأنبار',
+    'سليمانية': 'السليمانية', 'السليمانيه': 'السليمانية',
+    'دهوك': 'دهوك', 'حلبجه': 'حلبجة',
+    'ذي قار': 'ذي قار', 'ذيقار': 'ذي قار', 'الناصرية': 'ذي قار',
+    'ميسان': 'ميسان', 'العمارة': 'ميسان',
+    'المثنى': 'المثنى', 'السماوة': 'المثنى',
+    'واسط': 'واسط', 'الكوت': 'واسط',
+    'نينوى': 'نينوى', 'الموصل': 'نينوى',
+    'كربلاء': 'كربلاء', 'كربلاء المقدسة': 'كربلاء'
+  };
+  function govNorm(v) {
+    var t = String(v == null ? '' : v).trim().replace(/\s+/g, ' ');
+    t = t.replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[ًٌٍَُِّْـ]/g, '');
+    return t;
+  }
+  function govKey(v) {
+    var raw = String(v == null ? '' : v).trim().replace(/\s+/g, ' ');
+    var norm = govNorm(raw);
+    /* ابحث في الأسماء البديلة بمقارنة مُطبَّعة */
+    for (var k in GOV_ALIASES) {
+      if (!Object.prototype.hasOwnProperty.call(GOV_ALIASES, k)) continue;
+      if (govNorm(k) === norm) return govNorm(GOV_ALIASES[k]);
+    }
+    return norm;
+  }
+
   function listJobs(f) {
     f = f || {};
     var rows = db.jobs.slice();
     if (f.status && f.status !== 'all') rows = rows.filter(function (j) { return j.status === f.status; });
-    if (f.region && f.region !== 'all') rows = rows.filter(function (j) { return j.region === f.region; });
-    if (f.governorate && f.governorate !== 'all') rows = rows.filter(function (j) { return j.governorate === f.governorate; });
+    if (f.governorate && f.governorate !== 'all') {
+      var want = govKey(f.governorate);
+      rows = rows.filter(function (j) { return govKey(j.governorate) === want; });
+    }
     if (f.shift && f.shift !== 'all') rows = rows.filter(function (j) { return j.shift === f.shift; });
     if (f.category && f.category !== 'all') rows = rows.filter(function (j) { return j.category === f.category; });
     if (f.q) {
@@ -8047,7 +8078,7 @@ to{opacity:1;transform:none}
     diffCloud: function () { return (cloud.sync && cloud.state === 'on') ? cloud.sync.diff(db) : []; },
     // وظائف
     vacancySummary: vacancySummary, refreshVacancies: refreshVacancies,
-    listJobs: listJobs, getJob: getJob, createJob: createJob, updateJob: updateJob, saveJobWithPin: saveJobWithPin,
+    listJobs: listJobs, govKey: govKey, getJob: getJob, createJob: createJob, updateJob: updateJob, saveJobWithPin: saveJobWithPin,
     setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'HRC-' + (db.counters.jobCode + 1); },
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,
@@ -10606,7 +10637,8 @@ to{opacity:1;transform:none}
   var CFG = root.HRC_CONFIG, Store = root.HRCStore, UI = root.HRCUI;
   if (!document.getElementById('jobs-grid')) return;
 
-  var filters = { q: '', region: 'all', governorate: 'all', shift: 'all', status: 'all' };
+  /* الفلاتر: المحافظة وحدها للموقع الجغرافي — لا فلتر مناطق (قرار 2026-10-24) */
+  var filters = { q: '', governorate: 'all', shift: 'all', status: 'all' };
 
   /* -------------- وضع القاعدة العامة (Supabase مفعّل) --------------
    * لماذا هذا التمييز؟ مع enabled=true يجب ألا يرى الزائر **أي** بيانات من
@@ -10706,29 +10738,29 @@ to{opacity:1;transform:none}
   }
 
   function fillSelects() {
-    UI.fillSelect(document.getElementById('qs-region'), CFG.regions, 'كل مناطق بابل');
-    UI.fillSelect(document.getElementById('filter-region'), CFG.regions, 'كل المناطق');
+    UI.fillSelect(document.getElementById('qs-governorate'), CFG.governorates, 'كل المحافظات');
     UI.fillSelect(document.getElementById('filter-governorate'), CFG.governorates, 'كل المحافظات');
     UI.fillSelect(document.getElementById('filter-shift'), CFG.shifts, 'كل الأوقات');
   }
 
   function bindEvents() {
     var q = document.getElementById('filter-q');
-    var region = document.getElementById('filter-region');
+    /* أُزيل فلتر المناطق — المحافظة وحدها هي الفلتر الجغرافي (2026-10-24) */
     var governorate = document.getElementById('filter-governorate');
     var shift = document.getElementById('filter-shift');
     var status = document.getElementById('filter-status');
 
     if (q) q.addEventListener('input', UI.debounce(function () { filters.q = q.value; renderJobs(); }));
-    if (region) region.addEventListener('change', function () { filters.region = region.value; renderJobs(); });
     if (governorate) governorate.addEventListener('change', function () { filters.governorate = governorate.value; renderJobs(); });
     if (shift) shift.addEventListener('change', function () { filters.shift = shift.value; renderJobs(); });
     if (status) status.addEventListener('change', function () { filters.status = status.value; renderJobs(); });
     var reset = document.getElementById('filter-reset');
     if (reset) reset.addEventListener('click', function () {
-      filters = { q: '', region: 'all', governorate: 'all', shift: 'all', status: 'all' };
-      if (q) q.value = ''; if (region) region.value = 'all';
+      filters = { q: '', governorate: 'all', shift: 'all', status: 'all' };
+      if (q) q.value = '';
       if (governorate) governorate.value = 'all';
+      var qsGov = document.getElementById('qs-governorate');
+      if (qsGov) qsGov.value = 'all';
       if (shift) shift.value = 'all'; if (status) status.value = 'all';
       renderJobs();
     });
@@ -10739,7 +10771,7 @@ to{opacity:1;transform:none}
       e.preventDefault();
       runQuickSearch(
         (document.getElementById('qs-code') || {}).value || '',
-        (document.getElementById('qs-region') || {}).value || 'all'
+        (document.getElementById('qs-governorate') || {}).value || 'all'
       );
     });
 
@@ -10784,7 +10816,7 @@ to{opacity:1;transform:none}
     if (y) y.textContent = Store.fmtDate(new Date()).slice(0,4);
   }
 
-  function runQuickSearch(code, region) {
+  function runQuickSearch(code, governorate) {
     if (cloudBlocked()) {
       UI.toast(cloudSettled ? 'error' : 'info', cloudSettled ? 'تعذّر الاتصال' : 'جارٍ التحميل',
         cloudSettled ? 'تعذّر الاتصال بقاعدة الشركة — أعد المحاولة أو خابرنا هاتفياً.'
@@ -10792,13 +10824,15 @@ to{opacity:1;transform:none}
       return;
     }
     code = String(code || '').trim();
-    region = region || 'all';
+    governorate = governorate || 'all';
     filters.q = code;
-    filters.region = region;
+    filters.governorate = governorate;
     var fq = document.getElementById('filter-q');
-    var fr = document.getElementById('filter-region');
+    var fg = document.getElementById('filter-governorate');
+    var qsG = document.getElementById('qs-governorate');
     if (fq) fq.value = code;
-    if (fr) fr.value = region;
+    if (fg) fg.value = governorate;
+    if (qsG) qsG.value = governorate;
     renderJobs();
     var jobs = document.getElementById('jobs');
     if (jobs) jobs.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -10860,13 +10894,13 @@ to{opacity:1;transform:none}
       var code = job[0].toUpperCase();
       var input = document.getElementById('qs-code');
       if (input) input.value = code;
-      runQuickSearch(code, (document.getElementById('qs-region') || {}).value || 'all');
+      runQuickSearch(code, (document.getElementById('qs-governorate') || {}).value || 'all');
       return;
     }
 
     var input = document.getElementById('qs-code');
     if (input) input.value = text;
-    runQuickSearch(text, (document.getElementById('qs-region') || {}).value || 'all');
+    runQuickSearch(text, (document.getElementById('qs-governorate') || {}).value || 'all');
   }
 
   /* ---------------- العرض ---------------- */
@@ -11488,7 +11522,7 @@ to{opacity:1;transform:none}
 
   var state = {
     view: 'overview',
-    j: { q: '', status: 'all', region: 'all', governorate: 'all', shift: 'all' },
+    j: { q: '', status: 'all', governorate: 'all', shift: 'all' },
     a: { q: '', status: 'all', user: 'all' },
     log: { q: '', user: 'all', role: 'all', action: 'all', entity: 'all', from: '', to: '', sort: 'newest' },
     logPage: 1, logPageSize: 25,
@@ -11522,9 +11556,9 @@ to{opacity:1;transform:none}
         if (n.view === 'holds' && job && ['reserved', 'hiring'].indexOf(job.status) >= 0) {
           setView('holds'); openHoldsModal(n.jobCode); return;
         }
-        state.j = { q: n.jobCode, status: 'all', region: 'all', governorate: 'all', shift: 'all' };
+        state.j = { q: n.jobCode, status: 'all', governorate: 'all', shift: 'all' };
         document.getElementById('jq').value = n.jobCode;
-        ['j-status', 'j-region', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });
+        ['j-status', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });
         setView('jobs');
       } else if (n.view === 'applicants' && Store.isAdmin()) {
         state.a = { q: n.serial || '', status: 'all', user: 'all' };
@@ -11601,7 +11635,6 @@ to{opacity:1;transform:none}
 
   function fillStatic() {
     // الوظائف
-    UI.fillSelect(document.getElementById('j-region'), CFG.regions, 'كل المناطق');
     UI.fillSelect(document.getElementById('j-governorate'), CFG.governorates, 'كل المحافظات');
     UI.fillSelect(document.getElementById('j-shift'), CFG.shifts, 'كل الأوقات');
     // المستخدمون في الفلاتر
@@ -13708,7 +13741,6 @@ to{opacity:1;transform:none}
     };
     bindInput('jq', state.j, 'q', renderJobs);
     bindInput('j-status', state.j, 'status', renderJobs);
-    bindInput('j-region', state.j, 'region', renderJobs);
     bindInput('j-governorate', state.j, 'governorate', renderJobs);
     bindInput('j-shift', state.j, 'shift', renderJobs);
     bindInput('aq', state.a, 'q', renderApplicants);

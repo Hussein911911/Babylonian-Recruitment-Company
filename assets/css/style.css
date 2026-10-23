@@ -277,7 +277,7 @@ a.hc-item:hover { color: var(--gold-2); }
 
 .qs-field { position: relative; }
 .qs-field.qs-main { flex: 1 1 220px; min-width: 200px; }
-.qs-field.qs-region { flex: 0 1 160px; min-width: 140px; }
+.qs-field.qs-gov { flex: 0 1 160px; min-width: 140px; }
 .qs-field > svg {
   position: absolute; inset-inline-start: 13px; top: 50%; transform: translateY(-50%);
   width: 17px; height: 17px; color: var(--gold); opacity: .85; pointer-events: none; z-index: 1;
@@ -2413,7 +2413,7 @@ table.data tbody tr:hover { background: #faf8f3; }
   .hero-stats { grid-template-columns: 1fr 1fr; }
   .site-footer .foot-main { grid-template-columns: 1fr; }
   .quick-search { flex-direction: column; }
-  .qs-field.qs-main, .qs-field.qs-region { flex: 1 1 100%; }
+  .qs-field.qs-main, .qs-field.qs-gov { flex: 1 1 100%; }
 }
 
 /* Settings: daily tasks first; technical and recovery tools stay opt-in. */

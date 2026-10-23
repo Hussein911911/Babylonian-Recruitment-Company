@@ -336,15 +336,13 @@ check('صفحة الترحيب هي المعروضة بعد التحميل', act
 check('لا رمز بطاقة في نداء قراءة الباركود — الباركود وحده كافٍ (قرار 2026-10-06)',
   calls.filter((c) => c.name === 'self_service_card').every((c) => !('p_code' in c.args)),
   JSON.stringify(calls.find((c) => c.name === 'self_service_card')?.args));
-/* باب صاحب العمل: جملة أسفل «ابدأ الآن» تفتح صفحته بالباركود نفسه */
-const empLink = findByOnclick('G.openEmployer()');
-check('جملة «صاحب العمل؟» ظاهرة أسفل «ابدأ الآن» في صفحة الترحيب',
-  !!empLink && /صاحب العمل؟/.test(empLink.textContent), empLink ? empLink.textContent : 'غير موجودة');
-vm.runInContext('G.openEmployer()', ctx);
-check('الضغط عليها يفتح بوابة تحقق صاحب العمل بنفس الباركود',
-  /employer\.html\?form=HRC-BC-000120$/.test(String(sandbox.location.href)),
-  String(sandbox.location.href));
-sandbox.location.href = '';
+/* قرار 2026-10-24: أُزيل مدخل صاحب العمل ورمزه السري من مسار الزبون */
+check('لا زر «صاحب العمل» ولا دالة openEmployer في صفحة التقديم',
+  !doc.querySelector('.employer-link') && !findByOnclick('G.openEmployer()') &&
+  vm.runInContext('typeof G.openEmployer', ctx) === 'undefined');
+check('لا ذكر لدخول صاحب العمل أو رمزه السري في نصوص الصفحة',
+  !/الرمز السري/.test(doc.body.textContent) &&
+  !/صاحب العمل\؟/.test(doc.body.textContent));
 
 /* ===========================================================================
  *  3ب) الوظيفة القادمة من الموقع (زر «قدّم ببطاقتك» في صفحة الوظائف)

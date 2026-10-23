@@ -556,12 +556,47 @@
     return code;
   }
 
+  /* تطبيع اسم المحافظة: همزات/تاء مربوطة/ياء ومسافات، مع أسماء بديلة شائعة
+     (الديوانية = القادسية · اربيل = أربيل · حلبجه = حلبجة …) — كي يطابق فلتر
+     المحافظة الصفوفَ القادمة من القاعدة بأي كتابة. */
+  var GOV_ALIASES = {
+    'الديوانية': 'القادسية', 'الديوانيه': 'القادسية', 'الديوانة': 'القادسية',
+    'قادسية': 'القادسية', 'ديوانية': 'القادسية',
+    'اربيل': 'أربيل', 'اربیل': 'أربيل', 'هولير': 'أربيل',
+    'الانبار': 'الأنبار', 'انبار': 'الأنبار',
+    'سليمانية': 'السليمانية', 'السليمانيه': 'السليمانية',
+    'دهوك': 'دهوك', 'حلبجه': 'حلبجة',
+    'ذي قار': 'ذي قار', 'ذيقار': 'ذي قار', 'الناصرية': 'ذي قار',
+    'ميسان': 'ميسان', 'العمارة': 'ميسان',
+    'المثنى': 'المثنى', 'السماوة': 'المثنى',
+    'واسط': 'واسط', 'الكوت': 'واسط',
+    'نينوى': 'نينوى', 'الموصل': 'نينوى',
+    'كربلاء': 'كربلاء', 'كربلاء المقدسة': 'كربلاء'
+  };
+  function govNorm(v) {
+    var t = String(v == null ? '' : v).trim().replace(/\s+/g, ' ');
+    t = t.replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[ًٌٍَُِّْـ]/g, '');
+    return t;
+  }
+  function govKey(v) {
+    var raw = String(v == null ? '' : v).trim().replace(/\s+/g, ' ');
+    var norm = govNorm(raw);
+    /* ابحث في الأسماء البديلة بمقارنة مُطبَّعة */
+    for (var k in GOV_ALIASES) {
+      if (!Object.prototype.hasOwnProperty.call(GOV_ALIASES, k)) continue;
+      if (govNorm(k) === norm) return govNorm(GOV_ALIASES[k]);
+    }
+    return norm;
+  }
+
   function listJobs(f) {
     f = f || {};
     var rows = db.jobs.slice();
     if (f.status && f.status !== 'all') rows = rows.filter(function (j) { return j.status === f.status; });
-    if (f.region && f.region !== 'all') rows = rows.filter(function (j) { return j.region === f.region; });
-    if (f.governorate && f.governorate !== 'all') rows = rows.filter(function (j) { return j.governorate === f.governorate; });
+    if (f.governorate && f.governorate !== 'all') {
+      var want = govKey(f.governorate);
+      rows = rows.filter(function (j) { return govKey(j.governorate) === want; });
+    }
     if (f.shift && f.shift !== 'all') rows = rows.filter(function (j) { return j.shift === f.shift; });
     if (f.category && f.category !== 'all') rows = rows.filter(function (j) { return j.category === f.category; });
     if (f.q) {
@@ -2559,7 +2594,7 @@
     diffCloud: function () { return (cloud.sync && cloud.state === 'on') ? cloud.sync.diff(db) : []; },
     // وظائف
     vacancySummary: vacancySummary, refreshVacancies: refreshVacancies,
-    listJobs: listJobs, getJob: getJob, createJob: createJob, updateJob: updateJob, saveJobWithPin: saveJobWithPin,
+    listJobs: listJobs, govKey: govKey, getJob: getJob, createJob: createJob, updateJob: updateJob, saveJobWithPin: saveJobWithPin,
     setJobStatus: setJobStatus, deleteJob: deleteJob, nextJobCode: function () { return 'HRC-' + (db.counters.jobCode + 1); },
     // باحثون
     listApplicants: listApplicants, getApplicant: getApplicant, createApplicant: createApplicant,

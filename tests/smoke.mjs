@@ -244,6 +244,29 @@ await (async () => {
   } catch (e) { bad(name, e.message); }
 })();
 
+/* ═══ الفلاتر: المحافظة وحدها (لا مناطق) — قرار 2026-10-24 ═══ */
+check('الموقع العام: لا فلتر مناطق، وفلتر المحافظة يحمل كل المحافظات', () => {
+  if (site.doc.getElementById('filter-region')) return 'ما زال فلتر المناطق موجوداً';
+  const gov = site.doc.getElementById('filter-governorate');
+  const qsGov = site.doc.getElementById('qs-governorate');
+  if (!gov || !qsGov) return 'خانة المحافظة أو خانة البحث السريع مفقودة';
+  const list = [...gov.options].map((o) => o.value).filter((v) => v !== 'all');
+  const cfg = site.window.HRC_CONFIG.governorates;
+  if (list.length !== cfg.length) return 'عدد المحافظات ' + list.length + ' والمتوقع ' + cfg.length;
+  if (new Set(list).size !== list.length) return 'تكرار في قائمة المحافظات';
+  if (!cfg.every((g) => list.includes(g))) return 'محافظة ناقصة: ' + cfg.filter((g) => !list.includes(g)).join(', ');
+  if (!list.includes('القادسية') || !list.includes('حلبجة')) return 'القادسية/حلبجة ناقصة';
+  const qsList = [...qsGov.options].map((o) => o.value).filter((v) => v !== 'all');
+  return (qsList.length === list.length) || 'قائمة البحث السريع مختلفة: ' + qsList.length;
+});
+check('فلتر المحافظة يطابق الأسماء البديلة (الديوانية = القادسية · اربيل = أربيل)', () => {
+  const S = site.window.HRCStore;
+  if (typeof S.govKey !== 'function') return 'دالة تطبيع المحافظة غير مُصدَّرة';
+  return (S.govKey('الديوانية') === S.govKey('القادسية') &&
+    S.govKey('اربيل') === S.govKey('أربيل') &&
+    S.govKey('حلبجه') === S.govKey('حلبجة')) || 'تطبيع الأسماء لا يعمل';
+});
+
 /* ═══ المسح الضوئي للبطاقة وفتح صفحة التقديم (طلب صاحب الشركة 2026-10-23) ═══ */
 await (async () => {
   const jobBtn = [...site.doc.querySelectorAll('#jobs-grid .job-card [data-action="open-booking"]')]

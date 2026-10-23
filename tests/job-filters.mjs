@@ -54,14 +54,24 @@ try {
   check('viewport permits user zoom instead of restricting accessibility',!w.document.querySelector('meta[name=viewport]').content.includes('maximum-scale'));
 
   check('all 19 Iraqi governorates plus all-option', $('jf-province').options.length===20);
+  check('governorate list matches config exactly (no duplicates, Qadisiyah included)',
+    (()=> {
+      const list = [...$('jf-province').options].map(o=>o.value).filter(Boolean);
+      const cfg = w.HRC_CONFIG.governorates;
+      return list.length===19 && list.length===new Set(list).size &&
+        cfg.every(g=>list.includes(g)) && list.includes('القادسية') && list.includes('حلبجة');
+    })(),
+    JSON.stringify([...$('jf-province').options].map(o=>o.value)));
   check('aliases normalized in mapped jobs', w.G.filteredJobs().find(j=>j.code==='F-500').governorate==='أربيل');
-  check('prototype-like categories and regions remain available',Array.from($('jf-category').options).some(o=>o.value==='constructor')&&Array.from($('jf-region').options).some(o=>o.value==='__proto__'));
+  check('prototype-like categories remain available (no region filter anymore)',
+    Array.from($('jf-category').options).some(o=>o.value==='constructor') && !$('jf-region'));
+  check('no region filter anywhere in the applicant filters (2026-10-24)',
+    !w.document.getElementById('jf-region') && !/المنطقة<\/label>/.test(w.document.querySelector('.jf-primary').innerHTML));
   check('untrusted labels never become markup',!w.document.querySelector('#jf-category img')&&!w.document.querySelector('#jobs-list script'));
   set('jf-province','بغداد');
   check('province filters exactly',codes().join(',')==='F-300,F-100');
-  check('region list depends on province',Array.from($('jf-region').options,o=>o.value).sort().join(',')===',الكرادة,المنصور');
-  set('jf-region','الكرادة');check('province and region intersect',codes().join(',')==='F-100');
-  set('jf-province','البصرة');check('changing province resets stale region',$('jf-region').value===''&&codes().join(',')==='F-200');
+  set('jf-province','البصرة');check('province filters exactly (replaces region filter)',codes().join(',')==='F-200');
+  set('jf-province','');
   set('jf-category','مبيعات');set('jf-shift','مسائي');set('jf-gender','أنثى');set('jf-salary','۸۰۰٬۰۰۰','input');
   check('category + shift + gender + Persian formatted salary intersect',codes().join(',')==='F-200');
   set('jf-salary','٨٠٠،٠٠١','input');check('salary uses advertised starting pay, not upper bound',codes().length===0);

@@ -12,7 +12,8 @@
   var CFG = root.HRC_CONFIG, Store = root.HRCStore, UI = root.HRCUI;
   if (!document.getElementById('jobs-grid')) return;
 
-  var filters = { q: '', region: 'all', governorate: 'all', shift: 'all', status: 'all' };
+  /* الفلاتر: المحافظة وحدها للموقع الجغرافي — لا فلتر مناطق (قرار 2026-10-24) */
+  var filters = { q: '', governorate: 'all', shift: 'all', status: 'all' };
 
   /* -------------- وضع القاعدة العامة (Supabase مفعّل) --------------
    * لماذا هذا التمييز؟ مع enabled=true يجب ألا يرى الزائر **أي** بيانات من
@@ -112,29 +113,29 @@
   }
 
   function fillSelects() {
-    UI.fillSelect(document.getElementById('qs-region'), CFG.regions, 'كل مناطق بابل');
-    UI.fillSelect(document.getElementById('filter-region'), CFG.regions, 'كل المناطق');
+    UI.fillSelect(document.getElementById('qs-governorate'), CFG.governorates, 'كل المحافظات');
     UI.fillSelect(document.getElementById('filter-governorate'), CFG.governorates, 'كل المحافظات');
     UI.fillSelect(document.getElementById('filter-shift'), CFG.shifts, 'كل الأوقات');
   }
 
   function bindEvents() {
     var q = document.getElementById('filter-q');
-    var region = document.getElementById('filter-region');
+    /* أُزيل فلتر المناطق — المحافظة وحدها هي الفلتر الجغرافي (2026-10-24) */
     var governorate = document.getElementById('filter-governorate');
     var shift = document.getElementById('filter-shift');
     var status = document.getElementById('filter-status');
 
     if (q) q.addEventListener('input', UI.debounce(function () { filters.q = q.value; renderJobs(); }));
-    if (region) region.addEventListener('change', function () { filters.region = region.value; renderJobs(); });
     if (governorate) governorate.addEventListener('change', function () { filters.governorate = governorate.value; renderJobs(); });
     if (shift) shift.addEventListener('change', function () { filters.shift = shift.value; renderJobs(); });
     if (status) status.addEventListener('change', function () { filters.status = status.value; renderJobs(); });
     var reset = document.getElementById('filter-reset');
     if (reset) reset.addEventListener('click', function () {
-      filters = { q: '', region: 'all', governorate: 'all', shift: 'all', status: 'all' };
-      if (q) q.value = ''; if (region) region.value = 'all';
+      filters = { q: '', governorate: 'all', shift: 'all', status: 'all' };
+      if (q) q.value = '';
       if (governorate) governorate.value = 'all';
+      var qsGov = document.getElementById('qs-governorate');
+      if (qsGov) qsGov.value = 'all';
       if (shift) shift.value = 'all'; if (status) status.value = 'all';
       renderJobs();
     });
@@ -145,7 +146,7 @@
       e.preventDefault();
       runQuickSearch(
         (document.getElementById('qs-code') || {}).value || '',
-        (document.getElementById('qs-region') || {}).value || 'all'
+        (document.getElementById('qs-governorate') || {}).value || 'all'
       );
     });
 
@@ -190,7 +191,7 @@
     if (y) y.textContent = Store.fmtDate(new Date()).slice(0,4);
   }
 
-  function runQuickSearch(code, region) {
+  function runQuickSearch(code, governorate) {
     if (cloudBlocked()) {
       UI.toast(cloudSettled ? 'error' : 'info', cloudSettled ? 'تعذّر الاتصال' : 'جارٍ التحميل',
         cloudSettled ? 'تعذّر الاتصال بقاعدة الشركة — أعد المحاولة أو خابرنا هاتفياً.'
@@ -198,13 +199,15 @@
       return;
     }
     code = String(code || '').trim();
-    region = region || 'all';
+    governorate = governorate || 'all';
     filters.q = code;
-    filters.region = region;
+    filters.governorate = governorate;
     var fq = document.getElementById('filter-q');
-    var fr = document.getElementById('filter-region');
+    var fg = document.getElementById('filter-governorate');
+    var qsG = document.getElementById('qs-governorate');
     if (fq) fq.value = code;
-    if (fr) fr.value = region;
+    if (fg) fg.value = governorate;
+    if (qsG) qsG.value = governorate;
     renderJobs();
     var jobs = document.getElementById('jobs');
     if (jobs) jobs.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -266,13 +269,13 @@
       var code = job[0].toUpperCase();
       var input = document.getElementById('qs-code');
       if (input) input.value = code;
-      runQuickSearch(code, (document.getElementById('qs-region') || {}).value || 'all');
+      runQuickSearch(code, (document.getElementById('qs-governorate') || {}).value || 'all');
       return;
     }
 
     var input = document.getElementById('qs-code');
     if (input) input.value = text;
-    runQuickSearch(text, (document.getElementById('qs-region') || {}).value || 'all');
+    runQuickSearch(text, (document.getElementById('qs-governorate') || {}).value || 'all');
   }
 
   /* ---------------- العرض ---------------- */
