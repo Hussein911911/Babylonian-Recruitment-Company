@@ -1135,177 +1135,6 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .bk-field.has-error .bk-err, .bk-err.show { display: flex; }
 .bk-hint { display: block; font-size: .76rem; color: var(--muted); margin-top: 6px; }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   شاشة «قدّم ببطاقتك» — ورقة فاتحة، مبدّل واحد، ولوحة واحدة (2026-10-24)
-   المبدأ: عنصر واحد يلفت النظر (زر ذهبي واحد). لا أزرار متجاورة متضاربة،
-   ولا حركات لانهائية: تبديل واحد بحركة قصيرة، ثم سكون.
-   ══════════════════════════════════════════════════════════════════════════ */
-.modal-booking { width: min(600px, 100%); }
-.modal-booking .modal-head {
-  background: linear-gradient(135deg, #0d1f42, #1a3a72);
-  border-bottom: 1px solid rgba(200, 162, 74, .32);
-  color: #f6f1e3; padding: 16px 20px;
-}
-.modal-booking .modal-head h3 { color: #fff; font-size: 1rem; }
-.modal-booking .modal-head .tiny { color: #b9c7e2 !important; font-size: .76rem; }
-.modal-booking .modal-head .icon-btn {
-  color: #dbe4f5; border-color: rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .06);
-}
-.modal-booking .modal-head .icon-btn:hover { background: rgba(255, 255, 255, .14); color: #fff; }
-.modal-booking .modal-body { background: #fff; padding: 18px 20px 16px; }
-
-.bk-sheet { display: grid; gap: 14px; animation: bkEnter .26s cubic-bezier(.22, 1, .36, 1) both; }
-
-/* ── سطر السياق: شارة صغيرة + كود الوظيفة إن وُجد ── */
-.bk-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.bk-eyebrow {
-  display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; font-weight: 800;
-  color: #7d6420; background: #fbf5e6; border: 1px solid rgba(200, 162, 74, .28);
-  border-radius: 999px; padding: 4px 10px;
-}
-.bk-eyebrow svg { width: 13px; height: 13px; }
-.bk-jobtap {
-  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
-  background: #f3f8f3; border: 1px solid rgba(31, 143, 78, .24);
-  font-size: .74rem; font-weight: 800; color: #1c6b3f;
-}
-.bk-jobtap svg { width: 13px; height: 13px; }
-.bk-jobtap b { letter-spacing: .04em; }
-
-/* ── شريط البطاقة: تعريف واحد هادئ (لا صورة كبيرة ولا بطاقة جانبية) ── */
-.bk-card {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "brand tags" "num num" "bars bars";
-  align-items: center; gap: 7px 10px; padding: 12px 14px 11px; border-radius: 13px;
-  background: linear-gradient(135deg, #0d1f42, #17376c);
-  border: 1px solid rgba(232, 208, 137, .22);
-  transition: border-color .25s ease;
-}
-.bk-card-brand {
-  grid-area: brand; display: inline-flex; align-items: center; gap: 6px;
-  font-size: .74rem; font-weight: 800; color: #e8d089; white-space: nowrap;
-}
-.bk-card-brand svg { width: 16px; height: 16px; }
-.bk-card-bars { grid-area: bars; display: flex; align-items: flex-start; gap: 2px; height: 11px; opacity: .3; overflow: hidden; }
-.bk-card-bars i { display: block; background: #e8d089; border-radius: .5px; }
-.bk-card-num {
-  grid-area: num; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-  font-size: .88rem; font-weight: 700; letter-spacing: .2em; color: #cfd9ec;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr; text-align: right;
-  transition: color .25s ease;
-}
-.bk-card-tags { grid-area: tags; display: inline-flex; gap: 6px; }
-.bk-card-tags b {
-  font-size: .64rem; font-weight: 800; color: #c9d4e8; background: rgba(255, 255, 255, .08);
-  border-radius: 6px; padding: 2px 7px; white-space: nowrap;
-}
-/* الرقم صار مكتوباً: الشريط ينبض مرة واحدة فقط بالذهبي (لا حركة دائمة) */
-.bk-card.has-code { border-color: rgba(232, 208, 137, .5); }
-.bk-card.has-code .bk-card-num { color: #ffe6a2; }
-.bk-card.has-code .bk-card-bars { opacity: .8; }
-
-/* ── المبدّل: تبويبان وشريط واحد ينزلق ── */
-.bk-switch {
-  position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 0;
-  background: #f2f4f8; border: 1px solid #e4e8f0; border-radius: 12px; padding: 4px;
-}
-.bk-switch-thumb {
-  position: absolute; top: 4px; bottom: 4px; inset-inline-start: 4px; width: calc(50% - 4px);
-  border-radius: 9px; background: #fff; border: 1px solid rgba(200, 162, 74, .45);
-  box-shadow: 0 2px 8px -4px rgba(11, 26, 58, .35);
-  transition: transform .24s cubic-bezier(.22, 1, .36, 1);
-}
-.bk-mode-manual .bk-switch-thumb { transform: translateX(calc(-100% - 4px)); }
-.bk-tab {
-  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center;
-  gap: 7px; min-height: 40px; padding: 6px 10px; border: none; background: none; cursor: pointer;
-  font: inherit; font-size: .82rem; font-weight: 800; color: #6b7793; border-radius: 9px;
-  transition: color .18s ease;
-}
-.bk-tab svg { width: 16px; height: 16px; }
-.bk-tab[aria-selected="true"] { color: var(--lapis); }
-.bk-tab[aria-selected="true"] svg { color: #a2811f; }
-.bk-tab:hover { color: var(--lapis-2); }
-.bk-tab:focus-visible { outline: 2px solid rgba(200, 162, 74, .7); outline-offset: 1px; }
-
-/* ── اللوحة: واحدة فقط ظاهرة ── */
-.bk-panel { display: none; }
-.bk-panel.is-open { display: grid; gap: 10px; animation: bkFade .2s ease-out both; }
-.bk-panel-manual.is-open { gap: 12px; }
-.bk-panel-manual .bk-field { margin: 0; }
-
-/* لوحة المسح: إطار توضيحي رمزي ثم زر واحد */
-.bk-cam {
-  display: grid; justify-items: center; gap: 10px; padding: 16px 14px 14px;
-  border: 1px dashed rgba(200, 162, 74, .45); border-radius: 13px; background: #fcfaf4;
-}
-.bk-qr {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
-  width: 76px; height: 76px; padding: 7px; border-radius: 10px;
-  background: #fff; border: 1px solid rgba(20, 32, 58, .12);
-}
-.bk-qr i { border-radius: 1px; background: transparent; }
-.bk-qr i.on { background: #16294d; opacity: .82; }
-.bk-cam-hint { margin: 0; font-size: .78rem; color: var(--muted); line-height: 1.75; text-align: center; }
-
-/* الأزرار: واحد ذهبي في كل لوحة، والباقي روابط نصية */
-.bk-cta { width: 100%; justify-content: center; min-height: 46px; font-weight: 800; }
-.bk-cta.is-ready { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .4); }
-.bk-link {
-  justify-self: center; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
-  color: var(--lapis-2); font-weight: 700; background: none; border: none;
-  padding: 8px 6px; min-height: 40px; font: inherit; font-size: .78rem; border-radius: 8px;
-}
-.bk-link svg { width: 14px; height: 14px; color: #8d7c50; }
-.bk-link:hover { color: #8d6b1f; text-decoration: underline; text-underline-offset: 3px; }
-.bk-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-
-/* الحقل */
-.bk-scan-row { position: relative; }
-.bk-input-ic {
-  position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%);
-  color: #9a8347; pointer-events: none; display: grid;
-}
-.bk-input-ic svg { width: 17px; height: 17px; }
-.bk-scan-row input { padding-inline-start: 38px !important; min-height: 46px; letter-spacing: .1em; }
-
-/* ── التذييل: زران واضحان (لا روابط نصية) ── */
-.bk-entry-foot {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 9px;
-  border-top: 1px solid #eef1f6; padding-top: 12px;
-}
-.bk-footbtn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: 46px; padding: 9px 12px; cursor: pointer; text-align: center;
-  font: inherit; font-size: .79rem; font-weight: 800; line-height: 1.5;
-  color: var(--lapis-2); background: #fff; border: 1px solid #e2e7f0; border-radius: 11px;
-  transition: border-color .16s ease, background .16s ease, color .16s ease;
-}
-.bk-footbtn-ic { display: grid; place-items: center; flex: none; }
-.bk-footbtn svg { width: 16px; height: 16px; color: #8d7c50; }
-.bk-footbtn:hover { border-color: rgba(200, 162, 74, .6); background: #fdfaf2; color: var(--lapis); }
-.bk-footbtn:active { background: #faf5e8; }
-.bk-footbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-.bk-footbtn.is-wa { color: #1c7a45; border-color: #d6e8dd; background: #f7fbf8; }
-.bk-footbtn.is-wa svg { color: #1c7a45; }
-.bk-footbtn.is-wa:hover { border-color: #9fd0b4; background: #f1f9f4; }
-
-@keyframes bkEnter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
-@keyframes bkFade { from { opacity: 0; } to { opacity: 1; } }
-
-@media (max-width: 640px) {
-  .modal-booking .modal-body { padding: 15px 14px; }
-  .bk-card { padding: 11px 12px 10px; }
-  .bk-card-num { font-size: .84rem; letter-spacing: .16em; }
-  .bk-entry-foot { grid-template-columns: 1fr; }
-  .bk-footbtn { font-size: .82rem; }
-  .bk-switch-thumb { transition-duration: .22s; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .bk-sheet, .bk-panel.is-open { animation: none !important; }
-  .bk-switch-thumb { transition: none; }
-}
-
 /* بلا وظائف متاحة */
 .bk-empty {
   display: grid; place-items: center; gap: 6px; text-align: center; padding: 26px 14px;
@@ -2710,6 +2539,259 @@ to{opacity:1;transform:none}
 }
 @media screen and (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important;scroll-behavior:auto !important}
 }
+
+/* ===========================================================================
+ *  HRC — شاشة «قدّم ببطاقتك» (نافذة بطاقتي)
+ *  ---------------------------------------------------------------------------
+ *  ملف مستقل يُحمَّل في الصفحة العامة (index) والملفين المستقلين فقط، لأن
+ *  نافذة الحجز لا تُفتح في لوحة الموظفين ولا صفحة التحقق — فلا تُثقل عليهما.
+ *  المصدر الوحيد لهذه الأنماط هو هذا الملف (نُقلت من style.css 2026-10-24).
+ * =========================================================================== */
+/* ══════════════════════════════════════════════════════════════════════════
+   شاشة «قدّم ببطاقتك» — ورقة فاتحة، مبدّل واحد، ولوحة واحدة (2026-10-24)
+   المبدأ: عنصر واحد يلفت النظر (زر ذهبي واحد). لا أزرار متجاورة متضاربة،
+   ولا حركات لانهائية: تبديل واحد بحركة قصيرة، ثم سكون.
+   ══════════════════════════════════════════════════════════════════════════ */
+.modal-booking { width: min(600px, 100%); }
+.modal-booking .modal-head {
+  background: linear-gradient(135deg, #0d1f42, #1a3a72);
+  border-bottom: 1px solid rgba(200, 162, 74, .32);
+  color: #f6f1e3; padding: 16px 20px;
+}
+.modal-booking .modal-head h3 { color: #fff; font-size: 1rem; }
+.modal-booking .modal-head .tiny { color: #b9c7e2 !important; font-size: .76rem; }
+.modal-booking .modal-head .icon-btn {
+  color: #dbe4f5; border-color: rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .06);
+}
+.modal-booking .modal-head .icon-btn:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+.modal-booking .modal-body { background: #fff; padding: 18px 20px 16px; }
+
+.bk-sheet { display: grid; gap: 14px; animation: bkEnter .26s cubic-bezier(.22, 1, .36, 1) both; }
+
+/* ── سطر السياق: شارة صغيرة + كود الوظيفة إن وُجد ── */
+.bk-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.bk-eyebrow {
+  display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; font-weight: 800;
+  color: #7d6420; background: #fbf5e6; border: 1px solid rgba(200, 162, 74, .28);
+  border-radius: 999px; padding: 4px 10px;
+}
+.bk-eyebrow svg { width: 13px; height: 13px; }
+.bk-jobtap {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+  background: #f3f8f3; border: 1px solid rgba(31, 143, 78, .24);
+  font-size: .74rem; font-weight: 800; color: #1c6b3f;
+}
+.bk-jobtap svg { width: 13px; height: 13px; }
+.bk-jobtap b { letter-spacing: .04em; }
+
+/* ── شريط البطاقة: هوية + باركود حقيقي + الرقم ── */
+.bk-card {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "brand tags" "num num" "bc bc";
+  align-items: center; gap: 7px 10px; padding: 11px 13px 9px; border-radius: 13px;
+  background: linear-gradient(135deg, #0d1f42, #17376c);
+  border: 1px solid rgba(232, 208, 137, .22);
+  transition: border-color .25s ease;
+}
+.bk-card-brand {
+  grid-area: brand; display: inline-flex; align-items: center; gap: 6px;
+  font-size: .74rem; font-weight: 800; color: #e8d089; white-space: nowrap;
+}
+.bk-card-brand svg { width: 16px; height: 16px; }
+.bk-card-num {
+  grid-area: num; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  font-size: .84rem; font-weight: 700; letter-spacing: .2em; color: #cfd9ec;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr; text-align: right;
+  transition: color .25s ease;
+}
+.bk-card-tags { grid-area: tags; display: inline-flex; gap: 6px; }
+.bk-card-tags b {
+  font-size: .64rem; font-weight: 800; color: #c9d4e8; background: rgba(255, 255, 255, .08);
+  border-radius: 6px; padding: 2px 7px; white-space: nowrap;
+}
+/* الباركود الحقيقي داخل الشريط — يُرسم خلفيةً من SVG في booking.js */
+.bk-card-bc {
+  grid-area: bc; display: block; height: 26px; border-radius: 4px;
+  background-repeat: no-repeat; background-size: 100% 100%; background-position: center;
+  opacity: .9; transition: opacity .25s ease;
+}
+.bk-card.has-code { border-color: rgba(232, 208, 137, .5); }
+.bk-card.has-code .bk-card-num { color: #ffe6a2; }
+.bk-card.has-code .bk-card-bc { opacity: 1; }
+
+/* ── المبدّل: تبويبان وشريط واحد ينزلق ── */
+.bk-switch {
+  position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  background: #f2f4f8; border: 1px solid #e4e8f0; border-radius: 12px; padding: 4px;
+}
+.bk-switch-thumb {
+  position: absolute; top: 4px; bottom: 4px; inset-inline-start: 4px; width: calc(50% - 4px);
+  border-radius: 9px; background: #fff; border: 1px solid rgba(200, 162, 74, .45);
+  box-shadow: 0 2px 8px -4px rgba(11, 26, 58, .35);
+  transition: transform .24s cubic-bezier(.22, 1, .36, 1);
+}
+.bk-mode-manual .bk-switch-thumb { transform: translateX(calc(-100% - 4px)); }
+.bk-tab {
+  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center;
+  gap: 7px; min-height: 40px; padding: 6px 10px; border: none; background: none; cursor: pointer;
+  font: inherit; font-size: .82rem; font-weight: 800; color: #6b7793; border-radius: 9px;
+  transition: color .18s ease;
+}
+.bk-tab svg { width: 16px; height: 16px; }
+.bk-tab[aria-selected="true"] { color: var(--lapis); }
+.bk-tab[aria-selected="true"] svg { color: #a2811f; }
+.bk-tab:hover { color: var(--lapis-2); }
+.bk-tab:focus-visible { outline: 2px solid rgba(200, 162, 74, .7); outline-offset: 1px; }
+
+/* ── اللوحة: واحدة فقط ظاهرة ── */
+.bk-panel { display: none; }
+.bk-panel.is-open { display: grid; gap: 10px; animation: bkFade .2s ease-out both; }
+.bk-panel-manual.is-open { gap: 12px; }
+.bk-panel-manual .bk-field { margin: 0; }
+
+/* ── منصّة القراءة: بطاقة بيضاء بباركود حقيقي + عدسة مكبّرة تمسح عليها ──
+   العدسة طبقة زجاجية دائرية تتحرّك يميناً ويساراً فوق الباركود، وداخلها نسخة
+   مكبَّرة من الباركود نفسه (نفس خلفية SVG بحجم أكبر) فتبدو كعدسة تقرأ فعلاً.
+   الحركة تُلغى تلقائياً مع prefers-reduced-motion. */
+.bk-scanner { display: grid; gap: 9px; }
+.bk-scanner-vp {
+  position: relative; overflow: hidden; border-radius: 14px;
+  padding: 22px 34px; display: grid; place-items: center;
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgba(63, 193, 196, .10), transparent 62%),
+    linear-gradient(160deg, #0d1f42, #102a4f 60%, #0b1a35);
+  border: 1px solid rgba(232, 208, 137, .26);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .03);
+}
+.bk-slip {
+  width: 100%; height: 76px; border-radius: 8px; background-color: #fff;
+  background-repeat: no-repeat; background-size: 100% 100%; background-position: center;
+  box-shadow: 0 8px 22px -12px rgba(0, 0, 0, .6);
+}
+/* زوايا الإطار (منظّر الكاميرا) */
+.bk-corner {
+  position: absolute; width: 18px; height: 18px; border: 2px solid rgba(232, 208, 137, .85);
+  border-radius: 3px;
+}
+.bk-corner.tl { top: 9px; inset-inline-start: 9px; border-width: 2px 0 0 2px; border-start-start-radius: 7px; }
+.bk-corner.tr { top: 9px; inset-inline-end: 9px; border-width: 2px 2px 0 0; border-start-end-radius: 7px; }
+.bk-corner.bl { bottom: 9px; inset-inline-start: 9px; border-width: 0 0 2px 2px; border-end-start-radius: 7px; }
+.bk-corner.br { bottom: 9px; inset-inline-end: 9px; border-width: 0 2px 2px 0; border-end-end-radius: 7px; }
+
+/* العدسة المكبّرة */
+.bk-lens {
+  --bk-bc: none;   /* تُملأ من booking.js بصورة باركود البطاقة (data-URI) */
+  position: absolute; top: 50%; left: 0; width: 58px; height: 58px; margin-top: -29px;
+  border-radius: 50%; transform: translateX(-50%); pointer-events: none;
+  background: radial-gradient(circle at 34% 26%, rgba(255, 255, 255, .5), rgba(255, 255, 255, .1) 46%, rgba(6, 18, 36, .22) 78%);
+  box-shadow:
+    0 0 0 2.5px rgba(232, 208, 137, .92),
+    0 0 0 5px rgba(11, 26, 58, .5),
+    0 10px 24px -6px rgba(0, 0, 0, .6),
+    inset 0 0 16px rgba(255, 255, 255, .2);
+  animation: bkLensSweep 4.2s cubic-bezier(.45, 0, .55, 1) infinite;
+  overflow: hidden;
+}
+/* نسخة مكبَّرة من الباركود داخل العدسة — الحجم يتغيّر مع موضع العدسة تقريباً */
+.bk-lens-glass {
+  position: absolute; inset: 0; border-radius: 50%;
+  background-image: var(--bk-bc); background-repeat: no-repeat;
+  background-size: 340% auto; background-position: 50% 50%;
+  animation: bkLensZoom 4.2s cubic-bezier(.45, 0, .55, 1) infinite;
+  opacity: .96;
+}
+/* شعاع ذهبي رفيع يمر عبر العدسة */
+.bk-lens-line {
+  position: absolute; inset-inline: 0; top: 50%; height: 2px; transform: translateY(-50%);
+  background: linear-gradient(90deg, transparent, rgba(232, 208, 137, .95), transparent);
+  box-shadow: 0 0 8px rgba(232, 208, 137, .8);
+  animation: bkLensLine 2.1s ease-in-out infinite;
+}
+.bk-scanner-hint {
+  margin: 0; display: flex; align-items: center; justify-content: center; gap: 7px;
+  font-size: .77rem; color: var(--muted); line-height: 1.7; text-align: center;
+}
+.bk-scanner-hint svg { width: 15px; height: 15px; color: #a2811f; flex: none; }
+
+@keyframes bkLensSweep {
+  0%, 100% { left: 9%; }
+  50% { left: 91%; }
+}
+@keyframes bkLensZoom {
+  0%, 100% { background-position: 6% 50%; }
+  50% { background-position: 94% 50%; }
+}
+@keyframes bkLensLine {
+  0%, 100% { opacity: .35; }
+  50% { opacity: 1; }
+}
+
+/* الأزرار: واحد ذهبي في كل لوحة، والباقي روابط نصية */
+.bk-cta { width: 100%; justify-content: center; min-height: 46px; font-weight: 800; }
+.bk-cta.is-ready { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .4); }
+.bk-link {
+  justify-self: center; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  color: var(--lapis-2); font-weight: 700; background: none; border: none;
+  padding: 8px 6px; min-height: 40px; font: inherit; font-size: .78rem; border-radius: 8px;
+}
+.bk-link svg { width: 14px; height: 14px; color: #8d7c50; }
+.bk-link:hover { color: #8d6b1f; text-decoration: underline; text-underline-offset: 3px; }
+.bk-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* الحقل */
+.bk-scan-row { position: relative; }
+.bk-input-ic {
+  position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%);
+  color: #9a8347; pointer-events: none; display: grid;
+}
+.bk-input-ic svg { width: 17px; height: 17px; }
+.bk-scan-row input { padding-inline-start: 38px !important; min-height: 46px; letter-spacing: .1em; }
+
+/* ── التذييل: زران واضحان (لا روابط نصية) ── */
+.bk-entry-foot {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 9px;
+  border-top: 1px solid #eef1f6; padding-top: 12px;
+}
+.bk-footbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 46px; padding: 9px 12px; cursor: pointer; text-align: center;
+  font: inherit; font-size: .79rem; font-weight: 800; line-height: 1.5;
+  color: var(--lapis-2); background: #fff; border: 1px solid #e2e7f0; border-radius: 11px;
+  transition: border-color .16s ease, background .16s ease, color .16s ease;
+}
+.bk-footbtn-ic { display: grid; place-items: center; flex: none; }
+.bk-footbtn svg { width: 16px; height: 16px; color: #8d7c50; }
+.bk-footbtn:hover { border-color: rgba(200, 162, 74, .6); background: #fdfaf2; color: var(--lapis); }
+.bk-footbtn:active { background: #faf5e8; }
+.bk-footbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.bk-footbtn.is-wa { color: #1c7a45; border-color: #d6e8dd; background: #f7fbf8; }
+.bk-footbtn.is-wa svg { color: #1c7a45; }
+.bk-footbtn.is-wa:hover { border-color: #9fd0b4; background: #f1f9f4; }
+
+@keyframes bkEnter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes bkFade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 640px) {
+  .modal-booking .modal-body { padding: 15px 14px; }
+  .bk-card { padding: 10px 11px 8px; }
+  .bk-card-num { font-size: .82rem; letter-spacing: .16em; }
+  .bk-card-bc { height: 22px; }
+  .bk-scanner-vp { padding: 18px 26px; }
+  .bk-slip { height: 64px; }
+  .bk-lens { width: 50px; height: 50px; margin-top: -25px; }
+  .bk-entry-foot { grid-template-columns: 1fr; }
+  .bk-footbtn { font-size: .82rem; }
+  .bk-switch-thumb { transition-duration: .22s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-sheet, .bk-panel.is-open { animation: none !important; }
+  .bk-switch-thumb { transition: none; }
+  /* العدسة تبقى ظاهرة لكن بلا حركة: موضع ثابت في المنتصف */
+  .bk-lens { animation: none !important; left: 50%; }
+  .bk-lens-glass { animation: none !important; background-position: 50% 50%; }
+  .bk-lens-line { animation: none !important; opacity: .8; }
+}
+
 
 /* Horizontal public-page rhythm; screen only, no functional or print changes. */
 @media screen {
@@ -9279,22 +9361,20 @@ to{opacity:1;transform:none}
 
   /* يرسم وجه البطاقة البصري من الرقم (بصمة بصرية لا أكثر — لا تُرسل لأي جهة) */
   function paintCardFace() {
+    var v = cleanSerial(serial);
     var face = document.querySelector('.bk-card');
     var num = document.querySelector('.bk-card-num');
     if (!face || !num) return;
-    var v = cleanSerial(serial);
-    num.textContent = v || '• • • • • • • • • •';
+    num.textContent = v || '• • • • • •';
     face.classList.toggle('has-code', !!v);
-    var bars = face.querySelector('.bk-card-bars');
-    if (!bars) return;
-    var seed = 0;
-    for (var i = 0; i < v.length; i++) seed = (seed * 31 + v.charCodeAt(i)) % 9973;
-    var cells = '';
-    for (var b = 0; b < 46; b++) {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      cells += '<i style="width:' + (b % 9 === 0 ? 4 : (b % 4 === 0 ? 3 : 2)) + 'px;height:' + (26 + (seed % 62)) + '%"></i>';
-    }
-    bars.innerHTML = cells;
+    /* أعد رسم الباركود الحقيقي في الشريط وفي منصّة القراءة معاً */
+    var uri = barcodeSvg(v);
+    var strip = face.querySelector('.bk-card-bc');
+    if (strip) strip.style.backgroundImage = 'url("' + barcodeSvg(v, { digits: false }) + '")';
+    var slip = document.querySelector('.bk-slip');
+    if (slip) slip.style.backgroundImage = 'url("' + uri + '")';
+    var lens = document.querySelector('.bk-lens');
+    if (lens) lens.style.setProperty('--bk-bc', 'url("' + uri + '")');
   }
 
   /* يعكس الرقم المطبَّع داخل الحقل ووجه البطاقة (بعد المسح أو التطبيع) */
@@ -9330,37 +9410,80 @@ to{opacity:1;transform:none}
     return !!(root.HRCQRScan && root.HRCQRScan.supported && root.HRCQRScan.supported());
   }
 
-  /* أعمدة باركود تُشتق من الرقم — بصمة بصرية فقط (لا تُرسل ولا تُحفظ) */
-  function cardBars(v) {
-    var seed = 0, out = '';
-    for (var i = 0; i < v.length; i++) seed = (seed * 31 + v.charCodeAt(i)) % 9973;
-    for (var b = 0; b < 40; b++) {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      out += '<i style="width:' + (b % 8 === 0 ? 3 : 2) + 'px;height:' + (30 + (seed % 60)) + '%"></i>';
+  /* ──────────────────────────────────────────────────────────────────────
+   *  باركود حقيقي الشكل
+   *  أعمدة متفاوتة العرض بمسافات بيضاء، وأعمدة حراسة أطول في الطرفين،
+   *  والرقم مقروءاً تحت الأعمدة — كباركود Code-128 المطبوع على البطاقة.
+   *  يُرسم SVG ويُحوَّل إلى data-URI كي يكون خلفيةً للشريط وللعدسة معاً
+   *  (فتُكبَّر النسخة داخل العدسة بلا صورة ثانية ولا طلب شبكة).
+   * ────────────────────────────────────────────────────────────────────── */
+  function barcodeSvg(text, opts) {
+    opts = opts || {};
+    var label = String(text || '').replace(/[^A-Z0-9]/gi, '');
+    var seed = 7;
+    for (var i = 0; i < label.length; i++) seed = (seed * 131 + label.charCodeAt(i)) % 100003;
+    function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+
+    var W = 240, H = 84, BAR_H = 62, x = 6, out = '';
+    function bar(w, h) {
+      out += '<rect x="' + x.toFixed(2) + '" y="0" width="' + w.toFixed(2) +
+        '" height="' + (h || BAR_H) + '" rx=".25" fill="#12253f"/>';
     }
-    return out;
+    /* علامة البداية: عمودان رفيعان طويلان */
+    bar(1.7, BAR_H + 4); x += 3.6;
+    bar(1.7, BAR_H + 4); x += 4.4;
+    while (x < W - 16) {
+      var w = 1 + Math.round(rnd() * 3) * 0.62;          /* 1.0 – 2.86 */
+      bar(w);
+      x += w + 1.1 + Math.round(rnd() * 2) * 0.75;        /* فراغ 1.1 – 2.6 */
+    }
+    /* علامة النهاية */
+    x = W - 12;
+    bar(1.7, BAR_H + 4); x += 3.6;
+    bar(1.7, BAR_H + 4);
+
+    /* الشريط المصغّر بلا أرقام (الرقم مكتوب بجانبه)؛ منصّة القراءة بأرقامها */
+    var digits = opts.digits === false ? '' :
+      '<text x="' + (W / 2) + '" y="' + (H - 3) + '" text-anchor="middle" ' +
+      'font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" letter-spacing="2.6" ' +
+      'fill="#12253f">' + (label ? label.replace(/(.{4})/g, '$1 ').trim() : 'H R C   C A R D') + '</text>';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+      '<rect width="' + W + '" height="' + H + '" fill="#ffffff"/>' +
+      '<g>' + out + '</g>' + digits +
+      '</svg>';
+    return 'data:image/svg+xml,' + encodeURIComponent(svg);
   }
 
-  /* شريط تعريف البطاقة: هوية الشركة + الرقم كما يُكتب — عنصر واحد هادئ */
+  /* شريط تعريف البطاقة: هوية الشركة + باركودها الحقيقي + الرقم */
   function cardStripHtml() {
     var v = cleanSerial(serial);
     return '<div class="bk-card">' +
       '<span class="bk-card-brand">' + UI.ic('emblem') + ' بطاقة التوظيف</span>' +
-      '<span class="bk-card-bars" aria-hidden="true">' + cardBars(v) + '</span>' +
-      '<span class="bk-card-num" dir="ltr">' + (v ? esc(v) : '— — — — — —') + '</span>' +
+      '<span class="bk-card-num" dir="ltr">' + (v ? esc(v) : '• • • • • •') + '</span>' +
       '<span class="bk-card-tags"><b>فرصتان</b><b>٣٠ يوماً</b></span>' +
+      '<span class="bk-card-bc" aria-hidden="true" style="background-image:url(&quot;' + barcodeSvg(v, { digits: false }) + '&quot;)"></span>' +
     '</div>';
   }
 
-  /* رسم QR توضيحي ساكن داخل إطار المسح (بلا حركة دائمة) */
-  function qrArtHtml() {
-    var cells = '', seed = 7;
-    for (var i = 0; i < 49; i++) {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      var corner = (i < 3) || (i > 45) || (i % 7 === 0) || (i % 7 === 6);
-      cells += '<i class="' + ((corner || seed % 3 === 0) ? 'on' : '') + '"></i>';
-    }
-    return '<div class="bk-qr" aria-hidden="true">' + cells + '</div>';
+  /* منصّة القراءة: بطاقة بيضاء بباركود حقيقي، وعدسة مكبّرة تمسح عليها */
+  function scannerHtml() {
+    var v = cleanSerial(serial);
+    var bc = barcodeSvg(v);
+    return '<div class="bk-scanner">' +
+      '<div class="bk-scanner-vp">' +
+        '<span class="bk-corner tl" aria-hidden="true"></span>' +
+        '<span class="bk-corner tr" aria-hidden="true"></span>' +
+        '<span class="bk-corner bl" aria-hidden="true"></span>' +
+        '<span class="bk-corner br" aria-hidden="true"></span>' +
+        '<div class="bk-slip" style="background-image:url(&quot;' + bc + '&quot;)"></div>' +
+        '<div class="bk-lens" aria-hidden="true" style="--bk-bc:url(&quot;' + bc + '&quot;)">' +
+          '<span class="bk-lens-glass"></span>' +
+          '<span class="bk-lens-line"></span>' +
+        '</div>' +
+      '</div>' +
+      '<p class="bk-scanner-hint">' + UI.ic('scan') +
+        ' ضع الباركود داخل الإطار — تُقرأ البطاقة تلقائياً.</p>' +
+    '</div>';
   }
 
   function renderEntry(host) {
@@ -9390,9 +9513,7 @@ to{opacity:1;transform:none}
 
         /* ── لوحة المسح ── */
         '<section class="bk-panel bk-panel-scan is-open" id="bk-panel-scan" role="tabpanel" aria-labelledby="bk-tab-scan">' +
-          '<div class="bk-cam">' + qrArtHtml() +
-            '<p class="bk-cam-hint">وجّه الكاميرا نحو الباركود المطبوع على وجه البطاقة — القراءة تلقائية.</p>' +
-          '</div>' +
+          scannerHtml() +
           '<button type="button" class="btn btn-gold bk-cta" id="bk-scan">' + UI.ic('scan') + ' افتح الكاميرا</button>' +
           '<label class="bk-link" for="bk-scan-file">' + UI.ic('upload') + ' أو ارفع صورة للباركود</label>' +
           '<input type="file" id="bk-scan-file" accept="image/*" hidden>' +

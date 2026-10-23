@@ -200,22 +200,20 @@
 
   /* يرسم وجه البطاقة البصري من الرقم (بصمة بصرية لا أكثر — لا تُرسل لأي جهة) */
   function paintCardFace() {
+    var v = cleanSerial(serial);
     var face = document.querySelector('.bk-card');
     var num = document.querySelector('.bk-card-num');
     if (!face || !num) return;
-    var v = cleanSerial(serial);
-    num.textContent = v || '• • • • • • • • • •';
+    num.textContent = v || '• • • • • •';
     face.classList.toggle('has-code', !!v);
-    var bars = face.querySelector('.bk-card-bars');
-    if (!bars) return;
-    var seed = 0;
-    for (var i = 0; i < v.length; i++) seed = (seed * 31 + v.charCodeAt(i)) % 9973;
-    var cells = '';
-    for (var b = 0; b < 46; b++) {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      cells += '<i style="width:' + (b % 9 === 0 ? 4 : (b % 4 === 0 ? 3 : 2)) + 'px;height:' + (26 + (seed % 62)) + '%"></i>';
-    }
-    bars.innerHTML = cells;
+    /* أعد رسم الباركود الحقيقي في الشريط وفي منصّة القراءة معاً */
+    var uri = barcodeSvg(v);
+    var strip = face.querySelector('.bk-card-bc');
+    if (strip) strip.style.backgroundImage = 'url("' + barcodeSvg(v, { digits: false }) + '")';
+    var slip = document.querySelector('.bk-slip');
+    if (slip) slip.style.backgroundImage = 'url("' + uri + '")';
+    var lens = document.querySelector('.bk-lens');
+    if (lens) lens.style.setProperty('--bk-bc', 'url("' + uri + '")');
   }
 
   /* يعكس الرقم المطبَّع داخل الحقل ووجه البطاقة (بعد المسح أو التطبيع) */
@@ -251,37 +249,80 @@
     return !!(root.HRCQRScan && root.HRCQRScan.supported && root.HRCQRScan.supported());
   }
 
-  /* أعمدة باركود تُشتق من الرقم — بصمة بصرية فقط (لا تُرسل ولا تُحفظ) */
-  function cardBars(v) {
-    var seed = 0, out = '';
-    for (var i = 0; i < v.length; i++) seed = (seed * 31 + v.charCodeAt(i)) % 9973;
-    for (var b = 0; b < 40; b++) {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      out += '<i style="width:' + (b % 8 === 0 ? 3 : 2) + 'px;height:' + (30 + (seed % 60)) + '%"></i>';
+  /* ──────────────────────────────────────────────────────────────────────
+   *  باركود حقيقي الشكل
+   *  أعمدة متفاوتة العرض بمسافات بيضاء، وأعمدة حراسة أطول في الطرفين،
+   *  والرقم مقروءاً تحت الأعمدة — كباركود Code-128 المطبوع على البطاقة.
+   *  يُرسم SVG ويُحوَّل إلى data-URI كي يكون خلفيةً للشريط وللعدسة معاً
+   *  (فتُكبَّر النسخة داخل العدسة بلا صورة ثانية ولا طلب شبكة).
+   * ────────────────────────────────────────────────────────────────────── */
+  function barcodeSvg(text, opts) {
+    opts = opts || {};
+    var label = String(text || '').replace(/[^A-Z0-9]/gi, '');
+    var seed = 7;
+    for (var i = 0; i < label.length; i++) seed = (seed * 131 + label.charCodeAt(i)) % 100003;
+    function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+
+    var W = 240, H = 84, BAR_H = 62, x = 6, out = '';
+    function bar(w, h) {
+      out += '<rect x="' + x.toFixed(2) + '" y="0" width="' + w.toFixed(2) +
+        '" height="' + (h || BAR_H) + '" rx=".25" fill="#12253f"/>';
     }
-    return out;
+    /* علامة البداية: عمودان رفيعان طويلان */
+    bar(1.7, BAR_H + 4); x += 3.6;
+    bar(1.7, BAR_H + 4); x += 4.4;
+    while (x < W - 16) {
+      var w = 1 + Math.round(rnd() * 3) * 0.62;          /* 1.0 – 2.86 */
+      bar(w);
+      x += w + 1.1 + Math.round(rnd() * 2) * 0.75;        /* فراغ 1.1 – 2.6 */
+    }
+    /* علامة النهاية */
+    x = W - 12;
+    bar(1.7, BAR_H + 4); x += 3.6;
+    bar(1.7, BAR_H + 4);
+
+    /* الشريط المصغّر بلا أرقام (الرقم مكتوب بجانبه)؛ منصّة القراءة بأرقامها */
+    var digits = opts.digits === false ? '' :
+      '<text x="' + (W / 2) + '" y="' + (H - 3) + '" text-anchor="middle" ' +
+      'font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" letter-spacing="2.6" ' +
+      'fill="#12253f">' + (label ? label.replace(/(.{4})/g, '$1 ').trim() : 'H R C   C A R D') + '</text>';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+      '<rect width="' + W + '" height="' + H + '" fill="#ffffff"/>' +
+      '<g>' + out + '</g>' + digits +
+      '</svg>';
+    return 'data:image/svg+xml,' + encodeURIComponent(svg);
   }
 
-  /* شريط تعريف البطاقة: هوية الشركة + الرقم كما يُكتب — عنصر واحد هادئ */
+  /* شريط تعريف البطاقة: هوية الشركة + باركودها الحقيقي + الرقم */
   function cardStripHtml() {
     var v = cleanSerial(serial);
     return '<div class="bk-card">' +
       '<span class="bk-card-brand">' + UI.ic('emblem') + ' بطاقة التوظيف</span>' +
-      '<span class="bk-card-bars" aria-hidden="true">' + cardBars(v) + '</span>' +
-      '<span class="bk-card-num" dir="ltr">' + (v ? esc(v) : '— — — — — —') + '</span>' +
+      '<span class="bk-card-num" dir="ltr">' + (v ? esc(v) : '• • • • • •') + '</span>' +
       '<span class="bk-card-tags"><b>فرصتان</b><b>٣٠ يوماً</b></span>' +
+      '<span class="bk-card-bc" aria-hidden="true" style="background-image:url(&quot;' + barcodeSvg(v, { digits: false }) + '&quot;)"></span>' +
     '</div>';
   }
 
-  /* رسم QR توضيحي ساكن داخل إطار المسح (بلا حركة دائمة) */
-  function qrArtHtml() {
-    var cells = '', seed = 7;
-    for (var i = 0; i < 49; i++) {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      var corner = (i < 3) || (i > 45) || (i % 7 === 0) || (i % 7 === 6);
-      cells += '<i class="' + ((corner || seed % 3 === 0) ? 'on' : '') + '"></i>';
-    }
-    return '<div class="bk-qr" aria-hidden="true">' + cells + '</div>';
+  /* منصّة القراءة: بطاقة بيضاء بباركود حقيقي، وعدسة مكبّرة تمسح عليها */
+  function scannerHtml() {
+    var v = cleanSerial(serial);
+    var bc = barcodeSvg(v);
+    return '<div class="bk-scanner">' +
+      '<div class="bk-scanner-vp">' +
+        '<span class="bk-corner tl" aria-hidden="true"></span>' +
+        '<span class="bk-corner tr" aria-hidden="true"></span>' +
+        '<span class="bk-corner bl" aria-hidden="true"></span>' +
+        '<span class="bk-corner br" aria-hidden="true"></span>' +
+        '<div class="bk-slip" style="background-image:url(&quot;' + bc + '&quot;)"></div>' +
+        '<div class="bk-lens" aria-hidden="true" style="--bk-bc:url(&quot;' + bc + '&quot;)">' +
+          '<span class="bk-lens-glass"></span>' +
+          '<span class="bk-lens-line"></span>' +
+        '</div>' +
+      '</div>' +
+      '<p class="bk-scanner-hint">' + UI.ic('scan') +
+        ' ضع الباركود داخل الإطار — تُقرأ البطاقة تلقائياً.</p>' +
+    '</div>';
   }
 
   function renderEntry(host) {
@@ -311,9 +352,7 @@
 
         /* ── لوحة المسح ── */
         '<section class="bk-panel bk-panel-scan is-open" id="bk-panel-scan" role="tabpanel" aria-labelledby="bk-tab-scan">' +
-          '<div class="bk-cam">' + qrArtHtml() +
-            '<p class="bk-cam-hint">وجّه الكاميرا نحو الباركود المطبوع على وجه البطاقة — القراءة تلقائية.</p>' +
-          '</div>' +
+          scannerHtml() +
           '<button type="button" class="btn btn-gold bk-cta" id="bk-scan">' + UI.ic('scan') + ' افتح الكاميرا</button>' +
           '<label class="bk-link" for="bk-scan-file">' + UI.ic('upload') + ' أو ارفع صورة للباركود</label>' +
           '<input type="file" id="bk-scan-file" accept="image/*" hidden>' +

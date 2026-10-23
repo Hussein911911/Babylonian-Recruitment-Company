@@ -277,6 +277,33 @@ await (async () => {
     if (tog.getAttribute('aria-selected') !== 'true') return 'التبويب النشط ليس الكتابة';
     return true;
   });
+  check('بطاقتي: باركود حقيقي (SVG بأعمدة وأرقام) في الشريط وفي منصّة القراءة', () => {
+    const bcEl = modal.querySelector('.bk-card-bc');
+    const slip = modal.querySelector('.bk-slip');
+    if (!bcEl || !slip) return 'عنصر الباركود أو منصّة القراءة غير موجود';
+    const uriOf = (el) => (el.getAttribute('style') || '');
+    const isSvg = (t) => /data:image\/svg\+xml/.test(t);
+    if (!isSvg(uriOf(bcEl))) return 'شريط البطاقة بلا صورة باركود';
+    if (!isSvg(uriOf(slip))) return 'منصّة القراءة بلا صورة باركود';
+    /* الباركود يجب أن يختلف من رقم لآخر (لا صورة ثابتة) */
+    const before = uriOf(slip);
+    const inp = modal.querySelector('#bk-serial');
+    inp.value = 'HRC-BC-000117';
+    inp.dispatchEvent(new site.window.Event('input', { bubbles: true }));
+    const after = uriOf(modal.querySelector('.bk-slip'));
+    if (before === after) return 'الباركود لا يتغيّر مع الرقم';
+    return true;
+  });
+  check('بطاقتي: عدسة مكبّرة فوق الباركود (نسخة مكبَّرة + إطار)', () => {
+    const lens = modal.querySelector('.bk-lens');
+    const glass = modal.querySelector('.bk-lens-glass');
+    if (!lens || !glass) return 'العدسة غير موجودة';
+    const style = lens.getAttribute('style') || '';
+    if (!/--bk-bc:\s*url\(/.test(style)) return 'العدسة بلا صورة مكبَّرة';
+    if (!modal.querySelectorAll('.bk-corner').length) return 'زوايا إطار الكاميرا غير موجودة';
+    /* الحركة معرّفة في CSS وعلى احترام تقليل الحركة */
+    return true;
+  });
   check('بطاقتي: شكل البطاقة البصرية يعكس الرقم المكتوب فوراً', () => {
     const inp = modal.querySelector('#bk-serial');
     inp.value = ' 7kq4-m9tr2x ';
