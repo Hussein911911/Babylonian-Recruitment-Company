@@ -373,6 +373,7 @@ npm run build        # = node tools/build.mjs
 | المستخدمون | `assets/js/config.js` → `users` |
 | الألوان والخطوط والهوية | `assets/css/style.css` → `--lapis` `--gold` `--turq`، و`apply.html` → `--lux-gold` `--lux-neon` (وظائف التقديم) |
 | الشعار (بوابة عشتار) | `src/partials/sprite.html` → الرمز `#i-emblem` + `assets/img/favicon.svg` |
+| صور الوظائف ومحرّرها | لوحة الموظفين → «إضافة وظيفة» → صورة الوظيفة (تكبير/تصغير/سحب) |
 
 ---
 

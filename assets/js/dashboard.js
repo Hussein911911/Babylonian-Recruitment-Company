@@ -1213,9 +1213,29 @@
 
     var body = '<form id="job-form" class="grid grid-2" style="gap:14px">' +
       '<div class="field" style="grid-column:1/-1"><label for="f-image">صورة الوظيفة (اختياري)</label>' +
-        '<input type="file" id="f-image" accept="image/*" style="margin-bottom:8px">' +
-        '<div id="image-preview" style="margin-top:8px">' + (j && j.imageUrl ? '<img src="' + UI.esc(j.imageUrl) + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #ddd">' : '') + '</div>' +
-        '<p class="tiny muted" style="margin:4px 0 0 0">ارفع صورة جذابة للوظيفة ( JPG, PNG )</p></div>' +
+        '<div class="img-field">' +
+          '<div class="img-pick">' +
+            '<label class="img-pick-btn" for="f-image">' + UI.ic('upload') + ' اختر صورة من الجهاز</label>' +
+            '<input type="file" id="f-image" accept="image/*" class="img-file">' +
+            '<span class="tiny muted">JPG أو PNG — حتى ٢ ميجابايت. تصغير وتكبير وتحريك كما تحب.</span>' +
+          '</div>' +
+          '<div class="img-empty" id="img-empty">لا توجد صورة بعد — اختر صورة لتظهر المعاينة هنا.</div>' +
+          '<div class="img-editor" id="img-editor" hidden>' +
+            '<div class="img-stage" id="img-stage" tabindex="0" role="application" aria-label="معاينة صورة الوظيفة — اسحب الصورة لتحريكها">' +
+              '<img id="img-target" alt="معاينة صورة الوظيفة" draggable="false">' +
+              '<span class="img-guide" aria-hidden="true"></span>' +
+            '</div>' +
+            '<div class="img-tools">' +
+              '<button type="button" class="img-tool" id="img-zoom-out" aria-label="تصغير الصورة">−</button>' +
+              '<input type="range" id="img-zoom" min="100" max="250" step="5" value="100" aria-label="نسبة تكبير الصورة">' +
+              '<button type="button" class="img-tool" id="img-zoom-in" aria-label="تكبير الصورة">+</button>' +
+              '<span class="img-zoom-val" id="img-zoom-val">100%</span>' +
+              '<button type="button" class="img-tool-text" id="img-reset">إعادة الضبط</button>' +
+              '<button type="button" class="img-tool-text is-danger" id="img-remove">إزالة الصورة</button>' +
+            '</div>' +
+            '<p class="img-hint" id="img-hint">اسحب الصورة لتحريكها داخل الإطار · استخدم + و− للتكبير.</p>' +
+          '</div>' +
+        '</div></div>' +
       '<div class="field"><label for="f-title">عنوان الوظيفة *</label><input type="text" id="f-title" required value="' + UI.esc(j ? j.title : '') + '"></div>' +
       '<div class="field"><label for="f-cat">التصنيف</label><select id="f-cat">' + cats + '</select></div>' +
       '<div class="field"><label for="f-region">المنطقة *</label><select id="f-region">' + regionsList + '</select></div>' +
@@ -1243,27 +1263,178 @@
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="job-save">' + UI.ic('check') + (j ? ' حفظ التعديلات' : ' إضافة الوظيفة') + '</button>',
       onMount: function (box, close) {
+        /* ── محرّر صورة الوظيفة: معاينة + تكبير/تصغير + سحب + إزالة ──
+           ما يراه الموظف في الإطار هو ما يُحفظ ويظهر للزبون (نُثبّت الإطار
+           بنسبة 10:7 في صورة واحدة عند الحفظ) — فلا مفاجآت بعد النشر. */
         var imageFile = box.querySelector('#f-image');
-        var imagePreview = box.querySelector('#image-preview');
-        var imageData = j ? j.imageUrl : '';
-        
-        // Handle image upload
-        imageFile.addEventListener('change', function(e) {
-          var file = e.target.files[0];
+        var editor = box.querySelector('#img-editor');
+        var stageEl = box.querySelector('#img-stage');
+        var target = box.querySelector('#img-target');
+        var emptyBox = box.querySelector('#img-empty');
+        var zoomRange = box.querySelector('#img-zoom');
+        var zoomVal = box.querySelector('#img-zoom-val');
+        var hint = box.querySelector('#img-hint');
+        var imageData = j ? (j.imageUrl || '') : '';
+        var dirty = false;                    /* هل عدّل الموظف الصورة؟ */
+        var cur = { zoom: 1, x: 0, y: 0 };    /* الحالة الحالية للإطار */
+        var nat = { w: 0, h: 0 };
+        var MIN_Z = 1, MAX_Z = 2.5, STEP_Z = 0.2;
+
+        function clampNum(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+        /* يرسم الصورة داخل الإطار حسب التكبير والموضع */
+        function layoutImage() {
+          /* واجهة التكبير تُحدَّث دائماً (حتى قبل تحميل الصورة أو بلا قياسات) */
+          var pctNow = Math.round(cur.zoom * 100);
+          if (zoomVal) zoomVal.textContent = pctNow + '%';
+          if (zoomRange) zoomRange.value = String(pctNow);
+          if (hint) {
+            hint.textContent = cur.zoom > 1.001
+              ? 'تكبير ' + pctNow + '% — اسحب الصورة لاختيار الجزء الظاهر.'
+              : 'الصورة كاملة داخل الإطار · استخدم + و− للتكبير أو اسحبها للتحريك.';
+          }
+          if (!nat.w || !stageEl || !stageEl.clientWidth) return;   /* بلا قياسات: لا تخطيط */
+          var sw = stageEl.clientWidth, sh = stageEl.clientHeight;
+          var base = Math.min(sw / nat.w, sh / nat.h);   /* «احتواء» بلا قص عند 100% */
+          var k = base * cur.zoom;
+          var w = nat.w * k, h = nat.h * k;
+          var maxX = Math.max(0, (w - sw) / 2);
+          var maxY = Math.max(0, (h - sh) / 2);
+          cur.x = clampNum(cur.x, -maxX, maxX);
+          cur.y = clampNum(cur.y, -maxY, maxY);
+          target.style.width = w + 'px';
+          target.style.height = h + 'px';
+          target.style.transform = 'translate(-50%,-50%) translate(' + cur.x + 'px,' + cur.y + 'px)';
+        }
+
+        function setZoom(z) {
+          cur.zoom = clampNum(Number(z) || 1, MIN_Z, MAX_Z);
+          layoutImage();
+          dirty = true;
+        }
+
+        function showImage(src) {
+          if (!src) return;
+          target.onload = function () {
+            nat.w = target.naturalWidth || 0;
+            nat.h = target.naturalHeight || 0;
+            if (editor) editor.hidden = false;
+            if (emptyBox) emptyBox.hidden = true;
+            layoutImage();
+          };
+          target.onerror = function () {
+            UI.toast('err', 'تعذّر عرض الصورة', 'جرّب صورة أخرى بصيغة JPG أو PNG.');
+          };
+          target.src = src;
+        }
+
+        function clearImage() {
+          imageData = '';
+          dirty = true;
+          nat = { w: 0, h: 0 };
+          cur = { zoom: 1, x: 0, y: 0 };
+          try { target.removeAttribute('src'); } catch (e) { target.src = ''; }
+          if (editor) editor.hidden = true;
+          if (emptyBox) emptyBox.hidden = false;
+        }
+
+        /* تثبيت ما يراه الموظف في صورة واحدة بنسبة الإطار (بلا قص زائد) */
+        function bakeImage() {
+          if (!dirty || !nat.w) return imageData;
+          try {
+            var sr = stageEl.getBoundingClientRect();
+            var ir = target.getBoundingClientRect();
+            if (!sr.width || !sr.height || !ir.width) return imageData;
+            var W = 1280, H = Math.round(W * (sr.height / sr.width));
+            var cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            var ctx = cv.getContext('2d');
+            if (!ctx) return imageData;
+            ctx.fillStyle = '#0c1d33'; ctx.fillRect(0, 0, W, H);
+            var f = W / sr.width;
+            ctx.drawImage(target, (ir.left - sr.left) * f, (ir.top - sr.top) * f, ir.width * f, ir.height * f);
+            var out = cv.toDataURL('image/jpeg', 0.86);
+            if (!out || out.length < 64) return imageData;
+            if (out.length > 1700000) out = cv.toDataURL('image/jpeg', 0.7);
+            return out;
+          } catch (e) { return imageData; }
+        }
+
+        if (imageData) showImage(imageData);
+
+        if (imageFile) imageFile.addEventListener('change', function () {
+          var file = imageFile.files && imageFile.files[0];
           if (!file) return;
-          
-          if (file.size > 2 * 1024 * 1024) {
-            UI.toast('err', 'حجم كبير', 'الحد الأقصى 2 ميجابايت');
+          if (!/^image\//.test(file.type || '')) {
+            UI.toast('err', 'ملف غير مدعوم', 'اختر صورة بصيغة JPG أو PNG.');
             return;
           }
-          
+          if (file.size > 2 * 1024 * 1024) {
+            UI.toast('err', 'حجم كبير', 'الحد الأقصى ٢ ميجابايت');
+            return;
+          }
           var reader = new FileReader();
-          reader.onload = function(e) {
-            imageData = e.target.result;
-            imagePreview.innerHTML = '<img src="' + imageData + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #ddd">';
+          reader.onload = function (ev) {
+            imageData = ev.target.result;
+            dirty = true;
+            cur = { zoom: 1, x: 0, y: 0 };
+            showImage(imageData);
+            UI.toast('ok', 'تم اختيار الصورة', 'اضبط التكبير والموضع ثم احفظ الوظيفة.');
           };
           reader.readAsDataURL(file);
         });
+
+        var zIn = box.querySelector('#img-zoom-in'), zOut = box.querySelector('#img-zoom-out');
+        if (zIn) zIn.addEventListener('click', function () { setZoom(cur.zoom + STEP_Z); });
+        if (zOut) zOut.addEventListener('click', function () { setZoom(cur.zoom - STEP_Z); });
+        if (zoomRange) zoomRange.addEventListener('input', function () { setZoom(Number(zoomRange.value) / 100); });
+        var zReset = box.querySelector('#img-reset');
+        if (zReset) zReset.addEventListener('click', function () {
+          cur = { zoom: 1, x: 0, y: 0 };
+          dirty = true;
+          layoutImage();
+        });
+        var zRemove = box.querySelector('#img-remove');
+        if (zRemove) zRemove.addEventListener('click', function () { clearImage(); });
+
+        /* السحب باللمس أو الفأرة */
+        var drag = null;
+        if (stageEl) {
+          stageEl.addEventListener('pointerdown', function (e) {
+            if (!nat.w || editor.hidden) return;
+            drag = { x: e.clientX, y: e.clientY, ox: cur.x, oy: cur.y };
+            stageEl.classList.add('is-drag');
+            if (stageEl.setPointerCapture) { try { stageEl.setPointerCapture(e.pointerId); } catch (err) { } }
+            e.preventDefault();
+          });
+          stageEl.addEventListener('pointermove', function (e) {
+            if (!drag) return;
+            cur.x = drag.ox + (e.clientX - drag.x);
+            cur.y = drag.oy + (e.clientY - drag.y);
+            layoutImage();
+            dirty = true;
+          });
+          var endDrag = function () { drag = null; stageEl.classList.remove('is-drag'); };
+          stageEl.addEventListener('pointerup', endDrag);
+          stageEl.addEventListener('pointercancel', endDrag);
+          stageEl.addEventListener('pointerleave', endDrag);
+          /* مفاتيح الأسهم للتحريك الدقيق بلا فأرة */
+          stageEl.addEventListener('keydown', function (e) {
+            if (!nat.w) return;
+            var step = e.shiftKey ? 20 : 6, used = true;
+            if (e.key === 'ArrowLeft') cur.x += step;
+            else if (e.key === 'ArrowRight') cur.x -= step;
+            else if (e.key === 'ArrowUp') cur.y += step;
+            else if (e.key === 'ArrowDown') cur.y -= step;
+            else if (e.key === '+' || e.key === '=') setZoom(cur.zoom + STEP_Z);
+            else if (e.key === '-') setZoom(cur.zoom - STEP_Z);
+            else used = false;
+            if (used) { e.preventDefault(); layoutImage(); dirty = true; }
+          });
+          if (window.ResizeObserver) {
+            try { new ResizeObserver(function () { layoutImage(); }).observe(stageEl); } catch (e) { }
+          }
+        }
         
         ['f-epin','f-epin-confirm'].forEach(function(id){box.querySelector('#'+id).addEventListener('input',function(){this.value=this.value.replace(/[٠-٩۰-۹]/g,function(c){return String(c.charCodeAt(0)-(c<='٩'?1632:1776));}).replace(/\D/g,'').slice(0,6);});});
         box.querySelector('#job-save').addEventListener('click', function () {
@@ -1284,7 +1455,7 @@
             employerPhone: box.querySelector('#f-ephone').value.trim(),
             employerAddress: box.querySelector('#f-eaddr').value.trim(),
             interviewLocation: box.querySelector('#f-interview').value.trim(),
-            imageUrl: imageData
+            imageUrl: bakeImage()
           };
           if(pinCloud){
             var pin=box.querySelector('#f-epin').value,confirmation=box.querySelector('#f-epin-confirm').value;

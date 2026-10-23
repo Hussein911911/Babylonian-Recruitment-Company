@@ -85,7 +85,10 @@ const BUDGET = {
   'verify.html': { raw: 486, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */
-  'dashboard.html': { raw: 964, requests: 20 }
+  /* 2026-10-24: +8KB لمحرّر صورة الوظيفة (معاينة + تكبير/تصغير + سحب +
+     تثبيت ما يراه الموظف) في ملف assets/css/image-editor.css الخاص باللوحة،
+     مع كود canvas في dashboard.js. القياس: 971KB. لا طلب جديد. */
+  'dashboard.html': { raw: 982, requests: 20 }
 };
 
 function payloadOf(page) {

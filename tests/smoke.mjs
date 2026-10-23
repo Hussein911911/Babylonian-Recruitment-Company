@@ -1020,6 +1020,92 @@ check('صيغة الباركود: الجديدة (10 خانات) والقديم�
   if (S.isCardSerial('7KQ0M9TR2X') || S.isCardSerial('7KQIM9TR2X') || S.isCardSerial('7KQ4M9TR2')) return 'أبجدية/طول خاطئ مقبول';
   return true;
 });
+/* ═══ محرّر صورة الوظيفة: معاينة + تكبير/تصغير + تثبيت ما يراه الموظف ═══ */
+await (async () => {
+  const name = 'محرّر صورة الوظيفة: معاينة وتكبير/تصغير وإزالة';
+  closeAllModals(dash.doc);
+  dash.doc.getElementById('btn-new-job').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
+  const box = lastModal(dash.doc);
+  const q = (id) => box.querySelector('#' + id);
+  if (!q('img-editor') || !q('img-stage') || !q('img-zoom')) return bad(name, 'عناصر المحرّر غير موجودة');
+  if (q('img-editor').hidden !== true || q('img-empty').hidden !== false) {
+    return bad(name, 'المحرّر ظاهر قبل اختيار صورة');
+  }
+  const before = Number(q('img-zoom').value);
+  q('img-zoom-in').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
+  const zoomed = Number(q('img-zoom').value);
+  if (!(zoomed > before) || q('img-zoom-val').textContent !== zoomed + '%') {
+    return bad(name, 'زر + لا يكبّر: ' + before + ' → ' + zoomed);
+  }
+  for (let i = 0; i < 12; i++) q('img-zoom-in').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
+  if (Number(q('img-zoom').value) !== 250) return bad(name, 'التكبير تجاوز الحد ٢٥٠٪');
+  q('img-zoom').value = '160';
+  q('img-zoom').dispatchEvent(new dash.window.Event('input', { bubbles: true }));
+  if (q('img-zoom-val').textContent !== '160%') return bad(name, 'شريط التمرير لا يضبط النسبة');
+  q('img-reset').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
+  if (q('img-zoom-val').textContent !== '100%') return bad(name, 'إعادة الضبط لا ترجع ١٠٠٪');
+  q('img-remove').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
+  if (q('img-editor').hidden !== true) return bad(name, 'إزالة الصورة لا تُخفي المحرّر');
+  if (q('img-stage').getAttribute('tabindex') !== '0') return bad(name, 'المسرح غير قابل للتركيز بلوحة المفاتيح');
+  closeAllModals(dash.doc);
+  return ok(name);
+})();
+
+await (async () => {
+  const name = 'حفظ الوظيفة يُثبّت الصورة كما رآها الموظف (بنسبة 10:7)';
+  /* بديل canvas يرصد الرسم والأبعاد */
+  const origCreate = dash.doc.createElement.bind(dash.doc);
+  let drawn = null, canvasDims = null;
+  dash.doc.createElement = function (tag, opts) {
+    if (String(tag).toLowerCase() !== 'canvas') return origCreate(tag, opts);
+    return {
+      width: 0, height: 0,
+      getContext() {
+        return { fillStyle: '', fillRect() { }, drawImage(i, x, y, w, h) { drawn = { x, y, w, h }; } };
+      },
+      toDataURL(type) { canvasDims = { type, w: this.width, h: this.height }; return 'data:image/jpeg;base64,' + 'A'.repeat(120); }
+    };
+  };
+  try {
+    const S = dash.window.HRCStore;
+    closeAllModals(dash.doc);
+    dash.doc.getElementById('btn-new-job').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
+    const box = lastModal(dash.doc);
+    const q = (id) => box.querySelector('#' + id);
+    /* اختيار صورة ثم محاكاة تحميلها (jsdom لا يفكّ الصور) */
+    const file = new dash.window.File([new dash.window.Uint8Array([137, 80, 78, 71])], 'job.png', { type: 'image/png' });
+    Object.defineProperty(q('f-image'), 'files', { value: [file], configurable: true });
+    q('f-image').dispatchEvent(new dash.window.Event('change', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 150));
+    Object.defineProperty(q('img-stage'), 'clientWidth', { value: 400, configurable: true });
+    Object.defineProperty(q('img-stage'), 'clientHeight', { value: 280, configurable: true });
+    q('img-stage').getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 280, right: 400, bottom: 280 });
+    const img = q('img-target');
+    Object.defineProperty(img, 'naturalWidth', { value: 800, configurable: true });
+    Object.defineProperty(img, 'naturalHeight', { value: 600, configurable: true });
+    if (typeof img.onload === 'function') img.onload();
+    img.getBoundingClientRect = () => ({ left: -80, top: -35, width: 560, height: 420, right: 480, bottom: 385 });
+    q('img-zoom-in').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
+    q('f-title').value = 'وظيفة صورة مثبَّتة';
+    q('f-ename').value = 'صاحب عمل';
+    q('f-ephone').value = '07700000009';
+    q('f-eaddr').value = 'الحلة';
+    q('job-save').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 200));
+    const job = S.listJobs({}).find((j) => j.title === 'وظيفة صورة مثبَّتة');
+    if (!job) return bad(name, 'الوظيفة لم تُحفظ');
+    if (!/^data:image\/jpeg;base64,/.test(job.imageUrl || '')) return bad(name, 'الصورة المحفوظة ليست نسخة مثبَّتة');
+    if (!canvasDims || canvasDims.w !== 1280 || Math.abs(canvasDims.h - 896) > 1) {
+      return bad(name, 'أبعاد التثبيت: ' + JSON.stringify(canvasDims));
+    }
+    if (!drawn || !(drawn.w > 1280) || !(drawn.x < 0)) return bad(name, 'التكبير/الموضع لم يُطبَّق: ' + JSON.stringify(drawn));
+    return ok(name);
+  } finally {
+    dash.doc.createElement = origCreate;
+    closeAllModals(dash.doc);
+  }
+})();
+
 check('نموذج إضافة وظيفة يُنتج كود HRC-#### جديداً', () => {
   closeAllModals(dash.doc);
   const before = dash.window.HRCStore.stats().totalJobs;
