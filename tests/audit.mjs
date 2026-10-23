@@ -1128,6 +1128,49 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
   }
 }
 
+/* ═══ 12) صور المحتوى تُعرض كاملة بلا أي قص (قرار 2026-10-24) ═══════════ */
+section('12) الصور — كاملة بنسبتها الطبيعية في كل الصفحات (لا قصّ ولا تمديد)');
+{
+  const css = readFileSync(join(ROOT, 'assets/css/style.css'), 'utf8');
+  const applySrc = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+  /* كل محدّد صورة محتوى يجب أن يكون contain (أو بلا كائن يفرض cover) */
+  const contentSelectors = [
+    ['.job-image img', 'صور بطاقات الوظائف (الموقع)'],
+    ['.job-detail-image img', 'صورة نافذة تفاصيل الوظيفة'],
+    ['.hero-figure img', 'صورة واجهة الموقع'],
+    ['.lion-frame img', 'صور قسم «عن الشركة»']
+  ];
+  const offenders = [];
+  for (const [sel, label] of contentSelectors) {
+    const esc = sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rule = new RegExp(esc + '\\s*\\{([^}]*)\\}', 'g');
+    let m, found = false, hasContain = false;
+    while ((m = rule.exec(css))) {
+      found = true;
+      if (/object-fit:\s*contain/.test(m[1])) hasContain = true;
+      if (/object-fit:\s*cover/.test(m[1])) offenders.push(label + ' (cover)');
+    }
+    if (found && !hasContain) offenders.push(label + ' (بلا contain)');
+  }
+  if (offenders.length) bad('صور المحتوى بلا قصّ في الموقع العام', offenders.join(' | '));
+  else ok('صور المحتوى بلا قصّ في الموقع العام (4 محدّدات: بطاقة · تفاصيل · واجهة · عن الشركة)');
+
+  /* صفحة التقديل: مصغّرة الوظيفة contain */
+  const thumb = /\.job-thumb img\{([^}]*)\}/.exec(applySrc);
+  if (!thumb) bad('مصغّرة الوظيفة في صفحة التقديل معرّفة', 'لا قاعدة .job-thumb img');
+  else if (!/object-fit:\s*contain/.test(thumb[1]) || /object-fit:\s*cover/.test(thumb[1])) {
+    bad('مصغّرة الوظيفة في صفحة التقديل بلا قصّ', thumb[1].trim().slice(0, 90));
+  } else ok('مصغّرة الوظيفة في صفحة التقديل بلا قصّ (contain)');
+
+  /* قاعدة عامة: لا تمديد فوق الحجم الطبيعي */
+  if (/img\s*\{[^}]*max-width:\s*100%/.test(css)) ok('قاعدة عامة: الصور لا تتجاوز حاوياتها (max-width:100%)');
+  else bad('قاعدة عامة للصور', 'max-width:100% غير موجودة');
+
+  /* الخلفيات الزخرفية مسموح لها cover — نوثّقها كاستثناء مقصود */
+  const bgCover = (css.match(/background-size:\s*cover/g) || []).length;
+  ok('الخلفيات الزخرفية (' + bgCover + ') تستخدم cover عمداً — ليست صور محتوى');
+}
+
 /* ═══ الخلاصة ═══════════════════════════════════════════════════════════ */
 console.log('\n' + '═'.repeat(72));
 console.log('  الخلاصة:  ✅ ' + pass + ' ناجح   |   ❌ ' + fail + ' فاشل   |   ⚠️  ' + warn + ' تحذير');
