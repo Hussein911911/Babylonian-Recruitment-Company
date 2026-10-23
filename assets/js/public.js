@@ -472,7 +472,13 @@
       return '<li>' + UI.ic('check') + '<span>' + UI.esc(r) + '</span></li>';
     }).join('');
     var attempts = Store.currentUser() ? '' : '';
+    /* صورة الوظيفة كاملة أعلى نافذة التفاصيل (إن وُجدت) */
+    var imgHtml = j.imageUrl
+      ? '<div class="job-detail-image"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) +
+        '" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>'
+      : '';
     var body = '' +
+      imgHtml +
       '<div class="flex-between flex-wrap mb-3" style="gap:12px">' +
         '<div>' +
           '<span class="chip chip-code mono">' + UI.esc(j.code) + '</span>' +

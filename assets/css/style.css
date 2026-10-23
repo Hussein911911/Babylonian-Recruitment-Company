@@ -431,18 +431,27 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
   z-index: 2;
 }
 .job-image {
-  width: 100%; height: 180px; overflow: hidden; position: relative;
+  width: 100%; height: auto; aspect-ratio: 10 / 7; max-height: 240px;
+  overflow: hidden; position: relative;
   background: linear-gradient(135deg, #f4f6fb, #e8ecf5);
   display: grid; place-items: center;
+  padding: 8px;                    /* هامش داخلي يمنع التصاق الصورة بالحدود */
 }
+/* الصورة كاملة بلا أي قص: تُحتوى داخل الإطار (contain) ويبقى الإطار ثابتاً
+   فتتساوى البطاقات. كانت cover تقصّ أطراف الصورة — وهذا ما أُصلح 2026-10-24. */
 .job-image img {
-  width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;
+  width: 100%; height: 100%; object-fit: contain; object-position: center;
+  transition: transform .3s ease;
   grid-area: 1 / 1; position: relative; z-index: 1;
 }
 /* بديل رمزي يظهر أثناء التحميل أو عند تعذّره — بدل أيقونة الصورة المكسورة */
 .job-image .job-ph { grid-area: 1 / 1; color: #b9c3d6; display: grid; place-items: center; }
 .job-image .job-ph .ic { width: 46px; height: 46px; }
-.job-card:hover .job-image img { transform: scale(1.05); }
+/* بلا تكبير/قصّ عند المرور — الصورة تبقى كاملة دائماً */
+.job-card:hover .job-image img { transform: scale(1.02); }
+@media (max-width: 720px) {
+  .job-image { aspect-ratio: 4 / 3; max-height: 220px; }
+}
 .job-card:hover { transform: translateY(-5px); box-shadow: var(--shadow); border-color: var(--line); }
 .job-card.is-reserved::before { background: linear-gradient(90deg, var(--warn), var(--gold)); }
 .job-card.is-closed::before { background: linear-gradient(90deg, #9aa5bd, #c3cbd9); }
@@ -2521,4 +2530,17 @@ table.data tbody tr:hover { background: #faf8f3; }
 to{opacity:1;transform:none}
 }
 @media screen and (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+}
+
+
+/* ── صورة الوظيفة داخل نافذة التفاصيل (كاملة بلا قص) ── */
+.job-detail-image {
+  width: 100%; max-height: 260px; border-radius: 14px; overflow: hidden;
+  background: linear-gradient(135deg, #f4f6fb, #e8ecf5);
+  border: 1px solid var(--line-soft); margin-bottom: 16px;
+  display: grid; place-items: center; padding: 10px;
+}
+.job-detail-image img {
+  width: 100%; height: 100%; max-height: 240px;
+  object-fit: contain; object-position: center; display: block;
 }

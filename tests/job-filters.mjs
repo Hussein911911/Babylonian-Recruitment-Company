@@ -170,7 +170,18 @@ try {
       return !!state && meta.length === 4 && !!pay && acts.length >= 2 &&
         card.querySelectorAll('.jm .jm-ic').length === 4;
     })());
-  check('job cards render a thumbnail only when the job has an image',
+  check('job images are shown whole (object-fit: contain) everywhere',
+    (() => {
+      const css = Array.from(w.document.styleSheets)
+        .flatMap((s) => { try { return Array.from(s.cssRules).map((r) => r.cssText); } catch (e) { return []; } }).join('\n');
+      const applySrc = w.document.documentElement.outerHTML;
+      const cover = /\.job-thumb img\{[^}]*object-fit:\s*cover/.test(css) ||
+        /\.job-image img\{[^}]*object-fit:\s*cover/.test(css);
+      if (cover) return 'ما زال هناك قصّ (cover) لصور الوظائف';
+      const containThumb = /\.job-thumb img\{[^}]*object-fit:\s*contain/.test(css) ||
+        /object-fit:contain/.test(applySrc);
+      return containThumb || 'مصغّرة الوظيفة ليست contain';
+    })());  check('job cards render a thumbnail only when the job has an image',
     (() => {
       /* الوظائف المعروضة في الصفحة (وليست مخزن المتصفح) */
       const list = w.G.currentJobs();

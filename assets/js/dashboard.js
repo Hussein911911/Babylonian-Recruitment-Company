@@ -1133,7 +1133,7 @@
       }
       if(Number(j.vacancies||1)>1)holdCell='<div class="tiny">'+v.available+' متاح · '+v.held+' محجوز · '+v.filled+' ممتلئ<br>المجموع '+v.total+'</div>';
       var imageCell = j.imageUrl
-        ? '<img src="' + UI.esc(j.imageUrl) + '" style="width:48px;height:48px;object-fit:cover;border-radius:10px;border:2px solid var(--line-soft)" alt="' + UI.esc(j.title) + '">'
+        ? '<img src="' + UI.esc(j.imageUrl) + '" style="width:48px;height:48px;object-fit:contain;object-position:center;padding:2px;background:linear-gradient(135deg,#f4f6fb,#e8ecf5);border-radius:10px;border:2px solid var(--line-soft)" alt="' + UI.esc(j.title) + '">'
         : '<div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#eef1f7,#d9dfeb);display:flex;align-items:center;justify-content:center"><svg class="ic" style="width:20px;height:20px;color:#8fa0c4"><use href="#i-briefcase"/></svg></div>';
       return '<tr>' +
         '<td>' + imageCell + '</td>' +
