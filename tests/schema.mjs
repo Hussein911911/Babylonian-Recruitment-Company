@@ -13,7 +13,7 @@
  *  لا يحتاج قاعدة بيانات ولا حزماً خارجية — تحليل نصي دقيق مع تجريد كتل
  *  الاقتباس الدولاري ($$…$$) حتى لا تتشوّش الأجساد الداخلية للدوال.
  * =========================================================================== */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -287,6 +287,13 @@ check('تعريفات المشغّلات بما فيها حاجز الاسترج
 step(9, 'ملف الـ migration — متطابق مع المصدر (تكاملة GitHub في Supabase)');
 
 const MIG_DIR = join(ROOT, 'supabase', 'migrations');
+/* الهجرات التي يجب أن تكون موجودة على كل قاعدة قائمة (2026-10-25) */
+const REQUIRED_MIGRATIONS = [
+  '20261025000000_retire_chance_codes.sql',
+  '20261026000000_remove_employer_pin_and_region.sql',
+  '20261026100000_fix_verify_card_code_print_column.sql',
+  '20261026110000_drop_dormant_employer_functions.sql'
+];
 const MIG_NAME = '20260915000000_brc_initial_schema.sql';
 let migNames = [];
 try { migNames = readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql')); } catch { migNames = []; }
@@ -328,8 +335,8 @@ step(11, 'اللوبات — لا return داخل اللوب بعد exit (نمط
 
 /* ── 2026-10-06: الدرس الأهم من عطل «باركود البطاقة يفتح خطأً» ──
    الدالتان كانتا مكتوبتين في ملف هجرة داخل supabase/migrations/ وحده، ولم
-   تُضافا إلى مسار التحديث الذي تستعمله الإدارة (db-update.html و
-   docs/UPDATE-*.sql) ولا إلى المصدر docs/schema.sql. النتيجة: الكود ينادي
+   تُضافا إلى مسار التحديث الذي كانت تستعمله الإدارة آنذاك (صفحة اللصق
+   اليدوي، المحذوفة الآن) ولا إلى المصدر docs/schema.sql. النتيجة: الكود ينادي
    دالة غير موجودة على القاعدة ⇒ خطأ PostgREST إنكليزي خام عند الزبون.
    هذا الفحص يمنع تكرار النمط: كل دالة يناديها باركود البطاقة يجب أن تكون
    معرَّفة في المصدر، وممنوحة للزائر، وموجودة في مسار التحديث. */
@@ -364,53 +371,18 @@ step(12, 'مسار التحديث — كل دالة يناديها باركود 
   check('دوال التقديم الذاتي مُدرجة في docs/schema.sql (المصدر الوحيد)', defined(RAW).length === 0,
     'ناقص: ' + defined(RAW).join(', '));
 
-  /* مسار التحديث الفعلي: الملف + صفحة اللصق */
-  const upFile = join(ROOT, 'docs', 'UPDATE-2026-10-06.sql');
-  let upSql = '';
-  try { upSql = readFileSync(upFile, 'utf8'); } catch { upSql = ''; }
-  check('ملف تحديث 2026-10-06 موجود', upSql.length > 0, upFile);
-  check('ملف التحديث يُنشئ دالتَي التقديم الذاتي كاملتين', defined(upSql).length === 0,
-    'ناقص: ' + defined(upSql).join(', '));
-  check('ملف التحديث يُعيد تحميل ذاكرة المخطط (بدونه يبقى «in the schema cache»)',
-    /notify\s+pgrst\s*,\s*'reload schema'/i.test(upSql));
-
-  /* ج5 2026-10-06: مسار تحديث ثانٍ لنفس اليوم — «الباركود يكفي + فرصتان +
-     رفض بالسبب». نفحصه بنفس الصرامة: ملف تحديث + جزء لصق مطابق له حرفياً
-     + عمود السبب + توقيع employer_decide الجديد (مع السبب) + إعادة تحميل الذاكرة. */
-  const upTwoFile = join(ROOT, 'docs', 'UPDATE-2026-10-06-two-jobs.sql');
-  let upTwo = '';
-  try { upTwo = readFileSync(upTwoFile, 'utf8'); } catch { upTwo = ''; }
-  check('ملف تحديث ج5 (باركود + فرصتان + رفض بالسبب) موجود', upTwo.length > 0, upTwoFile);
-  check('ملف ج5 يسجّل السبب في عمود employer_reason',
-    /add column if not exists employer_reason text/i.test(upTwo) &&
-    /employer_reason = v_reason/i.test(upTwo));
-  check('ملف ج5 يعرّف employer_decide بوسيط السبب (text, text, text)',
-    /function\s+brc\.employer_decide\s*\(\s*p_serial\s+text,\s*p_decision\s+text,\s*p_reason\s+text default ''/i.test(upTwo));
-  check('ملف ج5 يحذف النسخ المشغولة بالرمز (بلا رمز بطاقة ولا رمز صاحب عمل)',
-    /drop function if exists brc\.self_service_card\(text, text\)/i.test(upTwo) &&
-    /drop function if exists brc\.employer_decide\(text, text\)/i.test(upTwo));
-  check('ملف ج5 يجعل اختيار الوظيفة اختيارياً (بيع بلا وظيفة)',
-    /بلا اختيار وظيفة/.test(upTwo) && !/اختيار الوظيفة إلزامي/.test(upTwo));
-
-  const upd = readFileSync(join(ROOT, 'db-update.html'), 'utf8');
-  const part5 = (upd.match(/<textarea id="sql5"[\s\S]*?<\/textarea>/) || [''])[0];
-  check('صفحة تحديث القاعدة فيها جزء للباركود يُنشئ الدالتين', defined(part5).length === 0,
-    'ناقص في الجزء 5: ' + defined(part5).join(', '));
-  check('صفحة تحديث القاعدة فيها زر نسخ للجزء الجديد', /cp\('sql5'\)/.test(upd) && /id="ok5"/.test(upd));
-  /* النص في صفحة اللصق يجب أن يطابق ملف التحديث حرفياً بعد فك ترميز HTML */
-  const part5Sql = part5.replace(/^<textarea[^>]*>/, '').replace(/<\/textarea>\s*$/, '')
-    .replace(/&lt;/g, '<').replace(/&amp;/g, '&');
-  check('نص الجزء 5 مطابق حرفياً لملف docs/UPDATE-2026-10-06.sql', part5Sql === upSql,
-    'طول الصفحة ' + part5Sql.length + ' مقابل ' + upSql.length + ' — أعِد تضمينه');
-
-  /* جزء اللصق رقم 6 في صفحة التحديث = ملف ج5 حرفياً (نفس نمط الجزء 5) */
-  const part6 = (upd.match(/<textarea id="sql6"[\s\S]*?<\/textarea>/) || [''])[0];
-  const part6Sql = part6.replace(/^<textarea[^>]*>/, '').replace(/<\/textarea>\s*$/, '')
-    .replace(/&lt;/g, '<').replace(/&amp;/g, '&');
-  check('صفحة تحديث القاعدة فيها جزء 6 لِج5 وزر نسخ', /cp\('sql6'\)/.test(upd) && /id="ok6"/.test(upd));
-  check('نص الجزء 6 مطابق حرفياً لملف docs/UPDATE-2026-10-06-two-jobs.sql', part6Sql === upTwo,
-    'طول الصفحة ' + part6Sql.length + ' مقابل ' + upTwo.length + ' — أعِد تضمينه');
-  check('جزء إعادة تحميل الذاكرة بقي موجوداً (صار الجزء 7)', /cp\('sql7'\)/.test(upd) && /id="ok7"/.test(upd));
+  /* مسار التحديث الفعلي (2026-10-25): الهجرات وحدها.
+     حُذفت صفحة اللصق اليدوي db-update.html وأُرشفت ملفات docs/UPDATE-*.sql في
+     docs/archive/legacy-sql/ لأنها كانت تُعيد دوال صاحب العمل ورموز الفرص
+     المحذوفة (نصها منسوخ من مخطّط قديم). */
+  check('صفحة اللصق اليدوي db-update.html محذوفة', !existsSync(join(ROOT, 'db-update.html')));
+  check('ملفات التحديث القديمة أُرشفت ولا تُنفَّذ', !existsSync(join(ROOT, 'docs', 'UPDATE-2026-10-06.sql')) &&
+    existsSync(join(ROOT, 'docs', 'archive', 'legacy-sql', 'README.md')));
+  check('لا صفحة منشورة تشير إلى db-update.html', readdirSync(ROOT)
+    .filter((f) => f.endsWith('.html'))
+    .every((f) => !/db-update\.html/.test(readFileSync(join(ROOT, f), 'utf8'))));
+  check('كل دوال مسار البطاقة موجودة كهجرات قابلة للتطبيق', REQUIRED_MIGRATIONS
+    .every((f) => existsSync(join(MIG_DIR, f))), REQUIRED_MIGRATIONS.filter((f) => !existsSync(join(MIG_DIR, f))).join(', '));
 
   /* الواجهة: لا CDN خارجي — العميل المصغّر المحلي يعلن السكيما في الترويستين */
   check('صفحة الباركود تستعمل عميل الاتصال المحلي (cloud-http.js)',

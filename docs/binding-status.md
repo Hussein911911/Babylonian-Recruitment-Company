@@ -121,7 +121,7 @@ on conflict (username) do update set auth_id = excluded.auth_id;
 ### أ-٢) إن كان «إضافة وظيفة» يفشل على القاعدة الحية
 إن ظهر خطأ من نوع `column "governorate" of relation "jobs" does not exist` عند حفظ
 وظيفة، فقاعدة الشركة أُنشئت من ملف المخطط الأول قبل إصلاح 2026-10-13 (كان العمود
-مفقوداً منه). الإصلاح: `SQL Editor` → الصق `docs/UPDATE-2026-10-13-governorate.sql`
+مفقوداً منه). الإصلاح: `SQL Editor` → نفّذ هجرات `supabase/migrations/` بالترتيب (المحافظة موجودة في المخطّط الحالي)
 → Run (آمن للتكرار)، ثم `notify pgrst, 'reload schema';`.
 القواعد الجديدة لا تحتاج شيئاً، والهجرة `20261013000000_jobs_governorate.sql`
 تُطبَّق تلقائياً عند الدمج في `main`.

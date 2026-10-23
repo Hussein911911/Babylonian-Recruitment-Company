@@ -177,7 +177,7 @@ wrangler pages deploy dist --project-name babylonian-recruitment-company
 لعميل supabase-js الكامل في `cloud.js` (`rpcCall`) — والتحقق قائم في
 `tests/cloud-http.mjs` (ترويسات HTTP حقيقية باعتراض fetch، لا محاكاة منطقية).
 
-**إن ظهرت رسالة مشابهة بعد النشر**: طبّق `docs/UPDATE-2026-10-02.sql` في
+**إن ظهرت رسالة مشابهة بعد النشر**: طبّق هجرات `supabase/migrations/` بالترتيب في
 Supabase SQL Editor (ملف واحد آمن للإعادة يجمع آخر الترحيلات + المخطط الكامل
 + إعادة تحميل ذاكرة المخطط).
 
@@ -190,7 +190,7 @@ Supabase SQL Editor (ملف واحد آمن للإعادة يجمع آخر ال�
 
 | النص في الرسالة | المعنى | الدواء |
 |---|---|---|
-| `brc.self_service_card` | الدالتان غير مثبّتتين على القاعدة: الإصدار أضافهما في ملف هجرة وحده دون مسار التحديث | طبّق `docs/UPDATE-2026-10-06.sql` (أو **الجزء 5** في `db-update.html`) ثم **الجزء 6** لإعادة تحميل الذاكرة |
+| `brc.self_service_card` | الدالتان غير مثبّتتين على القاعدة: إصدار قديم أضافهما في ملف هجرة وحده دون تطبيقه | نفّذ هجرات `supabase/migrations/` بالترتيب (آخرها ينهي بـ`notify pgrst, 'reload schema'`) |
 | `public.self_service_card` | الطلب ما أعلن سكيما `brc`، فبحث PostgREST في `public` — نفس عطل 2026-10-02 أعلاه لكن في صفحة جديدة | كان `apply.html` ينزّل مكتبة سوبابيس من CDN ويعلن `Accept-Profile` يدوياً؛ الآن يستعمل `assets/js/cloud-http.js` المحلي الذي يعلن الترويستين معاً |
 
 **ولا تنسَ سطر إعادة التحميل**: `notify pgrst, 'reload schema';` — بدونه يبقى

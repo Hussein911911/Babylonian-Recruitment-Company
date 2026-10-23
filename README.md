@@ -306,8 +306,7 @@ npm run test:all       # كل ما سبق دفعة واحدة
   التقديم الذاتي `apply.html` تنادي دالتَي `brc.self_service_card` و`brc.apply_with_card`
   اللتين أُضيفتا في ملف هجرة وحده دون مسار التحديث ⇒ القاعدة الحيّة ما كان فيها
   الدالتان، فظهر `Could not find the function … in the schema cache`. الإصلاح على
-  ثلاث جبهات: (1) `docs/UPDATE-2026-10-06.sql` + **الجزء 5** في `db-update.html`
-  لتنفيذهما على القاعدة، (2) `docs/schema.sql` صار يحويهما (المصدر الوحيد + مزامنة
+  ثلاث جبهات: (1) تنفيذهما على القاعدة، (2) `docs/schema.sql` صار يحويهما (المصدر الوحيد + مزامنة
   ملف الهجرة)، (3) `apply.html` تحوّلت للعميل المحلي `cloud-http.js` بدل CDN خارجي
   (نفس عطل `public.…` المُصلَح في 2026-10-02)، ورسالة الخطأ صارت عربية تشرح السبب
   وخطوة الإصلاح، مع حرس وقت يمنع «الجاري تحميل…» الأبدي.
@@ -443,13 +442,15 @@ npm run build        # = node tools/build.mjs
 - **RLS:** الزائر يقرأ `brc.public_jobs` (بلا بيانات صاحب العمل) فقط، ويعمل التحقق عبر `brc.verify_form(serial, token)`،
   والموظف يدير، والمدير وحده يرى المالية وسجل التدقيق الكامل، وسجل التدقيق غير قابل للتعديل أو الحذف.
 - **دوال RPC:** `brc.select_attempt` · `brc.set_outcome` · `brc.release_hold` · `brc.verify_form`
-  · `brc.activate_card` · `brc.employer_view` · `brc.employer_decide`
-  · `brc.self_service_card` · `brc.apply_with_card` (الأخيرتان لمسار باركود البطاقة في `apply.html`).
-- **تحديث قاعدة قائمة:** `db-update.html` (سبعة أجزاء تُنسخ وتُلصق في SQL Editor بالترتيب)
-  أو ملف جاهز لكل دفعة في `docs/UPDATE-*.sql` — آخرها `docs/UPDATE-2026-10-06.sql`
-  (التقديم الذاتي من باركود البطاقة). **⚠️ لا تُضِف دالة تناديها صفحة منشورة دون
-  إدراجها في مسار التحديث** — هذا بالضبط ما جعل مسح باركود البطاقة يفتح خطأً على
-  الزبون في 2026-10-06، و`tests/schema.mjs` (الخطوة 12) يمنع تكراره الآن.
+  · `brc.activate_card` · `brc.self_service_card` · `brc.apply_with_card` (الأخيرتان
+  لمسار باركود البطاقة في `apply.html`). و`brc.lookup_card` · `brc.use_chance` ·
+  `brc.verify_card_code` لمسار «بطاقتي».
+- **تحديث قاعدة قائمة:** هجرات `supabase/migrations/` بالترتيب — وهي **المسار الوحيد**
+  بعد حذف صفحة اللصق اليدوي `db-update.html` (2026-10-25) وأرشفة ملفات
+  `docs/ARCHIVE` القديمة في `docs/archive/legacy-sql/` (لا تُنفَّذ: كانت تُعيد دوال
+  صاحب العمل ورموز الفرص المحذوفة). **⚠️ لا تُضِف دالة تناديها صفحة منشورة دون
+  إدراجها في المصدر `docs/schema.sql` وهجرة** — هذا بالضبط ما جعل مسح باركود البطاقة
+  يفتح خطأً على الزبون في 2026-10-06، و`tests/schema.mjs` (الخطوة 12) يمنع تكراره الآن.
 - **واجهات جاهزة:** `brc.v_financials_by_staff` (اللوحة المالية) و`brc.v_pending_actions` (إجراءات مطلوبة) وRealtime.
 
 خطوات الربط: أنشئ مشروع Supabase → SQL Editor → الصق `docs/schema.sql` → Run،
