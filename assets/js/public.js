@@ -431,7 +431,7 @@
     }
     
     return '' +
-      '<article class="job-card ' + cls + '" data-code="' + UI.esc(j.code) + '">' +
+      '<article class="job-card ' + cls + '">' +
         imageHtml +
         '<div class="job-head">' +
           '<div>' +
@@ -465,20 +465,9 @@
   }
 
   /* ---------------- صفحة الوظيفة (عرض عام محجوب بيانات صاحب العمل) ---------------- */
-  /* البطاقة المنقورة ترتفع فوق بقية البطاقات ما دامت نافذة تفاصيلها مفتوحة */
-  function liftCard(code, on) {
-    var cards = document.querySelectorAll('#jobs-grid .job-card');
-    for (var i = 0; i < cards.length; i++) {
-      var c = cards[i];
-      var mine = code && c.getAttribute('data-code') === code;
-      c.classList.toggle('is-lifted', !!(on && mine));
-    }
-  }
-
   function openJob(code) {
     var j = Store.getJob(code);
     if (!j) return;
-    liftCard(code, true);
     var reqs = (j.requirements || []).map(function (r) {
       return '<li>' + UI.ic('check') + '<span>' + UI.esc(r) + '</span></li>';
     }).join('');
@@ -518,7 +507,6 @@
 
     UI.modal({
       title: j.title, subtitle: 'تفاصيل الوظيفة — ' + j.region, body: body, wide: true,
-      onClose: function () { liftCard(code, false); },
       footer: (j.status === 'available'
         ? '<button class="btn btn-gold" data-action="open-booking" data-code="' + UI.esc(j.code) + '">' +
           UI.ic('card') + ' قدّم على هذه الوظيفة ببطاقتك</button>' +

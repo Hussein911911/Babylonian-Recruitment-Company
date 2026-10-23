@@ -942,6 +942,74 @@ body{
   filter:blur(9px); z-index:-1;
 }
 
+/* ═══ تأثير «البورتريه»: المختارة تبرز أمام البقية، والبقية تُغبَّش وتُعتَّم ═══
+   يعتمد على صنف .has-focus يُضاف إلى #jobs-list من renderJobs() عند وجود اختيار.
+   الطبقات: المختارة z-index 20 فوق طبقة تعتيم + blur على البقية، فتظهر وحدها
+   حادّة وواضحة كأنها في بؤرة العدسة. */
+#jobs-list{ position:relative; transition:filter .3s ease; }
+
+#jobs-list .job-card{
+  transition:transform .34s cubic-bezier(.22,1,.36,1), box-shadow .34s,
+             border-color .34s, opacity .3s, filter .3s, background .3s;
+  will-change:transform,filter;
+}
+
+/* البقية: تعتيم + غباش بورتريه + تصغير طفيف */
+#jobs-list.has-focus .job-card:not(.selected){
+  opacity:.42;
+  filter:blur(2.2px) saturate(.55) brightness(.78);
+  transform:scale(.975);
+  pointer-events:none;      /* لا نقرة على المُغبَّش حتى يُلغى الاختيار */
+}
+#jobs-list.has-focus .job-card:not(.selected) .job-actions{ opacity:.5; }
+
+/* المختارة: تبرز للأمام وتكبر وتتوهّج بحدّة كاملة */
+#jobs-list.has-focus .job-card.selected{
+  z-index:20;
+  transform:translateY(-12px) scale(1.055);
+  filter:blur(0) saturate(1.08) brightness(1.04);
+  opacity:1;
+  border-color:var(--lux-gold);
+  background:
+    radial-gradient(120% 110% at 100% 0%, rgba(255,214,120,.26), transparent 58%),
+    radial-gradient(90% 120% at 0% 100%, rgba(56,232,212,.20), transparent 62%),
+    linear-gradient(165deg,#16324f,#0f2338);
+  box-shadow:
+    0 0 0 2px rgba(255,217,119,.95),
+    0 0 36px 0 rgba(255,214,120,.45),
+    0 0 90px -10px rgba(56,232,212,.42),
+    0 40px 80px -26px rgba(0,0,0,.95);
+}
+#jobs-list.has-focus .job-card.selected::before{ height:5px; opacity:1; }
+#jobs-list.has-focus .job-card.selected .job-head .title{
+  font-size:15pt; color:#fff8e3; text-shadow:0 0 22px rgba(255,214,120,.6);
+}
+#jobs-list.has-focus .job-card.selected .job-item{
+  border-color:rgba(255,214,120,.3); background:rgba(255,214,120,.08);
+}
+#jobs-list.has-focus .job-card.selected .pick-mark{ transform:scale(1.15); }
+
+/* غطاء تعتيم خفيف خلف المختارة يزيد بروزها (لا يعيق النقر) */
+#jobs-list.has-focus::before{
+  content:''; position:absolute; inset:0; z-index:10; pointer-events:none;
+  background:radial-gradient(ellipse 70% 60% at 50% 30%, transparent 40%, rgba(4,10,20,.35));
+  border-radius:16px;
+  animation:luxVeilIn .3s ease-out both;
+}
+@keyframes luxVeilIn{ from{opacity:0} to{opacity:1} }
+
+/* شارة صغيرة أعلى المختارة: «الوظيفة المختارة — فرصة ١» */
+#jobs-list .job-card.selected .job-head::before{
+  content:'★ مختارة لفرصة من فرصتيك';
+  position:absolute; top:-14px; inset-inline-end:14px;
+  font-size:9.5pt; font-weight:800; color:#20180a; white-space:nowrap;
+  padding:4px 12px; border-radius:999px;
+  background:linear-gradient(140deg,#fff3c9,#e8b64c);
+  box-shadow:0 8px 20px -8px rgba(255,214,120,.9);
+  animation:pickPop .45s cubic-bezier(.22,1.4,.36,1) both;
+}
+#jobs-list .job-card .job-head{ position:relative; }
+
 /* ─── استجابة ─── */
 @media (max-width:1100px){
   .jf-primary{ grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -957,10 +1025,16 @@ body{
   #jobs-list .job-head .title{ font-size:12.5pt; }
   /* على الهاتف: ارتفاع أقل كي لا تخرج البطاقة عن الإطار */
   #jobs-list .job-card.selected{ transform:translateY(-6px) scale(1.008); }
+  #jobs-list.has-focus .job-card.selected{ transform:translateY(-8px) scale(1.02); }
+  #jobs-list.has-focus .job-card.selected .job-head .title{ font-size:13pt; }
+  #jobs-list.has-focus .job-card:not(.selected){ filter:blur(1.8px) brightness(.75); opacity:.5; }
 }
 @media (prefers-reduced-motion:reduce){
   #jobs-list .job-card,
-  #jobs-list .job-card.selected{ transform:none; }
+  #jobs-list .job-card.selected,
+  #jobs-list.has-focus .job-card.selected{ transform:none; }
+  #jobs-list.has-focus::before{ animation:none; }
+  /* يبقى التعتيم والغباش لأنهما وظيفة بصرية لا حركة */
 }
 
 </style>
@@ -1802,6 +1876,8 @@ var G={
       h+='</div></div>';
     });
     c.innerHTML=h;
+    /* «البورتريه»: عند وجود وظيفة مختارة نُفعّل طبقة البروز والتغبيش */
+    c.classList.toggle('has-focus', pickedJobs.length>0);
     G.syncJobsFooter();
   },
 

@@ -244,30 +244,6 @@ await (async () => {
   } catch (e) { bad(name, e.message); }
 })();
 
-/* ═══ التصميم الفاخر: النقر على وظيفة يرفعها فوق بقية البطاقات ═══ */
-check('بطاقة الوظيفة تحمل data-code وتُرفع عند فتح تفاصيلها', () => {
-  const card = site.doc.querySelector('#jobs-grid .job-card[data-code]');
-  if (!card) return 'بطاقة الوظيفة بلا data-code';
-  const code = card.getAttribute('data-code');
-  const btn = card.querySelector('[data-action="job-details"]');
-  if (!btn) return 'زر التفاصيل غير موجود';
-  btn.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-  if (!card.classList.contains('is-lifted')) return 'البطاقة لم ترتفع فوق البقية';
-  const others = [...site.doc.querySelectorAll('#jobs-grid .job-card.is-lifted')];
-  if (others.length !== 1) return 'عدد البطاقات المرتفعة ' + others.length;
-  /* إغلاق النافذة يعيدها إلى مكانها */
-  const closer = [...lastModal(site.doc).querySelectorAll('[data-close]')][0];
-  if (closer) closer.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
-  return (!card.classList.contains('is-lifted') || 'البطاقة بقيت مرتفعة بعد الإغلاق');
-});
-check('أنماط فاخرة: نيون وذهبي وارتفاع البطاقة المختارة معرّفة في CSS', () => {
-  const css = [...site.doc.querySelectorAll('style')].map((s) => s.textContent).join('\n') +
-    [...site.doc.styleSheets].map((s) => { try { return [...s.cssRules].map((r) => r.cssText).join('\n'); } catch (e) { return ''; } }).join('\n');
-  const need = ['.job-card.is-lifted', '--lux-neon', '--lux-gold'];
-  const missing = need.filter((n) => !css.includes(n));
-  return (!missing.length) || ('ناقص: ' + missing.join(', '));
-});
-
 /* ═══ الفلاتر: المحافظة وحدها (لا مناطق) — قرار 2026-10-24 ═══ */
 check('الموقع العام: لا فلتر مناطق، وفلتر المحافظة يحمل كل المحافظات', () => {
   if (site.doc.getElementById('filter-region')) return 'ما زال فلتر المناطق موجوداً';

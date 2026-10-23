@@ -79,10 +79,10 @@ const BUDGET = {
      وجه بطاقة بصري، زر مسح كبير، إدخال يدوي، وأنماط `.bk-entry*` في style.css
      المشتركة، مع نافذة المسح الموحّدة. القياس بعد البناء: 607KB و490KB.
      بلا سكربت أو طلب قاعدة جديد للزائر (20 طلباً كما هي). */
-  /* 2026-10-24: بطاقات الوظائف الفاخرة (لازورد + ذهب + نيون) وارتفاع البطاقة
-     المنقورة — index 624KB وverify 485KB بعد القياس. بلا سكربت أو طلب جديد. */
-  'index.html': { raw: 634, requests: 20 },
-  'verify.html': { raw: 496, requests: 20 },
+  /* 2026-10-24: أُعيدت بطاقات الموقع العام إلى تصميمها السابق (التصميم الفاخر
+     صار في صفحة التقديل فقط) — index 618KB وverify 479KB بعد القياس. */
+  'index.html': { raw: 624, requests: 20 },
+  'verify.html': { raw: 486, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */
   'dashboard.html': { raw: 964, requests: 20 }
