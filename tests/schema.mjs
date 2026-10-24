@@ -81,8 +81,11 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
    (ومعهما employer_decide_original على القاعدة) وemployer_otp_issue/delivery/
    verify/action — بعد حذف مسار صاحب العمل من الويب. فصار العدد 49 تعريفاً
    و47 دالة فعلية (trg_attempt_hold وrun_auto_release معرَّفتان مرتين). */
-check('تعريفات الدوال: 49 تعريفاً، 47 دالة فعلية (تحديثان مقصودان)',
-  funcs.length === 49 && new Set(funcs.map(x=>x.name)).size === 47,
+/* 2026-10-25 (لاحقاً): +5 دوال لجدولة النسخ التي يضبطها المدير
+   (recovery_cron_expr · _schedule_get · _schedule_set · _run_scheduled ·
+   recovery_ensure_fresh) ⇒ 54 تعريفاً و52 دالة فعلية. */
+check('تعريفات الدوال: 54 تعريفاً، 52 دالة فعلية (تحديثان مقصودان)',
+  funcs.length === 54 && new Set(funcs.map(x=>x.name)).size === 52,
   funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
@@ -92,7 +95,9 @@ const EXPECTED_FUNCS = ['brc.recovery_manage', 'brc.office_submit', 'brc.next_jo
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
   'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold',
   'brc.activate_card',
-  'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts'];
+  'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts',
+  'brc.recovery_cron_expr', 'brc.recovery_schedule_get', 'brc.recovery_schedule_set',
+  'brc.recovery_run_scheduled', 'brc.recovery_ensure_fresh'];
 /* 2026-10-25: حُذف رمز صاحب العمل — لا دوال OTP ولا PIN ولا employer_view/
    employer_decide تُتوقَّع بعد اليوم. */
 check('كل الدوال المتوقّعة موجودة بالاسم', EXPECTED_FUNCS.every((n) => funcs.some((x) => x.name === n)),
@@ -488,6 +493,36 @@ step(16, 'الاسترجاع — نسخة صالحة دائماً وحالة و�
   check('اللوحة تحذّر بوضوح إن لم تبقَ أي نسخة صالحة',
     /لا توجد نسخة قابلة للاسترجاع/.test(ui));
   check('نمط الشارة موجود في الأنماط', /\.recovery-stale\{/.test(readFileSync(join(ROOT, 'assets', 'css', 'backup.css'), 'utf8')));
+}
+
+/* ── 2026-10-25: جدولة النسخ يحددها المدير (لا موعد ثابت في cron) ── */
+step(17, 'جدولة النسخ الاحتياطي — يضبطها المدير من الإعدادات');
+{
+  check('دوال الجدولة موجودة في المصدر',
+    ['recovery_schedule_get','recovery_schedule_set','recovery_run_scheduled','recovery_cron_expr']
+      .every((n) => new RegExp('function\\s+brc\\.' + n + '\\s*\\(').test(RAW)));
+  check('الجدولة محفوظة في إعدادات القاعدة لا في المتصفح',
+    /'recovery_schedule'/.test(RAW) && /insert into brc\.settings/.test(RAW));
+  check('تعديل الجدولة محصور بالمدير',
+    /function brc\.recovery_schedule_set[\s\S]{0,400}if not brc\.is_admin\(\)/.test(RAW));
+  check('الجدولة مسحوبة الصلاحيات عن المتصفح وتمنح للموظف المُصدَّق فقط',
+    /revoke all on function brc\.recovery_cron_expr\(int\[\],text\)[^;]*from public,anon,authenticated/.test(RAW) &&
+    /grant execute on function brc\.recovery_schedule_set\(int\[\],text\) to authenticated/.test(RAW));
+  check('التحويل من توقيت بغداد إلى UTC داخل القاعدة',
+    /utc_h := h - 3/.test(RAW) && /Asia\/Baghdad/.test(RAW));
+  check('المهمة الثابتة القديمة لم تعد تُنشأ في المصدر',
+    !/cron\.schedule\('hrc-weekly-recovery'/.test(RAW) && /cron\.schedule\('recovery-auto-backup'/.test(RAW));
+
+  const ui = readFileSync(join(ROOT, 'assets', 'js', 'recovery.js'), 'utf8');
+  check('لوحة النسخ فيها اختيار الأيام والساعة وحفظها',
+    /recovery-sched-save/.test(ui) && /recovery-days/.test(ui) && /type="time"/.test(ui));
+  check('فيها زر إيقاف التلقائي وخيار الحفظ بلا أيام',
+    /recovery-sched-off/.test(ui) && /saveSchedule\(true\)/.test(ui));
+  check('المتجر يمرّر الجدولة إلى القاعدة (لا تخزين محلي)',
+    /recoveryScheduleSet/.test(readFileSync(join(ROOT, 'assets', 'js', 'store.js'), 'utf8')) &&
+    /rpc\('recovery_schedule_set'/.test(readFileSync(join(ROOT, 'assets', 'js', 'store.js'), 'utf8')));
+  check('نمط بطاقة الجدولة موجود في الأنماط',
+    /\.recovery-schedule\{/.test(readFileSync(join(ROOT, 'assets', 'css', 'backup.css'), 'utf8')));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

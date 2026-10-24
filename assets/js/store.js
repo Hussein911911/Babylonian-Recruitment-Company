@@ -2477,6 +2477,29 @@
     });
   }
 
+  /* جدولة النسخ التلقائي: يضبطها المدير من الإعدادات وتُخزَّن في القاعدة
+     (brc.settings → recovery_schedule) وتُعيد ضبط مهمة pg_cron فوراً. */
+  function recoveryScheduleGet() {
+    if (!isAdmin() || !enforceAuth() || !cloud.client) return Promise.reject(new Error('يلزم دخول المدير الرسمي واتصال قاعدة الشركة'));
+    return cloud.client.rpc('recovery_schedule_get', {}).then(function (r) {
+      if (r.error) throw new Error(r.error.message || 'تعذرت قراءة الجدولة');
+      if (!r.data || !r.data.ok) throw new Error((r.data && r.data.error) || 'تعذرت قراءة الجدولة');
+      return r.data;
+    });
+  }
+
+  function recoveryScheduleSet(days, time) {
+    if (!isAdmin() || !enforceAuth() || !cloud.client) return Promise.reject(new Error('يلزم دخول المدير الرسمي واتصال قاعدة الشركة'));
+    var list = (days || []).map(Number).filter(function (n) { return n >= 0 && n <= 6; });
+    return cloud.client.rpc('recovery_schedule_set', { p_days: list, p_time: String(time || '23:00') }).then(function (r) {
+      if (r.error) throw new Error(r.error.message || 'تعذر حفظ الجدولة');
+      if (!r.data || !r.data.ok) throw new Error((r.data && r.data.error) || 'تعذر حفظ الجدولة');
+      audit(list.length ? 'ضبط جدولة النسخ الاحتياطي' : 'إيقاف جدولة النسخ الاحتياطي', 'recovery', 'recovery_schedule',
+        list.length ? 'الأيام: ' + list.join(',') + ' — الساعة ' + time + ' (بتوقيت بغداد)' : 'أُوقفت الجدولة');
+      return r.data;
+    });
+  }
+
   function changeCloudPassword(newPassword) {
     if (!cloud.client || !root.HRCCloudAuth) return Promise.resolve({ ok: false, error: 'غير متاح في الوضع المحلي' });
     var auth = cloud.auth || root.HRCCloudAuth.create(cloud.client);
@@ -2553,6 +2576,7 @@
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     probeServiceKey: probeServiceKey,
     staffAdmin: staffAdmin, recoveryRPC: recoveryRPC,
+    recoveryScheduleGet: recoveryScheduleGet, recoveryScheduleSet: recoveryScheduleSet,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     serialWasIssued:serialWasIssued, cardReport:cardReport, searchCardHistory:searchCardHistory, reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,

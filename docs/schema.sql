@@ -2164,6 +2164,165 @@ revoke all on function brc.recovery_schema_hash(),brc.recovery_capture(),brc.rec
 grant execute on function brc.recovery_manage(text,uuid,text,text) to authenticated;
 notify pgrst,'reload schema';
 
+-- ═══════════════════════════════════════════════════════════════════════════
+--  2026-10-25 — جدولة النسخ الاحتياطي يحددها المدير من الإعدادات
+--  الأيام 0..6 (0 = الأحد) والوقت بتوقيت بغداد (UTC+3)، وتُترجم لتعبير cron
+--  بـUTC داخل brc.recovery_cron_expr. الحفظ في brc.settings → recovery_schedule.
+-- ═══════════════════════════════════════════════════════════════════════════
+create or replace function brc.recovery_cron_expr(p_days int[], p_time text)
+returns text language plpgsql immutable set search_path=brc,public as $$
+declare h int; m int; utc_h int; shift int; d int; dows int[] := '{}'; expr text;
+begin
+  if p_days is null or coalesce(array_length(p_days,1),0)=0 then return null; end if;
+  if coalesce(p_time,'') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then return null; end if;
+  h := split_part(p_time,':',1)::int;
+  m := split_part(p_time,':',2)::int;
+  utc_h := h - 3;
+  shift := 0;
+  if utc_h < 0 then utc_h := utc_h + 24; shift := -1; end if;
+  foreach d in array p_days loop
+    if d is null or d < 0 or d > 6 then return null; end if;
+    if shift = 0 then dows := dows || d; else dows := dows || ((d + 6) % 7); end if;
+  end loop;
+  select string_agg(distinct x::text, ',' order by x::text) into expr from unnest(dows) x;
+  return m::text || ' ' || utc_h::text || ' * * ' || expr;
+end $$;
+
+create or replace function brc.recovery_schedule_get()
+returns jsonb language plpgsql security definer set search_path=brc,public as $$
+declare v jsonb; job record; last_run timestamptz;
+begin
+  if not brc.is_admin() then
+    return jsonb_build_object('ok', false, 'error', 'هذه الجدولة للمدير فقط');
+  end if;
+  select value into v from brc.settings where key='recovery_schedule';
+  select jobid, schedule, active into job from cron.job where jobname='recovery-auto-backup';
+  select max(start_time) into last_run from cron.job_run_details d where d.jobid = job.jobid and d.status='succeeded';
+  return jsonb_build_object(
+    'ok', true,
+    'days', coalesce(v->'days','[]'::jsonb),
+    'time', coalesce(v->>'time','23:00'),
+    'enabled', coalesce((v->>'enabled')::boolean, false),
+    'timezone', 'Asia/Baghdad',
+    'cron', job.schedule,
+    'active', coalesce(job.active, false),
+    'lastRun', last_run,
+    'updatedAt', (select updated_at from brc.settings where key='recovery_schedule'));
+end $$;
+
+create or replace function brc.recovery_schedule_set(p_days int[], p_time text)
+returns jsonb language plpgsql security definer set search_path=brc,public as $$
+declare expr text; on_off boolean; job_id bigint; clean int[];
+begin
+  if not brc.is_admin() then
+    return jsonb_build_object('ok', false, 'error', 'تعديل الجدولة من صلاحيات المدير فقط');
+  end if;
+  select coalesce(array_agg(distinct d order by d), '{}') into clean
+    from unnest(coalesce(p_days,'{}')) d where d between 0 and 6;
+  on_off := coalesce(array_length(clean,1),0) > 0;
+  if on_off then
+    expr := brc.recovery_cron_expr(clean, p_time);
+    if expr is null then
+      return jsonb_build_object('ok', false, 'error', 'وقت غير صالح — الصيغة HH:MM (24 ساعة)');
+    end if;
+  end if;
+
+  insert into brc.settings(key, value, updated_at, updated_by)
+  values ('recovery_schedule', jsonb_build_object(
+            'days', to_jsonb(clean), 'time', coalesce(p_time,'23:00'),
+            'enabled', on_off, 'timezone','Asia/Baghdad',
+            'cron', expr, 'updatedAt', now()), now(), (select id from brc.staff where auth_id = auth.uid()))
+  on conflict (key) do update set value = excluded.value, updated_at = now(), updated_by = excluded.updated_by;
+
+  select jobid into job_id from cron.job where jobname='recovery-auto-backup';
+  if on_off then
+    if job_id is null then
+      perform cron.schedule('recovery-auto-backup', expr, 'select brc.recovery_run_scheduled();');
+    else
+      perform cron.alter_job(job_id, schedule := expr, command := 'select brc.recovery_run_scheduled();', active := true);
+    end if;
+  elsif job_id is not null then
+    perform cron.unschedule(job_id);
+  end if;
+
+  insert into brc.audit_log(username, role, action, entity, entity_id, details)
+  values (coalesce((select username from brc.staff where auth_id = auth.uid()),'admin'), 'admin',
+          case when on_off then 'ضبط جدولة النسخ الاحتياطي' else 'إيقاف جدولة النسخ الاحتياطي' end,
+          'recovery', 'recovery_schedule',
+          case when on_off then 'الأيام: ' || array_to_string(clean, ',') || ' — الساعة ' || p_time ||
+            ' بتوقيت بغداد (cron: ' || expr || ' UTC)'
+          else 'أُوقفت الجدولة — لا نسخة تلقائية حتى يُعاد تفعيلها' end);
+
+  return brc.recovery_schedule_get();
+end $$;
+
+create or replace function brc.recovery_run_scheduled()
+returns uuid language plpgsql security definer set search_path=brc,public as $$
+declare p jsonb; k text; result uuid;
+begin
+  perform set_config('lock_timeout','8s',true);
+  perform pg_advisory_xact_lock(8310192026);
+  lock table brc.applicants,brc.jobs,brc.job_attempts,brc.settings,brc.employer_job_credentials in share mode;
+  p := brc.recovery_capture();
+  select secret into strict k from brc.recovery_control where singleton;
+  insert into brc.recovery_copies(name,actor,safety,counts,schema_hash,data_hash,ciphertext)
+  values ('نسخة مجدولة — ' || to_char(clock_timestamp() at time zone 'Asia/Baghdad','YYYY-MM-DD HH24:MI'),
+          null,false,brc.recovery_counts(p),p->>'schema',
+          encode(extensions.digest(p::text,'sha256'),'hex'),
+          extensions.pgp_sym_encrypt(p::text,k,'cipher-algo=aes256,compress-algo=1'))
+  returning id into result;
+  if brc.recovery_read(result) is distinct from p then
+    raise exception 'فشل التحقق من النسخة المجدولة';
+  end if;
+  delete from brc.recovery_tickets where copy_id<>result;
+  delete from brc.recovery_copies where id<>result;
+  return result;
+end $$;
+
+revoke all on function brc.recovery_cron_expr(int[],text),brc.recovery_schedule_get(),brc.recovery_schedule_set(int[],text),brc.recovery_run_scheduled() from public,anon,authenticated;
+grant execute on function brc.recovery_schedule_get() to authenticated;
+grant execute on function brc.recovery_schedule_set(int[],text) to authenticated;
+
+-- نسخة أمان فورية عند تغيّر شكل المخطط (شبكة أمان: لا تُنشئ نسخة إن وُجدت صالحة)
+create or replace function brc.recovery_ensure_fresh() returns uuid
+language plpgsql security definer set search_path=brc,public as $$
+declare last_name text; result uuid;
+begin
+  if exists (select 1 from brc.recovery_copies where schema_hash = brc.recovery_schema_hash()) then
+    return null;
+  end if;
+  last_name := 'نسخة تلقائية — تغيّر شكل قاعدة البيانات ' ||
+    to_char(clock_timestamp() at time zone 'Asia/Baghdad', 'YYYY-MM-DD HH24:MI');
+  result := brc.recovery_save(last_name, false);
+  insert into brc.audit_log(username, role, action, entity, entity_id, details)
+  values ('system', 'system', 'نسخة أمان تلقائية', 'recovery', result::text,
+          'شكل قاعدة البيانات تغيّر (هجرة أعمدة) ولم تبقَ نسخة صالحة — أُنشئت نسخة جديدة تلقائياً.');
+  return result;
+end $$;
+revoke all on function brc.recovery_ensure_fresh() from public,anon,authenticated;
+
+-- الجدولة الافتراضية: الجمعة 23:00 بغداد — قابلة للتغيير من لوحة المدير
+do $$ begin
+  insert into brc.settings(key,value,updated_at)
+  values ('recovery_schedule', jsonb_build_object('days',to_jsonb(array[5]),'time','23:00','enabled',true,
+          'timezone','Asia/Baghdad','cron','0 20 * * 5','updatedAt',now()), now())
+  on conflict (key) do nothing;
+exception when others then null; end $$;
+do $$ begin
+  if coalesce((select (value->>'enabled')::boolean from brc.settings where key='recovery_schedule'), true) then
+    perform cron.schedule('recovery-auto-backup',
+      coalesce((select value->>'cron' from brc.settings where key='recovery_schedule'),'0 20 * * 5'),
+      'select brc.recovery_run_scheduled();');
+  end if;
+exception when others then
+  raise notice 'pg_cron غير متاح — جدولة النسخ تُضبط لاحقاً: %', sqlerrm;
+end $$;
+do $$ begin
+  perform cron.schedule('recovery-ensure-fresh', '10 1 * * *', 'select brc.recovery_ensure_fresh();');
+exception when others then null; end $$;
+
+notify pgrst,'reload schema';
+
 
 -- 2026-10-20: independent numbered vacancies, current-case notification support.
 -- Independent numbered vacancies within ONE job advertisement. Not card chances.
