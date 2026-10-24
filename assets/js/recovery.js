@@ -13,7 +13,11 @@
  }
  async function refresh(){
   if(busy)return;lock(true);
-  try{var res=await Store.recoveryRPC('list');copies=res.copies||[];paint();loaded=true;status(copies.length?'آخر نسخة ناجحة: '+Store.fmtDateTime(copies[0].createdAt):'لا توجد نسخة محفوظة بعد؛ أنشئ أول نسخة من بيانات القاعدة.');}
+  try{var res=await Store.recoveryRPC('list');copies=res.copies||[];paint();loaded=true;
+   var good=copies.filter(function(c){return c.restorable!==false;});
+   if(!copies.length)status('لا توجد نسخة محفوظة بعد؛ أنشئ أول نسخة من بيانات القاعدة.');
+   else if(!good.length)status('لا توجد نسخة قابلة للاسترجاع: شكل قاعدة البيانات تغيّر بعد آخر نسخة. اضغط «إنشاء نسخة الآن» فوراً.',true);
+   else status('آخر نسخة ناجحة: '+Store.fmtDateTime(good[0].createdAt)+' — قابلة للاسترجاع.'+((copies.length>good.length)?' ('+(copies.length-good.length)+' نسخة قديمة غير قابلة للاسترجاع)' : ''));}
   catch(e){status('تعذر قراءة النسخ من القاعدة: '+e.message,true);}
   finally{lock(false);}
  }
@@ -24,7 +28,13 @@
    var row=el('article',undefined,'recovery-copy'),details=el('div');
    details.append(el('h4',copy.name),el('p',Store.fmtDateTime(copy.createdAt)+' · '+countText(copy.counts),'recovery-copy-meta'));
    if(copy.safety)details.append(el('span','نسخة أمان قبل الاسترجاع','recovery-safety'));
-   var button=el('button','معاينة واسترجاع','btn btn-outline');button.type='button';button.onclick=function(){preview(copy);};
+   /* نسخة أقدم من هجرة أعمدة: لا يمكن استرجاعها (recovery_read يرفضها) —
+      نوضّحها هنا بدل أن يكتشفها المدير بعد ضغط «معاينة واسترجاع». */
+   var stale=copy.restorable===false;
+   if(stale)details.append(el('span','غير قابلة للاسترجاع — شكل قاعدة أقدم','recovery-stale'));
+   var button=el('button',stale?'غير قابلة للاسترجاع':'معاينة واسترجاع','btn btn-outline');button.type='button';
+   if(stale){button.disabled=true;button.title='أُنشئت قبل تغيير أعمدة الجداول؛ أنشئ نسخة جديدة من الزر أعلاه.';}
+   else button.onclick=function(){preview(copy);};
    var actions=el('div',undefined,'recovery-actions'),remove=el('button','حذف','btn btn-outline btn-sm');remove.type='button';remove.setAttribute('aria-label','حذف النسخة '+copy.name);remove.onclick=function(){removeCopy(copy);};actions.append(button,remove);row.append(details,actions);list.append(row);
   });
  }

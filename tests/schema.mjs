@@ -294,7 +294,8 @@ const REQUIRED_MIGRATIONS = [
   '20261026100000_fix_verify_card_code_print_column.sql',
   '20261026110000_drop_dormant_employer_functions.sql',
   '20261026120000_prune_legacy_card_functions.sql',
-  '20261026130000_add_card_print_code_column.sql'
+  '20261026130000_add_card_print_code_column.sql',
+  '20261026140000_recovery_always_restorable.sql'
 ];
 const MIG_NAME = '20260915000000_brc_initial_schema.sql';
 let migNames = [];
@@ -464,6 +465,29 @@ step(15, 'الواجهة — مصدر واحد لكل قيمة، وعنوان ر
   const publicHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
   check('الموقع العام لا يَعِد بخدمة صاحب عمل محذوفة (مسح الاستمارة وتسجيل القرار)',
     !/امسح باركود استمارة المتقدم/.test(publicHtml));
+}
+
+/* ── 2026-10-25: نسخة الاسترجاع لا تبقى «غير قابلة للاسترجاع» بصمت ──
+   بصمة المخطط تتبع أعمدة 5 جداول، فأي هجرة أعمدة تُبطل النسخ الأقدم،
+   وrecovery_weekly يحتفظ بنسخة واحدة فقط. النتيجة: فجوة تصل أسبوعاً بلا نسخة
+   صالحة (حدثت فعلاً: نسخة 2026-10-23 صارت غير قابلة للاسترجاع). */
+step(16, 'الاسترجاع — نسخة صالحة دائماً وحالة واضحة في اللوحة');
+{
+  const up = readFileSync(join(MIG_DIR, '20261026140000_recovery_always_restorable.sql'), 'utf8');
+  check('هجرة ضمان النسخة الصالحة موجودة وتُشغَّل دورياً',
+    /create or replace function brc\.recovery_ensure_fresh/.test(up) &&
+    /cron\.schedule/.test(up) && /recovery_ensure_fresh\(\)/.test(up));
+  check('الدالة لا تُنشئ نسخة إن وُجدت نسخة صالحة (لا تستهلك قرصاً بلا داعٍ)',
+    /if exists \(select 1 from brc\.recovery_copies where schema_hash = brc\.recovery_schema_hash\(\)\)/.test(up));
+  check('الدالة مسحوبة الصلاحيات عن المتصفح',
+    /revoke all on function brc\.recovery_ensure_fresh\(\) from public, anon, authenticated/.test(up));
+
+  const ui = readFileSync(join(ROOT, 'assets', 'js', 'recovery.js'), 'utf8');
+  check('اللوحة تُميّز النسخة غير القابلة للاسترجاع وتُعطّل زرها',
+    /recovery-stale/.test(ui) && /button\.disabled=true/.test(ui) && /restorable===false/.test(ui));
+  check('اللوحة تحذّر بوضوح إن لم تبقَ أي نسخة صالحة',
+    /لا توجد نسخة قابلة للاسترجاع/.test(ui));
+  check('نمط الشارة موجود في الأنماط', /\.recovery-stale\{/.test(readFileSync(join(ROOT, 'assets', 'css', 'backup.css'), 'utf8')));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */
