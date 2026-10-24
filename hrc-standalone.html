@@ -1094,6 +1094,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 /* ============================ 18.b) نافذة «بطاقتي» ============================
    شاشات البطاقة: الدخول بالباركود، الحالة، استخدام فرصة، إعادة الطباعة —
    نفس الهوية (لازورد + ذهب + خط Cairo). */
+/* المصدر الوحيد لعرض نافذة «بطاقتي» — لا تعرّفه في ملف آخر */
 .modal-booking { width: min(680px, 100%); }
 .bk-wrap { direction: rtl; }
 
@@ -1462,7 +1463,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   height: 80px;
 }
 
-.login-header h1 {
+.login-header h1, .login-header .login-title {
   color: #fff;
   font-size: 2rem;
   margin: 0 0 8px;
@@ -1660,7 +1661,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     padding: 28px 24px;
   }
   
-  .login-header h1 {
+  .login-header h1, .login-header .login-title {
     font-size: 1.6rem;
   }
   
@@ -2628,7 +2629,7 @@ img { max-width: 100%; height: auto; }
    المبدأ: عنصر واحد يلفت النظر (زر ذهبي واحد). لا أزرار متجاورة متضاربة،
    ولا حركات لانهائية: تبديل واحد بحركة قصيرة، ثم سكون.
    ══════════════════════════════════════════════════════════════════════════ */
-.modal-booking { width: min(600px, 100%); }
+/* العرض يُضبط مرة واحدة في style.css (.modal-booking) — لا تكرار هنا */
 .modal-booking .modal-head {
   background: linear-gradient(135deg, #0d1f42, #1a3a72);
   border-bottom: 1px solid rgba(200, 162, 74, .32);
@@ -3695,7 +3696,7 @@ img { max-width: 100%; height: auto; }
           <div class="contact-card" style="text-align:right">
             <div class="ic"><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg></div>
             <h3>لصاحب العمل</h3>
-            <p>امسح باركود استمارة المتقدم للاطلاع على طلبه وتسجيل نتيجة المقابلة لدى الشركة.</p>
+            <p>تستلم استمارة المتقدم مطبوعة بباركود بطاقته، وتبلّغ الشركة بنتيجة المقابلة وهي التي تثبّتها في ملف المرشح.</p>
           </div>
         </div>
         <div class="flex flex-wrap mt-3" style="gap:10px">
@@ -3856,7 +3857,7 @@ img { max-width: 100%; height: auto; }
       <div class="login-logo">
         <svg class="emblem" viewBox="0 0 120 120" role="img" aria-label="شعار الشركة"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
       </div>
-      <h1>المنظومة الداخلية</h1>
+      <h2 class="login-title">المنظومة الداخلية</h2>
       <p>شركة الهدف للتوظيف</p>
       <span class="login-subtitle">لوحة الموظفين والإدارة</span>
     </div>

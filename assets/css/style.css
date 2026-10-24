@@ -1074,6 +1074,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 /* ============================ 18.b) نافذة «بطاقتي» ============================
    شاشات البطاقة: الدخول بالباركود، الحالة، استخدام فرصة، إعادة الطباعة —
    نفس الهوية (لازورد + ذهب + خط Cairo). */
+/* المصدر الوحيد لعرض نافذة «بطاقتي» — لا تعرّفه في ملف آخر */
 .modal-booking { width: min(680px, 100%); }
 .bk-wrap { direction: rtl; }
 
@@ -1442,7 +1443,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   height: 80px;
 }
 
-.login-header h1 {
+.login-header h1, .login-header .login-title {
   color: #fff;
   font-size: 2rem;
   margin: 0 0 8px;
@@ -1640,7 +1641,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     padding: 28px 24px;
   }
   
-  .login-header h1 {
+  .login-header h1, .login-header .login-title {
     font-size: 1.6rem;
   }
   

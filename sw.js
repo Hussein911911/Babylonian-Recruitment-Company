@@ -1,4 +1,4 @@
-// Service Worker للعمل أوفلاين — hrc-cache-v67
+// Service Worker للعمل أوفلاين — hrc-cache-v68
 // ---------------------------------------------------------------------------
 // سياسة التخزين منذ v4:
 //   • HTML و JS  → network-first: الشبكة أولاً (الزائر يرى آخر نسخة)، والكاش
@@ -53,7 +53,18 @@ const urlsToCache = [
   '/assets/js/public.js',
   '/assets/js/dashboard.js',
   '/assets/js/verify.js',
-  '/assets/js/qr.js'
+  '/assets/js/qr.js',
+  /* 2026-10-25: أُضيفت ملفات كانت تُترك للتحميل الوقتي — بلا تخزين مسبق
+     تظهر الصفحة بلا تنسيق إن فُتحت أول مرة بلا إنترنت. */
+  '/assets/css/card-entry.css',
+  '/assets/css/backup.css',
+  '/assets/css/image-editor.css',
+  '/assets/js/qr-scan.js',
+  '/assets/js/voucher.js',
+  '/assets/js/cloud.js',
+  '/assets/js/cloud-http.js',
+  '/assets/js/cloud-sync.js',
+  '/assets/js/cloud-auth.js'
 ];
 
 /* HTML و JS: شبكة أولاً */
@@ -121,9 +132,11 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  /* الأصول الثابتة: كاش أولاً (بصمة ?v= تُدير تحديثها) */
+  /* الأصول الثابتة: كاش أولاً (بصمة ?v= تُدير تحديثها).
+     ignoreSearch: الملفات المخزَّنة مسبقاً بلا ?v= — بدونها يفشل المطابق
+     أوفلاين عند أول زيارة فتظهر الصفحة بلا تنسيق. */
   event.respondWith(
-    caches.match(request).then(response => {
+    caches.match(request, { ignoreSearch: true }).then(response => {
       if (response) return response;
       return fetch(request).then(response => {
         if (!response || response.status !== 200 || response.type !== 'basic') {

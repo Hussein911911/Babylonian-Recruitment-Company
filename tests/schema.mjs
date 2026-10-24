@@ -292,7 +292,9 @@ const REQUIRED_MIGRATIONS = [
   '20261025000000_retire_chance_codes.sql',
   '20261026000000_remove_employer_pin_and_region.sql',
   '20261026100000_fix_verify_card_code_print_column.sql',
-  '20261026110000_drop_dormant_employer_functions.sql'
+  '20261026110000_drop_dormant_employer_functions.sql',
+  '20261026120000_prune_legacy_card_functions.sql',
+  '20261026130000_add_card_print_code_column.sql'
 ];
 const MIG_NAME = '20260915000000_brc_initial_schema.sql';
 let migNames = [];
@@ -430,6 +432,38 @@ step(14, 'دوال صاحب العمل القديمة — محذوفة ولا ت
     /drop\s+function\s+if\s+exists\s+brc\.employer_decide/i.test(guarded));
   check('هجرة الحذف لا تمسّ الجداول التي تلتقطها نسخ الاسترجاع',
     !/drop\s+table/i.test(guarded));
+}
+
+/* ── 2026-10-25: مراجعة شاملة — لا تكرار ولا تداخل في الواجهة ──
+   نتيجة مراجعة الموقع: نافذة «بطاقتي» كان عرضها معرَّفاً مرتين بقيمتين
+   مختلفتين (680px في style.css و600px في card-entry.css) فتختلف بين الصفحة
+   الرئيسية واللوحة؛ وصفحة التقديم كان فيها ستة <h1> (عنوان لكل خطوة). */
+step(15, 'الواجهة — مصدر واحد لكل قيمة، وعنوان رئيسي واحد للصفحة');
+{
+  const cssFiles = readdirSync(join(ROOT, 'assets', 'css')).filter((f) => f.endsWith('.css'));
+  const widthOwners = cssFiles.filter((f) =>
+    /\.modal-booking\s*\{[^}]*\bwidth\s*:/.test(readFileSync(join(ROOT, 'assets', 'css', f), 'utf8')));
+  check('عرض نافذة «بطاقتي» معرَّف في ملف واحد فقط', widthOwners.length === 1, widthOwners.join(', '));
+
+  const pages = readdirSync(ROOT).filter((f) => f.endsWith('.html') &&
+    !/^hrc-(standalone|light)\.html$/.test(f));   /* الحزمتان تجمعان صفحات كاملة */
+  const multiH1 = pages.filter((f) => (readFileSync(join(ROOT, f), 'utf8').match(/<h1[\s>]/g) || []).length > 1);
+  check('كل صفحة فيها عنوان h1 واحد على الأكثر', multiH1.length === 0, multiH1.join(', '));
+
+  const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
+  const cacheName = (sw.match(/CACHE_NAME = '([^']+)'/) || [])[1] || '';
+  check('تعليق رأس sw.js يطابق اسم الكاش الفعلي',
+    new RegExp(cacheName).test(sw.split('\n')[0]), sw.split('\n')[0]);
+  const precache = [...((sw.match(/const urlsToCache = \[([\s\S]*?)\];/) || [])[1] || '').matchAll(/'([^']+)'/g)]
+    .map((m) => m[1]).filter((u) => u !== '/');
+  const gone = precache.filter((u) => !existsSync(join(ROOT, u.replace(/^\//, ''))));
+  check('كل ملف في قائمة التخزين المسبق موجود فعلاً', gone.length === 0, gone.join(', '));
+  check('أنماط «بطاقتي» المطلوبة مخزَّنة مسبقاً (تعمل أوفلاين من أول زيارة)',
+    precache.includes('/assets/css/card-entry.css') && precache.includes('/assets/js/qr-scan.js'));
+
+  const publicHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  check('الموقع العام لا يَعِد بخدمة صاحب عمل محذوفة (مسح الاستمارة وتسجيل القرار)',
+    !/امسح باركود استمارة المتقدم/.test(publicHtml));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */
