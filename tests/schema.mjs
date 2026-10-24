@@ -300,7 +300,9 @@ const REQUIRED_MIGRATIONS = [
   '20261026110000_drop_dormant_employer_functions.sql',
   '20261026120000_prune_legacy_card_functions.sql',
   '20261026130000_add_card_print_code_column.sql',
-  '20261026140000_recovery_always_restorable.sql'
+  '20261026140000_recovery_always_restorable.sql',
+  '20261026150000_recovery_admin_schedule.sql',
+  '20261026160000_drop_recovery_weekly.sql'
 ];
 const MIG_NAME = '20260915000000_brc_initial_schema.sql';
 let migNames = [];
@@ -523,6 +525,27 @@ step(17, 'جدولة النسخ الاحتياطي — يضبطها المدير
     /rpc\('recovery_schedule_set'/.test(readFileSync(join(ROOT, 'assets', 'js', 'store.js'), 'utf8')));
   check('نمط بطاقة الجدولة موجود في الأنماط',
     /\.recovery-schedule\{/.test(readFileSync(join(ROOT, 'assets', 'css', 'backup.css'), 'utf8')));
+}
+
+/* ── 2026-10-25: منفّذ نسخ واحد فقط (لا نسختان من نفس المنطق) ──
+   recovery_weekly بقيت بلا مستخدم بعد أن صارت الجدولة بيد المدير: صفر مهمة
+   cron تناديها، صفر دالة، وصلاحيتها postgres وحده. حُذفت من القاعدة. */
+step(18, 'النسخ المجدول — منفّذ واحد لا اثنان');
+{
+  check('المصدر لا يعرّف recovery_weekly', !/function brc\.recovery_weekly/.test(RAW));
+  check('المنفّذ الوحيد هو recovery_run_scheduled',
+    /function brc\.recovery_run_scheduled/.test(RAW) &&
+    /cron\.schedule\('recovery-auto-backup'/.test(RAW));
+  const drop = readFileSync(join(MIG_DIR, '20261026160000_drop_recovery_weekly.sql'), 'utf8');
+  check('هجرة الحذف آمنة للتكرار وتزيل أي مهمة قديمة تشير إليها',
+    /drop function if exists brc\.recovery_weekly\(\)/.test(drop) &&
+    /cron\.unschedule/.test(drop) && /recovery_weekly%/.test(drop));
+  check('هجرة الحذف لا تلمس recovery_run_scheduled',
+    !/drop function if exists brc\.recovery_run_scheduled/.test(drop));
+  const recTest = readFileSync(join(ROOT, 'tests', 'recovery-sql.mjs'), 'utf8');
+  check('فحوص الأمان تُجرى على المنفّذ المجدول الفعلي',
+    /brc\.recovery_run_scheduled\(\)/.test(recTest) &&
+    !/select brc\.recovery_weekly\(\)/.test(recTest));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

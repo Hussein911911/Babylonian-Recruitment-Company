@@ -2279,7 +2279,7 @@ begin
   return result;
 end $$;
 
-revoke all on function brc.recovery_cron_expr(int[],text),brc.recovery_schedule_get(),brc.recovery_schedule_set(int[],text),brc.recovery_run_scheduled() from public,anon,authenticated;
+revoke all on function brc.recovery_cron_expr(int[],text),brc.recovery_schedule_get(),brc.recovery_schedule_set(int[],text),brc.recovery_run_scheduled() from public,anon,authenticated,service_role;
 grant execute on function brc.recovery_schedule_get() to authenticated;
 grant execute on function brc.recovery_schedule_set(int[],text) to authenticated;
 
