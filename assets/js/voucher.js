@@ -536,6 +536,15 @@
   }
 
   root.HRCVoucher = {
+    /* وجهان منفصلان بلا غلاف — لعرض «كارت» على الموقع (لا قصّ نصوص ولا HTML مُلفَّق) */
+    frontHtml: function (app, attempts) {
+      ensureStyle();
+      return frontHtml(app, attempts || [{ no: 1 }, { no: 2 }]);
+    },
+    backHtml: function (app, attempts) {
+      ensureStyle();
+      return backHtml(app, attempts || [{ no: 1 }, { no: 2 }]);
+    },
     buildHtml: buildHtml, print: print, printBatch: printBatch, printSheet: printSheet, sheetCount: sheetCount, preview: preview,
     formHtml: formHtml, printForm: printForm, previewForm: previewForm,
     DISCLAIMER: DISCLAIMER, qrSvg: qrSvg, verifyUrl: function (s) { return Store.verifyUrl(s); }

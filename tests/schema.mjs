@@ -557,20 +557,22 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
 
   /* الترتيب الاحترافي (2026-10-25 بعد طلب المالك): واجهة ← بحث ← تصنيفات ←
      الوظائف (أهم شيء أولاً) ← بطاقة التوظيف ← الأرقام ← آلية العمل … */
-  /* 2026-10-25: التصنيفات دُمجت **داخل** صندوق الفلاتر نفسه (فلترة موحّدة)،
-     فصارت #cat-rail قبل #jobs-grid داخل قسم #jobs لا قسماً مستقلاً قبله. */
-  check('ترتيب الأقسام: واجهة · بحث · وظائف(بفلاترها وتصنيفاتها) · بطاقة · أرقام',
+  /* 2026-10-25 (نهائي): التصنيفات عادت قسماً مستقلاً بشبكة مربّعات ملوّنة،
+     وصندوق الفلترة صار مدمجاً صغيراً في قسم الوظائف. */
+  check('ترتيب الأقسام: واجهة · بحث · تصنيفات · وظائف(بفلترتها) · بطاقة · أرقام',
     pub.indexOf('id="home"') < pub.indexOf('app-search') &&
-    pub.indexOf('app-search') < pub.indexOf('id="jobs"') &&
-    pub.indexOf('id="jobs"') < pub.indexOf('id="cat-rail"') &&
-    pub.indexOf('id="cat-rail"') < pub.indexOf('id="jobs-grid"') &&
+    pub.indexOf('app-search') < pub.indexOf('id="categories"') &&
+    pub.indexOf('id="categories"') < pub.indexOf('id="cat-rail"') &&
+    pub.indexOf('id="cat-rail"') < pub.indexOf('id="jobs"') &&
+    pub.indexOf('id="jobs"') < pub.indexOf('id="jobs-grid"') &&
     pub.indexOf('id="jobs-grid"') < pub.indexOf('id="card"') &&
     pub.indexOf('id="card"') < pub.indexOf('id="hero-stats"') &&
     pub.indexOf('id="hero-stats"') < pub.indexOf('id="how"'));
-  check('التصنيفات والفلاتر في صندوق واحد (لا قسم تصنيفات منفصل)',
+  check('التصنيفات شبكة مربّعات ملوّنة مستقلة، والفلترة صندوق مدمج منفصل',
     (pub.match(/id="cat-rail"/g) || []).length === 1 &&
-    /class="filters"[\s\S]*?id="cat-rail"/.test(pub) &&
-    !/تصفّح حسب التخصص/.test(pub));
+    /class="cat-grid"/.test(pub) &&
+    !/cats-row/.test(pub) &&
+    /--cat/.test(readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8')));
   check('لا شريط علوي (نجمة/حسابي/موقع) — أُزيل بطلب المالك',
     !/app-topbar/.test(pub) && !/i-star8/.test(pub) && !/حسابي/.test(pub) &&
     !/class="app-loc"/.test(pub));
@@ -662,8 +664,9 @@ step(21, 'الوظائف — فلترة موحّدة، طبقات فوق بعض�
   const vou = readFileSync(join(ROOT, 'assets', 'js', 'voucher.js'), 'utf8');
 
   /* 1) الفلترة والتصنيفات في صندوق واحد + شرائح تصفية نشطة */
-  check('التصنيفات داخل صندوق الفلاتر نفسه (فلترة موحّدة)',
-    /class="filters"[\s\S]*?cats-row[\s\S]*?id="cat-rail"/.test(pub));
+  check('صندوق الفلترة مدمج (صفّ واحد) بلا تكرار للتصنيفات داخله',
+    /class="filters"[\s\S]*?id="filter-q"[\s\S]*?id="filter-status"/.test(pub) &&
+    !/class="filters"[\s\S]*?id="cat-rail"/.test(pub));
   check('شرائح «مطبَّق» تُظهر ما تمت تصفيته ويُزال بزر',
     /id="f-active"/.test(pub) && /function renderActiveChips/.test(js) && /data-clear=/.test(js));
   check('التصفير يشمل التصنيف أيضاً', /category: 'all' \}/.test(js));
@@ -698,6 +701,42 @@ step(21, 'الوظائف — فلترة موحّدة، طبقات فوق بعض�
     /@media \(max-width: 620px\) \{\s*\.jd-stats/.test(app));
   check('زر «قدّم» داخل النافذة يغلقها ثم يفتح «بطاقتي» (لا نوافذ متراكبة)',
     /b\.closest\('\.modal-backdrop'\)/.test(js) && /HRCBooking\.open/.test(js));
+}
+
+/* ── 2026-10-25: ألوان حيّة + «اتصل بنا» + بطاقة ككارت حقيقي ── */
+step(22, 'الواجهة — ألوان حيّة، لغة موحّدة، وكارت البطاقة');
+{
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+  const vou = readFileSync(join(ROOT, 'assets', 'js', 'voucher.js'), 'utf8');
+
+  /* 1) ألوان حيّة: لوحة متغيّرات + لون لكل تخصص + أيقونات أرقام ملوّنة */
+  check('لوحة ألوان حيّة معرَّفة (teal/blue/violet/amber/green… )',
+    /--v-teal:/.test(app) && /--v-violet:/.test(app) && /--v-amber:/.test(app));
+  check('كل تخصص له لون ثابت في التصنيفات والشرائح',
+    /PALETTE = \['#0f9c94'/.test(js) && /--cat:' \+ catColor\[c\]/.test(js));
+  check('أيقونات شريط الأرقام ملوّنة (لا رمادي باهت)',
+    /\.app-stat:nth-child\(1\) > \.ic \{ background: var\(--v-teal\)/.test(app));
+
+  /* 2) لغة موحّدة: لا «خابرنا» في أي نص عام */
+  const codeOnly = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
+  check('لا كلمة «خابرنا» في الصفحة العامة أو كودها (اتصل بنا بدلاً منها)',
+    !/خابرنا/.test(pub) && !/خابرنا/.test(codeOnly(js)) && /اتصل بنا/.test(pub));
+
+  /* 3) البطاقة ككارت حقيقي: ميل ثلاثي الأبعاد + ظلّ + واجهة برمجية للوجهين */
+  check('البطاقة تُعرض ككارت بميل وظلّ (perspective + rotate + shadow)',
+    /perspective: 1200px/.test(app) && /rotateX\(9deg\) rotateZ\(-3\.5deg\)/.test(app));
+  check('الوجهان يُرسمان من قالب الطباعة عبر واجهة صريحة (لا قصّ HTML)',
+    /frontHtml: function \(app, attempts\)/.test(vou) &&
+    /backHtml: function \(app, attempts\)/.test(vou) &&
+    /V\.frontHtml\(sample\)/.test(js) && /V\.backHtml\(sample\)/.test(js));
+  check('إزاحة البطاقة داخل الإطار فيزيائية (top/left) لتعمل في RTL',
+    /position: absolute; top: 0; left: 0; right: auto/.test(app));
+  check('قائمة ميزات البطاقة ظاهرة (أيقونة مربّعة + عنوان + وصف، بلا نقاط)',
+    /\.cs-ic \{[\s\S]{0,200}place-items: center/.test(app) &&
+    /\.cs-features b \{/.test(app) &&
+    /\.cs-features li \{[\s\S]{0,200}list-style: none/.test(app));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

@@ -17,6 +17,7 @@
 
   /* مفضلة الزائر: تُحفظ على جهازه وحده (لا تُرسل للشركة ولا تُسجَّل بسجل) */
   var FAV_KEY = 'hrc_fav_jobs_v1';
+  var catColor = {};          /* لون كل تخصص (يُبنى في renderCategories) */
   function favList() {
     try { var a = JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
   }
@@ -209,7 +210,7 @@
   function runQuickSearch(code, governorate) {
     if (cloudBlocked()) {
       UI.toast(cloudSettled ? 'error' : 'info', cloudSettled ? 'تعذّر الاتصال' : 'جارٍ التحميل',
-        cloudSettled ? 'تعذّر الاتصال بقاعدة الشركة — أعد المحاولة أو خابرنا هاتفياً.'
+        cloudSettled ? 'تعذّر الاتصال بقاعدة الشركة — أعد المحاولة أو اتصل بنا هاتفياً.'
                      : 'تُحمَّل الوظائف من قاعدة الشركة الآن — لحظات ويكتمل البحث.', 6000);
       return;
     }
@@ -303,12 +304,20 @@
     var counts = {};
     jobs.forEach(function (j) { var c = j.category || 'أخرى'; counts[c] = (counts[c] || 0) + 1; });
     var cats = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, 5);
+    /* لوحة ألوان حيّة: كل تخصص بلونه (ثابت لا يتغيّر بين التحميلات) */
+    var PALETTE = ['#0f9c94', '#2563d9', '#7c4ddb', '#d98324', '#16a34a', '#db3d6a', '#0891b2'];
+    catColor = {};
+    cats.forEach(function (c, i) { catColor[c] = PALETTE[i % PALETTE.length]; });
+    var hint = document.getElementById('cats-hint');
+    if (hint) hint.textContent = (cur && cur !== 'all') ? 'مُصفّى: ' + cur : 'كل التخصصات';
     var cur = filters.category || 'all';
-    var html = '<button type="button" class="cat' + (cur === 'all' ? ' is-active' : '') + '" data-cat="all" role="tab" aria-selected="' + (cur === 'all') + '">' +
+    var html = '<button type="button" class="cat' + (cur === 'all' ? ' is-active' : '') + '" data-cat="all" role="tab"' +
+      ' aria-selected="' + (cur === 'all') + '" style="--cat:var(--gold)">' +
       '<span class="cat-ic"><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg></span>' +
-      '<span>الكل</span><b>' + jobs.length + '</b></button>';
+      '<span>الكل</span><b>' + jobs.length + ' وظيفة</b></button>';
     html += cats.map(function (c) {
-      return '<button type="button" class="cat' + (cur === c ? ' is-active' : '') + '" data-cat="' + UI.esc(c) + '" role="tab" aria-selected="' + (cur === c) + '">' +
+      return '<button type="button" class="cat' + (cur === c ? ' is-active' : '') + '" data-cat="' + UI.esc(c) + '" role="tab"' +
+        ' aria-selected="' + (cur === c) + '" style="--cat:' + catColor[c] + '">' +
         '<span class="cat-ic"><svg class="ic"><use href="#' + catIcon(c) + '" xlink:href="#' + catIcon(c) + '"/></svg></span>' +
         '<span>' + UI.esc(c) + '</span><b>' + counts[c] + '</b></button>';
     }).join('');
@@ -395,16 +404,18 @@
     var host = document.getElementById('card-showcase');
     if (!host || host.dataset.done) return;
     var V = root.HRCVoucher;
-    if (!V || !V.buildHtml) return;
+    if (!V || !V.frontHtml || !V.backHtml) return;
     try {
-      var sample = {
-        /* صيغة الباركود الحالية: ١٠ خانات من حروف/أرقام (لا HRC-BC-000000 القديمة) */
-        serial: 'K7M2XQ9T4R', status: 'blank',
-        issueDate: null, expiryDate: null, cardPrintCode: null
-      };
-      host.innerHTML = V.buildHtml(sample, [{ no: 1 }, { no: 2 }]);
+      /* بطاقة نموذجية بلا بيانات زبون — الوجهان من نفس قالب الطباعة حرفياً */
+      var sample = { serial: 'K7M2XQ9T4R', status: 'blank', issueDate: null, expiryDate: null, cardPrintCode: null };
+      host.innerHTML =
+        '<div class="cs-front">' +
+          '<span class="cs-badge">شكل البطاقة الفعلي</span>' +
+          '<div class="cs-slot">' + V.frontHtml(sample) + '</div>' +
+        '</div>' +
+        '<div class="cs-back"><div class="cs-slot">' + V.backHtml(sample) + '</div></div>';
       host.dataset.done = 'yes';
-    } catch (e) { /* البطاقة تحسين بصري — لا تُعطّل الصفحة إن فشلت */ }
+    } catch (e) { /* البطاقة تحسين بصري — لا تُعطّل الصفحة */ }
   }
 
   function renderAll() { renderHeroStats(); renderCategories(); renderJobs(); renderCardShowcase(); }
@@ -449,7 +460,7 @@
         '<div class="empty-state" role="alert">' +
           '<svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg>' +
           '<h3>تعذّر الاتصال بقاعدة الشركة</h3>' +
-          '<p class="mb-2">تعذّر تحميل الوظائف المعلنة الآن — تحقّق من اتصالك بالإنترنت ثم أعد المحاولة، أو خابرنا على الأرقام الرسمية.</p>' +
+          '<p class="mb-2">تعذّر تحميل الوظائف المعلنة الآن — تحقّق من اتصالك بالإنترنت ثم أعد المحاولة، أو اتصل بنا على الأرقام الرسمية.</p>' +
           '<button class="btn btn-outline btn-sm" data-action="retry-cloud">' + UI.ic('refresh') + ' إعادة المحاولة</button>' +
         '</div>';
     }
@@ -539,7 +550,7 @@
         '<div class="empty-state" role="alert">' +
           '<svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg>' +
           '<h3>تعذّر الاتصال بقاعدة الشركة</h3>' +
-          '<p class="mb-2">تعذّر تحميل الوظائف المعلنة الآن — تحقّق من اتصالك بالإنترنت ثم أعد المحاولة، أو خابرنا على الأرقام الرسمية.</p>' +
+          '<p class="mb-2">تعذّر تحميل الوظائف المعلنة الآن — تحقّق من اتصالك بالإنترنت ثم أعد المحاولة، أو اتصل بنا على الأرقام الرسمية.</p>' +
           '<button class="btn btn-outline btn-sm" data-action="retry-cloud">' + UI.ic('refresh') + ' إعادة المحاولة</button>' +
         '</div>';
     }
@@ -578,7 +589,7 @@
         var p = empty.querySelector('p');
         if (h) h.textContent = noListings ? 'لا توجد وظائف معروضة حالياً' : 'لا توجد وظائف مطابقة';
         if (p) p.textContent = noListings
-          ? 'تُنشر فرص العمل هنا فور اعتمادها من قِبل الشركة — تابعونا أو خابرنا لمعرفة الشواغر الحالية.'
+          ? 'تُنشر فرص العمل هنا فور اعتمادها من قِبل الشركة — تابعونا أو اتصل بنا لمعرفة الشواغر الحالية.'
           : 'جرّب كوداً آخر أو صفّر عوامل التصفية، أو تواصل معنا لتسجيلك في قائمة الانتظار.';
       }
     }
