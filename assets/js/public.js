@@ -13,7 +13,19 @@
   if (!document.getElementById('jobs-grid')) return;
 
   /* الفلاتر: المحافظة وحدها للموقع الجغرافي — لا فلتر مناطق (قرار 2026-10-24) */
-  var filters = { q: '', governorate: 'all', shift: 'all', status: 'all' };
+  var filters = { q: '', governorate: 'all', shift: 'all', status: 'all', category: 'all' };
+
+  /* مفضلة الزائر: تُحفظ على جهازه وحده (لا تُرسل للشركة ولا تُسجَّل بسجل) */
+  var FAV_KEY = 'hrc_fav_jobs_v1';
+  function favList() {
+    try { var a = JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  function favToggle(code) {
+    var a = favList(), i = a.indexOf(code);
+    if (i >= 0) a.splice(i, 1); else a.push(code);
+    try { localStorage.setItem(FAV_KEY, JSON.stringify(a.slice(-200))); } catch (e) { }
+    return a.indexOf(code) >= 0;
+  }
 
   /* -------------- وضع القاعدة العامة (Supabase مفعّل) --------------
    * لماذا هذا التمييز؟ مع enabled=true يجب ألا يرى الزائر **أي** بيانات من
@@ -41,6 +53,8 @@
     UI.startCountdowns();
     fillSelects();
     bindEvents();
+    bindFavorites();
+    bindTabbar();
 
     var st = Store.cloudStatus ? Store.cloudStatus() : null;
     cloudMode = !!(st && st.configured && st.willBoot);
@@ -279,7 +293,96 @@
   }
 
   /* ---------------- العرض ---------------- */
-  function renderAll() { renderHeroStats(); renderJobs(); }
+  /* ── شريط التصنيفات: يُبنى من تصنيفات الوظائف المعروضة فعلاً ── */
+  function renderCategories() {
+    var host = document.getElementById('cat-rail');
+    if (!host) return;
+    if (cloudBlocked()) { host.innerHTML = ''; return; }
+    var jobs = Store.listJobs({});
+    var counts = {};
+    jobs.forEach(function (j) { var c = j.category || 'أخرى'; counts[c] = (counts[c] || 0) + 1; });
+    var cats = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, 5);
+    var cur = filters.category || 'all';
+    var html = '<button type="button" class="cat' + (cur === 'all' ? ' is-active' : '') + '" data-cat="all" role="tab" aria-selected="' + (cur === 'all') + '">' +
+      '<svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg><span>الكل</span><b>' + jobs.length + '</b></button>';
+    html += cats.map(function (c) {
+      return '<button type="button" class="cat' + (cur === c ? ' is-active' : '') + '" data-cat="' + UI.esc(c) + '" role="tab" aria-selected="' + (cur === c) + '">' +
+        '<svg class="ic"><use href="#' + catIcon(c) + '" xlink:href="#' + catIcon(c) + '"/></svg>' +
+        '<span>' + UI.esc(c) + '</span><b>' + counts[c] + '</b></button>';
+    }).join('');
+    host.innerHTML = html;
+    host.querySelectorAll('[data-cat]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        filters.category = b.getAttribute('data-cat');
+        renderCategories();
+        renderJobs();
+        var sec = document.getElementById('jobs');
+        if (sec && window.scrollTo) window.scrollTo({ top: sec.offsetTop - 70, behavior: 'smooth' });
+      });
+    });
+  }
+
+  /* ── شريط التنقل السفلي: تفعيل التبويب بحسب موضع التمرير ── */
+  function bindTabbar() {
+    var bar = document.querySelector('.tabbar');
+    if (!bar) return;
+    var links = [].slice.call(bar.querySelectorAll('[data-tab]'));
+    if (!links.length) return;
+    var last = 0;
+    var onScroll = function () {
+      var now = Date.now(); if (now - last < 120) return; last = now;
+      var y = window.scrollY + 120, active = null;
+      links.forEach(function (l) {
+        var sec = document.getElementById(l.getAttribute('data-tab'));
+        if (sec && sec.offsetTop <= y) active = l;
+      });
+      links.forEach(function (l) { l.classList.toggle('is-active', l === active); });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* ── المفضلة: تبديل فوري بلا إعادة رسم الشبكة كلها ── */
+  function bindFavorites() {
+    var host = document.getElementById('jobs-grid');
+    if (!host) return;
+    host.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-fav]');
+      if (!b) return;
+      e.preventDefault(); e.stopPropagation();
+      var on = favToggle(b.getAttribute('data-fav'));
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (UI.toast) UI.toast(on ? 'ok' : 'info', on ? 'أُضيفت للمفضلة' : 'أُزيلت من المفضلة',
+        on ? 'محفوظة على جهازك فقط.' : 'يمكنك إضافتها مجدداً في أي وقت.');
+    });
+  }
+
+  /* ── عدّاد التنبيهات: عدد الوظائف المتاحة الآن (يُحدَّث مع البيانات) ── */
+  function renderAlerts() {
+    var b = document.getElementById('app-alerts-count');
+    if (!b) return;
+    if (cloudBlocked()) { b.hidden = true; return; }
+    var n = Store.listJobs({}).filter(function (j) { return j.status === 'available'; }).length;
+    b.textContent = n > 99 ? '99+' : String(n);
+    b.hidden = n === 0;
+  }
+
+  /* QR حقيقي داخل بانر البطاقة (يشير لصفحة «بطاقتي» على هذا النطاق) */
+  function renderPromoQr() {
+    var host = document.getElementById('promo-qr');
+    if (!host || host.dataset.done) return;
+    var Q = root.HRCQR;
+    if (!Q || !Q.encode || !Q.renderSVG) return;
+    try {
+      var base = Store.cardUrl ? Store.cardUrl('') : (location.origin + location.pathname);
+      var url = String(base).replace(/[?#].*$/, '') || 'https://hrc-babil.com';
+      host.innerHTML = Q.renderSVG(Q.encode(url, 'M'), { margin: 1 });
+      host.dataset.done = 'yes';
+    } catch (e) { }
+  }
+
+  function renderAll() { renderHeroStats(); renderCategories(); renderAlerts(); renderJobs(); renderPromoQr(); }
 
   root.HRCRefresh = function () {
     if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }
@@ -308,7 +411,7 @@
     var hs = document.getElementById('hero-stats');
     if (hs) {
       hs.innerHTML = ['w60', 'w40', 'w60', 'w40'].map(function (w) {
-        return '<div class="hero-stat skeleton"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
+        return '<div class="app-stat skeleton"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
       }).join('');
     }
   }
@@ -332,7 +435,7 @@
     var hs = document.getElementById('hero-stats');
     if (hs) {
       hs.innerHTML = ['—', '—'].map(function () {
-        return '<div class="hero-stat"><b>—</b><span>…</span></div>';
+        return '<div class="app-stat"><b>—</b><span>…</span></div>';
       }).join('');
     }
   }
@@ -342,28 +445,89 @@
     if (!host) return;
     if (cloudBlocked()) return;   // الهيكل/رسالة الفشل تسيّر العرض هنا
     /* الزائر في وضع القاعدة يرى إحصاءات الوظائف المعلنة فقط — أعداد الاستمارات
-       والتوظيف بيانات داخلية (وأي رقم متصفح هنا سيكون من البيانات التجريبية
-       أو كاش قديم أصلاً). الموظف المسجَّل يرى اللوحة كاملة. */
+       والتوظيف بيانات داخلية (وأي رقم متصفح هنا سيكون من بيانات تجريبية).
+       الموظف المسجَّل يرى أرقام النظام الكاملة. */
     var staff = false;
     try { staff = !!(Store.currentUser && Store.currentUser()); } catch (e) { staff = false; }
+    var items;
     if (cloudMode && !staff) {
       var jobsAll = Store.listJobs({});
-      var items = [
-        { v: jobsAll.filter(function (j) { return j.status === 'available'; }).length, l: 'وظيفة متاحة الآن' },
-        { v: jobsAll.length, l: 'وظيفة معروضة' }
+      items = [
+        { ic: 'briefcase', v: jobsAll.filter(function (j) { return j.status === 'available'; }).length, l: 'وظيفة متاحة الآن' },
+        { ic: 'card', v: '2', l: 'فرصتان بكل بطاقة' },
+        { ic: 'calendar', v: '30', l: 'يوماً صلاحية البطاقة' },
+        { ic: 'clock', v: '24', l: 'ساعة حجز عادل' }
       ];
     } else {
       var s = Store.stats();
       items = [
-        { v: s.available, l: 'وظيفة متاحة الآن' },
-        { v: s.totalJobs, l: 'وظيفة مُسجّلة في النظام' },
-        { v: s.forms, l: 'بطاقة صادرة' },
-        { v: s.hires, l: 'توظيف ناجح مكتمل' }
+        { ic: 'briefcase', v: s.available, l: 'وظيفة متاحة الآن' },
+        { ic: 'card', v: s.forms, l: 'بطاقة صادرة' },
+        { ic: 'users', v: s.hires, l: 'توظيف ناجح' },
+        { ic: 'clock', v: '24', l: 'ساعة حجز عادل' }
       ];
     }
     host.innerHTML = items.map(function (i) {
-      return '<div class="hero-stat"><b>' + i.v + '</b><span>' + i.l + '</span></div>';
+      return '<div class="app-stat">' + UI.ic(i.ic) + '<b>' + UI.esc(String(i.v)) + '</b><span>' + UI.esc(i.l) + '</span></div>';
     }).join('');
+  }
+
+  /* ── شريط التصنيفات: يُبنى من تصنيفات الوظائف المعروضة فعلاً ── */
+
+  root.HRCRefresh = function () {
+    if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }
+    renderAll();
+  };
+
+  /* هيكل تحميل يظهر بدل بيانات المتصفح لحظة انتظار رد القاعدة */
+  function skeletonCard() {
+    return '<article class="job-card skeleton" aria-hidden="true">' +
+      '<div class="skel-body">' +
+        '<div class="skel-line w60" style="height:16px"></div>' +
+        '<div class="skel-line w40"></div>' +
+        '<div class="skel-line"></div><div class="skel-line w80"></div><div class="skel-line w60"></div>' +
+      '</div>' +
+      '<div class="skel-foot"><span class="skel-line sq"></span><span class="skel-line sq" style="width:96px"></span></div>' +
+    '</article>';
+  }
+
+  function renderSkeleton() {
+    var host = document.getElementById('jobs-grid');
+    if (host) host.innerHTML = skeletonCard().repeat(6);
+    var empty = document.getElementById('jobs-empty');
+    if (empty) empty.classList.add('hidden');
+    var count = document.getElementById('jobs-count');
+    if (count) count.textContent = '…';
+    var hs = document.getElementById('hero-stats');
+    if (hs) {
+      hs.innerHTML = ['w60', 'w40', 'w60', 'w40'].map(function (w) {
+        return '<div class="app-stat skeleton"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
+      }).join('');
+    }
+  }
+
+  /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
+  function renderCloudError() {
+    var host = document.getElementById('jobs-grid');
+    if (host) {
+      host.innerHTML =
+        '<div class="empty-state" role="alert">' +
+          '<svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg>' +
+          '<h3>تعذّر الاتصال بقاعدة الشركة</h3>' +
+          '<p class="mb-2">تعذّر تحميل الوظائف المعلنة الآن — تحقّق من اتصالك بالإنترنت ثم أعد المحاولة، أو خابرنا على الأرقام الرسمية.</p>' +
+          '<button class="btn btn-outline btn-sm" data-action="retry-cloud">' + UI.ic('refresh') + ' إعادة المحاولة</button>' +
+        '</div>';
+    }
+    var empty = document.getElementById('jobs-empty');
+    if (empty) empty.classList.add('hidden');
+    var count = document.getElementById('jobs-count');
+    if (count) count.textContent = '—';
+    var hs = document.getElementById('hero-stats');
+    if (hs) {
+      hs.innerHTML = ['—', '—'].map(function () {
+        return '<div class="app-stat"><b>—</b><span>…</span></div>';
+      }).join('');
+    }
   }
 
   function renderJobs() {
@@ -371,6 +535,9 @@
     if (!host) return;
     if (cloudBlocked()) { if (!cloudSettled) renderSkeleton(); else renderCloudError(); return; }
     var jobs = Store.listJobs(filters);
+    if (filters.category && filters.category !== 'all') {
+      jobs = jobs.filter(function (j) { return (j.category || '') === filters.category; });
+    }
     var count = document.getElementById('jobs-count');
     if (count) count.textContent = jobs.length;
     var upd = document.getElementById('jobs-updated');
@@ -410,56 +577,85 @@
     return 'https://wa.me/' + waNumber() + '?text=' + encodeURIComponent(msg);
   }
 
+  /* أيقونة التصنيف: تُطابق أسماء تصنيفات الشركة في config.jobCategories */
+  var CAT_ICON = {
+    'صناعي': 'i-building', 'خدمات': 'i-users', 'صحي': 'i-shield', 'هندسي': 'i-chart',
+    'إداري': 'i-file', 'تجاري': 'i-bag', 'زراعي': 'i-sparkle', 'تقني': 'i-server'
+  };
+  function catIcon(c) { return CAT_ICON[c] || 'i-briefcase'; }
+
+  /* صورة افتراضية للكرت عندما لا تكون الشركة قد رفعت صورة للوظيفة:
+     تُختار من صور التخصصات المرفقة مع الموقع (بلا أي طلب خارجي). */
+  var CAT_IMG = {
+    'صناعي': 'job-warehouse', 'خدمات': 'job-sales', 'صحي': 'job-nurse', 'هندسي': 'job-engineer',
+    'إداري': 'job-sales', 'تجاري': 'job-cashier', 'زراعي': 'job-warehouse', 'تقني': 'job-electrician'
+  };
+  var TITLE_IMG = [
+    [/سائق|نقل|شاحن|حمولة|توصيل/, 'job-truck'],
+    [/طباخ|شيف|مطبخ|باريستا|كافيه|مقهى|مطعم/, 'job-chef'],
+    [/كهرب|فني|صيانة|ميكانيك/, 'job-electrician'],
+    [/ممرض|طبي|صح|صيدل/, 'job-nurse'],
+    [/مهندس|هندس/, 'job-engineer'],
+    [/مخزن|مستودع|عامل/, 'job-warehouse'],
+    [/كاشير|مبيعات|بائع/, 'job-cashier']
+  ];
+  function defaultJobImage(j) {
+    var t = String(j.title || '');
+    for (var i = 0; i < TITLE_IMG.length; i++) if (TITLE_IMG[i][0].test(t)) return 'assets/img/jobs/' + TITLE_IMG[i][1] + '.webp';
+    var byCat = CAT_IMG[j.category];
+    return 'assets/img/jobs/' + (byCat || 'job-warehouse') + '.webp';
+  }
+
+  /* شارة الكرت: تعبير صادق عن حالة الوظيفة (لا شارات تجميلية بلا معنى) */
+  function cardBadge(j) {
+    if (j.status === 'reserved') return { cls: 'is-reserved', t: 'محجوزة' };
+    if (j.status === 'hiring') return { cls: 'is-new', t: 'جاري التوظيف' };
+    if (j.status === 'closed') return { cls: 'is-closed', t: 'مغلقة' };
+    var n = Number(j.vacancies || 1);
+    if (n > 1) return { cls: '', t: 'مميز' };
+    return { cls: 'is-vacant', t: 'شاغر' };
+  }
+
   function cardHtml(j) {
     var st = CFG.jobStatus[j.status];
-    var cls = j.status === 'reserved' ? 'is-reserved' : (j.status === 'closed' ? 'is-closed' : '');
+    var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : ''));
     var hold = '';
     if (j.status === 'reserved' && j.holdExpiresAt) {
       var h = Store.diffHours(j.holdExpiresAt, new Date());
-      hold = '<span class="tiny muted" title="يُفرج تلقائياً">' +
-        (h > 0 ? 'تُفرج خلال ' + Math.ceil(h) + ' ساعة' : 'قيد الإفراج') + '</span>';
+      hold = (h > 0 ? 'تُفرج خلال ' + Math.ceil(h) + ' ساعة' : 'قيد الإفراج');
     }
-    /* صورة الوظيفة: تُحمَّل بتحميل مؤجّل (أسرع على الموبايل)، ومعها بديل رمزي
-       يظهر إن تعذّر تحميل الصورة (بلا إنترنت أو رابط معطّل) فلا تظهر أيقونة
-       صورة مكسورة في القائمة */
-    var imageHtml = '';
-    if (j.imageUrl) {
-      imageHtml = '<div class="job-image" style="--img:url(&quot;' + UI.esc(j.imageUrl) + '&quot;)">' +
-        '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
-        '<img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async" referrerpolicy="no-referrer"' +
-        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()"></div>';
-    }
-    
+    var imgSrc = j.imageUrl || defaultJobImage(j);
+    var imageHtml = '<div class="job-image" style="--img:url(&quot;' + UI.esc(imgSrc) + '&quot;)">' +
+      '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
+      '<img src="' + UI.esc(imgSrc) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async"' +
+        (j.imageUrl ? ' referrerpolicy="no-referrer"' : '') +
+        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()">' + '</div>';
+    var b = cardBadge(j);
+    var fav = favList().indexOf(j.code) >= 0;
+    var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');
     return '' +
       '<article class="job-card ' + cls + '">' +
         imageHtml +
-        '<div class="job-head">' +
-          '<div>' +
-            '<h3 class="job-title">' + UI.esc(j.title) + '</h3>' +
-            '<span class="chip chip-code mono job-code">' + UI.esc(j.code) + '</span>' +
-          '</div>' +
-          '<div class="job-statuses">' +
-            UI.jobBadge(j.status) +
-            '<span class="chip chip-gold tiny">' + UI.esc(j.category) + '</span>' +
-          '</div>' +
+        '<div class="ac-top">' +
+          '<span class="ac-badge ' + b.cls + '">' + UI.esc(b.t) + '</span>' +
+          '<button type="button" class="ac-fav' + (fav ? ' is-on' : '') + '" data-fav="' + UI.esc(j.code) + '"' +
+            ' aria-pressed="' + (fav ? 'true' : 'false') + '" aria-label="حفظ في المفضلة" title="حفظ في المفضلة">' +
+            '<svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg></button>' +
         '</div>' +
-        '<div class="job-body">' +
-          '<div class="job-meta">' +
-            '<div class="mi">' + UI.ic('pin') + '<span>' + UI.esc(j.governorate || '—') + '</span></div>' +
-            '<div class="mi">' + UI.ic('clock') + '<span>' + UI.esc(j.shift) + '</span></div>' +
-            '<div class="mi">' + UI.ic('money') + '<span>' + Store.money(j.salaryMin) + ' – ' + Store.money(j.salaryMax) + '</span></div>' +
-            '<div class="mi">' + UI.ic('users') + '<span>' + UI.esc(j.gender || 'لا فرق') + '</span></div>' +
-          '</div>' +
+        '<div class="ac-body" data-action="job-details" data-code="' + UI.esc(j.code) + '" role="button" tabindex="0"' +
+          ' aria-label="تفاصيل الوظيفة ' + UI.esc(j.title) + '">' +
+          '<h3 class="job-title">' + UI.esc(j.title) + '</h3>' +
+          '<div class="ac-row"><svg class="ic"><use href="#i-' + catIcon(j.category).replace(/^i-/, '') + '" xlink:href="#' + catIcon(j.category) + '"/></svg>' +
+            '<span>' + UI.esc(j.category || '—') + '</span><span class="mono job-code" style="margin-inline-start:auto">' + UI.esc(j.code) + '</span></div>' +
+          '<div class="ac-row"><svg class="ic"><use href="#i-money" xlink:href="#i-money"/></svg><b>' + salary + '</b></div>' +
+          '<div class="ac-row"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg><span>' + UI.esc(j.shift) + '</span></div>' +
+          '<div class="ac-row"><svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg><span>' + UI.esc(j.governorate || '—') + '</span></div>' +
+          (hold ? '<div class="ac-row"><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg><span class="tiny muted">' + hold + '</span></div>' : '') +
         '</div>' +
-        '<div class="job-foot">' +
-          '<span class="salary">' + Store.money(j.salaryMin) + '</span>' +
-          '<div class="flex" style="gap:8px;align-items:center">' +
-            hold +
-            '<button class="btn btn-outline btn-sm" data-action="job-details" data-code="' + UI.esc(j.code) + '">التفاصيل</button>' +
-            (j.status === 'available'
-              ? '<button class="btn btn-gold btn-sm" data-action="open-booking" data-code="' + UI.esc(j.code) + '">' + UI.ic('card') + ' قدّم ببطاقتك</button>'
-              : '<button class="btn btn-outline btn-sm" disabled>' + st.ar + '</button>') +
-          '</div>' +
+        '<div class="ac-foot">' +
+          (j.status === 'available'
+            ? '<button class="btn btn-gold" data-action="open-booking" data-code="' + UI.esc(j.code) + '">' + UI.ic('card') + ' قدّم ببطاقتك</button>'
+            : '<button class="btn btn-outline" data-action="job-details" data-code="' + UI.esc(j.code) + '">' + UI.esc(st.ar) + ' — التفاصيل</button>') +
         '</div>' +
       '</article>';
   }

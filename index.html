@@ -16,8 +16,8 @@
 <link rel="preconnect" href="https://vqsvztudvfukyuerzcgx.supabase.co" crossorigin>
 <link rel="dns-prefetch" href="https://vqsvztudvfukyuerzcgx.supabase.co">
 
-<link rel="stylesheet" href="assets/css/style.css?v=c8b42cf635">
-<link rel="stylesheet" href="assets/css/card-entry.css?v=c8b42cf635"><link rel="stylesheet" href="assets/css/public-polish.css?v=c8b42cf635"></head>
+<link rel="stylesheet" href="assets/css/style.css?v=9dc9fb7ab1">
+<link rel="stylesheet" href="assets/css/card-entry.css?v=9dc9fb7ab1"><link rel="stylesheet" href="assets/css/public-polish.css?v=9dc9fb7ab1"><link rel="stylesheet" href="assets/css/app-shell.css?v=9dc9fb7ab1"></head>
 <body>
 <!-- ===========================================================================
      مكتبة الأيقونات والرموز (SVG Sprite) — تُدرج مرة واحدة في كل صفحة
@@ -216,6 +216,14 @@
   <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M5 12h14M13 6l6 6-6 6"/>
   </symbol>
+  <!-- معلومات (شروح الواجهة الجديدة) -->
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.6h.01"/>
+  </symbol>
+  <!-- قلب المفضلة في بطاقة الوظيفة -->
+  <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 20s-7-4.4-7-9.3A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7 3.1C19 15.6 12 20 12 20z"/>
+  </symbol>
 </svg>
 
 <!-- ============================== الترويسة ============================== -->
@@ -284,9 +292,27 @@
 </header>
 
 <!-- ============================== الواجهة الرئيسية ============================== -->
-<section class="hero" id="home">
-  <div class="hero-bg" role="img" aria-label="بوابة عشتار البابلية"></div>
+<section class="hero hero-app" id="home">
+  <div class="hero-bg" role="img" aria-label="مدينة بغداد على ضفاف دجلة عند الغروب"></div>
   <div class="hero-veil"></div>
+  <!-- شريط التطبيق: العنوان · الإشعارات · حسابي (الأزرار تعمل فعلياً) -->
+  <div class="app-topbar">
+    <a class="app-pill" href="https://www.google.com/maps?q=32.4823913,44.4105048" target="_blank" rel="noopener" title="موقع الشركة على الخريطة">
+      <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
+      <span class="pill-text">حلة — شارع 60</span>
+      <svg class="ic" style="width:12px;height:12px"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
+    </a>
+    <div class="app-top-actions">
+      <button type="button" class="app-icon-btn" id="app-alerts" aria-label="التنبيهات" title="تنبيهات الوظائف والحجز">
+        <svg class="ic"><use href="#i-star8" xlink:href="#i-star8"/></svg>
+        <span class="app-count" id="app-alerts-count" hidden>0</span>
+      </button>
+      <a class="app-pill" href="#contact" data-app-account>
+        <svg class="ic"><use href="#i-user" xlink:href="#i-user"/></svg>
+        <span class="pill-text">حسابي</span>
+      </a>
+    </div>
+  </div>
   <div class="container hero-inner">
     <div>
       <span class="hero-badge">
@@ -305,7 +331,6 @@
           تصفّح الوظائف المتاحة
         </a>
       </div>
-      <div class="hero-stats" id="hero-stats"></div>
     </div>
 
     <!-- أسد بابل في الواجهة -->
@@ -342,6 +367,52 @@
         <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث
       </button>
     </form>
+  </div>
+</section>
+
+<!-- ============================== تصنيفات الفرص ============================== -->
+<section class="section" style="padding-top:6px;padding-bottom:0">
+  <div class="container">
+    <div class="flex-between mb-2" style="align-items:baseline;gap:12px;flex-wrap:wrap">
+      <h2 class="mb-0" style="font-size:1.05rem">تصفّح حسب التخصص</h2>
+      <span class="tiny muted">اضغط تصنيفاً لتصفية الوظائف فوراً</span>
+    </div>
+    <div class="cat-rail" id="cat-rail" role="tablist" aria-label="تصنيفات الوظائف"></div>
+  </div>
+</section>
+
+<!-- ============================== بطاقة التوظيف ============================== -->
+<section class="section" style="padding-top:22px">
+  <div class="container">
+    <div class="promo-banner">
+      <div>
+        <h3>بطاقة التوظيف — <span class="accent">جسرك إلى الوظيفة</span></h3>
+        <p>تُشترى كاشاً من نقطة بيع معتمدة، وتحمل <b>فرصتين مستقلتين</b> وصلاحية <b>30 يوماً</b>.
+           امسح الباركود لتتابع حالتها، تختار وظيفتك، وتطبع استمارتك — بلا رموز ولا أوراق ضائعة.</p>
+        <div class="promo-cta">
+          <button type="button" class="btn btn-gold" data-action="open-booking">
+            <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> افتح بطاقتي
+          </button>
+          <a class="btn btn-ghost" href="#how">
+            <svg class="ic"><use href="#i-info" xlink:href="#i-info"/></svg> كيف تعمل؟
+          </a>
+        </div>
+      </div>
+      <div class="promo-card-visual" aria-hidden="true">
+        <svg class="pv-emblem"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
+        <b>بطاقة التوظيف</b>
+        <span>فرصتان · 30 يوماً · باركود QR</span>
+        <div class="pv-qr" id="promo-qr"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== أرقام سريعة ============================== -->
+<section class="section" style="padding-top:0;padding-bottom:0">
+  <div class="container">
+    <!-- الأرقام تُرسم من الكود نفسه (renderHeroStats) بأصناف شريط التطبيق -->
+    <div class="app-stats" id="hero-stats"></div>
   </div>
 </section>
 
@@ -604,6 +675,18 @@
   </div>
 </section>
 
+<!-- ============================== شريط التطبيق السفلي (جوال) ============================== -->
+<nav class="tabbar" aria-label="تنقل سريع">
+  <a href="#jobs" data-tab="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg><span>الوظائف</span></a>
+  <a href="#how" data-tab="how"><svg class="ic"><use href="#i-info" xlink:href="#i-info"/></svg><span>آلية العمل</span></a>
+  <button type="button" class="tab-center" data-action="open-booking" aria-label="بطاقتي">
+    <span class="tab-fab"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg></span>
+    <span>بطاقتي</span>
+  </button>
+  <a href="#services" data-tab="services"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg><span>خدماتنا</span></a>
+  <a href="#contact" data-tab="contact"><svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg><span>تواصل</span></a>
+</nav>
+
 <!-- ============================== التذييل ============================== -->
 <footer class="site-footer">
   <div class="crenel crenel-dark"></div>
@@ -681,18 +764,18 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=c8b42cf635"></script>
-<script src="assets/js/supabase-config.js?v=c8b42cf635"></script>
-<script src="assets/js/cloud-http.js?v=c8b42cf635"></script>
-<script src="assets/js/qr.js?v=c8b42cf635"></script>
-<script src="assets/js/qr-scan.js?v=c8b42cf635"></script>
-<script src="assets/js/cloud.js?v=c8b42cf635"></script>
-<script src="assets/js/cloud-sync.js?v=c8b42cf635"></script>
-<script src="assets/js/store.js?v=c8b42cf635"></script>
-<script src="assets/js/ui.js?v=c8b42cf635"></script>
-<script src="assets/js/nav.js?v=c8b42cf635"></script>
-<script src="assets/js/voucher.js?v=c8b42cf635"></script>
-<script src="assets/js/booking.js?v=c8b42cf635"></script>
-<script src="assets/js/public.js?v=c8b42cf635"></script>
+<script src="assets/js/config.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/supabase-config.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/cloud-http.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/qr.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/qr-scan.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/cloud.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/cloud-sync.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/store.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/ui.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/nav.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/voucher.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/booking.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/public.js?v=9dc9fb7ab1"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-// Service Worker للعمل أوفلاين — hrc-cache-v68
+// Service Worker للعمل أوفلاين — hrc-cache-v69
 // ---------------------------------------------------------------------------
 // سياسة التخزين منذ v4:
 //   • HTML و JS  → network-first: الشبكة أولاً (الزائر يرى آخر نسخة)، والكاش
@@ -28,7 +28,7 @@
    إن كان مطابقاً. إبقاء الرقم ثابتاً يُبقي الزوار القدامى على نسخة قديمة
    من index.html مهما أعدت النشر (ظهر فعلاً: زر دخول محذوف بقي على حاسبة
    زارت الموقع قبل الحذف، بينما اختفى على هاتف لم يزره من قبل). */
-const CACHE_NAME = 'hrc-cache-v68';
+const CACHE_NAME = 'hrc-cache-v69';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -57,6 +57,9 @@ const urlsToCache = [
   /* 2026-10-25: أُضيفت ملفات كانت تُترك للتحميل الوقتي — بلا تخزين مسبق
      تظهر الصفحة بلا تنسيق إن فُتحت أول مرة بلا إنترنت. */
   '/assets/css/card-entry.css',
+  '/assets/css/app-shell.css',
+  '/assets/img/hero-skyline.webp',
+  '/assets/img/card-banner.webp',
   '/assets/css/backup.css',
   '/assets/css/image-editor.css',
   '/assets/js/qr-scan.js',

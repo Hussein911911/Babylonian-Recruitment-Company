@@ -185,13 +185,14 @@ try {
     (() => {
       /* الوظائف المعروضة في الصفحة (وليست مخزن المتصفح) */
       const list = w.G.currentJobs();
-      list.forEach((j, i) => { j.imageUrl = i === 0 ? 'assets/img/jobs/truck.svg' : ''; });
+      list.forEach((j, i) => { j.imageUrl = i === 0 ? 'assets/img/jobs/job-truck.webp' : ''; });
       w.G.renderJobs();
       const cards = [...w.document.querySelectorAll('#jobs-list .job-card')];
       const withThumb = cards.filter((c) => c.querySelector('.job-thumb img'));
       const first = withThumb.length ? withThumb[0].querySelector('.job-thumb img') : null;
+      /* صفحة التقديم تعرض مصغّرة صورة الشركة فقط عند وجود صورة للوظيفة */
       return withThumb.length === 1 && !!first &&
-        /truck\.svg$/.test(first.getAttribute('src')) &&
+        /job-truck\.webp$/.test(first.getAttribute('src')) &&
         first.getAttribute('loading') === 'lazy';
     })());
   console.log(`\nJob filters: ${checks} checks passed.`);

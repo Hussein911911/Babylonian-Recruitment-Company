@@ -19,8 +19,8 @@ function injectFixture(store,json){const db=store.db();for(const k of Object.key
  *  أو: NODE_PATH=/path/to/node_modules node tests/smoke.mjs
  * =========================================================================== */
 import { JSDOM, VirtualConsole, ResourceLoader } from 'jsdom';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { readFileSync, existsSync } from 'node:fs';
+import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DEMO_SEED } from './fixtures/demo-seed.mjs';
 
@@ -130,17 +130,21 @@ check('الوظائف التجريبية ظهرت كبطاقات', () => {
   const cards = site.doc.querySelectorAll('#jobs-grid .job-card').length;
   return cards >= 8 || 'عدد البطاقات: ' + cards;
 });
-check('إحصاءات الواجهة (Hero) ظهرت', () => {
-  const n = site.doc.querySelectorAll('#hero-stats .hero-stat').length;
+check('إحصاءات الواجهة (شريط الأرقام) ظهرت', () => {
+  /* 2026-10-25: الشريط انتقل إلى نمط التطبيق (.app-stat) بنفس المعرّف #hero-stats */
+  const n = site.doc.querySelectorAll('#hero-stats .app-stat').length;
   return n === 4 || 'عدد الإحصاءات: ' + n;
 });
 check('أيقونة/شعار الشركة موجود داخل الرموز (Sprite)', () =>
   !!site.doc.getElementById('i-emblem') || 'رمز الشعار غير موجود');
-check('صورة بوابة عشتار مربوطة بخلفية الواجهة + صورة أسد بابل', () => {
-  const lion = site.doc.querySelector('.hero-figure img');
-  const gate = site.doc.querySelector('.hero-bg');
+check('صورة المدينة في الواجهة + صورة أسد بابل في قسم الشركة', () => {
+  /* 2026-10-25: خلفية الواجهة صارت صورة مدينة (hero-skyline) بنمط التطبيق،
+     وأسد بابل بقي صورة قسم «عن الشركة». نتحقق من الاثنين فعلياً على القرص. */
+  const bg = site.window.getComputedStyle(site.doc.querySelector('.hero.hero-app .hero-bg')).backgroundImage || '';
+  const okCity = /hero-skyline\.webp/.test(bg) && existsSync(join(ROOT, 'assets/img/hero-skyline.webp'));
+  const lion = site.doc.querySelector('.lion-frame img');
   const okLion = !!lion && lion.getAttribute('src').includes('lion-of-babylon');
-  return (okLion && !!gate) || 'الصور غير مربوطة';
+  return (okCity && okLion) || ('الخلفية: ' + bg.slice(0, 60) + ' | الأسد: ' + okLion);
 });
 check('التصفية بالحالة تعمل', () => {
   const sel = site.doc.getElementById('filter-status');
@@ -1415,7 +1419,7 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
   await acheck('هيكل التحميل يظهر أثناء قراءة public_jobs (لا بيانات متصفح)', async () => {
     await pollUntil(() => okPage.doc.querySelectorAll('#jobs-grid .job-card.skeleton').length > 0, 4000, 'ظهور الهيكل');
     const grid = okPage.doc.getElementById('jobs-grid').textContent;
-    return (!grid.includes('HRC-1042') && okPage.doc.querySelectorAll('#hero-stats .hero-stat.skeleton').length === 4) ||
+    return (!grid.includes('HRC-1042') && okPage.doc.querySelectorAll('#hero-stats .app-stat.skeleton').length === 4) ||
       'ظهرت بيانات المتصفح أثناء التحميل أو الهيكل ناقص';
   });
   await acheck('بعد الرد: الوظائف المعلنة من القاعدة (لا التجريبية)', async () => {
@@ -1425,8 +1429,12 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
       'البطاقات ليست من القاعدة: ' + grid.slice(0, 80);
   });
   await acheck('إحصاءات الزائر من المعلن فقط (لا أعداد استمارات داخلية)', async () => {
-    const stats = [...okPage.doc.querySelectorAll('#hero-stats .hero-stat')].map((s) => s.textContent);
-    return (stats.length === 2 && /متاحة/.test(stats[0]) && /معروضة/.test(stats[1])) ||
+    const stats = [...okPage.doc.querySelectorAll('#hero-stats .app-stat')].map((s) => s.textContent);
+    /* الزائر يرى أرقاماً عامة فقط: وظائف متاحة + قواعد البطاقة الثابتة —
+       ولا أي عدّاد داخلي للشركة (بطاقات صادرة / توظيف ناجح). */
+    const all = stats.join(' | ');
+    return (stats.length === 4 && /متاحة/.test(stats[0]) &&
+      !/بطاقة صادرة/.test(all) && !/توظيف ناجح/.test(all)) ||
       'الإحصاءات: ' + JSON.stringify(stats);
   });
   await acheck('الزائر = طلب واحد فقط (public_jobs) ولا صلاحية كتابة', async () => {

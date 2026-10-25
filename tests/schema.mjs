@@ -548,6 +548,49 @@ step(18, 'النسخ المجدول — منفّذ واحد لا اثنان');
     !/select brc\.recovery_weekly\(\)/.test(recTest));
 }
 
+/* ── 2026-10-25: الهوية الجديدة — ترتيب التطبيق بألوان الشركة والصور ── */
+step(19, 'الواجهة العامة — ترتيب تطبيق بهوية الشركة وصور محلية');
+{
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+
+  check('الترتيب المطلوب: شريط علوي · بحث · تصنيفات · بانر البطاقة · أرقام · وظائف',
+    pub.indexOf('app-topbar') < pub.indexOf('quick-search') &&
+    pub.indexOf('quick-search') < pub.indexOf('cat-rail') &&
+    pub.indexOf('cat-rail') < pub.indexOf('promo-banner') &&
+    pub.indexOf('promo-banner') < pub.indexOf('id="hero-stats"') &&
+    pub.indexOf('id="hero-stats"') < pub.indexOf('id="jobs"'));
+  const tabFlat = pub.replace(/\s+/g, ' ');
+  check('شريط تنقل سفلي: ٤ روابط + زر «بطاقتي» بارز في الوسط',
+    /class="tabbar"/.test(tabFlat) && (tabFlat.match(/data-tab="/g) || []).length === 4 &&
+    /<button[^>]*class="tab-center"[^>]*data-action="open-booking"/.test(tabFlat));
+
+  /* الهوية: ألوان الشركة فقط — لا لون أزرق/بنفسجي جديد من الموك-أب */
+  const vars = readFileSync(join(ROOT, 'assets', 'css', 'style.css'), 'utf8');
+  check('الأنماط الجديدة تستعمل متغيّرات الشركة (--lapis/--gold) لا ألواناً جديدة',
+    /var\(--gold\)/.test(app) && /var\(--lapis-2\)/.test(app) && /--gold:/.test(vars));
+
+  /* الصور: محلية + بصيغة webp + بلا نص عربي داخل الصورة */
+  const imgs = ['hero-skyline', 'card-banner', 'jobs/job-truck', 'jobs/job-cashier', 'jobs/job-chef',
+    'jobs/job-electrician', 'jobs/job-engineer', 'jobs/job-nurse', 'jobs/job-sales', 'jobs/job-warehouse'];
+  const missing = imgs.filter((n) => !existsSync(join(ROOT, 'assets', 'img', n + '.webp')));
+  check('كل صور الهوية الجديدة موجودة محلياً بصيغة webp', missing.length === 0, missing.join(', '));
+  const big = imgs.map((n) => join(ROOT, 'assets', 'img', n + '.webp')).filter((f) => {
+    try { return readFileSync(f).length > 150 * 1024; } catch { return false; }
+  });
+  check('لا صورة تتجاوز 150KB (سرعة على الجوال)', big.length === 0, big.map((f) => f.split('/').pop()).join(', '));
+
+  check('الواجهة تستعمل صورة المدينة، وبانر البطاقة يستعمل صورة البطاقة',
+    /hero-skyline\.webp/.test(app) && /card-banner\.webp/.test(app));
+  check('كل وظيفة بلا صورة تحصل على صورة تخصص محلية (لا أيقونة مكسورة)',
+    /function defaultJobImage/.test(js) && /assets\/img\/jobs\//.test(js));
+  check('المفضلة تُحفظ على جهاز الزائر وحده ولا تُرسل للشركة',
+    /hrc_fav_jobs_v1/.test(js) && /localStorage/.test(js));
+  check('شريط التنقل السفلي لا يظهر على الكمبيوتر (جوال فقط)',
+    /\.tabbar\s*\{[^}]*display:\s*none/.test(app) && /@media \(max-width: 860px\)/.test(app));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');

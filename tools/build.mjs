@@ -68,6 +68,7 @@ const partials = {
 };
 const CSS = read('assets/css/style.css');
 const PUBLIC_CSS = read('assets/css/public-polish.css');
+const APP_CSS = read('assets/css/app-shell.css');
 const NOTIFICATION_CSS = read('assets/css/notifications.css');
 const BACKUP_CSS = read('assets/css/backup.css');
 const WORKSPACE_CSS = read('assets/css/workspace-layout.css');
@@ -141,7 +142,7 @@ const scriptPath = (n) => n.startsWith('vendor/')
    تعديل cloud-sync.js — فيبقى المتصفح على نسخة قديمة **بصمت**، وهو أسوأ أنواع
    الأخطاء لأن الكود الجديد لا يصل أصلاً. */
 const ASSET_VER = process.env.HRC_ASSET_VER || createHash('sha1')
-  .update([CSS, CARD_CSS, PUBLIC_CSS, NOTIFICATION_CSS, EDITOR_CSS, BACKUP_CSS, WORKSPACE_CSS, read('assets/js/recovery.js'), ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
+  .update([CSS, CARD_CSS, PUBLIC_CSS, APP_CSS, NOTIFICATION_CSS, EDITOR_CSS, BACKUP_CSS, WORKSPACE_CSS, read('assets/js/recovery.js'), ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
            ...CLOUD_ORDER.map((n) => read(scriptPath(n)))].join('\u0000'))
   .digest('hex').slice(0, 10);
 const verQ = (p) => `${p}?v=${ASSET_VER}`;
@@ -179,7 +180,7 @@ ${extra}</head>
 function buildPage({ title, desc, body, scripts, publicStyle = false, staffStyle = false, cardStyle = false }) {
   return docHead({ title, desc, css: 'assets/css/style.css',
     extra: (cardStyle ? `<link rel="stylesheet" href="${verQ('assets/css/card-entry.css')}">` : '') +
-      (publicStyle ? `<link rel="stylesheet" href="${verQ('assets/css/public-polish.css')}">` : '') +
+      (publicStyle ? `<link rel="stylesheet" href="${verQ('assets/css/public-polish.css')}"><link rel="stylesheet" href="${verQ('assets/css/app-shell.css')}">` : '') +
       (staffStyle ? `<link rel="stylesheet" href="${verQ('assets/css/notifications.css')}"><link rel="stylesheet" href="${verQ('assets/css/image-editor.css')}"><link rel="stylesheet" href="${verQ('assets/css/backup.css')}"><link rel="stylesheet" href="${verQ('assets/css/workspace-layout.css')}">` : '') }) +
     partials.sprite + '\n' +
     partials.header + '\n' +
@@ -226,7 +227,7 @@ function buildStandalone() {
   const stats = { fonts: 0, cssImgs: 0, htmlImgs: 0 };
 
   // 1) CSS مع دمج الخطوط والصور
-  let css = (CSS + '\n' + CARD_CSS + '\n' + PUBLIC_CSS + '\n' + NOTIFICATION_CSS + '\n' + EDITOR_CSS + '\n' + BACKUP_CSS + '\n' + WORKSPACE_CSS).replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
+  let css = (CSS + '\n' + CARD_CSS + '\n' + PUBLIC_CSS + '\n' + APP_CSS + '\n' + NOTIFICATION_CSS + '\n' + EDITOR_CSS + '\n' + BACKUP_CSS + '\n' + WORKSPACE_CSS).replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
     const d = dataUri('assets/fonts/' + f); if (!d) return m;
     stats.fonts += d.size; return `url(${d.uri})`;
   });
