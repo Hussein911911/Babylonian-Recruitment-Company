@@ -16,8 +16,8 @@
 <link rel="preconnect" href="https://vqsvztudvfukyuerzcgx.supabase.co" crossorigin>
 <link rel="dns-prefetch" href="https://vqsvztudvfukyuerzcgx.supabase.co">
 
-<link rel="stylesheet" href="assets/css/style.css?v=9dc9fb7ab1">
-<link rel="stylesheet" href="assets/css/card-entry.css?v=9dc9fb7ab1"><link rel="stylesheet" href="assets/css/public-polish.css?v=9dc9fb7ab1"><link rel="stylesheet" href="assets/css/app-shell.css?v=9dc9fb7ab1"></head>
+<link rel="stylesheet" href="assets/css/style.css?v=98d2dd09b2">
+<link rel="stylesheet" href="assets/css/card-entry.css?v=98d2dd09b2"><link rel="stylesheet" href="assets/css/public-polish.css?v=98d2dd09b2"><link rel="stylesheet" href="assets/css/app-shell.css?v=98d2dd09b2"></head>
 <body>
 <!-- ===========================================================================
      مكتبة الأيقونات والرموز (SVG Sprite) — تُدرج مرة واحدة في كل صفحة
@@ -224,6 +224,10 @@
   <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 20s-7-4.4-7-9.3A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7 3.1C19 15.6 12 20 12 20z"/>
   </symbol>
+  <!-- بيت (زر «الرئيسية» في شريط التطبيق السفلي) -->
+  <symbol id="i-house" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 10.6 12 4l8 6.6V20a1 1 0 0 1-1 1h-4.5v-5.5h-5V21H5a1 1 0 0 1-1-1z"/>
+  </symbol>
 </svg>
 
 <!-- ============================== الترويسة ============================== -->
@@ -295,76 +299,53 @@
 <section class="hero hero-app" id="home">
   <div class="hero-bg" role="img" aria-label="مدينة بغداد على ضفاف دجلة عند الغروب"></div>
   <div class="hero-veil"></div>
-  <!-- شريط التطبيق: العنوان · الإشعارات · حسابي (الأزرار تعمل فعلياً) -->
+
+  <!-- شريط التطبيق العلوي: الموقع (يمين) · الإشعارات + حسابي (يسار) -->
   <div class="app-topbar">
-    <a class="app-pill" href="https://www.google.com/maps?q=32.4823913,44.4105048" target="_blank" rel="noopener" title="موقع الشركة على الخريطة">
+    <a class="app-loc" href="https://www.google.com/maps?q=32.4823913,44.4105048" target="_blank" rel="noopener" title="موقع الشركة على الخريطة">
       <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
-      <span class="pill-text">حلة — شارع 60</span>
-      <svg class="ic" style="width:12px;height:12px"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
+      <span>حلة</span>
+      <svg class="ic chev"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
     </a>
     <div class="app-top-actions">
-      <button type="button" class="app-icon-btn" id="app-alerts" aria-label="التنبيهات" title="تنبيهات الوظائف والحجز">
+      <button type="button" class="app-icon-btn" id="app-alerts" aria-label="التنبيهات" title="عدد الوظائف المتاحة الآن">
         <svg class="ic"><use href="#i-star8" xlink:href="#i-star8"/></svg>
         <span class="app-count" id="app-alerts-count" hidden>0</span>
       </button>
-      <a class="app-pill" href="#contact" data-app-account>
+      <a class="app-user" href="#contact" data-app-account>
+        <span>حسابي</span>
         <svg class="ic"><use href="#i-user" xlink:href="#i-user"/></svg>
-        <span class="pill-text">حسابي</span>
       </a>
     </div>
   </div>
-  <div class="container hero-inner">
-    <div>
-      <span class="hero-badge">
-        <svg class="ic"><use href="#i-star8" xlink:href="#i-star8"/></svg>
-        شركة مسجّلة في بابل — إجازة عمل رسمية
-      </span>
-      <h1>شركة الهدف للتوظيف<br><span class="accent">نصل الأيدي العاملة بأصحاب العمل</span></h1>
-      <p class="hero-lede">تصفّح وظائف بابل والفرات الأوسط وقدّم ببطاقة التوظيف من نقاط البيع المعتمدة. <b>فرصتان حالياً، وصلاحية 30 يوماً، والدفع كاش.</b></p>
-      <div class="hero-cta">
-        <button type="button" class="btn btn-gold btn-lg" data-action="open-booking">
-          <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg>
-          بطاقتي — تابع بطاقتك
-        </button>
-        <a href="#jobs" class="btn btn-ghost btn-lg">
-          <svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg>
-          تصفّح الوظائف المتاحة
-        </a>
-      </div>
-    </div>
 
-    <!-- أسد بابل في الواجهة -->
-    <aside class="hero-figure">
-      <img src="assets/img/lion-of-babylon.jpg" alt="أسد بابل — رمز القوة والأمانة في الحضارة البابلية" loading="eager">
-      <div class="figure-cap">
-        <b>أسد بابل — رمز القوة والأمانة</b>
-        <span>نحمل رمز الحضارة البابلية في كل بطاقة نُصدرها: التزام، وثقة، وأثر لا يُمحى.</span>
-      </div>
-    </aside>
+  <!-- الشعار والوعد في وسط الصورة -->
+  <div class="app-hero">
+    <div class="app-brand brand" data-staff-gate role="img" aria-label="شركة الهدف للتوظيف">
+      <svg class="app-emblem"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
+      <b class="app-wordmark">شركة <span class="accent">الهدف</span> للتوظيف</b>
+      <span class="app-tagline">منصة الفرص والوظائف</span>
+    </div>
+    <h1 class="app-headline">فرصتك لمستقبل أفضل</h1>
+    <p class="app-sub">وظيفة مناسبة .. لحياة أجمل</p>
+    <span class="app-hero-note">خطوتك تبدأ من هنا</span>
   </div>
-  <div class="crenel"></div>
 </section>
 
 <!-- ============================== البحث السريع ============================== -->
-<section class="section" style="padding-top:26px">
+<section class="app-search-wrap">
   <div class="container">
-    <form class="quick-search" id="qs-form" autocomplete="off">
-      <span class="qs-label">
-        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> بحث سريع
-      </span>
-      <div class="qs-field qs-main">
-        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-        <input type="text" id="qs-code" placeholder="اكتب كود الوظيفة أو اسمها..." aria-label="كود الوظيفة أو اسمها">
-      </div>
-      <button type="button" class="btn btn-ghost qs-scan" id="qs-scan" title="البحث بمسح الكيو آر كود">
-        <svg class="ic"><use href="#i-scan" xlink:href="#i-scan"/></svg> مسح QR
+    <form class="app-search" id="qs-form" autocomplete="off">
+      <svg class="ic as-ic"><use href="#i-search" xlink:href="#i-search"/></svg>
+      <input type="text" id="qs-code" placeholder="ابحث عن وظيفة، محل أو شركة..." aria-label="كود الوظيفة أو اسمها">
+      <select id="qs-governorate" aria-label="المحافظة" class="as-gov">
+        <option value="all">كل المحافظات</option>
+      </select>
+      <button type="button" class="as-scan" id="qs-scan" title="البحث بمسح الكيو آر كود" aria-label="مسح QR">
+        <svg class="ic"><use href="#i-scan" xlink:href="#i-scan"/></svg>
       </button>
-      <div class="qs-field qs-gov">
-        <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
-        <select id="qs-governorate" aria-label="المحافظة"><option value="all">كل المحافظات</option></select>
-      </div>
-      <button class="btn btn-gold qs-submit" type="submit">
-        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث
+      <button class="as-go" type="submit" aria-label="ابحث">
+        <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
       </button>
     </form>
   </div>
@@ -382,53 +363,42 @@
 </section>
 
 <!-- ============================== بطاقة التوظيف ============================== -->
-<section class="section" style="padding-top:22px">
+<section class="section app-section" style="padding-top:18px">
   <div class="container">
     <div class="promo-banner">
-      <div>
-        <h3>بطاقة التوظيف — <span class="accent">جسرك إلى الوظيفة</span></h3>
-        <p>تُشترى كاشاً من نقطة بيع معتمدة، وتحمل <b>فرصتين مستقلتين</b> وصلاحية <b>30 يوماً</b>.
-           امسح الباركود لتتابع حالتها، تختار وظيفتك، وتطبع استمارتك — بلا رموز ولا أوراق ضائعة.</p>
-        <div class="promo-cta">
-          <button type="button" class="btn btn-gold" data-action="open-booking">
-            <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> افتح بطاقتي
-          </button>
-          <a class="btn btn-ghost" href="#how">
-            <svg class="ic"><use href="#i-info" xlink:href="#i-info"/></svg> كيف تعمل؟
-          </a>
-        </div>
+      <div class="promo-visual" aria-hidden="true">
+        <div class="promo-card"><svg><use href="#i-emblem" xlink:href="#i-emblem"/></svg><div class="pv-qr" id="promo-qr"></div></div>
       </div>
-      <div class="promo-card-visual" aria-hidden="true">
-        <svg class="pv-emblem"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
-        <b>بطاقة التوظيف</b>
-        <span>فرصتان · 30 يوماً · باركود QR</span>
-        <div class="pv-qr" id="promo-qr"></div>
+      <div class="promo-body">
+        <h3>بطاقة التوظيف<br><span class="accent">جسرك إلى الوظيفة</span></h3>
+        <p>امسح الباركود وابدأ رحلتك نحو مستقبلك — فرصتان وصلاحية 30 يوماً.</p>
+        <button type="button" class="promo-more" data-action="open-booking">
+          <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg> معرفة المزيد
+        </button>
       </div>
+      <div class="promo-note">بطاقتك<br>هي مفتاحك<br>للمستقبل</div>
     </div>
-  </div>
-</section>
+    <div class="promo-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
 
-<!-- ============================== أرقام سريعة ============================== -->
-<section class="section" style="padding-top:0;padding-bottom:0">
-  <div class="container">
-    <!-- الأرقام تُرسم من الكود نفسه (renderHeroStats) بأصناف شريط التطبيق -->
-    <div class="app-stats" id="hero-stats"></div>
+    <!-- شروط التعامل مع البطاقة — تبقى ظاهرة للزائر (حقوق والتزامات) -->
+    <ul class="policy-strip" aria-label="شروط بطاقة التوظيف">
+      <li><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فرصتان بالبطاقة</li>
+      <li><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> صلاحية <b>30 يوماً</b></li>
+      <li><svg class="ic"><use href="#i-money" xlink:href="#i-money"/></svg> <b>الدفع كاش</b> عند نقطة البيع</li>
+      <li><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg> حجز <b>24 ساعة</b> ثم تصبح <b>حرجة</b></li>
+      <li><svg class="ic"><use href="#i-info" xlink:href="#i-info"/></svg> لا تعود متاحة تلقائياً — والفرصة المستهلكة لا تعود</li>
+    </ul>
   </div>
 </section>
 
 <!-- ============================== لوحة الوظائف ============================== -->
-<section class="section section-alt" id="jobs" style="padding-top:20px">
+<section class="section app-section" id="jobs" style="padding-top:6px">
   <div class="container">
-    <div class="section-head">
-      <span class="eyebrow">الفرص المتاحة الآن</span>
-      <h2>لوحة الوظائف في بابل والفرات الأوسط</h2>
-      <p>حجز الوظيفة 24 ساعة؛ بعدها تصبح حرجة بانتظار قرار الشركة، ولا تعود متاحة تلقائياً.</p>
-      <svg class="ornament" viewBox="0 0 74 18" fill="none" aria-hidden="true">
-        <path d="M0 9h22" stroke="url(#g-gold-line)" stroke-width="1.4"/>
-        <path d="M52 9h22" stroke="url(#g-gold-line)" stroke-width="1.4"/>
-        <path d="M37 1.5l2.9 4.6 5.1-2.3-2.3 5.1 4.6 2.9-4.6 2.9 2.3 5.1-5.1-2.3L37 20l-2.9-4.5-5.1 2.3 2.3-5.1L26.7 9.8l4.6-2.9-2.3-5.1 5.1 2.3z" fill="#c8a24a" transform="translate(0,-1.9) scale(.72) translate(14.6,2.6)"/>
-      </svg>
+    <div class="jobs-head">
+      <h2><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> أحدث الوظائف</h2>
+      <a class="jobs-all" href="#jobs">عرض الكل <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg></a>
     </div>
+    <p class="jobs-sub">حجز الوظيفة 24 ساعة؛ بعدها تصبح حرجة بانتظار قرار الشركة، ولا تعود متاحة تلقائياً.</p>
 
     <div class="filters">
       <div class="f-field f-search">
@@ -471,6 +441,14 @@
       <h3>لا توجد وظائف مطابقة</h3>
       <p class="mb-0">غيّر البحث أو صفّر الفلاتر لعرض الوظائف المتاحة.</p>
     </div>
+  </div>
+</section>
+
+<!-- ============================== أرقام سريعة (نمط التطبيق) ============================== -->
+<section class="section app-section" style="padding-top:26px;padding-bottom:0">
+  <div class="container">
+    <!-- الأرقام تُرسم من الكود نفسه (renderHeroStats) بأصناف شريط التطبيق -->
+    <div class="app-stats" id="hero-stats"></div>
   </div>
 </section>
 
@@ -678,12 +656,14 @@
 <!-- ============================== شريط التطبيق السفلي (جوال) ============================== -->
 <nav class="tabbar" aria-label="تنقل سريع">
   <a href="#jobs" data-tab="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg><span>الوظائف</span></a>
-  <a href="#how" data-tab="how"><svg class="ic"><use href="#i-info" xlink:href="#i-info"/></svg><span>آلية العمل</span></a>
-  <button type="button" class="tab-center" data-action="open-booking" aria-label="بطاقتي">
-    <span class="tab-fab"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg></span>
-    <span>بطاقتي</span>
-  </button>
   <a href="#services" data-tab="services"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg><span>خدماتنا</span></a>
+  <a href="#home" data-tab="home" class="tab-center">
+    <span class="tab-fab"><svg class="ic"><use href="#i-house" xlink:href="#i-house"/></svg></span>
+    <span>الرئيسية</span>
+  </a>
+  <button type="button" class="tab-item" data-action="open-booking">
+    <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg><span>بطاقتي</span>
+  </button>
   <a href="#contact" data-tab="contact"><svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg><span>تواصل</span></a>
 </nav>
 
@@ -764,18 +744,18 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/supabase-config.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/cloud-http.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/qr.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/qr-scan.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/cloud.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/cloud-sync.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/store.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/ui.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/nav.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/voucher.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/booking.js?v=9dc9fb7ab1"></script>
-<script src="assets/js/public.js?v=9dc9fb7ab1"></script>
+<script src="assets/js/config.js?v=98d2dd09b2"></script>
+<script src="assets/js/supabase-config.js?v=98d2dd09b2"></script>
+<script src="assets/js/cloud-http.js?v=98d2dd09b2"></script>
+<script src="assets/js/qr.js?v=98d2dd09b2"></script>
+<script src="assets/js/qr-scan.js?v=98d2dd09b2"></script>
+<script src="assets/js/cloud.js?v=98d2dd09b2"></script>
+<script src="assets/js/cloud-sync.js?v=98d2dd09b2"></script>
+<script src="assets/js/store.js?v=98d2dd09b2"></script>
+<script src="assets/js/ui.js?v=98d2dd09b2"></script>
+<script src="assets/js/nav.js?v=98d2dd09b2"></script>
+<script src="assets/js/voucher.js?v=98d2dd09b2"></script>
+<script src="assets/js/booking.js?v=98d2dd09b2"></script>
+<script src="assets/js/public.js?v=98d2dd09b2"></script>
 </body>
 </html>

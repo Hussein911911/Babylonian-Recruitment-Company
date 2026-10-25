@@ -1,133 +1,275 @@
 /* ===========================================================================
- *  HRC — واجهة التطبيق العامة (هوية الشركة: ليلي + ذهبي)
+ *  HRC — واجهة التطبيق العامة (نفس تصميم الموك-أب، بألوان الشركة)
  *  ---------------------------------------------------------------------------
- *  إعادة ترتيب الصفحة الرئيسية على نمط تطبيق الجوال المطلوب، مع الحفاظ على:
- *    • ألوان الشركة الأصلية (--lapis / --gold) بلا أي هوية جديدة
- *    • كل معرّفات الوظائف الحالية (#jobs-grid · #filter-* · #quick-search …)
- *  الطبقات هنا تُحمَّل بعد public-polish.css، فلا تُغيّر أي سلوك وظيفي.
+ *  الألوان: --lapis الليلي + --gold الذهبي فقط (لا هوية جديدة).
+ *  تُحمَّل بعد public-polish.css فلا تُغيّر أي سلوك وظيفي.
  * =========================================================================== */
 
-/* ── شريط علوي عائم فوق صورة المدينة (نمط التطبيق) ── */
+/* ── 1) شريط التطبيق العلوي فوق صورة المدينة ── */
+.hero.hero-app { padding: 0; min-height: 0; display: block; }
+.hero-app .hero-inner { display: none; }         /* الهيرو القديم استُبدل بالكتلة الوسطى */
+.hero-app .crenel { display: none; }
+.hero-app .hero-bg {
+  inset: 0;
+  background-image: url('../img/hero-skyline.webp');   /* مدينة بغداد — نفس موضع صورة الموك-أب */
+  background-position: center 34%;
+  background-size: cover;
+}
+.hero-app .hero-veil {
+  background: linear-gradient(180deg, rgba(6,13,31,.62) 0%, rgba(6,13,31,.28) 30%,
+              rgba(6,13,31,.5) 62%, rgba(6,13,31,.94) 100%);
+}
+
+.app-topbar > * { flex: 0 0 auto; }
 .app-topbar {
-  position: absolute; inset-block-start: 0; inset-inline: 0; z-index: 6;
+  position: relative; z-index: 5;
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 14px clamp(14px, 3vw, 30px);
+  padding: 14px clamp(14px, 3.4vw, 34px) 0;
 }
-.app-pill {
-  display: inline-flex; align-items: center; gap: 7px;
-  background: linear-gradient(135deg, #0b1a3a, #14305c);
-  border: 1px solid rgba(200, 162, 74, .5);
-  color: #f3ead2; border-radius: 999px; padding: 9px 15px;
-  font-size: .82rem; font-weight: 700; line-height: 1;
-  box-shadow: 0 8px 22px rgba(3, 10, 26, .38);
-  text-decoration: none; white-space: nowrap;
+.app-loc {
+  display: inline-flex; align-items: center; gap: 6px; order: 2;   /* اليمين: الموقع */
+  background: rgba(11, 26, 58, .82); border: 1px solid rgba(200, 162, 74, .48);
+  color: #f3ead2; border-radius: 999px; padding: 8px 14px;
+  font-size: .8rem; font-weight: 800; line-height: 1; text-decoration: none;
+  backdrop-filter: blur(8px); box-shadow: 0 6px 18px rgba(3, 10, 26, .3);
 }
-.app-pill .ic { width: 16px; height: 16px; color: var(--gold-2); flex: none; }
-.app-pill:hover { border-color: var(--gold); color: #fff; }
-.app-top-actions { display: flex; align-items: center; gap: 8px; }
+.app-loc .ic { width: 15px; height: 15px; color: var(--gold-2); flex: none; }
+.app-loc .chev { width: 12px !important; height: 12px !important; transform: rotate(-90deg); opacity: .85; }
+.app-top-actions { display: flex; align-items: center; gap: 7px; order: 1; }  /* اليسار: حسابي + التنبيهات */
 .app-icon-btn {
-  position: relative; width: 40px; height: 40px; border-radius: 999px;
+  position: relative; width: 38px; height: 38px; border-radius: 999px;
   display: grid; place-items: center; cursor: pointer;
-  background: rgba(11, 26, 58, .82); border: 1px solid rgba(200, 162, 74, .42);
-  color: #f6f1e3; transition: .18s ease; backdrop-filter: blur(6px);
+  background: rgba(11, 26, 58, .82); border: 1px solid rgba(200, 162, 74, .48);
+  color: #f6f1e3; backdrop-filter: blur(8px);
 }
-.app-icon-btn:hover { border-color: var(--gold); color: #fff; transform: translateY(-1px); }
-.app-icon-btn .ic { width: 19px; height: 19px; }
+.app-icon-btn .ic { width: 18px; height: 18px; }
 .app-icon-btn[hidden] { display: none; }
 .app-count {
-  position: absolute; inset-block-start: -4px; inset-inline-start: -4px;
-  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
-  background: #c8332b; color: #fff; font-size: .62rem; font-weight: 800;
+  position: absolute; inset-block-start: -3px; inset-inline-start: -3px;
+  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
+  background: #c8332b; color: #fff; font-size: .6rem; font-weight: 800;
   display: grid; place-items: center; border: 2px solid #0b1a3a;
 }
-
-/* ── صورة المدينة في الواجهة (بدل صورة الأثر) ── */
-.hero.hero-app { padding-block-start: clamp(58px, 8vw, 88px); padding-block-end: 30px; }
-/* صورة المدينة تبقى واضحة: تخفيف الحجاب فوقها حتى لا تصير الصفحة كتلة داكنة */
-.hero.hero-app .hero-veil { background: linear-gradient(180deg, rgba(6, 13, 31, .34) 0%, rgba(6, 13, 31, .58) 52%, rgba(6, 13, 31, .9) 100%); }
-.hero.hero-app .hero-bg {
-  background-image: url('../img/hero-skyline.webp');
-  background-position: center 42%;
+.app-user {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: linear-gradient(135deg, #0b1a3a, #17376c);
+  border: 1px solid rgba(200, 162, 74, .48); color: #f6f1e3;
+  border-radius: 999px; padding: 8px 15px; font-size: .8rem; font-weight: 800;
+  text-decoration: none; backdrop-filter: blur(8px);
 }
-.hero.hero-app .hero-inner { grid-template-columns: minmax(0, 1fr) minmax(0, .82fr); }
-.hero-app .hero-badge { background: rgba(11, 26, 58, .55); border-color: rgba(200, 162, 74, .45); }
-.hero-app .figure-cap { background: rgba(8, 17, 36, .82); border-color: rgba(200, 162, 74, .35); }
+.app-user .ic { width: 16px; height: 16px; color: var(--gold-2); }
 
-/* ── شريط التصنيفات ── */
+/* ── 2) الشعار والوعد في وسط الصورة ── */
+.app-hero {
+  position: relative; z-index: 4; text-align: center;
+  padding: clamp(26px, 7vw, 54px) 20px clamp(52px, 9vw, 78px);
+}
+.app-brand { display: grid; justify-items: center; gap: 6px; cursor: default; }
+.app-emblem {
+  width: clamp(56px, 12vw, 74px); height: clamp(56px, 12vw, 74px);
+  color: var(--gold-2); filter: drop-shadow(0 8px 22px rgba(0, 0, 0, .55));
+}
+.app-wordmark {
+  font-size: clamp(1.5rem, 6.4vw, 2.1rem); font-weight: 900; color: #fff;
+  letter-spacing: -.4px; line-height: 1.3; text-shadow: 0 6px 20px rgba(0, 0, 0, .5);
+}
+.app-wordmark .accent {
+  background: linear-gradient(120deg, var(--gold-2), #ffe39a 55%, var(--gold));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.app-tagline {
+  font-size: clamp(.72rem, 2.6vw, .82rem); font-weight: 800; color: var(--gold-2);
+  letter-spacing: .4px; position: relative; padding: 0 30px;
+}
+.app-tagline::before, .app-tagline::after {
+  content: ''; position: absolute; inset-block-start: 50%; width: 22px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold));
+}
+.app-tagline::before { inset-inline-end: 0; transform: scaleX(-1); }
+.app-tagline::after { inset-inline-start: 0; }
+.app-headline {
+  margin: clamp(14px, 3vw, 22px) 0 6px;
+  font-size: clamp(1.25rem, 5.6vw, 1.9rem); font-weight: 900; color: #fff;
+  line-height: 1.5; text-shadow: 0 6px 22px rgba(0, 0, 0, .55);
+}
+.app-sub { margin: 0; color: #d8e1f0; font-size: clamp(.82rem, 3vw, .95rem); font-weight: 600; }
+.app-hero-note {
+  display: inline-block; margin-top: 12px; color: var(--gold-2);
+  font-size: .74rem; font-weight: 800; line-height: 1.9; opacity: .95;
+  border-bottom: 1px solid rgba(200, 162, 74, .45); padding-bottom: 3px;
+}
+
+/* ── 3) البحث: كبسولة بيضاء بظلّ، وزر دائري في الطرف ── */
+.app-search-wrap { position: relative; z-index: 6; margin-top: -34px; }
+.app-search {
+  display: flex; align-items: center; gap: 8px;
+  background: #fff; border-radius: 999px; padding: 7px 7px 7px 14px;
+  box-shadow: 0 16px 40px rgba(6, 13, 31, .16), 0 2px 0 rgba(6, 13, 31, .04);
+  border: 1px solid rgba(6, 13, 31, .06);
+}
+.app-search .as-ic { width: 19px; height: 19px; color: var(--lapis-3); flex: none; }
+.app-search input {
+  flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent;
+  font-family: inherit; font-size: .9rem; font-weight: 600; color: var(--lapis-2);
+  padding: 10px 2px;
+}
+.app-search input::placeholder { color: #93a0b4; font-weight: 500; }
+.app-search .as-gov {
+  flex: 0 0 auto; max-width: 118px; border: 0; border-inline-start: 1px solid #e6eaf1;
+  background: transparent; font-family: inherit; font-size: .78rem; font-weight: 700;
+  color: var(--lapis-2); padding: 8px 8px; outline: 0; cursor: pointer;
+}
+.app-search .as-scan {
+  flex: none; width: 34px; height: 34px; border-radius: 999px; cursor: pointer;
+  display: grid; place-items: center; border: 1px solid #e2e7ef; background: #f7f9fc;
+  color: var(--lapis-3);
+}
+.app-search .as-scan .ic { width: 17px; height: 17px; }
+.app-search .as-go {
+  flex: none; width: 46px; height: 46px; border-radius: 999px; border: 0; cursor: pointer;
+  display: grid; place-items: center; color: #f6f1e3;
+  background: linear-gradient(140deg, var(--lapis-2), var(--lapis-3) 60%, var(--night));
+  box-shadow: 0 10px 22px rgba(11, 26, 58, .35);
+}
+.app-search .as-go .ic { width: 20px; height: 20px; }
+
+/* ── 4) شريط التصنيفات: مربّعات مستديرة + عنوان تحت + خط ذهبي للنشط ── */
+.app-section { padding-inline: 0; }
 .cat-rail {
-  display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 12px;
+  display: flex; gap: 10px; overflow-x: auto; padding: 6px 0 10px;
   scroll-snap-type: x proximity; scrollbar-width: none;
 }
 .cat-rail::-webkit-scrollbar { display: none; }
 .cat {
-  flex: 0 0 auto; scroll-snap-align: start;
-  display: grid; justify-items: center; gap: 8px;
-  min-width: 92px; padding: 13px 10px 11px; cursor: pointer;
-  background: #fff; border: 1px solid var(--line-soft); border-radius: 16px;
-  color: var(--lapis-2); font-size: .78rem; font-weight: 800; line-height: 1.5;
-  transition: .2s ease; box-shadow: var(--shadow-sm); text-align: center;
+  flex: 0 0 auto; scroll-snap-align: start; cursor: pointer;
+  display: grid; justify-items: center; gap: 0; width: 84px;
+  background: transparent; border: 0; padding: 0; font-family: inherit;
 }
-.cat .ic { width: 22px; height: 22px; color: var(--gold-3); }
-.cat:hover { border-color: rgba(200, 162, 74, .55); transform: translateY(-2px); }
-.cat.is-active {
-  background: linear-gradient(140deg, var(--lapis-2), var(--lapis-3));
-  border-color: var(--gold); color: #fff;
-  box-shadow: 0 10px 24px rgba(11, 26, 58, .28);
+.cat > .cat-ic {
+  width: 66px; height: 62px; border-radius: 20px; display: grid; place-items: center;
+  background: #fff; border: 1px solid #e8ecf3; color: var(--lapis-2);
+  box-shadow: 0 6px 16px rgba(6, 13, 31, .07); transition: .2s ease;
 }
-.cat.is-active .ic { color: var(--gold-2); }
-.cat b { font-size: .72rem; font-weight: 700; opacity: .8; }
+.cat .ic { width: 24px; height: 24px; }
+.cat span {
+  margin-top: 8px; font-size: .72rem; font-weight: 800; color: #5b6a80;
+  line-height: 1.5; text-align: center; max-width: 84px;
+}
+.cat b { display: none; }
+.cat:hover > .cat-ic { transform: translateY(-2px); border-color: rgba(200, 162, 74, .5); }
+.cat.is-active > .cat-ic {
+  background: linear-gradient(150deg, var(--lapis-2), var(--lapis-3));
+  border-color: var(--gold); color: var(--gold-2);
+  box-shadow: 0 12px 26px rgba(11, 26, 58, .3);
+}
+.cat.is-active span { color: var(--lapis-2); }
+.cat.is-active span::after {
+  content: ''; display: block; width: 26px; height: 3px; border-radius: 3px;
+  margin: 6px auto 0; background: var(--gold);
+}
 
-/* ── بانر بطاقة التوظيف ── */
+/* ── 5) بانر البطاقة ── */
 .promo-banner {
-  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .9fr);
-  align-items: center; gap: 18px; overflow: hidden;
-  border-radius: 22px; padding: clamp(20px, 3vw, 32px);
+  position: relative; display: grid; grid-template-columns: .95fr 1.15fr;
+  align-items: center; gap: 6px; overflow: hidden;
+  border-radius: 22px; padding: 18px; min-height: 186px;
   background:
-    linear-gradient(115deg, rgba(6, 13, 31, .94) 32%, rgba(11, 26, 58, .74) 62%, rgba(23, 55, 108, .5) 100%),
-    url('../img/card-banner.webp') center 55% / cover no-repeat;
-  border: 1px solid rgba(200, 162, 74, .38);
-  box-shadow: 0 18px 44px rgba(6, 13, 31, .3);
-  color: #f6f1e3; min-height: 220px;
+    radial-gradient(120% 120% at 88% 20%, rgba(23, 55, 108, .95) 0%, rgba(11, 26, 58, .98) 46%, rgba(6, 13, 31, .99) 100%);
+  border: 1px solid rgba(200, 162, 74, .28);
+  box-shadow: 0 18px 42px rgba(6, 13, 31, .26);
 }
-.promo-banner h3 { color: #fff; font-size: clamp(1.15rem, 2.4vw, 1.6rem); line-height: 1.7; margin: 0 0 8px; }
-.promo-banner h3 .accent { color: var(--gold-2); }
-.promo-banner p { margin: 0 0 16px; color: #cdd8ea; font-size: .9rem; line-height: 1.95; }
-.promo-banner .promo-cta { display: flex; flex-wrap: wrap; gap: 10px; }
-.promo-banner .promo-card-visual {
-  justify-self: center; width: min(280px, 84%);
-  aspect-ratio: 86 / 54; border-radius: 14px;
+.promo-banner::before {
+  content: ''; position: absolute; inset-block: -40%; inset-inline-start: -18%;
+  width: 62%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(200, 162, 74, .16), transparent 62%);
+  pointer-events: none;
+}
+.promo-visual { position: relative; display: grid; place-items: center; }
+.promo-card {
+  width: 84%; aspect-ratio: 86 / 54; border-radius: 13px; padding: 9px;
+  display: grid; place-items: center; gap: 6px; transform: rotate(-7deg);
+  background: linear-gradient(150deg, #12295a, #0b1a3a 62%, #17376c);
   border: 1px solid rgba(200, 162, 74, .55);
-  background: linear-gradient(150deg, #0d1f42, #17376c 60%, #0b1a3a);
-  box-shadow: 0 16px 38px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .12);
-  display: grid; place-items: center; gap: 8px; padding: 14px;
-  color: var(--gold-2); text-align: center;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .14);
 }
-.promo-card-visual .pv-emblem { width: 46px; height: 46px; }
-.promo-card-visual b { font-size: .8rem; letter-spacing: .3px; color: #fff; }
-.promo-card-visual span { font-size: .62rem; color: #b9c7e2; }
-.promo-card-visual .pv-qr { width: 64px; height: 64px; background: #fff; border-radius: 8px; padding: 5px; display: grid; place-items: center; }
-.promo-card-visual .pv-qr svg { width: 100%; height: 100%; display: block; }
+.promo-card > svg { width: 34px; height: 34px; color: var(--gold-2); }
+.promo-card .pv-qr { width: 58px; height: 58px; background: #fff; border-radius: 7px; padding: 4px; }
+.promo-card .pv-qr svg { width: 100%; height: 100%; display: block; }
+.promo-body { position: relative; z-index: 1; text-align: start; }
+.promo-body h3 {
+  margin: 0 0 6px; font-size: clamp(1rem, 4.2vw, 1.28rem); font-weight: 900;
+  color: #fff; line-height: 1.6;
+}
+.promo-body h3 .accent { color: var(--gold-2); }
+.promo-body p { margin: 0 0 12px; color: #c6d2e6; font-size: .78rem; line-height: 1.9; max-width: 30ch; }
+.promo-more {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  border: 0; border-radius: 999px; padding: 9px 18px; font-family: inherit;
+  font-size: .8rem; font-weight: 900; color: #241a05;
+  background: linear-gradient(135deg, var(--gold-2), var(--gold));
+  box-shadow: 0 10px 22px rgba(200, 162, 74, .32);
+}
+.promo-more .ic { width: 15px; height: 15px; transform: rotate(-90deg); }
+.promo-note {
+  position: absolute; inset-block-start: 16px; inset-inline-start: 16px;
+  color: var(--gold-2); font-size: .62rem; font-weight: 800; line-height: 1.8;
+  opacity: .9; text-align: start; pointer-events: none;
+}
+.promo-dots { display: flex; justify-content: center; gap: 5px; margin-top: 10px; }
+.promo-dots i { width: 6px; height: 6px; border-radius: 999px; background: #d8dde7; }
+.promo-dots i.on { width: 18px; background: var(--gold); }
 
-/* ── شريط الأرقام ── */
-.app-stats {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0; background: #fff; border: 1px solid var(--line-soft);
-  border-radius: 18px; overflow: hidden; box-shadow: var(--shadow-sm);
+/* ── 5ب) شروط البطاقة تحت البانر ── */
+.policy-strip {
+  list-style: none; margin: 12px 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 6px;
 }
-.app-stat {
-  padding: 16px 10px; text-align: center; display: grid; gap: 4px;
-  border-inline-start: 1px solid var(--line-soft);
+.policy-strip li {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #fdf9ee; border: 1px solid #efe2c2; border-radius: 999px;
+  padding: 5px 11px; font-size: .68rem; font-weight: 700; color: #6b5a2d;
+  line-height: 1.6;
 }
-.app-stat:first-child { border-inline-start: 0; }
-.app-stat b { font-size: 1.15rem; color: var(--lapis-2); font-weight: 900; line-height: 1.1; }
-.app-stat > .ic { order: -1; }
-.app-stat span { font-size: .72rem; color: var(--muted); font-weight: 700; line-height: 1.6; }
-.app-stat .ic { width: 18px; height: 18px; color: var(--gold-3); margin: 0 auto 2px; }
+.policy-strip .ic { width: 13px; height: 13px; color: var(--gold-3); flex: none; }
+.policy-strip b { color: #4a3c14; font-weight: 900; }
 
-/* ── كرت الوظيفة بنمط التطبيق ── */
+/* ── 6) رأس «أحدث الوظائف» ── */
+.jobs-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.jobs-head h2 {
+  margin: 0; display: inline-flex; align-items: center; gap: 8px;
+  font-size: clamp(1.02rem, 4vw, 1.22rem); color: var(--lapis-2); font-weight: 900;
+}
+.jobs-head h2 .ic { width: 20px; height: 20px; color: var(--gold-3); }
+.jobs-all {
+  display: inline-flex; align-items: center; gap: 4px; text-decoration: none;
+  font-size: .78rem; font-weight: 800; color: var(--lapis-3);
+}
+.jobs-all .ic { width: 14px; height: 14px; }
+.jobs-sub { margin: 6px 0 12px; color: var(--muted); font-size: .74rem; line-height: 1.9; }
+
+/* ── 6ب) شبكة الوظائف: ثلاثة كروت بصفّ واحد كما في الموك-أب ── */
+@media screen and (min-width: 861px) {
+  .app-section #jobs-grid.jobs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+}
+.app-section #jobs-grid.jobs-grid { gap: 14px; }
+@media screen and (max-width: 860px) {
+  /* على الجوال: شريط أفقي يُمرَّر بالأصبع كما في التطبيق (٣ كروت ظاهرة جزئياً) */
+  .app-section #jobs-grid.jobs-grid {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 78%;
+    overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+  .app-section #jobs-grid.jobs-grid::-webkit-scrollbar { display: none; }
+  .app-section #jobs-grid .job-card { scroll-snap-align: start; }
+  .app-section #jobs-grid .job-card:nth-child(n + 4) { display: none; }
+  .jobs-head, .jobs-sub { padding-inline: 2px; }
+}
+
+/* ── 7) كرت الوظيفة ── */
 .job-card.app-card {
-  display: flex; flex-direction: column; padding: 0; overflow: hidden;
-  border-radius: 18px; background: #fff;
+  position: relative; display: flex; flex-direction: column; padding: 0;
+  overflow: hidden; border-radius: 18px; background: #fff;
+  border: 1px solid #e9edf4; box-shadow: 0 10px 26px rgba(6, 13, 31, .08);
 }
 .app-card .job-image { border-radius: 0; aspect-ratio: 16 / 10; background: #0b1a3a; }
 .app-card .job-image img { object-fit: cover; }
@@ -137,94 +279,113 @@
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
 }
 .ac-badge {
-  font-size: .68rem; font-weight: 800; color: #fff; border-radius: 999px;
-  padding: 5px 11px; line-height: 1.2; backdrop-filter: blur(4px);
-  background: linear-gradient(135deg, #1f8f6b, #14775a); /* مميز */
+  font-size: .66rem; font-weight: 900; color: #fff; border-radius: 999px;
+  padding: 5px 12px; line-height: 1.2;
+  background: linear-gradient(135deg, #1f8f6b, #14775a);
   box-shadow: 0 4px 12px rgba(0, 0, 0, .22);
 }
 .ac-badge.is-new { background: linear-gradient(135deg, #2b6bd6, #1b4ea8); }
 .ac-badge.is-vacant { background: linear-gradient(135deg, #7b52c9, #5a37a0); }
-.ac-badge.is-reserved { background: linear-gradient(135deg, #b98f34, #966f1d); }
+.ac-badge.is-reserved { background: linear-gradient(135deg, var(--gold), #966f1d); }
 .ac-badge.is-closed { background: linear-gradient(135deg, #6b7280, #4b5563); }
 .ac-fav {
-  width: 32px; height: 32px; border-radius: 999px; border: 0; cursor: pointer;
+  width: 30px; height: 30px; border-radius: 999px; border: 0; cursor: pointer;
   display: grid; place-items: center; color: #fff;
-  background: rgba(8, 17, 36, .42); backdrop-filter: blur(6px); transition: .18s ease;
+  background: rgba(8, 17, 36, .35); backdrop-filter: blur(6px); transition: .18s ease;
 }
 .ac-fav .ic { width: 16px; height: 16px; }
-.ac-fav:hover { background: rgba(8, 17, 36, .62); transform: scale(1.06); }
-.ac-fav.is-on { color: #ff6b6b; background: rgba(255, 255, 255, .92); }
-.app-card .ac-body { padding: 12px 14px 0; display: grid; gap: 7px; cursor: pointer; }
-.app-card .ac-body:hover .job-title { color: var(--gold-3); }
-.app-card .job-title { font-size: .98rem; margin: 0; color: var(--lapis-2); font-weight: 900; }
-.ac-row {
-  display: flex; align-items: center; gap: 7px;
-  font-size: .78rem; color: #4b5b70; line-height: 1.7;
-}
-.ac-row .ic { width: 14px; height: 14px; color: var(--gold-3); flex: none; }
+.ac-fav.is-on { color: #e2453c; background: rgba(255, 255, 255, .95); }
+.app-card .ac-body { padding: 11px 13px 0; display: grid; gap: 6px; cursor: pointer; }
+.app-card .job-title { font-size: .95rem; margin: 0; color: var(--lapis-2); font-weight: 900; }
+.ac-row { display: flex; align-items: center; gap: 6px; font-size: .74rem; color: #52627a; line-height: 1.7; }
+.ac-row .ic { width: 13px; height: 13px; color: var(--gold-3); flex: none; }
 .ac-row b { color: var(--lapis-2); font-weight: 800; }
-.ac-row .mono { font-size: .72rem; color: var(--muted); }
-.app-card .ac-foot { margin-top: auto; padding: 12px 14px 14px; }
-.app-card .ac-foot .btn { width: 100%; justify-content: center; min-height: 42px; }
-.app-card.is-closed .job-image { filter: grayscale(.55); }
+.ac-row .mono { font-size: .68rem; color: var(--muted); }
+.app-card .ac-foot { margin-top: auto; padding: 10px 13px 13px; }
+.app-card .ac-foot .btn {
+  width: 100%; justify-content: center; min-height: 40px; border-radius: 12px;
+  background: linear-gradient(140deg, var(--lapis-2), var(--lapis-3));
+  border: 1px solid rgba(200, 162, 74, .35); color: #f6f1e3;
+  font-weight: 900; font-size: .82rem;
+  box-shadow: 0 8px 18px rgba(11, 26, 58, .22);
+}
+.app-card .ac-foot .btn:hover { background: linear-gradient(140deg, var(--lapis-3), var(--lapis-2)); color: #fff; }
+.app-card .ac-foot .btn .ic { color: var(--gold-2); }
 
-/* ── شريط التنقل السفلي (تطبيق) ── */
+/* فراغ فاصل بين شبكة الوظائف وشريط الأرقام (كما في الموك-أب) */
+#jobs { padding-bottom: 6px; }
+#jobs + .app-section { padding-top: 30px !important; }
+
+/* ── 8) شريط الأرقام ── */
+.app-stats {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: #fff; border: 1px solid #e9edf4; border-radius: 16px;
+  overflow: hidden; box-shadow: 0 8px 22px rgba(6, 13, 31, .06);
+}
+.app-stat {
+  display: grid; justify-items: center; gap: 2px; padding: 14px 6px;
+  border-inline-start: 1px solid #eef1f6;
+}
+.app-stat:first-child { border-inline-start: 0; }
+.app-stat > .ic { width: 17px; height: 17px; color: var(--gold-3); order: -1; margin-bottom: 2px; }
+.app-stat b { font-size: 1rem; font-weight: 900; color: var(--lapis-2); line-height: 1.2; }
+.app-stat span { font-size: .64rem; font-weight: 700; color: var(--muted); line-height: 1.6; text-align: center; }
+
+/* ── 9) شريط التنقل السفلي ── */
 .tabbar {
   position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 240;
   display: none; align-items: flex-end; justify-content: space-around; gap: 2px;
   padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
-  background: rgba(255, 255, 255, .97);
-  border-top: 1px solid var(--line-soft);
-  box-shadow: 0 -10px 30px rgba(6, 13, 31, .12);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, .98); border-top: 1px solid #eceff4;
+  box-shadow: 0 -10px 30px rgba(6, 13, 31, .1); backdrop-filter: blur(10px);
 }
-.tabbar a, .tabbar button {
+.tabbar a, .tabbar button.tab-item {
   flex: 1 1 0; display: grid; justify-items: center; gap: 4px;
   padding: 6px 2px; border: 0; background: transparent; cursor: pointer;
-  color: var(--muted); font-size: .66rem; font-weight: 800; font-family: inherit;
-  text-decoration: none; border-radius: 12px; transition: .18s ease;
+  color: #8b98ab; font-size: .64rem; font-weight: 800; font-family: inherit;
+  text-decoration: none; border-radius: 12px;
 }
 .tabbar .ic { width: 21px; height: 21px; }
-.tabbar a:hover, .tabbar button:hover { color: var(--lapis-2); }
 .tabbar .is-active { color: var(--lapis-2); }
 .tabbar .is-active .ic { color: var(--gold-3); }
-.tabbar .tab-center { flex: 0 0 auto; margin-block-start: -26px; }
-.tabbar .tab-center .tab-fab {
-  width: 58px; height: 58px; border-radius: 999px; display: grid; place-items: center;
-  background: linear-gradient(140deg, var(--gold-2), var(--gold) 55%, #a8801f);
-  color: #241a05; border: 3px solid #fff;
-  box-shadow: 0 12px 26px rgba(200, 162, 74, .45);
+.tabbar .tab-center { flex: 0 0 auto; margin-block-start: -30px; }
+.tabbar .tab-fab {
+  width: 56px; height: 56px; border-radius: 999px; display: grid; place-items: center;
+  background: linear-gradient(145deg, var(--lapis-2), var(--lapis-3));
+  color: var(--gold-2); border: 3px solid #fff;
+  box-shadow: 0 12px 26px rgba(11, 26, 58, .35);
 }
-.tabbar .tab-center .tab-fab .ic { width: 26px; height: 26px; }
-.tabbar .tab-center span { color: var(--lapis-2); }
+.tabbar .tab-fab .ic { width: 25px; height: 25px; }
+.tabbar .tab-center span:last-child { color: var(--lapis-2); }
 
-/* ── استجابة الجوال ── */
-@media (max-width: 960px) {
-  .hero.hero-app .hero-inner { grid-template-columns: 1fr; }
-  .promo-banner { grid-template-columns: 1fr; text-align: center; }
-  .promo-card-visual { display: none; }
-  .promo-banner p { margin-inline: auto; max-width: 46ch; }
-  .promo-banner .promo-cta { justify-content: center; }
-}
+/* ── 10) الجوال: إخفاء ترويسة الموقع القديمة (التصميم تطبيق) ── */
 @media (max-width: 860px) {
-  /* على الجوال فقط يظهر شريط التطبيق السفلي، ونترك مساحة له */
   .tabbar { display: flex; }
-  body { padding-block-end: 78px; }
+  body { padding-block-end: 80px; }
+  .site-header { display: none; }          /* الموك-أب بلا ترويسة سطح مكتب */
+  .hero.hero-app { border-radius: 0 0 26px 26px; overflow: hidden; }
+  .app-search-wrap { margin-top: -30px; }
   .app-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .app-stat:nth-child(odd) { border-inline-start: 0; }
-  .app-stat:nth-child(n + 3) { border-top: 1px solid var(--line-soft); }
-  .app-topbar { padding: 10px 12px; }
-  .app-pill { font-size: .76rem; padding: 8px 12px; }
-  .app-pill .pill-text { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
-  .hero.hero-app { padding-block-start: 56px; padding-block-end: 22px; }
-  .hero.hero-app .hero-bg { background-position: center 34%; }
-  .hero-app .hero-badge { font-size: .74rem; }
-  .hero-app h1 { font-size: clamp(1.5rem, 7vw, 2rem); line-height: 1.55; }
-  .hero-app .hero-lede { font-size: .9rem; line-height: 1.95; margin-bottom: 16px; }
-  .hero-app .hero-cta { gap: 8px; }
-  .hero-app .hero-cta .btn { width: 100%; min-height: 48px; }
+  .app-stat:nth-child(n + 3) { border-top: 1px solid #eef1f6; }
+  .app-search { padding: 6px 6px 6px 12px; }
+  .app-search .as-gov { display: none; }     /* البحث يبقى كبسولة واحدة كما في الموك-أب */
+  .promo-banner { grid-template-columns: .8fr 1.2fr; padding: 14px; min-height: 172px; }
+  .promo-note { display: none; }
+}
+@media (max-width: 860px) {
+  /* الموك-أب يعرض ستة مربّعات في صفّ واحد بلا تمرير */
+  .cat-rail { gap: 6px; justify-content: space-between; }
+  .cat { width: auto; flex: 1 1 0; min-width: 0; }
+  .cat > .cat-ic { width: 100%; max-width: 62px; height: 56px; border-radius: 18px; }
+  .cat span { font-size: .66rem; max-width: 100%; }
+}
+@media (max-width: 400px) {
+  .cat > .cat-ic { height: 52px; border-radius: 16px; }
+  .cat .ic { width: 21px; height: 21px; }
+  .cat span { font-size: .62rem; }
 }
 
 @media print {
-  .tabbar, .app-topbar, .cat-rail { display: none !important; }
+  .tabbar, .app-topbar, .cat-rail, .promo-dots { display: none !important; }
 }

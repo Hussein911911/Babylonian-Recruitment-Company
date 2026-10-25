@@ -555,16 +555,20 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
   const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
   const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
 
-  check('الترتيب المطلوب: شريط علوي · بحث · تصنيفات · بانر البطاقة · أرقام · وظائف',
-    pub.indexOf('app-topbar') < pub.indexOf('quick-search') &&
-    pub.indexOf('quick-search') < pub.indexOf('cat-rail') &&
+  /* الترتيب الحرفي كما في الموك-أب: شريط علوي ← بحث ← تصنيفات ← بانر البطاقة
+     ← الوظائف ← شريط الأرقام (تحت الوظائف كما في الصورة) */
+  check('الترتيب الحرفي: شريط علوي · بحث · تصنيفات · بانر · وظائف · أرقام',
+    pub.indexOf('app-topbar') < pub.indexOf('app-search') &&
+    pub.indexOf('app-search') < pub.indexOf('cat-rail') &&
     pub.indexOf('cat-rail') < pub.indexOf('promo-banner') &&
-    pub.indexOf('promo-banner') < pub.indexOf('id="hero-stats"') &&
-    pub.indexOf('id="hero-stats"') < pub.indexOf('id="jobs"'));
+    pub.indexOf('promo-banner') < pub.indexOf('id="jobs"') &&
+    pub.indexOf('id="jobs"') < pub.indexOf('id="hero-stats"'));
   const tabFlat = pub.replace(/\s+/g, ' ');
-  check('شريط تنقل سفلي: ٤ روابط + زر «بطاقتي» بارز في الوسط',
-    /class="tabbar"/.test(tabFlat) && (tabFlat.match(/data-tab="/g) || []).length === 4 &&
-    /<button[^>]*class="tab-center"[^>]*data-action="open-booking"/.test(tabFlat));
+  /* خمسة عناصر كما في الموك-أب: الوظائف · خدماتنا · الرئيسية (وسط بارز) · بطاقتي · تواصل */
+  check('شريط تنقل سفلي بخمسة عناصر وزر «الرئيسية» بارز في الوسط',
+    /class="tabbar"/.test(tabFlat) && (tabFlat.match(/data-tab="(jobs|services|how|contact|home)"/g) || []).length === 4 &&
+    /<a href="#home"[^>]*class="tab-center"/.test(tabFlat) &&
+    /data-action="open-booking"/.test(tabFlat));
 
   /* الهوية: ألوان الشركة فقط — لا لون أزرق/بنفسجي جديد من الموك-أب */
   const vars = readFileSync(join(ROOT, 'assets', 'css', 'style.css'), 'utf8');
@@ -581,8 +585,11 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
   });
   check('لا صورة تتجاوز 150KB (سرعة على الجوال)', big.length === 0, big.map((f) => f.split('/').pop()).join(', '));
 
-  check('الواجهة تستعمل صورة المدينة، وبانر البطاقة يستعمل صورة البطاقة',
-    /hero-skyline\.webp/.test(app) && /card-banner\.webp/.test(app));
+  /* صورة المدينة في الواجهة (نفس موضع الموك-أب)، وصورة البطاقة تُستعمل في
+     صفحة التقديم/البطاقة — والبانر يعرض بطاقة حقيقية مرسومة بكود QR فعلي. */
+  check('الواجهة تستعمل صورة المدينة، والبانر يعرض بطاقة بكود QR حقيقي',
+    /hero-skyline\.webp/.test(app) && /id="promo-qr"/.test(pub) && /renderPromoQr/.test(js) &&
+    existsSync(join(ROOT, 'assets', 'img', 'card-banner.webp')));
   check('كل وظيفة بلا صورة تحصل على صورة تخصص محلية (لا أيقونة مكسورة)',
     /function defaultJobImage/.test(js) && /assets\/img\/jobs\//.test(js));
   check('المفضلة تُحفظ على جهاز الزائر وحده ولا تُرسل للشركة',

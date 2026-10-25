@@ -81,7 +81,9 @@ const BUDGET = {
      بلا سكربت أو طلب قاعدة جديد للزائر (20 طلباً كما هي). */
   /* 2026-10-24: أُعيدت بطاقات الموقع العام إلى تصميمها السابق (التصميم الفاخر
      صار في صفحة التقديل فقط) — index 618KB وverify 479KB بعد القياس. */
-  'index.html': { raw: 656, requests: 20 },
+  /* 2026-10-25: الهوية الجديدة (ترتيب التطبيق + شروط البطاقة + البانر) أضافت
+     ~6KB من HTML فقط؛ السقف رُفع بهامش بسيط وبلا أي طلب شبكة جديد. */
+  'index.html': { raw: 672, requests: 20 },
   'verify.html': { raw: 512, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */

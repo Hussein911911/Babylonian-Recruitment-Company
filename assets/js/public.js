@@ -304,10 +304,11 @@
     var cats = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, 5);
     var cur = filters.category || 'all';
     var html = '<button type="button" class="cat' + (cur === 'all' ? ' is-active' : '') + '" data-cat="all" role="tab" aria-selected="' + (cur === 'all') + '">' +
-      '<svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg><span>الكل</span><b>' + jobs.length + '</b></button>';
+      '<span class="cat-ic"><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg></span>' +
+      '<span>الكل</span><b>' + jobs.length + '</b></button>';
     html += cats.map(function (c) {
       return '<button type="button" class="cat' + (cur === c ? ' is-active' : '') + '" data-cat="' + UI.esc(c) + '" role="tab" aria-selected="' + (cur === c) + '">' +
-        '<svg class="ic"><use href="#' + catIcon(c) + '" xlink:href="#' + catIcon(c) + '"/></svg>' +
+        '<span class="cat-ic"><svg class="ic"><use href="#' + catIcon(c) + '" xlink:href="#' + catIcon(c) + '"/></svg></span>' +
         '<span>' + UI.esc(c) + '</span><b>' + counts[c] + '</b></button>';
     }).join('');
     host.innerHTML = html;
@@ -616,6 +617,12 @@
     return { cls: 'is-vacant', t: 'شاغر' };
   }
 
+  /* جهة العمل: لا نكشف اسم صاحب العمل أو هاتفه للزائر (سياسة الخصوصية).
+     نعرض وصفاً عاماً من التصنيف — نفس ما كان معروضاً في البطاقة سابقاً. */
+  function employerName(j) {
+    return (j.category ? j.category + ' · ' : '') + (j.gender && j.gender !== 'لا فرق' ? j.gender : 'فرصة متاحة');
+  }
+
   function cardHtml(j) {
     var st = CFG.jobStatus[j.status];
     var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : ''));
@@ -645,17 +652,18 @@
         '<div class="ac-body" data-action="job-details" data-code="' + UI.esc(j.code) + '" role="button" tabindex="0"' +
           ' aria-label="تفاصيل الوظيفة ' + UI.esc(j.title) + '">' +
           '<h3 class="job-title">' + UI.esc(j.title) + '</h3>' +
-          '<div class="ac-row"><svg class="ic"><use href="#i-' + catIcon(j.category).replace(/^i-/, '') + '" xlink:href="#' + catIcon(j.category) + '"/></svg>' +
-            '<span>' + UI.esc(j.category || '—') + '</span><span class="mono job-code" style="margin-inline-start:auto">' + UI.esc(j.code) + '</span></div>' +
+          '<div class="ac-row"><svg class="ic"><use href="#i-building" xlink:href="#i-building"/></svg><span>' + UI.esc(employerName(j)) + '</span>' +
+            '<span class="mono job-code" style="margin-inline-start:0;color:#9aa7b8;font-weight:700">' + UI.esc(j.code) + '</span></div>' +
           '<div class="ac-row"><svg class="ic"><use href="#i-money" xlink:href="#i-money"/></svg><b>' + salary + '</b></div>' +
           '<div class="ac-row"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg><span>' + UI.esc(j.shift) + '</span></div>' +
+          '<div class="ac-row"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg><span>6 أيام بالأسبوع</span></div>' +
           '<div class="ac-row"><svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg><span>' + UI.esc(j.governorate || '—') + '</span></div>' +
           (hold ? '<div class="ac-row"><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg><span class="tiny muted">' + hold + '</span></div>' : '') +
         '</div>' +
         '<div class="ac-foot">' +
           (j.status === 'available'
-            ? '<button class="btn btn-gold" data-action="open-booking" data-code="' + UI.esc(j.code) + '">' + UI.ic('card') + ' قدّم ببطاقتك</button>'
-            : '<button class="btn btn-outline" data-action="job-details" data-code="' + UI.esc(j.code) + '">' + UI.esc(st.ar) + ' — التفاصيل</button>') +
+            ? '<button class="btn" data-action="open-booking" data-code="' + UI.esc(j.code) + '">تقديم الآن <svg class="ic" style="width:15px;height:15px;transform:rotate(-90deg)"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg></button>'
+            : '<button class="btn" data-action="job-details" data-code="' + UI.esc(j.code) + '">' + UI.esc(st.ar) + ' — التفاصيل</button>') +
         '</div>' +
       '</article>';
   }
