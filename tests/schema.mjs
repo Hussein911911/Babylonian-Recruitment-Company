@@ -557,13 +557,20 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
 
   /* الترتيب الاحترافي (2026-10-25 بعد طلب المالك): واجهة ← بحث ← تصنيفات ←
      الوظائف (أهم شيء أولاً) ← بطاقة التوظيف ← الأرقام ← آلية العمل … */
-  check('ترتيب الأقسام: واجهة · بحث · تصنيفات · وظائف · بطاقة · أرقام',
+  /* 2026-10-25: التصنيفات دُمجت **داخل** صندوق الفلاتر نفسه (فلترة موحّدة)،
+     فصارت #cat-rail قبل #jobs-grid داخل قسم #jobs لا قسماً مستقلاً قبله. */
+  check('ترتيب الأقسام: واجهة · بحث · وظائف(بفلاترها وتصنيفاتها) · بطاقة · أرقام',
     pub.indexOf('id="home"') < pub.indexOf('app-search') &&
-    pub.indexOf('app-search') < pub.indexOf('id="cat-rail"') &&
-    pub.indexOf('id="cat-rail"') < pub.indexOf('id="jobs"') &&
-    pub.indexOf('id="jobs"') < pub.indexOf('id="card"') &&
+    pub.indexOf('app-search') < pub.indexOf('id="jobs"') &&
+    pub.indexOf('id="jobs"') < pub.indexOf('id="cat-rail"') &&
+    pub.indexOf('id="cat-rail"') < pub.indexOf('id="jobs-grid"') &&
+    pub.indexOf('id="jobs-grid"') < pub.indexOf('id="card"') &&
     pub.indexOf('id="card"') < pub.indexOf('id="hero-stats"') &&
     pub.indexOf('id="hero-stats"') < pub.indexOf('id="how"'));
+  check('التصنيفات والفلاتر في صندوق واحد (لا قسم تصنيفات منفصل)',
+    (pub.match(/id="cat-rail"/g) || []).length === 1 &&
+    /class="filters"[\s\S]*?id="cat-rail"/.test(pub) &&
+    !/تصفّح حسب التخصص/.test(pub));
   check('لا شريط علوي (نجمة/حسابي/موقع) — أُزيل بطلب المالك',
     !/app-topbar/.test(pub) && !/i-star8/.test(pub) && !/حسابي/.test(pub) &&
     !/class="app-loc"/.test(pub));
@@ -643,6 +650,54 @@ step(20, 'الواجهة العامة — أبيض نقيّ، بوابة الم�
   check('قسم البطاقة يعرض الوجهين من قالب الطباعة نفسه (لا صورة بديلة)',
     /id="card-showcase"/.test(pub) && /HRCVoucher\.buildHtml/.test(js) &&
     /cs-cards/.test(readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8')));
+}
+
+/* ── 2026-10-25: فلترة موحّدة + طبقات نظيفة + بطاقة فخمة + تفاصيل حيّة ── */
+step(21, 'الوظائف — فلترة موحّدة، طبقات فوق بعضها، وتفاصيل حيّة');
+{
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+  const ui = readFileSync(join(ROOT, 'assets', 'js', 'ui.js'), 'utf8');
+  const vou = readFileSync(join(ROOT, 'assets', 'js', 'voucher.js'), 'utf8');
+
+  /* 1) الفلترة والتصنيفات في صندوق واحد + شرائح تصفية نشطة */
+  check('التصنيفات داخل صندوق الفلاتر نفسه (فلترة موحّدة)',
+    /class="filters"[\s\S]*?cats-row[\s\S]*?id="cat-rail"/.test(pub));
+  check('شرائح «مطبَّق» تُظهر ما تمت تصفيته ويُزال بزر',
+    /id="f-active"/.test(pub) && /function renderActiveChips/.test(js) && /data-clear=/.test(js));
+  check('التصفير يشمل التصنيف أيضاً', /category: 'all' \}/.test(js));
+
+  /* 2) الطبقات: لا شريط سفلي يغطّي أزرار النافذة */
+  check('النافذة فوق الشريط السفلي وقفل تمرير الصفحة أثناء فتحها',
+    /\.modal-backdrop \{ z-index: 400 !important; \}/.test(app) &&
+    /body\.modal-open \{ overflow: hidden; \}/.test(app) &&
+    /body\.modal-open \.tabbar \{ display: none !important; \}/.test(app) &&
+    /classList\.add\('modal-open'\)/.test(ui));
+  check('روابط السكرول لها هامش سفلي (لا تختفي تحت الترويسة)',
+    /scroll-margin-block-start/.test(app) && /scroll-padding-block-start/.test(app));
+
+  /* 3) البطاقة: وجهان فخمان + صيغة الباركود الحالية */
+  check('البطاقة فيها زخرفة وفخامة (نقش + هولوغرام + إطار مزدوج + شريط)',
+    /\.hc-guilloche/.test(vou) && /\.hc-holo/.test(vou) &&
+    /\.hc-ribbon/.test(vou) && /inset 0 0 0 \.78mm/.test(vou));
+  check('الوجه الخلفي يحمل نفس الزخرفة (لا وجه فقير ووجه غني)',
+    (vou.match(/hc-guilloche/g) || []).length >= 3);
+  /* نجرّد التعليقات: الصيغة القديمة مذكورة في تعليق توضيحي مقصود */
+  const jsCode = js.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  check('الرقم المعروض بصيغة الباركود الحقيقية لا الصيغة القديمة',
+    !/HRC-BC-000000/.test(jsCode) && /serial: '[A-Z0-9]{10}'/.test(jsCode) &&
+    /function randomCardCode/.test(readFileSync(join(ROOT, 'assets', 'js', 'store.js'), 'utf8')));
+
+  /* 4) تفاصيل الوظيفة: نافذة حيّة بعناصر واضحة */
+  check('تفاصيل الوظيفة: غلاف صورة + شريط أرقام + متطلبات + خطوات + خصوصية',
+    /jd-hero/.test(js) && /jd-stats/.test(js) && /jd-reqs/.test(js) &&
+    /jd-steps/.test(js) && /jd-privacy/.test(js));
+  check('أنماط تفاصيل الوظيفة موجودة ومتجاوبة',
+    /\.jd-hero \{/.test(app) && /\.jd-steps li::before/.test(app) &&
+    /@media \(max-width: 620px\) \{\s*\.jd-stats/.test(app));
+  check('زر «قدّم» داخل النافذة يغلقها ثم يفتح «بطاقتي» (لا نوافذ متراكبة)',
+    /b\.closest\('\.modal-backdrop'\)/.test(js) && /HRCBooking\.open/.test(js));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

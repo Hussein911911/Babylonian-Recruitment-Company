@@ -145,12 +145,13 @@
     if (status) status.addEventListener('change', function () { filters.status = status.value; renderJobs(); });
     var reset = document.getElementById('filter-reset');
     if (reset) reset.addEventListener('click', function () {
-      filters = { q: '', governorate: 'all', shift: 'all', status: 'all' };
+      filters = { q: '', governorate: 'all', shift: 'all', status: 'all', category: 'all' };
       if (q) q.value = '';
       if (governorate) governorate.value = 'all';
       var qsGov = document.getElementById('qs-governorate');
       if (qsGov) qsGov.value = 'all';
       if (shift) shift.value = 'all'; if (status) status.value = 'all';
+      renderCategories();
       renderJobs();
     });
 
@@ -314,11 +315,39 @@
     host.innerHTML = html;
     host.querySelectorAll('[data-cat]').forEach(function (b) {
       b.addEventListener('click', function () {
-        filters.category = b.getAttribute('data-cat');
+        var v = b.getAttribute('data-cat');
+        filters.category = (filters.category === v && v !== 'all') ? 'all' : v;  /* ضغطة ثانية تلغي */
         renderCategories();
         renderJobs();
-        var sec = document.getElementById('jobs');
-        if (sec && window.scrollTo) window.scrollTo({ top: sec.offsetTop - 70, behavior: 'smooth' });
+      });
+    });
+    renderActiveChips();
+  }
+
+  /* شرائح التصفية النشطة: تُظهر ما هو مطبَّق الآن + زر إزالته */
+  function renderActiveChips() {
+    var host = document.getElementById('f-active');
+    if (!host) return;
+    var chips = [];
+    if (filters.category && filters.category !== 'all') chips.push({ k: 'category', t: 'التخصص: ' + filters.category });
+    if (filters.governorate && filters.governorate !== 'all') chips.push({ k: 'governorate', t: filters.governorate });
+    if (filters.shift && filters.shift !== 'all') chips.push({ k: 'shift', t: 'دوام: ' + filters.shift });
+    if (filters.status && filters.status !== 'all') chips.push({ k: 'status', t: 'الحالة: ' + ((CFG.jobStatus[filters.status] || {}).ar || filters.status) });
+    if (filters.q) chips.push({ k: 'q', t: 'بحث: ' + filters.q });
+    if (!chips.length) { host.hidden = true; host.innerHTML = ''; return; }
+    host.hidden = false;
+    host.innerHTML = '<span class="tiny muted" style="font-weight:800">مطبَّق:</span>' +
+      chips.map(function (c) {
+        return '<span class="f-chip">' + UI.esc(c.t) +
+          '<button type="button" data-clear="' + c.k + '" aria-label="إزالة ' + UI.esc(c.t) + '">×</button></span>';
+      }).join('');
+    host.querySelectorAll('[data-clear]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-clear');
+        filters[k] = (k === 'q') ? '' : 'all';
+        var el = document.getElementById(k === 'q' ? 'filter-q' : 'filter-' + k);
+        if (el) el.value = filters[k];
+        renderCategories(); renderJobs();
       });
     });
   }
@@ -369,7 +398,8 @@
     if (!V || !V.buildHtml) return;
     try {
       var sample = {
-        serial: 'HRC-BC-000000', status: 'blank',
+        /* صيغة الباركود الحالية: ١٠ خانات من حروف/أرقام (لا HRC-BC-000000 القديمة) */
+        serial: 'K7M2XQ9T4R', status: 'blank',
         issueDate: null, expiryDate: null, cardPrintCode: null
       };
       host.innerHTML = V.buildHtml(sample, [{ no: 1 }, { no: 2 }]);
@@ -553,6 +583,7 @@
       }
     }
     host.innerHTML = jobs.map(cardHtml).join('');
+    renderActiveChips();
   }
 
   /* رابط الحجز: واتساب الشركة برسالة جاهزة تحمل كود الوظيفة وعنوانها،
@@ -663,61 +694,97 @@
   }
 
   /* ---------------- صفحة الوظيفة (عرض عام محجوب بيانات صاحب العمل) ---------------- */
+  /* ================== تفاصيل الوظيفة — نافذة حيّة بأنماط احترافية ==================
+   * صورة غلاف + عنوان وشارات فوقها، شريط أرقام سريع، متطلبات كشرائح، خطوات التقديم
+   * كخطّ زمني، وملاحظة خصوصية. كل الأزرار في تذييل ثابت داخل النافذة (لا يغطّيها
+   * شريط التنقل السفلي — انظر طبقات app-shell.css و body.modal-open). */
   function openJob(code) {
     var j = Store.getJob(code);
     if (!j) return;
-    var reqs = (j.requirements || []).map(function (r) {
-      return '<li>' + UI.ic('check') + '<span>' + UI.esc(r) + '</span></li>';
-    }).join('');
-    var attempts = Store.currentUser() ? '' : '';
-    /* صورة الوظيفة كاملة أعلى نافذة التفاصيل (إن وُجدت) */
-    var imgHtml = j.imageUrl
-      ? '<div class="job-detail-image" style="--img:url(&quot;' + UI.esc(j.imageUrl) + '&quot;)">' +
-        '<img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) +
-        '" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>'
-      : '';
+    var st = CFG.jobStatus[j.status] || { ar: j.status };
+    var img = j.imageUrl || defaultJobImage(j);
+    var vac = (j.availableVacancies != null ? j.availableVacancies : Store.vacancySummary(j).available);
+    var salary = Store.money(j.salaryMin) + ' – ' + Store.money(j.salaryMax);
+    var reqs = (j.requirements || []);
+    var badge = cardBadge(j);
+
     var body = '' +
-      imgHtml +
-      '<div class="flex-between flex-wrap mb-3" style="gap:12px">' +
-        '<div>' +
-          '<span class="chip chip-code mono">' + UI.esc(j.code) + '</span>' +
-          '<span class="chip chip-gold" style="margin-inline-start:6px">' + UI.esc(j.category) + '</span>' +
+      '<div class="jd-hero" style="--img:url(&quot;' + UI.esc(img) + '&quot;)">' +
+        '<img src="' + UI.esc(img) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async">' +
+        '<div class="jd-hero-veil"></div>' +
+        '<div class="jd-hero-top">' +
+          '<span class="ac-badge ' + badge.cls + '">' + UI.esc(badge.t) + '</span>' +
+          '<span class="jd-code mono">' + UI.esc(j.code) + '</span>' +
         '</div>' +
-        UI.jobBadge(j.status) +
-      '</div>' +
-        '<div class="data-grid mb-3">' +
-        '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || 'بابل') + '</div></div>' +
-        '<div class="data-item"><div class="k">الأجر الشهري</div><div class="v">' + Store.money(j.salaryMin) + ' – ' + Store.money(j.salaryMax) + '</div></div>' +
-        '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
-        '<div class="data-item"><div class="k">الجنس</div><div class="v">' + UI.esc(j.gender || 'لا فرق') + '</div></div>' +
-        '<div class="data-item"><div class="k">عدد الشواغر</div><div class="v">' + (j.availableVacancies != null ? j.availableVacancies : Store.vacancySummary(j).available) + ' متاح من ' + (j.vacancies||1) + '</div></div>' +
-        '<div class="data-item"><div class="k">تاريخ الإضافة</div><div class="v" dir="ltr">' + Store.fmtDate(j.createdAt) + '</div></div>' +
-      '</div>' +
-      '<div class="panel" style="background:#fdf9ee;border-color:var(--line)">' +
-        '<div class="panel-body" style="padding:14px 16px">' +
-          '<p class="mb-0 small">' + UI.ic('lock', '') +
-          ' <b>خصوصية صاحب العمل:</b> لا تُعرض بياناته التفصيلية (الاسم، الهاتف، العنوان) في الموقع العام. ' +
-          'تُسلَّم هذه البيانات للباحث عبر شركة الهدف للتوظيف عند التقديم ببطاقة التوظيف، وفق سياسة الشركة.</p>' +
+        '<div class="jd-hero-copy">' +
+          '<span class="jd-cat"><svg class="ic"><use href="#' + catIcon(j.category) + '" xlink:href="#' + catIcon(j.category) + '"/></svg> ' + UI.esc(j.category || '—') + '</span>' +
+          '<h2>' + UI.esc(j.title) + '</h2>' +
+          '<div class="jd-hero-meta">' +
+            '<span><svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg> ' + UI.esc(j.governorate || 'بابل') + '</span>' +
+            '<span><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg> ' + UI.esc(j.shift) + '</span>' +
+            '<span><svg class="ic"><use href="#i-money" xlink:href="#i-money"/></svg> ' + salary + '</span>' +
+          '</div>' +
         '</div>' +
       '</div>' +
-      (reqs ? '<h3 class="mt-3">الشروط والمتطلبات</h3><ul class="feature-list">' + reqs + '</ul>' : '') +
-      (j.description ? '<p class="muted mt-2">' + UI.esc(j.description) + '</p>' : '') +
-      '<div class="panel mt-3"><div class="panel-body" style="padding:14px 16px">' +
-        '<p class="mb-0 small">' + UI.ic('hourglass') +
-        ' <b>آلية التقديم:</b> قدّم على هذه الوظيفة بإحدى فرصتي بطاقة التوظيف — امسح باركود بطاقتك أو أدخله هنا، ' +
-        'أو عند نقطة البيع بقراءة الباركود. تُحجز الوظيفة باسمك <b>24 ساعة</b> بانتظار نتيجة المقابلة، ' +
-        'وإن انتهت المدة دون قرار تقرر الشركة: التوظيف أو إرجاع الوظيفة أو حذفها.</p>' +
-      '</div></div>';
+
+      '<div class="jd-stats">' +
+        '<div class="jd-stat"><svg class="ic"><use href="#i-money" xlink:href="#i-money"/></svg><b>' + salary + '</b><span>الأجر الشهري</span></div>' +
+        '<div class="jd-stat"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg><b>' + vac + (j.vacancies ? ' من ' + j.vacancies : '') + '</b><span>الشواغر المتاحة</span></div>' +
+        '<div class="jd-stat"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg><b>' + UI.esc(j.shift) + '</b><span>الدوام</span></div>' +
+        '<div class="jd-stat"><svg class="ic"><use href="#i-user" xlink:href="#i-user"/></svg><b>' + UI.esc(j.gender || 'لا فرق') + '</b><span>الجنس المطلوب</span></div>' +
+      '</div>' +
+
+      (reqs.length
+        ? '<section class="jd-block"><h3 class="jd-h"><svg class="ic"><use href="#i-check-circle" xlink:href="#i-check-circle"/></svg> الشروط والمتطلبات</h3>' +
+          '<ul class="jd-reqs">' + reqs.map(function (r) {
+            return '<li><svg class="ic"><use href="#i-check" xlink:href="#i-check"/></svg><span>' + UI.esc(r) + '</span></li>';
+          }).join('') + '</ul></section>'
+        : '') +
+
+      (j.description
+        ? '<section class="jd-block"><h3 class="jd-h"><svg class="ic"><use href="#i-file" xlink:href="#i-file"/></svg> وصف الوظيفة</h3>' +
+          '<p class="jd-desc">' + UI.esc(j.description) + '</p></section>'
+        : '') +
+
+      '<section class="jd-block"><h3 class="jd-h"><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> كيف تُقدّم عليها؟</h3>' +
+        '<ol class="jd-steps">' +
+          '<li><b>١</b><div><span>تقدر تقدم ببطاقة التوظيف</span><small>امسح باركود بطاقتك أو أدخله — الحيازة وحدها تكفي.</small></div></li>' +
+          '<li><b>٢</b><div><span>حجز 24 ساعة باسمك</span><small>الوظيفة تُحجز لك وحدك بانتظار نتيجة المقابلة.</small></div></li>' +
+          '<li><b>٣</b><div><span>تُطبع استمارة A4</span><small>تحمل بياناتك والوظيفة — سلّمها لصاحب العمل.</small></div></li>' +
+          '<li><b>٤</b><div><span>قرار الشركة</span><small>توظيف أو إرجاع الوظيفة — والفرصة المستهلكة لا تعود.</small></div></li>' +
+        '</ol></section>' +
+
+      '<div class="jd-privacy"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>' +
+        '<p><b>خصوصية صاحب العمل:</b> لا تُعرض بياناته (الاسم والهاتف والعنوان) في الموقع العام. ' +
+        'تُسلَّم للباحث عبر شركة الهدف عند التقديم ببطاقة التوظيف، وفق سياسة الشركة.</p></div>';
 
     UI.modal({
-      title: j.title, subtitle: 'تفاصيل الوظيفة — ' + (j.governorate || '—'), body: body, wide: true,
+      title: j.title,
+      subtitle: 'تفاصيل الوظيفة · ' + (j.governorate || '—') + ' · ' + j.code,
+      body: body, wide: true,
       footer: (j.status === 'available'
         ? '<button class="btn btn-gold" data-action="open-booking" data-code="' + UI.esc(j.code) + '">' +
           UI.ic('card') + ' قدّم على هذه الوظيفة ببطاقتك</button>' +
           '<a class="btn btn-outline" href="' + bookUrl(j.code, j.title) + '" target="_blank" rel="noopener">' +
-          UI.ic('whatsapp') + ' أو خابرنا واتساب</a>'
-        : '<button class="btn btn-outline" disabled>الوظيفة ' + CFG.jobStatus[j.status].ar + '</button>') +
-        '<button class="btn btn-outline" data-close>إغلاق</button>'
+          UI.ic('whatsapp') + ' استفسار واتساب</a>'
+        : '<span class="jd-foot-note"><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> الوظيفة ' + UI.esc(st.ar) + ' حالياً — تابع بقية الفرص.</span>') +
+        '<button class="btn btn-outline" data-close>إغلاق</button>',
+      onMount: function (box) {
+        box.classList.add('modal-job');
+        /* أي زر «قدّم» داخل النافذة يغلقها أولاً ثم يفتح «بطاقتي» (طبقات نظيفة) */
+        box.querySelectorAll('[data-action="open-booking"]').forEach(function (b) {
+          b.addEventListener('click', function (e) {
+            e.preventDefault(); e.stopPropagation();
+            var code2 = b.getAttribute('data-code');
+            var m = b.closest('.modal-backdrop');
+            if (m) m.remove();
+            document.body.classList.remove('modal-open');
+            setTimeout(function () {
+              if (root.HRCBooking && root.HRCBooking.open) root.HRCBooking.open({ code: code2 });
+            }, 60);
+          });
+        });
+      }
     });
   }
 

@@ -83,7 +83,9 @@ const BUDGET = {
      صار في صفحة التقديل فقط) — index 618KB وverify 479KB بعد القياس. */
   /* 2026-10-25: الهوية الجديدة (ترتيب التطبيق + شروط البطاقة + البانر) أضافت
      ~6KB من HTML فقط؛ السقف رُفع بهامش بسيط وبلا أي طلب شبكة جديد. */
-  'index.html': { raw: 672, requests: 20 },
+  /* 2026-10-25: قسم البطاقة الحقيقي + نافذة التفاصيل الحيّة + الفلترة الموحّدة
+     أضافت ~4KB HTML فقط، بلا أي طلب شبكة جديد. */
+  'index.html': { raw: 684, requests: 20 },
   'verify.html': { raw: 512, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */

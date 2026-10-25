@@ -149,7 +149,9 @@ check('زر «بطاقتي» موجود بالقائمة العلوية والف
     const box = lastModal(site.doc);
     const mtext = box ? box.textContent : '';
     check('نافذة التفاصيل تعرض تحذير خصوصية صاحب العمل', /خصوصية صاحب العمل/.test(mtext));
-    check('نافذة التفاصيل تشرح آلية البطاقة (فرصتان + 24 ساعة)', /فرصتي بطاقة التوظيف/.test(mtext) && /24 ساعة/.test(mtext));
+    /* 2026-10-25: صياغة النافذة الجديدة تشرح الآلية في خطوات «كيف تُقدّم عليها؟» */
+    check('نافذة التفاصيل تشرح آلية البطاقة (باركود + حجز 24 ساعة)',
+      /بطاقة التوظيف/.test(mtext) && /24 ساعة/.test(mtext) && /كيف تُقدّم عليها/.test(mtext));
     const bookBtn = box.querySelector('[data-action="open-booking"]');
     check('خاتمة النافذة فيها زر التقديم بكود الوظيفة',
       !!bookBtn && bookBtn.getAttribute('data-code') === detailsBtn.getAttribute('data-code'));
