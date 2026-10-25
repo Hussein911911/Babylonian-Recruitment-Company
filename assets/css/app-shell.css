@@ -5,66 +5,35 @@
  *  تُحمَّل بعد public-polish.css فلا تُغيّر أي سلوك وظيفي.
  * =========================================================================== */
 
-/* ── 1) شريط التطبيق العلوي فوق صورة المدينة ── */
+/* ── 1) الواجهة: صورة المدينة + الشعار والوعد ── */
 .hero.hero-app { padding: 0; min-height: 0; display: block; }
 .hero-app .hero-inner { display: none; }         /* الهيرو القديم استُبدل بالكتلة الوسطى */
 .hero-app .crenel { display: none; }
 .hero-app .hero-bg {
   inset: 0;
-  background-image: url('../img/hero-skyline.webp');   /* مدينة بغداد — نفس موضع صورة الموك-أب */
+  background-image: url('../img/hero-skyline.webp');   /* مدينة بغداد */
   background-position: center 34%;
   background-size: cover;
 }
+.hero-app .hero-bg { background-blend-mode: normal; filter: saturate(1.05) contrast(1.03); }
+.hero-app::before { content: none; }              /* لا طبقة إضافية فوق الصورة */
 .hero-app .hero-veil {
-  background: linear-gradient(180deg, rgba(6,13,31,.62) 0%, rgba(6,13,31,.28) 30%,
-              rgba(6,13,31,.5) 62%, rgba(6,13,31,.94) 100%);
+  background: linear-gradient(180deg, rgba(6,13,31,.58) 0%, rgba(6,13,31,.22) 26%,
+              rgba(6,13,31,.42) 58%, rgba(6,13,31,.9) 100%);
 }
-
-.app-topbar > * { flex: 0 0 auto; }
-.app-topbar {
-  position: relative; z-index: 5;
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 14px clamp(14px, 3.4vw, 34px) 0;
-}
-.app-loc {
-  display: inline-flex; align-items: center; gap: 6px; order: 2;   /* اليمين: الموقع */
-  background: rgba(11, 26, 58, .82); border: 1px solid rgba(200, 162, 74, .48);
-  color: #f3ead2; border-radius: 999px; padding: 8px 14px;
-  font-size: .8rem; font-weight: 800; line-height: 1; text-decoration: none;
-  backdrop-filter: blur(8px); box-shadow: 0 6px 18px rgba(3, 10, 26, .3);
-}
-.app-loc .ic { width: 15px; height: 15px; color: var(--gold-2); flex: none; }
-.app-loc .chev { width: 12px !important; height: 12px !important; transform: rotate(-90deg); opacity: .85; }
-.app-top-actions { display: flex; align-items: center; gap: 7px; order: 1; }  /* اليسار: حسابي + التنبيهات */
-.app-icon-btn {
-  position: relative; width: 38px; height: 38px; border-radius: 999px;
-  display: grid; place-items: center; cursor: pointer;
-  background: rgba(11, 26, 58, .82); border: 1px solid rgba(200, 162, 74, .48);
-  color: #f6f1e3; backdrop-filter: blur(8px);
-}
-.app-icon-btn .ic { width: 18px; height: 18px; }
-.app-icon-btn[hidden] { display: none; }
-.app-count {
-  position: absolute; inset-block-start: -3px; inset-inline-start: -3px;
-  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
-  background: #c8332b; color: #fff; font-size: .6rem; font-weight: 800;
-  display: grid; place-items: center; border: 2px solid #0b1a3a;
-}
-.app-user {
-  display: inline-flex; align-items: center; gap: 7px;
-  background: linear-gradient(135deg, #0b1a3a, #17376c);
-  border: 1px solid rgba(200, 162, 74, .48); color: #f6f1e3;
-  border-radius: 999px; padding: 8px 15px; font-size: .8rem; font-weight: 800;
-  text-decoration: none; backdrop-filter: blur(8px);
-}
-.app-user .ic { width: 16px; height: 16px; color: var(--gold-2); }
 
 /* ── 2) الشعار والوعد في وسط الصورة ── */
 .app-hero {
   position: relative; z-index: 4; text-align: center;
   padding: clamp(26px, 7vw, 54px) 20px clamp(52px, 9vw, 78px);
 }
-.app-brand { display: grid; justify-items: center; gap: 6px; cursor: default; }
+.app-brand {
+  display: grid; justify-items: center; gap: 6px;
+  /* اسم الشركة = بوابة الموظفين المخفية (ضغطة مطوّلة 1.2s) — انظر nav.js.
+     نمنع تحديد النص وقائمة السياق حتى لا تقطع الإيماءة على الجوال. */
+  cursor: default; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+}
 .app-emblem {
   width: clamp(56px, 12vw, 74px); height: clamp(56px, 12vw, 74px);
   color: var(--gold-2); filter: drop-shadow(0 8px 22px rgba(0, 0, 0, .55));
@@ -121,7 +90,7 @@
 }
 .app-search .as-scan {
   flex: none; width: 34px; height: 34px; border-radius: 999px; cursor: pointer;
-  display: grid; place-items: center; border: 1px solid #e2e7ef; background: #f7f9fc;
+  display: grid; place-items: center; border: 1px solid #e2e7ef; background: #fff;
   color: var(--lapis-3);
 }
 .app-search .as-scan .ic { width: 17px; height: 17px; }
@@ -168,70 +137,55 @@
   margin: 6px auto 0; background: var(--gold);
 }
 
-/* ── 5) بانر البطاقة ── */
-.promo-banner {
-  position: relative; display: grid; grid-template-columns: .95fr 1.15fr;
-  align-items: center; gap: 6px; overflow: hidden;
-  border-radius: 22px; padding: 18px; min-height: 186px;
-  background:
-    radial-gradient(120% 120% at 88% 20%, rgba(23, 55, 108, .95) 0%, rgba(11, 26, 58, .98) 46%, rgba(6, 13, 31, .99) 100%);
-  border: 1px solid rgba(200, 162, 74, .28);
-  box-shadow: 0 18px 42px rgba(6, 13, 31, .26);
+/* ── 5) قسم بطاقة التوظيف — الوجهان الحقيقيان (86×54مم) ── */
+.card-showcase { padding-block: clamp(26px, 4vw, 46px); }
+.cs-head { text-align: center; max-width: 62ch; margin: 0 auto clamp(18px, 3vw, 30px); }
+.cs-head h2 { margin: 8px 0 8px; font-size: clamp(1.15rem, 4.4vw, 1.6rem); color: var(--lapis-2); }
+.cs-head p { margin: 0; color: var(--muted); font-size: .84rem; line-height: 1.95; }
+.cs-grid {
+  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+  gap: clamp(18px, 3vw, 40px); align-items: center;
 }
-.promo-banner::before {
-  content: ''; position: absolute; inset-block: -40%; inset-inline-start: -18%;
-  width: 62%; border-radius: 50%;
-  background: radial-gradient(circle, rgba(200, 162, 74, .16), transparent 62%);
-  pointer-events: none;
+.cs-visual {
+  background: #fff; border: 1px solid var(--line-soft); border-radius: 22px;
+  padding: clamp(14px, 2.4vw, 26px); box-shadow: 0 14px 40px rgba(6, 13, 31, .08);
+  display: grid; gap: 12px; justify-items: center;
 }
-.promo-visual { position: relative; display: grid; place-items: center; }
-.promo-card {
-  width: 84%; aspect-ratio: 86 / 54; border-radius: 13px; padding: 9px;
-  display: grid; place-items: center; gap: 6px; transform: rotate(-7deg);
-  background: linear-gradient(150deg, #12295a, #0b1a3a 62%, #17376c);
-  border: 1px solid rgba(200, 162, 74, .55);
-  box-shadow: 0 18px 34px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .14);
+/* البطاقة تُرسم بمقاسها الفعلي (86×54مم) ثم تُصغَّر بالمحاكاة بلا تشويه */
+.cs-cards { --cs: .84; display: flex; flex-wrap: wrap; gap: calc(14px * var(--cs)); justify-content: center; }
+.cs-slot {
+  width: calc(325.04px * var(--cs)); height: calc(204.09px * var(--cs));
+  position: relative; flex: none;
 }
-.promo-card > svg { width: 34px; height: 34px; color: var(--gold-2); }
-.promo-card .pv-qr { width: 58px; height: 58px; background: #fff; border-radius: 7px; padding: 4px; }
-.promo-card .pv-qr svg { width: 100%; height: 100%; display: block; }
-.promo-body { position: relative; z-index: 1; text-align: start; }
-.promo-body h3 {
-  margin: 0 0 6px; font-size: clamp(1rem, 4.2vw, 1.28rem); font-weight: 900;
-  color: #fff; line-height: 1.6;
+.cs-slot > .hrc-card {
+  position: absolute; inset-block-start: 0; inset-inline-start: 0;
+  transform: scale(var(--cs)); transform-origin: top left;
+  box-shadow: 0 12px 30px rgba(6, 13, 31, .22);
 }
-.promo-body h3 .accent { color: var(--gold-2); }
-.promo-body p { margin: 0 0 12px; color: #c6d2e6; font-size: .78rem; line-height: 1.9; max-width: 30ch; }
-.promo-more {
-  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
-  border: 0; border-radius: 999px; padding: 9px 18px; font-family: inherit;
-  font-size: .8rem; font-weight: 900; color: #241a05;
-  background: linear-gradient(135deg, var(--gold-2), var(--gold));
-  box-shadow: 0 10px 22px rgba(200, 162, 74, .32);
+.cs-hint {
+  margin: 0; display: flex; align-items: flex-start; gap: 6px;
+  font-size: .7rem; line-height: 1.9; color: var(--muted); text-align: center;
 }
-.promo-more .ic { width: 15px; height: 15px; transform: rotate(-90deg); }
-.promo-note {
-  position: absolute; inset-block-start: 16px; inset-inline-start: 16px;
-  color: var(--gold-2); font-size: .62rem; font-weight: 800; line-height: 1.8;
-  opacity: .9; text-align: start; pointer-events: none;
-}
-.promo-dots { display: flex; justify-content: center; gap: 5px; margin-top: 10px; }
-.promo-dots i { width: 6px; height: 6px; border-radius: 999px; background: #d8dde7; }
-.promo-dots i.on { width: 18px; background: var(--gold); }
+.cs-hint .ic { width: 14px; height: 14px; color: var(--gold-3); flex: none; margin-top: 3px; }
 
-/* ── 5ب) شروط البطاقة تحت البانر ── */
-.policy-strip {
-  list-style: none; margin: 12px 0 0; padding: 0;
-  display: flex; flex-wrap: wrap; gap: 6px;
+.cs-copy { min-width: 0; }
+.cs-features { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 12px; }
+.cs-features li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; }
+.cs-ic {
+  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  background: #fff; border: 1px solid var(--line-soft); color: var(--gold-3);
+  box-shadow: 0 4px 12px rgba(6, 13, 31, .05);
 }
-.policy-strip li {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: #fdf9ee; border: 1px solid #efe2c2; border-radius: 999px;
-  padding: 5px 11px; font-size: .68rem; font-weight: 700; color: #6b5a2d;
-  line-height: 1.6;
+.cs-ic .ic { width: 19px; height: 19px; }
+.cs-features b { display: block; color: var(--lapis-2); font-size: .9rem; margin-bottom: 2px; }
+.cs-features span { color: var(--muted); font-size: .78rem; line-height: 1.9; }
+.cs-features div b b { display: inline; color: var(--lapis-2); }
+.cs-cta { display: flex; flex-wrap: wrap; gap: 10px; }
+.cs-note {
+  display: flex; align-items: flex-start; gap: 6px; margin: 12px 0 0;
+  font-size: .72rem; line-height: 1.9; color: var(--muted);
 }
-.policy-strip .ic { width: 13px; height: 13px; color: var(--gold-3); flex: none; }
-.policy-strip b { color: #4a3c14; font-weight: 900; }
+.cs-note .ic { width: 14px; height: 14px; color: var(--gold-3); flex: none; margin-top: 3px; }
 
 /* ── 6) رأس «أحدث الوظائف» ── */
 .jobs-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -312,10 +266,6 @@
 .app-card .ac-foot .btn:hover { background: linear-gradient(140deg, var(--lapis-3), var(--lapis-2)); color: #fff; }
 .app-card .ac-foot .btn .ic { color: var(--gold-2); }
 
-/* فراغ فاصل بين شبكة الوظائف وشريط الأرقام (كما في الموك-أب) */
-#jobs { padding-bottom: 6px; }
-#jobs + .app-section { padding-top: 30px !important; }
-
 /* ── 8) شريط الأرقام ── */
 .app-stats {
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -370,10 +320,14 @@
   .app-stat:nth-child(n + 3) { border-top: 1px solid #eef1f6; }
   .app-search { padding: 6px 6px 6px 12px; }
   .app-search .as-gov { display: none; }     /* البحث يبقى كبسولة واحدة كما في الموك-أب */
-  .promo-banner { grid-template-columns: .8fr 1.2fr; padding: 14px; min-height: 172px; }
-  .promo-note { display: none; }
+}
+@media (max-width: 980px) {
+  .cs-grid { grid-template-columns: minmax(0, 1fr); }
+  .cs-visual { order: -1; }
 }
 @media (max-width: 860px) {
+  .cs-cards { --cs: .52; }
+  .cs-cta .btn { flex: 1 1 100%; justify-content: center; }
   /* الموك-أب يعرض ستة مربّعات في صفّ واحد بلا تمرير */
   .cat-rail { gap: 6px; justify-content: space-between; }
   .cat { width: auto; flex: 1 1 0; min-width: 0; }
@@ -387,5 +341,16 @@
 }
 
 @media print {
-  .tabbar, .app-topbar, .cat-rail, .promo-dots { display: none !important; }
+  .tabbar, .cat-rail, .cs-cards { display: none !important; }
+}
+
+/* ── 6ج) فلاتر «أحدث الوظائف»: بحث بعرض كامل ثم صفّان منظّمان (احترافي) ── */
+@media screen and (max-width: 860px) {
+  #jobs .filters {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    padding: 12px; border-radius: 16px;
+  }
+  #jobs .filters .f-field.f-search { grid-column: 1 / -1; }
+  #jobs .filters .f-reset { grid-column: 1 / -1; justify-content: center; min-height: 42px; }
+  #jobs .filters .f-field { min-width: 0; }
 }

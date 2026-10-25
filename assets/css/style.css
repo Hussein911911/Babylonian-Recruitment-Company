@@ -30,8 +30,8 @@
   --gold-3: #8a6d2c;
   --turq: #1f8f96;
   --turq-2: #3ec1c4;
-  --cream: #f9f6ef;
-  --sand: #efe7d6;
+  --cream: #ffffff;   /* 2026-10-25: كل خلفية قريبة من الأبيض صارت أبيض نقيّاً */
+  --sand: #f0e9db;
   --white: #ffffff;
   --text: #14203a;
   --ink: #14203a;
@@ -188,7 +188,7 @@ a.hc-item:hover { color: var(--gold-2); }
 .badge.warn { color: #8a5c05; background: #fdf1d8; border-color: #f0d9a3; }
 .badge.danger { color: #8f2724; background: #fbe6e5; border-color: #f0c3c1; }
 .badge.info { color: #1b4f8a; background: #e5eefb; border-color: #c2d7f2; }
-.badge.muted { color: #5c6884; background: #eef1f7; border-color: #d9dfeb; }
+.badge.muted { color: #5c6884; background: #fff; border-color: #d9dfeb; }
 .chip {
   display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 10px;
   background: rgba(11, 26, 58, .06); border: 1px solid var(--line-soft);
@@ -199,7 +199,7 @@ a.hc-item:hover { color: var(--gold-2); }
 
 /* ============================ 7) الأقسام والعناوين ============================ */
 .section { padding: clamp(48px, 7vw, 92px) 0; }
-.section-alt { background: linear-gradient(180deg, #fff, var(--cream)); }
+.section-alt { background: #fff; }
 .section-dark {
   background: linear-gradient(180deg, var(--night), var(--lapis) 55%, var(--night));
   color: #e9eefb; position: relative; overflow: hidden;
@@ -402,14 +402,14 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 .job-card.skeleton::before { display: none; }
 .skel-line {
   height: 12px; border-radius: 7px; margin: 8px 0;
-  background: linear-gradient(90deg, #edf0f7 25%, #f7f9fd 45%, #edf0f7 65%);
+  background: linear-gradient(90deg, #fff 25%, #fff 45%, #fff 65%);
   background-size: 220% 100%;
   animation: skelWave 1.3s ease-in-out infinite;
 }
 .skel-line.w60 { width: 60%; } .skel-line.w40 { width: 40%; } .skel-line.w80 { width: 80%; }
 .skel-line.sq {
   width: 74px; height: 24px; border-radius: 9px; margin: 0;
-  display: inline-block; background: linear-gradient(90deg, #edf0f7 25%, #f7f9fd 45%, #edf0f7 65%);
+  display: inline-block; background: linear-gradient(90deg, #fff 25%, #fff 45%, #fff 65%);
   background-size: 220% 100%; animation: skelWave 1.3s ease-in-out infinite;
 }
 .job-card.skeleton .skel-body { padding: 18px; display: flex; flex-direction: column; }
@@ -486,7 +486,7 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 .job-meta .mi { display: flex; align-items: center; gap: 8px; font-size: .87rem; color: #3c4a68; }
 .job-meta .mi svg { width: 17px; height: 17px; color: var(--gold-3); flex: none; }
 .job-foot {
-  padding: 14px 18px; border-top: 1px dashed var(--line-soft); background: #fcfbf8;
+  padding: 14px 18px; border-top: 1px dashed var(--line-soft); background: #fff;
   display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
 }
 .salary { font-weight: 900; color: var(--lapis-2); font-size: .95rem; }
@@ -528,7 +528,7 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 .step h3 { font-size: 1.1rem; color: #0a0a0c; font-weight: 900; }
 .step p { font-size: .93rem; color: #26282f; line-height: 1.85; margin: 0; }
 .service {
-  background: linear-gradient(180deg, #fff, #fdfbf6); border: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, #fff, #fff); border: 1px solid var(--line-soft);
   border-radius: var(--radius); padding: 24px 20px; height: 100%;
   position: relative; overflow: hidden;
 }
@@ -709,11 +709,11 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 @keyframes pop { from { transform: translateY(14px) scale(.985); opacity: 0 } to { transform: none; opacity: 1 } }
 .modal-head {
   padding: 20px 22px; border-bottom: 1px solid var(--line-soft); display: flex; justify-content: space-between;
-  align-items: flex-start; gap: 14px; background: linear-gradient(180deg, #fdfbf6, #fff); border-radius: 20px 20px 0 0;
+  align-items: flex-start; gap: 14px; background: linear-gradient(180deg, #fff, #fff); border-radius: 20px 20px 0 0;
 }
 .modal-head h3 { margin: 0; }
 .modal-body { padding: 22px; overflow-y: auto; }
-.modal-foot { padding: 16px 22px; border-top: 1px solid var(--line-soft); display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; background: #fcfbf8; border-radius: 0 0 20px 20px; }
+.modal-foot { padding: 16px 22px; border-top: 1px solid var(--line-soft); display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; background: #fff; border-radius: 0 0 20px 20px; }
 .icon-btn {
   background: transparent; border: 1px solid var(--line-soft); border-radius: 10px; width: 36px; height: 36px;
   display: grid; place-items: center; cursor: pointer; color: var(--muted); transition: .16s; flex: none;
@@ -737,15 +737,15 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 .table-scroll { overflow-x: auto; }
 table.data { width: 100%; border-collapse: collapse; font-size: .85rem; min-width: 700px; }
 table.data thead th {
-  background: linear-gradient(180deg, #fdfbf6, #f6f2e8); color: var(--lapis-2); font-weight: 800;
+  background: #fff; color: var(--lapis-2); font-weight: 800;
   text-align: right; padding: 11px 13px; border-bottom: 1px solid var(--line); white-space: nowrap; font-size: .8rem;
 }
 table.data tbody td { padding: 10px 13px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
-table.data tbody tr:hover { background: #fcfaf4; }
+table.data tbody tr:hover { background: #fff; }
 table.data tbody tr:last-child td { border-bottom: none; }
 table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .table-empty { padding: 36px; text-align: center; color: var(--muted); }
-.tfoot-note { padding: 10px 14px; background: #fcfbf8; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--line-soft); }
+.tfoot-note { padding: 10px 14px; background: #fff; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--line-soft); }
 
 /* ============================ 16) لوحة الموظفين - تصميم مدمج بدون فراغات ============================ */
 .app-shell { 
@@ -753,7 +753,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   flex-direction: column; 
   width: 100%; 
   min-height: 100vh; 
-  background: #f4f6fb; 
+  background: #fff; 
   margin: 0; 
   padding: 0;
 }
@@ -974,7 +974,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .panel { background: #fff; border: 1px solid var(--line-soft); border-radius: 14px; box-shadow: var(--shadow-sm); margin-bottom: 16px; }
 .panel-head {
   padding: 14px 18px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center;
-  justify-content: space-between; gap: 12px; flex-wrap: wrap; background: linear-gradient(180deg, #fdfbf6, #fff);
+  justify-content: space-between; gap: 12px; flex-wrap: wrap; background: linear-gradient(180deg, #fff, #fff);
   border-radius: 14px 14px 0 0;
 }
 .panel-head h3 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: .95rem; }
@@ -993,7 +993,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 /* مقياس الأعمدة في اللوحة المالية */
 .bars { display: grid; gap: 12px; }
 .bar-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 130px; align-items: center; gap: 12px; }
-.bar-track { background: #eef1f7; border-radius: 999px; height: 12px; overflow: hidden; }
+.bar-track { background: #fff; border-radius: 999px; height: 12px; overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--gold), var(--turq)); }
 .bar-row .val { text-align: left; font-weight: 800; font-size: .88rem; color: var(--lapis-2); }
 
@@ -1003,10 +1003,10 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   border: 1px solid var(--line-soft); border-radius: 14px; padding: 14px 16px; background: #fff;
   display: grid; grid-template-columns: 48px minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 12px; align-items: center;
 }
-.attempt-slot.filled { background: #fcfaf4; border-color: var(--line); }
+.attempt-slot.filled { background: #fff; border-color: var(--line); }
 .attempt-slot .no {
   width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-weight: 900;
-  background: #eef1f7; color: var(--muted);
+  background: #fff; color: var(--muted);
 }
 .attempt-slot.filled .no { background: linear-gradient(135deg, var(--lapis-2), var(--lapis-3)); color: var(--gold-2); }
 .attempt-slot .job { font-weight: 800; }
@@ -1038,7 +1038,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .verify-status.warn .seal { background: #fdf1d8; color: var(--warn); }
 .verify-status h1 { font-size: 1.35rem; margin: 0; }
 .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
-.data-item { background: #fbfaf6; border: 1px solid var(--line-soft); border-radius: 13px; padding: 12px 14px; }
+.data-item { background: #fff; border: 1px solid var(--line-soft); border-radius: 13px; padding: 12px 14px; }
 .data-item .k { font-size: .78rem; color: var(--muted); font-weight: 700; }
 .data-item .v { font-size: .98rem; font-weight: 800; color: var(--lapis-2); word-break: break-word; }
 .verify-qr { display: grid; place-items: center; gap: 10px; }
@@ -1106,7 +1106,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 /* شريط الوظيفة المختارة أعلى الخطوة */
 .bk-jobstrip {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  background: linear-gradient(135deg, #fdf9ee, #f7efdd); border: 1px solid var(--line);
+  background: #fff; border: 1px solid var(--line);
   border-radius: 13px; padding: 10px 14px; margin-bottom: 18px;
 }
 .bk-jobstrip > svg { width: 22px; height: 22px; color: var(--gold-3); }
@@ -1124,7 +1124,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   border: 1.5px solid #dfe4ec; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
   cursor: pointer; font: inherit; color: inherit; transition: border-color .15s, background .15s; }
 .bk-pick:hover { border-color: #c8a24a; }
-.bk-pick.is-picked { border-color: #c8a24a; background: #fdf9ee; box-shadow: inset 0 0 0 1px #c8a24a; }
+.bk-pick.is-picked { border-color: #c8a24a; background: #fff; box-shadow: inset 0 0 0 1px #c8a24a; }
 .bk-pick-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .bk-pick-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; color: #5b6472; font-size: 12.5px; }
 .bk-pick-meta svg { width: 13px; height: 13px; vertical-align: -2px; }
@@ -1157,7 +1157,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 /* بلا وظائف متاحة */
 .bk-empty {
   display: grid; place-items: center; gap: 6px; text-align: center; padding: 26px 14px;
-  border: 1.5px dashed var(--line); border-radius: 14px; background: #fdfbf6;
+  border: 1.5px dashed var(--line); border-radius: 14px; background: #fff;
 }
 .bk-empty svg { width: 30px; height: 30px; color: var(--gold-3); }
 
@@ -1196,13 +1196,13 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
 /* صف الرسم وشريط الأمان */
 .bk-fee {
-  display: flex; align-items: center; gap: 10px; background: #fdf9ee; border: 1px dashed var(--gold);
+  display: flex; align-items: center; gap: 10px; background: #fff; border: 1px dashed var(--gold);
   border-radius: 12px; padding: 11px 15px; font-weight: 700; color: var(--lapis-2); font-size: .92rem;
 }
 .bk-fee svg { width: 19px; height: 19px; color: var(--gold-3); }
 .bk-fee b { margin-inline-start: auto; color: var(--gold-3); font-size: 1.02rem; }
 .bk-secure {
-  display: flex; gap: 10px; align-items: flex-start; background: #f2f9f4; border: 1px solid #cdeed9;
+  display: flex; gap: 10px; align-items: flex-start; background: #fff; border: 1px solid #cdeed9;
   color: #1d6a43; border-radius: 12px; padding: 11px 14px; font-size: .8rem; line-height: 1.8; margin-top: 13px;
 }
 .bk-secure svg { width: 18px; height: 18px; flex: none; margin-top: 3px; color: #1f8f4e; }
@@ -1218,7 +1218,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .bk-sum-row .v { font-weight: 800; text-align: left; word-break: break-word; }
 .bk-check {
   display: flex; gap: 11px; align-items: flex-start; margin-top: 15px; cursor: pointer;
-  background: #fdfbf6; border: 1.5px solid var(--line-soft); border-radius: 12px; padding: 12px 14px;
+  background: #fff; border: 1.5px solid var(--line-soft); border-radius: 12px; padding: 12px 14px;
   font-size: .84rem; line-height: 1.9; transition: .16s;
 }
 .bk-check:hover { border-color: var(--gold); }
@@ -1236,7 +1236,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .bk-success h4 { font-size: 1.3rem; color: var(--lapis); margin-bottom: 4px; }
 .bk-ref {
   display: inline-block; font-size: 1.28rem; font-weight: 800; letter-spacing: 1.5px;
-  background: #fdf9ee; border: 1.5px dashed var(--gold); border-radius: 12px;
+  background: #fff; border: 1.5px dashed var(--gold); border-radius: 12px;
   padding: 10px 22px; color: var(--gold-3); margin: 6px 0 4px;
 }
 .bk-foot-note { margin-inline-start: auto; align-self: center; }
@@ -1783,7 +1783,7 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
 /* صفوف الجدول المحسّنة */
 table.data tbody tr { transition: .15s; }
-table.data tbody tr:hover { background: #faf8f3; }
+table.data tbody tr:hover { background: #fff; }
 
 /* شريط حالة البطاقة ملوّن */
 .row-status-bar {
@@ -1813,7 +1813,7 @@ table.data tbody tr:hover { background: #faf8f3; }
 
 /* شريط البحث المحسّن */
 .toolbar-enhanced {
-  background: linear-gradient(135deg, #fdfbf6, #f8f5ee);
+  background: linear-gradient(135deg, #fff, #fff);
   border: 1px solid var(--line-soft);
   border-radius: 12px;
   padding: 14px 16px;
@@ -1839,7 +1839,7 @@ table.data tbody tr:hover { background: #faf8f3; }
 
 /* الملاحظة السفلية */
 .footnote-premium {
-  background: linear-gradient(135deg, #fdfbf6, #f8f5ee);
+  background: linear-gradient(135deg, #fff, #fff);
   border-top: 1px solid var(--line-soft);
   padding: 12px 18px;
   font-size: .82rem;
@@ -1986,7 +1986,7 @@ table.data tbody tr:hover { background: #faf8f3; }
   transition: .15s;
 }
 .ov-action-card:last-child { border-bottom: none; }
-.ov-action-card:hover { background: #faf8f3; }
+.ov-action-card:hover { background: #fff; }
 .ov-action-card .ov-ac-icon {
   width: 38px; height: 38px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
@@ -1996,7 +1996,7 @@ table.data tbody tr:hover { background: #faf8f3; }
 .ov-action-card .ov-ac-icon.critical { background: linear-gradient(135deg, #fbe6e5, #f0c3c1); color: #8f2724; }
 .ov-action-card .ov-ac-icon.hiring   { background: linear-gradient(135deg, #dde9f9, #b8d4f5); color: #1b4f8a; }
 .ov-action-card .ov-ac-icon.pending  { background: linear-gradient(135deg, #fdf1d8, #f0d9a3); color: #8a5c05; }
-.ov-action-card .ov-ac-icon.hold     { background: linear-gradient(135deg, #eef1f7, #d9dfeb); color: #5c6884; }
+.ov-action-card .ov-ac-icon.hold     { background: linear-gradient(135deg, #fff, #d9dfeb); color: #5c6884; }
 .ov-action-card .ov-ac-body { flex: 1; min-width: 0; }
 .ov-action-card .ov-ac-title {
   font-weight: 700; font-size: .88rem; color: var(--lapis-2);
@@ -2018,7 +2018,7 @@ table.data tbody tr:hover { background: #faf8f3; }
   transition: .15s;
 }
 .ov-hold-card:last-child { border-bottom: none; }
-.ov-hold-card:hover { background: #faf8f3; }
+.ov-hold-card:hover { background: #fff; }
 .ov-hold-card .ov-hc-icon {
   width: 38px; height: 38px; border-radius: 10px;
   background: linear-gradient(135deg, #fdf1d8, #f0d9a3);
@@ -2044,7 +2044,7 @@ table.data tbody tr:hover { background: #faf8f3; }
   transition: .15s;
 }
 .ov-log-row:last-child { border-bottom: none; }
-.ov-log-row:hover { background: #faf8f3; }
+.ov-log-row:hover { background: #fff; }
 .ov-log-row .ov-log-dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--gold-3); flex-shrink: 0;
@@ -2135,7 +2135,7 @@ table.data tbody tr:hover { background: #faf8f3; }
 .jobs-stat:nth-child(5) { animation-delay: .24s; }
 
 /* بطاقة وظيفة محسّنة في الجدول */
-.job-row-highlight { background: #fdf9ee; }
+.job-row-highlight { background: #fff; }
 
 /* ===========================================================================
  *  تحسينات عامة فاخرة — الموقع العام

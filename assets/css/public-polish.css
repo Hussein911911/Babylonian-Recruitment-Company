@@ -27,7 +27,7 @@
     grid-column: 2; margin: 0; line-height: 1.85; align-self: center;
   }
   .service > p, .contact-card > p, .steps .step > p { grid-column: 2; margin: 0; line-height: 1.95; }
-  .service > svg { padding: 10px; border-radius: 14px; background: #f7f2e7; color: var(--gold-3); }
+  .service > svg { padding: 10px; border-radius: 14px; background: #fff; border: 1px solid var(--line-soft); color: var(--gold-3); }
   .steps { grid-template-columns: repeat(auto-fit,minmax(min(100%,215px),1fr)); }
   .quick-search { flex-direction: row; flex-wrap: wrap; align-items: center; }
   .quick-search .qs-label { flex: 0 0 auto; }

@@ -359,31 +359,25 @@
     });
   }
 
-  /* ── عدّاد التنبيهات: عدد الوظائف المتاحة الآن (يُحدَّث مع البيانات) ── */
-  function renderAlerts() {
-    var b = document.getElementById('app-alerts-count');
-    if (!b) return;
-    if (cloudBlocked()) { b.hidden = true; return; }
-    var n = Store.listJobs({}).filter(function (j) { return j.status === 'available'; }).length;
-    b.textContent = n > 99 ? '99+' : String(n);
-    b.hidden = n === 0;
-  }
-
-  /* QR حقيقي داخل بانر البطاقة (يشير لصفحة «بطاقتي» على هذا النطاق) */
-  function renderPromoQr() {
-    var host = document.getElementById('promo-qr');
+  /* ── بطاقة التوظيف الحقيقية على الموقع ──
+     نرسم الوجهين بنفس قالب الطباعة (HRCVoucher.buildHtml) ببطاقة نموذجية
+     بلا بيانات زبون، فتكون الصورة على الموقع مطابقة تماماً للورقة المطبوعة. */
+  function renderCardShowcase() {
+    var host = document.getElementById('card-showcase');
     if (!host || host.dataset.done) return;
-    var Q = root.HRCQR;
-    if (!Q || !Q.encode || !Q.renderSVG) return;
+    var V = root.HRCVoucher;
+    if (!V || !V.buildHtml) return;
     try {
-      var base = Store.cardUrl ? Store.cardUrl('') : (location.origin + location.pathname);
-      var url = String(base).replace(/[?#].*$/, '') || 'https://hrc-babil.com';
-      host.innerHTML = Q.renderSVG(Q.encode(url, 'M'), { margin: 1 });
+      var sample = {
+        serial: 'HRC-BC-000000', status: 'blank',
+        issueDate: null, expiryDate: null, cardPrintCode: null
+      };
+      host.innerHTML = V.buildHtml(sample, [{ no: 1 }, { no: 2 }]);
       host.dataset.done = 'yes';
-    } catch (e) { }
+    } catch (e) { /* البطاقة تحسين بصري — لا تُعطّل الصفحة إن فشلت */ }
   }
 
-  function renderAll() { renderHeroStats(); renderCategories(); renderAlerts(); renderJobs(); renderPromoQr(); }
+  function renderAll() { renderHeroStats(); renderCategories(); renderJobs(); renderCardShowcase(); }
 
   root.HRCRefresh = function () {
     if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }
@@ -581,7 +575,7 @@
   /* أيقونة التصنيف: تُطابق أسماء تصنيفات الشركة في config.jobCategories */
   var CAT_ICON = {
     'صناعي': 'i-building', 'خدمات': 'i-users', 'صحي': 'i-shield', 'هندسي': 'i-chart',
-    'إداري': 'i-file', 'تجاري': 'i-bag', 'زراعي': 'i-sparkle', 'تقني': 'i-server'
+    'إداري': 'i-list', 'تجاري': 'i-bag', 'زراعي': 'i-sparkle', 'تقني': 'i-server'
   };
   function catIcon(c) { return CAT_ICON[c] || 'i-briefcase'; }
 

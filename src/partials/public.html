@@ -3,28 +3,9 @@
   <div class="hero-bg" role="img" aria-label="مدينة بغداد على ضفاف دجلة عند الغروب"></div>
   <div class="hero-veil"></div>
 
-  <!-- شريط التطبيق العلوي: الموقع (يمين) · الإشعارات + حسابي (يسار) -->
-  <div class="app-topbar">
-    <a class="app-loc" href="https://www.google.com/maps?q=32.4823913,44.4105048" target="_blank" rel="noopener" title="موقع الشركة على الخريطة">
-      <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
-      <span>حلة</span>
-      <svg class="ic chev"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
-    </a>
-    <div class="app-top-actions">
-      <button type="button" class="app-icon-btn" id="app-alerts" aria-label="التنبيهات" title="عدد الوظائف المتاحة الآن">
-        <svg class="ic"><use href="#i-star8" xlink:href="#i-star8"/></svg>
-        <span class="app-count" id="app-alerts-count" hidden>0</span>
-      </button>
-      <a class="app-user" href="#contact" data-app-account>
-        <span>حسابي</span>
-        <svg class="ic"><use href="#i-user" xlink:href="#i-user"/></svg>
-      </a>
-    </div>
-  </div>
-
   <!-- الشعار والوعد في وسط الصورة -->
   <div class="app-hero">
-    <div class="app-brand brand" data-staff-gate role="img" aria-label="شركة الهدف للتوظيف">
+    <div class="app-brand brand" data-staff-gate>
       <svg class="app-emblem"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
       <b class="app-wordmark">شركة <span class="accent">الهدف</span> للتوظيف</b>
       <span class="app-tagline">منصة الفرص والوظائف</span>
@@ -61,36 +42,9 @@
       <h2 class="mb-0" style="font-size:1.05rem">تصفّح حسب التخصص</h2>
       <span class="tiny muted">اضغط تصنيفاً لتصفية الوظائف فوراً</span>
     </div>
+    <!-- مراجع صريحة لأيقونات التصنيفات التي يبنيها الكود ديناميكياً -->
+    <svg width="0" height="0" aria-hidden="true" style="position:absolute;opacity:0"><use href="#i-bag" xlink:href="#i-bag"/><use href="#i-list" xlink:href="#i-list"/><use href="#i-chart" xlink:href="#i-chart"/><use href="#i-server" xlink:href="#i-server"/><use href="#i-sparkle" xlink:href="#i-sparkle"/></svg>
     <div class="cat-rail" id="cat-rail" role="tablist" aria-label="تصنيفات الوظائف"></div>
-  </div>
-</section>
-
-<!-- ============================== بطاقة التوظيف ============================== -->
-<section class="section app-section" style="padding-top:18px">
-  <div class="container">
-    <div class="promo-banner">
-      <div class="promo-visual" aria-hidden="true">
-        <div class="promo-card"><svg><use href="#i-emblem" xlink:href="#i-emblem"/></svg><div class="pv-qr" id="promo-qr"></div></div>
-      </div>
-      <div class="promo-body">
-        <h3>بطاقة التوظيف<br><span class="accent">جسرك إلى الوظيفة</span></h3>
-        <p>امسح الباركود وابدأ رحلتك نحو مستقبلك — فرصتان وصلاحية 30 يوماً.</p>
-        <button type="button" class="promo-more" data-action="open-booking">
-          <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg> معرفة المزيد
-        </button>
-      </div>
-      <div class="promo-note">بطاقتك<br>هي مفتاحك<br>للمستقبل</div>
-    </div>
-    <div class="promo-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
-
-    <!-- شروط التعامل مع البطاقة — تبقى ظاهرة للزائر (حقوق والتزامات) -->
-    <ul class="policy-strip" aria-label="شروط بطاقة التوظيف">
-      <li><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فرصتان بالبطاقة</li>
-      <li><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> صلاحية <b>30 يوماً</b></li>
-      <li><svg class="ic"><use href="#i-money" xlink:href="#i-money"/></svg> <b>الدفع كاش</b> عند نقطة البيع</li>
-      <li><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg> حجز <b>24 ساعة</b> ثم تصبح <b>حرجة</b></li>
-      <li><svg class="ic"><use href="#i-info" xlink:href="#i-info"/></svg> لا تعود متاحة تلقائياً — والفرصة المستهلكة لا تعود</li>
-    </ul>
   </div>
 </section>
 
@@ -143,6 +97,55 @@
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
       <h3>لا توجد وظائف مطابقة</h3>
       <p class="mb-0">غيّر البحث أو صفّر الفلاتر لعرض الوظائف المتاحة.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== بطاقة التوظيف — تصميم البطاقة الحقيقي ============================== -->
+<section class="section app-section card-showcase" id="card">
+  <div class="container">
+    <div class="cs-head">
+      <span class="eyebrow eyebrow-line">بطاقة التوظيف</span>
+      <h2>البطاقة التي تحمل فرصتك</h2>
+      <p>تُشترى كاشاً من نقطة بيع معتمدة، وتحمل باركوداً واحداً يفتح حالتها وفرصتيها واستمارتك.</p>
+    </div>
+
+    <div class="cs-grid">
+      <!-- الوجهان الحقيقيان للبطاقة (86×54مم) — يُرسمان من نفس قالب الطباعة -->
+      <div class="cs-visual">
+        <div class="cs-cards" id="card-showcase" aria-label="شكل بطاقة التوظيف: الوجه الأمامي والخلفي"></div>
+        <p class="cs-hint"><svg class="ic"><use href="#i-info" xlink:href="#i-info"/></svg> هذا شكل البطاقة الفعلي المطبوع — بلا بيانات زبون؛ بياناتك على استمارة A4 بنفس الباركود.</p>
+      </div>
+
+      <div class="cs-copy">
+        <ul class="cs-features">
+          <li>
+            <span class="cs-ic"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg></span>
+            <div><b>فرصتان مستقلتان</b><span>كل فرصة على وظيفة مختلفة، وتُستهلك عند التقديم فقط.</span></div>
+          </li>
+          <li>
+            <span class="cs-ic"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg></span>
+            <div><b>صلاحية 30 يوماً</b><span>تبدأ من لحظة البيع لا من طباعة الدفعة.</span></div>
+          </li>
+          <li>
+            <span class="cs-ic"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg></span>
+            <div><b>حجز عادل 24 ساعة</b><span>الوظيفة لمرشح واحد فقط، ثم تصبح <b>حرجة</b> وقرارها للشركة.</span></div>
+          </li>
+          <li>
+            <span class="cs-ic"><svg class="ic"><use href="#i-money" xlink:href="#i-money"/></svg></span>
+            <div><b>الدفع كاش</b><span>عند نقطة البيع — لا دفع إلكتروني ولا رسوم خفية.</span></div>
+          </li>
+        </ul>
+        <div class="cs-cta">
+          <button type="button" class="btn btn-gold btn-lg" data-action="open-booking">
+            <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> افتح بطاقتي بالباركود
+          </button>
+          <a class="btn btn-outline btn-lg" href="#how">
+            <svg class="ic"><use href="#i-info" xlink:href="#i-info"/></svg> كيف تعمل؟
+          </a>
+        </div>
+        <p class="cs-note"><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> الفرصة المستهلكة لا تعود — والتحقق من البطاقات خاص بموظفي الشركة وإدارتها.</p>
+      </div>
     </div>
   </div>
 </section>

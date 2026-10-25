@@ -555,14 +555,18 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
   const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
   const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
 
-  /* الترتيب الحرفي كما في الموك-أب: شريط علوي ← بحث ← تصنيفات ← بانر البطاقة
-     ← الوظائف ← شريط الأرقام (تحت الوظائف كما في الصورة) */
-  check('الترتيب الحرفي: شريط علوي · بحث · تصنيفات · بانر · وظائف · أرقام',
-    pub.indexOf('app-topbar') < pub.indexOf('app-search') &&
-    pub.indexOf('app-search') < pub.indexOf('cat-rail') &&
-    pub.indexOf('cat-rail') < pub.indexOf('promo-banner') &&
-    pub.indexOf('promo-banner') < pub.indexOf('id="jobs"') &&
-    pub.indexOf('id="jobs"') < pub.indexOf('id="hero-stats"'));
+  /* الترتيب الاحترافي (2026-10-25 بعد طلب المالك): واجهة ← بحث ← تصنيفات ←
+     الوظائف (أهم شيء أولاً) ← بطاقة التوظيف ← الأرقام ← آلية العمل … */
+  check('ترتيب الأقسام: واجهة · بحث · تصنيفات · وظائف · بطاقة · أرقام',
+    pub.indexOf('id="home"') < pub.indexOf('app-search') &&
+    pub.indexOf('app-search') < pub.indexOf('id="cat-rail"') &&
+    pub.indexOf('id="cat-rail"') < pub.indexOf('id="jobs"') &&
+    pub.indexOf('id="jobs"') < pub.indexOf('id="card"') &&
+    pub.indexOf('id="card"') < pub.indexOf('id="hero-stats"') &&
+    pub.indexOf('id="hero-stats"') < pub.indexOf('id="how"'));
+  check('لا شريط علوي (نجمة/حسابي/موقع) — أُزيل بطلب المالك',
+    !/app-topbar/.test(pub) && !/i-star8/.test(pub) && !/حسابي/.test(pub) &&
+    !/class="app-loc"/.test(pub));
   const tabFlat = pub.replace(/\s+/g, ' ');
   /* خمسة عناصر كما في الموك-أب: الوظائف · خدماتنا · الرئيسية (وسط بارز) · بطاقتي · تواصل */
   check('شريط تنقل سفلي بخمسة عناصر وزر «الرئيسية» بارز في الوسط',
@@ -585,17 +589,60 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
   });
   check('لا صورة تتجاوز 150KB (سرعة على الجوال)', big.length === 0, big.map((f) => f.split('/').pop()).join(', '));
 
-  /* صورة المدينة في الواجهة (نفس موضع الموك-أب)، وصورة البطاقة تُستعمل في
-     صفحة التقديم/البطاقة — والبانر يعرض بطاقة حقيقية مرسومة بكود QR فعلي. */
-  check('الواجهة تستعمل صورة المدينة، والبانر يعرض بطاقة بكود QR حقيقي',
-    /hero-skyline\.webp/.test(app) && /id="promo-qr"/.test(pub) && /renderPromoQr/.test(js) &&
-    existsSync(join(ROOT, 'assets', 'img', 'card-banner.webp')));
+  /* تصميم بطاقتنا الحقيقي على الموقع: يُرسم بنفس قالب الطباعة (voucher). */
+  check('شكل البطاقة الحقيقي (وجهان) يُرسم على الموقع من نفس قالب الطباعة',
+    /id="card-showcase"/.test(pub) && /HRCVoucher\.buildHtml/.test(js) &&
+    /hero-skyline\.webp/.test(app));
   check('كل وظيفة بلا صورة تحصل على صورة تخصص محلية (لا أيقونة مكسورة)',
     /function defaultJobImage/.test(js) && /assets\/img\/jobs\//.test(js));
   check('المفضلة تُحفظ على جهاز الزائر وحده ولا تُرسل للشركة',
     /hrc_fav_jobs_v1/.test(js) && /localStorage/.test(js));
   check('شريط التنقل السفلي لا يظهر على الكمبيوتر (جوال فقط)',
     /\.tabbar\s*\{[^}]*display:\s*none/.test(app) && /@media \(max-width: 860px\)/.test(app));
+}
+
+/* ── 2026-10-25: جولة المالك الأخيرة — نظافة بصرية وبوابة موظفين فعّالة ── */
+step(20, 'الواجهة العامة — أبيض نقيّ، بوابة الموظفين، ولا كود ميت');
+{
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const nav = readFileSync(join(ROOT, 'assets', 'js', 'nav.js'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+
+  /* 1) كل خلفية قريبة من الأبيض صارت أبيض نقيّاً (لا درجات كريمية متبقّية) */
+  const near = (hex) => {
+    const h = hex.replace('#', '');
+    if (h.length !== 6) return false;
+    return Math.min(parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)) >= 236;
+  };
+  const offenders = [];
+  for (const f of ['style.css', 'app-shell.css', 'public-polish.css']) {
+    const css = readFileSync(join(ROOT, 'assets', 'css', f), 'utf8');
+    for (const m of css.matchAll(/background(?:-color)?\s*:\s*([^;}]+)/g)) {
+      for (const hex of m[1].matchAll(/#[0-9a-fA-F]{6}/g)) if (near(hex[0])) offenders.push(f + ':' + hex[0]);
+    }
+  }
+  check('كل خلفية قريبة من الأبيض صارت #fff (لا درجات كريمية)', offenders.length === 0,
+    [...new Set(offenders)].slice(0, 6).join(', '));
+
+  /* 2) بوابة الموظفين: الضغطة المطوّلة تعمل على **كل** أسماء الشركة،
+        لأن شعار الواجهة هو الظاهر على الجوال (الترويسة مخفية). */
+  check('بوابة الموظفين تُربط على كل عناصر اسم الشركة لا أولها فقط',
+    /querySelectorAll\('\.brand\[data-staff-gate\], \[data-staff-gate\]'\)/.test(nav) &&
+    /function bindOneGate/.test(nav));
+  check('شعار الواجهة معلَّم كبوابة موظفين', /app-brand brand" data-staff-gate/.test(pub));
+  check('اسم الشركة بلا تحديد نص/قائمة سياق تقطع الإيماءة',
+    /user-select: none/.test(readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8')));
+
+  /* 3) لا كود ميت: بقايا الشريط العلوي والبانر الوهمي أُزيلت */
+  check('لا بقايا للشريط العلوي المحذوف في الكود',
+    !/app-topbar|app-alerts|renderAlerts|app-loc/.test(pub + js));
+  check('لا بقايا للبانر الوهمي (promo-*) في الكود',
+    !/promo-banner|promo-qr|renderPromoQr|promo-dots/.test(pub + js));
+
+  /* 4) تصميم بطاقتنا الحقيقي معروض على الموقع من نفس قالب الطباعة */
+  check('قسم البطاقة يعرض الوجهين من قالب الطباعة نفسه (لا صورة بديلة)',
+    /id="card-showcase"/.test(pub) && /HRCVoucher\.buildHtml/.test(js) &&
+    /cs-cards/.test(readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8')));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

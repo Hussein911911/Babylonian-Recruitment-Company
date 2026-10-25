@@ -221,9 +221,19 @@
     return homeHref() + 'dashboard';
   }
 
+  /* الضغطة المطوّلة على اسم الشركة/شعارها تفتح اللوحة.
+     ⚠️ الصفحة العامة فيها **أكثر من اسم** للشركة: ترويسة سطح المكتب (مخفية على
+     الجوال) وشعار الواجهة داخل صورة المدينة. الربط على الأول وحده كان يعني أن
+     الإيماءة لا تعمل على الجوال إطلاقاً — لذلك نربط كل العناصر المعلَّمة. */
   function bindStaffGate() {
-    var brand = doc.querySelector('.brand[data-staff-gate]');
-    if (!brand) return;
+    var brands = doc.querySelectorAll('.brand[data-staff-gate], [data-staff-gate]');
+    if (!brands.length) return;
+    for (var i = 0; i < brands.length; i++) bindOneGate(brands[i]);
+  }
+
+  function bindOneGate(brand) {
+    if (!brand || brand.dataset.staffGateBound) return;
+    brand.dataset.staffGateBound = '1';
 
     var timer = null, startX = 0, startY = 0, fired = false;
 
