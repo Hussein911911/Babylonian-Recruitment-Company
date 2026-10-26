@@ -568,9 +568,9 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
     pub.indexOf('id="jobs-grid"') < pub.indexOf('id="card"') &&
     pub.indexOf('id="card"') < pub.indexOf('id="hero-stats"') &&
     pub.indexOf('id="hero-stats"') < pub.indexOf('id="how"'));
-  check('التصنيفات شبكة مربّعات ملوّنة مستقلة، والفلترة صندوق مدمج منفصل',
+  check('التصنيفات شبكة مربّعات ملوّنة مستقلة (بطيّة)، والفلترة صندوق مدمج منفصل',
     (pub.match(/id="cat-rail"/g) || []).length === 1 &&
-    /class="cat-grid"/.test(pub) &&
+    /class="cat-grid/.test(pub) &&
     !/cats-row/.test(pub) &&
     /--cat/.test(readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8')));
   check('لا شريط علوي (نجمة/حسابي/موقع) — أُزيل بطلب المالك',
@@ -578,8 +578,10 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
     !/class="app-loc"/.test(pub));
   const tabFlat = pub.replace(/\s+/g, ' ');
   /* خمسة عناصر كما في الموك-أب: الوظائف · خدماتنا · الرئيسية (وسط بارز) · بطاقتي · تواصل */
-  check('شريط تنقل سفلي بخمسة عناصر وزر «الرئيسية» بارز في الوسط',
-    /class="tabbar"/.test(tabFlat) && (tabFlat.match(/data-tab="(jobs|services|how|contact|home)"/g) || []).length === 4 &&
+  check('شريط تنقل سفلي: الوظائف · المفضلة · الرئيسية (بارز) · بطاقتي · تواصل',
+    /class="tabbar"/.test(tabFlat) &&
+    /data-tab="jobs"/.test(tabFlat) && /data-tab="favorites"/.test(tabFlat) &&
+    !/data-tab="services"/.test(tabFlat) &&
     /<a href="#home"[^>]*class="tab-center"/.test(tabFlat) &&
     /data-action="open-booking"/.test(tabFlat));
 
@@ -737,6 +739,39 @@ step(22, 'الواجهة — ألوان حيّة، لغة موحّدة، وكا�
     /\.cs-ic \{[\s\S]{0,200}place-items: center/.test(app) &&
     /\.cs-features b \{/.test(app) &&
     /\.cs-features li \{[\s\S]{0,200}list-style: none/.test(app));
+}
+
+/* ── 2026-10-25: تصنيفات بطيّة + قسم المفضلة ── */
+step(23, 'الوظائف — تصنيفات تُفتح بضغطة وقسم مفضلة يعمل فعلاً');
+{
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+
+  /* 1) التصنيفات مخفيّة حتى تُضغط */
+  check('شبكة التصنيفات مخفيّة افتراضياً مع زر إظهار/إخفاء',
+    /id="cat-rail"[^>]*hidden/.test(pub) && /id="cats-toggle"/.test(pub) &&
+    /function bindCatsToggle/.test(js) && /grid\.hidden = !open/.test(js));
+  check('زر التصنيفات يعلن حالته للقارئ الشاشي (aria-expanded)',
+    /aria-expanded="false"[^>]*aria-controls="cat-rail"/.test(pub) &&
+    /setAttribute\('aria-expanded'/.test(js));
+
+  /* 2) المفضلة: قسم + تبويب + شارة عدد + مسح */
+  check('قسم «المفضلة» موجود بعد الوظائف بشبكة كروت حالته الفارغة واضحة',
+    /id="favorites"/.test(pub) && /id="fav-grid"/.test(pub) &&
+    /id="fav-empty"/.test(pub) && /function renderFavorites/.test(js));
+  check('تبويب الشريط السفلي صار «المفضلة» بشارة عدد (لا «خدماتنا»)',
+    /data-tab="favorites"/.test(pub) && /id="fav-count"/.test(pub) &&
+    !/<span>خدماتنا<\/span>/.test(pub));
+  check('إضافة/إزالة تعمل من أي كرت وتُحدّث القسم والعدّاد فوراً',
+    /favToggle\(code\)/.test(js) && /renderFavorites\(\)/.test(js) &&
+    /document\.addEventListener\('click'/.test(js));
+  check('المفضلة محفوظة على جهاز الزائر فقط + زر مسح الكل',
+    /localStorage\.setItem\(FAV_KEY/.test(js) && /id="fav-clear"/.test(pub) &&
+    /removeItem\(FAV_KEY\)/.test(js));
+  check('أنماط المفضلة والتصنيفات البطيّة موجودة',
+    /\.cats-toggle \{/.test(app) && /\.cat-grid\[hidden\]/.test(app) &&
+    /\.fav-empty \{/.test(app) && /\.tab-badge \{/.test(app));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

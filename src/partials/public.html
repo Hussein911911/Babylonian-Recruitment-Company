@@ -41,11 +41,19 @@
     <div class="cats-head">
       <div>
         <h2><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg> تصفّح حسب التخصص</h2>
-        <p>اختر تخصصاً لعرض وظائفه المتاحة فوراً</p>
+        <p>اضغط الزر لعرض التخصصات واختيار ما يناسبك</p>
       </div>
-      <span class="cats-hint" id="cats-hint"></span>
+      <div class="cats-tools">
+        <span class="cats-hint" id="cats-hint"></span>
+        <button type="button" class="cats-toggle" id="cats-toggle" aria-expanded="false" aria-controls="cat-rail">
+          <svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg>
+          <span>عرض التخصصات</span>
+          <svg class="ic chev"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
+        </button>
+      </div>
     </div>
-    <div class="cat-grid" id="cat-rail" role="tablist" aria-label="تصنيفات الوظائف"></div>
+    <!-- مخفيّة حتى تُضغط: لا تُزاحم الصفحة -->
+    <div class="cat-grid is-collapsed" id="cat-rail" role="tablist" aria-label="تصنيفات الوظائف" hidden></div>
   </div>
 </section>
 
@@ -103,6 +111,24 @@
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
       <h3>لا توجد وظائف مطابقة</h3>
       <p class="mb-0">غيّر البحث أو صفّر الفلاتر لعرض الوظائف المتاحة.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== المفضلة ============================== -->
+<section class="section app-section" id="favorites" style="padding-top:6px">
+  <div class="container">
+    <div class="jobs-head">
+      <h2><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg> المفضلة</h2>
+      <button type="button" class="jobs-all fav-clear" id="fav-clear" hidden>مسح الكل</button>
+    </div>
+    <p class="jobs-sub">الوظائف التي حفظتها بضغطة القلب — محفوظة على جهازك فقط، وتظهر هنا مباشرة.</p>
+    <div class="jobs-grid" id="fav-grid"></div>
+    <div class="fav-empty" id="fav-empty">
+      <svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg>
+      <h3>لا توجد وظائف في المفضلة بعد</h3>
+      <p>اضغط أيقونة القلب على أي وظيفة تعجبك وستجدها هنا.</p>
+      <a class="btn btn-gold btn-sm" href="#jobs">تصفّح الوظائف</a>
     </div>
   </div>
 </section>
@@ -368,7 +394,7 @@
 <!-- ============================== شريط التطبيق السفلي (جوال) ============================== -->
 <nav class="tabbar" aria-label="تنقل سريع">
   <a href="#jobs" data-tab="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg><span>الوظائف</span></a>
-  <a href="#services" data-tab="services"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg><span>خدماتنا</span></a>
+  <a href="#favorites" data-tab="favorites"><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg><span>المفضلة</span><b class="tab-badge" id="fav-count" hidden>0</b></a>
   <a href="#home" data-tab="home" class="tab-center">
     <span class="tab-fab"><svg class="ic"><use href="#i-house" xlink:href="#i-house"/></svg></span>
     <span>الرئيسية</span>

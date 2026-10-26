@@ -55,6 +55,7 @@
     fillSelects();
     bindEvents();
     bindFavorites();
+    bindCatsToggle();
     bindTabbar();
 
     var st = Store.cloudStatus ? Store.cloudStatus() : null;
@@ -361,6 +362,26 @@
     });
   }
 
+  /* ── التصنيفات: مخفيّة حتى يضغط الزائر «عرض التخصصات» ── */
+  function bindCatsToggle() {
+    var btn = document.getElementById('cats-toggle');
+    var grid = document.getElementById('cat-rail');
+    if (!btn || !grid) return;
+    btn.addEventListener('click', function () {
+      var open = grid.hidden;
+      grid.hidden = !open;
+      grid.classList.toggle('is-collapsed', !open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      var label = btn.querySelector('span');
+      if (label) label.textContent = open ? 'إخفاء التخصصات' : 'عرض التخصصات';
+      btn.classList.toggle('is-open', open);
+      if (open) {
+        var y = document.getElementById('categories');
+        if (y && window.scrollTo) window.scrollTo({ top: y.offsetTop - 80, behavior: 'smooth' });
+      }
+    });
+  }
+
   /* ── شريط التنقل السفلي: تفعيل التبويب بحسب موضع التمرير ── */
   function bindTabbar() {
     var bar = document.querySelector('.tabbar');
@@ -381,20 +402,48 @@
     onScroll();
   }
 
-  /* ── المفضلة: تبديل فوري بلا إعادة رسم الشبكة كلها ── */
+  /* ── المفضلة: تبديل فوري + تحديث قسم «المفضلة» والعدّاد ──
+     الربط مفوَّض على الصفحة كلها، فتعمل القلوب في شبكة الوظائف وفي المفضلة. */
   function bindFavorites() {
-    var host = document.getElementById('jobs-grid');
-    if (!host) return;
-    host.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-fav]');
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-fav]');
       if (!b) return;
       e.preventDefault(); e.stopPropagation();
-      var on = favToggle(b.getAttribute('data-fav'));
-      b.classList.toggle('is-on', on);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      var code = b.getAttribute('data-fav');
+      var on = favToggle(code);
+      renderFavorites();
       if (UI.toast) UI.toast(on ? 'ok' : 'info', on ? 'أُضيفت للمفضلة' : 'أُزيلت من المفضلة',
-        on ? 'محفوظة على جهازك فقط.' : 'يمكنك إضافتها مجدداً في أي وقت.');
+        on ? 'ستجدها في قسم «المفضلة» أسفل الوظائف.' : 'يمكنك إضافتها مجدداً في أي وقت.');
     });
+    var clear = document.getElementById('fav-clear');
+    if (clear) clear.addEventListener('click', function () {
+      try { localStorage.removeItem(FAV_KEY); } catch (e) { }
+      renderFavorites();
+      if (UI.toast) UI.toast('info', 'مُسحت المفضلة', 'لا توجد وظائف محفوظة الآن.');
+    });
+  }
+
+  /* ── قسم المفضلة: يعرض الوظائف المحفوظة بنفس كروت الموقع ──
+     إن حُذفت وظيفة من القاعدة أو أُغلقت، تبقى معلومة صريحة للزائر بدل اختفاء صامت. */
+  function renderFavorites() {
+    var host = document.getElementById('fav-grid');
+    if (!host) return;
+    var saved = favList();
+    var jobs = [];
+    var gone = 0;
+    saved.forEach(function (c) {
+      var j = null;
+      try { j = Store.getJob(c); } catch (e) { j = null; }
+      if (j) jobs.push(j); else gone++;
+    });
+    var empty = document.getElementById('fav-empty');
+    var clear = document.getElementById('fav-clear');
+    var badge = document.getElementById('fav-count');
+    if (badge) { badge.textContent = jobs.length > 99 ? '99+' : String(jobs.length); badge.hidden = jobs.length === 0; }
+    if (clear) clear.hidden = saved.length === 0;
+    if (empty) empty.hidden = jobs.length > 0;
+    host.innerHTML = jobs.map(cardHtml).join('') +
+      (gone ? '<div class="fav-note">' + UI.ic('info') + ' ' + gone + ' وظيفة محفوظة لم تعد معروضة (أُغلقت أو حُذفت).</div>' : '');
   }
 
   /* ── بطاقة التوظيف الحقيقية على الموقع ──
@@ -418,7 +467,7 @@
     } catch (e) { /* البطاقة تحسين بصري — لا تُعطّل الصفحة */ }
   }
 
-  function renderAll() { renderHeroStats(); renderCategories(); renderJobs(); renderCardShowcase(); }
+  function renderAll() { renderHeroStats(); renderCategories(); renderJobs(); renderFavorites(); renderCardShowcase(); }
 
   root.HRCRefresh = function () {
     if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }

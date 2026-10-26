@@ -16,8 +16,8 @@
 <link rel="preconnect" href="https://vqsvztudvfukyuerzcgx.supabase.co" crossorigin>
 <link rel="dns-prefetch" href="https://vqsvztudvfukyuerzcgx.supabase.co">
 
-<link rel="stylesheet" href="assets/css/style.css?v=f8639f89e1">
-<link rel="stylesheet" href="assets/css/card-entry.css?v=f8639f89e1"><link rel="stylesheet" href="assets/css/public-polish.css?v=f8639f89e1"><link rel="stylesheet" href="assets/css/app-shell.css?v=f8639f89e1"></head>
+<link rel="stylesheet" href="assets/css/style.css?v=dd8bcf1ee0">
+<link rel="stylesheet" href="assets/css/card-entry.css?v=dd8bcf1ee0"><link rel="stylesheet" href="assets/css/public-polish.css?v=dd8bcf1ee0"><link rel="stylesheet" href="assets/css/app-shell.css?v=dd8bcf1ee0"></head>
 <body>
 <!-- ===========================================================================
      مكتبة الأيقونات والرموز (SVG Sprite) — تُدرج مرة واحدة في كل صفحة
@@ -339,11 +339,19 @@
     <div class="cats-head">
       <div>
         <h2><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg> تصفّح حسب التخصص</h2>
-        <p>اختر تخصصاً لعرض وظائفه المتاحة فوراً</p>
+        <p>اضغط الزر لعرض التخصصات واختيار ما يناسبك</p>
       </div>
-      <span class="cats-hint" id="cats-hint"></span>
+      <div class="cats-tools">
+        <span class="cats-hint" id="cats-hint"></span>
+        <button type="button" class="cats-toggle" id="cats-toggle" aria-expanded="false" aria-controls="cat-rail">
+          <svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg>
+          <span>عرض التخصصات</span>
+          <svg class="ic chev"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
+        </button>
+      </div>
     </div>
-    <div class="cat-grid" id="cat-rail" role="tablist" aria-label="تصنيفات الوظائف"></div>
+    <!-- مخفيّة حتى تُضغط: لا تُزاحم الصفحة -->
+    <div class="cat-grid is-collapsed" id="cat-rail" role="tablist" aria-label="تصنيفات الوظائف" hidden></div>
   </div>
 </section>
 
@@ -401,6 +409,24 @@
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
       <h3>لا توجد وظائف مطابقة</h3>
       <p class="mb-0">غيّر البحث أو صفّر الفلاتر لعرض الوظائف المتاحة.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== المفضلة ============================== -->
+<section class="section app-section" id="favorites" style="padding-top:6px">
+  <div class="container">
+    <div class="jobs-head">
+      <h2><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg> المفضلة</h2>
+      <button type="button" class="jobs-all fav-clear" id="fav-clear" hidden>مسح الكل</button>
+    </div>
+    <p class="jobs-sub">الوظائف التي حفظتها بضغطة القلب — محفوظة على جهازك فقط، وتظهر هنا مباشرة.</p>
+    <div class="jobs-grid" id="fav-grid"></div>
+    <div class="fav-empty" id="fav-empty">
+      <svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg>
+      <h3>لا توجد وظائف في المفضلة بعد</h3>
+      <p>اضغط أيقونة القلب على أي وظيفة تعجبك وستجدها هنا.</p>
+      <a class="btn btn-gold btn-sm" href="#jobs">تصفّح الوظائف</a>
     </div>
   </div>
 </section>
@@ -666,7 +692,7 @@
 <!-- ============================== شريط التطبيق السفلي (جوال) ============================== -->
 <nav class="tabbar" aria-label="تنقل سريع">
   <a href="#jobs" data-tab="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg><span>الوظائف</span></a>
-  <a href="#services" data-tab="services"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg><span>خدماتنا</span></a>
+  <a href="#favorites" data-tab="favorites"><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg><span>المفضلة</span><b class="tab-badge" id="fav-count" hidden>0</b></a>
   <a href="#home" data-tab="home" class="tab-center">
     <span class="tab-fab"><svg class="ic"><use href="#i-house" xlink:href="#i-house"/></svg></span>
     <span>الرئيسية</span>
@@ -754,18 +780,18 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=f8639f89e1"></script>
-<script src="assets/js/supabase-config.js?v=f8639f89e1"></script>
-<script src="assets/js/cloud-http.js?v=f8639f89e1"></script>
-<script src="assets/js/qr.js?v=f8639f89e1"></script>
-<script src="assets/js/qr-scan.js?v=f8639f89e1"></script>
-<script src="assets/js/cloud.js?v=f8639f89e1"></script>
-<script src="assets/js/cloud-sync.js?v=f8639f89e1"></script>
-<script src="assets/js/store.js?v=f8639f89e1"></script>
-<script src="assets/js/ui.js?v=f8639f89e1"></script>
-<script src="assets/js/nav.js?v=f8639f89e1"></script>
-<script src="assets/js/voucher.js?v=f8639f89e1"></script>
-<script src="assets/js/booking.js?v=f8639f89e1"></script>
-<script src="assets/js/public.js?v=f8639f89e1"></script>
+<script src="assets/js/config.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/supabase-config.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/cloud-http.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/qr.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/qr-scan.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/cloud.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/cloud-sync.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/store.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/ui.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/nav.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/voucher.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/booking.js?v=dd8bcf1ee0"></script>
+<script src="assets/js/public.js?v=dd8bcf1ee0"></script>
 </body>
 </html>

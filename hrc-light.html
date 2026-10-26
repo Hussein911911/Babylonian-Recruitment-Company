@@ -3571,6 +3571,59 @@ html { scroll-padding-block-start: var(--anchor-offset); }
   .cat > span:not(.cat-ic) { font-size: .72rem; }
 }
 
+/* ═══ التصنيفات: زر إظهار/إخفاء + الشبكة المخفيّة ═══ */
+.cats-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cats-toggle {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  font-family: inherit; font-size: .78rem; font-weight: 900;
+  padding: 9px 15px; border-radius: 999px; color: #fff;
+  background: linear-gradient(135deg, var(--lapis-2), var(--lapis-3));
+  border: 1px solid rgba(200, 162, 74, .45);
+  box-shadow: 0 8px 20px rgba(11, 26, 58, .22); transition: .18s ease;
+}
+.cats-toggle .ic { width: 16px; height: 16px; color: var(--gold-2); }
+.cats-toggle .chev { width: 13px; height: 13px; transition: transform .22s ease; }
+.cats-toggle:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(11, 26, 58, .28); }
+.cats-toggle.is-open .chev { transform: rotate(-90deg); }
+.cat-grid[hidden], .cat-grid.is-collapsed { display: none !important; }
+.cat-grid { animation: catsIn .24s ease-out both; }
+@keyframes catsIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* ═══ قسم المفضلة ═══ */
+#favorites { position: relative; }
+#favorites .jobs-head h2 .ic { color: var(--v-rose) !important; }
+.fav-clear {
+  border: 1px solid #f0c9c0; background: #fff; color: #8a3a2c;
+  border-radius: 999px; padding: 6px 14px; font-size: .74rem; font-weight: 900;
+  font-family: inherit; cursor: pointer;
+}
+.fav-clear:hover { background: #fff; border-color: #e3a79b; }
+.fav-empty {
+  display: grid; justify-items: center; gap: 6px; text-align: center;
+  border: 1px dashed #e2e8f0; border-radius: 18px; padding: 30px 18px; background: #fff;
+}
+.fav-empty[hidden] { display: none; }
+.fav-empty .ic { width: 34px; height: 34px; color: var(--v-rose); opacity: .85; }
+.fav-empty h3 { margin: 4px 0 0; font-size: .95rem; color: var(--lapis-2); }
+.fav-empty p { margin: 0; font-size: .78rem; color: var(--muted); }
+.fav-empty .btn { margin-top: 8px; }
+.fav-note {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 6px;
+  font-size: .72rem; color: var(--muted); padding: 8px 4px;
+}
+.fav-note .ic { width: 14px; height: 14px; color: var(--gold-3); }
+
+/* شارة عدد المفضلة على تبويب الشريط السفلي */
+.tabbar a { position: relative; }
+.tab-badge {
+  position: absolute; inset-block-start: 2px; inset-inline-end: 50%;
+  transform: translateX(50%) translateY(-2px);
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+  background: var(--v-rose); color: #fff; font-size: .58rem; font-weight: 900;
+  display: grid; place-items: center; margin-inline-start: 14px;
+}
+.tab-badge[hidden] { display: none; }
+
 /* Staff activity drawer — no public payload and no printed UI. */
 .notification-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:44px;min-width:44px;border:1px solid #c8a24a66;background:linear-gradient(135deg,#fffdf7,#f7eedb);color:#17335a;border-radius:13px;padding:8px 12px;font:inherit;font-size:13px;font-weight:700;line-height:1.5;cursor:pointer}
 .notification-toggle>svg{width:21px;height:21px;flex:none}.notification-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 6px;background:#193e6d;color:#fff;border-radius:9px;font-size:12px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -4127,11 +4180,19 @@ html { scroll-padding-block-start: var(--anchor-offset); }
     <div class="cats-head">
       <div>
         <h2><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg> تصفّح حسب التخصص</h2>
-        <p>اختر تخصصاً لعرض وظائفه المتاحة فوراً</p>
+        <p>اضغط الزر لعرض التخصصات واختيار ما يناسبك</p>
       </div>
-      <span class="cats-hint" id="cats-hint"></span>
+      <div class="cats-tools">
+        <span class="cats-hint" id="cats-hint"></span>
+        <button type="button" class="cats-toggle" id="cats-toggle" aria-expanded="false" aria-controls="cat-rail">
+          <svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg>
+          <span>عرض التخصصات</span>
+          <svg class="ic chev"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
+        </button>
+      </div>
     </div>
-    <div class="cat-grid" id="cat-rail" role="tablist" aria-label="تصنيفات الوظائف"></div>
+    <!-- مخفيّة حتى تُضغط: لا تُزاحم الصفحة -->
+    <div class="cat-grid is-collapsed" id="cat-rail" role="tablist" aria-label="تصنيفات الوظائف" hidden></div>
   </div>
 </section>
 
@@ -4189,6 +4250,24 @@ html { scroll-padding-block-start: var(--anchor-offset); }
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
       <h3>لا توجد وظائف مطابقة</h3>
       <p class="mb-0">غيّر البحث أو صفّر الفلاتر لعرض الوظائف المتاحة.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== المفضلة ============================== -->
+<section class="section app-section" id="favorites" style="padding-top:6px">
+  <div class="container">
+    <div class="jobs-head">
+      <h2><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg> المفضلة</h2>
+      <button type="button" class="jobs-all fav-clear" id="fav-clear" hidden>مسح الكل</button>
+    </div>
+    <p class="jobs-sub">الوظائف التي حفظتها بضغطة القلب — محفوظة على جهازك فقط، وتظهر هنا مباشرة.</p>
+    <div class="jobs-grid" id="fav-grid"></div>
+    <div class="fav-empty" id="fav-empty">
+      <svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg>
+      <h3>لا توجد وظائف في المفضلة بعد</h3>
+      <p>اضغط أيقونة القلب على أي وظيفة تعجبك وستجدها هنا.</p>
+      <a class="btn btn-gold btn-sm" href="#jobs">تصفّح الوظائف</a>
     </div>
   </div>
 </section>
@@ -4454,7 +4533,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 <!-- ============================== شريط التطبيق السفلي (جوال) ============================== -->
 <nav class="tabbar" aria-label="تنقل سريع">
   <a href="#jobs" data-tab="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg><span>الوظائف</span></a>
-  <a href="#services" data-tab="services"><svg class="ic"><use href="#i-users" xlink:href="#i-users"/></svg><span>خدماتنا</span></a>
+  <a href="#favorites" data-tab="favorites"><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg><span>المفضلة</span><b class="tab-badge" id="fav-count" hidden>0</b></a>
   <a href="#home" data-tab="home" class="tab-center">
     <span class="tab-fab"><svg class="ic"><use href="#i-house" xlink:href="#i-house"/></svg></span>
     <span>الرئيسية</span>
@@ -11476,6 +11555,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
     fillSelects();
     bindEvents();
     bindFavorites();
+    bindCatsToggle();
     bindTabbar();
 
     var st = Store.cloudStatus ? Store.cloudStatus() : null;
@@ -11782,6 +11862,26 @@ html { scroll-padding-block-start: var(--anchor-offset); }
     });
   }
 
+  /* ── التصنيفات: مخفيّة حتى يضغط الزائر «عرض التخصصات» ── */
+  function bindCatsToggle() {
+    var btn = document.getElementById('cats-toggle');
+    var grid = document.getElementById('cat-rail');
+    if (!btn || !grid) return;
+    btn.addEventListener('click', function () {
+      var open = grid.hidden;
+      grid.hidden = !open;
+      grid.classList.toggle('is-collapsed', !open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      var label = btn.querySelector('span');
+      if (label) label.textContent = open ? 'إخفاء التخصصات' : 'عرض التخصصات';
+      btn.classList.toggle('is-open', open);
+      if (open) {
+        var y = document.getElementById('categories');
+        if (y && window.scrollTo) window.scrollTo({ top: y.offsetTop - 80, behavior: 'smooth' });
+      }
+    });
+  }
+
   /* ── شريط التنقل السفلي: تفعيل التبويب بحسب موضع التمرير ── */
   function bindTabbar() {
     var bar = document.querySelector('.tabbar');
@@ -11802,20 +11902,48 @@ html { scroll-padding-block-start: var(--anchor-offset); }
     onScroll();
   }
 
-  /* ── المفضلة: تبديل فوري بلا إعادة رسم الشبكة كلها ── */
+  /* ── المفضلة: تبديل فوري + تحديث قسم «المفضلة» والعدّاد ──
+     الربط مفوَّض على الصفحة كلها، فتعمل القلوب في شبكة الوظائف وفي المفضلة. */
   function bindFavorites() {
-    var host = document.getElementById('jobs-grid');
-    if (!host) return;
-    host.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-fav]');
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-fav]');
       if (!b) return;
       e.preventDefault(); e.stopPropagation();
-      var on = favToggle(b.getAttribute('data-fav'));
-      b.classList.toggle('is-on', on);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      var code = b.getAttribute('data-fav');
+      var on = favToggle(code);
+      renderFavorites();
       if (UI.toast) UI.toast(on ? 'ok' : 'info', on ? 'أُضيفت للمفضلة' : 'أُزيلت من المفضلة',
-        on ? 'محفوظة على جهازك فقط.' : 'يمكنك إضافتها مجدداً في أي وقت.');
+        on ? 'ستجدها في قسم «المفضلة» أسفل الوظائف.' : 'يمكنك إضافتها مجدداً في أي وقت.');
     });
+    var clear = document.getElementById('fav-clear');
+    if (clear) clear.addEventListener('click', function () {
+      try { localStorage.removeItem(FAV_KEY); } catch (e) { }
+      renderFavorites();
+      if (UI.toast) UI.toast('info', 'مُسحت المفضلة', 'لا توجد وظائف محفوظة الآن.');
+    });
+  }
+
+  /* ── قسم المفضلة: يعرض الوظائف المحفوظة بنفس كروت الموقع ──
+     إن حُذفت وظيفة من القاعدة أو أُغلقت، تبقى معلومة صريحة للزائر بدل اختفاء صامت. */
+  function renderFavorites() {
+    var host = document.getElementById('fav-grid');
+    if (!host) return;
+    var saved = favList();
+    var jobs = [];
+    var gone = 0;
+    saved.forEach(function (c) {
+      var j = null;
+      try { j = Store.getJob(c); } catch (e) { j = null; }
+      if (j) jobs.push(j); else gone++;
+    });
+    var empty = document.getElementById('fav-empty');
+    var clear = document.getElementById('fav-clear');
+    var badge = document.getElementById('fav-count');
+    if (badge) { badge.textContent = jobs.length > 99 ? '99+' : String(jobs.length); badge.hidden = jobs.length === 0; }
+    if (clear) clear.hidden = saved.length === 0;
+    if (empty) empty.hidden = jobs.length > 0;
+    host.innerHTML = jobs.map(cardHtml).join('') +
+      (gone ? '<div class="fav-note">' + UI.ic('info') + ' ' + gone + ' وظيفة محفوظة لم تعد معروضة (أُغلقت أو حُذفت).</div>' : '');
   }
 
   /* ── بطاقة التوظيف الحقيقية على الموقع ──
@@ -11839,7 +11967,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
     } catch (e) { /* البطاقة تحسين بصري — لا تُعطّل الصفحة */ }
   }
 
-  function renderAll() { renderHeroStats(); renderCategories(); renderJobs(); renderCardShowcase(); }
+  function renderAll() { renderHeroStats(); renderCategories(); renderJobs(); renderFavorites(); renderCardShowcase(); }
 
   root.HRCRefresh = function () {
     if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }
