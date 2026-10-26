@@ -578,12 +578,14 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
     !/class="app-loc"/.test(pub));
   const tabFlat = pub.replace(/\s+/g, ' ');
   /* خمسة عناصر كما في الموك-أب: الوظائف · خدماتنا · الرئيسية (وسط بارز) · بطاقتي · تواصل */
+  /* 2026-10-25: التبويبات صارت تفتح **صفحات** (data-page-tab) لا مراسي تمرير. */
   check('شريط تنقل سفلي: الوظائف · المفضلة · الرئيسية (بارز) · بطاقتي · تواصل',
     /class="tabbar"/.test(tabFlat) &&
-    /data-tab="jobs"/.test(tabFlat) && /data-tab="favorites"/.test(tabFlat) &&
-    !/data-tab="services"/.test(tabFlat) &&
-    /<a href="#home"[^>]*class="tab-center"/.test(tabFlat) &&
-    /data-action="open-booking"/.test(tabFlat));
+    (tabFlat.match(/data-page-tab="/g) || []).length === 5 &&
+    /data-page-tab="jobs"/.test(tabFlat) && /data-page-tab="favorites"/.test(tabFlat) &&
+    /data-page-tab="card"/.test(tabFlat) && /data-page-tab="contact"/.test(tabFlat) &&
+    /<button[^>]*class="tab-center"[^>]*data-page-tab="home"/.test(tabFlat) &&
+    !/data-tab="services"/.test(tabFlat));
 
   /* الهوية: ألوان الشركة فقط — لا لون أزرق/بنفسجي جديد من الموك-أب */
   const vars = readFileSync(join(ROOT, 'assets', 'css', 'style.css'), 'utf8');
@@ -761,7 +763,7 @@ step(23, 'الوظائف — تصنيفات تُفتح بضغطة وقسم مف�
     /id="favorites"/.test(pub) && /id="fav-grid"/.test(pub) &&
     /id="fav-empty"/.test(pub) && /function renderFavorites/.test(js));
   check('تبويب الشريط السفلي صار «المفضلة» بشارة عدد (لا «خدماتنا»)',
-    /data-tab="favorites"/.test(pub) && /id="fav-count"/.test(pub) &&
+    /data-page-tab="favorites"/.test(pub) && /id="fav-count"/.test(pub) &&
     !/<span>خدماتنا<\/span>/.test(pub));
   check('إضافة/إزالة تعمل من أي كرت وتُحدّث القسم والعدّاد فوراً',
     /favToggle\(code\)/.test(js) && /renderFavorites\(\)/.test(js) &&
@@ -772,6 +774,37 @@ step(23, 'الوظائف — تصنيفات تُفتح بضغطة وقسم مف�
   check('أنماط المفضلة والتصنيفات البطيّة موجودة',
     /\.cats-toggle \{/.test(app) && /\.cat-grid\[hidden\]/.test(app) &&
     /\.fav-empty \{/.test(app) && /\.tab-badge \{/.test(app));
+}
+
+/* ── 2026-10-25: تبويبات تفتح صفحات كاملة (نمط التطبيقات) ── */
+step(24, 'التنقل — كل تبويب صفحة كاملة بمعلوماتها');
+{
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+
+  check('شريط صفحة بعنوان ووصف وزر رجوع وشارة عدد',
+    /id="page-bar"/.test(pub) && /id="pb-back"/.test(pub) &&
+    /id="pb-title"/.test(pub) && /id="pb-badge"/.test(pub));
+  check('كل قسم موسوم بالصفحة التي ينتمي إليها (data-page)',
+    (pub.match(/data-page="/g) || []).length >= 10 &&
+    /id="jobs"[^>]*data-page="jobs"/.test(pub.replace(/\n/g, ' ')) &&
+    /id="favorites"[^>]*data-page="favorites"/.test(pub.replace(/\n/g, ' ')) &&
+    /id="card"[^>]*data-page="card"/.test(pub.replace(/\n/g, ' ')) &&
+    /id="contact"[^>]*data-page="contact"/.test(pub.replace(/\n/g, ' ')));
+  check('موجّه الصفحات: openPage + حالة في الرابط + دعم زر الرجوع',
+    /function openPage\(page, opts\)/.test(js) &&
+    /history\.pushState/.test(js) &&
+    /addEventListener\('popstate'/.test(js) &&
+    /#!\//.test(js));
+  check('صفحة واحدة ظاهرة فقط في نمط الصفحات، والرئيسية تُعيد الكل',
+    /body\.app-focus \[data-page\] \{ display: none !important; \}/.test(app) &&
+    /body\.app-focus\[data-app-page="jobs"\] \[data-page="jobs"\]/.test(app));
+  check('المفضلة لا تظهر في الرئيسية الطويلة (صفحة مستقلة)',
+    /class="[^"]*app-only[^"]*"[^>]*id="favorites"/.test(pub) &&
+    /body:not\(\.app-focus\) \.app-only/.test(app));
+  check('الشريط السفلي ظاهر على الكمبيوتر أيضاً (تنقّل تطبيق)',
+    /\.tabbar \{[\s\S]{0,200}display: flex;/.test(app));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

@@ -87,7 +87,9 @@ const BUDGET = {
      أضافت ~4KB HTML فقط، بلا أي طلب شبكة جديد. */
   /* 2026-10-25: قسم المفضلة + زر التصنيفات البطيّة أضافا ~5KB HTML فقط،
      بلا أي طلب شبكة جديد (المفضلة من localStorage). */
-  'index.html': { raw: 696, requests: 20 },
+  /* 2026-10-25: شريط الصفحة ووسوم data-page أضافت ~2KB HTML فقط؛
+     التنقّل كله داخلي بلا أي طلب شبكة إضافي. */
+  'index.html': { raw: 708, requests: 20 },
   'verify.html': { raw: 512, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */

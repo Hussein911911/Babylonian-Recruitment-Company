@@ -3346,10 +3346,22 @@ img { max-width: 100%; height: auto; }
 /* ── 9) شريط التنقل السفلي ── */
 .tabbar {
   position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 240;
-  display: none; align-items: flex-end; justify-content: space-around; gap: 2px;
+  display: flex; align-items: flex-end; justify-content: space-around; gap: 2px;
+  max-width: 100%;
   padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
   background: rgba(255, 255, 255, .98); border-top: 1px solid #eceff4;
   box-shadow: 0 -10px 30px rgba(6, 13, 31, .1); backdrop-filter: blur(10px);
+}
+/* لا إطار تركيز على أزرار التطبيق (الحالة النشطة تُبرز التبويب).
+   إتاحة الوصول: نُظهر إطاراً رفيعاً فقط عند التنقّل بلوحة المفاتيح
+   (body.kbd تُضاف عند ضغط Tab — انظر public.js). */
+.tabbar button:focus, .tabbar a:focus { outline: none !important; }
+body.kbd .tabbar button:focus-visible,
+body.kbd .tabbar a:focus-visible { outline: 2px solid var(--gold); outline-offset: -4px; }
+/* إعادة تعيين زر المتصفح الأصلي (زر «الرئيسية» صار <button>) */
+.tabbar button {
+  border: 0; background: transparent; font-family: inherit; cursor: pointer;
+  color: #8b98ab; -webkit-appearance: none; appearance: none;
 }
 .tabbar a, .tabbar button.tab-item {
   flex: 1 1 0; display: grid; justify-items: center; gap: 4px;
@@ -3360,7 +3372,11 @@ img { max-width: 100%; height: auto; }
 .tabbar .ic { width: 21px; height: 21px; }
 .tabbar .is-active { color: var(--lapis-2); }
 .tabbar .is-active .ic { color: var(--gold-3); }
-.tabbar .tab-center { flex: 0 0 auto; margin-block-start: -30px; }
+.tabbar .tab-center {
+  flex: 0 0 auto; margin-block-start: -30px; border: 0; background: transparent;
+  display: grid; justify-items: center; gap: 4px; padding: 6px 2px;
+  font-size: .64rem; font-weight: 800; color: #8b98ab;
+}
 .tabbar .tab-fab {
   width: 56px; height: 56px; border-radius: 999px; display: grid; place-items: center;
   background: linear-gradient(145deg, var(--lapis-2), var(--lapis-3));
@@ -3372,7 +3388,6 @@ img { max-width: 100%; height: auto; }
 
 /* ── 10) الجوال: إخفاء ترويسة الموقع القديمة (التصميم تطبيق) ── */
 @media (max-width: 860px) {
-  .tabbar { display: flex; }
   body { padding-block-end: 80px; }
   .site-header { display: none; }          /* الموك-أب بلا ترويسة سطح مكتب */
   .hero.hero-app { border-radius: 0 0 26px 26px; overflow: hidden; }
@@ -3615,14 +3630,79 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 
 /* شارة عدد المفضلة على تبويب الشريط السفلي */
 .tabbar a { position: relative; }
+.tabbar .tab-ic { position: relative; display: grid; place-items: center; }
 .tab-badge {
-  position: absolute; inset-block-start: 2px; inset-inline-end: 50%;
-  transform: translateX(50%) translateY(-2px);
-  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+  position: absolute; inset-block-start: -7px; inset-inline-start: -13px;
+  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
   background: var(--v-rose); color: #fff; font-size: .58rem; font-weight: 900;
-  display: grid; place-items: center; margin-inline-start: 14px;
+  display: grid; place-items: center; box-shadow: 0 0 0 2px #fff; line-height: 1;
 }
 .tab-badge[hidden] { display: none; }
+
+/* ═══════════════════════ صفحات التطبيق (نمط التطبيقات) ═══════════════════════
+   عند فتح صفحة من الشريط السفلي: يظهر شريط الصفحة فقط ومحتواها، وتُخفى بقية
+   الأقسام. «الرئيسية» تُعيد الواجهة الكاملة. */
+body { padding-block-end: 78px; }
+
+/* fixed لا sticky: overflow-x:hidden على body يكسر sticky في بعض المتصفحات */
+.page-bar {
+  position: fixed; inset-block-start: 0; inset-inline: 0; z-index: 130;
+  min-height: 58px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px clamp(12px, 3vw, 26px);
+  background: linear-gradient(135deg, var(--lapis-2), var(--lapis) 60%, var(--night));
+  border-bottom: 1px solid rgba(200, 162, 74, .35);
+  box-shadow: 0 10px 26px rgba(6, 13, 31, .18);
+}
+.page-bar[hidden] { display: none; }
+.pb-back {
+  width: 38px; height: 38px; flex: none; border-radius: 999px; cursor: pointer;
+  display: grid; place-items: center; font-family: inherit;
+  background: rgba(255, 255, 255, .10); border: 1px solid rgba(200, 162, 74, .45);
+  color: var(--gold-2);
+}
+.pb-back .ic { width: 18px; height: 18px; }
+.pb-back:hover { background: rgba(255, 255, 255, .18); }
+.pb-copy { display: grid; gap: 1px; min-width: 0; }
+.pb-copy b { color: #fff; font-size: .95rem; font-weight: 900; line-height: 1.4; }
+.pb-copy span { color: #b9c7e2; font-size: .68rem; font-weight: 600; }
+.pb-badge {
+  margin-inline-start: auto; flex: none;
+  background: rgba(200, 162, 74, .16); border: 1px solid rgba(200, 162, 74, .5);
+  color: var(--gold-2); border-radius: 999px; padding: 4px 11px;
+  font-size: .68rem; font-weight: 900;
+}
+.pb-badge[hidden] { display: none; }
+
+/* أقسام الصفحة الرئيسية تُخفى عند فتح صفحة */
+/* مساحة لشريط الصفحة الثابت */
+body.app-focus { padding-block-start: 58px; }
+body.app-focus [data-page] { display: none !important; }
+body.app-focus [data-page="home"] { display: none !important; }
+body.app-focus[data-app-page="jobs"] [data-page="jobs"],
+body.app-focus[data-app-page="favorites"] [data-page="favorites"],
+body.app-focus[data-app-page="card"] [data-page="card"],
+body.app-focus[data-app-page="contact"] [data-page="contact"] { display: block !important; }
+
+/* قسم المفضلة صفحة مستقلة: لا يظهر في الصفحة الرئيسية الطويلة */
+body:not(.app-focus) .app-only { display: none !important; }
+
+/* في نمط الصفحة: الفوتر والهيرو لا يظهران، والمحتوى يبدأ من الأعلى */
+body.app-focus .site-footer { display: none; }
+body.app-focus[data-app-page="jobs"] .jobs-all { display: none; }
+body.app-focus[data-app-page="jobs"] .cats-section { padding-bottom: 0 !important; }
+body.app-focus [data-page]:first-of-type { margin-top: 0; }
+body.app-focus .section:first-of-type { padding-top: 18px; }
+
+/* تبويب نشط */
+.tabbar .is-active { color: var(--lapis-2); }
+.tabbar .is-active .ic { color: var(--gold-3); }
+.tabbar .tab-center.is-active .tab-fab { box-shadow: 0 12px 26px rgba(11, 26, 58, .45), 0 0 0 3px rgba(200, 162, 74, .35); }
+
+@media (max-width: 860px) {
+  .page-bar { padding: 9px 12px; }
+  .pb-copy b { font-size: .9rem; }
+}
 
 /* Staff activity drawer — no public payload and no printed UI. */
 .notification-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:44px;min-width:44px;border:1px solid #c8a24a66;background:linear-gradient(135deg,#fffdf7,#f7eedb);color:#17335a;border-radius:13px;padding:8px 12px;font:inherit;font-size:13px;font-weight:700;line-height:1.5;cursor:pointer}
@@ -4137,8 +4217,17 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </header>
 
 <div class="route" id="route-site">
+<!-- شريط صفحة التطبيق: يظهر عند فتح صفحة من الشريط السفلي -->
+<div class="page-bar" id="page-bar" hidden>
+  <button type="button" class="pb-back" id="pb-back" aria-label="رجوع للرئيسية">
+    <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
+  </button>
+  <div class="pb-copy"><b id="pb-title">الوظائف</b><span id="pb-sub"></span></div>
+  <span class="pb-badge" id="pb-badge" hidden></span>
+</div>
+
 <!-- ============================== الواجهة الرئيسية ============================== -->
-<section class="hero hero-app" id="home">
+<section class="hero hero-app" id="home" data-page="home">
   <div class="hero-bg" role="img" aria-label="مدينة بغداد على ضفاف دجلة عند الغروب"></div>
   <div class="hero-veil"></div>
 
@@ -4156,7 +4245,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== البحث السريع ============================== -->
-<section class="app-search-wrap">
+<section class="app-search-wrap" data-page="jobs">
   <div class="container">
     <form class="app-search" id="qs-form" autocomplete="off">
       <svg class="ic as-ic"><use href="#i-search" xlink:href="#i-search"/></svg>
@@ -4175,7 +4264,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== التصنيفات ============================== -->
-<section class="section cats-section" id="categories" style="padding-top:10px;padding-bottom:0">
+<section class="section cats-section" id="categories" data-page="jobs" style="padding-top:10px;padding-bottom:0">
   <div class="container">
     <div class="cats-head">
       <div>
@@ -4197,7 +4286,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== لوحة الوظائف ============================== -->
-<section class="section app-section" id="jobs" style="padding-top:22px">
+<section class="section app-section" id="jobs" data-page="jobs" style="padding-top:22px">
   <div class="container">
     <div class="jobs-head">
       <h2><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> أحدث الوظائف</h2>
@@ -4255,7 +4344,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== المفضلة ============================== -->
-<section class="section app-section" id="favorites" style="padding-top:6px">
+<section class="section app-section app-only" id="favorites" data-page="favorites" style="padding-top:6px">
   <div class="container">
     <div class="jobs-head">
       <h2><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg> المفضلة</h2>
@@ -4273,7 +4362,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== بطاقة التوظيف — تصميم البطاقة الحقيقي ============================== -->
-<section class="section app-section card-showcase" id="card">
+<section class="section app-section card-showcase" id="card" data-page="card">
   <div class="container">
     <div class="cs-head">
       <span class="eyebrow eyebrow-line">بطاقة التوظيف</span>
@@ -4322,7 +4411,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== أرقام سريعة (نمط التطبيق) ============================== -->
-<section class="section app-section" style="padding-top:26px;padding-bottom:0">
+<section class="section app-section" data-page="home" style="padding-top:26px;padding-bottom:0">
   <div class="container">
     <!-- الأرقام تُرسم من الكود نفسه (renderHeroStats) بأصناف شريط التطبيق -->
     <div class="app-stats" id="hero-stats"></div>
@@ -4330,7 +4419,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== كيف نعمل ============================== -->
-<section class="section" id="how">
+<section class="section" id="how" data-page="home">
   <div class="container">
     <div class="section-head reveal">
       <span class="eyebrow">آلية العمل</span>
@@ -4367,7 +4456,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== الخدمات ============================== -->
-<section class="section section-alt" id="services">
+<section class="section section-alt" id="services" data-page="home">
   <div class="container">
     <div class="section-head reveal">
       <span class="eyebrow">خدماتنا</span>
@@ -4404,7 +4493,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== عن الشركة + أسد بابل ============================== -->
-<section class="section section-about" id="about">
+<section class="section section-about" id="about" data-page="home">
   <div class="container">
     <div class="lion-grid">
       <div class="lion-frame reveal" data-d="0">
@@ -4431,7 +4520,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== الحجز والتحقق ============================== -->
-<section class="section section-alt" id="verify">
+<section class="section section-alt" id="verify" data-page="home">
   <div class="container">
     <div class="split-2">
       <div>
@@ -4473,7 +4562,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== شريط الاقتباس ============================== -->
-<section class="quote-band">
+<section class="quote-band" data-page="home">
   <div class="container">
     <blockquote>
       «خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية.»
@@ -4483,7 +4572,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 </section>
 
 <!-- ============================== التواصل ============================== -->
-<section class="section" id="contact">
+<section class="section" id="contact" data-page="contact">
   <div class="container">
     <div class="section-head">
       <span class="eyebrow">تواصل معنا</span>
@@ -4532,16 +4621,23 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 
 <!-- ============================== شريط التطبيق السفلي (جوال) ============================== -->
 <nav class="tabbar" aria-label="تنقل سريع">
-  <a href="#jobs" data-tab="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg><span>الوظائف</span></a>
-  <a href="#favorites" data-tab="favorites"><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg><span>المفضلة</span><b class="tab-badge" id="fav-count" hidden>0</b></a>
-  <a href="#home" data-tab="home" class="tab-center">
+  <button type="button" class="tab-item" data-page-tab="jobs">
+    <svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg><span>الوظائف</span>
+  </button>
+  <button type="button" class="tab-item" data-page-tab="favorites">
+    <span class="tab-ic"><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg>
+      <b class="tab-badge" id="fav-count" hidden>0</b></span><span>المفضلة</span>
+  </button>
+  <button type="button" class="tab-center" data-page-tab="home">
     <span class="tab-fab"><svg class="ic"><use href="#i-house" xlink:href="#i-house"/></svg></span>
     <span>الرئيسية</span>
-  </a>
-  <button type="button" class="tab-item" data-action="open-booking">
+  </button>
+  <button type="button" class="tab-item" data-page-tab="card">
     <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg><span>بطاقتي</span>
   </button>
-  <a href="#contact" data-tab="contact"><svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg><span>تواصل</span></a>
+  <button type="button" class="tab-item" data-page-tab="contact">
+    <svg class="ic"><use href="#i-phone" xlink:href="#i-phone"/></svg><span>تواصل</span>
+  </button>
 </nav>
 
 </div>
@@ -11882,24 +11978,100 @@ html { scroll-padding-block-start: var(--anchor-offset); }
     });
   }
 
-  /* ── شريط التنقل السفلي: تفعيل التبويب بحسب موضع التمرير ── */
+  /* ══════════════════ موجّه صفحات التطبيق ══════════════════
+   * كل تبويب في الشريط السفلي يفتح **صفحة كاملة** بمحتواها (نمط التطبيقات):
+   * تُخفى بقية أقسام الموقع ويظهر شريط صفحة بعنوانها وزر رجوع.
+   * «الرئيسية» تُخرج من نمط الصفحات وتُعيد الواجهة الكاملة كما هي.
+   * الحالة تُحفظ في الرابط (#!page=jobs) فتعمل أزرار الرجوع في المتصفح
+   * ويمكن مشاركة رابط الصفحة مباشرة. */
+  var APP_PAGES = {
+    jobs: { t: 'الوظائف', s: 'تصفّح الفرص المتاحة وقدّم ببطاقتك' },
+    favorites: { t: 'المفضلة', s: 'الوظائف التي حفظتها بضغطة القلب' },
+    card: { t: 'بطاقة التوظيف', s: 'شكل البطاقة وشروطها وطريقة التقديم' },
+    contact: { t: 'تواصل معنا', s: 'عنوان المكتب وأرقام التواصل وأوقات العمل' }
+  };
+  var currentPage = 'home';
+
+  function paintActiveTab(page) {
+    document.querySelectorAll('.tabbar [data-page-tab]').forEach(function (b) {
+      b.classList.toggle('is-active', b.getAttribute('data-page-tab') === page);
+    });
+  }
+
+  function openPage(page, opts) {
+    opts = opts || {};
+    var isHome = page === 'home' || !APP_PAGES[page];
+    currentPage = isHome ? 'home' : page;
+    var meta = APP_PAGES[currentPage] || {};
+    document.body.classList.toggle('app-focus', !isHome);
+    document.body.setAttribute('data-app-page', currentPage);
+    var bar = document.getElementById('page-bar');
+    if (bar) {
+      bar.hidden = isHome;
+      var t = document.getElementById('pb-title');
+      var sb = document.getElementById('pb-sub');
+      if (t) t.textContent = meta.t || '';
+      if (sb) sb.textContent = meta.s || '';
+      var badge = document.getElementById('pb-badge');
+      if (badge) {
+        if (currentPage === 'favorites') {
+          var n = favList().length;
+          badge.textContent = n ? n + ' وظيفة' : '';
+          badge.hidden = !n;
+        } else if (currentPage === 'jobs') {
+          var nj = 0;
+          try { nj = Store.listJobs({}).length; } catch (e) { nj = 0; }
+          badge.textContent = nj ? nj + ' وظيفة' : '';
+          badge.hidden = !nj;
+        } else { badge.hidden = true; }
+      }
+    }
+    paintActiveTab(currentPage);
+    if (currentPage === 'favorites') renderFavorites();
+    if (currentPage === 'jobs') { renderCategories(); renderJobs(); }
+    if (!opts.keepHash) {
+      var hash = isHome ? '#home' : '#!/' + currentPage;
+      try { history.pushState({ page: currentPage }, '', hash); } catch (e) { }
+    }
+    if (!opts.noScroll) {
+      var anchor = document.getElementById(isHome ? 'home' : currentPage);
+      var top = anchor ? Math.max(0, anchor.getBoundingClientRect().top + window.scrollY - (isHome ? 0 : 74)) : 0;
+      window.scrollTo({ top: top, behavior: opts.instant ? 'auto' : 'smooth' });
+    }
+  }
+
+  function pageFromHash() {
+    var h = String(location.hash || '');
+    var m = h.match(/^#!\/?(\w+)/);
+    if (m && APP_PAGES[m[1]]) return m[1];
+    return 'home';
+  }
+
   function bindTabbar() {
-    var bar = document.querySelector('.tabbar');
-    if (!bar) return;
-    var links = [].slice.call(bar.querySelectorAll('[data-tab]'));
-    if (!links.length) return;
-    var last = 0;
-    var onScroll = function () {
-      var now = Date.now(); if (now - last < 120) return; last = now;
-      var y = window.scrollY + 120, active = null;
-      links.forEach(function (l) {
-        var sec = document.getElementById(l.getAttribute('data-tab'));
-        if (sec && sec.offsetTop <= y) active = l;
+    document.querySelectorAll('.tabbar [data-page-tab]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        openPage(b.getAttribute('data-page-tab'));
       });
-      links.forEach(function (l) { l.classList.toggle('is-active', l === active); });
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
+    });
+    var back = document.getElementById('pb-back');
+    if (back) back.addEventListener('click', function () { openPage('home'); });
+    window.addEventListener('popstate', function () {
+      openPage(pageFromHash(), { keepHash: true, noScroll: true });
+    });
+    window.addEventListener('hashchange', function () {
+      if (currentPage !== pageFromHash()) openPage(pageFromHash(), { keepHash: true, noScroll: true });
+    });
+    /* إتاحة الوصول: نُظهر إطارات التركيز فقط عند التنقّل بلوحة المفاتيح */
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab') document.body.classList.add('kbd');
+    });
+    document.addEventListener('mousedown', function () { document.body.classList.remove('kbd'); }, { passive: true });
+
+    /* فتح مباشر من الرابط */
+    var start = pageFromHash();
+    if (start !== 'home') openPage(start, { keepHash: true, noScroll: true, instant: true });
+    else paintActiveTab('home');
   }
 
   /* ── المفضلة: تبديل فوري + تحديث قسم «المفضلة» والعدّاد ──

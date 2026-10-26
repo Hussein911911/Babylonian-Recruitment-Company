@@ -386,10 +386,22 @@
 /* ── 9) شريط التنقل السفلي ── */
 .tabbar {
   position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 240;
-  display: none; align-items: flex-end; justify-content: space-around; gap: 2px;
+  display: flex; align-items: flex-end; justify-content: space-around; gap: 2px;
+  max-width: 100%;
   padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
   background: rgba(255, 255, 255, .98); border-top: 1px solid #eceff4;
   box-shadow: 0 -10px 30px rgba(6, 13, 31, .1); backdrop-filter: blur(10px);
+}
+/* لا إطار تركيز على أزرار التطبيق (الحالة النشطة تُبرز التبويب).
+   إتاحة الوصول: نُظهر إطاراً رفيعاً فقط عند التنقّل بلوحة المفاتيح
+   (body.kbd تُضاف عند ضغط Tab — انظر public.js). */
+.tabbar button:focus, .tabbar a:focus { outline: none !important; }
+body.kbd .tabbar button:focus-visible,
+body.kbd .tabbar a:focus-visible { outline: 2px solid var(--gold); outline-offset: -4px; }
+/* إعادة تعيين زر المتصفح الأصلي (زر «الرئيسية» صار <button>) */
+.tabbar button {
+  border: 0; background: transparent; font-family: inherit; cursor: pointer;
+  color: #8b98ab; -webkit-appearance: none; appearance: none;
 }
 .tabbar a, .tabbar button.tab-item {
   flex: 1 1 0; display: grid; justify-items: center; gap: 4px;
@@ -400,7 +412,11 @@
 .tabbar .ic { width: 21px; height: 21px; }
 .tabbar .is-active { color: var(--lapis-2); }
 .tabbar .is-active .ic { color: var(--gold-3); }
-.tabbar .tab-center { flex: 0 0 auto; margin-block-start: -30px; }
+.tabbar .tab-center {
+  flex: 0 0 auto; margin-block-start: -30px; border: 0; background: transparent;
+  display: grid; justify-items: center; gap: 4px; padding: 6px 2px;
+  font-size: .64rem; font-weight: 800; color: #8b98ab;
+}
 .tabbar .tab-fab {
   width: 56px; height: 56px; border-radius: 999px; display: grid; place-items: center;
   background: linear-gradient(145deg, var(--lapis-2), var(--lapis-3));
@@ -412,7 +428,6 @@
 
 /* ── 10) الجوال: إخفاء ترويسة الموقع القديمة (التصميم تطبيق) ── */
 @media (max-width: 860px) {
-  .tabbar { display: flex; }
   body { padding-block-end: 80px; }
   .site-header { display: none; }          /* الموك-أب بلا ترويسة سطح مكتب */
   .hero.hero-app { border-radius: 0 0 26px 26px; overflow: hidden; }
@@ -655,11 +670,76 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 
 /* شارة عدد المفضلة على تبويب الشريط السفلي */
 .tabbar a { position: relative; }
+.tabbar .tab-ic { position: relative; display: grid; place-items: center; }
 .tab-badge {
-  position: absolute; inset-block-start: 2px; inset-inline-end: 50%;
-  transform: translateX(50%) translateY(-2px);
-  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+  position: absolute; inset-block-start: -7px; inset-inline-start: -13px;
+  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
   background: var(--v-rose); color: #fff; font-size: .58rem; font-weight: 900;
-  display: grid; place-items: center; margin-inline-start: 14px;
+  display: grid; place-items: center; box-shadow: 0 0 0 2px #fff; line-height: 1;
 }
 .tab-badge[hidden] { display: none; }
+
+/* ═══════════════════════ صفحات التطبيق (نمط التطبيقات) ═══════════════════════
+   عند فتح صفحة من الشريط السفلي: يظهر شريط الصفحة فقط ومحتواها، وتُخفى بقية
+   الأقسام. «الرئيسية» تُعيد الواجهة الكاملة. */
+body { padding-block-end: 78px; }
+
+/* fixed لا sticky: overflow-x:hidden على body يكسر sticky في بعض المتصفحات */
+.page-bar {
+  position: fixed; inset-block-start: 0; inset-inline: 0; z-index: 130;
+  min-height: 58px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px clamp(12px, 3vw, 26px);
+  background: linear-gradient(135deg, var(--lapis-2), var(--lapis) 60%, var(--night));
+  border-bottom: 1px solid rgba(200, 162, 74, .35);
+  box-shadow: 0 10px 26px rgba(6, 13, 31, .18);
+}
+.page-bar[hidden] { display: none; }
+.pb-back {
+  width: 38px; height: 38px; flex: none; border-radius: 999px; cursor: pointer;
+  display: grid; place-items: center; font-family: inherit;
+  background: rgba(255, 255, 255, .10); border: 1px solid rgba(200, 162, 74, .45);
+  color: var(--gold-2);
+}
+.pb-back .ic { width: 18px; height: 18px; }
+.pb-back:hover { background: rgba(255, 255, 255, .18); }
+.pb-copy { display: grid; gap: 1px; min-width: 0; }
+.pb-copy b { color: #fff; font-size: .95rem; font-weight: 900; line-height: 1.4; }
+.pb-copy span { color: #b9c7e2; font-size: .68rem; font-weight: 600; }
+.pb-badge {
+  margin-inline-start: auto; flex: none;
+  background: rgba(200, 162, 74, .16); border: 1px solid rgba(200, 162, 74, .5);
+  color: var(--gold-2); border-radius: 999px; padding: 4px 11px;
+  font-size: .68rem; font-weight: 900;
+}
+.pb-badge[hidden] { display: none; }
+
+/* أقسام الصفحة الرئيسية تُخفى عند فتح صفحة */
+/* مساحة لشريط الصفحة الثابت */
+body.app-focus { padding-block-start: 58px; }
+body.app-focus [data-page] { display: none !important; }
+body.app-focus [data-page="home"] { display: none !important; }
+body.app-focus[data-app-page="jobs"] [data-page="jobs"],
+body.app-focus[data-app-page="favorites"] [data-page="favorites"],
+body.app-focus[data-app-page="card"] [data-page="card"],
+body.app-focus[data-app-page="contact"] [data-page="contact"] { display: block !important; }
+
+/* قسم المفضلة صفحة مستقلة: لا يظهر في الصفحة الرئيسية الطويلة */
+body:not(.app-focus) .app-only { display: none !important; }
+
+/* في نمط الصفحة: الفوتر والهيرو لا يظهران، والمحتوى يبدأ من الأعلى */
+body.app-focus .site-footer { display: none; }
+body.app-focus[data-app-page="jobs"] .jobs-all { display: none; }
+body.app-focus[data-app-page="jobs"] .cats-section { padding-bottom: 0 !important; }
+body.app-focus [data-page]:first-of-type { margin-top: 0; }
+body.app-focus .section:first-of-type { padding-top: 18px; }
+
+/* تبويب نشط */
+.tabbar .is-active { color: var(--lapis-2); }
+.tabbar .is-active .ic { color: var(--gold-3); }
+.tabbar .tab-center.is-active .tab-fab { box-shadow: 0 12px 26px rgba(11, 26, 58, .45), 0 0 0 3px rgba(200, 162, 74, .35); }
+
+@media (max-width: 860px) {
+  .page-bar { padding: 9px 12px; }
+  .pb-copy b { font-size: .9rem; }
+}

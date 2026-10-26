@@ -382,24 +382,100 @@
     });
   }
 
-  /* ── شريط التنقل السفلي: تفعيل التبويب بحسب موضع التمرير ── */
+  /* ══════════════════ موجّه صفحات التطبيق ══════════════════
+   * كل تبويب في الشريط السفلي يفتح **صفحة كاملة** بمحتواها (نمط التطبيقات):
+   * تُخفى بقية أقسام الموقع ويظهر شريط صفحة بعنوانها وزر رجوع.
+   * «الرئيسية» تُخرج من نمط الصفحات وتُعيد الواجهة الكاملة كما هي.
+   * الحالة تُحفظ في الرابط (#!page=jobs) فتعمل أزرار الرجوع في المتصفح
+   * ويمكن مشاركة رابط الصفحة مباشرة. */
+  var APP_PAGES = {
+    jobs: { t: 'الوظائف', s: 'تصفّح الفرص المتاحة وقدّم ببطاقتك' },
+    favorites: { t: 'المفضلة', s: 'الوظائف التي حفظتها بضغطة القلب' },
+    card: { t: 'بطاقة التوظيف', s: 'شكل البطاقة وشروطها وطريقة التقديم' },
+    contact: { t: 'تواصل معنا', s: 'عنوان المكتب وأرقام التواصل وأوقات العمل' }
+  };
+  var currentPage = 'home';
+
+  function paintActiveTab(page) {
+    document.querySelectorAll('.tabbar [data-page-tab]').forEach(function (b) {
+      b.classList.toggle('is-active', b.getAttribute('data-page-tab') === page);
+    });
+  }
+
+  function openPage(page, opts) {
+    opts = opts || {};
+    var isHome = page === 'home' || !APP_PAGES[page];
+    currentPage = isHome ? 'home' : page;
+    var meta = APP_PAGES[currentPage] || {};
+    document.body.classList.toggle('app-focus', !isHome);
+    document.body.setAttribute('data-app-page', currentPage);
+    var bar = document.getElementById('page-bar');
+    if (bar) {
+      bar.hidden = isHome;
+      var t = document.getElementById('pb-title');
+      var sb = document.getElementById('pb-sub');
+      if (t) t.textContent = meta.t || '';
+      if (sb) sb.textContent = meta.s || '';
+      var badge = document.getElementById('pb-badge');
+      if (badge) {
+        if (currentPage === 'favorites') {
+          var n = favList().length;
+          badge.textContent = n ? n + ' وظيفة' : '';
+          badge.hidden = !n;
+        } else if (currentPage === 'jobs') {
+          var nj = 0;
+          try { nj = Store.listJobs({}).length; } catch (e) { nj = 0; }
+          badge.textContent = nj ? nj + ' وظيفة' : '';
+          badge.hidden = !nj;
+        } else { badge.hidden = true; }
+      }
+    }
+    paintActiveTab(currentPage);
+    if (currentPage === 'favorites') renderFavorites();
+    if (currentPage === 'jobs') { renderCategories(); renderJobs(); }
+    if (!opts.keepHash) {
+      var hash = isHome ? '#home' : '#!/' + currentPage;
+      try { history.pushState({ page: currentPage }, '', hash); } catch (e) { }
+    }
+    if (!opts.noScroll) {
+      var anchor = document.getElementById(isHome ? 'home' : currentPage);
+      var top = anchor ? Math.max(0, anchor.getBoundingClientRect().top + window.scrollY - (isHome ? 0 : 74)) : 0;
+      window.scrollTo({ top: top, behavior: opts.instant ? 'auto' : 'smooth' });
+    }
+  }
+
+  function pageFromHash() {
+    var h = String(location.hash || '');
+    var m = h.match(/^#!\/?(\w+)/);
+    if (m && APP_PAGES[m[1]]) return m[1];
+    return 'home';
+  }
+
   function bindTabbar() {
-    var bar = document.querySelector('.tabbar');
-    if (!bar) return;
-    var links = [].slice.call(bar.querySelectorAll('[data-tab]'));
-    if (!links.length) return;
-    var last = 0;
-    var onScroll = function () {
-      var now = Date.now(); if (now - last < 120) return; last = now;
-      var y = window.scrollY + 120, active = null;
-      links.forEach(function (l) {
-        var sec = document.getElementById(l.getAttribute('data-tab'));
-        if (sec && sec.offsetTop <= y) active = l;
+    document.querySelectorAll('.tabbar [data-page-tab]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        openPage(b.getAttribute('data-page-tab'));
       });
-      links.forEach(function (l) { l.classList.toggle('is-active', l === active); });
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
+    });
+    var back = document.getElementById('pb-back');
+    if (back) back.addEventListener('click', function () { openPage('home'); });
+    window.addEventListener('popstate', function () {
+      openPage(pageFromHash(), { keepHash: true, noScroll: true });
+    });
+    window.addEventListener('hashchange', function () {
+      if (currentPage !== pageFromHash()) openPage(pageFromHash(), { keepHash: true, noScroll: true });
+    });
+    /* إتاحة الوصول: نُظهر إطارات التركيز فقط عند التنقّل بلوحة المفاتيح */
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab') document.body.classList.add('kbd');
+    });
+    document.addEventListener('mousedown', function () { document.body.classList.remove('kbd'); }, { passive: true });
+
+    /* فتح مباشر من الرابط */
+    var start = pageFromHash();
+    if (start !== 'home') openPage(start, { keepHash: true, noScroll: true, instant: true });
+    else paintActiveTab('home');
   }
 
   /* ── المفضلة: تبديل فوري + تحديث قسم «المفضلة» والعدّاد ──

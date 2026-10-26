@@ -1,5 +1,14 @@
+<!-- شريط صفحة التطبيق: يظهر عند فتح صفحة من الشريط السفلي -->
+<div class="page-bar" id="page-bar" hidden>
+  <button type="button" class="pb-back" id="pb-back" aria-label="رجوع للرئيسية">
+    <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
+  </button>
+  <div class="pb-copy"><b id="pb-title">الوظائف</b><span id="pb-sub"></span></div>
+  <span class="pb-badge" id="pb-badge" hidden></span>
+</div>
+
 <!-- ============================== الواجهة الرئيسية ============================== -->
-<section class="hero hero-app" id="home">
+<section class="hero hero-app" id="home" data-page="home">
   <div class="hero-bg" role="img" aria-label="مدينة بغداد على ضفاف دجلة عند الغروب"></div>
   <div class="hero-veil"></div>
 
@@ -17,7 +26,7 @@
 </section>
 
 <!-- ============================== البحث السريع ============================== -->
-<section class="app-search-wrap">
+<section class="app-search-wrap" data-page="jobs">
   <div class="container">
     <form class="app-search" id="qs-form" autocomplete="off">
       <svg class="ic as-ic"><use href="#i-search" xlink:href="#i-search"/></svg>
@@ -36,7 +45,7 @@
 </section>
 
 <!-- ============================== التصنيفات ============================== -->
-<section class="section cats-section" id="categories" style="padding-top:10px;padding-bottom:0">
+<section class="section cats-section" id="categories" data-page="jobs" style="padding-top:10px;padding-bottom:0">
   <div class="container">
     <div class="cats-head">
       <div>
@@ -58,7 +67,7 @@
 </section>
 
 <!-- ============================== لوحة الوظائف ============================== -->
-<section class="section app-section" id="jobs" style="padding-top:22px">
+<section class="section app-section" id="jobs" data-page="jobs" style="padding-top:22px">
   <div class="container">
     <div class="jobs-head">
       <h2><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> أحدث الوظائف</h2>
@@ -116,7 +125,7 @@
 </section>
 
 <!-- ============================== المفضلة ============================== -->
-<section class="section app-section" id="favorites" style="padding-top:6px">
+<section class="section app-section app-only" id="favorites" data-page="favorites" style="padding-top:6px">
   <div class="container">
     <div class="jobs-head">
       <h2><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg> المفضلة</h2>
@@ -134,7 +143,7 @@
 </section>
 
 <!-- ============================== بطاقة التوظيف — تصميم البطاقة الحقيقي ============================== -->
-<section class="section app-section card-showcase" id="card">
+<section class="section app-section card-showcase" id="card" data-page="card">
   <div class="container">
     <div class="cs-head">
       <span class="eyebrow eyebrow-line">بطاقة التوظيف</span>
@@ -183,7 +192,7 @@
 </section>
 
 <!-- ============================== أرقام سريعة (نمط التطبيق) ============================== -->
-<section class="section app-section" style="padding-top:26px;padding-bottom:0">
+<section class="section app-section" data-page="home" style="padding-top:26px;padding-bottom:0">
   <div class="container">
     <!-- الأرقام تُرسم من الكود نفسه (renderHeroStats) بأصناف شريط التطبيق -->
     <div class="app-stats" id="hero-stats"></div>
@@ -191,7 +200,7 @@
 </section>
 
 <!-- ============================== كيف نعمل ============================== -->
-<section class="section" id="how">
+<section class="section" id="how" data-page="home">
   <div class="container">
     <div class="section-head reveal">
       <span class="eyebrow">آلية العمل</span>
@@ -228,7 +237,7 @@
 </section>
 
 <!-- ============================== الخدمات ============================== -->
-<section class="section section-alt" id="services">
+<section class="section section-alt" id="services" data-page="home">
   <div class="container">
     <div class="section-head reveal">
       <span class="eyebrow">خدماتنا</span>
@@ -265,7 +274,7 @@
 </section>
 
 <!-- ============================== عن الشركة + أسد بابل ============================== -->
-<section class="section section-about" id="about">
+<section class="section section-about" id="about" data-page="home">
   <div class="container">
     <div class="lion-grid">
       <div class="lion-frame reveal" data-d="0">
@@ -292,7 +301,7 @@
 </section>
 
 <!-- ============================== الحجز والتحقق ============================== -->
-<section class="section section-alt" id="verify">
+<section class="section section-alt" id="verify" data-page="home">
   <div class="container">
     <div class="split-2">
       <div>
@@ -334,7 +343,7 @@
 </section>
 
 <!-- ============================== شريط الاقتباس ============================== -->
-<section class="quote-band">
+<section class="quote-band" data-page="home">
   <div class="container">
     <blockquote>
       «خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية.»
@@ -344,7 +353,7 @@
 </section>
 
 <!-- ============================== التواصل ============================== -->
-<section class="section" id="contact">
+<section class="section" id="contact" data-page="contact">
   <div class="container">
     <div class="section-head">
       <span class="eyebrow">تواصل معنا</span>
@@ -393,14 +402,21 @@
 
 <!-- ============================== شريط التطبيق السفلي (جوال) ============================== -->
 <nav class="tabbar" aria-label="تنقل سريع">
-  <a href="#jobs" data-tab="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg><span>الوظائف</span></a>
-  <a href="#favorites" data-tab="favorites"><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg><span>المفضلة</span><b class="tab-badge" id="fav-count" hidden>0</b></a>
-  <a href="#home" data-tab="home" class="tab-center">
+  <button type="button" class="tab-item" data-page-tab="jobs">
+    <svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg><span>الوظائف</span>
+  </button>
+  <button type="button" class="tab-item" data-page-tab="favorites">
+    <span class="tab-ic"><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg>
+      <b class="tab-badge" id="fav-count" hidden>0</b></span><span>المفضلة</span>
+  </button>
+  <button type="button" class="tab-center" data-page-tab="home">
     <span class="tab-fab"><svg class="ic"><use href="#i-house" xlink:href="#i-house"/></svg></span>
     <span>الرئيسية</span>
-  </a>
-  <button type="button" class="tab-item" data-action="open-booking">
+  </button>
+  <button type="button" class="tab-item" data-page-tab="card">
     <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg><span>بطاقتي</span>
   </button>
-  <a href="#contact" data-tab="contact"><svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg><span>تواصل</span></a>
+  <button type="button" class="tab-item" data-page-tab="contact">
+    <svg class="ic"><use href="#i-phone" xlink:href="#i-phone"/></svg><span>تواصل</span>
+  </button>
 </nav>
