@@ -124,6 +124,20 @@ a.hc-item:hover { color: var(--gold-2); }
 .site-header .container { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }
 .brand { display: flex; align-items: center; gap: 12px; color: #fff; }
 .brand .emblem { width: 52px; height: 52px; flex: none; filter: drop-shadow(0 3px 8px rgba(0, 0, 0, .4)); }
+
+/* ── بلاطة شعار «منصة مكسب» (2026-10-27) ────────────────────────────────
+   الشعار مقتفى من شعار المنصة (حرف مكسب + سهم ذهبي) ويوضع على بلاطة كحلية
+   أو بيضاء بزوايا مستديرة — نفس شكل أيقونة التطبيق في الصورة الرسمية. */
+.mk-tile {
+  display: inline-grid; place-items: center; flex: none;
+  border-radius: 27%; background: #012F3E;
+  box-shadow: 0 8px 18px rgba(4, 18, 28, .35);
+}
+.mk-tile svg { display: block; width: 100%; height: 100%; border-radius: inherit; }
+.mk-tile-light { background: #fff; box-shadow: 0 8px 18px rgba(4, 18, 28, .28), inset 0 0 0 1px rgba(1, 47, 62, .08); }
+.brand .emblem.mk-tile { width: 50px; height: 50px; padding: 5px; filter: none; }
+.site-footer .brand .emblem.mk-tile { width: 56px; height: 56px; padding: 6px; }
+@media (max-width: 640px) { .brand .emblem.mk-tile { width: 42px; height: 42px; padding: 4px; } }
 .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
 .brand-text b { font-size: 1.12rem; font-weight: 900; letter-spacing: -.3px; }
 .brand-text span { font-size: .68rem; color: var(--gold-2); letter-spacing: 1.6px; text-transform: uppercase; font-weight: 600; }

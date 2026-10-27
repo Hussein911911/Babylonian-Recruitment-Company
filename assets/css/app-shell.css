@@ -35,8 +35,9 @@
   -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
 }
 .app-emblem {
-  width: clamp(56px, 12vw, 74px); height: clamp(56px, 12vw, 74px);
-  color: var(--gold-2); filter: drop-shadow(0 8px 22px rgba(0, 0, 0, .55));
+  width: clamp(64px, 14vw, 84px); height: clamp(64px, 14vw, 84px);
+  color: var(--gold-2); filter: drop-shadow(0 10px 26px rgba(0, 0, 0, .45));
+  padding: clamp(7px, 1.6vw, 10px); border-radius: 27%;
 }
 .app-wordmark {
   font-size: clamp(1.5rem, 6.4vw, 2.1rem); font-weight: 900; color: #fff;

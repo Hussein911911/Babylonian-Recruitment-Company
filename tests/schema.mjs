@@ -917,19 +917,22 @@ step(28, 'شاشة الترحيب «منصة مكسب» — مطابقة الم�
   check('الشريط العلوي العام مخفي في الترحيب ويظهر من الخطوة ١',
     /<div class="topbar" id="topbar" style="display:none">/.test(ap) &&
     /\$\('topbar'\)\.style\.display=showBar\?'flex':'none'/.test(ap));
-  check('الشعار الجديد (حلقة ذهبية + M + صح + سهم + رأس إنسان) معرّف كرمز SVG',
-    /<symbol id="i-mkseb" viewBox="0 0 200 200">/.test(ap) &&
-    (ap.match(/#i-mkseb/g) || []).length >= 4 &&
-    /<circle cx="100" cy="100" r="92"[^>]*stroke="url\(#g-mk-gold\)"/.test(ap) &&
-    /g-mk-gold/.test(ap));
+  check('الشعار الصحيح (حرف مكسب + سهم ذهبي) معرّف كرمز SVG مقتفى من الصورة',
+    /<symbol id="i-mkseb" viewBox="0 0 \d+ \d+">/.test(ap) &&
+    (ap.match(/#i-mkseb(-dark)?/g) || []).length >= 4 &&
+    /fill="#FABE04"/.test(ap) && /fill="#fff"/.test(ap) &&
+    /i-mkseb-dark/.test(ap));
+  check('بلاطة الأيقونة (كحلي #012F3E وزوايا مستديرة) للشعار في الشريط والواجهة',
+    /\.mk-tile\{/.test(ap) && /background:#012F3E/.test(ap) &&
+    /--mk-gold:#FABE04/.test(ap) && /--mk-green:#94D183/.test(ap) && /--mk-teal:#3FB190/.test(ap));
   check('نفس الشعار في صفحة التقديم والموقع والترويسة والتذييل (رمز واحد)',
     /id="i-mkseb"/.test(ap) &&
-    /<symbol id="i-mkseb" viewBox="0 0 200 200">/.test(readFileSync(join(ROOT, 'src/partials/sprite.html'), 'utf8')) &&
+    /<symbol id="i-mkseb" viewBox="0 0 \d+ \d+">/.test(readFileSync(join(ROOT, 'src/partials/sprite.html'), 'utf8')) &&
     /#i-mkseb/.test(readFileSync(join(ROOT, 'src/partials/header.html'), 'utf8')) &&
     /#i-mkseb/.test(readFileSync(join(ROOT, 'src/partials/footer.html'), 'utf8')) &&
     /#i-mkseb/.test(readFileSync(join(ROOT, 'src/partials/public.html'), 'utf8')));
   check('شاشة الترحيب تحمل الشعار في الشريط العلوي وفي وسط الواجهة',
-    /class="mk-top-logo"/.test(ap) && /class="mk-logo anim-zoom anim-glow"/.test(ap));
+    /class="mk-top-logo[^"]*"/.test(ap) && /class="mk-logo anim-zoom anim-glow"/.test(ap));
   check('بطاقات المزايا تظهر متتالية عند الوصول (IntersectionObserver + شبكة أمان)',
     /mk-wait/.test(ap) && /IntersectionObserver/.test(ap) &&
     /setTimeout\(function\(\)\{[\s\S]{0,120}mk-in/.test(ap));
