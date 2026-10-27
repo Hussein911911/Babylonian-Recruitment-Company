@@ -1,4 +1,4 @@
-// Service Worker للعمل أوفلاين — hrc-cache-v73
+// Service Worker للعمل أوفلاين — hrc-cache-v74
 // ---------------------------------------------------------------------------
 // سياسة التخزين منذ v4:
 //   • HTML و JS  → network-first: الشبكة أولاً (الزائر يرى آخر نسخة)، والكاش
@@ -28,7 +28,7 @@
    إن كان مطابقاً. إبقاء الرقم ثابتاً يُبقي الزوار القدامى على نسخة قديمة
    من index.html مهما أعدت النشر (ظهر فعلاً: زر دخول محذوف بقي على حاسبة
    زارت الموقع قبل الحذف، بينما اختفى على هاتف لم يزره من قبل). */
-const CACHE_NAME = 'hrc-cache-v73';
+const CACHE_NAME = 'hrc-cache-v74';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -68,6 +68,8 @@ const urlsToCache = [
   '/assets/js/voucher.js',
   '/assets/js/cloud.js',
   '/assets/js/cloud-http.js',
+  /* 2026-10-27: التقسيم الإداري العراقي (١٩ محافظة · ١٣٠ قضاء · ٤٢٧ ناحية) */
+  '/assets/js/iraq-admin.js',
   '/assets/js/cloud-sync.js',
   '/assets/js/cloud-auth.js'
 ];

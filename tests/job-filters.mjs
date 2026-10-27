@@ -33,6 +33,8 @@ const codes=()=>Array.from(w.G.filteredJobs(),j=>j.code);
 const set=(id,value,event='change')=>{const el=$(id);if(el.type==='checkbox')el.checked=value;else el.value=value;el.dispatchEvent(new w.Event(event,{bubbles:true}));};
 const reset=()=>w.G.resetJobFilters();
 try {
+  /* التقسيم الإداري العراقي صار ملفاً مستقلاً — يُحمَّل قبل السكربت كما في المتصفح */
+  w.eval(readFileSync(new URL('../assets/js/iraq-admin.js',import.meta.url),'utf8'));
   w.eval(inline);
   await new Promise(resolve=>setTimeout(resolve,60));
   w.G.renderFilters();w.G.renderJobs();

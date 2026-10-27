@@ -292,6 +292,10 @@ sandbox.self = sandbox;
 sandbox.globalThis = sandbox;
 const ctx = vm.createContext(sandbox);
 
+/* التقسيم الإداري العراقي صار ملفاً مستقلاً (assets/js/iraq-admin.js):
+   نُحمّله قبل السكربت المضمّن تماماً كما يفعل المتصفح. */
+vm.runInContext(readFileSync(join(ROOT, 'assets/js/iraq-admin.js'), 'utf8'), ctx, { filename: 'iraq-admin.js' });
+
 const inline = HTML.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/)[1];
 vm.runInContext(inline, ctx, { filename: 'apply-inline.js' });
 
@@ -429,10 +433,15 @@ vm.runInContext('G.closeCardDetails()', ctx);
 /* ===========================================================================
  *  5) الخطوة 2 — السكن (محافظة + أقرب نقطة دالة فقط)
  * =========================================================================== */
-step(3, 'الخطوة ٢ — السكن: محافظة · أقرب نقطة دالة (حُذف القضاء/المنطقة)');
+step(3, 'الخطوة ٢ — السكن: محافظة · قضاء · ناحية · أقرب نقطة دالة');
 const provs = [...$('f-prov').children].map((o) => o.attrs.value).filter(Boolean);
-check('قائمة المحافظات مملوءة من الإعدادات', provs.length > 10, provs.length + ' محافظة');
-check('حقلا القضاء والمنطقة أُزيلا من النموذج', !$('f-dist') && !$('f-sub'), '');
+check('قائمة المحافظات كاملة (١٩ محافظة)', provs.length === 19, provs.length + ' محافظة');
+check('التقسيم الإداري العراقي محمّل: ١٩ محافظة · ١٣٠ قضاء · ٤٢٧ ناحية',
+  vm.runInContext('window.HRC_IRAQ_COUNT.governorates', ctx) === 19 &&
+  vm.runInContext('window.HRC_IRAQ_COUNT.districts', ctx) === 130 &&
+  vm.runInContext('window.HRC_IRAQ_COUNT.subdistricts', ctx) === 427,
+  JSON.stringify(vm.runInContext('window.HRC_IRAQ_COUNT', ctx)));
+check('قائمة القضاء معطّلة قبل اختيار المحافظة', $('f-qada').attrs.disabled !== undefined);
 
 click(findByOnclick('G.next()'));
 await tick(20);
@@ -442,12 +451,38 @@ setVal('f-prov', 'بابل');
 $('f-prov').dispatchEvent({ type: 'change', target: $('f-prov') });
 await tick(10);
 check('المحافظة المختارة محفوظة في البيانات', vm.runInContext("G.readProfile().province", ctx) === 'بابل');
-check('القضاء غير مطلوب في البيانات المحفوظة', !('district' in vm.runInContext('G.readProfile()', ctx)));
+const qadas = [...$('f-qada').children].map((o) => o.attrs.value).filter(Boolean);
+check('أقضية بابل السبعة تظهر بعد اختيار المحافظة (الحلة · المحاويل · كوثى · الهاشمية · الحمزة الغربي · المسيب · الكفل)',
+  qadas.length === 7 && qadas.indexOf('قضاء الحلة') >= 0 && qadas.indexOf('قضاء كوثى') >= 0 &&
+  qadas.indexOf('قضاء الحمزة الغربي') >= 0 && qadas.indexOf('قضاء الكفل') >= 0, qadas.join(' | '));
 
+click(findByOnclick('G.next()'));
+await tick(20);
+check('بلا اختيار قضاء يُرفض الانتقال', active() === 'pg-addr' && /اختر القضاء/.test($('err-addr').innerHTML));
+
+setVal('f-qada', 'قضاء المسيب');
+$('f-qada').dispatchEvent({ type: 'change', target: $('f-qada') });
+await tick(10);
+const naw = [...$('f-nah').children].map((o) => o.attrs.value).filter(Boolean);
+check('نواحي قضاء المسيب تظهر (المركز · الإسكندرية · سدة الهندية · جرف النصر · سوراء)',
+  naw.length === 5 && naw.indexOf('ناحية الإسكندرية') >= 0 && naw.indexOf('ناحية جرف النصر') >= 0, naw.join(' | '));
+
+click(findByOnclick('G.next()'));
+await tick(20);
+check('بلا اختيار ناحية يُرفض الانتقال', active() === 'pg-addr' && /اختر الناحية/.test($('err-addr').innerHTML));
+
+setVal('f-nah', 'ناحية الإسكندرية');
+$('f-nah').dispatchEvent({ type: 'change', target: $('f-nah') });
+await tick(10);
 setVal('f-lm', 'قرب مجمع الكرعاوي');
 click(findByOnclick('G.next()'));
 await tick(30);
 check('سكن كامل ⇒ صفحة تاريخ الميلاد', active() === 'pg-dob', activePages().join(','));
+const savedAddr = vm.runInContext('G.readProfile()', ctx);
+check('القضاء والناحية محفوظان في البيانات المرسلة للقاعدة',
+  savedAddr.district === 'قضاء المسيب' && savedAddr.subdistrict === 'ناحية الإسكندرية', JSON.stringify(savedAddr));
+check('العنوان الكامل مبني بالترتيب: محافظة — قضاء — ناحية — نقطة دالة',
+  savedAddr.address === 'بابل — قضاء المسيب — ناحية الإسكندرية — قرب مجمع الكرعاوي', savedAddr.address);
 
 /* ===========================================================================
  *  6) الخطوة 3 — تاريخ الميلاد (٣ قوائم أرقام)
@@ -612,8 +647,11 @@ check('الاسم المُرسل هو آخر تعديل (لا نسخة قديم�
 check('الهاتف والميلاد والجنس والمحافظة مُرسلة صحيحة',
   sent.phone === '07712345678' && sent.dob === '1996-06-15' && sent.gender === 'أنثى' && sent.province === 'بابل',
   JSON.stringify({ p: sent.phone, d: sent.dob, g: sent.gender, pr: sent.province }));
-check('نقطة الدالة مطلوبة، والقضاء/المنطقة لم يبقَ لهما وجود في البيانات',
-  !!sent.landmark && !('district' in sent) && !('subdistrict' in sent), JSON.stringify(sent));
+/* 2026-10-27: أعادت الإدارة القضاء والناحية (تشترطهما دالة apply_with_card
+   في القاعدة: province + district + landmark) — فصارا يُرسلان مع العنوان. */
+check('نقطة الدالة والقضاء والناحية مُرسلة للقاعدة بالشكل الذي تشترطه',
+  !!sent.landmark && sent.district === 'قضاء المسيب' && sent.subdistrict === 'ناحية الإسكندرية' &&
+  /بابل — قضاء المسيب — ناحية الإسكندرية/.test(sent.address), JSON.stringify({ d: sent.district, n: sent.subdistrict, a: sent.address }));
 
 /* ===========================================================================
  *  12) صفحة النتيجة: النجاح + الاستمارة + الباركود

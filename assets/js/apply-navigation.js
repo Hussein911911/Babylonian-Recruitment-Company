@@ -56,9 +56,22 @@
     var dockHeight = dock.getBoundingClientRect().height;
     doc.documentElement.style.setProperty('--keyboard-nav-height', dockHeight + 'px');
     if (typing) {
+      /* نُبقي الحقل النشط فوق لوحة الأزرار: نوسطه في المساحة المرئية.
+         كان scrollBy وحده لا يكفي لأن scroll-behavior:smooth على <html>
+         يجعل التمرير مُهيَّأً فيُقطع مع كل حدث visualViewport. */
       var rect = field.getBoundingClientRect();
-      var limit = offset + height - dockHeight - 16;
-      if (rect.bottom > limit) root.scrollBy(0, rect.bottom - limit);
+      var visibleBottom = offset + height - dockHeight - 20;
+      var visibleTop = offset + 12;
+      var target = null;
+      if (rect.bottom > visibleBottom) target = root.scrollY + (rect.bottom - visibleBottom) + Math.max(0, (visibleBottom - rect.height) / 2 - rect.top / 2);
+      else if (rect.top < visibleTop) target = root.scrollY - (visibleTop - rect.top);
+      if (target !== null) {
+        var html = doc.documentElement;
+        var previous = html.style.scrollBehavior;
+        html.style.scrollBehavior = 'auto';
+        root.scrollTo(0, Math.max(0, target));
+        html.style.scrollBehavior = previous;
+      }
     }
   }
   function schedule() {

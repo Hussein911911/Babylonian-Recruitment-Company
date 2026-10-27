@@ -2313,6 +2313,304 @@ body{
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   2026-10-27 · حيوية الصفحات (ترحيب + خطوات الإدخال)
+   ألوان حيّة · إطارات متدرّجة · حركات ناعمة · ولوحة أزرار لا تقفز مع الكيبورد
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media screen{
+
+  /* ── 1) خلفية حيّة: هالات ملوّنة تسبح ببطء خلف المحتوى ───────────────── */
+  body[data-step]:not([data-step="0"]) .app::before,
+  body[data-step]:not([data-step="0"]) .app::after{
+    content:'';position:fixed;z-index:0;pointer-events:none;border-radius:50%;
+    width:min(74vw,520px);aspect-ratio:1;filter:blur(6px);
+    animation:apFloat 16s ease-in-out infinite alternate;
+  }
+  body[data-step]:not([data-step="0"]) .app::before{
+    inset-block-start:4%;inset-inline-start:-16%;
+    background:radial-gradient(circle,rgba(250,190,4,.16),rgba(250,190,4,0) 68%);
+  }
+  body[data-step]:not([data-step="0"]) .app::after{
+    inset-block-end:-6%;inset-inline-end:-18%;animation-delay:-6s;
+    background:radial-gradient(circle,rgba(1,47,62,.16),rgba(1,47,62,0) 68%);
+  }
+  @keyframes apFloat{
+    from{transform:translate3d(0,0,0) scale(1)}
+    to{transform:translate3d(16px,-22px,0) scale(1.08)}
+  }
+
+  /* ── 2) بطاقة الخطوة: شريط ألوان أعلى + إطار متدرّج + دخول ناعم ─────── */
+  .profile-card{
+    border:1.5px solid transparent!important;
+    background:
+      linear-gradient(#fffdf8,#fffdf8) padding-box,
+      linear-gradient(135deg,rgba(1,47,62,.55),rgba(200,162,74,.75) 45%,rgba(63,177,144,.5)) border-box!important;
+    box-shadow:0 22px 54px rgba(1,47,62,.13),0 2px 0 rgba(255,255,255,.9) inset!important;
+    overflow:hidden;
+  }
+  .profile-card::before{
+    height:6px!important;
+    background:linear-gradient(90deg,#012F3E,#0A4E60 28%,#FABE04 58%,#94D183 84%,#3FB190)!important;
+    background-size:220% 100%!important;
+    animation:apRibbon 9s linear infinite;
+  }
+  @keyframes apRibbon{from{background-position:0% 0}to{background-position:220% 0}}
+
+  /* عنوان الخطوة: شريحة ذهبية صغيرة تحت العنوان */
+  .step-intro h2{position:relative;padding-block-end:9px}
+  .step-intro h2::after{
+    content:'';position:absolute;inset-block-end:0;inset-inline-start:0;
+    width:56px;height:4px;border-radius:99px;
+    background:linear-gradient(90deg,#FABE04,rgba(250,190,4,0));
+  }
+  .step-eyebrow{
+    background:linear-gradient(135deg,#eef4ff,#e6f6ef)!important;
+    border-color:#cfe0f5!important;
+    box-shadow:0 2px 6px rgba(1,47,62,.06);
+  }
+  .section-title::before{
+    width:5px!important;height:22px!important;
+    background:linear-gradient(180deg,#FABE04,#3FB190)!important;
+    box-shadow:0 2px 8px rgba(250,190,4,.35);
+  }
+
+  /* ── 3) الحقول: إطار متدرّج، أيقونة في كبسولة، ورفع خفيف عند التركيز ── */
+  .form-group{position:relative}
+  .form-group label{
+    display:flex!important;align-items:center;gap:6px;
+    letter-spacing:.01em;
+  }
+  .form-group label .req{font-size:1.05em;line-height:1}
+  .fld{
+    position:relative;border-radius:16px;
+    transition:transform .22s var(--ap-ease),filter .22s ease;
+  }
+  .form-group input,.form-group select{
+    border-radius:14px!important;
+    background:linear-gradient(180deg,#eef3fd,#e8eefb)!important;
+    border:1.5px solid #cfdcf0!important;
+    box-shadow:0 1px 0 #fff inset,0 1px 3px rgba(1,47,62,.04);
+  }
+  .fld input,.fld select{padding-inline-start:50px!important}
+  .fld-ic{
+    inset-inline-start:14px;width:24px;height:24px;padding:3px;box-sizing:content-box;
+    border-radius:9px;background:#fffdf8;border:1px solid rgba(200,162,74,.45);
+    color:#a8802f!important;opacity:1!important;
+    box-shadow:0 2px 6px rgba(1,47,62,.06);
+    transition:background .22s ease,border-color .22s ease,color .22s ease,transform .22s var(--ap-ease)!important;
+  }
+  .fld:focus-within .fld-ic{
+    background:#012F3E;border-color:#012F3E;color:#FABE04!important;transform:scale(1.04);
+  }
+  .form-group input:focus,.form-group select:focus{
+    background:#fbfdff!important;
+    border-color:#FABE04!important;
+    box-shadow:0 0 0 4px rgba(250,190,4,.2),0 10px 22px rgba(1,47,62,.08)!important;
+  }
+  .fld:focus-within{transform:translateY(-2px)}
+  .form-group select:disabled{
+    background:#f3f5f8!important;border-color:#e3e8f0!important;
+    color:#9aa6b8!important;cursor:not-allowed;
+  }
+  .form-group select:disabled + .fld-ic{opacity:.55!important}
+  .form-group input.valid,.form-group select.valid{
+    border-color:#3FB190!important;
+    box-shadow:0 0 0 4px rgba(63,177,144,.14)!important;
+  }
+  .form-group input.invalid,.form-group select.invalid{
+    border-color:#c0392b!important;box-shadow:0 0 0 4px rgba(192,57,43,.13)!important;
+  }
+
+  /* ── 4) الأزرار: كحلي بحدود ذهبية + لمعة تمرّ + رفع/ضغط محسوس ───────── */
+  .btn{position:relative;overflow:hidden;isolation:isolate}
+  .btn-primary{
+    background:linear-gradient(135deg,#0A4E60,#012F3E 55%,#01222C)!important;
+    border:1.5px solid rgba(250,190,4,.85)!important;
+    box-shadow:0 12px 26px rgba(1,47,62,.3),inset 0 1px 0 rgba(255,255,255,.16)!important;
+  }
+  .btn-primary::before{
+    content:'';position:absolute;inset-block:0;inset-inline-start:-60%;width:45%;z-index:-1;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);
+    transform:skewX(-18deg);
+    animation:apShine 4.6s ease-in-out infinite;
+  }
+  @keyframes apShine{
+    0%,72%{inset-inline-start:-60%}
+    92%,100%{inset-inline-start:130%}
+  }
+  .btn-outline{
+    background:#fffdf8!important;
+    border:1.5px solid #cfdcf0!important;
+    color:#012F3E!important;
+    box-shadow:0 6px 16px rgba(1,47,62,.07)!important;
+  }
+  .btn-outline:hover{border-color:#FABE04!important;background:#fffaf0!important}
+  .btn:not(:disabled):hover{transform:translateY(-2px)}
+  .btn-primary:not(:disabled):hover{box-shadow:0 18px 34px rgba(1,47,62,.34)!important}
+
+  /* ── 5) الجنس: بطاقتان ملوّنتان بعلامة اختيار ────────────────────────── */
+  .gender-grid{gap:12px!important}
+  .gender-opt{
+    position:relative;border-radius:18px!important;
+    background:linear-gradient(160deg,#fffdf8,#f4f8ff)!important;
+    border:1.5px solid #d7e3f5!important;
+    transition:transform .22s var(--ap-ease),box-shadow .24s ease,border-color .24s ease,background .24s ease!important;
+  }
+  .gender-opt:hover{transform:translateY(-2px);border-color:#FABE04!important;box-shadow:0 12px 26px rgba(1,47,62,.1)}
+  .gender-opt.selected{
+    background:linear-gradient(160deg,#eaf7f1,#e6f2ff)!important;
+    border-color:#3FB190!important;
+    box-shadow:0 0 0 3px rgba(63,177,144,.18),0 12px 26px rgba(1,47,62,.1)!important;
+  }
+  .gender-opt.selected::after{
+    content:'✓';position:absolute;inset-block-start:8px;inset-inline-start:10px;
+    width:22px;height:22px;display:grid;place-items:center;border-radius:50%;
+    background:#3FB190;color:#fff;font-size:12px;font-weight:900;
+    box-shadow:0 4px 10px rgba(63,177,144,.45);
+    animation:apPop .3s var(--ap-ease) both;
+  }
+  @keyframes apPop{from{transform:scale(0)}to{transform:scale(1)}}
+  .gender-opt .icon{
+    display:grid!important;place-items:center;
+    width:62px;height:62px;margin:0 auto 10px!important;
+    background:linear-gradient(145deg,#fff6dc,#ffeeb8);
+    border:1px solid rgba(250,190,4,.55);border-radius:18px;
+    box-shadow:0 6px 14px rgba(250,190,4,.22);
+    font-size:0!important;line-height:0;
+    transition:transform .24s var(--ap-ease),background .24s ease,border-color .24s ease,box-shadow .24s ease;
+  }
+  .gender-opt .icon svg{width:32px;height:32px;color:#8a6a10}
+  .gender-opt.selected .icon{
+    background:linear-gradient(145deg,#eaf9f3,#d9f2e8);
+    border-color:rgba(63,177,144,.6);
+    box-shadow:0 8px 18px rgba(63,177,144,.24);
+    transform:scale(1.06);
+  }
+  .gender-opt.selected .icon svg{color:#1f6f5b}
+  .gender-opt{font-size:19px!important;font-weight:900!important}
+  .gender-opt.selected{color:#0e3a2f!important}
+
+  /* ── 6) شريط التقدّم: تعبئة متحركة + توهّج ذهبي ──────────────────────── */
+  .steps-bar{border-color:#e6dcc6!important;box-shadow:0 10px 26px rgba(1,47,62,.08)!important}
+  .step-dot{
+    transition:background .5s var(--ap-ease),box-shadow .5s ease,transform .35s var(--ap-ease)!important;
+  }
+  .step-dot.done{box-shadow:0 0 10px rgba(63,177,144,.4)!important}
+  .step-dot.active{animation:apDot 2.6s ease-in-out infinite}
+  @keyframes apDot{
+    0%,100%{box-shadow:0 0 0 3px rgba(250,190,4,.18)}
+    50%{box-shadow:0 0 0 6px rgba(250,190,4,.10)}
+  }
+  .step-label .pct{
+    background:linear-gradient(135deg,#fff6dc,#ffe9ad)!important;
+    border-color:#f2d98a!important;color:#7a5f21!important;
+    box-shadow:0 2px 8px rgba(250,190,4,.2);
+  }
+
+  /* ── 7) شاشة الترحيب: حركة أوضح للشعار والزر ─────────────────────────── */
+  .mk-logo{animation:mkFloat 5.5s ease-in-out infinite}
+  @keyframes mkFloat{
+    0%,100%{transform:translateY(0)}
+    50%{transform:translateY(-7px)}
+  }
+  .mk-logo .mk-tile{box-shadow:0 22px 40px rgba(1,47,62,.4),0 0 0 6px rgba(250,190,4,.14),inset 0 1px 0 rgba(255,255,255,.1)}
+  .mk-cta .btn{border-width:2px!important;animation:mkBreath 3.6s ease-in-out infinite}
+  @keyframes mkBreath{
+    0%,100%{box-shadow:0 16px 34px rgba(5,16,34,.42),0 0 0 4px rgba(250,190,4,.12),inset 0 1px 0 rgba(255,255,255,.22)}
+    50%{box-shadow:0 20px 40px rgba(5,16,34,.5),0 0 0 8px rgba(250,190,4,.08),inset 0 1px 0 rgba(255,255,255,.26)}
+  }
+  /* كلمة «مكسب»: لمعة ذهبية تمرّ عليها ببطء */
+  .mk-hero h1 b{
+    background:linear-gradient(100deg,#f6d99a 8%,#ffe9b5 26%,#d3a94f 46%,#b98f34 62%,#f6d99a 84%);
+    background-size:220% 100%;
+    -webkit-background-clip:text;background-clip:text;
+    animation:mkWord 6s ease-in-out infinite;
+  }
+  @keyframes mkWord{from{background-position:0% 0}to{background-position:220% 0}}
+  @media(prefers-reduced-motion:reduce){
+    .mk-cta .btn,.mk-hero h1 b{animation:none!important}
+  }
+  .mk-feat{
+    border:1.5px solid transparent!important;
+    background:linear-gradient(#fffdf8,#fffdf8) padding-box,
+               linear-gradient(150deg,rgba(200,162,74,.55),rgba(63,177,144,.28)) border-box!important;
+    transition:transform .26s var(--ap-ease),box-shadow .26s ease!important;
+  }
+  .mk-feat:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(1,47,62,.1)}
+  .mk-feat-ic{
+    background:linear-gradient(150deg,#fff8e6,#eaf7f1)!important;
+    border-color:rgba(200,162,74,.5)!important;
+  }
+  /* لكل ميزة لونها من هوية الشعار (ذهب · أخضر · تركوازي · كحلي) */
+  .mk-feat:nth-child(1) .mk-feat-ic{
+    background:linear-gradient(150deg,#fff6d8,#ffe9a8)!important;
+    border-color:rgba(250,190,4,.6)!important;color:#8a6a10!important;
+  }
+  .mk-feat:nth-child(2) .mk-feat-ic{
+    background:linear-gradient(150deg,#eef9e9,#d7f0cd)!important;
+    border-color:rgba(148,209,131,.75)!important;color:#3f7a2c!important;
+  }
+  .mk-feat:nth-child(3) .mk-feat-ic{
+    background:linear-gradient(150deg,#e8f8f3,#cdeee4)!important;
+    border-color:rgba(63,177,144,.65)!important;color:#1f6f5b!important;
+  }
+  .mk-feat:nth-child(4) .mk-feat-ic{
+    background:linear-gradient(150deg,#e9f0fa,#d3e2f6)!important;
+    border-color:rgba(1,47,62,.32)!important;color:#012F3E!important;
+  }
+  .mk-feat{
+    border-width:1px!important;border-radius:18px!important;
+    padding:clamp(12px,3.2vw,18px) clamp(8px,2.4vw,14px)!important;
+    box-shadow:0 8px 20px rgba(1,47,62,.05)!important;
+  }
+  .mk-feat:nth-child(1){background:linear-gradient(#fffdf8,#fffdf8) padding-box,linear-gradient(150deg,rgba(250,190,4,.42),rgba(250,190,4,.08)) border-box!important}
+  .mk-feat:nth-child(2){background:linear-gradient(#fffdf8,#fffdf8) padding-box,linear-gradient(150deg,rgba(148,209,131,.55),rgba(148,209,131,.10)) border-box!important}
+  .mk-feat:nth-child(3){background:linear-gradient(#fffdf8,#fffdf8) padding-box,linear-gradient(150deg,rgba(63,177,144,.55),rgba(63,177,144,.10)) border-box!important}
+  .mk-feat:nth-child(4){background:linear-gradient(#fffdf8,#fffdf8) padding-box,linear-gradient(150deg,rgba(1,47,62,.28),rgba(200,162,74,.16)) border-box!important}
+
+  /* ── 8) لوحة الأزرار مع الكيبورد: لا قفزة، ولا اختفاء ───────────────── */
+  /* البطاقة لا تتمدّد مع ارتفاع نافذة العرض المتغيّر (كان سبب الطفرة) */
+  .page.active{min-height:0!important}
+  body.keyboard-navigation-open .page.active{min-height:0!important}
+  #keyboard-navigation{
+    inset-inline:0!important;
+    left:0;right:0;
+    padding:10px clamp(12px,4vw,20px) calc(10px + env(safe-area-inset-bottom,0px))!important;
+    border:0!important;border-block-start:1.5px solid rgba(250,190,4,.55)!important;
+    border-radius:18px 18px 0 0!important;
+    background:linear-gradient(180deg,rgba(255,253,248,.97),rgba(251,247,236,.99))!important;
+    box-shadow:0 -14px 34px rgba(1,47,62,.16)!important;
+    backdrop-filter:blur(10px)!important;
+    animation:apDockUp .24s var(--ap-ease) both;
+  }
+  @keyframes apDockUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  #keyboard-navigation .btn-row{
+    margin:0 auto!important;gap:10px!important;
+    flex-direction:row!important;          /* على الشاشات الكبيرة */
+    width:100%;max-width:760px;
+  }
+  #keyboard-navigation .btn{min-height:56px!important;padding:13px 14px!important;font-size:16px!important;border-radius:14px!important}
+  /* على الجوال: نفس ترتيب الصفحة تماماً (التالي فوق، رجوع تحته) فلا يحدث قفز */
+  @media(max-width:640px){
+    #keyboard-navigation .btn-row{flex-direction:column-reverse!important}
+    #keyboard-navigation .btn{width:100%!important;flex:0 0 auto!important}
+  }
+  /* مساحة سفلية محفوظة فلا يتغطّى آخر حقل عند فتح الكيبورد */
+  body.keyboard-navigation-open .app{padding-block-end:calc(var(--keyboard-nav-height,96px) + 28px)!important}
+  html{scroll-padding-block-end:calc(var(--keyboard-nav-height,0px) + 24px)}
+
+  /* ── 9) لمسات: تركيز واضح بلون الهوية ────────────────────────────────── */
+  .btn:focus-visible,.btn-card-details:focus-visible,.gender-opt:focus-visible,
+  .job-card:focus-visible,.mk-feat:focus-visible{
+    outline:3px solid #FABE04!important;outline-offset:3px;
+  }
+
+  @media(prefers-reduced-motion:reduce){
+    body[data-step] .app::before,body[data-step] .app::after,
+    .mk-logo,.btn-primary::before,.step-dot.active,.profile-card::before{animation:none!important}
+  }
+}
+
 </style>
 </head>
 <body>
@@ -2491,18 +2789,35 @@ body{
     <!-- ═══ 3 — السكن ═══ -->
     <div class="page profile-page" id="pg-addr">
       <div class="card profile-card">
-        <div class="step-intro"><span class="step-eyebrow">بيانات المتقدم / ٠٢</span><h2>وين تسكن؟</h2><p>حدّد محافظتك وأقرب نقطة دالة. بيانات السكن تساعدك على اختيار فرصة عمل قريبة منك.</p><div class="step-assurance">بطاقتك نفسها · بياناتك تُراجع قبل الإتمام</div></div>
+        <div class="step-intro"><span class="step-eyebrow">بيانات المتقدم / ٠٢</span><h2>وين تسكن؟</h2><p>حدّد محافظتك ثم القضاء والناحية، واكتب أقرب نقطة دالة. كل نواحي العراق موجودة في القوائم.</p><div class="step-assurance">بطاقتك نفسها · بياناتك تُراجع قبل الإتمام</div></div>
         <div class="step-fields"><div class="section-title">السكن</div>
         <div id="err-addr"></div>
         <div class="form-group">
           <label for="f-prov"><span class="req">*</span> المحافظة</label>
-          <select id="f-prov"><option value="">اختر المحافظة</option></select>
+          <div class="fld">
+            <svg class="fld-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s6.6-5.9 6.6-10.5a6.6 6.6 0 1 0-13.2 0C5.4 15.1 12 21 12 21z"/><circle cx="12" cy="10.4" r="2.4"/></svg>
+            <select id="f-prov" autocomplete="address-level1"><option value="">اختر المحافظة</option></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="f-qada"><span class="req">*</span> القضاء</label>
+          <div class="fld">
+            <svg class="fld-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20.5h16"/><path d="M6.5 20.5V9.5l5.5-4 5.5 4v11"/><path d="M10 20.5v-4.6h4v4.6"/></svg>
+            <select id="f-qada" disabled><option value="">اختر القضاء</option></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="f-nah"><span class="req">*</span> الناحية</label>
+          <div class="fld">
+            <svg class="fld-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2"/><path d="M12 3.4c2.4 2.3 3.6 5.3 3.6 8.6S14.4 18.3 12 20.6c-2.4-2.3-3.6-5.3-3.6-8.6S9.6 5.7 12 3.4z"/></svg>
+            <select id="f-nah" disabled><option value="">اختر الناحية</option></select>
+          </div>
         </div>
         <div class="form-group">
           <label for="f-lm"><span class="req">*</span> أقرب نقطة دالة</label>
           <div class="fld">
-            <svg class="fld-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s6.6-5.9 6.6-10.5a6.6 6.6 0 1 0-13.2 0C5.4 15.1 12 21 12 21z"/><circle cx="12" cy="10.4" r="2.4"/></svg>
-            <input type="text" id="f-lm" placeholder="مثال: قرب مجمع الكرعاوي">
+            <svg class="fld-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.5 12 4l8.5 7.5"/><path d="M6 10.5v9h12v-9"/><path d="M10 19.5v-5h4v5"/></svg>
+            <input type="text" id="f-lm" placeholder="مثال: قرب مجمع الكرعاوي" autocomplete="address-line1">
           </div>
         </div>
         </div>
@@ -2574,8 +2889,14 @@ body{
         <div class="step-fields"><div class="section-title">نوع الجنس</div>
         <div id="err-gender"></div>
         <div class="gender-grid">
-          <div class="gender-opt selected" data-v="ذكر" onclick="G.pickGender(this)"><span class="icon">👨</span>ذكر</div>
-          <div class="gender-opt" data-v="أنثى" onclick="G.pickGender(this)"><span class="icon">👩</span>أنثى</div>
+          <div class="gender-opt selected" data-v="ذكر" onclick="G.pickGender(this)">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.6" cy="13.4" r="5.6"/><path d="M14.6 9.4 20 4M15.4 4H20v4.6"/></svg></span>
+            ذكر
+          </div>
+          <div class="gender-opt" data-v="أنثى" onclick="G.pickGender(this)">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9.2" r="5.6"/><path d="M12 14.8V21M9 18h6"/></svg></span>
+            أنثى
+          </div>
         </div>
         </div>
       </div>
@@ -2726,6 +3047,7 @@ body{
           الدالة موجودة في brc (نفس العطل المُصلَح سابقاً في cloud-http.js).
      عميل HRCHttp المحلي يعلن الترويستين معاً ولا يترك الصفحة رهينة طرف خارجي. ── -->
 <script src="assets/js/cloud-http.js"></script>
+<script src="assets/js/iraq-admin.js"></script>
 <script src="assets/js/apply-navigation.js"></script>
 <script>
 (function(){
@@ -2734,27 +3056,10 @@ body{
 /* ═══════════════════════════════════════════════════════════════
    بيانات المحافظات العراقية (18 محافظة + أقضية + نواحي)
    ═══════════════════════════════════════════════════════════════ */
-var IRAQ={
-"حلبجة":{"حلبجة":["المركز","سيروان","خورمال"],"سيروان":["المركز","بيارة"]},
-"بابل":{"الحلة":["المركز","الكرعاوي","المحاويل","العبيدي"],"المسيّب":["المركز","الهاشمية","الجعيفرة"],"المحاويل":["المركز","الكفل","العبيدي","النعمانية"],"الهاشمية":["المركز","الإسكان","الزهراء"]},
-"بغداد":{"الكرخ":["المركز","المنصور","الحارثية","الكاظمية","العامرية","البياع","الشعلة"],"الرصافة":["المركز","الكرادة","زيونة","الجادرية","فلسطين","الأعظمية"],"الكاظمية":["المركز","الشالجية","الحرية"],"المدائن":["المركز","سلمان باق","الواسطي"],"أبو غريب":["المركز","الإصلاح","الرجبية"],"التاجي":["المركز","الطارمية","الحسينية"],"المحمودية":["المركز","اللطيفية","اليوسفية"],"الطارمية":["المركز","البو حمدان","العزايز"]},
-"كربلاء":{"كربلاء":["المركز","الحر","حسين"],"الهندية":["المركز","الخيرات","العبيدي"],"عين التمر":["المركز","العُمية","الوهيبي"]},
-"النجف":{"النجف":["المركز","الكوفة","المناذرة","الحنانة"],"المناذرة":["المركز","الشامية","الهاشمية"],"الكوفة":["المركز","العبيدي","الحيرة"],"الشامية":["المركز","العُبية"]},
-"ذي قار":{"الناصرية":["المركز","سوق الشيوخ","الشطرة","الرفاعي"],"سوق الشيوخ":["المركز","الجبايش","الدراجي"],"الشطرة":["المركز","الإصلاح","التنومة"],"الرفاعي":["المركز","القلعة","البطحاء"],"الجبايش":["المركز","الحويش","الكُرمة"]},
-"ميسان":{"العمارة":["المركز","علي الغربي","المجر الكبير"],"علي الغربي":["المركز","القلعة","الكحلاء"],"المجر الكبير":["المركز","السلام","الزيركان"],"الكحلاء":["المركز","المشرح"]},
-"البصرة":{"البصرة":["المركز","العشار","الزبير","الفاو","أبو الخصيب"],"الزبير":["المركز","أم قصر","الشعبة"],"الفاو":["المركز","الشط العرب"],"أبو الخصيب":["المركز","الدوار","العشار"],"أم قصر":["المركز","ميناء أم قصر"]},
-"ديالى":{"بعقوبة":["المركز","المقدادية","خانقين","بلدروز","الخالص"],"المقدادية":["المركز","الرحبة"],"خانقين":["المركز","الوجيهية","جلولاء"],"بلدروز":["المركز","نفط خانة"],"الخالص":["المركز","بهرز","العبيدي"]},
-"الأنبار":{"الرمادي":["المركز","الحبانية","الفلوجة","هيت"],"الفلوجة":["المركز","الكرمة","الصقلاوية"],"هيت":["المركز","الحديثة","القائم"],"القائم":["المركز","عنة","الرطبة"],"الحديثة":["المركز","الكرابلة"],"الرطبة":["المركز","النخيب"]},
-"نينوى":{"الموصل":["المركز","حمام العليل","تلعفر","سنجار","الحمدانية"],"تلعفر":["المركز","القيارة","العياضية"],"سنجار":["المركز","الرحيمية"],"الحمدانية":["المركز","برطلة"]},
-"صلاح الدين":{"تكريت":["المركز","سامراء","بلد","الدور","بيجي"],"سامراء":["المركز","المعتصم"],"بلد":["المركز","الإسكان","الدجيل"],"بيجي":["المركز","الصينية"],"الشرقاط":["المركز","العزيزية"]},
-"كركوك":{"كركوك":["المركز","الحويجة","داقوق","دبس"],"الحويجة":["المركز","الرياض","الزاب"],"داقوق":["المركز","الزوية"],"دبس":["المركز","تل الورد"]},
-"واسط":{"الكوت":["المركز","الحي","النعمانية","العزيزية"],"النعمانية":["المركز","العزيزية"],"العزيزية":["المركز","الصويرة"]},
-"المثنى":{"السماوة":["المركز","الخضر","الرميثية","الوركاء"],"الخضر":["المركز","الحجرية"],"الرميثية":["المركز","العزيزية"],"الوركاء":["المركز","الشنافية"]},
-"القادسية":{"الديوانية":["المركز","عفك","الشامية","الحمزة"],"عفك":["المركز","السنية"],"الشامية":["المركز","العُبية"],"الحمزة":["المركز","الأخماس"]},
-"أربيل":{"أربيل":["المركز","عنكاوا","شقلاوة","سوران","كويسنجق"],"شقلاوة":["المركز","صلاح الدين"],"سوران":["المركز","حلبجة"],"كويسنجق":["المركز","دوكان"]},
-"السليمانية":{"السليمانية":["المركز","حلبجة","رانية","دوكان","بنجوين"],"حلبجة":["المركز","سيروان"],"رانية":["المركز","دوكان"],"دوكان":["المركز","السعيدية"]},
-"دهوك":{"دهوك":["المركز","زاخو","العمادية","السمايل","بردرش"],"زاخو":["المركز","سيميل","الفريد"],"العمادية":["المركز","سيروان"]}
-};
+/* التقسيم الإداري الكامل (١٩ محافظة · ١٣٠ قضاء · ٤٢٧ ناحية) صار في ملف
+   مستقل: assets/js/iraq-admin.js — وهذا مجرد اسم محلي للتوافق مع بقية المنطق
+   (jobProvince وبحث الوظائف يعتمدان على مفاتيح المحافظات). */
+var IRAQ=(window.HRC_IRAQ)||{};
 
 /* ═══════════════════════════════════════════════════════════════
    المتغيرات
@@ -2991,7 +3296,11 @@ var G={
     if(target===1){
       var f=$('f-name');
       if(cardData&&cardData.fullName&&!f.value)f.value=cardData.fullName;
-      setTimeout(function(){f.focus();},500);
+      /* لا نفتح الكيبورد تلقائياً على الجوال: كان يفتح فور الوصول للصفحة
+         فتقفز البطاقة والأزرار. على أجهزة المؤشر الدقيق فقط نركّز الحقل. */
+      if(window.matchMedia&&window.matchMedia('(pointer:fine)').matches){
+        setTimeout(function(){try{f.focus({preventScroll:true});}catch(e){f.focus();}},420);
+      }
     }
     if(target===4){
       if(cardData&&cardData.phone&&!$('f-phone').value)$('f-phone').value=cardData.phone;
@@ -3090,13 +3399,17 @@ var G={
         if(/[0-9]/.test(v)){setInvalid(el,'err-name','⚠️','الاسم لا يجب أن يحتوي أرقام — اكتب الاسم بالحروف فقط');return false;}
         setValid(el);clearErr('err-name');
         return true;
-      case 2: /* السكن — محافظة + أقرب نقطة دالة (حُذف القضاء/المنطقة 2026-10-25) */
+      case 2: /* السكن — محافظة + قضاء + ناحية + أقرب نقطة دالة */
         el=$('f-prov');
         if(!el.value){setInvalid(el,'err-addr','📍','اختر المحافظة من القائمة');return false;}
+        el=$('f-qada');
+        if(!el.value){setInvalid(el,'err-addr','🏛️','اختر القضاء التابع لمحافظتك');return false;}
+        el=$('f-nah');
+        if(!el.value){setInvalid(el,'err-addr','🧭','اختر الناحية التابعة لقضائك');return false;}
         el=$('f-lm');
         if(!el.value.trim()){setInvalid(el,'err-addr','📍','اكتب أقرب نقطة دالة — مثال: قرب مجمع الكرعاوي أو مقابل مستشفى الحلة');return false;}
         if(el.value.trim().length<3){setInvalid(el,'err-addr','📍','نقطة الدالة قصيرة — اكتب وصفاً أوضح (3 أحرف على الأقل)');return false;}
-        setValid($('f-prov'));setValid($('f-lm'));
+        setValid($('f-prov'));setValid($('f-qada'));setValid($('f-nah'));setValid($('f-lm'));
         clearErr('err-addr');
         return true;
       case 3: /* المواليد */
@@ -3129,8 +3442,11 @@ var G={
   readProfile:function(){
     if(lockedProfile)return JSON.parse(JSON.stringify(lockedProfile));
     var dob=$('f-yr').value+'-'+pad2($('f-mon').value)+'-'+pad2($('f-day').value);
+    var province=$('f-prov').value,qada=$('f-qada').value,nah=$('f-nah').value;
     return{fullName:$('f-name').value.trim(),phone:$('f-phone').value.trim(),
-      province:$('f-prov').value,
+      province:province,district:qada,subdistrict:nah,
+      /* العنوان الكامل كما تُخزّنه القاعدة: محافظة — قضاء — ناحية — نقطة دالة */
+      address:[province,qada,nah,$('f-lm').value.trim()].filter(Boolean).join(' — '),
       landmark:$('f-lm').value.trim(),dob:dob,gender:selectedGender};
   },
 
@@ -3144,10 +3460,16 @@ var G={
   },
 
   fillProfile:function(p){
-    if(lockedProfile){p=lockedProfile;['f-prov','f-day','f-mon','f-yr'].forEach(function(id){$(id).value='';});selectedGender=p.gender||'';}
+    if(lockedProfile){p=lockedProfile;['f-prov','f-qada','f-nah','f-day','f-mon','f-yr'].forEach(function(id){$(id).value='';});
+    fillQada('','','');selectedGender=p.gender||'';}
     if(!p)return;
     $('f-name').value=p.fullName||'';$('f-phone').value=p.phone||'';$('f-lm').value=p.landmark||'';
-    if(p.province){$('f-prov').value=p.province;$('f-prov').dispatchEvent(new Event('change'));}
+    if(p.province){
+      $('f-prov').value=p.province;
+      fillQada(p.province,p.district||'',p.subdistrict||'');
+      $('f-prov').dispatchEvent(new Event('change'));
+      if(p.district){$('f-qada').value=p.district;fillNahiya(p.province,p.district,p.subdistrict||'');}
+    }
     if(p.gender){selectedGender=p.gender;document.querySelectorAll('.gender-opt').forEach(function(g){g.classList.toggle('selected',g.dataset.v===p.gender);});}
     if(p.dob){var bits=String(p.dob).slice(0,10).split('-');if(bits.length===3){$('f-yr').value=String(Number(bits[0]));$('f-mon').value=String(Number(bits[1]));$('f-day').value=String(Number(bits[2]));}}
     if(lockedProfile)document.querySelectorAll('.step-fields input,.step-fields select').forEach(function(el){el.disabled=true;});
@@ -3907,10 +4229,41 @@ window.G=G;
    تهيئة قوائم المحافظات
    ═══════════════════════════════════════════════════════════════ */
 function initProvince(){
-  /* المحافظات وحدها (حُذف القضاء/المنطقة 2026-10-25): قائمة واحدة من config */
+  /* ١٩ محافظة من التقسيم الإداري الكامل (نفس الترتيب في كل الموقع) */
   var sel=$('f-prov');
-  var list=(window.HRC_CONFIG&&window.HRC_CONFIG.governorates)||Object.keys(IRAQ);
-  list.forEach(function(p){var o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);});
+  if(!sel)return;
+  var list=(window.HRC_IRAQ_ORDER)||(window.HRC_CONFIG&&window.HRC_CONFIG.governorates)||Object.keys(IRAQ);
+  sel.innerHTML='<option value="">اختر المحافظة</option>';
+  list.forEach(function(p){
+    if(!IRAQ[p])return;
+    var o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);
+  });
+}
+
+/* القضاء ثم الناحية: قائمتان متتاليتان لا تسمحان باختيار خاطئ (كل ناحية
+   داخل قضائها فقط)، وهما معطّلتان حتى يُختار ما قبلهما. */
+function fillQada(province,qada,sub){
+  var sel=$('f-qada');
+  if(!sel)return;
+  var districts=(IRAQ[province]&&Object.keys(IRAQ[province]))||[];
+  sel.innerHTML='<option value="">'+(province?'اختر القضاء':'اختر المحافظة أولاً')+'</option>';
+  districts.forEach(function(d){
+    var o=document.createElement('option');o.value=d;o.textContent=d.replace(/^قضاء\s+/,'');sel.appendChild(o);
+  });
+  sel.disabled=!province;
+  if(qada&&districts.indexOf(qada)>=0)sel.value=qada;
+  fillNahiya(province,sel.value,sub);
+}
+function fillNahiya(province,qada,sub){
+  var sel=$('f-nah');
+  if(!sel)return;
+  var list=(province&&qada&&IRAQ[province]&&IRAQ[province][qada])||[];
+  sel.innerHTML='<option value="">'+(qada?'اختر الناحية':'اختر القضاء أولاً')+'</option>';
+  list.forEach(function(n){
+    var o=document.createElement('option');o.value=n;o.textContent=n.replace(/^ناحية\s+/,'');sel.appendChild(o);
+  });
+  sel.disabled=!list.length;
+  if(sub&&list.indexOf(sub)>=0)sel.value=sub;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -4145,14 +4498,19 @@ function startApp(){
       var eid=errMap[id];if(eid)$(eid).innerHTML='';
     });
   });
-  ['f-prov','f-day','f-mon','f-yr'].forEach(function(id){
+  ['f-prov','f-qada','f-nah','f-day','f-mon','f-yr'].forEach(function(id){
     var el=$(id);if(!el)return;
     el.addEventListener('change',function(){
       el.classList.remove('invalid');
-      var errMap={'f-prov':'err-addr','f-day':'err-dob','f-mon':'err-dob','f-yr':'err-dob'};
+      var errMap={'f-prov':'err-addr','f-qada':'err-addr','f-nah':'err-addr','f-day':'err-dob','f-mon':'err-dob','f-yr':'err-dob'};
       var eid=errMap[id];if(eid)$(eid).innerHTML='';
     });
   });
+  /* محافظة ← قضاء ← ناحية: كل اختيار يعيد بناء ما بعده */
+  var provSel=$('f-prov');
+  if(provSel)provSel.addEventListener('change',function(){fillQada(provSel.value,'','');});
+  var qadaSel=$('f-qada');
+  if(qadaSel)qadaSel.addEventListener('change',function(){fillNahiya($('f-prov').value,qadaSel.value,'');});
   tryLoad();
   startWatchdog();
 }

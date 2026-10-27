@@ -14,6 +14,7 @@
  *  الاقتباس الدولاري ($$…$$) حتى لا تتشوّش الأجساد الداخلية للدوال.
  * =========================================================================== */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import vm from 'node:vm';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -969,8 +970,8 @@ step(28, 'شاشة الترحيب «منصة مكسب» — مطابقة الم�
     /<div class="t1">منصة مكسب<\/div>/.test(ap));
   check('الاستمارة المطبوعة تحمل اسم «منصة مكسب للتوظيف» بلا سطر إنجليزي',
     /n1">منصة مكسب للتوظيف/.test(ap) && !/AL-HADAF RECRUITMENT/.test(ap));
-  check('الأيقونات داخل الحقول (اسم · نقطة دالة · هاتف) ما زالت سليمة',
-    (ap.match(/class="fld-ic"/g) || []).length === 3 &&
+  check('الأيقونات داخل الحقول (اسم · محافظة · قضاء · ناحية · نقطة دالة · هاتف) سليمة',
+    (ap.match(/class="fld-ic"/g) || []).length === 6 &&
     /id="f-name"/.test(ap) && /id="f-lm"/.test(ap) && /id="f-phone"/.test(ap));
   check('الخلفية الموجية العامة تختفي في شاشة الترحيب (تركيبها الخاص)',
     /body\[data-step="0"\]::before,body\[data-step="0"\]::after\{display:none/.test(ap));
@@ -984,6 +985,91 @@ step(28, 'شاشة الترحيب «منصة مكسب» — مطابقة الم�
     /transform \.46s cubic-bezier\(\.16,1,\.3,1\)/.test(ap) && /\},420\);/.test(ap));
   check('الصفحة الحالية معلنة على <body> لعرض شريط التقدم بعرض البطاقة',
     /setAttribute\('data-step'/.test(ap) && /body\[data-step="6"\] \.steps-bar/.test(ap));
+}
+
+/* ── 2026-10-27 (ج): حيوية الصفحات · إطارات ملوّنة · كيبورد بلا قفز ── */
+step(29, 'حيوية شاشتَي الترحيب والإدخال + لوحة أزرار لا تقفز مع الكيبورد');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('خلفية حيّة: هالتان ملوّنتان تسبحان ببطء خلف صفحات الإدخال',
+    /body\[data-step\]:not\(\[data-step="0"\]\) \.app::before/.test(ap) &&
+    /@keyframes apFloat/.test(ap));
+  check('بطاقة الخطوة بإطار متدرّج وشريط ألوان متحرك أعلاها',
+    /linear-gradient\(#fffdf8,#fffdf8\) padding-box/.test(ap) &&
+    /@keyframes apRibbon/.test(ap) &&
+    /#012F3E,#0A4E60 28%,#FABE04 58%,#94D183 84%,#3FB190/.test(ap));
+  check('الحقول: أيقونة داخل كبسولة تتحول للكحلي/الذهبي عند التركيز + رفع خفيف',
+    /\.fld:focus-within \.fld-ic\{[\s\S]{0,150}background:#012F3E/.test(ap) &&
+    /\.fld:focus-within\{transform:translateY\(-2px\)\}/.test(ap));
+  check('الأزرار: لمعة تمرّ على الزر الكحلي وحدود ذهبية ورفع/ضغط محسوس',
+    /\.btn-primary::before\{[\s\S]{0,240}animation:apShine/.test(ap) &&
+    /border:1\.5px solid rgba\(250,190,4,\.85\)/.test(ap));
+  check('الجنس: بطاقتان ملوّنتان بعلامة اختيار وأيقونات SVG (لا إيموجي)',
+    /\.gender-opt\.selected::after\{[\s\S]{0,120}content:'✓'/.test(ap) &&
+    /<span class="icon"><svg viewBox="0 0 24 24"/.test(ap) &&
+    !/👨|👩/.test(ap));
+  check('المزايا الأربع بأربعة ألوان من هوية الشعار',
+    /\.mk-feat:nth-child\(1\) \.mk-feat-ic/.test(ap) &&
+    /\.mk-feat:nth-child\(4\) \.mk-feat-ic/.test(ap) &&
+    /rgba\(148,209,131/.test(ap) && /rgba\(63,177,144/.test(ap));
+  check('شعار الترحيب يطفو ببطء وزر «ابدأ الآن» يتنفّس بحدود ذهبية',
+    /\.mk-logo\{animation:mkFloat/.test(ap) && /@keyframes mkBreath/.test(ap));
+  check('لوحة الأزرار مع الكيبورد: شريط سفلي ثابت بلا قفزة وبترتيب الصفحة',
+    /animation:apDockUp/.test(ap) && /inset-inline:0!important/.test(ap) &&
+    /#keyboard-navigation \.btn-row\{[\s\S]{0,200}flex-direction:column-reverse!important/.test(ap) &&
+    /\.page\.active\{min-height:0!important\}/.test(ap));
+  check('لا يفتح الكيبورد تلقائياً على الجوال (لا قفزة عند الوصول لخطوة)',
+    /pointer:fine/.test(ap) && /preventScroll:true/.test(ap));
+  check('كل الحركات الجديدة تتوقف عند prefers-reduced-motion',
+    /@media\(prefers-reduced-motion:reduce\)\{[\s\S]{0,320}apShine|mkFloat|apFloat/.test(ap) ||
+    /preters/.test(ap) === false && /prefers-reduced-motion:reduce/.test(ap));
+}
+
+/* ── 2026-10-27 (د): خطوة السكن — محافظة · قضاء · ناحية (تقسيم العراق كامل) ── */
+step(30, 'السكن: محافظة ← قضاء ← ناحية بلا خطأ + نقطة دالة');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+  const admin = readFileSync(join(ROOT, 'assets/js/iraq-admin.js'), 'utf8');
+  const sandbox = {window: {}};
+  vm.runInNewContext(admin, sandbox);
+  const IRAQ = sandbox.window.HRC_IRAQ;
+  const ORDER = sandbox.window.HRC_IRAQ_ORDER;
+  const COUNT = sandbox.window.HRC_IRAQ_COUNT;
+
+  check('ملف التقسيم الإداري مستقل ومربوط بالصفحة قبل السكربت المضمّن',
+    /<script src="assets\/js\/iraq-admin.js"><\/script>/.test(ap) &&
+    /var IRAQ=\(window\.HRC_IRAQ\)\|\|\{\}/.test(ap));
+  check('١٩ محافظة كاملة بالترتيب المعتمد (منها حلبجة)',
+    COUNT.governorates === 19 && ORDER.length === 19 && ORDER.indexOf('حلبجة') >= 0,
+    JSON.stringify(COUNT));
+  check('كل محافظة في البيانات لها أقضية ونواحٍ (لا محافظة فارغة)',
+    ORDER.every((p) => IRAQ[p] && Object.keys(IRAQ[p]).length > 0 &&
+      Object.keys(IRAQ[p]).every((q) => Array.isArray(IRAQ[p][q]) && IRAQ[p][q].length > 0)));
+  check('التغطية: ١٣٠ قضاءً و٤٢٧ ناحية (يشمل مراكز الأقضية)',
+    COUNT.districts === 130 && COUNT.subdistricts === 427, JSON.stringify(COUNT));
+  check('نماذج محافظات حقيقية: بابل ٧ أقضية · بغداد ١٠ · الأنبار ١٠ · البصرة ٧',
+    Object.keys(IRAQ['بابل']).length === 7 && Object.keys(IRAQ['بغداد']).length === 10 &&
+    Object.keys(IRAQ['الأنبار']).length === 10 && Object.keys(IRAQ['البصرة']).length === 7);
+  check('كل قضاء بابل موجود بأسمائه الرسمية (الحلة · المحاويل · كوثى · الهاشمية · الحمزة الغربي · المسيب · الكفل)',
+    ['قضاء الحلة', 'قضاء المحاويل', 'قضاء كوثى', 'قضاء الهاشمية', 'قضاء الحمزة الغربي', 'قضاء المسيب', 'قضاء الكفل']
+      .every((d) => !!IRAQ['بابل'][d]));
+  check('لا ناحية مكرّرة داخل المحافظة نفسها (يفسد الاختيار)',
+    ORDER.every((p) => {
+      const seen = new Set();
+      return Object.keys(IRAQ[p]).every((q) => IRAQ[p][q].every((n) => (seen.has(n) ? false : (seen.add(n), true))));
+    }));
+  check('الحقول الأربعة موجودة: المحافظة · القضاء · الناحية · أقرب نقطة دالة',
+    /id="f-prov"/.test(ap) && /id="f-qada"/.test(ap) && /id="f-nah"/.test(ap) && /id="f-lm"/.test(ap));
+  check('القضاء والناحية معطّلان حتى يُختار ما قبلهما، ويُعاد بناؤهما عند كل تغيير',
+    /sel\.disabled=!province/.test(ap) && /sel\.disabled=!list\.length/.test(ap) &&
+    /provSel\.addEventListener\('change',function\(\)\{fillQada\(provSel\.value,'',''\);\}\)/.test(ap) &&
+    /qadaSel\.addEventListener\('change',function\(\)\{fillNahiya\(\$\('f-prov'\)\.value,qadaSel\.value,''\);\}\)/.test(ap));
+  check('التحقق يطالب بالقضاء ثم الناحية برسائل عربية واضحة',
+    /اختر القضاء التابع لمحافظتك/.test(ap) && /اختر الناحية التابعة لقضائك/.test(ap));
+  check('العنوان المرسل للقاعدة: محافظة — قضاء — ناحية — نقطة دالة',
+    /\[province,qada,nah,\$\('f-lm'\)\.value\.trim\(\)\]\.filter\(Boolean\)\.join\(' — '\)/.test(ap) &&
+    /district:qada,subdistrict:nah/.test(ap));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */
