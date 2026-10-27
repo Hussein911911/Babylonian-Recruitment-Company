@@ -1406,6 +1406,322 @@ body{
   /* يبقى التعتيم والغباش لأنهما وظيفة بصرية لا حركة */
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2026-10-27 — الهوية الفاتحة (كريمي + كحلي + ذهب) لكل صفحات التقديم
+   ---------------------------------------------------------------------------
+   تُطبَّق على الشاشة فقط (لا تمسّ عقد الطباعة A4): خلفية كريمية، بطاقة بيضاء،
+   حقول بلون أزرق فاتح، أزرار كحلية بحدود ذهبية، وموجات زخرفية أعلى/أسفل.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media screen {
+  :root{
+    --ap-cream:#fbf7ec; --ap-cream-2:#f6efdd;
+    --ap-navy:#12305c; --ap-navy-2:#0d2247; --ap-navy-3:#1b4480;
+    --ap-gold:#c8a24a; --ap-gold-2:#e3c479; --ap-gold-soft:#efe0bd;
+    --ap-ink:#16294a; --ap-muted:#6a7891;
+    --ap-field:#e9eefb; --ap-field-line:#ccd8ee;
+    --ap-card:#fffdf8; --ap-line:#e8ddc4;
+  }
+
+  /* ── الخلفية الكريمية + موجات زخرفية ── */
+  body{
+    background-color:#fbf7ec !important;
+    background-image:
+      radial-gradient(1000px 380px at 12% -6%, rgba(18,48,92,.10), transparent 70%),
+      radial-gradient(820px 320px at 92% 4%, rgba(200,162,74,.14), transparent 72%),
+      linear-gradient(180deg,#fffdf7 0%,#fbf7ec 45%,#f7f0df 100%) !important;
+    color:var(--ap-ink) !important;
+  }
+  body::before, body::after{
+    content:''; position:fixed; inset-inline:0; z-index:0; pointer-events:none;
+    background-repeat:no-repeat; background-size:100% 100%; opacity:.9;
+  }
+  body::before{
+    inset-block-start:0; height:190px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 190' preserveAspectRatio='none'><path d='M0 0h1200v96c-150 42-330 62-600 62S150 138 0 96z' fill='%2312305c'/><path d='M0 96c150 42 330 62 600 62s450-20 600-62v14c-150 44-330 64-600 64S150 154 0 110z' fill='%23c8a24a' opacity='.55'/></svg>");
+  }
+  body::after{
+    inset-block-end:0; height:150px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 150' preserveAspectRatio='none'><path d='M0 150h1200v-52c-150-40-330-58-600-58S150 58 0 98z' fill='%2312305c'/><path d='M0 98c150-40 330-58 600-58s450 18 600 58v-12c-150-42-330-60-600-60S150 44 0 86z' fill='%23c8a24a' opacity='.5'/></svg>");
+  }
+  .app{position:relative; z-index:1}
+
+  /* ── الشريط العلوي: كحلي بحدود ذهبية ── */
+  .topbar{
+    background:linear-gradient(120deg,var(--ap-navy-2),var(--ap-navy) 55%,var(--ap-navy-3));
+    border:1px solid rgba(200,162,74,.45); border-radius:18px;
+    padding:14px 20px !important; margin-bottom:20px !important;
+    box-shadow:0 12px 30px rgba(13,34,71,.22);
+  }
+  .topbar svg{color:var(--ap-gold-2) !important}
+  .topbar .t1{color:#fff !important}
+  .topbar .t2{color:rgba(255,255,255,.62) !important}
+
+  /* ── شريط التقدم: بطاقة فاتحة + نسبة داخل كبسولة ── */
+  .steps-bar{
+    padding:14px 18px !important; border:1px solid var(--ap-line) !important;
+    border-radius:16px !important; background:#fffdf8 !important;
+    box-shadow:0 8px 22px rgba(18,48,92,.07); margin-bottom:20px !important;
+  }
+  .steps-track{gap:9px; justify-content:flex-start}
+  .step-dot{flex:0 0 26px; height:8px; border-radius:99px; background:#dfe6f3 !important; box-shadow:none !important}
+  .step-dot.done{background:linear-gradient(90deg,var(--ap-gold),var(--ap-gold-2)) !important}
+  .step-dot.active{flex:0 0 44px; background:linear-gradient(90deg,var(--ap-gold),var(--ap-gold-2)) !important; box-shadow:0 0 0 3px rgba(200,162,74,.18) !important}
+  .step-label{color:var(--ap-muted) !important; font-weight:800}
+  .step-label b{color:var(--ap-navy) !important}
+  .step-label .pct{
+    display:inline-block; margin-inline-start:6px; padding:3px 10px; border-radius:99px;
+    background:var(--ap-field); color:var(--ap-navy) !important; font-weight:900;
+    border:1px solid var(--ap-field-line); font-size:.92em;
+  }
+
+  /* ── البطاقة البيضاء لكل خطوة ── */
+  .profile-card{
+    background:linear-gradient(160deg,#fffdf8,#fdf9ef) !important;
+    border:1px solid var(--ap-line) !important; border-radius:22px !important;
+    box-shadow:0 18px 50px rgba(18,48,92,.10) !important;
+  }
+  .step-intro{border-inline-end:1px solid var(--ap-line) !important}
+  .step-eyebrow{
+    display:inline-block; padding:6px 13px; border-radius:99px;
+    background:var(--ap-field); border:1px solid var(--ap-field-line);
+    color:var(--ap-navy) !important; font-weight:900 !important; letter-spacing:.02em;
+  }
+  .step-intro h1, .step-intro h2{
+    color:var(--ap-navy) !important; position:relative;
+    padding-inline-start:16px;
+  }
+  .step-intro h1::before, .step-intro h2::before{
+    content:''; position:absolute; inset-inline-start:0; inset-block:0.32em;
+    width:5px; border-radius:99px;
+    background:linear-gradient(180deg,var(--ap-gold),var(--ap-gold-2));
+  }
+  .step-intro p{color:var(--ap-muted) !important}
+  .step-assurance{
+    color:#8a6d2c !important; border-top:1px solid var(--ap-line) !important;
+  }
+  .section-title{color:var(--ap-navy) !important}
+  .section-title::before{background:linear-gradient(180deg,var(--ap-gold),var(--ap-gold-2)) !important}
+
+  /* ── الحقول: أزرق فاتح + نص كحلي + حدود ذهبية عند التركيز ── */
+  .form-group label{color:var(--ap-navy) !important}
+  .form-group label .req{color:#c0392b !important}
+  .form-group input, .form-group select{
+    background:var(--ap-field) !important; border:1.5px solid var(--ap-field-line) !important;
+    color:var(--ap-ink) !important; border-radius:12px !important;
+  }
+  .form-group input::placeholder{color:#93a3bd !important}
+  .form-group input:focus, .form-group select:focus{
+    border-color:var(--ap-gold) !important; background:#f3f6ff !important;
+    box-shadow:0 0 0 4px rgba(200,162,74,.16) !important;
+  }
+  .form-group select option{background:#fff !important; color:var(--ap-ink) !important}
+  .form-group input.valid, .form-group select.valid{border-color:#1f8f4e !important}
+  .form-group input.invalid, .form-group select.invalid{border-color:#c0392b !important}
+
+  /* ── الأزرار: كحلي أساسي بحدود ذهبية، والثانوي أبيض ── */
+  .btn{border-radius:13px !important}
+  .btn-primary{
+    background:linear-gradient(135deg,var(--ap-navy),var(--ap-navy-3)) !important;
+    color:#fff !important; border:1.5px solid rgba(200,162,74,.55) !important;
+    box-shadow:0 10px 24px rgba(13,34,71,.28) !important;
+  }
+  .btn-primary:hover{background:linear-gradient(135deg,var(--ap-navy-3),var(--ap-navy)) !important}
+  .btn-outline{
+    background:#fffdf8 !important; border:1.5px solid var(--ap-navy) !important;
+    color:var(--ap-navy) !important; box-shadow:0 4px 14px rgba(18,48,92,.08) !important;
+  }
+  .btn-outline:hover{background:var(--ap-field) !important}
+  .btn:focus-visible{outline:3px solid var(--ap-gold) !important; outline-offset:3px}
+
+  /* ── الترحيب ── */
+  .welcome{
+    background:linear-gradient(150deg,#fffdf8,#fbf4e4) !important;
+    border:1px solid var(--ap-line) !important; border-radius:26px !important;
+    box-shadow:0 20px 55px rgba(18,48,92,.12) !important;
+  }
+  .welcome .emblem{color:var(--ap-gold) !important; filter:drop-shadow(0 8px 20px rgba(200,162,74,.28))}
+  .welcome h1{color:var(--ap-navy) !important}
+  .welcome .sub{color:var(--ap-muted) !important}
+  .welcome .gold-line{background:linear-gradient(90deg,transparent,var(--ap-gold) 50%,transparent) !important}
+  #welcome-status{color:#8a6d2c !important}
+  .btn-card-details{
+    background:#fffdf8 !important; border:1.5px solid var(--ap-field-line) !important;
+    color:var(--ap-navy) !important;
+  }
+  .btn-card-details:hover{background:var(--ap-field) !important; border-color:var(--ap-gold) !important}
+
+  /* ── فلاتر الوظائف وبطاقاتها ── */
+  .job-filters{
+    background:#fffdf8 !important; border:1px solid var(--ap-line) !important;
+    box-shadow:0 8px 24px rgba(18,48,92,.07);
+  }
+  .jf-top b{color:var(--ap-navy) !important}
+  .jf-top p{color:var(--ap-muted) !important}
+  .job-filters label{color:var(--ap-navy) !important}
+  .job-filters input:not([type=checkbox]), .job-filters select{
+    background:var(--ap-field) !important; border:1px solid var(--ap-field-line) !important;
+    color:var(--ap-ink) !important;
+  }
+  .job-filters input::placeholder{color:#93a3bd !important}
+  .job-filters option{background:#fff !important; color:var(--ap-ink) !important}
+  .job-filters #jobs-count{color:var(--ap-muted) !important; border-top-color:var(--ap-line) !important}
+  .jf-note, .jf-advanced summary{color:var(--ap-muted) !important}
+  .jf-advanced{border-top-color:var(--ap-line) !important}
+  .job-card{
+    background:#fffdf8 !important; border:1px solid var(--ap-line) !important;
+    box-shadow:0 10px 26px rgba(18,48,92,.08) !important;
+  }
+  .job-card.selected{border-color:var(--ap-gold) !important; box-shadow:0 0 0 2px rgba(200,162,74,.35),0 14px 30px rgba(18,48,92,.12) !important}
+  .job-head .title{color:var(--ap-navy) !important}
+  .job-item .k{color:var(--ap-muted) !important}
+  .job-item .v{color:var(--ap-ink) !important}
+  .chances-bar{
+    background:var(--ap-field) !important; border:1px solid var(--ap-field-line) !important;
+    color:var(--ap-navy) !important; border-radius:14px;
+  }
+  .jobs-hint{color:var(--ap-muted) !important; background:#fffdf8 !important; border-radius:14px}
+  .job-remove{background:#fff !important; color:var(--ap-navy) !important; border-color:var(--ap-field-line) !important}
+
+  /* ── المراجعة والنتيجة ── */
+  .rv-card{background:#fffdf8 !important; border:1px solid var(--ap-line) !important; box-shadow:0 16px 44px rgba(18,48,92,.10) !important}
+  .rv-t{color:var(--ap-navy) !important}
+  .rv-s, .rv-k{color:var(--ap-muted) !important}
+  .rv-v{color:var(--ap-ink) !important}
+  .rv-head, .rv-sub{color:var(--ap-navy) !important}
+  .rv-row{border-color:var(--ap-line) !important}
+  .rv-chip{background:var(--ap-field) !important; color:var(--ap-navy) !important; border-color:var(--ap-field-line) !important}
+  .rv-note{background:var(--ap-cream-2) !important; color:#7a5f21 !important}
+  .rv-edit{background:#fff !important; color:var(--ap-navy) !important; border-color:var(--ap-field-line) !important}
+  .ok-title{color:var(--ap-navy) !important}
+  .ok-sub{color:var(--ap-muted) !important}
+
+  /* ── الجنس والهاتف والتنبيهات والتحميل والتذييل ── */
+  .gender-opt{
+    background:#fffdf8 !important; border:1.5px solid var(--ap-field-line) !important;
+    color:var(--ap-navy) !important;
+  }
+  .gender-opt.selected, .gender-opt[aria-pressed=true]{
+    background:var(--ap-field) !important; border-color:var(--ap-gold) !important;
+    box-shadow:0 0 0 3px rgba(200,162,74,.18) !important;
+  }
+  .phone-meter{color:var(--ap-muted) !important}
+  .phone-meter .pc-num{color:var(--ap-navy) !important}
+  .alert{background:#fff7ea !important; border:1px solid var(--ap-gold-soft) !important; color:#7a5f21 !important}
+  .loading p{color:var(--ap-muted) !important}
+  #error-msg{color:#b02a2a !important}
+  .footer{color:#8a94a6 !important}
+  .card-sheet-box{background:#fffdf8 !important; border:1px solid var(--ap-line) !important; color:var(--ap-ink) !important}
+  .card-sheet-head{background:linear-gradient(120deg,var(--ap-navy-2),var(--ap-navy)) !important; color:#fff !important; border-radius:18px 18px 0 0}
+
+  @media(max-width:760px){
+    body::before{height:130px}
+    body::after{height:100px}
+    .topbar{border-radius:14px; padding:12px 14px !important}
+    .step-intro{border-inline-end:0 !important; border-bottom:1px solid var(--ap-line) !important}
+  }
+}
+
+  /* ── تنبيه «البيانات مثبتة» (كان تدرّجاً داكناً) ── */
+  .identity-notice, .profile-locked .identity-notice{
+    background:linear-gradient(110deg,#fdf3d8,#fff9ec) !important;
+    border:1px solid var(--ap-gold-soft) !important;
+    border-inline-start:4px solid var(--ap-gold) !important;
+    color:#7a5f21 !important; border-radius:14px !important;
+  }
+  .identity-notice b, .identity-notice strong{color:#6b4f14 !important}
+
+  /* ── بطاقات الوظائف: نصوص واضحة على الأبيض ── */
+  .job-card .job-head .title{color:var(--ap-navy) !important}
+  .job-category, .job-category span{color:#8a6d2c !important}
+  .job-head .badge{
+    background:var(--ap-field) !important; color:var(--ap-navy) !important;
+    border:1px solid var(--ap-field-line) !important; border-radius:999px !important;
+    padding:4px 12px !important; font-weight:900 !important;
+  }
+  .job-head .badge.ok{background:#e8f6ec !important; color:#1a6b3f !important; border-color:#bfe0cb !important}
+  .job-head .badge.warn{background:#fdf3d8 !important; color:#7a5f21 !important; border-color:var(--ap-gold-soft) !important}
+  .job-head .badge.muted{background:#eef1f7 !important; color:#5a6880 !important; border-color:#dbe2ee !important}
+  .job-item .k{color:var(--ap-muted) !important}
+  .job-item .v{color:var(--ap-ink) !important; font-weight:800}
+  .job-details{color:var(--ap-muted) !important}
+  .job-actions .btn-outline{background:#fff !important}
+  .job-actions .btn-primary{
+    background:linear-gradient(135deg,var(--ap-navy),var(--ap-navy-3)) !important;
+    color:#fff !important; border:1.5px solid rgba(200,162,74,.55) !important;
+  }
+  .job-remove{color:#8a3a2c !important; border-color:#eccfc9 !important}
+
+  /* ── شريط «متبقي لك» ── */
+  .chances-bar{background:var(--ap-field) !important; border:1px solid var(--ap-field-line) !important; color:var(--ap-navy) !important}
+  .chances-bar b{color:var(--ap-navy) !important}
+
+  /* ── زرّ «تصفير/Filters» ── */
+  .job-filters .btn-outline, .jf-bottom .btn-outline, #jf-reset{
+    background:#fff !important; border:1.5px solid var(--ap-navy) !important; color:var(--ap-navy) !important;
+  }
+  .job-filters #jf-error{color:#b02a2a !important}
+
+  /* ── الجنس / الهاتف / بطاقة المراجعة ── */
+  .gender-opt .icon{color:var(--ap-gold) !important}
+  .phone-meter .pc-num{color:var(--ap-navy) !important}
+  .phone-meter .pc-state{color:var(--ap-muted) !important}
+  .rv-chip{background:var(--ap-field) !important; color:var(--ap-navy) !important}
+  .ok-title, .ok-sub{color:var(--ap-navy) !important}
+
+
+  /* ── محتوى كروت الوظائف: نصوص كحلية على أبيض (كانت بيضاء فوق خلفية داكنة) ── */
+  #jobs-list .title, .job-head .title{color:var(--ap-navy) !important}
+  .job-tags .job-code{
+    color:#0f6d63 !important; background:#e6f6f3 !important;
+    border:1px solid #b8e2da !important; border-radius:8px !important;
+  }
+  .job-tags .job-cat{
+    color:#8a6d2c !important; background:#fdf3d8 !important;
+    border:1px solid var(--ap-gold-soft) !important; border-radius:8px !important;
+  }
+  .job-state.is-open{color:#1a6b3f !important; background:#e8f6ec !important; border:1px solid #bfe0cb !important}
+  .job-state.is-picked{color:#1c1405 !important; background:linear-gradient(140deg,var(--ap-gold),var(--ap-gold-2)) !important; border-color:transparent !important}
+  .job-state.is-done{color:#4a5568 !important; background:#eef1f7 !important; border:1px solid #dbe2ee !important}
+  #jobs-list .jm, .job-meta .jm{
+    background:#f4f7fd !important; border:1px solid #e2e9f6 !important; color:var(--ap-ink) !important;
+  }
+  .jm .k, .jm .v, .jm span, .jm b{color:var(--ap-ink) !important}
+  .jm svg, .jm .ic{color:var(--ap-gold) !important}
+  #jobs-list .job-body{background:transparent !important}
+  .job-pay, .job-salary{color:var(--ap-navy) !important}
+  .job-pay b, .job-salary b{color:var(--ap-navy) !important}
+  #jobs-list .job-details, #jobs-list .jobs-hint{color:var(--ap-muted) !important}
+  #jobs-list .job-actions .btn-outline{background:#fff !important; border-color:var(--ap-navy) !important; color:var(--ap-navy) !important}
+  #jobs-list .job-actions .btn-primary{
+    background:linear-gradient(135deg,var(--ap-navy),var(--ap-navy-3)) !important;
+    color:#fff !important; border:1.5px solid rgba(200,162,74,.5) !important;
+  }
+  .pick-mark{background:var(--ap-gold) !important; color:#1c1405 !important; border-color:#fff !important}
+  .job-card.selected{border-color:var(--ap-gold) !important; box-shadow:0 0 0 2px rgba(200,162,74,.35),0 16px 34px rgba(18,48,92,.14) !important}
+  /* بطاقة الوظيفة: إطار داخلي فاتح */
+  #jobs-list .job-card::before{opacity:0 !important}
+  #jobs-list .job-card{background:#fffdf8 !important}
+
+
+  /* ── سطر الأجر داخل بطاقة الوظيفة + منطقة الأزرار ── */
+  #jobs-list .job-pay, #jobs-list .job-pay-row, #jobs-list .job-salary{
+    background:#fdf3d8 !important; border:1px solid var(--ap-gold-soft) !important;
+    color:#7a5f21 !important; border-radius:12px !important;
+  }
+  #jobs-list .job-pay *, #jobs-list .job-pay-row *, #jobs-list .job-salary *{
+    color:#7a5f21 !important;
+  }
+  #jobs-list .job-pay b, #jobs-list .job-pay-row b, #jobs-list .job-salary b{
+    color:#6b4f14 !important; font-weight:900 !important;
+  }
+  #jobs-list .job-actions{
+    background:#f6f2e7 !important; border-top:1px solid var(--ap-line) !important;
+    padding:14px 16px !important; margin:0 !important;
+  }
+  #jobs-list .job-actions .btn{min-height:52px}
+  #jobs-list .job-actions .btn-outline{border-width:1.5px !important}
+
 </style>
 </head>
 <body>

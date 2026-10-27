@@ -873,6 +873,34 @@ step(26, 'السجل — كل التسميات عربية بلا كلمات أج
     /LATIN_ONLY/.test(djs) && /\? 'سجل'/.test(djs) && /\? 'عملية'/.test(djs));
 }
 
+/* ── 2026-10-27: هوية فاتحة كريمية لصفحات التقديم (apply.html) ── */
+step(27, 'صفحات التقديم — هوية فاتحة (كريمي/كحلي/ذهب) بلا مساس بالطباعة');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('لوحة الهوية الفاتحة معرّفة (كريمي · كحلي · ذهب)',
+    /--ap-cream:#fbf7ec/.test(ap) && /--ap-navy:#12305c/.test(ap) && /--ap-gold:#c8a24a/.test(ap));
+  check('الخلفية كريمية فاتحة بنمط موجات زخرفية أعلى وأسفل',
+    /background-color:#fbf7ec !important/.test(ap) &&
+    /body::before/.test(ap) && /body::after/.test(ap) &&
+    /preserveAspectRatio='none'/.test(ap));
+  check('البطاقة بيضاء والحقول بلون أزرق فاتح والنص كحلي',
+    /\.profile-card\{[\s\S]{0,200}#fffdf8/.test(ap) &&
+    /--ap-field:#e9eefb/.test(ap) && /--ap-ink:#16294a/.test(ap));
+  check('الأزرار: أساسي كحلي بحدود ذهبية وثانوي أبيض بحدود كحلية',
+    /\.btn-primary\{\s*\n?\s*background:linear-gradient\(135deg,var\(--ap-navy\)/.test(ap) &&
+    /\.btn-primary\{[\s\S]{0,300}rgba\(200,162,74,\.55\)/.test(ap) &&
+    /\.btn-outline\{[\s\S]{0,200}var\(--ap-navy\)/.test(ap));
+  check('كروت الوظائف فاتحة بنصوص كحلية (لا نص أبيض على أبيض)',
+    /#jobs-list \.title[\s\S]{0,120}--ap-navy/.test(ap) &&
+    /\.job-tags \.job-code\{[\s\S]{0,160}#0f6d63/.test(ap));
+  check('شريط التقدم يعرض النسبة داخل كبسولة فاتحة',
+    /\.step-label \.pct\{[\s\S]{0,260}--ap-field/.test(ap));
+  check('الهوية داخل @media screen فقط (الطباعة A4 لم تتغيّر)',
+    ap.indexOf('@media screen {\n  :root{\n    --ap-cream') > 0 &&
+    (ap.match(/@media print/g) || []).length >= 3);
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');
