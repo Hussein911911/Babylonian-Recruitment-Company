@@ -2740,8 +2740,10 @@ body{
     background:var(--ui-cream-2)!important;border:1px solid var(--ui-line)!important;
     color:#6f5c2c!important;font-size:12px!important;font-weight:800!important;
     border-radius:999px!important;padding:5px 12px!important;
-    display:inline-flex!important;align-items:center;gap:6px;
+    display:inline-flex!important;align-items:center!important;gap:6px!important;
+    flex:0 0 auto!important;white-space:nowrap!important;line-height:1.6!important;
   }
+  .rv-chips{display:flex!important;flex-wrap:wrap!important;gap:7px!important;align-items:center!important}
   .rv-note{
     background:#fff7e2!important;border:1px solid #f0dfae!important;
     color:#8a6a10!important;border-radius:14px!important;font-size:12.5px!important;line-height:1.95;
@@ -2892,6 +2894,325 @@ body{
   /* زر الرجوع: أبيض بحدّ دافئ */
   .btn-outline{border-color:#e2d8bf!important;color:#12404f!important}
   .btn-outline:hover{border-color:#FABE04!important;background:#fffdf6!important}
+}
+/* ═══════════════════════════════════════════════════════════════════════════
+   2026-10-27 · واجهة كحلية لصفحات البيانات والقائمة (طلب المالك)
+   ─ الواجهة (الخلفية · شريط التقدم · لوحة الفلاتر) كحلية.
+   ─ التفاصيل كما هي: بطاقة بيضاء نظيفة + حقول بيضاء (لا كريمي).
+   ─ كل وظيفة داخل كارت أبيض، والمراجعة فيها كارت كحلي للوظائف المختارة.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media screen{
+
+  /* ── 1) اللوحة الكحلية لصفحات البيانات والوظائف والمراجعة ───────────── */
+  body[data-step="1"],body[data-step="2"],body[data-step="3"],
+  body[data-step="4"],body[data-step="5"],body[data-step="6"],body[data-step="7"]{
+    background-color:#0a2c3a!important;
+    background-image:
+      radial-gradient(900px 380px at 8% -8%,rgba(250,190,4,.16),transparent 70%),
+      radial-gradient(760px 360px at 98% 0%,rgba(63,177,144,.10),transparent 72%),
+      linear-gradient(180deg,#123c4d 0%,#0b3040 46%,#06202b 100%)!important;
+    color:#eaf3f6!important;
+  }
+  /* موجات الصفحة القديمة (كريمية) تُستبدل بشعرة ذهبية رقيقة أعلى وأسفل */
+  body[data-step="1"]::before,body[data-step="2"]::before,body[data-step="3"]::before,
+  body[data-step="4"]::before,body[data-step="5"]::before,body[data-step="6"]::before,
+  body[data-step="7"]::before{
+    display:block!important;height:4px!important;
+    background-image:linear-gradient(90deg,transparent,rgba(250,190,4,.85) 22%,rgba(255,255,255,.55) 50%,rgba(250,190,4,.85) 78%,transparent)!important;
+    animation:none!important;
+  }
+  body[data-step="1"]::after,body[data-step="2"]::after,body[data-step="3"]::after,
+  body[data-step="4"]::after,body[data-step="5"]::after,body[data-step="6"]::after,
+  body[data-step="7"]::after{
+    display:block!important;height:clamp(70px,12vw,110px)!important;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'><path d='M0 120V64c205-44 430-64 600-64s395 20 600 64v56z' fill='%23072229'/><path d='M0 64c205-44 430-64 600-64s395 20 600 64' fill='none' stroke='%23c8a24a' stroke-width='2' opacity='.65'/></svg>")!important;
+    animation:none!important;
+  }
+  body[data-step="1"] .app::before,body[data-step="2"] .app::before,body[data-step="3"] .app::before,
+  body[data-step="4"] .app::before,body[data-step="5"] .app::before,body[data-step="6"] .app::before,
+  body[data-step="7"] .app::before{
+    background:radial-gradient(circle,rgba(250,190,4,.14),rgba(250,190,4,0) 68%)!important;
+  }
+  body[data-step="1"] .app::after,body[data-step="2"] .app::after,body[data-step="3"] .app::after,
+  body[data-step="4"] .app::after,body[data-step="5"] .app::after,body[data-step="6"] .app::after,
+  body[data-step="7"] .app::after{
+    background:radial-gradient(circle,rgba(63,177,144,.16),rgba(63,177,144,0) 68%)!important;
+  }
+  /* التذييل على الكحلي */
+  body[data-step="1"] .footer,body[data-step="2"] .footer,body[data-step="3"] .footer,
+  body[data-step="4"] .footer,body[data-step="5"] .footer,body[data-step="6"] .footer,
+  body[data-step="7"] .footer{
+    color:rgba(234,243,246,.7)!important;border-block-start:1px solid rgba(200,162,74,.35)!important;
+  }
+
+  /* ── 2) شريط التقدّم: زجاج كحلي بنص أبيض (بدل البطاقة البيضاء) ───────── */
+  body[data-step="1"] .steps-bar,body[data-step="2"] .steps-bar,body[data-step="3"] .steps-bar,
+  body[data-step="4"] .steps-bar,body[data-step="5"] .steps-bar,body[data-step="6"] .steps-bar,
+  body[data-step="7"] .steps-bar{
+    background:rgba(255,255,255,.07)!important;
+    border:1px solid rgba(250,190,4,.32)!important;
+    box-shadow:0 12px 30px rgba(2,20,28,.32),inset 0 1px 0 rgba(255,255,255,.08)!important;
+    backdrop-filter:blur(6px);
+  }
+  body[data-step="1"] .step-label,body[data-step="2"] .step-label,body[data-step="3"] .step-label,
+  body[data-step="4"] .step-label,body[data-step="5"] .step-label,body[data-step="6"] .step-label,
+  body[data-step="7"] .step-label{color:rgba(234,243,246,.82)!important}
+  body[data-step="1"] .step-label b,body[data-step="2"] .step-label b,body[data-step="3"] .step-label b,
+  body[data-step="4"] .step-label b,body[data-step="5"] .step-label b,body[data-step="6"] .step-label b,
+  body[data-step="7"] .step-label b{color:#fff!important}
+  body[data-step="1"] .step-dot,body[data-step="2"] .step-dot,body[data-step="3"] .step-dot,
+  body[data-step="4"] .step-dot,body[data-step="5"] .step-dot,body[data-step="6"] .step-dot,
+  body[data-step="7"] .step-dot{background:rgba(255,255,255,.22)!important}
+  body[data-step="1"] .step-label .pct,body[data-step="2"] .step-label .pct,body[data-step="3"] .step-label .pct,
+  body[data-step="4"] .step-label .pct,body[data-step="5"] .step-label .pct,body[data-step="6"] .step-label .pct,
+  body[data-step="7"] .step-label .pct{
+    background:rgba(250,190,4,.16)!important;border:1px solid rgba(250,190,4,.55)!important;
+    color:#ffdf8a!important;box-shadow:none!important;
+  }
+
+  /* ── 3) بطاقة البيانات: بيضاء نظيفة (التفاصيل كما هي) + حقول بيضاء ───── */
+  :root{
+    --ui-field:#ffffff;
+    --ui-field-line:#dfe6ea;
+    --ui-cream:#ffffff;
+    --ui-cream-2:#f6f8f9;
+    --ui-line:#e4ebee;
+  }
+  body[data-step="1"] .profile-card,body[data-step="2"] .profile-card,
+  body[data-step="3"] .profile-card,body[data-step="4"] .profile-card,
+  body[data-step="5"] .profile-card{
+    background:#fff!important;
+    border:1px solid rgba(255,255,255,.65)!important;
+    box-shadow:0 26px 60px rgba(2,20,28,.34)!important;
+  }
+  body[data-step="1"] .profile-card::before,body[data-step="2"] .profile-card::before,
+  body[data-step="3"] .profile-card::before,body[data-step="4"] .profile-card::before,
+  body[data-step="5"] .profile-card::before{height:5px!important}
+  .form-group input,.form-group select{background:#fff!important;border-color:var(--ui-field-line)!important}
+  .form-group input:focus,.form-group select:focus{background:#fff!important}
+  .step-eyebrow{background:#f6f8f9!important;border-color:#e4ebee!important;color:#0d2f3d!important}
+  /* زر الرجوع على الكحلي: أبيض شفاف */
+  body[data-step="1"] .btn-row .btn-outline,body[data-step="2"] .btn-row .btn-outline,
+  body[data-step="3"] .btn-row .btn-outline,body[data-step="4"] .btn-row .btn-outline,
+  body[data-step="5"] .btn-row .btn-outline{
+    background:rgba(255,255,255,.95)!important;border-color:rgba(255,255,255,.65)!important;
+    color:#0d2f3d!important;box-shadow:0 10px 24px rgba(2,20,28,.28)!important;
+  }
+
+  /* ── 4) شاشة الوظائف: كحلية كاملة + كروت بيضاء ──────────────────────── */
+  body[data-step="6"] .section-title{color:#fff!important}
+  body[data-step="6"] .section-title::before{background:linear-gradient(180deg,#FABE04,#3FB190)!important}
+
+  /* شريط «متبقي لك»: زجاج كحلي */
+  body[data-step="6"] .chances-bar{
+    background:rgba(255,255,255,.09)!important;
+    border:1px solid rgba(250,190,4,.4)!important;color:#fff!important;
+    box-shadow:0 12px 26px rgba(2,20,28,.3);
+  }
+  body[data-step="6"] .chances-bar b{color:#ffdf8a!important}
+  body[data-step="6"] .chances-bar.has2,body[data-step="6"] .chances-bar.has1,
+  body[data-step="6"] .chances-bar.has0{background:rgba(255,255,255,.09)!important;border-color:rgba(250,190,4,.4)!important;color:#fff!important}
+
+  /* لوحة الفلاتر: زجاج كحلي بنصوص بيضاء وحقول بيضاء */
+  body[data-step="6"] .job-filters{
+    background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.05))!important;
+    border:1px solid rgba(250,190,4,.35)!important;
+    box-shadow:0 20px 46px rgba(2,20,28,.34),inset 0 1px 0 rgba(255,255,255,.1)!important;
+    backdrop-filter:blur(8px);
+  }
+  body[data-step="6"] .job-filters label,
+  body[data-step="6"] .jf-cell label{color:#dbe9ef!important}
+  body[data-step="6"] .jf-top b,body[data-step="6"] .jf-note,
+  body[data-step="6"] .jf-panel-hint,body[data-step="6"] .jf-advanced summary{color:rgba(219,233,239,.85)!important}
+  body[data-step="6"] .job-filters input:not([type=checkbox]),
+  body[data-step="6"] .job-filters select{
+    background:#fff!important;border:1px solid rgba(255,255,255,.6)!important;color:#0d2f3d!important;
+  }
+  body[data-step="6"] .job-filters input::placeholder{color:#8a9aa4!important}
+  body[data-step="6"] .jf-ic{color:#FABE04!important}
+  body[data-step="6"] .jf-more{
+    background:rgba(250,190,4,.22)!important;border:1.5px solid rgba(250,190,4,.85)!important;
+    color:#fff!important;font-weight:900!important;
+  }
+  body[data-step="6"] .jf-more svg{color:#FABE04!important}
+  body[data-step="6"] .jf-more:hover{background:rgba(250,190,4,.26)!important}
+  body[data-step="6"] .jf-reset{
+    background:rgba(255,255,255,.1)!important;border-color:rgba(255,255,255,.35)!important;color:#fff!important;
+  }
+  body[data-step="6"] .jf-reset:hover{color:#ffdf8a!important;border-color:rgba(250,190,4,.7)!important}
+  body[data-step="6"] .jf-panel{
+    background:rgba(2,26,36,.35)!important;border:1px solid rgba(250,190,4,.3)!important;
+  }
+  body[data-step="6"] .jf-panel-title{color:#ffdf8a!important}
+  body[data-step="6"] .job-filters #jobs-count{
+    background:rgba(250,190,4,.16)!important;border:1px solid rgba(250,190,4,.5)!important;color:#ffe9ad!important;
+  }
+  body[data-step="6"] .job-filters #jobs-count b{color:#fff!important}
+  body[data-step="6"] .job-filters #jobs-count::before{background:#FABE04!important}
+  body[data-step="6"] .job-filters .jf-check{color:#dbe9ef!important}
+  body[data-step="6"] .jf-chip{background:rgba(250,190,4,.16)!important;border-color:rgba(250,190,4,.45)!important;color:#ffe9ad!important}
+  body[data-step="6"] .jf-chip-x{background:rgba(0,0,0,.3)!important;color:#ffe9ad!important}
+
+  /* تلميح الاختيار أسفل القائمة */
+  body[data-step="6"] .jobs-hint{
+    background:rgba(255,255,255,.08)!important;color:rgba(234,243,246,.9)!important;
+    border:1px dashed rgba(250,190,4,.5)!important;
+  }
+  body[data-step="6"] .jobs-hint.picked{
+    background:rgba(250,190,4,.16)!important;border:1px solid rgba(250,190,4,.55)!important;color:#ffe9ad!important;
+  }
+  body[data-step="6"] .jobs-hint b{color:#fff!important}
+  body[data-step="6"] .job-remove{
+    background:rgba(0,0,0,.25)!important;color:#ffd6c9!important;border-color:rgba(255,255,255,.28)!important;
+  }
+  body[data-step="6"] #jobs-empty{
+    background:rgba(255,255,255,.06)!important;border:1px dashed rgba(250,190,4,.45)!important;color:rgba(234,243,246,.85)!important;
+  }
+  body[data-step="6"] #jobs-empty p{color:rgba(234,243,246,.85)!important}
+  body[data-step="6"] #jobs-empty .btn-outline{background:rgba(255,255,255,.95)!important;color:#0d2f3d!important}
+
+  /* الكروت البيضاء */
+  body[data-step="6"] #jobs-list .job-card{
+    background:#fff!important;border:1px solid rgba(255,255,255,.75)!important;
+    box-shadow:0 20px 44px rgba(2,20,28,.32)!important;color:#0d2f3d!important;
+  }
+  body[data-step="6"] #jobs-list .job-head .title{color:#0d2f3d!important;font-weight:900!important}
+  body[data-step="6"] #jobs-list .jm{
+    background:#f7f9fa!important;border:1px solid #e6edf0!important;color:#0d2f3d!important;
+  }
+  body[data-step="6"] #jobs-list .jm .k,body[data-step="6"] #jobs-list .jm .v,
+  body[data-step="6"] #jobs-list .jm span,body[data-step="6"] #jobs-list .jm b{color:#0d2f3d!important}
+  body[data-step="6"] #jobs-list .jm svg,body[data-step="6"] #jobs-list .jm .ic{color:#a8802f!important}
+  body[data-step="6"] #jobs-list .job-pay,body[data-step="6"] #jobs-list .job-salary{
+    background:#fff8e4!important;border:1px solid #f2e2b6!important;color:#7a5f21!important;
+  }
+  body[data-step="6"] #jobs-list .job-pay *,body[data-step="6"] #jobs-list .job-salary *{color:#7a5f21!important}
+  body[data-step="6"] #jobs-list .job-pay b,body[data-step="6"] #jobs-list .job-salary b{color:#5f4a12!important}
+  body[data-step="6"] #jobs-list .job-details{color:#5f7380!important}
+  body[data-step="6"] #jobs-list .job-actions{
+    background:#f7f9fa!important;border-top:1px solid #e6edf0!important;
+  }
+  body[data-step="6"] #jobs-list .job-actions .btn-outline{
+    background:#fff!important;border-color:#cfdae0!important;color:#0d2f3d!important;
+  }
+  body[data-step="6"] #jobs-list .job-actions .btn-primary{
+    background:linear-gradient(135deg,#0A4E60,#012F3E 60%)!important;
+    color:#fff!important;border:1.5px solid rgba(250,190,4,.75)!important;
+  }
+  body[data-step="6"] #jobs-list .job-tags .job-code{
+    background:#eef8f4!important;border:1px solid #bfe4d6!important;color:#1c6a51!important;
+  }
+  body[data-step="6"] #jobs-list .job-tags .job-cat{
+    background:#fff8e4!important;border:1px solid #f2e2b6!important;color:#7a5f21!important;
+  }
+  /* الكارت المختار: إطار ذهبي وهوية واضحة على الأبيض */
+  body[data-step="6"] #jobs-list .job-card.selected{
+    background:#fff!important;border:2px solid #FABE04!important;
+    box-shadow:0 24px 54px rgba(2,20,28,.36),0 0 0 4px rgba(250,190,4,.22)!important;
+  }
+  body[data-step="6"] #jobs-list .job-card.selected .job-head .title{color:#0d2f3d!important;font-size:20px!important}
+  body[data-step="6"] #jobs-list .job-card.selected .job-state.is-picked{
+    background:linear-gradient(140deg,#FFE28A,#FABE04)!important;color:#1c1405!important;border-color:transparent!important;
+  }
+  body[data-step="6"] #jobs-list .job-card.selected .jm{
+    background:#fffaeb!important;border-color:#f2e2b6!important;
+  }
+  /* (قواعد قديمة كانت تجعل نص الكارت المختار أبيض — تُبطَل هنا لأن الكارت أبيض) */
+  body[data-step="6"] #jobs-list .job-card.selected .jm .k,
+  body[data-step="6"] #jobs-list .job-card.selected .jm .v,
+  body[data-step="6"] #jobs-list .job-card.selected .jm span,
+  body[data-step="6"] #jobs-list .job-card.selected .jm b,
+  body[data-step="6"] #jobs-list.has-focus .job-card.selected .job-item .v{
+    color:#0d2f3d!important;
+  }
+  body[data-step="6"] #jobs-list .job-card.selected .jm svg,
+  body[data-step="6"] #jobs-list .job-card.selected .jm .ic{color:#a8802f!important}
+  body[data-step="6"] #jobs-list .job-card.selected .job-pay,
+  body[data-step="6"] #jobs-list .job-card.selected .job-pay-row,
+  body[data-step="6"] #jobs-list .job-card.selected .job-salary{
+    background:#ffefc4!important;border:1px solid #f0d999!important;
+  }
+  body[data-step="6"] #jobs-list .job-card.selected .job-pay *,
+  body[data-step="6"] #jobs-list .job-card.selected .job-pay-row *,
+  body[data-step="6"] #jobs-list .job-card.selected .job-salary *{color:#6b5010!important}
+  body[data-step="6"] #jobs-list .job-card.selected .job-details{color:#4d6470!important}
+  body[data-step="6"] #jobs-list .job-card.selected .job-head .title{color:#0d2f3d!important}
+  body[data-step="6"] #jobs-list .job-card.selected .job-tags .job-code{
+    background:#eef8f4!important;border-color:#bfe4d6!important;color:#1c6a51!important;
+  }
+  body[data-step="6"] #jobs-list .job-card.selected .job-tags .job-cat{
+    background:#fff8e4!important;border-color:#f2e2b6!important;color:#7a5f21!important;
+  }
+  body[data-step="6"] #jobs-list .job-card.selected .job-actions .btn-outline{
+    background:#fff!important;border-color:#cfdae0!important;color:#0d2f3d!important;
+  }
+  body[data-step="6"] #jobs-list .job-card.selected .job-actions{
+    background:#fffaeb!important;border-top:1px solid #f2e2b6!important;
+  }
+  body[data-step="6"] #jobs-list .job-card.selected::after{display:none!important}
+  /* البقية واضحة تماماً (بلا غباش) — يبقى التمييز بالحدّ الذهبي وحده */
+  body[data-step="6"] #jobs-list.has-focus .job-card:not(.selected):not(.is-done){
+    opacity:1!important;filter:none!important;transform:none!important;pointer-events:auto!important;
+  }
+  body[data-step="6"] #jobs-list.has-focus .job-card:not(.selected):not(.is-done) .job-actions{opacity:1!important}
+  body[data-step="6"] #jobs-list.has-focus .job-card.selected{
+    transform:none!important;filter:none!important;
+  }
+  body[data-step="6"] #jobs-list.has-focus::before{display:none!important}
+
+  /* ── 5) صفحة المراجعة: التفاصيل بيضاء + كارت كحلي للوظائف المختارة ─── */
+  body[data-step="7"] .rv-card{
+    background:#fff!important;border:1px solid rgba(255,255,255,.7)!important;
+    box-shadow:0 26px 60px rgba(2,20,28,.34)!important;
+  }
+  body[data-step="7"] .rv-row{border-bottom:1px dashed #e6edf0!important}
+  body[data-step="7"] .rv-edit{background:#fff!important;border-color:#dbe4e9!important;color:#0d2f3d!important}
+  body[data-step="7"] .rv-edit:hover{border-color:#FABE04!important;background:#fffdf3!important}
+  body[data-step="7"] .btn-row .btn-outline{
+    background:rgba(255,255,255,.95)!important;border-color:rgba(255,255,255,.65)!important;color:#0d2f3d!important;
+  }
+  /* زر الإتمام: أخضر الهوية (تركوازي) لا الأخضر القديم */
+  #btn-finish{
+    background:linear-gradient(135deg,#2FA98C,#1C7E68 60%,#136053)!important;
+    color:#fff!important;border:1.5px solid rgba(255,255,255,.35)!important;
+    box-shadow:0 16px 32px rgba(19,96,83,.34)!important;
+  }
+  #btn-finish::before{background:linear-gradient(100deg,transparent,rgba(255,255,255,.32),transparent)}
+  #btn-finish:not(:disabled):hover{box-shadow:0 20px 40px rgba(19,96,83,.42)!important}
+  /* صفوف الشرائح: بلا خطوط منقّطة حولها */
+  .rv-chips{
+    padding:2px 0 6px;
+  }
+  .rv-row:has(.rv-chips){border-bottom:0!important}
+  /* كارت الوظائف المختارة: كحلي بحدود ذهبية */
+  .rv-jobs{
+    margin:6px 0 4px;padding:14px 16px 6px;border-radius:18px;
+    background:linear-gradient(165deg,#0A3F50,#012F3E 58%,#01222C);
+    border:1.5px solid rgba(250,190,4,.75);
+    box-shadow:0 16px 34px rgba(2,20,28,.28);
+  }
+  .rv-jobs .rv-sub{
+    background:rgba(250,190,4,.18)!important;border:1px solid rgba(250,190,4,.55)!important;
+    color:#ffe9ad!important;margin:10px 0 6px!important;
+  }
+  body[data-step="7"] .rv-jobs .rv-row{border-bottom:1px dashed rgba(255,255,255,.18)!important}
+  body[data-step="7"] .rv-jobs .rv-k{color:rgba(234,243,246,.72)!important}
+  body[data-step="7"] .rv-jobs .rv-v{color:#fff!important;font-weight:800}
+  body[data-step="7"] .rv-jobs .rv-edit{
+    background:rgba(250,190,4,.2)!important;border:1.5px solid rgba(250,190,4,.75)!important;
+    color:#ffe9ad!important;font-weight:900!important;
+  }
+  body[data-step="7"] .rv-jobs .rv-edit:hover{background:rgba(250,190,4,.34)!important;color:#fff!important}
+  body[data-step="7"] .rv-jobs .rv-chip{
+    background:rgba(255,255,255,.12)!important;border-color:rgba(255,255,255,.26)!important;color:#fff!important;
+    flex:0 0 auto!important;white-space:nowrap!important;
+    padding:5px 12px!important;line-height:1.6!important;
+  }
+  body[data-step="7"] .rv-jobs .rv-chips{
+    display:flex!important;flex-wrap:wrap!important;gap:7px!important;padding:6px 0 4px;
+  }
+  body[data-step="7"] .rv-jobs .rv-chip svg{color:#FABE04!important}
+  body[data-step="7"] .rv-jobs .rv-empty{color:#ffe9ad!important}
 }
 </style>
 </head>
@@ -4126,10 +4447,12 @@ var G={
     var dobTxt=G.dobText();
     var place=[p.province].filter(function(x){return !!x;}).join(' – ');
 
+    /* زر الصف: «اختر الوظيفة» للوظائف (لا «تعديل») و«تعديل» لبيانات المتقدم */
     function row(k,v,step,ltr){
+      var label=(step===6)?'اختر الوظيفة':'تعديل';
       return '<div class="rv-row"><div class="rv-k">'+k+'</div>'
         +'<div class="rv-v'+(ltr?' mono':'')+'"'+(ltr?' dir="ltr"':'')+'>'+esc(v||'—')+'</div>'
-        +(step&&(!lockedProfile||step===6)?'<button class="rv-edit" type="button" onclick="G.editStep('+step+')">تعديل</button>':'')+'</div>';
+        +(step&&(!lockedProfile||step===6)?'<button class="rv-edit" type="button" onclick="G.editStep('+step+')">'+label+'</button>':'')+'</div>';
     }
 
     var h='<div class="rv-card">'
@@ -4147,6 +4470,7 @@ var G={
 
     /* الوظائف المختارة — وظيفة لكل فرصة */
     h+='<div class="rv-head">'+(lockedProfile?'وظيفة الفرصة المتبقية':'وظائفك المختارة (الفرصتان)')+'</div>';
+    h+='<div class="rv-jobs">';
     if(pickedJobs.length){
       pickedJobs.forEach(function(j,i){
         var sal=money(j.salaryMin)+' – '+money(j.salaryMax);
@@ -4163,9 +4487,10 @@ var G={
           +'</div>';
       });
     }else{
-      h+='<div class="rv-row"><div class="rv-v" style="color:#f0c060">لم تُعيَّن وظيفة بعد</div>'
-        +'<button class="rv-edit" type="button" onclick="G.editStep(6)">اختيار وظيفة</button></div>';
+      h+='<div class="rv-row"><div class="rv-v rv-empty">لم تُعيَّن وظيفة بعد</div>'
+        +'<button class="rv-edit" type="button" onclick="G.editStep(6)">اختر الوظيفة</button></div>';
     }
+    h+='</div>';
 
     /* البطاقة */
     h+='<div class="rv-head">البطاقة والفرص</div>'

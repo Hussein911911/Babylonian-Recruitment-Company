@@ -1109,6 +1109,42 @@ step(31, 'تناسق صفحات المعلومات + بطاقة الوظيفة �
     !/pointer-events:none/.test(ap.split('#jobs-list.has-focus .job-card:not(.selected):not(.is-done)')[1]?.slice(0, 120) || ''));
 }
 
+/* ── 2026-10-27 (و): واجهة كحلية + تفاصيل بيضاء + كروت وظائف بيضاء ── */
+step(32, 'الواجهة كحلية · التفاصيل بيضاء · الوظائف في كروت بيضاء · «اختر الوظيفة»');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('صفحات البيانات والقائمة كحلية (1..7) بخلفية متدرّجة واحدة',
+    /body\[data-step="1"\],body\[data-step="2"\],body\[data-step="3"\],\s*body\[data-step="4"\],body\[data-step="5"\],body\[data-step="6"\],body\[data-step="7"\]\{[\s\S]{0,260}background-color:#0a2c3a/.test(ap));
+  check('شريط التقدّم زجاج كحلي بنص أبيض على هذه الصفحات',
+    /body\[data-step="1"\] \.steps-bar[\s\S]{0,420}rgba\(255,255,255,\.07\)/.test(ap) &&
+    /body\[data-step="1"\] \.step-label[\s\S]{0,220}rgba\(234,243,246,\.82\)/.test(ap));
+  check('بطاقة البيانات بيضاء نظيفة (لا كريمي) والحقول بيضاء',
+    /body\[data-step="1"\] \.profile-card[\s\S]{0,260}background:#fff!important/.test(ap) &&
+    /--ui-field:#ffffff/.test(ap) && /--ui-cream:#ffffff/.test(ap));
+  check('لوحة الفلاتر زجاج كحلي بحقول بيضاء ونصوص فاتحة',
+    /body\[data-step="6"\] \.job-filters\{[\s\S]{0,320}rgba\(255,255,255,\.10\)/.test(ap) &&
+    /body\[data-step="6"\] \.job-filters input:not\(\[type=checkbox\]\)[\s\S]{0,200}background:#fff!important/.test(ap));
+  check('كل وظيفة في كارت أبيض بنصوص كحلية وأجر ذهبي فاتح',
+    /body\[data-step="6"\] #jobs-list \.job-card\{[\s\S]{0,220}background:#fff!important/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.jm\{[\s\S]{0,200}background:#f7f9fa/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.job-pay[\s\S]{0,200}#fff8e4/.test(ap));
+  check('الكارت المختار: حدّ ذهبي 2px بظل — والنصوص تبقى كحلية (لا أبيض على أبيض)',
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected\{[\s\S]{0,520}border:2px solid #FABE04/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected \.jm \.k,[\s\S]{0,320}color:#0d2f3d/.test(ap));
+  check('المراجعة: بطاقة بيضاء + كارت كحلي للوظائف المختارة',
+    /body\[data-step="7"\] \.rv-card\{[\s\S]{0,200}background:#fff!important/.test(ap) &&
+    /\.rv-jobs\{[\s\S]{0,300}linear-gradient\(165deg,#0A3F50,#012F3E/.test(ap) &&
+    /h\+='<div class="rv-jobs">'/.test(ap));
+  check('زر الوظائف في المراجعة اسمه «اختر الوظيفة» (لا «تعديل»)',
+    /var label=\(step===6\)\?'اختر الوظيفة':'تعديل'/.test(ap) &&
+    !/onclick="G.editStep\(6\)">تعديل</.test(ap));
+  check('زر الإتمام بلون الهوية التركوازي',
+    /#btn-finish\{[\s\S]{0,220}linear-gradient\(135deg,#2FA98C,#1C7E68/.test(ap));
+  check('شرائح المراجعة سطر واحد بلا التفاف داخل الكارت الكحلي',
+    /body\[data-step="7"\] \.rv-jobs \.rv-chip\{[\s\S]{0,200}white-space:nowrap/.test(ap));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');
