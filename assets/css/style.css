@@ -2597,49 +2597,60 @@ img { max-width: 100%; height: auto; }
 /* لا تكبير لصور البطاقات عند المرور — يحافظ على كامل الصورة */
 .job-card:hover .job-image img { transform: none; }
 
-/* ======================= سجل التدقيق — قائمة مرتّبة (2026-10-25) =======================
-   بدل جدول بسبعة أعمدة ضيّقة كان يكسر النص عمودياً: صفوف واضحة بأربعة أقسام،
-   كلها عربية، وتتحول إلى بطاقات على الجوال. */
-.audit-list { border-top: 1px solid var(--line-soft); }
-.audit-list-head {
-  display: grid; grid-template-columns: 150px 190px minmax(0, 1.1fr) minmax(0, 1.4fr);
-  gap: 12px; padding: 10px 18px; background: #fff; border-bottom: 1px solid var(--line-soft);
-  font-size: .72rem; font-weight: 900; color: var(--gold-3);
-}
-.audit-rows { display: grid; }
-.audit-row {
-  display: grid; grid-template-columns: 150px 190px minmax(0, 1.1fr) minmax(0, 1.4fr);
-  gap: 12px; align-items: start; padding: 12px 18px;
-  border-bottom: 1px solid var(--line-soft); transition: background .15s;
-}
-.audit-row:hover { background: #fff; }
-.audit-row:last-child { border-bottom: 0; }
-.ar-time { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-.ar-time .ic { width: 14px; height: 14px; color: var(--gold-3); flex: none; }
-.ar-time b { font-size: .74rem; font-weight: 800; color: #46536b; white-space: nowrap; }
-.ar-who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: .8rem; font-weight: 800; color: var(--lapis-2); min-width: 0; }
-.ar-what { min-width: 0; display: grid; gap: 3px; }
-.ar-what b { font-size: .82rem; font-weight: 900; color: var(--lapis-2); line-height: 1.7; }
-.ar-entity {
-  font-size: .7rem; font-weight: 700; color: var(--gold-3);
-  background: #fff; border: 1px solid #eee3c8; border-radius: 999px;
-  padding: 2px 9px; justify-self: start; max-width: 100%;
-}
-.ar-details { font-size: .76rem; line-height: 1.95; color: #5a687e; min-width: 0; overflow-wrap: anywhere; }
-.audit-rows .table-empty { padding: 26px; text-align: center; color: var(--muted); }
-
-@media (max-width: 900px) {
-  .audit-list-head { display: none; }
-  .audit-row { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 13px 15px; }
-  .ar-time b { font-size: .72rem; }
-  .ar-what { border-top: 1px dashed #eef1f6; padding-top: 6px; }
-}
-
-/* حقول التاريخ: تُعرض بصيغة يوم/شهر/سنة عربية الاتجاه في كل اللوحة
-   (كانت تظهر mm/dd/yyyy الإنجليزية من إعداد المتصفح). */
+/* حقول التاريخ — تنسيق عربي معروض (يوم/شهر/سنة) فوق منتقي التاريخ الحقيقي:
+   المتصفح يفرض صيغة نظامه (mm/dd/yyyy) ولا يمكن تغييرها بـCSS أو lang،
+   فنُخفي الحقل الأصلي بصرياً (يبقى يعمل وينتقي) ونعرض التاريخ بالعربية. */
 input[type="date"] { direction: rtl; text-align: right; }
-input[type="date"]::-webkit-datetime-edit { direction: rtl; }
-input[type="date"]::-webkit-datetime-edit-year-field { order: 3; }
-input[type="date"]::-webkit-datetime-edit-month-field { order: 2; }
-input[type="date"]::-webkit-datetime-edit-day-field { order: 1; }
-input[type="date"]::-webkit-calendar-picker-indicator { margin-inline-start: 6px; opacity: .65; }
+.date-ar { position: relative; display: flex; align-items: center; gap: 8px; }
+.date-ar .da-text {
+  flex: 1 1 auto; min-width: 0; font-size: .86rem; font-weight: 800; color: var(--lapis-2);
+  padding: 0; line-height: 1.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.date-ar .da-text.is-empty { color: var(--muted); font-weight: 700; }
+.date-ar .da-ic { width: 15px; height: 15px; color: var(--gold-3); flex: none; pointer-events: none; }
+.date-ar input[type="date"] {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; border: 0; padding: 0;
+}
+
+/* ======================= سجل التدقيق — جدول مرتّب (2026-10-25) =======================
+   السبب الأصلي للكسر العمودي: سبعة أعمدة بسطور بلا `nowrap` فتنزل الكلمة حرفاً
+   حرفاً. الحل: ستة أعمدة بعرض أدنى واضح، ومنع الالتفاف في الأعمدة القصيرة،
+   وعمود التفاصيل وحده يلتف — مع تمرير أفقي عند الحاجة على الشاشات الصغيرة. */
+.audit-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.data.audit-table { min-width: 980px; table-layout: auto; }
+table.data.audit-table thead th {
+  font-size: .74rem; font-weight: 900; color: var(--gold-3);
+  padding: 11px 14px; white-space: nowrap; vertical-align: middle;
+}
+table.data.audit-table tbody td {
+  padding: 11px 14px; vertical-align: top; font-size: .8rem; line-height: 1.9;
+  border-bottom: 1px solid var(--line-soft);
+}
+table.data.audit-table tbody tr:hover { background: #fff; }
+table.data.audit-table tbody tr:last-child td { border-bottom: 0; }
+
+/* الأعمدة القصيرة: سطر واحد دائماً (لا نزول عمودي) */
+table.data.audit-table .at-time {
+  white-space: nowrap; font-size: .76rem; font-weight: 800; color: #46536b;
+  min-width: 132px; direction: ltr; text-align: right;
+}
+table.data.audit-table .at-who { white-space: nowrap; min-width: 120px; font-weight: 800; color: var(--lapis-2); }
+table.data.audit-table .at-role { white-space: nowrap; min-width: 92px; }
+table.data.audit-table .at-action { white-space: nowrap; min-width: 120px; }
+table.data.audit-table .at-action b { font-weight: 900; color: var(--lapis-2); }
+table.data.audit-table .at-entity { white-space: normal; min-width: 150px; color: var(--gold-3); font-weight: 700; }
+table.data.audit-table .at-entity .mono { color: var(--muted); font-weight: 600; }
+/* عمود التفاصيل: يتّسع ويلتف بشكل طبيعي */
+table.data.audit-table .at-details { min-width: 260px; color: #5a687e; font-size: .78rem; overflow-wrap: anywhere; }
+table.data.audit-table .table-empty { padding: 26px; text-align: center; }
+
+/* الجوال: نُبقي الجدول لكنه يبقى داخل البطاقة مع تمرير أفقي مريح —
+   (بدون min-width ثابت على الحاوية كي لا يخرج الجدول عن البطاقة) */
+@media (max-width: 900px) {
+  .audit-scroll { display: block; width: 100%; max-width: 100%; overflow-x: auto; }
+  table.data.audit-table { min-width: 820px; }
+  table.data.audit-table tbody td, table.data.audit-table thead th { padding: 9px 11px; }
+  table.data.audit-table .at-details { min-width: 220px; }
+}
+

@@ -824,9 +824,16 @@ step(25, 'اللوحة — سجل مرتّب بلا كلمات إنجليزية�
   const djs = readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8');
   const css = readFileSync(join(ROOT, 'assets', 'css', 'style.css'), 'utf8');
 
-  check('السجل قائمة صفوف (لا جدول بأعمدة ضيّقة تُكسّر النص)',
-    /class="audit-list"/.test(dash) && /class="audit-row"/.test(djs) &&
-    /\.audit-row \{/.test(css) && !/<th>IP الجلسة<\/th>/.test(dash));
+  /* 2026-10-25 (نهائي): السجل جدول مرتّب ستة أعمدة بعرض كافٍ ومنع التفاف
+     في الأعمدة القصيرة، وعمود التفاصيل وحده يلتف. */
+  check('السجل جدول مرتّب بأعمدة واضحة (لا كسر نص عمودياً)',
+    /class="data audit-table"/.test(dash) && /at-time/.test(djs) && /at-details/.test(djs) &&
+    /table\.data\.audit-table \.at-time \{[\s\S]{0,120}white-space: nowrap/.test(css) &&
+    /min-width: 980px/.test(css));
+  check('رأس الجدول عربي بالكامل وبلا أعمدة إنجليزية',
+    ['الوقت', 'المستخدم', 'الرتبة', 'القسم', 'العملية', 'التفاصيل']
+      .every((h) => new RegExp('<th scope="col">' + h + '</th>').test(dash)) &&
+    !/IP الجلسة|<th>السجل<\/th>/.test(dash));
   check('لا كلمات إنجليزية في واجهة السجل (CSV/IP/UTC/YYYY-MM-DD)',
     !/CSV/.test(dash) && !/IP الجلسة/.test(dash) && !/UTC\+3/.test(dash) &&
     !/YYYY-MM-DD/.test(dash));
@@ -835,8 +842,12 @@ step(25, 'اللوحة — سجل مرتّب بلا كلمات إنجليزية�
     /applicant: 'بطاقة'/.test(djs) && /auditEntityLabel/.test(djs));
   check('فلاتر السجل تُبنى بتسميات عربية (القسم/العملية/المستخدم)',
     /label\(v\)/.test(djs) && /كل الأقسام/.test(dash));
-  check('حقول التاريخ عربية الاتجاه (لا mm/dd/yyyy إنجليزية)',
-    /input\[type="date"\] \{ direction: rtl/.test(css));
+  /* المتصفح يفرض صيغة نظامه (mm/dd/yyyy) ولا تُغيَّر بـCSS؛ نعرض نحن تنسيقاً
+     عربياً فوق منتقي التاريخ الحقيقي (‎.date-ar‎ + arabicDateText). */
+  check('حقول التاريخ تُعرض عربية (يوم/شهر/سنة) فوق منتقي التاريخ الحقيقي',
+    /\.date-ar \{/.test(css) && /\.date-ar input\[type="date"\]/.test(css) &&
+    /function arabicDateText/.test(readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8')) &&
+    /data-da-text="log-from"/.test(dash));
 
   /* فلاتر الموقع: عمود واحد على الجوال، وأربعة متساوية على الكمبيوتر */
   const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
@@ -844,6 +855,22 @@ step(25, 'اللوحة — سجل مرتّب بلا كلمات إنجليزية�
     /#jobs \.f-row \{ display: grid; grid-template-columns: repeat\(4/.test(app) &&
     /#jobs \.f-row > \.f-field\.f-search \{ grid-column: 1 \/ -1/.test(app) &&
     /@media \(max-width: 860px\)[\s\S]{0,200}grid-template-columns: repeat\(2/.test(app));
+}
+
+/* ── 2026-10-25: لا كلمات إنجليزية في واجهة السجل (job/application…) ── */
+step(26, 'السجل — كل التسميات عربية بلا كلمات أجنبية');
+{
+  const djs = readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8');
+  const maps = djs.slice(djs.indexOf('var AUDIT_ENTITY'), djs.indexOf('function auditEntityLabel'));
+  /* كل قيمة معروضة في القواميس يجب أن تكون عربية (لا job/application/… ) */
+  const latinValues = [...maps.matchAll(/:\s*'([^']+)'/g)].map((m) => m[1])
+    .filter((v) => /^[A-Za-z][A-Za-z \-]*$/.test(v) && !['login', 'logout', 'sign in', 'sign out',
+      'create', 'update', 'delete', 'insert', 'add', 'edit', 'remove', 'restore', 'backup',
+      'export', 'print', 'view', 'read', 'log in', 'log out'].includes(v));
+  check('قواميس السجل لا تحتوي قيماً إنجليزية تُعرض للمستخدم', latinValues.length === 0,
+    latinValues.join(', '));
+  check('أي قيمة إنجليزية غير معروفة تُعرض بوصف عربي (لا تُسرَّب)',
+    /LATIN_ONLY/.test(djs) && /\? 'سجل'/.test(djs) && /\? 'عملية'/.test(djs));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

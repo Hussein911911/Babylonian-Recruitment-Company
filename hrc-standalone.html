@@ -2617,52 +2617,63 @@ img { max-width: 100%; height: auto; }
 /* لا تكبير لصور البطاقات عند المرور — يحافظ على كامل الصورة */
 .job-card:hover .job-image img { transform: none; }
 
-/* ======================= سجل التدقيق — قائمة مرتّبة (2026-10-25) =======================
-   بدل جدول بسبعة أعمدة ضيّقة كان يكسر النص عمودياً: صفوف واضحة بأربعة أقسام،
-   كلها عربية، وتتحول إلى بطاقات على الجوال. */
-.audit-list { border-top: 1px solid var(--line-soft); }
-.audit-list-head {
-  display: grid; grid-template-columns: 150px 190px minmax(0, 1.1fr) minmax(0, 1.4fr);
-  gap: 12px; padding: 10px 18px; background: #fff; border-bottom: 1px solid var(--line-soft);
-  font-size: .72rem; font-weight: 900; color: var(--gold-3);
-}
-.audit-rows { display: grid; }
-.audit-row {
-  display: grid; grid-template-columns: 150px 190px minmax(0, 1.1fr) minmax(0, 1.4fr);
-  gap: 12px; align-items: start; padding: 12px 18px;
-  border-bottom: 1px solid var(--line-soft); transition: background .15s;
-}
-.audit-row:hover { background: #fff; }
-.audit-row:last-child { border-bottom: 0; }
-.ar-time { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-.ar-time .ic { width: 14px; height: 14px; color: var(--gold-3); flex: none; }
-.ar-time b { font-size: .74rem; font-weight: 800; color: #46536b; white-space: nowrap; }
-.ar-who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: .8rem; font-weight: 800; color: var(--lapis-2); min-width: 0; }
-.ar-what { min-width: 0; display: grid; gap: 3px; }
-.ar-what b { font-size: .82rem; font-weight: 900; color: var(--lapis-2); line-height: 1.7; }
-.ar-entity {
-  font-size: .7rem; font-weight: 700; color: var(--gold-3);
-  background: #fff; border: 1px solid #eee3c8; border-radius: 999px;
-  padding: 2px 9px; justify-self: start; max-width: 100%;
-}
-.ar-details { font-size: .76rem; line-height: 1.95; color: #5a687e; min-width: 0; overflow-wrap: anywhere; }
-.audit-rows .table-empty { padding: 26px; text-align: center; color: var(--muted); }
-
-@media (max-width: 900px) {
-  .audit-list-head { display: none; }
-  .audit-row { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 13px 15px; }
-  .ar-time b { font-size: .72rem; }
-  .ar-what { border-top: 1px dashed #eef1f6; padding-top: 6px; }
-}
-
-/* حقول التاريخ: تُعرض بصيغة يوم/شهر/سنة عربية الاتجاه في كل اللوحة
-   (كانت تظهر mm/dd/yyyy الإنجليزية من إعداد المتصفح). */
+/* حقول التاريخ — تنسيق عربي معروض (يوم/شهر/سنة) فوق منتقي التاريخ الحقيقي:
+   المتصفح يفرض صيغة نظامه (mm/dd/yyyy) ولا يمكن تغييرها بـCSS أو lang،
+   فنُخفي الحقل الأصلي بصرياً (يبقى يعمل وينتقي) ونعرض التاريخ بالعربية. */
 input[type="date"] { direction: rtl; text-align: right; }
-input[type="date"]::-webkit-datetime-edit { direction: rtl; }
-input[type="date"]::-webkit-datetime-edit-year-field { order: 3; }
-input[type="date"]::-webkit-datetime-edit-month-field { order: 2; }
-input[type="date"]::-webkit-datetime-edit-day-field { order: 1; }
-input[type="date"]::-webkit-calendar-picker-indicator { margin-inline-start: 6px; opacity: .65; }
+.date-ar { position: relative; display: flex; align-items: center; gap: 8px; }
+.date-ar .da-text {
+  flex: 1 1 auto; min-width: 0; font-size: .86rem; font-weight: 800; color: var(--lapis-2);
+  padding: 0; line-height: 1.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.date-ar .da-text.is-empty { color: var(--muted); font-weight: 700; }
+.date-ar .da-ic { width: 15px; height: 15px; color: var(--gold-3); flex: none; pointer-events: none; }
+.date-ar input[type="date"] {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; border: 0; padding: 0;
+}
+
+/* ======================= سجل التدقيق — جدول مرتّب (2026-10-25) =======================
+   السبب الأصلي للكسر العمودي: سبعة أعمدة بسطور بلا `nowrap` فتنزل الكلمة حرفاً
+   حرفاً. الحل: ستة أعمدة بعرض أدنى واضح، ومنع الالتفاف في الأعمدة القصيرة،
+   وعمود التفاصيل وحده يلتف — مع تمرير أفقي عند الحاجة على الشاشات الصغيرة. */
+.audit-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.data.audit-table { min-width: 980px; table-layout: auto; }
+table.data.audit-table thead th {
+  font-size: .74rem; font-weight: 900; color: var(--gold-3);
+  padding: 11px 14px; white-space: nowrap; vertical-align: middle;
+}
+table.data.audit-table tbody td {
+  padding: 11px 14px; vertical-align: top; font-size: .8rem; line-height: 1.9;
+  border-bottom: 1px solid var(--line-soft);
+}
+table.data.audit-table tbody tr:hover { background: #fff; }
+table.data.audit-table tbody tr:last-child td { border-bottom: 0; }
+
+/* الأعمدة القصيرة: سطر واحد دائماً (لا نزول عمودي) */
+table.data.audit-table .at-time {
+  white-space: nowrap; font-size: .76rem; font-weight: 800; color: #46536b;
+  min-width: 132px; direction: ltr; text-align: right;
+}
+table.data.audit-table .at-who { white-space: nowrap; min-width: 120px; font-weight: 800; color: var(--lapis-2); }
+table.data.audit-table .at-role { white-space: nowrap; min-width: 92px; }
+table.data.audit-table .at-action { white-space: nowrap; min-width: 120px; }
+table.data.audit-table .at-action b { font-weight: 900; color: var(--lapis-2); }
+table.data.audit-table .at-entity { white-space: normal; min-width: 150px; color: var(--gold-3); font-weight: 700; }
+table.data.audit-table .at-entity .mono { color: var(--muted); font-weight: 600; }
+/* عمود التفاصيل: يتّسع ويلتف بشكل طبيعي */
+table.data.audit-table .at-details { min-width: 260px; color: #5a687e; font-size: .78rem; overflow-wrap: anywhere; }
+table.data.audit-table .table-empty { padding: 26px; text-align: center; }
+
+/* الجوال: نُبقي الجدول لكنه يبقى داخل البطاقة مع تمرير أفقي مريح —
+   (بدون min-width ثابت على الحاوية كي لا يخرج الجدول عن البطاقة) */
+@media (max-width: 900px) {
+  .audit-scroll { display: block; width: 100%; max-width: 100%; overflow-x: auto; }
+  table.data.audit-table { min-width: 820px; }
+  table.data.audit-table tbody td, table.data.audit-table thead th { padding: 9px 11px; }
+  table.data.audit-table .at-details { min-width: 220px; }
+}
+
 
 /* ===========================================================================
  *  HRC — شاشة «قدّم ببطاقتك» (نافذة بطاقتي)
@@ -5105,8 +5116,22 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
             </div>
             <div class="field"><label for="log-action">العملية</label><select id="log-action"><option value="all">كل العمليات</option></select></div>
             <div class="field"><label for="log-entity">القسم</label><select id="log-entity"><option value="all">كل الأنواع</option></select></div>
-            <div class="field"><label for="log-from"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>من تاريخ</label><input type="date" id="log-from" aria-label="من تاريخ" title="يوم / شهر / سنة"></div>
-            <div class="field"><label for="log-to"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>إلى تاريخ</label><input type="date" id="log-to" aria-label="إلى تاريخ" title="يوم / شهر / سنة"></div>
+            <!-- تاريخ عربي معروض (يوم/شهر/سنة) فوق منتقي التاريخ الحقيقي:
+                 المتصفح يفرض صيغة نظامه (mm/dd/yyyy) فال يُرى؛ نعرض نحن صيغة عربية -->
+            <div class="field"><label for="log-from"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>من تاريخ</label>
+              <div class="date-ar">
+                <span class="da-text" data-da-text="log-from">اختر التاريخ</span>
+                <svg class="ic da-ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>
+                <input type="date" id="log-from" aria-label="من تاريخ">
+              </div>
+            </div>
+            <div class="field"><label for="log-to"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>إلى تاريخ</label>
+              <div class="date-ar">
+                <span class="da-text" data-da-text="log-to">اختر التاريخ</span>
+                <svg class="ic da-ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>
+                <input type="date" id="log-to" aria-label="إلى تاريخ">
+              </div>
+            </div>
           </div>
           <div class="audit-quick" role="group" aria-label="فترات السجل السريعة">
             <button type="button" class="btn btn-outline btn-sm" data-audit-range="today">اليوم</button>
@@ -5119,12 +5144,21 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           <p class="tiny hidden" id="log-date-error" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.</p>
         </div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <!-- سجل بصيغة قائمة مرتّبة (لا جدول بأعمدة ضيّقة تُكسّر النص عمودياً) -->
-          <div class="audit-list" id="audit-list">
-            <div class="audit-list-head" aria-hidden="true">
-              <span>الوقت</span><span>المستخدم</span><span>العملية والسجل</span><span>التفاصيل</span>
-            </div>
-            <div id="audit-table-body" class="audit-rows"></div>
+          <!-- سجل بصيغة جدول مرتّب: أعمدة واضحة بعرض كافٍ فلا ينزل النص عمودياً -->
+          <div class="table-scroll audit-scroll" tabindex="0" role="region" aria-label="سجل التدقيق">
+            <table class="data audit-table">
+              <thead>
+                <tr>
+                  <th scope="col">الوقت</th>
+                  <th scope="col">المستخدم</th>
+                  <th scope="col">الرتبة</th>
+                  <th scope="col">القسم</th>
+                  <th scope="col">العملية</th>
+                  <th scope="col">التفاصيل</th>
+                </tr>
+              </thead>
+              <tbody id="audit-table-body"></tbody>
+            </table>
           </div>
           <div class="audit-pagination">
             <label for="log-page-size">سجل بالصفحة <select id="log-page-size"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></label>
@@ -13116,6 +13150,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
     bindNav();
     bindToolbars();
     bindActions();
+    bindArabicDates();
     bindSidebar();
     document.addEventListener('hrc:notification-open', function (e) {
       if (!Store.currentUser()) return;
@@ -15279,20 +15314,61 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
   /* ======================= سجل التدقيق =======================
    * كل ما يُعرض عربي: أسماء أقسام السجل والعمليات والرتب.
    * الإنجليزية محصورة في معرّفات النظام (كود البطاقة/الوظيفة) لأنها أكواد مطبوعة. */
+  /* قاموس السجل: كل قيمة إنجليزية تُترجم — ولا تظهر كلمة إنجليزية في الواجهة
+     (بقيت الأكواد المطبوعة فقط: HRC-1042 وباركود البطاقة لأنها معرّفات لا كلمات). */
   var AUDIT_ENTITY = {
-    applicant: 'بطاقة', job: 'وظيفة', attempt: 'فرصة', staff: 'موظف',
-    settings: 'إعدادات', backup: 'نسخة احتياطية', recovery: 'استرجاع',
-    audit: 'السجل', system: 'النظام', card: 'بطاقة', session: 'جلسة'
+    applicant: 'بطاقة', applicants: 'بطاقة', card: 'بطاقة', cards: 'بطاقة',
+    job: 'وظيفة', jobs: 'وظيفة', vacancy: 'وظيفة', vacancies: 'وظيفة',
+    attempt: 'فرصة', attempts: 'فرصة', chance: 'فرصة',
+    staff: 'موظف', user: 'موظف', users: 'موظف', employee: 'موظف',
+    settings: 'إعدادات', setting: 'إعدادات', config: 'إعدادات',
+    backup: 'نسخة احتياطية', backups: 'نسخة احتياطية', recovery: 'استرجاع',
+    audit: 'السجل', log: 'السجل', system: 'النظام', session: 'جلسة',
+    hold: 'حجز', holds: 'حجز', print: 'طباعة', finance: 'المالية',
+    application: 'استمارة', applications: 'استمارة', form: 'استمارة', forms: 'استمارة'
   };
-  var AUDIT_USER = { system: 'النظام (تلقائي)', admin: 'المدير', staff: 'موظف' };
-  /* العمليات المتكررة تظهر عربية مضبوطة؛ أي عملية غير معروفة تُعرض كما هي (عربية أصلاً) */
+  var AUDIT_USER = { system: 'النظام (تلقائي)', admin: 'المدير', staff: 'موظف', public: 'زائر' };
   var AUDIT_ACTION = {
-    'login': 'دخول', 'logout': 'خروج', 'sign in': 'دخول', 'sign out': 'خروج',
-    'create': 'إضافة', 'update': 'تعديل', 'delete': 'حذف'
+    'login': 'دخول', 'log in': 'دخول', 'sign in': 'دخول',
+    'logout': 'خروج', 'log out': 'خروج', 'sign out': 'خروج',
+    'create': 'إضافة', 'insert': 'إضافة', 'add': 'إضافة',
+    'update': 'تعديل', 'edit': 'تعديل', 'delete': 'حذف', 'remove': 'حذف',
+    'restore': 'استرجاع', 'backup': 'نسخ احتياطي', 'export': 'تصدير',
+    'print': 'طباعة', 'view': 'عرض', 'read': 'عرض'
   };
+  /* أي قيمة إنجليزية غير معروفة لا تُعرض كما هي: تُوصف عربياً بدل تسريب كلمة أجنبية */
+  var LATIN_ONLY = /^[A-Za-z0-9 _\-\.]+$/;
   function auditEntityLabel(v) {
     if (!v) return '—';
-    return AUDIT_ENTITY[String(v).toLowerCase()] || v;
+    var key = String(v).trim().toLowerCase();
+    return AUDIT_ENTITY[key] || (LATIN_ONLY.test(v) ? 'سجل' : v);
+  }
+  function auditActionLabel(v) {
+    if (!v) return '—';
+    var key = String(v).trim().toLowerCase();
+    return AUDIT_ACTION[key] || (LATIN_ONLY.test(v) ? 'عملية' : v);
+  }
+
+  /* عرض التاريخ بالعربية داخل حقل «من/إلى تاريخ» (السجل).
+     القيمة الحقيقية تبقى في input[type=date] المخفي، والعرض نص عربي فقط. */
+  var AR_MONTHS = ['كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران',
+    'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'];
+  function arabicDateText(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || ''));
+    if (!m) return '';
+    var d = Number(m[3]), mo = Number(m[2]) - 1, y = m[1];
+    if (!AR_MONTHS[mo]) return '';
+    return d + ' ' + AR_MONTHS[mo] + ' ' + y;      /* مثال: 27 تشرين الأول 2026 */
+  }
+  function paintArabicDates() {
+    document.querySelectorAll('.date-ar').forEach(function (wrap) {
+      var input = wrap.querySelector('input[type="date"]');
+      var label = wrap.querySelector('.da-text');
+      if (!input || !label) return;
+      var txt = arabicDateText(input.value);
+      label.textContent = txt || 'اختر التاريخ';
+      label.classList.toggle('is-empty', !txt);
+    });
   }
 
   function readAuditFilters() {
@@ -15323,12 +15399,13 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
       var label = function (v) {
         if (spec[0] === 'user') return AUDIT_USER[v] || v;
         if (spec[0] === 'entity') return auditEntityLabel(v);
-        return AUDIT_ACTION[v] || v;
+        return auditActionLabel(v);
       };
       select.innerHTML = '<option value="all">' + UI.esc(spec[2]) + '</option>' +
         values.map(function (v) { return '<option value="' + UI.esc(v) + '">' + UI.esc(label(v)) + '</option>'; }).join('');
       select.value = state.log[spec[0]];
     });
+    paintArabicDates();
     var invalid = !!(state.log.from && state.log.to && state.log.from > state.log.to);
     var error = document.getElementById('log-date-error');
     if (error) error.classList.toggle('hidden', !invalid);
@@ -15353,15 +15430,16 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
       var roleBadge = l.role === 'admin' ? '<span class="badge danger">مدير عام</span>'
         : (l.role === 'staff' ? '<span class="badge info">موظف</span>' : '<span class="badge muted">النظام</span>');
       var who = l.name || AUDIT_USER[l.user] || l.user;
-      return '<article class="audit-row">' +
-        '<div class="ar-time">' + UI.ic('clock') + '<b>' + UI.esc(Store.fmtDateTime(l.ts)) + '</b></div>' +
-        '<div class="ar-who">' + UI.esc(who) + ' ' + roleBadge + '</div>' +
-        '<div class="ar-what"><b>' + UI.esc(AUDIT_ACTION[l.action] || l.action) + '</b>' +
-          '<span class="ar-entity">' + UI.esc(auditEntityLabel(l.entity)) +
-          (l.entityId ? ' · <span class="mono">' + UI.esc(l.entityId) + '</span>' : '') + '</span></div>' +
-        '<div class="ar-details">' + UI.esc(l.details || '—') + '</div>' +
-      '</article>';
-    }).join('') || '<div class="table-empty">لا سجلات مطابقة</div>';
+      return '<tr>' +
+        '<td class="at-time">' + UI.esc(Store.fmtDateTime(l.ts)) + '</td>' +
+        '<td class="at-who">' + UI.esc(who) + '</td>' +
+        '<td class="at-role">' + roleBadge + '</td>' +
+        '<td class="at-entity">' + UI.esc(auditEntityLabel(l.entity)) +
+          (l.entityId ? ' <span class="tiny muted mono" dir="ltr">' + UI.esc(l.entityId) + '</span>' : '') + '</td>' +
+        '<td class="at-action"><b>' + UI.esc(auditActionLabel(l.action)) + '</b></td>' +
+        '<td class="at-details">' + UI.esc(l.details || '—') + '</td>' +
+      '</tr>';
+    }).join('') || '<tr><td colspan="6" class="table-empty">لا سجلات مطابقة</td></tr>';
   }
 
   /* ======================= اللوحة المالية ======================= */
@@ -15652,6 +15730,15 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
     js.onload = function () { recoveryLoading = false; mountRecovery(); };
     js.onerror = function () { recoveryLoading = false; UI.toast('err', 'تعذر تحميل النسخ', 'أعد فتح الإعدادات بعد التأكد من الاتصال'); };
     document.head.appendChild(js);
+  }
+
+  function bindArabicDates() {
+    document.querySelectorAll('.date-ar input[type="date"]').forEach(function (input) {
+      ['change', 'input'].forEach(function (ev) {
+        input.addEventListener(ev, paintArabicDates);
+      });
+    });
+    paintArabicDates();
   }
 
   function bindActions() {

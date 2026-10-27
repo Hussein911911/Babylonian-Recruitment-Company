@@ -46,6 +46,7 @@
     bindNav();
     bindToolbars();
     bindActions();
+    bindArabicDates();
     bindSidebar();
     document.addEventListener('hrc:notification-open', function (e) {
       if (!Store.currentUser()) return;
@@ -2209,20 +2210,61 @@
   /* ======================= سجل التدقيق =======================
    * كل ما يُعرض عربي: أسماء أقسام السجل والعمليات والرتب.
    * الإنجليزية محصورة في معرّفات النظام (كود البطاقة/الوظيفة) لأنها أكواد مطبوعة. */
+  /* قاموس السجل: كل قيمة إنجليزية تُترجم — ولا تظهر كلمة إنجليزية في الواجهة
+     (بقيت الأكواد المطبوعة فقط: HRC-1042 وباركود البطاقة لأنها معرّفات لا كلمات). */
   var AUDIT_ENTITY = {
-    applicant: 'بطاقة', job: 'وظيفة', attempt: 'فرصة', staff: 'موظف',
-    settings: 'إعدادات', backup: 'نسخة احتياطية', recovery: 'استرجاع',
-    audit: 'السجل', system: 'النظام', card: 'بطاقة', session: 'جلسة'
+    applicant: 'بطاقة', applicants: 'بطاقة', card: 'بطاقة', cards: 'بطاقة',
+    job: 'وظيفة', jobs: 'وظيفة', vacancy: 'وظيفة', vacancies: 'وظيفة',
+    attempt: 'فرصة', attempts: 'فرصة', chance: 'فرصة',
+    staff: 'موظف', user: 'موظف', users: 'موظف', employee: 'موظف',
+    settings: 'إعدادات', setting: 'إعدادات', config: 'إعدادات',
+    backup: 'نسخة احتياطية', backups: 'نسخة احتياطية', recovery: 'استرجاع',
+    audit: 'السجل', log: 'السجل', system: 'النظام', session: 'جلسة',
+    hold: 'حجز', holds: 'حجز', print: 'طباعة', finance: 'المالية',
+    application: 'استمارة', applications: 'استمارة', form: 'استمارة', forms: 'استمارة'
   };
-  var AUDIT_USER = { system: 'النظام (تلقائي)', admin: 'المدير', staff: 'موظف' };
-  /* العمليات المتكررة تظهر عربية مضبوطة؛ أي عملية غير معروفة تُعرض كما هي (عربية أصلاً) */
+  var AUDIT_USER = { system: 'النظام (تلقائي)', admin: 'المدير', staff: 'موظف', public: 'زائر' };
   var AUDIT_ACTION = {
-    'login': 'دخول', 'logout': 'خروج', 'sign in': 'دخول', 'sign out': 'خروج',
-    'create': 'إضافة', 'update': 'تعديل', 'delete': 'حذف'
+    'login': 'دخول', 'log in': 'دخول', 'sign in': 'دخول',
+    'logout': 'خروج', 'log out': 'خروج', 'sign out': 'خروج',
+    'create': 'إضافة', 'insert': 'إضافة', 'add': 'إضافة',
+    'update': 'تعديل', 'edit': 'تعديل', 'delete': 'حذف', 'remove': 'حذف',
+    'restore': 'استرجاع', 'backup': 'نسخ احتياطي', 'export': 'تصدير',
+    'print': 'طباعة', 'view': 'عرض', 'read': 'عرض'
   };
+  /* أي قيمة إنجليزية غير معروفة لا تُعرض كما هي: تُوصف عربياً بدل تسريب كلمة أجنبية */
+  var LATIN_ONLY = /^[A-Za-z0-9 _\-\.]+$/;
   function auditEntityLabel(v) {
     if (!v) return '—';
-    return AUDIT_ENTITY[String(v).toLowerCase()] || v;
+    var key = String(v).trim().toLowerCase();
+    return AUDIT_ENTITY[key] || (LATIN_ONLY.test(v) ? 'سجل' : v);
+  }
+  function auditActionLabel(v) {
+    if (!v) return '—';
+    var key = String(v).trim().toLowerCase();
+    return AUDIT_ACTION[key] || (LATIN_ONLY.test(v) ? 'عملية' : v);
+  }
+
+  /* عرض التاريخ بالعربية داخل حقل «من/إلى تاريخ» (السجل).
+     القيمة الحقيقية تبقى في input[type=date] المخفي، والعرض نص عربي فقط. */
+  var AR_MONTHS = ['كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران',
+    'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'];
+  function arabicDateText(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || ''));
+    if (!m) return '';
+    var d = Number(m[3]), mo = Number(m[2]) - 1, y = m[1];
+    if (!AR_MONTHS[mo]) return '';
+    return d + ' ' + AR_MONTHS[mo] + ' ' + y;      /* مثال: 27 تشرين الأول 2026 */
+  }
+  function paintArabicDates() {
+    document.querySelectorAll('.date-ar').forEach(function (wrap) {
+      var input = wrap.querySelector('input[type="date"]');
+      var label = wrap.querySelector('.da-text');
+      if (!input || !label) return;
+      var txt = arabicDateText(input.value);
+      label.textContent = txt || 'اختر التاريخ';
+      label.classList.toggle('is-empty', !txt);
+    });
   }
 
   function readAuditFilters() {
@@ -2253,12 +2295,13 @@
       var label = function (v) {
         if (spec[0] === 'user') return AUDIT_USER[v] || v;
         if (spec[0] === 'entity') return auditEntityLabel(v);
-        return AUDIT_ACTION[v] || v;
+        return auditActionLabel(v);
       };
       select.innerHTML = '<option value="all">' + UI.esc(spec[2]) + '</option>' +
         values.map(function (v) { return '<option value="' + UI.esc(v) + '">' + UI.esc(label(v)) + '</option>'; }).join('');
       select.value = state.log[spec[0]];
     });
+    paintArabicDates();
     var invalid = !!(state.log.from && state.log.to && state.log.from > state.log.to);
     var error = document.getElementById('log-date-error');
     if (error) error.classList.toggle('hidden', !invalid);
@@ -2283,15 +2326,16 @@
       var roleBadge = l.role === 'admin' ? '<span class="badge danger">مدير عام</span>'
         : (l.role === 'staff' ? '<span class="badge info">موظف</span>' : '<span class="badge muted">النظام</span>');
       var who = l.name || AUDIT_USER[l.user] || l.user;
-      return '<article class="audit-row">' +
-        '<div class="ar-time">' + UI.ic('clock') + '<b>' + UI.esc(Store.fmtDateTime(l.ts)) + '</b></div>' +
-        '<div class="ar-who">' + UI.esc(who) + ' ' + roleBadge + '</div>' +
-        '<div class="ar-what"><b>' + UI.esc(AUDIT_ACTION[l.action] || l.action) + '</b>' +
-          '<span class="ar-entity">' + UI.esc(auditEntityLabel(l.entity)) +
-          (l.entityId ? ' · <span class="mono">' + UI.esc(l.entityId) + '</span>' : '') + '</span></div>' +
-        '<div class="ar-details">' + UI.esc(l.details || '—') + '</div>' +
-      '</article>';
-    }).join('') || '<div class="table-empty">لا سجلات مطابقة</div>';
+      return '<tr>' +
+        '<td class="at-time">' + UI.esc(Store.fmtDateTime(l.ts)) + '</td>' +
+        '<td class="at-who">' + UI.esc(who) + '</td>' +
+        '<td class="at-role">' + roleBadge + '</td>' +
+        '<td class="at-entity">' + UI.esc(auditEntityLabel(l.entity)) +
+          (l.entityId ? ' <span class="tiny muted mono" dir="ltr">' + UI.esc(l.entityId) + '</span>' : '') + '</td>' +
+        '<td class="at-action"><b>' + UI.esc(auditActionLabel(l.action)) + '</b></td>' +
+        '<td class="at-details">' + UI.esc(l.details || '—') + '</td>' +
+      '</tr>';
+    }).join('') || '<tr><td colspan="6" class="table-empty">لا سجلات مطابقة</td></tr>';
   }
 
   /* ======================= اللوحة المالية ======================= */
@@ -2582,6 +2626,15 @@
     js.onload = function () { recoveryLoading = false; mountRecovery(); };
     js.onerror = function () { recoveryLoading = false; UI.toast('err', 'تعذر تحميل النسخ', 'أعد فتح الإعدادات بعد التأكد من الاتصال'); };
     document.head.appendChild(js);
+  }
+
+  function bindArabicDates() {
+    document.querySelectorAll('.date-ar input[type="date"]').forEach(function (input) {
+      ['change', 'input'].forEach(function (ev) {
+        input.addEventListener(ev, paintArabicDates);
+      });
+    });
+    paintArabicDates();
   }
 
   function bindActions() {
