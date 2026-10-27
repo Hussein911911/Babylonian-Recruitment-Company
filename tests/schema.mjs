@@ -593,7 +593,7 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
     /var\(--gold\)/.test(app) && /var\(--lapis-2\)/.test(app) && /--gold:/.test(vars));
 
   /* الصور: محلية + بصيغة webp + بلا نص عربي داخل الصورة */
-  const imgs = ['hero-skyline', 'card-banner', 'jobs/job-truck', 'jobs/job-cashier', 'jobs/job-chef',
+  const imgs = ['hero-skyline', 'jobs/job-truck', 'jobs/job-cashier', 'jobs/job-chef',
     'jobs/job-electrician', 'jobs/job-engineer', 'jobs/job-nurse', 'jobs/job-sales', 'jobs/job-warehouse'];
   const missing = imgs.filter((n) => !existsSync(join(ROOT, 'assets', 'img', n + '.webp')));
   check('كل صور الهوية الجديدة موجودة محلياً بصيغة webp', missing.length === 0, missing.join(', '));
@@ -602,10 +602,22 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
   });
   check('لا صورة تتجاوز 150KB (سرعة على الجوال)', big.length === 0, big.map((f) => f.split('/').pop()).join(', '));
 
-  /* تصميم بطاقتنا الحقيقي على الموقع: يُرسم بنفس قالب الطباعة (voucher). */
-  check('شكل البطاقة الحقيقي (وجهان) يُرسم على الموقع من نفس قالب الطباعة',
-    /id="card-showcase"/.test(pub) && /HRCVoucher\.buildHtml/.test(js) &&
-    /hero-skyline\.webp/.test(app));
+  /* 2026-10-25 (بعد طلب المالك): لا يُعرض أي شكل/صورة للبطاقة على الموقع.
+     صفحة «بطاقتي» = إدخال رقم/مسح ثم تفاصيل حقيقية من القاعدة. */
+  check('لا شكل بطاقة معروض في الموقع (حُذف عرض الوجهين)',
+    !/id="card-showcase"/.test(pub) && !/card-showcase/.test(js) &&
+    !/cs-front|cs-badge|cs-cards/.test(app));
+  check('صفحة «بطاقتي»: حقل إدخال الرقم + زر مسح + منطقة تفاصيل',
+    /id="cp-serial"/.test(pub) && /id="cp-scan"/.test(pub) &&
+    /id="cp-result"/.test(pub) && /id="cp-again"/.test(js));
+  check('البحث يستعمل Store.cardLookup ويشرح الخطأ داخل الشاشة',
+    /Store\.cardLookup\(serial\)/.test(js) && /function cpSay/.test(js) &&
+    /id="cp-err"/.test(pub));
+  check('التفاصيل تعرض الصلاحية والمتبقي والفرص ووظائفها وتواريخها',
+    /بداية الصلاحية/.test(js) && /تنتهي في/.test(js) && /الفرص المتبقية/.test(js) &&
+    /cp-chance/.test(js) && /selectedAt/.test(js));
+  check('المسح الحقيقي مربوط (HRCQRScan) ويقبل باركود البطاقة فقط',
+    /root\.HRCQRScan/.test(js) && /validate: function/.test(js));
   check('كل وظيفة بلا صورة تحصل على صورة تخصص محلية (لا أيقونة مكسورة)',
     /function defaultJobImage/.test(js) && /assets\/img\/jobs\//.test(js));
   check('المفضلة تُحفظ على جهاز الزائر وحده ولا تُرسل للشركة',
@@ -628,13 +640,18 @@ step(20, 'الواجهة العامة — أبيض نقيّ، بوابة الم�
     return Math.min(parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)) >= 236;
   };
   const offenders = [];
+  /* الاستثناء المقصود: خلفيات شارات الحالة الدلالية (نجاح/خطأ/معلّق) — لون
+     أخضر/أحمر/أصفر قريب من الأبيض مقصود ليُقرأ كشارة، وليس درجة كريمية. */
+  const STATUS_TINTS = new Set(['#eefaf3', '#fdeeee', '#f7f9fc', '#fff8ea', '#f2fbfa', '#f4f8ff', '#fffaf2', '#f4fcf7']);
   for (const f of ['style.css', 'app-shell.css', 'public-polish.css']) {
     const css = readFileSync(join(ROOT, 'assets', 'css', f), 'utf8');
     for (const m of css.matchAll(/background(?:-color)?\s*:\s*([^;}]+)/g)) {
-      for (const hex of m[1].matchAll(/#[0-9a-fA-F]{6}/g)) if (near(hex[0])) offenders.push(f + ':' + hex[0]);
+      for (const hex of m[1].matchAll(/#[0-9a-fA-F]{6}/g)) {
+        if (near(hex[0]) && !STATUS_TINTS.has(hex[0].toLowerCase())) offenders.push(f + ':' + hex[0]);
+      }
     }
   }
-  check('كل خلفية قريبة من الأبيض صارت #fff (لا درجات كريمية)', offenders.length === 0,
+  check('لا خلفيات كريمية متبقية (خلفيات شارات الحالة الدلالية مستثناة وعياً)', offenders.length === 0,
     [...new Set(offenders)].slice(0, 6).join(', '));
 
   /* 2) بوابة الموظفين: الضغطة المطوّلة تعمل على **كل** أسماء الشركة،
@@ -653,9 +670,8 @@ step(20, 'الواجهة العامة — أبيض نقيّ، بوابة الم�
     !/promo-banner|promo-qr|renderPromoQr|promo-dots/.test(pub + js));
 
   /* 4) تصميم بطاقتنا الحقيقي معروض على الموقع من نفس قالب الطباعة */
-  check('قسم البطاقة يعرض الوجهين من قالب الطباعة نفسه (لا صورة بديلة)',
-    /id="card-showcase"/.test(pub) && /HRCVoucher\.buildHtml/.test(js) &&
-    /cs-cards/.test(readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8')));
+  check('صفحة البطاقة تعرض تفاصيل حقيقية من القاعدة لا شكلاً مرسوماً',
+    /id="cp-result"/.test(pub) && /Store\.cardLookup/.test(js));
 }
 
 /* ── 2026-10-25: فلترة موحّدة + طبقات نظيفة + بطاقة فخمة + تفاصيل حيّة ── */
@@ -692,8 +708,8 @@ step(21, 'الوظائف — فلترة موحّدة، طبقات فوق بعض�
     (vou.match(/hc-guilloche/g) || []).length >= 3);
   /* نجرّد التعليقات: الصيغة القديمة مذكورة في تعليق توضيحي مقصود */
   const jsCode = js.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  check('الرقم المعروض بصيغة الباركود الحقيقية لا الصيغة القديمة',
-    !/HRC-BC-000000/.test(jsCode) && /serial: '[A-Z0-9]{10}'/.test(jsCode) &&
+  check('لا أرقام بطاقات وهمية في الواجهة (الصيغة القديمة محذوفة)',
+    !/HRC-BC-000000/.test(jsCode) &&
     /function randomCardCode/.test(readFileSync(join(ROOT, 'assets', 'js', 'store.js'), 'utf8')));
 
   /* 4) تفاصيل الوظيفة: نافذة حيّة بعناصر واضحة */
@@ -729,18 +745,12 @@ step(22, 'الواجهة — ألوان حيّة، لغة موحّدة، وكا�
     !/خابرنا/.test(pub) && !/خابرنا/.test(codeOnly(js)) && /اتصل بنا/.test(pub));
 
   /* 3) البطاقة ككارت حقيقي: ميل ثلاثي الأبعاد + ظلّ + واجهة برمجية للوجهين */
-  check('البطاقة تُعرض ككارت بميل وظلّ (perspective + rotate + shadow)',
-    /perspective: 1200px/.test(app) && /rotateX\(9deg\) rotateZ\(-3\.5deg\)/.test(app));
-  check('الوجهان يُرسمان من قالب الطباعة عبر واجهة صريحة (لا قصّ HTML)',
-    /frontHtml: function \(app, attempts\)/.test(vou) &&
-    /backHtml: function \(app, attempts\)/.test(vou) &&
-    /V\.frontHtml\(sample\)/.test(js) && /V\.backHtml\(sample\)/.test(js));
-  check('إزاحة البطاقة داخل الإطار فيزيائية (top/left) لتعمل في RTL',
-    /position: absolute; top: 0; left: 0; right: auto/.test(app));
-  check('قائمة ميزات البطاقة ظاهرة (أيقونة مربّعة + عنوان + وصف، بلا نقاط)',
-    /\.cs-ic \{[\s\S]{0,200}place-items: center/.test(app) &&
-    /\.cs-features b \{/.test(app) &&
-    /\.cs-features li \{[\s\S]{0,200}list-style: none/.test(app));
+  check('لا عرض لكارت البطاقة على الموقع ولا واجهة عرض له في القالب',
+    !/perspective: 1200px/.test(app) && !/frontHtml: function/.test(vou) &&
+    !/backHtml: function/.test(vou));
+  check('صفحة البطاقة تعرض بطاقة تفاصيل مرتّبة (شبكة قيم + فرص)',
+    /\.cp-grid \{/.test(app) && /\.cp-kv \{/.test(app) &&
+    /\.cp-chance \{/.test(app) && /\.cp-badge\.ok/.test(app));
 }
 
 /* ── 2026-10-25: تصنيفات بطيّة + قسم المفضلة ── */

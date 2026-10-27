@@ -59,7 +59,6 @@ const urlsToCache = [
   '/assets/css/card-entry.css',
   '/assets/css/app-shell.css',
   '/assets/img/hero-skyline.webp',
-  '/assets/img/card-banner.webp',
   '/assets/css/backup.css',
   '/assets/css/image-editor.css',
   '/assets/js/qr-scan.js',

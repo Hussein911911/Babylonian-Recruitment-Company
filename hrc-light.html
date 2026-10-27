@@ -3152,93 +3152,103 @@ img { max-width: 100%; height: auto; }
   display: grid; place-items: center; font-size: .8rem;
 }
 
-/* ── 5) قسم بطاقة التوظيف — الوجهان الحقيقيان (86×54مم) ── */
-.card-showcase { padding-block: clamp(26px, 4vw, 46px); }
-.cs-head { text-align: center; max-width: 62ch; margin: 0 auto clamp(18px, 3vw, 30px); }
-.cs-head h2 { margin: 8px 0 8px; font-size: clamp(1.15rem, 4.4vw, 1.6rem); color: var(--lapis-2); }
-.cs-head p { margin: 0; color: var(--muted); font-size: .84rem; line-height: 1.95; }
-.cs-grid {
-  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
-  gap: clamp(18px, 3vw, 40px); align-items: center;
+/* ── 5) صفحة «بطاقتي» — إدخال الرقم ثم التفاصيل (لا شكل بطاقة) ── */
+.card-page { padding-block: clamp(18px, 3vw, 34px) 40px; }
+.cp-entry { display: grid; place-items: center; }
+.cp-entry-card {
+  width: min(560px, 100%); background: #fff; border: 1px solid var(--line-soft);
+  border-radius: 20px; padding: clamp(20px, 4vw, 30px); text-align: center;
+  box-shadow: 0 16px 40px rgba(6, 13, 31, .08);
 }
-.cs-visual {
-  background: #fff; border: 1px solid var(--line-soft); border-radius: 22px;
-  padding: clamp(14px, 2.4vw, 26px); box-shadow: 0 14px 40px rgba(6, 13, 31, .08);
-  display: grid; gap: 12px; justify-items: center;
+.cp-ic {
+  width: 54px; height: 54px; border-radius: 16px; margin: 0 auto 12px;
+  display: grid; place-items: center; color: #fff;
+  background: linear-gradient(140deg, var(--lapis-2), var(--lapis-3));
+  box-shadow: 0 10px 22px rgba(11, 26, 58, .22);
 }
-/* البطاقة تُرسم بمقاسها الفعلي (86×54مم = 325×204px) ثم تُعرض **ككارت حقيقي**
-   بميل ثلاثي الأبعاد وظلّ أرضي — كما في صورة العرض. المقاس الأصلي محفوظ للطباعة. */
-.cs-cards {
-  --cs: .92;
-  display: grid; justify-items: center; gap: 22px;
-  width: 100%; padding: 14px 0 18px; perspective: 1200px;
+.cp-ic .ic { width: 26px; height: 26px; color: var(--gold-2); }
+.cp-entry-card h2 { margin: 0 0 6px; font-size: clamp(1.05rem, 4vw, 1.3rem); color: var(--lapis-2); font-weight: 900; }
+.cp-entry-card > p { margin: 0 0 16px; color: var(--muted); font-size: .82rem; line-height: 1.95; }
+.cp-form { display: grid; gap: 8px; text-align: start; }
+.cp-label { font-size: .74rem; font-weight: 800; color: var(--lapis-2); }
+.cp-field { position: relative; }
+.cp-field .ic { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--gold-3); }
+.cp-field input {
+  width: 100%; height: 48px; font-family: inherit; font-size: 1rem; font-weight: 800;
+  letter-spacing: .08em; padding-inline: 38px 14px; color: var(--lapis-2);
+  border: 1.5px solid #e2e8f2; border-radius: 13px; background: #fff; outline: 0;
+  transition: border-color .18s, box-shadow .18s;
 }
-.cs-front, .cs-back { position: relative; }
-.cs-slot {
-  position: relative;
-  width: calc(325.04px * var(--cs));
-  height: calc(204.09px * var(--cs));
-  border-radius: calc(3.5mm * var(--cs));
+.cp-field input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(200, 162, 74, .13); }
+.cp-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.cp-actions .btn { flex: 1 1 160px; justify-content: center; min-height: 46px; }
+.cp-err { margin: 2px 0 0; min-height: 18px; font-size: .76rem; font-weight: 700; color: var(--muted); }
+.cp-err.is-error { color: #b03a2e; }
+.cp-note {
+  display: flex; gap: 6px; align-items: flex-start; justify-content: center;
+  margin: 10px 0 0; font-size: .7rem; line-height: 1.9; color: var(--muted); text-align: start;
 }
-/* ⚠ إزاحات فيزيائية (top/left) مع transform-origin: top left — استخدام
-   inset-inline-start في RTL يثبّت البطاقة على اليمين فتنزاح خارج الإطار. */
-.cs-slot > .hrc-card {
-  position: absolute; top: 0; left: 0; right: auto; bottom: auto;
-  transform: scale(var(--cs)); transform-origin: top left;
-  box-shadow: 0 26px 46px rgba(6, 13, 31, .34);
-  border-radius: 3.5mm;
-}
-.cs-front { transform: rotateX(9deg) rotateZ(-3.5deg); }
-.cs-back { transform: rotateX(9deg) rotateZ(-3.5deg) scale(.9); opacity: .97; }
-.cs-front .cs-slot > .hrc-card {
-  box-shadow: 0 30px 54px rgba(6, 13, 31, .40), 0 0 0 .4mm rgba(232, 208, 137, .5);
-}
-.cs-front::after, .cs-back::after {
-  content: ''; position: absolute; inset-block-end: -16px; inset-inline: 8%;
-  height: 20px; border-radius: 50%; z-index: -1;
-  background: radial-gradient(closest-side, rgba(6, 13, 31, .28), transparent 76%);
-  filter: blur(5px);
-}
-.cs-badge {
-  position: absolute; inset-block-start: -13px; inset-inline-end: 10px; z-index: 3;
-  background: linear-gradient(135deg, var(--gold-2), var(--gold)); color: #241a05;
-  border-radius: 999px; padding: 5px 13px; font-size: .66rem; font-weight: 900;
-  box-shadow: 0 8px 18px rgba(200, 162, 74, .35);
-}
-@media (max-width: 980px) { .cs-cards { --cs: .78; } }
-@media (max-width: 700px) { .cs-cards { --cs: .62; gap: 18px; } }
-@media (max-width: 430px) { .cs-cards { --cs: .52; } }
+.cp-note .ic { width: 14px; height: 14px; color: var(--gold-3); flex: none; margin-top: 3px; }
 
-.cs-hint {
-  margin: 0; display: flex; align-items: flex-start; justify-content: center; gap: 6px;
-  font-size: .7rem; line-height: 1.9; color: var(--muted); text-align: center;
+/* التفاصيل */
+.cp-result { display: grid; gap: 14px; }
+.cp-result[hidden] { display: none; }
+.cp-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  background: #fff; border: 1px solid var(--line-soft); border-radius: 18px; padding: 14px 16px;
+  box-shadow: 0 10px 26px rgba(6, 13, 31, .06);
 }
-.cs-hint .ic { width: 14px; height: 14px; color: var(--gold-3); flex: none; margin-top: 3px; }
-.cs-copy { min-width: 0; }
-.cs-features { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 12px; }
-.cs-features li {
-  display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 12px; align-items: start;
-  list-style: none;
+.cp-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.cp-id .cp-ic { margin: 0; width: 46px; height: 46px; border-radius: 14px; }
+.cp-id .cp-ic .ic { width: 22px; height: 22px; }
+.cp-id b { display: block; font-size: 1.05rem; color: var(--lapis-2); letter-spacing: .06em; }
+.cp-owner { font-size: .76rem; color: var(--muted); font-weight: 700; }
+.cp-badge {
+  font-size: .72rem; font-weight: 900; padding: 6px 13px; border-radius: 999px; white-space: nowrap;
+  background: #fff; border: 1px solid #e2e8f2; color: var(--lapis-2);
 }
-.cs-ic {
-  width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center;
-  background: #fff; border: 1px solid #e9edf4; color: var(--gold-3);
-  box-shadow: 0 6px 16px rgba(6, 13, 31, .06);
+.cp-badge.ok { background: #eefaf3; border-color: #bfe6cf; color: #1a7a45; }
+.cp-badge.warn { background: #fff8ea; border-color: #f0dcae; color: #8a5c05; }
+.cp-badge.danger { background: #fdeeee; border-color: #f0c3c1; color: #8f2724; }
+.cp-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.cp-kv {
+  background: #fff; border: 1px solid var(--line-soft); border-radius: 14px;
+  padding: 12px 10px; display: grid; gap: 3px; text-align: center;
 }
-.cs-ic .ic { width: 20px; height: 20px; }
-.cs-features li:nth-child(1) .cs-ic { color: var(--v-teal); border-color: #cdeae7; }
-.cs-features li:nth-child(2) .cs-ic { color: var(--v-blue); border-color: #d6e2fa; }
-.cs-features li:nth-child(3) .cs-ic { color: var(--v-amber); border-color: #f3e3cb; }
-.cs-features li:nth-child(4) .cs-ic { color: var(--v-green); border-color: #d3efdd; }
-.cs-features b { display: block; color: var(--lapis-2); font-size: .92rem; margin-bottom: 3px; }
-.cs-features span { display: block; color: var(--muted); font-size: .78rem; line-height: 1.9; }
-.cs-features div b b, .cs-features span b { display: inline; color: var(--lapis-2); font-weight: 900; }
-.cs-cta { display: flex; flex-wrap: wrap; gap: 10px; }
-.cs-note {
-  display: flex; align-items: flex-start; gap: 6px; margin: 12px 0 0;
-  font-size: .72rem; line-height: 1.9; color: var(--muted);
+.cp-kv span { font-size: .66rem; font-weight: 700; color: var(--muted); }
+.cp-kv b { font-size: .84rem; font-weight: 900; color: var(--lapis-2); }
+.cp-h { display: flex; align-items: center; gap: 7px; margin: 4px 2px 0; font-size: .92rem; color: var(--lapis-2); font-weight: 900; }
+.cp-h .ic { width: 18px; height: 18px; color: var(--v-teal); }
+.cp-chances { display: grid; gap: 10px; }
+.cp-chance {
+  background: #fff; border: 1px solid var(--line-soft); border-radius: 16px; padding: 13px 15px;
+  display: grid; gap: 7px; box-shadow: 0 6px 18px rgba(6, 13, 31, .05);
 }
-.cs-note .ic { width: 14px; height: 14px; color: var(--gold-3); flex: none; margin-top: 3px; }
+.cp-chance-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cp-no { font-size: .74rem; font-weight: 900; color: var(--gold-3); }
+.cp-state { font-size: .68rem; font-weight: 900; padding: 4px 10px; border-radius: 999px; border: 1px solid #e2e8f2; background: #fff; color: var(--lapis-2); }
+.cp-state.ok { background: #eefaf3; border-color: #bfe6cf; color: #1a7a45; }
+.cp-state.warn { background: #fff8ea; border-color: #f0dcae; color: #8a5c05; }
+.cp-state.danger { background: #fdeeee; border-color: #f0c3c1; color: #8f2724; }
+.cp-state.muted { background: #f7f9fc; color: #6b7793; }
+.cp-job { font-size: .92rem; color: var(--lapis-2); }
+.cp-job b { font-weight: 900; }
+.cp-job .mono { font-size: .72rem; color: var(--muted); }
+.cp-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .74rem; color: #52627a; }
+.cp-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.cp-meta .ic { width: 13px; height: 13px; color: var(--gold-3); }
+.cp-note-in { margin: 2px 0 0; font-size: .74rem; line-height: 1.9; color: #8a5c05; background: #fff8ea; border-radius: 9px; padding: 7px 10px; }
+.cp-empty-chance {
+  display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--muted);
+  background: #fff; border: 1px dashed #e2e8f2; border-radius: 14px; padding: 14px;
+}
+.cp-empty-chance .ic { width: 16px; height: 16px; color: var(--gold-3); }
+.cp-foot { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.cp-foot .btn { flex: 1 1 200px; justify-content: center; min-height: 46px; }
+@media (max-width: 760px) {
+  .cp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cp-actions .btn, .cp-foot .btn { flex: 1 1 100%; }
+}
 
 /* ── 6) رأس «أحدث الوظائف» ── */
 .jobs-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -3398,19 +3408,13 @@ body.kbd .tabbar a:focus-visible { outline: 2px solid var(--gold); outline-offse
   .app-search { padding: 6px 6px 6px 12px; }
   .app-search .as-gov { display: none; }     /* البحث يبقى كبسولة واحدة كما في الموك-أب */
 }
-@media (max-width: 980px) {
-  .cs-grid { grid-template-columns: minmax(0, 1fr); }
-  .cs-visual { order: -1; }
-}
 @media (max-width: 860px) {
-  .cs-cards { --cs: .52; }
-  .cs-cta .btn { flex: 1 1 100%; justify-content: center; }
   /* التصنيفات شرائح أفقية بتمرير — لا ضغط ولا قصّ */
   .cat-rail { gap: 7px; justify-content: flex-start; }
 }
 
 @media print {
-  .tabbar, .cat-rail, .cs-cards { display: none !important; }
+  .tabbar, .cat-rail, .page-bar { display: none !important; }
 }
 
 /* ═══ طبقات وأولويات العرض (منع «ناس فوق ناس») ═══
@@ -3439,7 +3443,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 
 /* منع أي عنصر زخرفي من اعتراض النقر أو التغطية */
 .hero-app .hero-veil, .hero-app .hero-bg { pointer-events: none; }
-.cat-rail, .app-section, .cs-visual { position: relative; z-index: 1; }
+.cat-rail, .app-section, .card-page { position: relative; z-index: 1; }
 
 /* ═══ نافذة تفاصيل الوظيفة (jd-*) — حيّة واحترافية ═══ */
 .modal-job .modal-body { padding: 0; background: #fff; }
@@ -4361,52 +4365,39 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
   </div>
 </section>
 
-<!-- ============================== بطاقة التوظيف — تصميم البطاقة الحقيقي ============================== -->
-<section class="section app-section card-showcase" id="card" data-page="card">
+<!-- ============================== بطاقتي — إدخال الرقم أو المسح ثم التفاصيل ============================== -->
+<section class="section app-section card-page" id="card" data-page="card">
   <div class="container">
-    <div class="cs-head">
-      <span class="eyebrow eyebrow-line">بطاقة التوظيف</span>
-      <h2>البطاقة التي تحمل فرصتك</h2>
-      <p>تُشترى كاشاً من نقطة بيع معتمدة، وتحمل باركوداً واحداً يفتح حالتها وفرصتيها واستمارتك.</p>
-    </div>
-
-    <div class="cs-grid">
-      <!-- الوجهان الحقيقيان للبطاقة (86×54مم) — يُرسمان من نفس قالب الطباعة -->
-      <div class="cs-visual">
-        <div class="cs-cards" id="card-showcase" aria-label="شكل بطاقة التوظيف: الوجه الأمامي والخلفي"></div>
-        <p class="cs-hint"><svg class="ic"><use href="#i-info" xlink:href="#i-info"/></svg> هذا شكل البطاقة الفعلي المطبوع — بلا بيانات زبون؛ بياناتك على استمارة A4 بنفس الباركود.</p>
-      </div>
-
-      <div class="cs-copy">
-        <ul class="cs-features">
-          <li>
-            <span class="cs-ic"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg></span>
-            <div><b>فرصتان مستقلتان</b><span>كل فرصة على وظيفة مختلفة، وتُستهلك عند التقديم فقط.</span></div>
-          </li>
-          <li>
-            <span class="cs-ic"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg></span>
-            <div><b>صلاحية 30 يوماً</b><span>تبدأ من لحظة البيع لا من طباعة الدفعة.</span></div>
-          </li>
-          <li>
-            <span class="cs-ic"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg></span>
-            <div><b>حجز عادل 24 ساعة</b><span>الوظيفة لمرشح واحد فقط، ثم تصبح <b>حرجة</b> وقرارها للشركة.</span></div>
-          </li>
-          <li>
-            <span class="cs-ic"><svg class="ic"><use href="#i-money" xlink:href="#i-money"/></svg></span>
-            <div><b>الدفع كاش</b><span>عند نقطة البيع — لا دفع إلكتروني ولا رسوم خفية.</span></div>
-          </li>
-        </ul>
-        <div class="cs-cta">
-          <button type="button" class="btn btn-gold btn-lg" data-action="open-booking">
-            <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> افتح بطاقتي بالباركود
-          </button>
-          <a class="btn btn-outline btn-lg" href="#how">
-            <svg class="ic"><use href="#i-info" xlink:href="#i-info"/></svg> كيف تعمل؟
-          </a>
-        </div>
-        <p class="cs-note"><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> الفرصة المستهلكة لا تعود — والتحقق من البطاقات خاص بموظفي الشركة وإدارتها.</p>
+    <!-- (١) شاشة الإدخال -->
+    <div class="cp-entry" id="cp-entry">
+      <div class="cp-entry-card">
+        <span class="cp-ic"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg></span>
+        <h2>ادخل رقم بطاقتك</h2>
+        <p>اكتب رقم البطاقة المطبوع عليها، أو امسح الباركود بكاميرا هاتفك — وتظهر لك حالتها وفرصها كاملة.</p>
+        <form class="cp-form" id="cp-form" autocomplete="off">
+          <label class="cp-label" for="cp-serial">رقم البطاقة (الباركود)</label>
+          <div class="cp-field">
+            <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg>
+            <input id="cp-serial" type="text" inputmode="text" spellcheck="false" dir="ltr"
+                   placeholder="مثال: K7M2XQ9T4R" maxlength="18" aria-describedby="cp-err">
+          </div>
+          <div class="cp-actions">
+            <button type="submit" class="btn btn-gold btn-lg" id="cp-go">
+              <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> اعرض بطاقتي
+            </button>
+            <button type="button" class="btn btn-outline btn-lg" id="cp-scan">
+              <svg class="ic"><use href="#i-scan" xlink:href="#i-scan"/></svg> مسح الباركود
+            </button>
+          </div>
+          <p class="cp-err" id="cp-err" role="alert"></p>
+        </form>
+        <p class="cp-note"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
+          بياناتك تُعرض مختصرة (اسم وهاتف مقنّعان) — التفاصيل الكاملة على استمارتك المطبوعة.</p>
       </div>
     </div>
+
+    <!-- (٢) شاشة التفاصيل (تُرسم بعد البحث) -->
+    <div class="cp-result" id="cp-result" hidden></div>
   </div>
 </section>
 
@@ -4429,7 +4420,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
       <div class="step reveal" data-d="0">
         <div class="num">1</div>
         <h3>شراء البطاقة</h3>
-        <p>اشترِ بطاقة التوظيف <b>كاشاً</b> من نقطة بيع معتمدة، وعبّئ بياناتك.</p>
+        <p>اشترِ بطاقة التوظيف <b>الدفع كاش</b> من نقطة بيع معتمدة، وعبّئ بياناتك.</p>
       </div>
       <div class="step reveal" data-d="120">
         <div class="num">2</div>
@@ -10261,15 +10252,6 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
   }
 
   root.HRCVoucher = {
-    /* وجهان منفصلان بلا غلاف — لعرض «كارت» على الموقع (لا قصّ نصوص ولا HTML مُلفَّق) */
-    frontHtml: function (app, attempts) {
-      ensureStyle();
-      return frontHtml(app, attempts || [{ no: 1 }, { no: 2 }]);
-    },
-    backHtml: function (app, attempts) {
-      ensureStyle();
-      return backHtml(app, attempts || [{ no: 1 }, { no: 2 }]);
-    },
     buildHtml: buildHtml, print: print, printBatch: printBatch, printSheet: printSheet, sheetCount: sheetCount, preview: preview,
     formHtml: formHtml, printForm: printForm, previewForm: previewForm,
     DISCLAIMER: DISCLAIMER, qrSvg: qrSvg, verifyUrl: function (s) { return Store.verifyUrl(s); }
@@ -11652,6 +11634,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
     bindEvents();
     bindFavorites();
     bindCatsToggle();
+    bindCardPage();
     bindTabbar();
 
     var st = Store.cloudStatus ? Store.cloudStatus() : null;
@@ -12118,28 +12101,188 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
       (gone ? '<div class="fav-note">' + UI.ic('info') + ' ' + gone + ' وظيفة محفوظة لم تعد معروضة (أُغلقت أو حُذفت).</div>' : '');
   }
 
-  /* ── بطاقة التوظيف الحقيقية على الموقع ──
-     نرسم الوجهين بنفس قالب الطباعة (HRCVoucher.buildHtml) ببطاقة نموذجية
-     بلا بيانات زبون، فتكون الصورة على الموقع مطابقة تماماً للورقة المطبوعة. */
-  function renderCardShowcase() {
-    var host = document.getElementById('card-showcase');
-    if (!host || host.dataset.done) return;
-    var V = root.HRCVoucher;
-    if (!V || !V.frontHtml || !V.backHtml) return;
-    try {
-      /* بطاقة نموذجية بلا بيانات زبون — الوجهان من نفس قالب الطباعة حرفياً */
-      var sample = { serial: 'K7M2XQ9T4R', status: 'blank', issueDate: null, expiryDate: null, cardPrintCode: null };
-      host.innerHTML =
-        '<div class="cs-front">' +
-          '<span class="cs-badge">شكل البطاقة الفعلي</span>' +
-          '<div class="cs-slot">' + V.frontHtml(sample) + '</div>' +
-        '</div>' +
-        '<div class="cs-back"><div class="cs-slot">' + V.backHtml(sample) + '</div></div>';
-      host.dataset.done = 'yes';
-    } catch (e) { /* البطاقة تحسين بصري — لا تُعطّل الصفحة */ }
+  /* ══════════════ صفحة «بطاقتي» ══════════════
+   * لا نعرض أي شكل/صورة للبطاقة (طلب المالك: لا معنى لعرضها للزبون بلا بيانات).
+   * الصفحة: إدخال رقم البطاقة أو مسح الباركود ← تفاصيل حقيقية من القاعدة:
+   * الحالة · بداية الصلاحية · الانتهاء · المتبقي · الفرص ووظائفها وتواريخها. */
+  var CP_KEY = 'hrc_last_card_v1';        /* آخر رقم بطاقة فتحه الزبون على جهازه */
+
+  function cpSay(msg, isErr) {
+    var el = document.getElementById('cp-err');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.classList.toggle('is-error', !!isErr);
   }
 
-  function renderAll() { renderHeroStats(); renderCategories(); renderJobs(); renderFavorites(); renderCardShowcase(); }
+  function cpSerialFromText(text) {
+    var t = String(text || '').trim();
+    var S = Store;
+    if (S.normalizeCardSerial) { try { t = S.normalizeCardSerial(t); } catch (e) { } }
+    return t.toUpperCase();
+  }
+
+  function cpOpenBook(saleSerial) {
+    if (root.HRCBooking && root.HRCBooking.open) {
+      root.HRCBooking.open({ serial: saleSerial, fromHash: true });
+    }
+  }
+
+  /* تفاصيل البطاقة: تُرسم من رد Store.cardLookup (محلي أو سحابي) */
+  function cpRenderDetails(card) {
+    var entry = document.getElementById('cp-entry');
+    var host = document.getElementById('cp-result');
+    if (!host) return;
+    var st = card.status || 'active';
+    var badge = {
+      active: { cls: 'ok', t: 'سارية ونشطة' },
+      expired: { cls: 'danger', t: 'منتهية الصلاحية' },
+      exhausted: { cls: 'warn', t: 'استُهلكت الفرصتان' },
+      rejected: { cls: 'danger', t: 'مرفوضة' },
+      pending: { cls: 'warn', t: 'قيد المراجعة' }
+    }[st] || { cls: 'warn', t: st };
+
+    var issued = card.issueDate ? Store.fmtDate(card.issueDate) : '—';
+    var expires = card.expiryDate ? Store.fmtDate(card.expiryDate) : '—';
+    var leftDays = card.expiryDate ? Math.ceil((new Date(card.expiryDate).getTime() - Date.now()) / 86400000) : null;
+    var leftTxt = leftDays === null ? '—' : (leftDays > 0 ? leftDays + ' يوماً' : 'انتهت');
+
+    var SLOT = {
+      empty: { t: 'فرصة متاحة', cls: 'ok' },
+      reserved: { t: 'محجوزة — بانتظار القرار', cls: 'warn' },
+      critical: { t: 'حرجة — قرار الشركة', cls: 'danger' },
+      hiring: { t: 'طلب توظيف — بانتظار التثبيت', cls: 'warn' },
+      succeeded: { t: 'تم التوظيف', cls: 'ok' },
+      rejected: { t: 'لم يتم التوظيف', cls: 'danger' },
+      expired: { t: 'انتهت دون نتيجة', cls: 'muted' }
+    };
+
+    var chances = (card.chances || []).map(function (c) {
+      var s2 = SLOT[c.slotStatus] || { t: c.slotStatus || '—', cls: 'muted' };
+      var job = null;
+      if (c.jobCode) { try { job = Store.getJob(c.jobCode); } catch (e) { job = null; } }
+      var when = c.selectedAt ? Store.fmtDateTime(c.selectedAt) : '';
+      var hold = c.holdExpiresAt ? 'تنتهي المهلة ' + Store.fmtDateTime(c.holdExpiresAt) : '';
+      return '<article class="cp-chance">' +
+        '<div class="cp-chance-top">' +
+          '<span class="cp-no">الفرصة ' + UI.esc(String(c.no || '—')) + '</span>' +
+          '<span class="cp-state ' + s2.cls + '">' + UI.esc(s2.t) + '</span>' +
+        '</div>' +
+        (c.jobTitle || c.jobCode
+          ? '<div class="cp-job"><b>' + UI.esc(c.jobTitle || 'وظيفة') + '</b>' +
+            (c.jobCode ? ' <span class="mono">' + UI.esc(c.jobCode) + '</span>' : '') + '</div>' +
+            '<div class="cp-meta">' + (c.location ? '<span>' + UI.ic('pin') + ' ' + UI.esc(c.location) + '</span>' : '') +
+              (when ? '<span>' + UI.ic('calendar') + ' ' + UI.esc(when) + '</span>' : '') +
+              (hold ? '<span>' + UI.ic('hourglass') + ' ' + UI.esc(hold) + '</span>' : '') + '</div>' +
+            (job && job.salaryMin ? '<div class="cp-meta"><span>' + UI.ic('money') + ' ' +
+              Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) + '</span>' +
+              (job.shift ? '<span>' + UI.ic('clock') + ' ' + UI.esc(job.shift) + '</span>' : '') + '</div>' : '') +
+            (c.note ? '<p class="cp-note-in">' + UI.esc(c.note) + '</p>' : '')
+          : '<div class="cp-empty-chance">' + UI.ic('hourglass') + ' لم تُستخدم بعد — اختر لها وظيفة من الموقع أو استمارتك.</div>') +
+      '</article>';
+    }).join('');
+
+    host.innerHTML =
+      '<div class="cp-head">' +
+        '<div class="cp-id">' +
+          '<span class="cp-ic"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg></span>' +
+          '<div><b class="mono" dir="ltr">' + UI.esc(card.serial) + '</b>' +
+          '<span class="cp-owner">' + UI.esc(card.fullName || '') + (card.phone ? ' · ' + UI.esc(card.phone) : '') + '</span></div>' +
+        '</div>' +
+        '<span class="cp-badge ' + badge.cls + '">' + UI.esc(badge.t) + '</span>' +
+      '</div>' +
+      '<div class="cp-grid">' +
+        '<div class="cp-kv"><span>بداية الصلاحية</span><b>' + UI.esc(issued) + '</b></div>' +
+        '<div class="cp-kv"><span>تنتهي في</span><b>' + UI.esc(expires) + '</b></div>' +
+        '<div class="cp-kv"><span>المتبقي</span><b>' + UI.esc(leftTxt) + '</b></div>' +
+        '<div class="cp-kv"><span>الفرص المتبقية</span><b>' + UI.esc(String(card.chancesLeft != null ? card.chancesLeft : '—')) + ' من 2</b></div>' +
+      '</div>' +
+      '<h3 class="cp-h"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الفرص وتفاصيلها</h3>' +
+      '<div class="cp-chances">' + (chances || '<div class="cp-empty-chance">لا توجد فرص مسجّلة على هذه البطاقة بعد.</div>') + '</div>' +
+      '<div class="cp-foot">' +
+        '<button type="button" class="btn btn-gold" id="cp-full">' +
+          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (تقديم · طباعة)</button>' +
+        '<button type="button" class="btn btn-outline" id="cp-again">' +
+          '<svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> بطاقة أخرى</button>' +
+      '</div>';
+
+    if (entry) entry.hidden = true;
+    host.hidden = false;
+    var full = document.getElementById('cp-full');
+    if (full) full.addEventListener('click', function () { cpOpenBook(card.serial); });
+    var again = document.getElementById('cp-again');
+    if (again) again.addEventListener('click', cpReset);
+    try { localStorage.setItem(CP_KEY, card.serial); } catch (e) { }
+  }
+
+  function cpReset() {
+    var entry = document.getElementById('cp-entry');
+    var host = document.getElementById('cp-result');
+    if (host) { host.hidden = true; host.innerHTML = ''; }
+    if (entry) entry.hidden = false;
+    cpSay('');
+    var inp = document.getElementById('cp-serial');
+    if (inp) { inp.value = ''; try { inp.focus(); } catch (e) { } }
+    try { localStorage.removeItem(CP_KEY); } catch (e) { }
+  }
+
+  function cpLookup(serial, opts) {
+    opts = opts || {};
+    serial = cpSerialFromText(serial);
+    if (!serial) { cpSay('اكتب رقم البطاقة المطبوع عليها.', true); return; }
+    if (Store.isCardSerial && !Store.isCardSerial(serial)) {
+      cpSay('الرقم لا يبدو باركود بطاقة — راجع الرقم المطبوع على وجه البطاقة.', true);
+      return;
+    }
+    var btn = document.getElementById('cp-go');
+    if (btn) { btn.disabled = true; btn.textContent = 'جارٍ البحث…'; }
+    cpSay('');
+    Promise.resolve(Store.cardLookup(serial)).then(function (r) {
+      if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
+      if (!r || !r.ok) {
+        cpSay((r && r.error) || 'تعذّر العثور على البطاقة — تأكد من الرقم.', true);
+        return;
+      }
+      cpRenderDetails(r.card);
+    }).catch(function () {
+      if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
+      cpSay('تعذّر الاتصال بقاعدة الشركة — تحقّق من الإنترنت وأعد المحاولة.', true);
+    });
+  }
+
+  function bindCardPage() {
+    var form = document.getElementById('cp-form');
+    if (form) form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var inp = document.getElementById('cp-serial');
+      cpLookup(inp ? inp.value : '');
+    });
+    var scan = document.getElementById('cp-scan');
+    if (scan) scan.addEventListener('click', function () {
+      var Q = root.HRCQRScan;
+      if (!Q || !Q.open) { cpSay('المسح غير متاح في هذا المتصفح — اكتب الرقم يدوياً.', true); return; }
+      Q.open({
+        title: 'مسح باركود البطاقة',
+        subtitle: 'وجّه الكاميرا نحو الباركود المطبوع على بطاقتك.',
+        validate: function (text) {
+          var v = cpSerialFromText(text);
+          return !!(Store.isCardSerial ? Store.isCardSerial(v) : v);
+        },
+        onResult: function (text) {
+          var inp = document.getElementById('cp-serial');
+          var v = cpSerialFromText(text);
+          if (inp) inp.value = v;
+          cpLookup(v);
+        }
+      });
+    });
+    /* عودة الزائر: نُعيد فتح آخر بطاقة تلقائياً (على جهازه فقط) */
+    try {
+      var last = localStorage.getItem(CP_KEY);
+      if (last) cpLookup(last);
+    } catch (e) { }
+  }
+
+  function renderAll() { renderHeroStats(); renderCategories(); renderJobs(); renderFavorites(); }
 
   root.HRCRefresh = function () {
     if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }

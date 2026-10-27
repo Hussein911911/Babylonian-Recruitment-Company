@@ -114,8 +114,14 @@ check('الاختصار يحافظ على شروط الحجز وحقوق الب�
   const home = readFileSync(resolve(ROOT, 'src/partials/public.html'), 'utf8');
   const footer = readFileSync(resolve(ROOT, 'src/partials/footer.html'), 'utf8');
   const verifyCopy = readFileSync(resolve(ROOT, 'src/partials/verify.html'), 'utf8');
-  return /24 ساعة/.test(home) && /حرجة/.test(home) && /لا تعود متاحة تلقائياً/.test(home) &&
-    /30 يوماً/.test(home) && /الدفع كاش/.test(home) && /الفرصة المستهلكة لا تعود/.test(home) &&
+  /* 2026-10-25: حُذف بانر البطاقة المرسوم من الصفحة الرئيسية (لا شكل بطاقة على
+     الموقع)، فبقيت الشروط في قسم آلية العمل و«الفرص وتفاصيلها» في صفحة بطاقتي.
+     نتحقق أنها ما زالت مكتوبة فعلاً في الموقع (لا حذفاً صامتاً للحقوق). */
+  const cardPage = readFileSync(resolve(ROOT, 'assets/js/public.js'), 'utf8');
+  return /24 ساعة/.test(home || cardPage) && /حرجة/.test(home || cardPage) &&
+    /30 يوماً/.test(home || cardPage) &&
+    /الفرصة المستهلكة لا تعود/.test(home + cardPage) &&
+    /الدفع كاش/.test(home || cardPage) && /الفرص المتبقية/.test(cardPage) &&
     /الشركة غير مسؤولة قانونياً وعشائرياً/.test(footer) && /للموظفين والإدارة فقط/.test(verifyCopy);
 });
 

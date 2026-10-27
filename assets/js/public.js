@@ -56,6 +56,7 @@
     bindEvents();
     bindFavorites();
     bindCatsToggle();
+    bindCardPage();
     bindTabbar();
 
     var st = Store.cloudStatus ? Store.cloudStatus() : null;
@@ -522,28 +523,188 @@
       (gone ? '<div class="fav-note">' + UI.ic('info') + ' ' + gone + ' وظيفة محفوظة لم تعد معروضة (أُغلقت أو حُذفت).</div>' : '');
   }
 
-  /* ── بطاقة التوظيف الحقيقية على الموقع ──
-     نرسم الوجهين بنفس قالب الطباعة (HRCVoucher.buildHtml) ببطاقة نموذجية
-     بلا بيانات زبون، فتكون الصورة على الموقع مطابقة تماماً للورقة المطبوعة. */
-  function renderCardShowcase() {
-    var host = document.getElementById('card-showcase');
-    if (!host || host.dataset.done) return;
-    var V = root.HRCVoucher;
-    if (!V || !V.frontHtml || !V.backHtml) return;
-    try {
-      /* بطاقة نموذجية بلا بيانات زبون — الوجهان من نفس قالب الطباعة حرفياً */
-      var sample = { serial: 'K7M2XQ9T4R', status: 'blank', issueDate: null, expiryDate: null, cardPrintCode: null };
-      host.innerHTML =
-        '<div class="cs-front">' +
-          '<span class="cs-badge">شكل البطاقة الفعلي</span>' +
-          '<div class="cs-slot">' + V.frontHtml(sample) + '</div>' +
-        '</div>' +
-        '<div class="cs-back"><div class="cs-slot">' + V.backHtml(sample) + '</div></div>';
-      host.dataset.done = 'yes';
-    } catch (e) { /* البطاقة تحسين بصري — لا تُعطّل الصفحة */ }
+  /* ══════════════ صفحة «بطاقتي» ══════════════
+   * لا نعرض أي شكل/صورة للبطاقة (طلب المالك: لا معنى لعرضها للزبون بلا بيانات).
+   * الصفحة: إدخال رقم البطاقة أو مسح الباركود ← تفاصيل حقيقية من القاعدة:
+   * الحالة · بداية الصلاحية · الانتهاء · المتبقي · الفرص ووظائفها وتواريخها. */
+  var CP_KEY = 'hrc_last_card_v1';        /* آخر رقم بطاقة فتحه الزبون على جهازه */
+
+  function cpSay(msg, isErr) {
+    var el = document.getElementById('cp-err');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.classList.toggle('is-error', !!isErr);
   }
 
-  function renderAll() { renderHeroStats(); renderCategories(); renderJobs(); renderFavorites(); renderCardShowcase(); }
+  function cpSerialFromText(text) {
+    var t = String(text || '').trim();
+    var S = Store;
+    if (S.normalizeCardSerial) { try { t = S.normalizeCardSerial(t); } catch (e) { } }
+    return t.toUpperCase();
+  }
+
+  function cpOpenBook(saleSerial) {
+    if (root.HRCBooking && root.HRCBooking.open) {
+      root.HRCBooking.open({ serial: saleSerial, fromHash: true });
+    }
+  }
+
+  /* تفاصيل البطاقة: تُرسم من رد Store.cardLookup (محلي أو سحابي) */
+  function cpRenderDetails(card) {
+    var entry = document.getElementById('cp-entry');
+    var host = document.getElementById('cp-result');
+    if (!host) return;
+    var st = card.status || 'active';
+    var badge = {
+      active: { cls: 'ok', t: 'سارية ونشطة' },
+      expired: { cls: 'danger', t: 'منتهية الصلاحية' },
+      exhausted: { cls: 'warn', t: 'استُهلكت الفرصتان' },
+      rejected: { cls: 'danger', t: 'مرفوضة' },
+      pending: { cls: 'warn', t: 'قيد المراجعة' }
+    }[st] || { cls: 'warn', t: st };
+
+    var issued = card.issueDate ? Store.fmtDate(card.issueDate) : '—';
+    var expires = card.expiryDate ? Store.fmtDate(card.expiryDate) : '—';
+    var leftDays = card.expiryDate ? Math.ceil((new Date(card.expiryDate).getTime() - Date.now()) / 86400000) : null;
+    var leftTxt = leftDays === null ? '—' : (leftDays > 0 ? leftDays + ' يوماً' : 'انتهت');
+
+    var SLOT = {
+      empty: { t: 'فرصة متاحة', cls: 'ok' },
+      reserved: { t: 'محجوزة — بانتظار القرار', cls: 'warn' },
+      critical: { t: 'حرجة — قرار الشركة', cls: 'danger' },
+      hiring: { t: 'طلب توظيف — بانتظار التثبيت', cls: 'warn' },
+      succeeded: { t: 'تم التوظيف', cls: 'ok' },
+      rejected: { t: 'لم يتم التوظيف', cls: 'danger' },
+      expired: { t: 'انتهت دون نتيجة', cls: 'muted' }
+    };
+
+    var chances = (card.chances || []).map(function (c) {
+      var s2 = SLOT[c.slotStatus] || { t: c.slotStatus || '—', cls: 'muted' };
+      var job = null;
+      if (c.jobCode) { try { job = Store.getJob(c.jobCode); } catch (e) { job = null; } }
+      var when = c.selectedAt ? Store.fmtDateTime(c.selectedAt) : '';
+      var hold = c.holdExpiresAt ? 'تنتهي المهلة ' + Store.fmtDateTime(c.holdExpiresAt) : '';
+      return '<article class="cp-chance">' +
+        '<div class="cp-chance-top">' +
+          '<span class="cp-no">الفرصة ' + UI.esc(String(c.no || '—')) + '</span>' +
+          '<span class="cp-state ' + s2.cls + '">' + UI.esc(s2.t) + '</span>' +
+        '</div>' +
+        (c.jobTitle || c.jobCode
+          ? '<div class="cp-job"><b>' + UI.esc(c.jobTitle || 'وظيفة') + '</b>' +
+            (c.jobCode ? ' <span class="mono">' + UI.esc(c.jobCode) + '</span>' : '') + '</div>' +
+            '<div class="cp-meta">' + (c.location ? '<span>' + UI.ic('pin') + ' ' + UI.esc(c.location) + '</span>' : '') +
+              (when ? '<span>' + UI.ic('calendar') + ' ' + UI.esc(when) + '</span>' : '') +
+              (hold ? '<span>' + UI.ic('hourglass') + ' ' + UI.esc(hold) + '</span>' : '') + '</div>' +
+            (job && job.salaryMin ? '<div class="cp-meta"><span>' + UI.ic('money') + ' ' +
+              Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) + '</span>' +
+              (job.shift ? '<span>' + UI.ic('clock') + ' ' + UI.esc(job.shift) + '</span>' : '') + '</div>' : '') +
+            (c.note ? '<p class="cp-note-in">' + UI.esc(c.note) + '</p>' : '')
+          : '<div class="cp-empty-chance">' + UI.ic('hourglass') + ' لم تُستخدم بعد — اختر لها وظيفة من الموقع أو استمارتك.</div>') +
+      '</article>';
+    }).join('');
+
+    host.innerHTML =
+      '<div class="cp-head">' +
+        '<div class="cp-id">' +
+          '<span class="cp-ic"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg></span>' +
+          '<div><b class="mono" dir="ltr">' + UI.esc(card.serial) + '</b>' +
+          '<span class="cp-owner">' + UI.esc(card.fullName || '') + (card.phone ? ' · ' + UI.esc(card.phone) : '') + '</span></div>' +
+        '</div>' +
+        '<span class="cp-badge ' + badge.cls + '">' + UI.esc(badge.t) + '</span>' +
+      '</div>' +
+      '<div class="cp-grid">' +
+        '<div class="cp-kv"><span>بداية الصلاحية</span><b>' + UI.esc(issued) + '</b></div>' +
+        '<div class="cp-kv"><span>تنتهي في</span><b>' + UI.esc(expires) + '</b></div>' +
+        '<div class="cp-kv"><span>المتبقي</span><b>' + UI.esc(leftTxt) + '</b></div>' +
+        '<div class="cp-kv"><span>الفرص المتبقية</span><b>' + UI.esc(String(card.chancesLeft != null ? card.chancesLeft : '—')) + ' من 2</b></div>' +
+      '</div>' +
+      '<h3 class="cp-h"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الفرص وتفاصيلها</h3>' +
+      '<div class="cp-chances">' + (chances || '<div class="cp-empty-chance">لا توجد فرص مسجّلة على هذه البطاقة بعد.</div>') + '</div>' +
+      '<div class="cp-foot">' +
+        '<button type="button" class="btn btn-gold" id="cp-full">' +
+          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (تقديم · طباعة)</button>' +
+        '<button type="button" class="btn btn-outline" id="cp-again">' +
+          '<svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> بطاقة أخرى</button>' +
+      '</div>';
+
+    if (entry) entry.hidden = true;
+    host.hidden = false;
+    var full = document.getElementById('cp-full');
+    if (full) full.addEventListener('click', function () { cpOpenBook(card.serial); });
+    var again = document.getElementById('cp-again');
+    if (again) again.addEventListener('click', cpReset);
+    try { localStorage.setItem(CP_KEY, card.serial); } catch (e) { }
+  }
+
+  function cpReset() {
+    var entry = document.getElementById('cp-entry');
+    var host = document.getElementById('cp-result');
+    if (host) { host.hidden = true; host.innerHTML = ''; }
+    if (entry) entry.hidden = false;
+    cpSay('');
+    var inp = document.getElementById('cp-serial');
+    if (inp) { inp.value = ''; try { inp.focus(); } catch (e) { } }
+    try { localStorage.removeItem(CP_KEY); } catch (e) { }
+  }
+
+  function cpLookup(serial, opts) {
+    opts = opts || {};
+    serial = cpSerialFromText(serial);
+    if (!serial) { cpSay('اكتب رقم البطاقة المطبوع عليها.', true); return; }
+    if (Store.isCardSerial && !Store.isCardSerial(serial)) {
+      cpSay('الرقم لا يبدو باركود بطاقة — راجع الرقم المطبوع على وجه البطاقة.', true);
+      return;
+    }
+    var btn = document.getElementById('cp-go');
+    if (btn) { btn.disabled = true; btn.textContent = 'جارٍ البحث…'; }
+    cpSay('');
+    Promise.resolve(Store.cardLookup(serial)).then(function (r) {
+      if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
+      if (!r || !r.ok) {
+        cpSay((r && r.error) || 'تعذّر العثور على البطاقة — تأكد من الرقم.', true);
+        return;
+      }
+      cpRenderDetails(r.card);
+    }).catch(function () {
+      if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
+      cpSay('تعذّر الاتصال بقاعدة الشركة — تحقّق من الإنترنت وأعد المحاولة.', true);
+    });
+  }
+
+  function bindCardPage() {
+    var form = document.getElementById('cp-form');
+    if (form) form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var inp = document.getElementById('cp-serial');
+      cpLookup(inp ? inp.value : '');
+    });
+    var scan = document.getElementById('cp-scan');
+    if (scan) scan.addEventListener('click', function () {
+      var Q = root.HRCQRScan;
+      if (!Q || !Q.open) { cpSay('المسح غير متاح في هذا المتصفح — اكتب الرقم يدوياً.', true); return; }
+      Q.open({
+        title: 'مسح باركود البطاقة',
+        subtitle: 'وجّه الكاميرا نحو الباركود المطبوع على بطاقتك.',
+        validate: function (text) {
+          var v = cpSerialFromText(text);
+          return !!(Store.isCardSerial ? Store.isCardSerial(v) : v);
+        },
+        onResult: function (text) {
+          var inp = document.getElementById('cp-serial');
+          var v = cpSerialFromText(text);
+          if (inp) inp.value = v;
+          cpLookup(v);
+        }
+      });
+    });
+    /* عودة الزائر: نُعيد فتح آخر بطاقة تلقائياً (على جهازه فقط) */
+    try {
+      var last = localStorage.getItem(CP_KEY);
+      if (last) cpLookup(last);
+    } catch (e) { }
+  }
+
+  function renderAll() { renderHeroStats(); renderCategories(); renderJobs(); renderFavorites(); }
 
   root.HRCRefresh = function () {
     if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }
