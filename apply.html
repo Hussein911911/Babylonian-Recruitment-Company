@@ -2611,6 +2611,288 @@ body{
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   2026-10-27 · توحيد صفحات المعلومات (تناسق لوني كامل) + بطاقة الوظيفة المختارة
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media screen{
+
+  /* ── 1) نظام ألوان واحد: كحلي · ذهب · كريمي · أخضر (لا ألوان باهتة متضاربة) ── */
+  :root{
+    --ui-ink:#0d2f3d;          /* نص أساسي */
+    --ui-label:#12404f;        /* عنوان الحقل */
+    --ui-muted:#6b7f8b;        /* نص ثانوي */
+    --ui-line:#e3dcc9;         /* حدود دافئة */
+    --ui-field:#f1f5f9;        /* خلفية الحقل */
+    --ui-field-line:#d5e0ea;   /* حد الحقل */
+    --ui-cream:#fffdf8;
+    --ui-cream-2:#faf6ec;
+    --ui-gold:#c8a24a;
+    --ui-gold-2:#FABE04;
+    --ui-green:#3FB190;
+    --ui-green-soft:#e9f7f1;
+    --ui-red:#b3392b;
+    --ui-red-soft:#fdeeeb;
+    --ui-radius:16px;
+    --ui-gap:14px;
+  }
+
+  /* الحقول: مقاس وحدّ وخلفية واحدة في كل الخطوات */
+  .form-group{margin-bottom:var(--ui-gap)!important}
+  .form-group label{
+    color:var(--ui-label)!important;font-size:13px!important;font-weight:800!important;
+    letter-spacing:0;margin-bottom:7px!important;
+  }
+  .form-group input,.form-group select{
+    background:var(--ui-field)!important;border:1.5px solid var(--ui-field-line)!important;
+    color:var(--ui-ink)!important;border-radius:14px!important;
+    font-size:15px!important;font-weight:700!important;
+  }
+  .form-group input::placeholder{color:#93a1ad!important}
+  .form-group select:disabled{background:#f6f7f8!important;color:#9aa7b3!important;border-color:#e6e9ec!important}
+
+  /* العناوين الفرعية والفقرة التعريفية */
+  .section-title{
+    color:var(--ui-ink)!important;font-size:15px!important;font-weight:900!important;
+    margin-bottom:12px!important;gap:8px!important;
+  }
+  .section-title::before{width:4px!important;height:18px!important;border-radius:2px!important;
+    background:linear-gradient(180deg,var(--ui-gold-2),var(--ui-green))!important}
+  .step-intro p{color:var(--ui-muted)!important;font-size:13.5px!important;line-height:1.95!important}
+  .step-eyebrow{
+    background:var(--ui-cream-2)!important;border:1px solid var(--ui-line)!important;
+    color:var(--ui-label)!important;font-size:11.5px!important;font-weight:800!important;
+    padding:5px 12px!important;border-radius:999px!important;letter-spacing:.01em;
+  }
+
+  /* ── 2) التنبيهات: شكل واحد لكل الحالات (لا إيموجي يكسر الشكل) ───────── */
+  .alert{
+    display:flex!important;align-items:flex-start;gap:10px;
+    padding:12px 14px!important;border-radius:14px!important;
+    font-size:13px!important;line-height:1.85!important;font-weight:700;
+    margin-bottom:10px;border-inline-start-width:4px!important;border-inline-start-style:solid!important;
+  }
+  .alert .ico{display:grid;place-items:center;width:22px;height:22px;flex:none;margin-top:1px}
+  .alert .ico svg{width:20px;height:20px}
+  .alert .msg{flex:1;min-width:0}
+  .alert-error{
+    background:var(--ui-red-soft)!important;border:1px solid #f3cfc8!important;
+    border-inline-start-color:var(--ui-red)!important;color:#8f2c1f!important;
+  }
+  .alert-error .ico svg{color:var(--ui-red)}
+  .alert-info{
+    background:#eef6fb!important;border:1px solid #cfe6f2!important;
+    border-inline-start-color:#2d7fa8!important;color:#1d5b78!important;
+  }
+  .alert-info .ico svg{color:#2d7fa8}
+
+  /* بطاقة الأمان أسفل الحقول + شريط الفرص */
+  .identity-notice{
+    background:var(--ui-cream-2)!important;border:1px solid var(--ui-line)!important;
+    border-inline-start:4px solid var(--ui-gold)!important;color:#7a6331!important;
+    border-radius:14px!important;font-size:13px!important;
+  }
+  .chances-bar{
+    background:var(--ui-cream-2)!important;border:1px solid var(--ui-line)!important;
+    color:var(--ui-ink)!important;border-radius:14px!important;font-size:13px!important;font-weight:800!important;
+  }
+  .chances-bar.has2{background:var(--ui-green-soft)!important;border-color:#c8e8da!important;color:#1c6a51!important}
+  .chances-bar.has1{background:#fff7e2!important;border-color:#f0dfae!important;color:#8a6a10!important}
+  .chances-bar.has0{background:var(--ui-red-soft)!important;border-color:#f3cfc8!important;color:#8f2c1f!important}
+  .chances-bar b{color:inherit!important}
+
+  /* أشرطة العدّاد الصغيرة (هاتف/فرص) */
+  .phone-meter .pc-track{background:#e3e8ee!important;height:6px!important;border-radius:99px!important}
+  .phone-meter .pc-track i{background:linear-gradient(90deg,var(--ui-gold-2),var(--ui-gold))!important;border-radius:99px!important}
+  .phone-meter .pc-state,.phone-meter .pc-of{color:var(--ui-muted)!important}
+  .phone-meter .pc-num{color:var(--ui-ink)!important}
+
+  /* ── 3) صفحة المراجعة: نفس اللغة البصرية بلا مفاجآت ─────────────────── */
+  .rv-card{
+    background:var(--ui-cream)!important;border:1px solid var(--ui-line)!important;
+    border-radius:22px!important;box-shadow:0 16px 40px rgba(13,47,61,.09)!important;
+  }
+  .rv-top{border-bottom:1px solid var(--ui-line)!important;gap:12px!important}
+  .rv-ic{
+    display:grid!important;place-items:center;width:44px;height:44px;flex:none;
+    border-radius:14px;background:linear-gradient(150deg,#fff6dc,#f2f8f4);
+    border:1px solid rgba(200,162,74,.45);color:#8a6a10;
+  }
+  .rv-ic svg{width:22px;height:22px}
+  .rv-t{color:var(--ui-ink)!important;font-size:17px!important;font-weight:900!important}
+  .rv-s{color:var(--ui-muted)!important;font-size:12.5px!important;line-height:1.9}
+  .rv-head{
+    color:var(--ui-ink)!important;font-size:14px!important;font-weight:900!important;
+    margin-top:22px!important;padding-bottom:6px;
+  }
+  .rv-head::before{background:linear-gradient(180deg,var(--ui-gold-2),var(--ui-green))!important;width:4px!important;height:16px!important}
+  .rv-row{border-bottom:1px dashed #e7e0cd!important;padding:13px 0!important;gap:10px!important;align-items:center!important}
+  .rv-k{color:var(--ui-muted)!important;font-size:12.5px!important;font-weight:700!important}
+  .rv-v{color:var(--ui-ink)!important;font-size:14px!important;font-weight:800!important;line-height:1.7}
+  .rv-edit{
+    background:#fff!important;border:1.5px solid var(--ui-field-line)!important;
+    color:var(--ui-label)!important;font-size:12px!important;font-weight:800!important;
+    padding:7px 14px!important;border-radius:999px!important;box-shadow:none!important;
+    min-height:36px!important;transition:border-color .2s,background .2s,transform .2s;
+  }
+  .rv-edit:hover{border-color:var(--ui-gold-2)!important;background:#fffdf5!important}
+  .rv-edit:active{transform:scale(.97)}
+  .rv-chip{
+    background:var(--ui-cream-2)!important;border:1px solid var(--ui-line)!important;
+    color:#6f5c2c!important;font-size:12px!important;font-weight:800!important;
+    border-radius:999px!important;padding:5px 12px!important;
+    display:inline-flex!important;align-items:center;gap:6px;
+  }
+  .rv-note{
+    background:#fff7e2!important;border:1px solid #f0dfae!important;
+    color:#8a6a10!important;border-radius:14px!important;font-size:12.5px!important;line-height:1.95;
+  }
+  .rv-card .rv-top{flex-wrap:nowrap}
+  /* عنوان الفرصة داخل المراجعة: ذهبي بكحلي لا أزرق فاتح غريب */
+  .rv-sub{
+    color:#8a6a10!important;font-size:13px!important;font-weight:900!important;
+    margin:18px 0 6px!important;padding:5px 12px!important;
+    background:#fff6dc!important;border:1px solid #f0dfae!important;
+    border-inline-start:1px solid #f0dfae!important;
+    border-radius:999px!important;display:inline-flex!important;align-items:center;gap:6px;
+  }
+  .ok-ico{
+    display:grid;place-items:center;width:66px;height:66px;margin:0 auto 10px;
+    border-radius:50%;background:linear-gradient(150deg,#e9f7f1,#d3efe3);
+    border:1.5px solid rgba(63,177,144,.6);color:#1c6a51;
+    box-shadow:0 10px 24px rgba(63,177,144,.22);
+  }
+  .ok-ico svg{width:34px;height:34px}
+  .err-ico{display:grid;place-items:center;margin-bottom:10px}
+  .err-ico svg{width:46px;height:46px;color:#c0392b}
+  .btn .ico,.rv-chip .ico{display:inline-grid;place-items:center;width:18px;height:18px;flex:none}
+  .btn .ico svg,.rv-chip .ico svg{width:18px;height:18px}
+  @media(max-width:420px){.rv-v{font-size:13.5px!important}}
+
+  /* ── 4) البطاقة المختارة: كارت كحلي بحدود ذهبية (طلب المالك) ─────────── */
+  /* الشارة المكرّرة فوق البطاقة أُزيلت — بقيت شارة واحدة واضحة داخل الرأس */
+  #jobs-list .job-card.selected .job-head::before,
+  #jobs-list.has-focus .job-card.selected .job-head::before{content:none!important;display:none!important}
+  #jobs-list .job-card.selected .pick-mark{display:none!important}
+
+  #jobs-list .job-card.selected{
+    background:linear-gradient(165deg,#0A3F50,#012F3E 55%,#01222C)!important;
+    border:2px solid var(--ui-gold-2)!important;
+    box-shadow:0 20px 44px rgba(1,34,44,.34),0 0 0 4px rgba(250,190,4,.16)!important;
+    color:#fff!important;
+  }
+  #jobs-list .job-card.selected::before{
+    height:5px!important;opacity:1!important;
+    background:linear-gradient(90deg,var(--ui-gold-2),#fff2c2,var(--ui-gold-2))!important;
+  }
+  #jobs-list .job-card.selected .job-head .title,
+  #jobs-list.has-focus .job-card.selected .job-head .title{
+    color:#fff!important;text-shadow:none!important;font-size:19px!important;
+  }
+  #jobs-list .job-card.selected .job-code{
+    background:rgba(250,190,4,.18)!important;border-color:rgba(250,190,4,.6)!important;color:#ffe08a!important;
+  }
+  #jobs-list .job-card.selected .job-cat{
+    background:rgba(255,255,255,.1)!important;border-color:rgba(255,255,255,.24)!important;color:#fff!important;
+  }
+  /* خلايا المعلومات داخل الكارت الكحلي */
+  #jobs-list .job-card.selected .jm{
+    background:rgba(255,255,255,.07)!important;border:1px solid rgba(255,255,255,.14)!important;
+    color:#fff!important;
+  }
+  #jobs-list .job-card.selected .jm .k,
+  #jobs-list .job-card.selected .jm .v,
+  #jobs-list .job-card.selected .jm span,
+  #jobs-list .job-card.selected .jm b{color:#fff!important}
+  #jobs-list .job-card.selected .jm svg,
+  #jobs-list .job-card.selected .jm .ic{color:#FABE04!important}
+  #jobs-list .job-card.selected .job-details{color:rgba(255,255,255,.8)!important}
+  #jobs-list .job-card.selected .job-pay,
+  #jobs-list .job-card.selected .job-pay-row,
+  #jobs-list .job-card.selected .job-salary{
+    background:rgba(250,190,4,.16)!important;border:1px solid rgba(250,190,4,.5)!important;
+    color:#ffe9ad!important;border-radius:12px!important;
+  }
+  #jobs-list .job-card.selected .job-pay *,
+  #jobs-list .job-card.selected .job-pay-row *,
+  #jobs-list .job-card.selected .job-salary *{color:#ffe9ad!important}
+  #jobs-list .job-card.selected .job-pay b,
+  #jobs-list .job-card.selected .job-salary b{color:#fff!important}
+  #jobs-list .job-card.selected .job-actions{
+    background:rgba(0,0,0,.22)!important;border-top:1px solid rgba(250,190,4,.35)!important;
+  }
+  #jobs-list .job-card.selected .job-actions .btn-outline{
+    background:transparent!important;border-color:rgba(255,255,255,.4)!important;color:#fff!important;
+  }
+  #jobs-list .job-card.selected .job-actions .btn-primary,
+  #jobs-list .job-card.selected .job-actions .btn-success{
+    background:linear-gradient(135deg,var(--ui-gold-2),#e0a800)!important;
+    color:#20242a!important;border-color:transparent!important;
+    box-shadow:0 10px 22px rgba(250,190,4,.3)!important;
+  }
+  #jobs-list .job-card.selected .job-state.is-picked{
+    background:linear-gradient(140deg,#FFE28A,var(--ui-gold-2))!important;
+    color:#1c1405!important;border-color:transparent!important;font-weight:900;
+  }
+  /* البقية: تُغبَّش قليلاً ليبقى الكارت الكحلي هو البطل */
+  #jobs-list.has-focus .job-card:not(.selected):not(.is-done){opacity:.78}
+
+  /* ── 5) تفاصيل صغيرة: شريحة العدّاد بلون الهوية لا لافندر باهت ──────── */
+  .job-filters #jobs-count{
+    background:var(--ui-cream-2)!important;border:1px solid var(--ui-line)!important;
+    color:#7a6331!important;font-weight:800!important;
+  }
+  .job-filters #jobs-count::before{background:var(--ui-gold-2)!important}
+  .job-filters #jobs-count b{color:var(--ui-ink)!important}
+  .jf-chip{background:#fff6dc!important;border-color:#f0dfae!important;color:#8a6a10!important}
+}
+
+/* ── 6) تصحيح الدفعة الأخيرة: حقول **دافئة** (كريمي/ذهبي) لا رمادية باردة ── */
+@media screen{
+  :root{
+    --ui-field:#f9f5ea;        /* عاجي دافئ بدل الأزرق/الرمادي الباهت */
+    --ui-field-2:#fdfbf4;
+    --ui-field-line:#e7dcc2;
+    --ui-card:#fffdf8;
+  }
+  .form-group input,.form-group select{
+    background:var(--ui-field)!important;
+    border:1.5px solid var(--ui-field-line)!important;
+    color:#0d2f3d!important;
+    box-shadow:0 1px 0 #fff inset,0 1px 2px rgba(13,47,61,.03)!important;
+  }
+  .form-group select{font-weight:800!important}
+  .form-group input:focus,.form-group select:focus{
+    background:#fffdf8!important;border-color:var(--ui-gold-2)!important;
+    box-shadow:0 0 0 4px rgba(250,190,4,.18),0 8px 18px rgba(13,47,61,.06)!important;
+  }
+  /* الأيقونة داخل الحقل: كبسولة كريمية بحدود ذهبية → كحلية عند التركيز */
+  .fld-ic{
+    background:#fffdf8!important;border:1px solid var(--ui-field-line)!important;
+    color:#9a7c33!important;
+  }
+  .fld:focus-within .fld-ic{
+    background:var(--ap-navy,#012F3E)!important;border-color:var(--ap-navy,#012F3E)!important;
+    color:#FABE04!important;
+  }
+  /* حقل معطّل: واضح أنه غير متاح بلا لون باهت غريب */
+  .form-group select:disabled{
+    background:#f3f1ea!important;color:#98a2a8!important;border-color:#e8e3d6!important;
+  }
+  /* البطاقة: بيضاء كريمية + حدّ دافئ وظل بسيط */
+  .profile-card{
+    background:linear-gradient(#fffdf8,#fffdf8) padding-box,
+               linear-gradient(135deg,rgba(1,47,62,.5),rgba(200,162,74,.8) 45%,rgba(63,177,144,.45)) border-box!important;
+    box-shadow:0 18px 44px rgba(13,47,61,.12)!important;
+  }
+  /* اسم القسم داخل الحقول */
+  .section-title{color:#0d2f3d!important}
+  .form-group label{color:#12404f!important}
+  /* شارة «بيانات المتقدم» دافئة */
+  .step-eyebrow{background:#fdf8ec!important;border-color:#ecdfc2!important;color:#7a6331!important}
+  /* زر الرجوع: أبيض بحدّ دافئ */
+  .btn-outline{border-color:#e2d8bf!important;color:#12404f!important}
+  .btn-outline:hover{border-color:#FABE04!important;background:#fffdf6!important}
+}
 </style>
 </head>
 <body>
@@ -2642,7 +2924,7 @@ body{
     <!-- ═══ خطأ ═══ -->
     <div class="page" id="pg-error">
       <div class="loading">
-        <p style="font-size:28pt;margin-bottom:8px">⚠️</p>
+        <p class="err-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6 21 19.4H3z"/><path d="M12 9.4v4.4"/><circle cx="12" cy="16.9" r=".9" fill="currentColor" stroke="none"/></svg></p>
         <p id="error-msg" style="font-size:10.5pt;color:#f08080"></p>
         <button class="btn btn-outline btn-sm" onclick="location.reload()" style="margin-top:14px;max-width:160px">إعادة المحاولة</button>
       </div>
@@ -3083,6 +3365,23 @@ function jobSalary(value){var text=jobNorm(value).replace(/[,،٬\s]/g,'');if(!t
    أدوات مساعدة
    ═══════════════════════════════════════════════════════════════ */
 function esc(v){var s=String(v==null?'':v);return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+/* أيقونات SVG داخلية (currentColor) — تحلّ محل الإيموجي الذي يظهر مربعاً
+   على بعض هواتف الأندرويد، وتُبقي الشكل واحداً على كل الأجهزة. */
+var AICO={
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6 21 19.4H3z"/><path d="M12 9.4v4.4"/><circle cx="12" cy="16.9" r=".9" fill="currentColor" stroke="none"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.4"/><circle cx="12" cy="7.9" r=".95" fill="currentColor" stroke="none"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.2 12.3l2.6 2.6 5-5.2"/></svg>',
+  print:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="7" rx="2"/><path d="M7 14h10v6H7z"/></svg>',
+  link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13.6a4 4 0 0 0 5.7 0l2.6-2.6a4 4 0 0 0-5.7-5.7l-1.2 1.2"/><path d="M14 10.4a4 4 0 0 0-5.7 0l-2.6 2.6a4 4 0 0 0 5.7 5.7l1.2-1.2"/></svg>',
+  camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.6h2.7l1.4-2.2h7.8l1.4 2.2H20a1.6 1.6 0 0 1 1.6 1.6v7.2A1.6 1.6 0 0 1 20 19H4a1.6 1.6 0 0 1-1.6-1.6v-7.2A1.6 1.6 0 0 1 4 8.6z"/><circle cx="12" cy="13.6" r="3.1"/></svg>',
+  refresh:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4.4V9h-4.6"/></svg>',
+  receipt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9.5 8h5M9.5 12h5"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.4" r="3.6"/><path d="M5.2 20c.6-3.7 3.4-6 6.8-6s6.2 2.3 6.8 6"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.6V12l3 1.9"/></svg>',
+  tag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 3.6H20v7.4l-9 9-7.4-7.4z"/><circle cx="16.4" cy="7.2" r="1.3"/></svg>'
+};
+function aico(name,cls){return '<span class="ico'+(cls?' '+cls:'')+'">'+(AICO[name]||AICO.info)+'</span>';}
 function printApplication(){var fonts=document.fonts;var ready=fonts&&fonts.load?Promise.all([400,600,700,800,900].map(function(w){return fonts.load(w+' 12px Cairo','العراق ABC 123');})).catch(function(){}):Promise.resolve();ready.then(function(){window.print();});}
 function iraqYear(){return Number(new Intl.DateTimeFormat('en',{timeZone:'Asia/Baghdad',year:'numeric',calendar:'gregory'}).format(new Date()));}
 function money(n){return(n==null||isNaN(n))?'—':Number(n).toLocaleString('en-US')+' د.ع';}
@@ -3098,11 +3397,12 @@ function $(id){return document.getElementById(id);}
 function digitWord(n){return n===1?'رقم':(n===2?'رقمين':(n<=10?'أرقام':'رقم'));}
 
 /* ── حالات الحقول ── */
-function setInvalid(el,errId,ico,msg){
+/* (el, errId, msg) — الأيقونة موحّدة داخل التنبيه، لا تُمرَّر من كل رسالة */
+function setInvalid(el,errId,msg){
   if(el){el.classList.remove('valid');el.classList.add('invalid');
     el.addEventListener('input',function h(){el.classList.remove('invalid');el.removeEventListener('input',h);},{once:true});
   }
-  $(errId).innerHTML='<div class="alert alert-error"><span class="ico">'+(ico||'⚠️')+'</span><span class="msg">'+esc(msg)+'</span></div>';
+  $(errId).innerHTML='<div class="alert alert-error">'+aico('alert')+'<span class="msg">'+esc(msg)+'</span></div>';
   if(el)el.focus();
 }
 function setValid(el){if(el){el.classList.remove('invalid');el.classList.add('valid');}}
@@ -3358,7 +3658,7 @@ var G={
         w+=300;
         if(dataReady){clearInterval(iv);if(waitBtn)btnLoading(waitBtn,false);G.next();}
         else if(w>=6000){clearInterval(iv);if(waitBtn)btnLoading(waitBtn,false);
-          setInvalid(null,'err-gender','🌐','البيانات لم تُحمّل بعد — تحقق من الإنترنت وأعد المحاولة');
+          setInvalid(null,'err-gender','البيانات لم تُحمّل بعد — تحقق من الإنترنت وأعد المحاولة');
         }
       },300);
       return;
@@ -3393,44 +3693,44 @@ var G={
     switch(step){
       case 1: /* الاسم */
         el=$('f-name'); v=el.value.trim();
-        if(!v){setInvalid(el,'err-name','⚠️','اكتب اسمك الثلاثي الكامل — مثال: أحمد محمد علي');return false;}
-        if(v.length<3){setInvalid(el,'err-name','⚠️','الاسم قصير جداً — يجب أن يكون 3 أحرف على الأقل');return false;}
-        if(v.split(/\s+/).length<3){setInvalid(el,'err-name','⚠️','اكتب الاسم الثلاثي الكامل (ثلاث كلمات على الأقل) — مثال: أحمد محمد علي');return false;}
-        if(/[0-9]/.test(v)){setInvalid(el,'err-name','⚠️','الاسم لا يجب أن يحتوي أرقام — اكتب الاسم بالحروف فقط');return false;}
+        if(!v){setInvalid(el,'err-name','اكتب اسمك الثلاثي الكامل — مثال: أحمد محمد علي');return false;}
+        if(v.length<3){setInvalid(el,'err-name','الاسم قصير جداً — يجب أن يكون 3 أحرف على الأقل');return false;}
+        if(v.split(/\s+/).length<3){setInvalid(el,'err-name','اكتب الاسم الثلاثي الكامل (ثلاث كلمات على الأقل) — مثال: أحمد محمد علي');return false;}
+        if(/[0-9]/.test(v)){setInvalid(el,'err-name','الاسم لا يجب أن يحتوي أرقام — اكتب الاسم بالحروف فقط');return false;}
         setValid(el);clearErr('err-name');
         return true;
       case 2: /* السكن — محافظة + قضاء + ناحية + أقرب نقطة دالة */
         el=$('f-prov');
-        if(!el.value){setInvalid(el,'err-addr','📍','اختر المحافظة من القائمة');return false;}
+        if(!el.value){setInvalid(el,'err-addr','اختر المحافظة من القائمة');return false;}
         el=$('f-qada');
-        if(!el.value){setInvalid(el,'err-addr','🏛️','اختر القضاء التابع لمحافظتك');return false;}
+        if(!el.value){setInvalid(el,'err-addr','اختر القضاء التابع لمحافظتك');return false;}
         el=$('f-nah');
-        if(!el.value){setInvalid(el,'err-addr','🧭','اختر الناحية التابعة لقضائك');return false;}
+        if(!el.value){setInvalid(el,'err-addr','اختر الناحية التابعة لقضائك');return false;}
         el=$('f-lm');
-        if(!el.value.trim()){setInvalid(el,'err-addr','📍','اكتب أقرب نقطة دالة — مثال: قرب مجمع الكرعاوي أو مقابل مستشفى الحلة');return false;}
-        if(el.value.trim().length<3){setInvalid(el,'err-addr','📍','نقطة الدالة قصيرة — اكتب وصفاً أوضح (3 أحرف على الأقل)');return false;}
+        if(!el.value.trim()){setInvalid(el,'err-addr','اكتب أقرب نقطة دالة — مثال: قرب مجمع الكرعاوي أو مقابل مستشفى الحلة');return false;}
+        if(el.value.trim().length<3){setInvalid(el,'err-addr','نقطة الدالة قصيرة — اكتب وصفاً أوضح (3 أحرف على الأقل)');return false;}
         setValid($('f-prov'));setValid($('f-qada'));setValid($('f-nah'));setValid($('f-lm'));
         clearErr('err-addr');
         return true;
       case 3: /* المواليد */
         var d=$('f-day').value,m=$('f-mon').value,y=$('f-yr').value;
-        if(!d||!m||!y){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">يرجى إكمال تاريخ الميلاد — اختر اليوم والشهر والسنة</span></div>';return false;}
+        if(!d||!m||!y){$('err-dob').innerHTML='<div class="alert alert-error">'+aico('alert')+'<span class="msg">يرجى إكمال تاريخ الميلاد — اختر اليوم والشهر والسنة</span></div>';return false;}
         /* فحص العمر (16-70) */
         var chosenDate=new Date(parseInt(y),parseInt(m)-1,parseInt(d));
-        if(chosenDate.getFullYear()!==parseInt(y)||chosenDate.getMonth()!==parseInt(m)-1||chosenDate.getDate()!==parseInt(d)){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">تاريخ الميلاد غير صحيح — تحقق من اليوم والشهر</span></div>';return false;}
+        if(chosenDate.getFullYear()!==parseInt(y)||chosenDate.getMonth()!==parseInt(m)-1||chosenDate.getDate()!==parseInt(d)){$('err-dob').innerHTML='<div class="alert alert-error">'+aico('alert')+'<span class="msg">تاريخ الميلاد غير صحيح — تحقق من اليوم والشهر</span></div>';return false;}
         var age=iraqYear()-parseInt(y);
-        if(age<16){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">العمر أقل من 16 سنة — الحد الأدنى للتوظيف هو 16 سنة</span></div>';return false;}
-        if(age>70){$('err-dob').innerHTML='<div class="alert alert-error"><span class="ico">📅</span><span class="msg">يرجى التحقق من سنة الميلاد — العمر المُدخل '+ar(age)+' سنة</span></div>';return false;}
+        if(age<16){$('err-dob').innerHTML='<div class="alert alert-error">'+aico('alert')+'<span class="msg">العمر أقل من 16 سنة — الحد الأدنى للتوظيف هو 16 سنة</span></div>';return false;}
+        if(age>70){$('err-dob').innerHTML='<div class="alert alert-error">'+aico('alert')+'<span class="msg">يرجى التحقق من سنة الميلاد — العمر المُدخل '+ar(age)+' سنة</span></div>';return false;}
         setValid($('f-day'));setValid($('f-mon'));setValid($('f-yr'));
         clearErr('err-dob');
         return true;
       case 4: /* الهاتف — 11 رقم بالضبط تبدأ بـ 07 */
         el=$('f-phone'); v=el.value.trim();
-        if(!v){setInvalid(el,'err-phone','📱','أدخل رقم هاتفك العراقي — 11 رقم يبدأ بـ 07');return false;}
-        if(!/^\d+$/.test(v)){setInvalid(el,'err-phone','📱','رقم الهاتف يجب أن يحتوي أرقام فقط بدون مسافات أو رموز — مثال: 07712345678');return false;}
-        if(v.length<11){setInvalid(el,'err-phone','📱','الرقم قصير — متبقي '+ar(11-v.length)+' '+digitWord(11-v.length)+' — أكمل إلى 11 رقم');return false;}
-        if(v.length>11){setInvalid(el,'err-phone','📱','الرقم طويل — يجب حذف '+ar(v.length-11)+' '+digitWord(v.length-11)+' — المطلوب 11 رقم فقط');return false;}
-        if(!/^07[3-9]/.test(v)){setInvalid(el,'err-phone','📱','رقم الهاتف العراقي يبدأ بـ 07 ويكون المحرف الثالث من 3 إلى 9 — تأكد من الرقم');return false;}
+        if(!v){setInvalid(el,'err-phone','أدخل رقم هاتفك العراقي — 11 رقم يبدأ بـ 07');return false;}
+        if(!/^\d+$/.test(v)){setInvalid(el,'err-phone','رقم الهاتف يجب أن يحتوي أرقام فقط بدون مسافات أو رموز — مثال: 07712345678');return false;}
+        if(v.length<11){setInvalid(el,'err-phone','الرقم قصير — متبقي '+ar(11-v.length)+' '+digitWord(11-v.length)+' — أكمل إلى 11 رقم');return false;}
+        if(v.length>11){setInvalid(el,'err-phone','الرقم طويل — يجب حذف '+ar(v.length-11)+' '+digitWord(v.length-11)+' — المطلوب 11 رقم فقط');return false;}
+        if(!/^07[3-9]/.test(v)){setInvalid(el,'err-phone','رقم الهاتف العراقي يبدأ بـ 07 ويكون المحرف الثالث من 3 إلى 9 — تأكد من الرقم');return false;}
         setValid(el);clearErr('err-phone');
         return true;
       case 5: /* الجنس — قيمة مختارة دائماً (ذكر افتراضاً) */
@@ -3515,7 +3815,7 @@ var G={
     bar.className='chances-bar '+cls;
     bar.innerHTML=dots+'<span>'+label+'</span>'+
       (chancesLeft<=0
-        ? '<button type="button" class="btn btn-outline btn-sm" id="btn-recheck" style="margin-inline-start:auto">🔄 إعادة فحص البطاقة</button>'
+        ? '<button type="button" class="btn btn-outline btn-sm" id="btn-recheck" style="margin-inline-start:auto">'+AICO.refresh+'إعادة فحص البطاقة</button>'
         : '');
     var rc=$('btn-recheck');
     if(rc) rc.addEventListener('click',function(){
@@ -3833,7 +4133,7 @@ var G={
     }
 
     var h='<div class="rv-card">'
-      +'<div class="rv-top"><span class="rv-ic">🧾</span><div style="flex:1">'
+      +'<div class="rv-top"><span class="rv-ic">'+AICO.receipt+'</span><div style="flex:1">'
       +'<div class="rv-t">مراجعة الطلب قبل الإتمام</div>'
       +'<div class="rv-s">تأكد من صحة بياناتك ووظائفك — بعد «إتمام» تُستهلك فرصة لكل وظيفة اخترتها</div></div></div>';
 
@@ -3856,9 +4156,9 @@ var G={
           +row('المحافظة',j.governorate||'—',6)
           +row('الأجر',sal,6)
           +'<div class="rv-chips">'
-          +'<span class="rv-chip">⏱ الدوام: '+esc(j.shift)+'</span>'
-          +'<span class="rv-chip">✦ '+esc(j.category)+'</span>'
-          +(j.gender?'<span class="rv-chip">👤 '+esc(j.gender)+'</span>':'')
+          +'<span class="rv-chip">'+AICO.clock+'الدوام: '+esc(j.shift)+'</span>'
+          +'<span class="rv-chip">'+AICO.tag+esc(j.category)+'</span>'
+          +(j.gender?'<span class="rv-chip">'+AICO.user+esc(j.gender)+'</span>':'')
           +'<span class="rv-chip">الشواغر: '+ar(j.vacancies||1)+'</span>'
           +'</div>';
       });
@@ -3889,7 +4189,7 @@ var G={
   /* رسالة خطأ داخل صفحة المراجعة */
   rvError:function(msg){
     var box=$('rv-err');if(!box)return;
-    box.innerHTML='<div class="alert alert-error" style="margin-top:12px"><span class="ico">⚠️</span>'
+    box.innerHTML='<div class="alert alert-error" style="margin-top:12px">'+aico('alert')
       +'<span class="msg">'+esc(msg)+'</span></div>';
     var host=$('review-content');
     if(host&&host.scrollIntoView)host.scrollIntoView({behavior:'smooth',block:'start'});
@@ -3983,7 +4283,7 @@ var G={
         ' <span class="mono" dir="ltr">('+esc(j.jobCode||'—')+')</span></div></div>';
     }).join('');
     host.innerHTML='<div class="rv-card" style="text-align:center">'
-      +'<div style="font-size:34px;line-height:1">✅</div>'
+      +'<div class="ok-ico">'+AICO.check+'</div>'
       +'<div class="rv-t" style="margin-top:6px">تم تسجيل طلبك</div>'
       +'<div class="rv-s" style="margin-top:4px">وصلنا '+(list.length===1?'طلبك على وظيفتك':'طلباتك على وظيفتَي فرصتيك')+' — لكن تعذّر عرض الاستمارة الكاملة على هذه الشاشة.</div>'
       +'<div class="rv-row" style="text-align:right"><div class="rv-k">رقم البطاقة</div><div class="rv-v mono" dir="ltr">'+esc(cardSerial)+'</div></div>'
@@ -3992,9 +4292,9 @@ var G={
       +'</div>';
     var acts=$('result-actions');
     if(acts){
-      var a='<button class="btn btn-primary btn-sm btn-shine" onclick="G.printApplication()">🖨 طباعة</button>';
-      a+='<button class="btn btn-outline btn-sm" onclick="G.copyLink()">🔗 نسخ رابط الاستمارة</button>';
-      if(chancesLeft>0)a+='<button class="btn btn-ghost-gold" onclick="G.go(6)">📷 استخدام الباركود لاختيار وظيفة ثانية</button>';
+      var a='<button class="btn btn-primary btn-sm btn-shine" onclick="G.printApplication()">'+AICO.print+'طباعة</button>';
+      a+='<button class="btn btn-outline btn-sm" onclick="G.copyLink()">'+AICO.link+'نسخ رابط الاستمارة</button>';
+      if(chancesLeft>0)a+='<button class="btn btn-ghost-gold" onclick="G.go(6)">'+AICO.camera+'استخدام الباركود لاختيار وظيفة ثانية</button>';
       a+='<button class="btn btn-outline btn-sm" onclick="G.backToJobs()">← العودة للوظائف</button>';
       acts.innerHTML=a;
     }
@@ -4141,7 +4441,7 @@ var G={
     var sheets=outcomes.map(function(o){return G.buildForm(o.data,o.job,o.index+1);}).join('');
 
     var failNote = failures.length
-      ? '<div class="alert alert-error" style="margin-top:10px"><span class="ico">⚠️</span><span class="msg">' +
+      ? '<div class="alert alert-error" style="margin-top:10px">'+aico('alert')+'<span class="msg">' +
         'تعذّر تثبيت: ' + failures.map(function(f){
           return '<b>'+esc(f.job.title)+'</b> ('+esc(f.error==='MISSING'?'قاعدة الشركة تحتاج تحديثاً — راجع الإدارة':f.error)+')';
         }).join(' · ') +
@@ -4149,18 +4449,18 @@ var G={
       : '';
 
     var note = chancesLeft>0
-      ? '<div class="alert alert-info" style="margin-top:10px"><span class="ico">📷</span><span class="msg">متبقي لك <b>'+ar(chancesLeft)+'</b> '+(chancesLeft===1?'فرصة':'فرص')+' — استخدم <b>نفس باركود البطاقة</b> لاختيار وظيفة أخرى خلال مدة الصلاحية</span></div>'
-      : '<div class="alert alert-error" style="margin-top:10px"><span class="ico">⚠️</span><span class="msg">استُهلكت فرصتا البطاقة — تُشترى بطاقة جديدة من نقاط البيع</span></div>';
+      ? '<div class="alert alert-info" style="margin-top:10px">'+aico('camera')+'<span class="msg">متبقي لك <b>'+ar(chancesLeft)+'</b> '+(chancesLeft===1?'فرصة':'فرص')+' — استخدم <b>نفس باركود البطاقة</b> لاختيار وظيفة أخرى خلال مدة الصلاحية</span></div>'
+      : '<div class="alert alert-error" style="margin-top:10px">'+aico('alert')+'<span class="msg">استُهلكت فرصتا البطاقة — تُشترى بطاقة جديدة من نقاط البيع</span></div>';
 
     host.innerHTML=hero+sheets+failNote+note;
     $('steps-bar').style.display='none';
 
     /* ── أزرار ما بعد الاستمارة: طباعة · وظيفة أخرى · نسخ الرابط ── */
-    var acts='<button class="btn btn-primary btn-shine" onclick="G.printApplication()">🖨️ طباعة الاستمارة (A4)</button>';
+    var acts='<button class="btn btn-primary btn-shine" onclick="G.printApplication()">'+AICO.print+'طباعة الاستمارة (A4)</button>';
     if(chancesLeft>0){
-      acts+='<button class="btn btn-ghost-gold" onclick="G.go(6)">📷 استخدام الباركود لاختيار وظيفة ثانية</button>';
+      acts+='<button class="btn btn-ghost-gold" onclick="G.go(6)">'+AICO.camera+'استخدام الباركود لاختيار وظيفة ثانية</button>';
     }
-    acts+='<button class="btn btn-outline" onclick="G.copyLink()">🔗 نسخ رابط الاستمارة (يفتحه الباركود)</button>';
+    acts+='<button class="btn btn-outline" onclick="G.copyLink()">'+AICO.link+'نسخ رابط الاستمارة (يفتحه الباركود)</button>';
     var actsHost=$('result-actions');
     if(actsHost)actsHost.innerHTML=acts;
 
@@ -4202,7 +4502,7 @@ var G={
       if(!host)return;
       var t=document.createElement('div');
       t.className='alert alert-info';t.style.marginTop='10px';
-      t.innerHTML='<span class="ico">🔗</span><span class="msg">تم نسخ الرابط — <b class="mono" dir="ltr">'+esc(url)+'</b></span>';
+      t.innerHTML=AICO.link+'<span class="msg">تم نسخ الرابط — <b class="mono" dir="ltr">'+esc(url)+'</b></span>';
       host.appendChild(t);
       setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},7000);
     };
@@ -4217,7 +4517,7 @@ var G={
   }
 };
 
-/* ⚠️ إتاحة واجهة الصفحة للنطاق العام — شرط عمل كل أزرار الصفحة.
+/* إتاحة واجهة الصفحة للنطاق العام — شرط عمل كل أزرار الصفحة.
    الصفحة كلها داخل دالة مغلقة (IIFE)، وأزرارها مكتوبة بصيغة onclick="G.…"
    وهي تُنفَّذ في النطاق العام لا داخل المغلّف. فبلا هذا السطر يُطلق كل زر
    (ابدأ الآن · التالي · الرجوع · إتمام…) خطأ ReferenceError: G is not defined
@@ -4452,13 +4752,13 @@ function loadData(){
 
     /* فرص البطاقة مستنفدة: لا معنى لمسار الإدخال — رسالة واضحة للزبون */
     if(chancesLeft<=0){
-      /* ⚠️ حالة غير طبيعية (عطل 2026-10-06): صفر فرص بلا أي تقديم مسجَّل —
+      /* حالة غير طبيعية (عطل 2026-10-06): صفر فرص بلا أي تقديم مسجَّل —
          القاعدة تُرمّم الخانات الناقصة عند القراءة، فهذه شبكة أمان أخيرة. */
       fatal('لا توجد فرص ظاهرة على بطاقتك ولا يوجد أي تقديم مسجَّل عليها.',
         'هذا خلل بيانات مؤقت من جهة الشركة لا ذنب لك فيه — اضغط «إعادة فحص البطاقة» بعد ثوانٍ، '+
         'وإن بقي الخطأ راجع المكتب مع رقم بطاقتك:<br>'+
         'رقم البطاقة: <b dir="ltr">'+esc(cardSerial)+'</b><br>'+
-        '<button type="button" class="btn btn-primary" style="margin-top:10px" onclick="location.reload()">🔄 إعادة فحص البطاقة</button>');
+        '<button type="button" class="btn btn-primary" style="margin-top:10px" onclick="location.reload()">'+AICO.refresh+'إعادة فحص البطاقة</button>');
     }
   }).catch(function(e){
     dataLoading=false;

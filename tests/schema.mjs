@@ -1072,6 +1072,43 @@ step(30, 'السكن: محافظة ← قضاء ← ناحية بلا خطأ + �
     /district:qada,subdistrict:nah/.test(ap));
 }
 
+/* ── 2026-10-27 (هـ): تناسق صفحات المعلومات + كارت الوظيفة المختارة الكحلي ── */
+step(31, 'تناسق صفحات المعلومات + بطاقة الوظيفة المختارة كحلية بإطار ذهبي');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('نظام ألوان موحّد معلن مرة واحدة (كحلي · ذهب · كريمي · أخضر · أحمر)',
+    /--ui-ink:#0d2f3d/.test(ap) && /--ui-gold-2:#FABE04/.test(ap) &&
+    /--ui-green:#3FB190/.test(ap) && /--ui-red:#b3392b/.test(ap) && /--ui-cream:#fffdf8/.test(ap));
+  check('الحقول دافئة (عاجي) بحدّ ذهبي عند التركيز — لا أزرق/رمادي باهت',
+    /--ui-field:#f9f5ea/.test(ap) && /--ui-field-line:#e7dcc2/.test(ap) &&
+    /\.form-group input:focus,\.form-group select:focus\{[\s\S]{0,160}var\(--ui-gold-2\)/.test(ap) &&
+    !/--ap-field:#e9eefb; *$/.test(ap.split('--ui-field:#f9f5ea')[0].slice(-40)));
+  check('كل التنبيهات بشكل واحد: حد جانبي ملوّن + أيقونة SVG (لا إيموجي)',
+    /\.alert-error\{[\s\S]{0,200}border-inline-start-color:var\(--ui-red\)/.test(ap) &&
+    /\.alert-info\{[\s\S]{0,200}border-inline-start-color:#2d7fa8/.test(ap) &&
+    /var AICO=\{/.test(ap) && /function aico\(name,cls\)/.test(ap));
+  check('لا إيموجي في واجهة الزبون (📅 ⚠️ 🧾 👤 🖨 🔗 📷 🔄 ✅)',
+    !/[📅⚠🧾👤🖨🔗📷🔄✅]/u.test(ap));
+  check('صفحة المراجعة بنفس اللغة: بطاقة كريمية + صفوف منقّطة + أزرار «تعديل» كبسولية',
+    /\.rv-card\{[\s\S]{0,220}var\(--ui-cream\)/.test(ap) &&
+    /\.rv-row\{border-bottom:1px dashed #e7e0cd/.test(ap) &&
+    /\.rv-edit\{[\s\S]{0,220}border-radius:999px/.test(ap) &&
+    /\.rv-sub\{[\s\S]{0,200}background:#fff6dc/.test(ap));
+  check('بطاقة الوظيفة المختارة كحلية بحدود ذهبية (طلب المالك)',
+    /#jobs-list \.job-card\.selected\{[\s\S]{0,260}linear-gradient\(165deg,#0A3F50,#012F3E/.test(ap) &&
+    /#jobs-list \.job-card\.selected\{[\s\S]{0,420}border:2px solid var\(--ui-gold-2\)/.test(ap));
+  check('نصوص/خلايا/أزرار الكارت المختار كلها مقروءة فوق الكحلي (أبيض + ذهبي)',
+    /#jobs-list \.job-card\.selected \.jm \.k,[\s\S]{0,160}color:#fff/.test(ap) &&
+    /#jobs-list \.job-card\.selected \.job-pay \*,[\s\S]{0,120}color:#ffe9ad/.test(ap) &&
+    /#jobs-list \.job-card\.selected \.job-actions \.btn-primary,[\s\S]{0,200}var\(--ui-gold-2\)/.test(ap));
+  check('شارة الاختيار المكرّرة أُزيلت (بقيت شارة واحدة داخل الرأس)',
+    /#jobs-list \.job-card\.selected \.job-head::before,[\s\S]{0,140}content:none!important/.test(ap));
+  check('بقية البطاقات تُخفَّف قليلاً ليبقى الكحلي هو البطل (بلا تغبيش يمنع النقر)',
+    /#jobs-list\.has-focus \.job-card:not\(\.selected\):not\(\.is-done\)\{opacity:\.78\}/.test(ap) &&
+    !/pointer-events:none/.test(ap.split('#jobs-list.has-focus .job-card:not(.selected):not(.is-done)')[1]?.slice(0, 120) || ''));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');
