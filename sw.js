@@ -1,4 +1,4 @@
-// Service Worker للعمل أوفلاين — hrc-cache-v70
+// Service Worker للعمل أوفلاين — hrc-cache-v71
 // ---------------------------------------------------------------------------
 // سياسة التخزين منذ v4:
 //   • HTML و JS  → network-first: الشبكة أولاً (الزائر يرى آخر نسخة)، والكاش
@@ -28,7 +28,7 @@
    إن كان مطابقاً. إبقاء الرقم ثابتاً يُبقي الزوار القدامى على نسخة قديمة
    من index.html مهما أعدت النشر (ظهر فعلاً: زر دخول محذوف بقي على حاسبة
    زارت الموقع قبل الحذف، بينما اختفى على هاتف لم يزره من قبل). */
-const CACHE_NAME = 'hrc-cache-v70';
+const CACHE_NAME = 'hrc-cache-v71';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -59,6 +59,9 @@ const urlsToCache = [
   '/assets/css/card-entry.css',
   '/assets/css/app-shell.css',
   '/assets/img/hero-skyline.webp',
+  /* 2026-10-27: صورة واجهة شاشة الترحيب «منصة مكسب» (محلية، تُخزَّن مسبقاً) */
+  '/assets/img/mkseb-hero.webp',
+  '/assets/img/mkseb-hero-m.webp',
   '/assets/css/backup.css',
   '/assets/css/image-editor.css',
   '/assets/js/qr-scan.js',

@@ -901,37 +901,71 @@ step(27, 'صفحات التقديم — هوية فاتحة (كريمي/كحلي
     (ap.match(/@media print/g) || []).length >= 3);
 }
 
-/* ── 2026-10-27 (ب): مطابقة صور التصميم حرفياً + حركة وضغط احترافي ── */
-step(28, 'شاشة الترحيب والخطوات — مطابقة الصور + انتقالات وضغط أزرار');
+/* ── 2026-10-27 (ب): شاشة ترحيب «منصة مكسب» مطابقة للملصق (موبايل أولاً) ── */
+step(28, 'شاشة الترحيب «منصة مكسب» — مطابقة الملصق + حركة وضغط أزرار');
 {
   const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
 
-  check('شاشة الترحيب: كلمة الشركة + الشعار الفرعي + الوصف التعريفي',
-    /id="welcome-title"[^>]*>منصة الهدف</.test(ap) &&
-    /class="wl-tag[^"]*">فرصتك لمستقبل أفضل</.test(ap) &&
-    /id="welcome-intro"[^>]*>منصة توظيف تربط الباحثين عن عمل/.test(ap));
-  check('زر البدء كبسولة كحلية بسهم أمامي (كما في الصورة)',
-    /class="wl-cta[^"]*"[\s\S]{0,240}id="btn-start"[\s\S]{0,240}ابدأ الآن/.test(ap) &&
-    /\.wl-cta \.btn\{[\s\S]{0,400}border-radius:999px/.test(ap));
+  check('اسم المنصة صار «منصة مكسب» في العنوان والشاشة والترحيب والتذييل',
+    /<title>[^<]*منصة مكسب للتوظيف/.test(ap) &&
+    /id="welcome-title"[^>]*>منصة <b>مكسب<\/b>/.test(ap) &&
+    /منصة مكسب للتوظيف — بابل، العراق/.test(ap) &&
+    /<div class="mk-top-t">[\s\S]{0,120}منصة مكسب/.test(ap));
+  check('شريط علوي كحلي خاص بالترحيب: «منصة مكسب» + «فرصتك لمستقبل أفضل»',
+    /class="mk-top"/.test(ap) && /<b>منصة مكسب<\/b>/.test(ap) &&
+    /<span>فرصتك لمستقبل أفضل<\/span>/.test(ap));
+  check('الشريط العلوي العام مخفي في الترحيب ويظهر من الخطوة ١',
+    /<div class="topbar" id="topbar" style="display:none">/.test(ap) &&
+    /\$\('topbar'\)\.style\.display=showBar\?'flex':'none'/.test(ap));
+  check('الشعار الجديد (M كحلي + سهم ذهبي + رأس إنسان) معرّف كرمز SVG',
+    /<symbol id="i-mkseb" viewBox="0 0 200 160">/.test(ap) &&
+    (ap.match(/#i-mkseb/g) || []).length >= 3 &&
+    /g-mk-navy/.test(ap) && /g-mk-gold/.test(ap));
+  check('الوعد والوصف كما في الملصق (فرصتك لمستقبل أفضل + منصة توظيف تربط…)',
+    /class="mk-tag[^"]*">فرصتك لمستقبل أفضل</.test(ap) &&
+    /id="welcome-intro"[^>]*>منصة توظيف تربط الباحثين عن عمل مع أصحاب العمل بكل سهولة وموثوقية</.test(ap));
+  check('زر البدء كبسولة كحلية بإطار ذهبي وسهم (كما في الملصق)',
+    /class="mk-cta[^"]*"[\s\S]{0,260}id="btn-start"/.test(ap) &&
+    /\.mk-cta \.btn\{[\s\S]{0,600}border-radius:999px/.test(ap) &&
+    /\.mk-cta \.btn\{[\s\S]{0,900}border:2px solid rgba\(222,186,116,\.95\)/.test(ap));
+  check('صورة واجهة بغداد محليّة (بلا طلب خارجي) مع تعتيم للقراءة',
+    /background-image:url\("assets\/img\/mkseb-hero-m\.webp"\)/.test(ap) &&
+    /assets\/img\/mkseb-hero\.webp/.test(ap) && /class="mk-hero-veil"/.test(ap) &&
+    !/mkseb-hero[^"']*\.(jpg|png)/.test(ap));
+  check('موجة كريمية أسفل الصورة وموجة كحلية ذهبية في الخاتمة',
+    /class="mk-sweep"/.test(ap) && /class="mk-end-wave"/.test(ap) &&
+    /fill="#fbf7ec"/.test(ap) && /fill="#0d2247"/.test(ap));
   check('فاصل «خطوة بسيطة .. وباب جديد لفرصك» بين الزر وقسم المزايا',
-    /class="wl-divider[^"]*"><span>خطوة بسيطة \.\. وباب جديد لفرصك<\/span>/.test(ap));
-  check('قسم «لماذا الهدف؟» بأربع بطاقات مزايا (تطوير · دعم · فرص · موثوقية)',
-    /لماذا الهدف؟/.test(ap) && (ap.match(/class="wl-feat"/g) || []).length === 4 &&
-    /تطوير مستقبلك/.test(ap) && /دعم مستمر/.test(ap) && /فرص متنوعة/.test(ap) && /موثوق وآمن/.test(ap));
-  check('الأيقونات داخل الحقول (اسم · عنوان · هاتف) بلا تغيير في المعرّفات',
+    /class="mk-sep"><span>خطوة بسيطة \.\. وباب جديد لفرصك<\/span>/.test(ap));
+  check('قسم «لماذا مكسب؟» + سطر «لأن مستقبلك يستحق الأفضل» + أربع مزايا بنصوص الملصق',
+    /class="mk-why-t">لماذا مكسب؟</.test(ap) &&
+    /class="mk-why-s">لأن مستقبلك يستحق الأفضل</.test(ap) &&
+    (ap.match(/class="mk-feat"/g) || []).length === 4 &&
+    /تطوير مستقبلك/.test(ap) && /دعم مستمر/.test(ap) &&
+    /فرص متنوعة/.test(ap) && /موثوق وآمن/.test(ap) &&
+    /نساعدك على بناء مسارك المهني/.test(ap) && /فريقنا معك في كل خطوة/.test(ap) &&
+    /وظائف تناسب جميع المؤهلات والخبرات والتخصصات/.test(ap) &&
+    /نتعامل مع جهات معتمدة/.test(ap));
+  check('تركيب الشاشة موبايل أولاً: عمود بعرض الجوال على الهاتف وبطاقة متمركزة على الكمبيوتر',
+    /\.mk-screen\{[\s\S]{0,220}max-width:640px/.test(ap) &&
+    /@media\(min-width:641px\)\{[\s\S]{0,220}\.mk-screen\{[\s\S]{0,220}border-radius:28px/.test(ap));
+  check('الشريط العلوي العام (خطوات الإدخال) يستخدم شعار مكسب أيضاً',
+    /<div class="topbar" id="topbar"[\s\S]{0,200}#i-mkseb/.test(ap) &&
+    /<div class="t1">منصة مكسب<\/div>/.test(ap));
+  check('الاستمارة المطبوعة تحمل اسم «منصة مكسب للتوظيف» بلا سطر إنجليزي',
+    /n1">منصة مكسب للتوظيف/.test(ap) && !/AL-HADAF RECRUITMENT/.test(ap));
+  check('الأيقونات داخل الحقول (اسم · نقطة دالة · هاتف) ما زالت سليمة',
     (ap.match(/class="fld-ic"/g) || []).length === 3 &&
     /id="f-name"/.test(ap) && /id="f-lm"/.test(ap) && /id="f-phone"/.test(ap));
-  check('الشريط العلوي ظاهر في شاشة الترحيب أيضاً (لا display:none على #topbar)',
-    /<div class="topbar" id="topbar">/.test(ap) && /\$\('topbar'\)\.style\.display='flex'/.test(ap));
-  check('شريط التقدم يُخفى في الترحيب ويظهر من الخطوة ١',
-    /\$\('steps-bar'\)\.style\.display=showBar\?'flex':'none'/.test(ap));
-  check('خلفية موجية تتنفّس ببطء مع احترام تقليل الحركة',
+  check('الخلفية الموجية العامة تختفي في شاشة الترحيب (تركيبها الخاص)',
+    /body\[data-step="0"\]::before,body\[data-step="0"\]::after\{display:none/.test(ap));
+  check('خلفية موجية للخطوات تتنفّس ببطء مع احترام تقليل الحركة',
     /@keyframes apWaveTop/.test(ap) && /@keyframes apWaveBottom/.test(ap) &&
     /@media\(prefers-reduced-motion:reduce\)\{\s*body::before,body::after[\s\S]{0,120}animation:none/.test(ap));
   check('ضغط الأزرار محسوس (translate + scale) مع موجة لمس',
     /\.btn:not\(:disabled\):active\{[\s\S]{0,160}scale\(\.98/.test(ap) &&
     /@keyframes apRipple/.test(ap) && /className='ap-rp'/.test(ap));
-  check('انتقال الصفحات ناعم (منحنى .16,1,.3,1) وبلا كسر لقفل الانتقال',
+  check('انتقال الصفحات ناعم وبلا كسر لقفل الانتقال',
     /transform \.46s cubic-bezier\(\.16,1,\.3,1\)/.test(ap) && /\},420\);/.test(ap));
   check('الصفحة الحالية معلنة على <body> لعرض شريط التقدم بعرض البطاقة',
     /setAttribute\('data-step'/.test(ap) && /body\[data-step="6"\] \.steps-bar/.test(ap));

@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>تقديم على وظيفة | شركة الهدف للتوظيف</title>
-<meta name="theme-color" content="#0b1a3a">
-<link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+<title>تقديم على وظيفة | منصة مكسب للتوظيف</title>
+<meta name="theme-color" content="#0d2247">
+<link rel="icon" type="image/svg+xml" href="assets/img/favicon-mkseb.svg">
 <link href="assets/css/fonts.css?v=plex-1" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════════════════════
-   منصة الهدف — صفحة التقديم العام (apply.html)
+   منصة مكسب — صفحة التقديم العام (apply.html)
    ═══════════════════════════════════════════════════════════════════════ */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px}
@@ -1535,15 +1535,7 @@ body{
   .btn:focus-visible{outline:3px solid var(--ap-gold) !important; outline-offset:3px}
 
   /* ── الترحيب ── */
-  .welcome{
-    background:linear-gradient(150deg,#fffdf8,#fbf4e4) !important;
-    border:1px solid var(--ap-line) !important; border-radius:26px !important;
-    box-shadow:0 20px 55px rgba(18,48,92,.12) !important;
-  }
-  .welcome .emblem{color:var(--ap-gold) !important; filter:drop-shadow(0 8px 20px rgba(200,162,74,.28))}
-  .welcome h1{color:var(--ap-navy) !important}
-  .welcome .sub{color:var(--ap-muted) !important}
-  .welcome .gold-line{background:linear-gradient(90deg,transparent,var(--ap-gold) 50%,transparent) !important}
+  .mk-screen{background:var(--ap-cream) !important}
   #welcome-status{color:#8a6d2c !important}
   .btn-card-details{
     background:#fffdf8 !important; border:1.5px solid var(--ap-field-line) !important;
@@ -1780,11 +1772,19 @@ body{
   }
   .topbar{
     background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;
-    padding:2px 2px 0!important;margin-bottom:clamp(14px,3vw,24px)!important;gap:12px!important;
+    padding:clamp(2px,1vw,8px) 2px 0!important;margin-bottom:clamp(12px,2.6vw,20px)!important;gap:12px!important;
+    width:100%;max-width:760px;margin-inline:auto!important;align-items:center!important;
   }
   .topbar svg{
-    width:clamp(38px,6vw,46px)!important;height:clamp(38px,6vw,46px)!important;
-    color:var(--ap-gold-2)!important;filter:drop-shadow(0 8px 18px rgba(0,0,0,.3));
+    width:clamp(56px,15vw,72px)!important;height:auto!important;max-height:60px;flex:none;
+    filter:drop-shadow(0 6px 16px rgba(0,0,0,.35));
+  }
+  /* لوحة فاتحة خلف الشعار حتى يظهر الكحلي على الهيدر الكحلي */
+  .topbar .tb-logo{
+    background:linear-gradient(160deg,#fffdf8,#f7eed9);
+    border:1px solid rgba(200,162,74,.55);border-radius:16px;
+    padding:6px 8px;width:clamp(66px,17vw,84px)!important;max-height:none;
+    box-shadow:0 8px 20px rgba(6,18,36,.3);
   }
   .topbar .t1{
     color:#fff!important;font-size:clamp(17px,2.3vw,22px)!important;
@@ -1803,142 +1803,230 @@ body{
   }
   @media(max-width:640px){.topbar::after{display:none!important}}
 
-  /* ── 3) شاشة الترحيب ───────────────────────────────────────────────── */
-  .welcome{
-    position:relative;overflow:hidden;text-align:center;
-    background:linear-gradient(168deg,#fffefa 0%,#fcf7ea 58%,#f8f1e0 100%)!important;
-    border:1px solid rgba(200,162,74,.3)!important;border-radius:26px!important;
-    box-shadow:0 24px 62px rgba(18,48,92,.14),inset 0 1px 0 rgba(255,255,255,.9)!important;
-    padding:clamp(20px,4.6vw,40px) clamp(16px,3.6vw,34px) clamp(18px,3.6vw,30px)!important;
-    min-height:0!important;display:block!important;
-  }
-  .welcome::before{
-    content:'';position:absolute;inset-block-start:0;inset-inline:0;height:5px;
-    background:linear-gradient(90deg,var(--ap-gold-soft),var(--ap-gold) 30%,var(--ap-gold-2) 55%,var(--ap-gold) 78%,var(--ap-gold-soft));
-  }
-  .welcome::after{
-    content:'';position:absolute;inset-block-start:-40%;inset-inline-end:-25%;width:70%;height:120%;
-    background:radial-gradient(circle,rgba(200,162,74,.16),transparent 66%);
-    pointer-events:none;
-  }
-  .wl-hero{position:relative;z-index:1}
-  @media(min-width:900px){.welcome{max-width:920px;margin-inline:auto}}
+  /* ── 3) شاشة الترحيب «منصة مكسب» — موبايل أولاً (مطابقة الملصق) ──── */
 
-  /* الشعار: هالة ذهبية ناعمة */
-  .welcome .wl-logo{
-    position:relative;display:inline-grid;place-items:center;
-    width:clamp(94px,25vw,122px);height:clamp(94px,25vw,122px);
-    margin:4px auto 16px;
+  /* إطار الشاشة: بعرض الجوال على الهاتف، وعمود أنيق متمركز على الكمبيوتر */
+  .mk-screen{
+    position:relative;width:100%;max-width:640px;margin-inline:auto;
+    background:var(--ap-cream);overflow:hidden;
+    border-radius:0;
   }
-  .wl-logo::before{
-    content:'';position:absolute;inset:-16%;border-radius:50%;
-    background:radial-gradient(circle,rgba(200,162,74,.26),rgba(200,162,74,0) 68%);
-    animation:apHalo 6s ease-in-out infinite;
+  @media(min-width:641px){
+    .mk-screen{
+      border-radius:28px;border:1px solid rgba(200,162,74,.35);
+      box-shadow:0 34px 90px rgba(13,34,71,.24);
+    }
   }
-  .wl-logo::after{
-    content:'';position:absolute;inset:-7px;border-radius:50%;
-    border:1px solid rgba(200,162,74,.38);
-  }
-  .wl-logo svg{
-    position:relative;z-index:1;width:100%;height:100%;
-    filter:drop-shadow(0 14px 26px rgba(13,34,71,.24));
-  }
-  @keyframes apHalo{0%,100%{opacity:.75;transform:scale(.98)}50%{opacity:1;transform:scale(1.04)}}
 
-  .welcome h1{
-    font-size:clamp(23px,6vw,31px)!important;font-weight:900!important;
-    color:var(--ap-navy)!important;line-height:1.5!important;
-    margin:0 0 4px!important;letter-spacing:-.01em;
+  /* شريط علوي كحلي: هوية المنصة */
+  .mk-top{
+    background:linear-gradient(120deg,#14335c,#0c2145 70%,#0a1b39);
+    padding:11px 18px 12px;text-align:start;
+    border-block-end:1px solid rgba(200,162,74,.35);
   }
-  .welcome .wl-tag{
-    font-size:clamp(13px,3.4vw,15px)!important;font-weight:800!important;
-    color:var(--ap-gold-3)!important;margin:0 0 10px;line-height:1.7;
+  .mk-top-t b{
+    display:block;color:#fff;font-size:clamp(12px,3.2vw,14px);font-weight:900;
+    letter-spacing:.01em;line-height:1.5;
   }
-  .welcome .sub{
-    font-size:clamp(12px,3.1vw,13.5px)!important;color:var(--ap-muted)!important;
-    line-height:2!important;margin:0 auto 2px!important;max-width:46ch;
+  .mk-top-t span{
+    display:block;color:rgba(246,231,196,.72);font-size:clamp(9.5px,2.6vw,11px);
+    font-weight:700;line-height:1.6;
+  }
+
+  /* الواجهة: صورة بغداد + الشعار + الوعد + زر البدء */
+  .mk-hero{
+    position:relative;isolation:isolate;overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;text-align:center;
+    padding:clamp(18px,5vw,32px) clamp(16px,4.6vw,30px) clamp(64px,17vw,104px);
+    background-color:#12294d;
+    background-image:url("assets/img/mkseb-hero-m.webp");
+    background-size:cover;background-position:center 42%;background-repeat:no-repeat;
+  }
+  @media(min-width:641px){
+    .mk-hero{background-image:url("assets/img/mkseb-hero.webp");background-position:center 46%}
+  }
+  /* تعتيم متدرّج لقراءة النص فوق الصورة */
+  .mk-hero-veil{
+    position:absolute;inset:0;z-index:-1;
+    background:
+      linear-gradient(180deg,rgba(9,26,52,.55) 0%,rgba(9,26,52,.10) 24%,rgba(9,26,52,.34) 56%,rgba(9,26,52,.52) 100%),
+      radial-gradient(78% 52% at 50% 62%,rgba(8,22,44,.62),rgba(8,22,44,0) 72%);
+  }
+  /* زاوية كحلية متدرّجة تنعم بلا حدود حادة (كما في الملصق) */
+  .mk-hero::before{
+    content:'';position:absolute;z-index:-1;inset-block-start:0;left:0;
+    width:min(88%,430px);height:min(70%,360px);pointer-events:none;
+    background:radial-gradient(118% 118% at 0% 0%,
+      rgba(10,26,50,.94) 0%,
+      rgba(10,26,50,.74) 34%,
+      rgba(10,26,50,.34) 58%,
+      rgba(10,26,50,.10) 76%,
+      rgba(10,26,50,0) 88%);
+  }
+
+  /* الموجة الكريمية أسفل الصورة + خط ذهبي رفيع */
+  .mk-sweep{
+    position:absolute;inset-inline:0;inset-block-end:-1px;width:100%;height:clamp(110px,26vw,168px);
+    z-index:-1;display:block;pointer-events:none;
+  }
+
+  /* الشعار */
+  .mk-logo{
+    position:relative;display:block;width:clamp(140px,38vw,208px);
+    margin:6px auto 2px;filter:drop-shadow(0 12px 26px rgba(6,18,36,.45));
+  }
+  .mk-logo svg{display:block;width:100%;height:auto}
+  .mk-logo::after{
+    content:'';position:absolute;inset:-12% -18%;z-index:-1;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,236,192,.34),rgba(255,236,192,0) 66%);
+    animation:mkHalo 6.5s ease-in-out infinite;
+  }
+  @keyframes mkHalo{0%,100%{opacity:.55;transform:scale(.97)}50%{opacity:.95;transform:scale(1.05)}}
+
+  .mk-hero h1{
+    margin:2px 0 0;font-size:clamp(26px,7.4vw,38px);font-weight:900;line-height:1.4;
+    color:#fff;letter-spacing:-.01em;
+    text-shadow:0 4px 20px rgba(6,18,36,.4);
+  }
+  .mk-hero h1 b{
+    background:linear-gradient(100deg,#f6d99a,#d3a94f 55%,#b98f34);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    -webkit-text-fill-color:transparent;
+  }
+  .mk-tag{
+    margin:2px 0 0;font-size:clamp(13px,3.6vw,16px);font-weight:800;
+    color:#f7e9c6;line-height:1.7;text-shadow:0 2px 12px rgba(6,18,36,.45);
+  }
+  .mk-desc{
+    margin:clamp(10px,2.6vw,16px) auto 0;max-width:32ch;
+    font-size:clamp(12px,3.3vw,14px);line-height:2;font-weight:700;
+    color:rgba(255,255,255,.93);text-shadow:0 2px 10px rgba(6,18,36,.4);
   }
   #welcome-status{
-    min-height:1.6em;color:var(--ap-gold-3)!important;
-    font-size:clamp(11px,2.9vw,13px)!important;font-weight:800;margin:6px 0 2px;
+    min-height:0;margin:6px 0 0;font-size:clamp(10.5px,2.9vw,12.5px);font-weight:800;
+    color:#f7e2ab;text-shadow:0 2px 10px rgba(6,18,36,.5);
   }
+  #welcome-status:empty{display:none}
 
-  /* زر البدء: كبسولة كحلية بعرض البطاقة */
-  .wl-cta{margin-top:14px;position:relative;z-index:1}
-  .wl-cta .btn{
-    width:100%;min-height:58px;border-radius:999px!important;
-    font-size:clamp(15px,3.8vw,17px)!important;font-weight:900!important;gap:10px!important;
-    background:linear-gradient(135deg,var(--ap-navy-2),var(--ap-navy) 45%,var(--ap-navy-3))!important;
-    color:#fff!important;border:1px solid rgba(200,162,74,.55)!important;
-    box-shadow:0 14px 30px rgba(13,34,71,.26),inset 0 1px 0 rgba(255,255,255,.16)!important;
+  /* زر البدء: كبسولة كحلية بإطار ذهبي (كما في الملصق) */
+  .mk-cta{position:relative;z-index:2;width:100%;margin:clamp(16px,4vw,24px) 0 0}
+  .mk-cta .btn{
+    width:min(100%,330px);margin-inline:auto;min-height:clamp(54px,15vw,60px);
+    border-radius:999px!important;
+    font-size:clamp(15px,4vw,17.5px)!important;font-weight:900!important;gap:12px!important;
+    background:linear-gradient(160deg,#1b3f6d,#12294d 45%,#0a1d39)!important;
+    color:#fff!important;
+    border:2px solid rgba(222,186,116,.95)!important;
+    box-shadow:
+      0 16px 34px rgba(5,16,34,.42),
+      0 0 0 4px rgba(200,162,74,.12),
+      inset 0 1px 0 rgba(255,255,255,.22)!important;
     transition:transform .22s var(--ap-ease),box-shadow .28s ease,filter .28s ease!important;
   }
-  .wl-cta .btn svg{opacity:.92;transition:transform .3s var(--ap-ease)}
-  .wl-cta .btn:hover{transform:translateY(-2px);box-shadow:0 20px 38px rgba(13,34,71,.3)!important}
-  .wl-cta .btn:hover svg{transform:translateX(-3px)}
-  .wl-cta .btn:active{transform:translateY(1px) scale(.986)!important;box-shadow:0 6px 14px rgba(13,34,71,.26)!important}
+  .mk-cta .btn svg{transition:transform .3s var(--ap-ease);opacity:.95}
+  .mk-cta .btn:hover{transform:translateY(-2px);filter:brightness(1.06)}
+  .mk-cta .btn:hover svg{transform:translateX(4px)}
+  .mk-cta .btn:active{transform:translateY(1px) scale(.984)!important;box-shadow:0 6px 16px rgba(5,16,34,.4)!important}
 
-  /* فاصل منقّش + سؤال «لماذا» */
-  .wl-divider{display:flex;align-items:center;gap:12px;margin:clamp(18px,3.6vw,26px) 0 4px}
-  .wl-divider::before,.wl-divider::after{
-    content:'';flex:1;height:1px;
-    background:linear-gradient(90deg,transparent,rgba(200,162,74,.6),transparent);
+  /* تفاصيل البطاقة (تظهر بعد قراءة البطاقة فقط) */
+  .welcome-details{width:min(100%,330px);margin-top:12px;position:relative;z-index:2}
+  .btn-card-details{
+    background:rgba(255,253,248,.94)!important;border:1.5px solid rgba(200,162,74,.7)!important;
+    color:var(--ap-navy)!important;border-radius:16px!important;
+    min-height:54px!important;font-size:clamp(12.5px,3.2vw,14px)!important;font-weight:900!important;
+    box-shadow:0 10px 24px rgba(6,18,36,.3)!important;
+    backdrop-filter:blur(4px);
+    transition:transform .2s var(--ap-ease),box-shadow .24s ease,background-color .24s ease!important;
   }
-  .wl-divider span{
-    font-size:clamp(10.5px,2.9vw,12.5px);font-weight:800;color:var(--ap-gold-3);
+  .btn-card-details:hover{background:#fff!important;transform:translateY(-1px)}
+  .btn-card-details:active{transform:translateY(1px) scale(.988)!important}
+  .btn-card-details svg{color:#a8802f!important}
+  .bcd-count{
+    background:#fdf3d8!important;color:#7a5f21!important;border:1px solid var(--ap-gold-soft)!important;
+    border-radius:999px!important;padding:3px 11px!important;font-size:.86em!important;font-weight:900!important;
+  }
+
+  /* فاصل «خطوة بسيطة .. وباب جديد لفرصك» على الكريمي */
+  .mk-sep{
+    display:flex;align-items:center;gap:12px;
+    background:var(--ap-cream);padding:clamp(6px,2vw,14px) clamp(16px,5vw,30px) 0;
+  }
+  .mk-sep::before,.mk-sep::after{
+    content:'';flex:1;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(168,128,47,.65),transparent);
+  }
+  .mk-sep span{
+    font-size:clamp(10px,2.8vw,12.5px);font-weight:800;color:#9a7833;
     white-space:nowrap;letter-spacing:.01em;
   }
-  .wl-why{margin-top:clamp(16px,3.4vw,24px);position:relative;z-index:1}
-  .wl-why-t{
-    display:flex;align-items:center;justify-content:center;gap:10px;
-    font-size:clamp(13.5px,3.5vw,16px);font-weight:900;color:var(--ap-navy);
-    margin:0 0 12px;
+
+  /* لماذا مكسب؟ */
+  .mk-why{
+    background:var(--ap-cream);padding:clamp(16px,4.6vw,28px) clamp(14px,4.6vw,30px) clamp(22px,5vw,34px);
+    text-align:center;
   }
-  .wl-why-t::before,.wl-why-t::after{
-    content:'';width:20px;height:2px;border-radius:2px;
-    background:linear-gradient(90deg,transparent,var(--ap-gold));
+  .mk-why-t{
+    display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,18px);
+    margin:0;font-size:clamp(19px,5.4vw,26px);font-weight:900;color:var(--ap-navy);line-height:1.5;
   }
-  .wl-why-t::after{background:linear-gradient(90deg,var(--ap-gold),transparent)}
-  .wl-why-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(8px,1.6vw,14px)}
-  .wl-feat{
-    position:relative;overflow:hidden;
-    display:grid;justify-items:center;gap:6px;text-align:center;
-    padding:14px 10px;border-radius:16px;
-    background:#fffdf8;border:1px solid var(--ap-line);
-    box-shadow:0 6px 16px rgba(18,48,92,.05);
-    transition:transform .3s var(--ap-ease),box-shadow .3s ease,border-color .3s ease;
+  .mk-why-t::before,.mk-why-t::after{
+    content:'';width:clamp(26px,9vw,58px);height:1.5px;border-radius:2px;
+    background:linear-gradient(90deg,transparent,rgba(168,128,47,.85));
   }
-  .wl-feat:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(18,48,92,.1);border-color:rgba(200,162,74,.5)}
-  .wl-feat-ic{
-    display:grid;place-items:center;width:38px;height:38px;border-radius:50%;
-    background:linear-gradient(145deg,#fdf4da,#f6e7c2);
-    border:1px solid rgba(200,162,74,.38);color:var(--ap-gold-3);
+  .mk-why-t::after{background:linear-gradient(90deg,rgba(168,128,47,.85),transparent)}
+  .mk-why-s{
+    margin:4px 0 clamp(14px,4vw,22px);font-size:clamp(11.5px,3.1vw,13.5px);
+    font-weight:800;color:#8a7448;
   }
-  .wl-feat-ic svg{width:20px;height:20px}
-  .wl-feat b{font-size:clamp(11px,2.9vw,12.5px);font-weight:900;color:var(--ap-navy);line-height:1.5}
-  .wl-feat i{font-style:normal;font-size:clamp(9.5px,2.5vw,11px);color:var(--ap-muted);line-height:1.7}
-  @media(max-width:760px){
-    .wl-why-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-    .wl-feat{padding:13px 8px;border-radius:14px}
+  .mk-feats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(10px,3vw,16px)}
+  .mk-feat{
+    position:relative;display:grid;justify-items:center;gap:6px;text-align:center;
+    padding:clamp(10px,3vw,16px) clamp(6px,2vw,12px);
+  }
+  .mk-feat-ic{
+    display:grid;place-items:center;width:clamp(44px,12vw,54px);height:clamp(44px,12vw,54px);
+    border-radius:clamp(12px,3.4vw,16px);
+    background:linear-gradient(160deg,#fffdf7,#f9f1de);
+    border:1px solid rgba(200,162,74,.45);color:var(--ap-navy);
+    box-shadow:0 6px 16px rgba(120,92,36,.10);
+  }
+  .mk-feat-ic svg{width:clamp(22px,6vw,26px);height:clamp(22px,6vw,26px)}
+  .mk-feat b{
+    font-size:clamp(12px,3.3vw,14px);font-weight:900;color:var(--ap-navy);line-height:1.5;
+  }
+  .mk-feat i{
+    font-style:normal;font-size:clamp(10px,2.8vw,12px);line-height:1.85;
+    color:#7d7259;font-weight:700;
+  }
+  /* فواصل ذهبية رفيعة بين البطاقات (كما في الملصق) */
+  @media(min-width:720px){
+    .mk-feats{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .mk-feat + .mk-feat::before{
+      content:'';position:absolute;inset-block:12%;inset-inline-start:0;width:1px;
+      background:linear-gradient(180deg,transparent,rgba(200,162,74,.55),transparent);
+    }
+  }
+  @media(max-width:719px){
+    .mk-feat:nth-child(n+3){border-top:1px solid rgba(200,162,74,.28);padding-top:clamp(12px,3.4vw,18px)}
   }
 
-  /* زر تفاصيل البطاقة */
-  .welcome-details{width:100%;margin-top:10px}
-  .btn-card-details{
-    background:#fffdf8!important;border:1.5px solid var(--ap-field-line)!important;
-    color:var(--ap-navy)!important;border-radius:16px!important;
-    min-height:58px!important;font-size:clamp(13px,3.3vw,15px)!important;font-weight:900!important;
-    box-shadow:0 6px 18px rgba(18,48,92,.07)!important;
-    transition:transform .2s var(--ap-ease),box-shadow .24s ease,border-color .24s ease,background-color .24s ease!important;
+  /* خاتمة كحلية بموجة ذهبية (كما في الملصق) */
+  .mk-end{position:relative;background:var(--ap-cream);padding-top:clamp(28px,7vw,44px)}
+  .mk-end-wave{display:block;width:100%;height:clamp(52px,13vw,84px)}
+  .mk-end-in{
+    background:linear-gradient(180deg,#0d2247,#0a1b39);
+    padding:clamp(14px,3.6vw,20px) 16px clamp(20px,5vw,30px);
+    text-align:center;font-size:clamp(10.5px,2.8vw,12.5px);font-weight:700;
+    color:rgba(247,233,198,.82);letter-spacing:.01em;
   }
-  .btn-card-details:hover{background:var(--ap-field)!important;border-color:var(--ap-gold)!important;transform:translateY(-1px)}
-  .btn-card-details:active{transform:translateY(1px) scale(.988)!important;box-shadow:0 3px 10px rgba(18,48,92,.1)!important}
-  .btn-card-details svg{color:var(--ap-gold-3)!important}
-  .bcd-count{
-    background:linear-gradient(140deg,#fdf3d8,#f3e3ba)!important;color:#7a5f21!important;
-    border:1px solid var(--ap-gold-soft)!important;border-radius:999px!important;
-    padding:3px 11px!important;font-size:.86em!important;font-weight:900!important;
-  }
+
+  /* على شاشة الترحيب: موجات الصفحة العامة تختفي (للترحيب تركيبته الخاصة) */
+  body[data-step="0"]::before,body[data-step="0"]::after{display:none!important}
+  body[data-step="0"] .app{padding-block:0!important;padding-inline:0!important}
+  body[data-step="0"] .footer{display:none!important}
+
+  .mk-anim{animation:mkRise .6s var(--ap-ease) both}
+  @keyframes mkRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 
   /* ── 4) شريط التقدّم ───────────────────────────────────────────────── */
   .steps-bar{
@@ -2106,14 +2194,14 @@ body{
   }
 
   /* ── 9) موجات الضغط (Ripple) ───────────────────────────────────────── */
-  .btn,.btn-card-details,.gender-opt,.jf-more,.wl-feat{overflow:hidden}
+  .btn,.btn-card-details,.gender-opt,.jf-more,.mk-feat{overflow:hidden}
   .ap-rp{
     position:absolute;width:140px;height:140px;border-radius:50%;pointer-events:none;z-index:0;
     transform:translate(-50%,-50%) scale(0);
     background:radial-gradient(circle,rgba(255,255,255,.4),rgba(255,255,255,0) 68%);
     animation:apRipple .62s var(--ap-ease) forwards;
   }
-  .btn-outline .ap-rp,.btn-card-details .ap-rp,.gender-opt .ap-rp,.wl-feat .ap-rp{
+  .btn-outline .ap-rp,.btn-card-details .ap-rp,.gender-opt .ap-rp,.mk-feat .ap-rp{
     background:radial-gradient(circle,rgba(200,162,74,.42),rgba(200,162,74,0) 68%);
   }
   @keyframes apRipple{
@@ -2123,7 +2211,17 @@ body{
 
   /* ── 10) صفحة الوظائف: فلاترها على الخلفية الفاتحة ─────────────────── */
   .jf-ic{color:var(--ap-gold-3)!important;opacity:.95}
-  .jf-bar input::placeholder{color:#93a3bd!important}
+  .jf-bar input::placeholder{color:#8494ad!important}
+  /* هالة النيون التركوازية القديمة تُلغى على الخلفية الفاتحة */
+  .job-filters::after{display:none!important}
+  .job-filters::before{
+    background:linear-gradient(90deg,transparent,var(--ap-gold),transparent)!important;
+    opacity:.9!important;
+  }
+  .job-filters:focus-within{
+    border-color:rgba(200,162,74,.55)!important;
+    box-shadow:0 10px 30px rgba(18,48,92,.10)!important;
+  }
   .jf-more{
     color:var(--ap-navy)!important;border:1.5px solid var(--ap-navy)!important;
     background:#fffdf8!important;box-shadow:0 4px 14px rgba(18,48,92,.07)!important;
@@ -2184,13 +2282,10 @@ body{
 
   /* ── 11) لمسات أخيرة ───────────────────────────────────────────────── */
   #welcome-status:empty{min-height:0!important;margin:0!important}
-  .topbar svg{
-    background:radial-gradient(circle at 50% 42%,#fffdf8 58%,#f6ebd2 100%);
-    border-radius:50%;
-  }
+  .topbar{border-radius:0!important}
 
   @media(prefers-reduced-motion:reduce){
-    body::before,body::after,.wl-logo::before{animation:none!important}
+    body::before,body::after,.mk-logo::after{animation:none!important}
     .ap-rp{display:none!important}
   }
 }
@@ -2201,9 +2296,9 @@ body{
 
 <div class="app" id="app">
   <!-- الشريط العلوي -->
-  <div class="topbar" id="topbar">
-    <svg viewBox="0 0 120 120"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
-    <div><div class="t1">شركة الهدف للتوظيف</div><div class="t2">منصة التوظيف · بابل، العراق</div></div>
+  <div class="topbar" id="topbar" style="display:none">
+    <svg class="tb-logo" viewBox="0 0 200 160" aria-hidden="true"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg>
+    <div><div class="t1">منصة مكسب</div><div class="t2">منصة التوظيف · بابل، العراق</div></div>
   </div>
 
   <!-- عداد الخطوات -->
@@ -2232,23 +2327,38 @@ body{
       </div>
     </div>
 
-    <!-- ═══ 1 — الترحيب ═══ -->
+    <!-- ═══ 1 — الترحيب «منصة مكسب» ═══ -->
     <div class="page active" id="pg-welcome">
-      <div class="welcome">
-        <div class="wl-hero">
-          <span class="wl-logo anim-zoom anim-glow">
-            <svg viewBox="0 0 120 120" aria-hidden="true"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
+      <div class="mk-screen">
+
+        <!-- شريط علوي كحلي: هوية المنصة -->
+        <div class="mk-top">
+          <div class="mk-top-t">
+            <b>منصة مكسب</b>
+            <span>فرصتك لمستقبل أفضل</span>
+          </div>
+        </div>
+
+        <!-- الواجهة: صورة بغداد + الشعار + الوعد + زر البدء -->
+        <section class="mk-hero">
+          <div class="mk-hero-veil" aria-hidden="true"></div>
+
+          <span class="mk-logo anim-zoom anim-glow" aria-hidden="true">
+            <svg viewBox="0 0 200 160"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg>
           </span>
-          <h1 id="welcome-title" class="anim-slide-r">منصة الهدف</h1>
-          <p class="wl-tag anim-slide-l-zoom">فرصتك لمستقبل أفضل</p>
-          <p id="welcome-intro" class="sub anim-slide-l-zoom">منصة توظيف تربط الباحثين عن عمل مع أصحاب العمل بكل سهولة وموثوقية</p>
+
+          <h1 id="welcome-title" class="anim-slide-r">منصة <b>مكسب</b></h1>
+          <p class="mk-tag anim-slide-l-zoom">فرصتك لمستقبل أفضل</p>
+          <p id="welcome-intro" class="mk-desc anim-slide-l-zoom">منصة توظيف تربط الباحثين عن عمل مع أصحاب العمل بكل سهولة وموثوقية</p>
           <div id="welcome-status" aria-live="polite"></div>
-          <div class="wl-cta anim-fade-up">
+
+          <div class="mk-cta anim-fade-up">
             <button class="btn btn-primary" id="btn-start" onclick="G.start()">
               <span>ابدأ الآن</span>
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
             </button>
           </div>
+
           <!-- تفاصيل البطاقة: تظهر فقط بعد قراءة الباركود وتعبئة بيانات البطاقة -->
           <div class="anim-fade-up2 welcome-details" id="welcome-details-wrap" hidden>
             <button type="button" class="btn-card-details" id="btn-card-details" onclick="G.cardDetails()">
@@ -2257,33 +2367,54 @@ body{
               <span class="bcd-count" id="bcd-count"></span>
             </button>
           </div>
-          <div class="wl-divider anim-fade-up2"><span>خطوة بسيطة .. وباب جديد لفرصك</span></div>
-        </div>
-        <div class="wl-why anim-fade-up2">
-          <h2 class="wl-why-t">لماذا الهدف؟</h2>
-          <div class="wl-why-grid">
-            <div class="wl-feat">
-              <span class="wl-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17.5l5.2-5.2 3.4 3.4L20 8.3"/><path d="M15 8.3h5v5"/></svg></span>
+
+          <!-- الموجة الكريمية أسفل الصورة -->
+          <svg class="mk-sweep" viewBox="0 0 1200 200" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 200 V132 C 190 62 420 26 640 40 C 860 54 1030 104 1200 150 V200 Z" fill="#fbf7ec"/>
+            <path d="M0 132 C 190 62 420 26 640 40 C 860 54 1030 104 1200 150" fill="none" stroke="#c8a24a" stroke-width="3" opacity=".8"/>
+          </svg>
+        </section>
+
+        <!-- فاصل الوعد -->
+        <div class="mk-sep"><span>خطوة بسيطة .. وباب جديد لفرصك</span></div>
+
+        <!-- لماذا مكسب؟ -->
+        <section class="mk-why">
+          <h2 class="mk-why-t">لماذا مكسب؟</h2>
+          <p class="mk-why-s">لأن مستقبلك يستحق الأفضل</p>
+          <div class="mk-feats">
+            <div class="mk-feat">
+              <span class="mk-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17.5l5.2-5.2 3.4 3.4L20 8.3"/><path d="M15 8.3h5v5"/></svg></span>
               <b>تطوير مستقبلك</b>
-              <i>خطوات واضحة تفتح لك أبواباً جديدة</i>
+              <i>نساعدك على بناء مسارك المهني وتحقيق أهدافك.</i>
             </div>
-            <div class="wl-feat">
-              <span class="wl-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.2 14v-2.2a7.8 7.8 0 0 1 15.6 0V14"/><rect x="2.4" y="13" width="4.2" height="7" rx="2.1"/><rect x="17.4" y="13" width="4.2" height="7" rx="2.1"/><path d="M19.5 20v.4a2.6 2.6 0 0 1-2.6 2.6h-3"/></svg></span>
+            <div class="mk-feat">
+              <span class="mk-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.2 14.6v-2.4a7.8 7.8 0 0 1 15.6 0v2.4"/><rect x="2.6" y="13.4" width="4" height="6.6" rx="2"/><rect x="17.4" y="13.4" width="4" height="6.6" rx="2"/><path d="M19.4 20v.3a2.4 2.4 0 0 1-2.4 2.4h-3.4"/></svg></span>
               <b>دعم مستمر</b>
-              <i>فريق يتابع طلبك حتى النتيجة</i>
+              <i>فريقنا معك في كل خطوة من البحث حتى التوظيف.</i>
             </div>
-            <div class="wl-feat">
-              <span class="wl-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="3.4" width="7.2" height="7.2" rx="2"/><rect x="13.4" y="3.4" width="7.2" height="7.2" rx="2"/><rect x="3.4" y="13.4" width="7.2" height="7.2" rx="2"/><rect x="13.4" y="13.4" width="7.2" height="7.2" rx="2"/></svg></span>
+            <div class="mk-feat">
+              <span class="mk-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.4" r="3.3"/><path d="M2.9 19.4c.5-3.3 3-5.3 6.1-5.3s5.6 2 6.1 5.3"/><circle cx="16.6" cy="9.6" r="2.6"/><path d="M15.6 14.2c2.6.2 4.6 1.9 5 4.6"/></svg></span>
               <b>فرص متنوعة</b>
-              <i>وظائف في كل التخصصات والمحافظات</i>
+              <i>وظائف تناسب جميع المؤهلات والخبرات والتخصصات.</i>
             </div>
-            <div class="wl-feat">
-              <span class="wl-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.2 3v5.6c0 4.4-3.1 7.6-7.2 9.6-4.1-2-7.2-5.2-7.2-9.6V6z"/><path d="M8.7 12.2l2.3 2.3 4.3-4.5"/></svg></span>
+            <div class="mk-feat">
+              <span class="mk-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.2 3v5.6c0 4.4-3.1 7.6-7.2 9.6-4.1-2-7.2-5.2-7.2-9.6V6z"/><path d="M8.7 12.2l2.3 2.3 4.3-4.5"/></svg></span>
               <b>موثوق وآمن</b>
-              <i>بياناتك محفوظة وتُعرض على الشركة فقط</i>
+              <i>نتعامل مع جهات معتمدة ونضمن لك تجربة آمنة وموثوقة.</i>
             </div>
           </div>
+        </section>
+
+        <!-- خاتمة كحلية بموجة ذهبية -->
+        <div class="mk-end">
+          <svg class="mk-end-wave" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 120 V58 C 210 8 460 -2 690 30 C 890 58 1060 86 1200 100 V120 Z" fill="#0d2247"/>
+            <path d="M0 58 C 210 8 460 -2 690 30 C 890 58 1060 86 1200 100" fill="none" stroke="#c8a24a" stroke-width="2.4" opacity=".75"/>
+          </svg>
+          <div class="mk-end-in">منصة مكسب للتوظيف — بابل، العراق</div>
         </div>
+
       </div>
     </div>
 
@@ -2292,7 +2423,7 @@ body{
       <div class="card-sheet-veil" onclick="G.closeCardDetails()"></div>
       <div class="card-sheet-box">
         <header class="card-sheet-head">
-          <span class="cs-emblem"><svg viewBox="0 0 120 120" width="30" height="30"><use href="#i-emblem" xlink:href="#i-emblem"/></svg></span>
+          <span class="cs-emblem"><svg viewBox="0 0 200 160" width="42" height="34"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg></span>
           <div class="cs-title">
             <h2 id="card-details-title">تفاصيل البطاقة</h2>
             <p id="card-details-serial" dir="ltr">—</p>
@@ -2527,7 +2658,7 @@ body{
     </div>
 
   </div><!-- /pages-wrap -->
-  <div class="footer">شركة الهدف للتوظيف — بابل، العراق</div>
+  <div class="footer">منصة مكسب للتوظيف — بابل، العراق</div>
 </div>
 
 <!-- ═══ SVG ═══ -->
@@ -2535,7 +2666,17 @@ body{
 <defs>
 <linearGradient id="g-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f2e2ac"/><stop offset=".45" stop-color="#c8a24a"/><stop offset="1" stop-color="#8a6d2c"/></linearGradient>
 <linearGradient id="g-lapis" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b4287"/><stop offset="1" stop-color="#08132a"/></linearGradient>
+<!-- شعار منصة مكسب: حرف M كحلي + سهم ذهبي صاعد + رأس إنسان -->
+<linearGradient id="g-mk-navy" x1="0" y1="0" x2="0.7" y2="1"><stop offset="0" stop-color="#2a4f7d"/><stop offset="1" stop-color="#0a1c39"/></linearGradient>
+<linearGradient id="g-mk-gold" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#a9812a"/><stop offset=".5" stop-color="#d9b05c"/><stop offset="1" stop-color="#f9e6b4"/></linearGradient>
 </defs>
+<symbol id="i-mkseb" viewBox="0 0 200 160">
+<path d="M24 132 V42 L100 94 L176 42 V132" fill="none" stroke="url(#g-mk-navy)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M42 118 L118 46" stroke="url(#g-mk-gold)" stroke-width="15" stroke-linecap="round"/>
+<path d="M96 30 H126 V60" fill="none" stroke="url(#g-mk-gold)" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="108" cy="20" r="13" fill="url(#g-mk-gold)"/>
+<path d="M90 50 a18 18 0 0 1 36 0z" fill="url(#g-mk-gold)"/>
+</symbol>
 <symbol id="i-emblem" viewBox="0 0 120 120">
 <circle cx="60" cy="60" r="57" fill="url(#g-lapis)" stroke="url(#g-gold)" stroke-width="3.5"/>
 <circle cx="60" cy="60" r="50.5" fill="none" stroke="url(#g-gold)" stroke-width="1" opacity=".6"/>
@@ -2774,9 +2915,10 @@ var G={
     var oldEl=$(STEP_IDS[prev]);
     var newEl=$(STEP_IDS[target]);
 
-    /* الشريط العلوي ظاهر في كل الشاشات (نفس صور التصميم)، وشريط التقدم من الخطوة ١ */
+    /* شاشة الترحيب لها شريطها الكحلي الخاص (هوية المنصة)،
+       والشريط العلوي + شريط التقدم يظهران من الخطوة ١ */
     var showBar=target>=1;
-    $('topbar').style.display='flex';
+    $('topbar').style.display=showBar?'flex':'none';
     $('steps-bar').style.display=showBar?'flex':'none';
     if(showBar){
       var dots=document.querySelectorAll('.step-dot');
@@ -3545,7 +3687,7 @@ var G={
       /* ── رأس الاستمارة ── */
       +'<div class="fs-head">'
       +'<div class="brand"><svg viewBox="0 0 120 120" width="31" height="31"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>'
-      +'<div><div class="n1">شركة الهدف للتوظيف</div><div class="n2">AL-HADAF RECRUITMENT COMPANY</div></div></div>'
+      +'<div><div class="n1">منصة مكسب للتوظيف</div><div class="n2">مكسب للتوظيف · بابل، العراق</div></div></div>'
       +'<div style="text-align:left"><div class="ttl">استمارة توظيف</div><div class="ttl2">JOB APPLICATION FORM</div></div>'
       +'</div>'
       +'<div class="fs-body">'
@@ -3796,7 +3938,7 @@ function clearFatal(){
   if(e)e.classList.remove('active');
   if(w)w.classList.add('active');
   var tb=$('topbar'),sb=$('steps-bar');
-  if(tb)tb.style.display='flex';
+  if(tb)tb.style.display='none';
   if(sb)sb.style.display='none';
   document.body.setAttribute('data-step','0');
   curPage=0;transitioning=false;
@@ -3963,6 +4105,8 @@ function ensureClient(){
 }
 
 function startApp(){
+  /* الحالة الابتدائية: شاشة الترحيب (لها تركيبها الخاص بلا شريط علوي) */
+  document.body.setAttribute('data-step','0');
   initProvince();initDates();
   ['f-name','f-lm','f-phone'].forEach(function(id){
     var el=$(id);if(!el)return;
@@ -4016,7 +4160,7 @@ else window.addEventListener('load',startApp);
 (function(){
   if(!document.addEventListener)return;
   if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
-  var SEL='.btn,.btn-card-details,.gender-opt,.jf-more,.wl-feat';
+  var SEL='.btn,.btn-card-details,.gender-opt,.jf-more,.mk-feat';
   document.addEventListener('pointerdown',function(e){
     var host=e.target&&e.target.closest?e.target.closest(SEL):null;
     if(!host||host.disabled||host.classList.contains('is-done'))return;
