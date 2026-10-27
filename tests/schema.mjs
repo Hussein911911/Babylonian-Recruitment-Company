@@ -901,6 +901,42 @@ step(27, 'صفحات التقديم — هوية فاتحة (كريمي/كحلي
     (ap.match(/@media print/g) || []).length >= 3);
 }
 
+/* ── 2026-10-27 (ب): مطابقة صور التصميم حرفياً + حركة وضغط احترافي ── */
+step(28, 'شاشة الترحيب والخطوات — مطابقة الصور + انتقالات وضغط أزرار');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('شاشة الترحيب: كلمة الشركة + الشعار الفرعي + الوصف التعريفي',
+    /id="welcome-title"[^>]*>منصة الهدف</.test(ap) &&
+    /class="wl-tag[^"]*">فرصتك لمستقبل أفضل</.test(ap) &&
+    /id="welcome-intro"[^>]*>منصة توظيف تربط الباحثين عن عمل/.test(ap));
+  check('زر البدء كبسولة كحلية بسهم أمامي (كما في الصورة)',
+    /class="wl-cta[^"]*"[\s\S]{0,240}id="btn-start"[\s\S]{0,240}ابدأ الآن/.test(ap) &&
+    /\.wl-cta \.btn\{[\s\S]{0,400}border-radius:999px/.test(ap));
+  check('فاصل «خطوة بسيطة .. وباب جديد لفرصك» بين الزر وقسم المزايا',
+    /class="wl-divider[^"]*"><span>خطوة بسيطة \.\. وباب جديد لفرصك<\/span>/.test(ap));
+  check('قسم «لماذا الهدف؟» بأربع بطاقات مزايا (تطوير · دعم · فرص · موثوقية)',
+    /لماذا الهدف؟/.test(ap) && (ap.match(/class="wl-feat"/g) || []).length === 4 &&
+    /تطوير مستقبلك/.test(ap) && /دعم مستمر/.test(ap) && /فرص متنوعة/.test(ap) && /موثوق وآمن/.test(ap));
+  check('الأيقونات داخل الحقول (اسم · عنوان · هاتف) بلا تغيير في المعرّفات',
+    (ap.match(/class="fld-ic"/g) || []).length === 3 &&
+    /id="f-name"/.test(ap) && /id="f-lm"/.test(ap) && /id="f-phone"/.test(ap));
+  check('الشريط العلوي ظاهر في شاشة الترحيب أيضاً (لا display:none على #topbar)',
+    /<div class="topbar" id="topbar">/.test(ap) && /\$\('topbar'\)\.style\.display='flex'/.test(ap));
+  check('شريط التقدم يُخفى في الترحيب ويظهر من الخطوة ١',
+    /\$\('steps-bar'\)\.style\.display=showBar\?'flex':'none'/.test(ap));
+  check('خلفية موجية تتنفّس ببطء مع احترام تقليل الحركة',
+    /@keyframes apWaveTop/.test(ap) && /@keyframes apWaveBottom/.test(ap) &&
+    /@media\(prefers-reduced-motion:reduce\)\{\s*body::before,body::after[\s\S]{0,120}animation:none/.test(ap));
+  check('ضغط الأزرار محسوس (translate + scale) مع موجة لمس',
+    /\.btn:not\(:disabled\):active\{[\s\S]{0,160}scale\(\.98/.test(ap) &&
+    /@keyframes apRipple/.test(ap) && /className='ap-rp'/.test(ap));
+  check('انتقال الصفحات ناعم (منحنى .16,1,.3,1) وبلا كسر لقفل الانتقال',
+    /transform \.46s cubic-bezier\(\.16,1,\.3,1\)/.test(ap) && /\},420\);/.test(ap));
+  check('الصفحة الحالية معلنة على <body> لعرض شريط التقدم بعرض البطاقة',
+    /setAttribute\('data-step'/.test(ap) && /body\[data-step="6"\] \.steps-bar/.test(ap));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');

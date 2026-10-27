@@ -1722,15 +1722,488 @@ body{
   #jobs-list .job-actions .btn{min-height:52px}
   #jobs-list .job-actions .btn-outline{border-width:1.5px !important}
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   2026-10-27 · المطابقة الحرفية لصور التصميم
+   شاشة الترحيب + شاشات الخطوات — كريمي · كحلي · ذهب
+   مع خلفية موجيّة تتنفّس، انتقالات هادئة، وضغط أزرار محسوس
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media screen{
+
+  /* ── 1) الرموز والخلفية ─────────────────────────────────────────────── */
+  :root{
+    --ap-cream:#fbf7ec; --ap-cream-2:#f6eeda; --ap-cream-3:#fffdf8;
+    --ap-navy:#12305c; --ap-navy-2:#0c2247; --ap-navy-3:#1b4480;
+    --ap-gold:#c8a24a; --ap-gold-2:#e3c479; --ap-gold-3:#9d7a2c; --ap-gold-soft:#efe0bd;
+    --ap-ink:#16294a; --ap-muted:#6c7a92;
+    --ap-field:#e9eefb; --ap-field-2:#f4f7ff; --ap-field-line:#d3def2;
+    --ap-card:#fffdf8; --ap-line:#e9dec6;
+    --ap-ease:cubic-bezier(.22,1,.36,1);
+    --ap-sh-1:0 6px 18px rgba(18,48,92,.07);
+    --ap-sh-2:0 16px 44px rgba(18,48,92,.10);
+    --ap-sh-3:0 26px 66px rgba(18,48,92,.15);
+    --fld-h:54px;
+  }
+  html{scroll-behavior:smooth}
+  body{
+    position:relative;   /* مثبّت للموجات: الأعلى في رأس المستند والأسفل في آخره */
+    background-color:var(--ap-cream)!important;
+    background-image:
+      radial-gradient(760px 320px at 4% -4%,rgba(18,48,92,.13),transparent 72%),
+      radial-gradient(900px 400px at 96% -10%,rgba(200,162,74,.22),transparent 72%),
+      linear-gradient(180deg,#fffdf8 0%,#fbf7ec 48%,#f7f0df 100%)!important;
+    color:var(--ap-ink)!important;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  /* موجات أعلى الصفحة وأسفلها — نفس انحناء الصور، بتفاعل بطيء جداً */
+  body::before,body::after{
+    content:'';position:absolute;inset-inline:0;z-index:0;pointer-events:none;
+    background-repeat:no-repeat;background-size:100% 100%;will-change:transform;
+  }
+  body::before{
+    inset-block-start:0;height:clamp(148px,24vw,214px);
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 200' preserveAspectRatio='none'><path d='M0 0h1200v90c-165 45-350 67-600 67S165 135 0 90z' fill='%2312305c'/><path d='M0 0h1200v70c-165 39-350 57-600 57S165 109 0 70z' fill='%230c2247' opacity='.9'/><path d='M0 90c165 45 350 67 600 67s435-22 600-67v11c-165 47-350 69-600 69S165 149 0 101z' fill='%23c8a24a'/><path d='M0 101c165 47 350 69 600 69s435-22 600-69v9c-165 49-350 71-600 71S165 160 0 110z' fill='%23e3c479' opacity='.8'/></svg>");
+    animation:apWaveTop 18s ease-in-out infinite alternate;
+  }
+  body::after{
+    inset-block-end:0;height:clamp(104px,17vw,158px);
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 160' preserveAspectRatio='none'><path d='M0 160h1200v-52c-165-40-350-59-600-59S165 68 0 108z' fill='%2312305c'/><path d='M0 160h1200v-32c-165-36-350-53-600-53S165 92 0 128z' fill='%230c2247' opacity='.9'/><path d='M0 108c165-40 350-59 600-59s435 19 600 59v-11c-165-42-350-61-600-61S165 55 0 97z' fill='%23c8a24a'/><path d='M0 97c165-42 350-61 600-61s435 19 600 61v-9c-165-44-350-63-600-63S165 46 0 88z' fill='%23e3c479' opacity='.8'/></svg>");
+    animation:apWaveBottom 18s ease-in-out infinite alternate;
+  }
+  @keyframes apWaveTop{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,-7px,0)}}
+  @keyframes apWaveBottom{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,7px,0)}}
+
+  /* ── 2) الحاوية والشريط العلوي ──────────────────────────────────────── */
+  .app{
+    width:100%;max-width:1120px;margin-inline:auto;
+    padding:clamp(14px,2.4vw,40px) clamp(14px,2.6vw,40px) clamp(116px,17vw,168px);
+    position:relative;z-index:1;
+  }
+  .topbar{
+    background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;
+    padding:2px 2px 0!important;margin-bottom:clamp(14px,3vw,24px)!important;gap:12px!important;
+  }
+  .topbar svg{
+    width:clamp(38px,6vw,46px)!important;height:clamp(38px,6vw,46px)!important;
+    color:var(--ap-gold-2)!important;filter:drop-shadow(0 8px 18px rgba(0,0,0,.3));
+  }
+  .topbar .t1{
+    color:#fff!important;font-size:clamp(17px,2.3vw,22px)!important;
+    letter-spacing:-.01em;text-shadow:0 2px 12px rgba(0,0,0,.22);
+  }
+  .topbar .t2{
+    color:rgba(255,255,255,.74)!important;font-size:clamp(10px,1.35vw,12px)!important;
+    letter-spacing:.02em!important;direction:rtl!important;text-align:start;font-weight:700!important;
+  }
+  .topbar::after{
+    content:'فرصتك لمستقبل أفضل'!important;
+    color:#f7e9c6!important;border:1px solid rgba(255,255,255,.24)!important;
+    background:rgba(255,255,255,.09)!important;border-radius:999px!important;
+    padding:7px 16px!important;font-size:clamp(10px,1.4vw,13px)!important;font-weight:800!important;
+    backdrop-filter:blur(4px);
+  }
+  @media(max-width:640px){.topbar::after{display:none!important}}
+
+  /* ── 3) شاشة الترحيب ───────────────────────────────────────────────── */
+  .welcome{
+    position:relative;overflow:hidden;text-align:center;
+    background:linear-gradient(168deg,#fffefa 0%,#fcf7ea 58%,#f8f1e0 100%)!important;
+    border:1px solid rgba(200,162,74,.3)!important;border-radius:26px!important;
+    box-shadow:0 24px 62px rgba(18,48,92,.14),inset 0 1px 0 rgba(255,255,255,.9)!important;
+    padding:clamp(20px,4.6vw,40px) clamp(16px,3.6vw,34px) clamp(18px,3.6vw,30px)!important;
+    min-height:0!important;display:block!important;
+  }
+  .welcome::before{
+    content:'';position:absolute;inset-block-start:0;inset-inline:0;height:5px;
+    background:linear-gradient(90deg,var(--ap-gold-soft),var(--ap-gold) 30%,var(--ap-gold-2) 55%,var(--ap-gold) 78%,var(--ap-gold-soft));
+  }
+  .welcome::after{
+    content:'';position:absolute;inset-block-start:-40%;inset-inline-end:-25%;width:70%;height:120%;
+    background:radial-gradient(circle,rgba(200,162,74,.16),transparent 66%);
+    pointer-events:none;
+  }
+  .wl-hero{position:relative;z-index:1}
+  @media(min-width:900px){.welcome{max-width:920px;margin-inline:auto}}
+
+  /* الشعار: هالة ذهبية ناعمة */
+  .welcome .wl-logo{
+    position:relative;display:inline-grid;place-items:center;
+    width:clamp(94px,25vw,122px);height:clamp(94px,25vw,122px);
+    margin:4px auto 16px;
+  }
+  .wl-logo::before{
+    content:'';position:absolute;inset:-16%;border-radius:50%;
+    background:radial-gradient(circle,rgba(200,162,74,.26),rgba(200,162,74,0) 68%);
+    animation:apHalo 6s ease-in-out infinite;
+  }
+  .wl-logo::after{
+    content:'';position:absolute;inset:-7px;border-radius:50%;
+    border:1px solid rgba(200,162,74,.38);
+  }
+  .wl-logo svg{
+    position:relative;z-index:1;width:100%;height:100%;
+    filter:drop-shadow(0 14px 26px rgba(13,34,71,.24));
+  }
+  @keyframes apHalo{0%,100%{opacity:.75;transform:scale(.98)}50%{opacity:1;transform:scale(1.04)}}
+
+  .welcome h1{
+    font-size:clamp(23px,6vw,31px)!important;font-weight:900!important;
+    color:var(--ap-navy)!important;line-height:1.5!important;
+    margin:0 0 4px!important;letter-spacing:-.01em;
+  }
+  .welcome .wl-tag{
+    font-size:clamp(13px,3.4vw,15px)!important;font-weight:800!important;
+    color:var(--ap-gold-3)!important;margin:0 0 10px;line-height:1.7;
+  }
+  .welcome .sub{
+    font-size:clamp(12px,3.1vw,13.5px)!important;color:var(--ap-muted)!important;
+    line-height:2!important;margin:0 auto 2px!important;max-width:46ch;
+  }
+  #welcome-status{
+    min-height:1.6em;color:var(--ap-gold-3)!important;
+    font-size:clamp(11px,2.9vw,13px)!important;font-weight:800;margin:6px 0 2px;
+  }
+
+  /* زر البدء: كبسولة كحلية بعرض البطاقة */
+  .wl-cta{margin-top:14px;position:relative;z-index:1}
+  .wl-cta .btn{
+    width:100%;min-height:58px;border-radius:999px!important;
+    font-size:clamp(15px,3.8vw,17px)!important;font-weight:900!important;gap:10px!important;
+    background:linear-gradient(135deg,var(--ap-navy-2),var(--ap-navy) 45%,var(--ap-navy-3))!important;
+    color:#fff!important;border:1px solid rgba(200,162,74,.55)!important;
+    box-shadow:0 14px 30px rgba(13,34,71,.26),inset 0 1px 0 rgba(255,255,255,.16)!important;
+    transition:transform .22s var(--ap-ease),box-shadow .28s ease,filter .28s ease!important;
+  }
+  .wl-cta .btn svg{opacity:.92;transition:transform .3s var(--ap-ease)}
+  .wl-cta .btn:hover{transform:translateY(-2px);box-shadow:0 20px 38px rgba(13,34,71,.3)!important}
+  .wl-cta .btn:hover svg{transform:translateX(-3px)}
+  .wl-cta .btn:active{transform:translateY(1px) scale(.986)!important;box-shadow:0 6px 14px rgba(13,34,71,.26)!important}
+
+  /* فاصل منقّش + سؤال «لماذا» */
+  .wl-divider{display:flex;align-items:center;gap:12px;margin:clamp(18px,3.6vw,26px) 0 4px}
+  .wl-divider::before,.wl-divider::after{
+    content:'';flex:1;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(200,162,74,.6),transparent);
+  }
+  .wl-divider span{
+    font-size:clamp(10.5px,2.9vw,12.5px);font-weight:800;color:var(--ap-gold-3);
+    white-space:nowrap;letter-spacing:.01em;
+  }
+  .wl-why{margin-top:clamp(16px,3.4vw,24px);position:relative;z-index:1}
+  .wl-why-t{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    font-size:clamp(13.5px,3.5vw,16px);font-weight:900;color:var(--ap-navy);
+    margin:0 0 12px;
+  }
+  .wl-why-t::before,.wl-why-t::after{
+    content:'';width:20px;height:2px;border-radius:2px;
+    background:linear-gradient(90deg,transparent,var(--ap-gold));
+  }
+  .wl-why-t::after{background:linear-gradient(90deg,var(--ap-gold),transparent)}
+  .wl-why-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(8px,1.6vw,14px)}
+  .wl-feat{
+    position:relative;overflow:hidden;
+    display:grid;justify-items:center;gap:6px;text-align:center;
+    padding:14px 10px;border-radius:16px;
+    background:#fffdf8;border:1px solid var(--ap-line);
+    box-shadow:0 6px 16px rgba(18,48,92,.05);
+    transition:transform .3s var(--ap-ease),box-shadow .3s ease,border-color .3s ease;
+  }
+  .wl-feat:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(18,48,92,.1);border-color:rgba(200,162,74,.5)}
+  .wl-feat-ic{
+    display:grid;place-items:center;width:38px;height:38px;border-radius:50%;
+    background:linear-gradient(145deg,#fdf4da,#f6e7c2);
+    border:1px solid rgba(200,162,74,.38);color:var(--ap-gold-3);
+  }
+  .wl-feat-ic svg{width:20px;height:20px}
+  .wl-feat b{font-size:clamp(11px,2.9vw,12.5px);font-weight:900;color:var(--ap-navy);line-height:1.5}
+  .wl-feat i{font-style:normal;font-size:clamp(9.5px,2.5vw,11px);color:var(--ap-muted);line-height:1.7}
+  @media(max-width:760px){
+    .wl-why-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .wl-feat{padding:13px 8px;border-radius:14px}
+  }
+
+  /* زر تفاصيل البطاقة */
+  .welcome-details{width:100%;margin-top:10px}
+  .btn-card-details{
+    background:#fffdf8!important;border:1.5px solid var(--ap-field-line)!important;
+    color:var(--ap-navy)!important;border-radius:16px!important;
+    min-height:58px!important;font-size:clamp(13px,3.3vw,15px)!important;font-weight:900!important;
+    box-shadow:0 6px 18px rgba(18,48,92,.07)!important;
+    transition:transform .2s var(--ap-ease),box-shadow .24s ease,border-color .24s ease,background-color .24s ease!important;
+  }
+  .btn-card-details:hover{background:var(--ap-field)!important;border-color:var(--ap-gold)!important;transform:translateY(-1px)}
+  .btn-card-details:active{transform:translateY(1px) scale(.988)!important;box-shadow:0 3px 10px rgba(18,48,92,.1)!important}
+  .btn-card-details svg{color:var(--ap-gold-3)!important}
+  .bcd-count{
+    background:linear-gradient(140deg,#fdf3d8,#f3e3ba)!important;color:#7a5f21!important;
+    border:1px solid var(--ap-gold-soft)!important;border-radius:999px!important;
+    padding:3px 11px!important;font-size:.86em!important;font-weight:900!important;
+  }
+
+  /* ── 4) شريط التقدّم ───────────────────────────────────────────────── */
+  .steps-bar{
+    flex-direction:column!important;align-items:stretch!important;gap:10px!important;
+    width:100%;max-width:760px;margin-inline:auto!important;
+    background:#fffdf8!important;border:1px solid var(--ap-line)!important;border-radius:18px!important;
+    padding:14px 16px!important;box-shadow:var(--ap-sh-1)!important;
+    margin-bottom:clamp(14px,3vw,20px)!important;
+  }
+  .steps-track{gap:7px!important;justify-content:flex-start!important;direction:ltr;flex:1 1 auto!important}
+  .step-dot{
+    flex:1 1 0!important;height:7px!important;border-radius:99px!important;
+    background:#e3e9f4!important;box-shadow:none!important;
+    transition:background .5s var(--ap-ease),box-shadow .5s ease,flex-basis .5s var(--ap-ease)!important;
+  }
+  .step-dot.done{background:linear-gradient(90deg,var(--ap-gold),var(--ap-gold-2))!important}
+  .step-dot.active{
+    background:linear-gradient(90deg,var(--ap-navy),var(--ap-navy-3))!important;
+    box-shadow:0 0 0 3px rgba(18,48,92,.1)!important;
+  }
+  .step-label{
+    display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:6px!important;
+    text-align:start!important;margin:0!important;
+    font-size:clamp(11.5px,3vw,13.5px)!important;font-weight:800!important;color:var(--ap-muted)!important;
+  }
+  .step-label b{color:var(--ap-navy)!important;font-weight:900}
+  .step-label .pct{
+    margin-inline-start:auto!important;padding:3px 12px!important;border-radius:999px!important;
+    background:var(--ap-field)!important;border:1px solid var(--ap-field-line)!important;
+    color:var(--ap-navy)!important;font-weight:900!important;font-size:.94em!important;
+  }
+
+  /* ── 5) بطاقة الخطوة ───────────────────────────────────────────────── */
+  .profile-card{
+    display:grid!important;grid-template-columns:1fr!important;gap:0!important;
+    align-items:start!important;min-height:0!important;
+    padding:clamp(18px,4vw,28px)!important;
+    background:#fffdf8!important;border:1px solid var(--ap-line)!important;border-radius:24px!important;
+    box-shadow:var(--ap-sh-2)!important;position:relative;overflow:hidden;
+    max-width:760px;margin-inline:auto;width:100%;
+  }
+  .profile-card::before{
+    content:'';position:absolute;inset-block-start:0;inset-inline-start:0;width:100%;height:4px;
+    background:linear-gradient(90deg,var(--ap-gold),var(--ap-gold-2) 40%,rgba(200,162,74,0));
+  }
+  .profile-card::after{display:none!important}
+  .step-intro{
+    border:0!important;padding:0 0 16px!important;margin:0!important;
+  }
+  .step-eyebrow{
+    display:inline-block;margin-bottom:10px!important;padding:5px 12px!important;
+    border-radius:999px!important;background:var(--ap-field)!important;
+    border:1px solid var(--ap-field-line)!important;color:var(--ap-navy)!important;
+    font-size:clamp(10px,2.7vw,12px)!important;font-weight:900!important;letter-spacing:.02em;
+  }
+  .step-intro h1,.step-intro h2{
+    padding:0!important;font-size:clamp(19px,4.6vw,25px)!important;line-height:1.5!important;
+    color:var(--ap-navy)!important;margin:0 0 8px!important;letter-spacing:-.01em;
+  }
+  .step-intro h1::before,.step-intro h2::before{display:none!important}
+  .step-intro p{
+    font-size:clamp(12px,3.1vw,14px)!important;line-height:1.95!important;
+    color:var(--ap-muted)!important;margin:0!important;
+  }
+  .step-assurance{
+    display:none!important;
+  }
+  .step-fields{padding:0!important;background:transparent!important;border:0!important;border-radius:0!important}
+  .section-title{
+    font-size:clamp(14px,3.6vw,17px)!important;font-weight:900!important;
+    color:var(--ap-navy)!important;gap:9px!important;margin-bottom:12px!important;
+  }
+  .section-title::before{
+    width:4px!important;height:20px!important;border-radius:99px!important;
+    background:linear-gradient(180deg,var(--ap-gold),var(--ap-gold-2))!important;
+  }
+
+  /* ── 6) الحقول: أزرق فاتح + أيقونة داخل الحقل ───────────────────────── */
+  .form-group{margin-bottom:16px!important}
+  .form-group label{
+    display:block!important;font-size:clamp(12px,3vw,13.5px)!important;font-weight:800!important;
+    color:var(--ap-navy)!important;margin-bottom:7px!important;
+    transition:color .2s ease;
+  }
+  .form-group:focus-within label{color:var(--ap-navy-3)!important}
+  .form-group input,.form-group select{
+    width:100%;min-height:var(--fld-h)!important;
+    padding:13px 15px!important;border-radius:14px!important;
+    font-size:clamp(14px,3.4vw,15px)!important;font-weight:700;
+    background:var(--ap-field)!important;border:1.5px solid var(--ap-field-line)!important;
+    color:var(--ap-ink)!important;
+    transition:border-color .24s ease,box-shadow .24s ease,background-color .24s ease!important;
+  }
+  .form-group input::placeholder{color:#9aa9c1!important;font-weight:600}
+  .form-group input:focus,.form-group select:focus{
+    background:#f7faff!important;border-color:var(--ap-gold)!important;
+    box-shadow:0 0 0 4px rgba(200,162,74,.16)!important;outline:none!important;
+  }
+  .form-group input.valid,.form-group select.valid{
+    border-color:#1f8f4e!important;box-shadow:0 0 0 4px rgba(31,143,78,.12)!important;
+  }
+  .form-group input.invalid,.form-group select.invalid{
+    border-color:#c0392b!important;box-shadow:0 0 0 4px rgba(192,57,43,.12)!important;
+  }
+  /* الأيقونة داخل الحقل */
+  .fld{position:relative}
+  .fld-ic{
+    position:absolute;inset-inline-start:15px;inset-block-start:calc((var(--fld-h) - 20px)/2);
+    width:20px;height:20px;color:var(--ap-gold-3);opacity:.85;pointer-events:none;
+    transition:color .24s ease,opacity .24s ease;
+  }
+  .fld input{padding-inline-start:47px!important}
+  .fld:focus-within .fld-ic{color:var(--ap-navy);opacity:1}
+  .phone-meter{margin-top:10px!important;gap:9px!important}
+  .phone-meter .pc-num{color:var(--ap-navy)!important;font-size:clamp(12px,3vw,14px)!important}
+  .phone-meter .pc-of{color:var(--ap-muted)!important;font-size:.78em!important}
+  .phone-meter .pc-track{height:6px!important;border-radius:99px!important;background:#dde5f2!important}
+  .phone-meter .pc-track i{background:linear-gradient(90deg,var(--ap-navy-3),var(--ap-gold))!important;border-radius:99px!important}
+  .phone-meter .pc-state{color:var(--ap-muted)!important;font-size:.8em!important}
+  .phone-meter .pc-state.bad{color:#b02a2a!important}
+
+  /* ── 7) الأزرار: ضغط محسوس وحركة هادئة ─────────────────────────────── */
+  .btn{
+    min-height:54px!important;border-radius:14px!important;
+    font-size:clamp(13.5px,3.4vw,15px)!important;font-weight:900!important;
+    transition:transform .2s var(--ap-ease),box-shadow .26s ease,filter .26s ease,
+               background-color .26s ease,border-color .26s ease!important;
+    will-change:transform;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg,var(--ap-navy-2),var(--ap-navy) 48%,var(--ap-navy-3))!important;
+    color:#fff!important;border:1px solid rgba(200,162,74,.5)!important;
+    box-shadow:0 10px 24px rgba(13,34,71,.22),inset 0 1px 0 rgba(255,255,255,.14)!important;
+  }
+  .btn-outline{
+    background:#fffdf8!important;border:1.5px solid var(--ap-navy)!important;
+    color:var(--ap-navy)!important;box-shadow:0 5px 16px rgba(18,48,92,.07)!important;
+  }
+  .btn:not(:disabled):hover{transform:translateY(-1.5px);filter:brightness(1.02)}
+  .btn-primary:not(:disabled):hover{box-shadow:0 16px 30px rgba(13,34,71,.28)!important}
+  .btn-outline:not(:disabled):hover{background:var(--ap-field)!important}
+  .btn:not(:disabled):active{
+    transform:translateY(1px) scale(.986)!important;
+    box-shadow:0 3px 10px rgba(13,34,71,.2)!important;filter:brightness(.99);
+  }
+  .btn:disabled{opacity:.45!important;box-shadow:none!important}
+  .btn:focus-visible,.btn-card-details:focus-visible,.gender-opt:focus-visible,.job-card:focus-visible{
+    outline:3px solid var(--ap-gold)!important;outline-offset:3px;
+  }
+  .btn-row{gap:10px!important;margin-top:16px!important}
+  .btn-row .btn{flex:1 1 0!important}
+  .page:not(#pg-jobs) > .btn-row{width:100%;max-width:760px;margin-inline:auto}
+  @media(max-width:640px){
+    .page .btn-row{flex-direction:column-reverse!important}
+    .page .btn-row .btn{width:100%!important;flex:0 0 auto!important}
+  }
+
+  /* ── 8) التذييل ────────────────────────────────────────────────────── */
+  .footer{
+    margin-top:clamp(18px,3vw,28px)!important;padding:12px 0 0!important;
+    text-align:center;font-size:clamp(10.5px,2.8vw,12.5px)!important;font-weight:700;
+    color:#7b8698!important;letter-spacing:.02em;
+    border-top:1px solid rgba(200,162,74,.28);
+    max-width:820px;margin-inline:auto;
+  }
+
+  /* ── 9) موجات الضغط (Ripple) ───────────────────────────────────────── */
+  .btn,.btn-card-details,.gender-opt,.jf-more,.wl-feat{overflow:hidden}
+  .ap-rp{
+    position:absolute;width:140px;height:140px;border-radius:50%;pointer-events:none;z-index:0;
+    transform:translate(-50%,-50%) scale(0);
+    background:radial-gradient(circle,rgba(255,255,255,.4),rgba(255,255,255,0) 68%);
+    animation:apRipple .62s var(--ap-ease) forwards;
+  }
+  .btn-outline .ap-rp,.btn-card-details .ap-rp,.gender-opt .ap-rp,.wl-feat .ap-rp{
+    background:radial-gradient(circle,rgba(200,162,74,.42),rgba(200,162,74,0) 68%);
+  }
+  @keyframes apRipple{
+    from{opacity:.85;transform:translate(-50%,-50%) scale(0)}
+    to{opacity:0;transform:translate(-50%,-50%) scale(1.15)}
+  }
+
+  /* ── 10) صفحة الوظائف: فلاترها على الخلفية الفاتحة ─────────────────── */
+  .jf-ic{color:var(--ap-gold-3)!important;opacity:.95}
+  .jf-bar input::placeholder{color:#93a3bd!important}
+  .jf-more{
+    color:var(--ap-navy)!important;border:1.5px solid var(--ap-navy)!important;
+    background:#fffdf8!important;box-shadow:0 4px 14px rgba(18,48,92,.07)!important;
+    transition:transform .2s var(--ap-ease),background-color .24s ease,border-color .24s ease!important;
+  }
+  .jf-more:hover{background:var(--ap-field)!important;border-color:var(--ap-gold)!important}
+  .jf-more[aria-expanded="true"]{background:var(--ap-field)!important;box-shadow:0 0 0 3px rgba(200,162,74,.16)!important}
+  .jf-more.has-filters{background:linear-gradient(140deg,var(--ap-gold),var(--ap-gold-2))!important;color:#1c1405!important;border-color:transparent!important}
+  .jf-more:not(:disabled):active{transform:translateY(1px) scale(.985)}
+  .jf-badge{background:var(--ap-navy)!important;color:#fff!important}
+  .jf-reset{
+    color:var(--ap-navy)!important;border:1.5px solid var(--ap-field-line)!important;
+    background:#fffdf8!important;
+  }
+  .jf-reset:hover{color:var(--ap-gold-3)!important;border-color:var(--ap-gold)!important;background:var(--ap-field)!important}
+  .jf-chips{border-top:1px solid var(--ap-line)!important}
+  .jf-chip{color:#7a5f21!important;background:#fdf3d8!important;border:1px solid var(--ap-gold-soft)!important}
+  .jf-chip:hover{background:#fbe9c4!important;border-color:var(--ap-gold)!important}
+  .jf-chip-x{background:rgba(122,95,33,.14)!important;color:#7a5f21!important}
+  .jf-chip:hover .jf-chip-x{background:var(--ap-gold)!important;color:#fff!important}
+  .jf-panel{
+    background:#fdfaf2!important;border:1px solid var(--ap-line)!important;border-radius:16px!important;
+  }
+  .jf-panel-title{color:var(--ap-navy)!important}
+  .jf-panel-hint{color:var(--ap-muted)!important}
+  .jf-cell label{color:var(--ap-navy)!important}
+  .jf-panel input::placeholder{color:#93a3bd!important}
+  .jf-panel-foot{border-top:1px solid var(--ap-line)!important}
+  .jf-panel-foot .btn{
+    color:var(--ap-navy)!important;border:1.5px solid var(--ap-navy)!important;
+    background:#fffdf8!important;
+  }
+  .job-filters .jf-check{color:var(--ap-navy)!important;font-weight:800}
+  .chances-bar.has2{background:#e8f6ec!important;border-color:#bfe0cb!important;color:#1a6b3f!important}
+  .chances-bar.has1{background:#fdf3d8!important;border-color:var(--ap-gold-soft)!important;color:#7a5f21!important}
+  .chances-bar.has0{background:#fdecea!important;border-color:#f2c8c2!important;color:#a3341f!important}
+  .chances-bar.has2 b,.chances-bar.has1 b,.chances-bar.has0 b{color:inherit!important}
+  .job-filters #jobs-count{
+    color:var(--ap-navy)!important;background:var(--ap-field)!important;
+    border:1px solid var(--ap-field-line)!important;box-shadow:none!important;
+    border-top:1px solid var(--ap-field-line)!important;
+  }
+  .job-filters #jobs-count::before{background:var(--ap-gold)!important;box-shadow:none!important}
+  .job-filters #jobs-count b{color:var(--ap-navy)!important}
+  .jf-meta .jf-note{color:var(--ap-muted)!important}
+  #jobs-empty{
+    color:var(--ap-muted)!important;background:#fffdf8!important;
+    border:1px dashed var(--ap-line)!important;border-radius:18px!important;padding:26px 18px!important;
+  }
+  #jobs-empty p{color:var(--ap-muted)!important;font-weight:700;line-height:1.9}
+  .jobs-hint{border:1px dashed rgba(200,162,74,.45)!important}
+  .jobs-hint.picked{background:#fdf3d8!important;color:#7a5f21!important;border-style:solid!important}
+  .jobs-hint b{color:#6b4f14!important}
+
+  /* شاشة الوظائف تبقى بعرض الصفحة الكامل */
+  body[data-step="6"] .steps-bar{max-width:none!important}
+  body[data-step="6"] .page > .btn-row{max-width:none!important}
+
+  /* ── 11) لمسات أخيرة ───────────────────────────────────────────────── */
+  #welcome-status:empty{min-height:0!important;margin:0!important}
+  .topbar svg{
+    background:radial-gradient(circle at 50% 42%,#fffdf8 58%,#f6ebd2 100%);
+    border-radius:50%;
+  }
+
+  @media(prefers-reduced-motion:reduce){
+    body::before,body::after,.wl-logo::before{animation:none!important}
+    .ap-rp{display:none!important}
+  }
+}
+
 </style>
 </head>
 <body>
 
 <div class="app" id="app">
   <!-- الشريط العلوي -->
-  <div class="topbar" id="topbar" style="display:none">
+  <div class="topbar" id="topbar">
     <svg viewBox="0 0 120 120"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
-    <div><div class="t1">شركة الهدف للتوظيف</div><div class="t2">AL-HADAF RECRUITMENT COMPANY</div></div>
+    <div><div class="t1">شركة الهدف للتوظيف</div><div class="t2">منصة التوظيف · بابل، العراق</div></div>
   </div>
 
   <!-- عداد الخطوات -->
@@ -1762,19 +2235,54 @@ body{
     <!-- ═══ 1 — الترحيب ═══ -->
     <div class="page active" id="pg-welcome">
       <div class="welcome">
-        <svg class="emblem anim-zoom anim-glow" viewBox="0 0 120 120"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
-        <h1 id="welcome-title" class="anim-slide-r">أهلاً بك في منصة الهدف</h1>
-        <p id="welcome-intro" class="sub anim-slide-l-zoom">اختر وظيفتك ببطاقة التوظيف</p>
-        <div class="gold-line anim-fade-up"></div>
-        <div id="welcome-status" aria-live="polite" style="min-height:1.5em;color:#e8d089;font-size:9pt"></div>
-        <div class="anim-fade-up2"><button class="btn btn-primary" id="btn-start" onclick="G.start()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>ابدأ الآن</button></div>
-        <!-- تفاصيل البطاقة: تظهر فقط بعد قراءة الباركود وتعبئة بيانات البطاقة -->
-        <div class="anim-fade-up2 welcome-details" id="welcome-details-wrap" hidden>
-          <button type="button" class="btn-card-details" id="btn-card-details" onclick="G.cardDetails()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.6"/><path d="M2.5 9.6h19M6 14.5h3.2M12 14.5h2.4"/></svg>
-            <span>عرض تفاصيل البطاقة</span>
-            <span class="bcd-count" id="bcd-count"></span>
-          </button>
+        <div class="wl-hero">
+          <span class="wl-logo anim-zoom anim-glow">
+            <svg viewBox="0 0 120 120" aria-hidden="true"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
+          </span>
+          <h1 id="welcome-title" class="anim-slide-r">منصة الهدف</h1>
+          <p class="wl-tag anim-slide-l-zoom">فرصتك لمستقبل أفضل</p>
+          <p id="welcome-intro" class="sub anim-slide-l-zoom">منصة توظيف تربط الباحثين عن عمل مع أصحاب العمل بكل سهولة وموثوقية</p>
+          <div id="welcome-status" aria-live="polite"></div>
+          <div class="wl-cta anim-fade-up">
+            <button class="btn btn-primary" id="btn-start" onclick="G.start()">
+              <span>ابدأ الآن</span>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+            </button>
+          </div>
+          <!-- تفاصيل البطاقة: تظهر فقط بعد قراءة الباركود وتعبئة بيانات البطاقة -->
+          <div class="anim-fade-up2 welcome-details" id="welcome-details-wrap" hidden>
+            <button type="button" class="btn-card-details" id="btn-card-details" onclick="G.cardDetails()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.6"/><path d="M2.5 9.6h19M6 14.5h3.2M12 14.5h2.4"/></svg>
+              <span>عرض تفاصيل البطاقة</span>
+              <span class="bcd-count" id="bcd-count"></span>
+            </button>
+          </div>
+          <div class="wl-divider anim-fade-up2"><span>خطوة بسيطة .. وباب جديد لفرصك</span></div>
+        </div>
+        <div class="wl-why anim-fade-up2">
+          <h2 class="wl-why-t">لماذا الهدف؟</h2>
+          <div class="wl-why-grid">
+            <div class="wl-feat">
+              <span class="wl-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17.5l5.2-5.2 3.4 3.4L20 8.3"/><path d="M15 8.3h5v5"/></svg></span>
+              <b>تطوير مستقبلك</b>
+              <i>خطوات واضحة تفتح لك أبواباً جديدة</i>
+            </div>
+            <div class="wl-feat">
+              <span class="wl-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.2 14v-2.2a7.8 7.8 0 0 1 15.6 0V14"/><rect x="2.4" y="13" width="4.2" height="7" rx="2.1"/><rect x="17.4" y="13" width="4.2" height="7" rx="2.1"/><path d="M19.5 20v.4a2.6 2.6 0 0 1-2.6 2.6h-3"/></svg></span>
+              <b>دعم مستمر</b>
+              <i>فريق يتابع طلبك حتى النتيجة</i>
+            </div>
+            <div class="wl-feat">
+              <span class="wl-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="3.4" width="7.2" height="7.2" rx="2"/><rect x="13.4" y="3.4" width="7.2" height="7.2" rx="2"/><rect x="3.4" y="13.4" width="7.2" height="7.2" rx="2"/><rect x="13.4" y="13.4" width="7.2" height="7.2" rx="2"/></svg></span>
+              <b>فرص متنوعة</b>
+              <i>وظائف في كل التخصصات والمحافظات</i>
+            </div>
+            <div class="wl-feat">
+              <span class="wl-feat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.2 3v5.6c0 4.4-3.1 7.6-7.2 9.6-4.1-2-7.2-5.2-7.2-9.6V6z"/><path d="M8.7 12.2l2.3 2.3 4.3-4.5"/></svg></span>
+              <b>موثوق وآمن</b>
+              <i>بياناتك محفوظة وتُعرض على الشركة فقط</i>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1808,7 +2316,10 @@ body{
         <div id="err-name"></div>
         <div class="form-group">
           <label for="f-name"><span class="req">*</span> الاسم الثلاثي الكامل</label>
-          <input type="text" id="f-name" placeholder="مثال: أحمد محمد علي" autocomplete="name">
+          <div class="fld">
+            <svg class="fld-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.2" r="3.7"/><path d="M4.8 20.2c.5-3.9 3.5-6.2 7.2-6.2s6.7 2.3 7.2 6.2"/></svg>
+            <input type="text" id="f-name" placeholder="مثال: أحمد محمد علي" autocomplete="name">
+          </div>
         </div>
         </div>
       </div>
@@ -1830,7 +2341,10 @@ body{
         </div>
         <div class="form-group">
           <label for="f-lm"><span class="req">*</span> أقرب نقطة دالة</label>
-          <input type="text" id="f-lm" placeholder="مثال: قرب مجمع الكرعاوي">
+          <div class="fld">
+            <svg class="fld-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s6.6-5.9 6.6-10.5a6.6 6.6 0 1 0-13.2 0C5.4 15.1 12 21 12 21z"/><circle cx="12" cy="10.4" r="2.4"/></svg>
+            <input type="text" id="f-lm" placeholder="مثال: قرب مجمع الكرعاوي">
+          </div>
         </div>
         </div>
       </div>
@@ -1876,11 +2390,14 @@ body{
         <div id="err-phone"></div>
         <div class="form-group">
           <label for="f-phone"><span class="req">*</span> رقم الهاتف (11 رقم يبدأ بـ 07)</label>
-          <input type="tel" id="f-phone" placeholder="07XXXXXXXXX" dir="ltr" maxlength="11" inputmode="numeric" pattern="[0-9]*" style="text-align:left;font-size:12pt;letter-spacing:1px" oninput="G.onPhone(this)">
-          <div class="phone-meter">
-            <span id="phone-count" class="pc-num">0</span><span class="pc-of">/ 11</span>
-            <span class="pc-track"><i id="phone-bar"></i></span>
-            <span id="phone-state" class="pc-state">ناقص</span>
+          <div class="fld">
+            <svg class="fld-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.4 3.6h3.2l1.5 3.9-2 1.4a11.4 11.4 0 0 0 5.9 5.9l1.4-2 3.9 1.5v3.2a2.4 2.4 0 0 1-2.6 2.4C10.9 19.2 4.8 13.1 4 6.2a2.4 2.4 0 0 1 2.4-2.6z"/></svg>
+            <input type="tel" id="f-phone" placeholder="07XXXXXXXXX" dir="ltr" maxlength="11" inputmode="numeric" pattern="[0-9]*" style="text-align:left;font-size:12pt;letter-spacing:1px" oninput="G.onPhone(this)">
+            <div class="phone-meter">
+              <span id="phone-count" class="pc-num">0</span><span class="pc-of">/ 11</span>
+              <span class="pc-track"><i id="phone-bar"></i></span>
+              <span id="phone-state" class="pc-state">ناقص</span>
+            </div>
           </div>
         </div>
         </div>
@@ -2249,14 +2766,17 @@ var G={
     if(window.HRCApplyNavigation)window.HRCApplyNavigation.reset();
     var prev=curPage;
     curPage=target;
+    /* الصفحة الحالية على <body> — تُستخدم لعرض شريط التقدم بعرض البطاقة
+       في خطوات الإدخال، وبعرض الصفحة الكامل في شاشة الوظائف. */
+    document.body.setAttribute('data-step',String(target));
     transitioning=true;
     var forward=target>prev;
     var oldEl=$(STEP_IDS[prev]);
     var newEl=$(STEP_IDS[target]);
 
-    /* إظهار/إخفاء الشريط العلوي وشريط التقدم */
+    /* الشريط العلوي ظاهر في كل الشاشات (نفس صور التصميم)، وشريط التقدم من الخطوة ١ */
     var showBar=target>=1;
-    $('topbar').style.display=target>=1?'flex':'none';
+    $('topbar').style.display='flex';
     $('steps-bar').style.display=showBar?'flex':'none';
     if(showBar){
       var dots=document.querySelectorAll('.step-dot');
@@ -2273,18 +2793,23 @@ var G={
     oldEl.style.display='none';
     oldEl.style.transform='';oldEl.style.opacity='';oldEl.style.transition='';
 
-    /* إظهار الجديد مع حركة */
+    /* إظهار الجديد مع حركة ناعمة (انزلاق + تلاشي) */
     newEl.style.transition='none';
     newEl.style.display='block';
     newEl.style.opacity='0';
-    newEl.style.transform=forward?'translateX(42px) scale(.97)':'translateX(-42px) scale(.97)';
+    newEl.style.transform=forward?'translateX(30px) scale(.988)':'translateX(-30px) scale(.988)';
     newEl.classList.add('active');
 
     void newEl.offsetHeight;
 
-    newEl.style.transition='transform .4s cubic-bezier(.22,1,.36,1),opacity .35s ease';
+    newEl.style.transition='transform .46s cubic-bezier(.16,1,.3,1),opacity .38s ease';
     newEl.style.transform='translateX(0)';
     newEl.style.opacity='1';
+
+    /* الصفحة الجديدة تبدأ من الأعلى — تمرير ناعم لا قفزة */
+    if(window.scrollTo){
+      try{window.scrollTo({top:0,behavior:'smooth'});}catch(_e){window.scrollTo(0,0);}
+    }
 
     setTimeout(function(){
       newEl.style.transform='';newEl.style.opacity='';newEl.style.transition='';
@@ -3260,6 +3785,7 @@ function fatal(msg,hintHtml){
   if(top)top.style.display='none';
   var err=$('pg-error');
   if(err)err.classList.add('active');
+  document.body.setAttribute('data-step','0');
 }
 
 /* وصول البيانات أخيراً بعد ظهور الخطأ (شبكة بطيئة): نُخفي الخطأ ونعرض الترحيب */
@@ -3269,6 +3795,10 @@ function clearFatal(){
   var e=$('pg-error'),w=$('pg-welcome');
   if(e)e.classList.remove('active');
   if(w)w.classList.add('active');
+  var tb=$('topbar'),sb=$('steps-bar');
+  if(tb)tb.style.display='flex';
+  if(sb)sb.style.display='none';
+  document.body.setAttribute('data-step','0');
   curPage=0;transitioning=false;
   /* نصفّر كل الحقول المعلّمة بالخطأ حتى لا تبقى حمراء بلا سبب */
   var marked=document.querySelectorAll('.invalid');
@@ -3478,6 +4008,28 @@ function startWatchdog(){
 
 if(document.readyState==='complete')startApp();
 else window.addEventListener('load',startApp);
+
+/* ═══════════════════════════════════════════════════════════════════════
+   موجات الضغط (Ripple) — إحساس ملموس عند لمس الأزرار والبطاقات
+   تُضاف عند الضغط فقط، وتُزال وحدها بعد انتهاء الحركة (بلا تسريب عناصر)
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(!document.addEventListener)return;
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+  var SEL='.btn,.btn-card-details,.gender-opt,.jf-more,.wl-feat';
+  document.addEventListener('pointerdown',function(e){
+    var host=e.target&&e.target.closest?e.target.closest(SEL):null;
+    if(!host||host.disabled||host.classList.contains('is-done'))return;
+    var r=host.getBoundingClientRect();
+    if(!r.width||!r.height)return;
+    var sp=document.createElement('span');
+    sp.className='ap-rp';
+    sp.style.left=(e.clientX-r.left)+'px';
+    sp.style.top=(e.clientY-r.top)+'px';
+    host.appendChild(sp);
+    setTimeout(function(){if(sp.parentNode)sp.parentNode.removeChild(sp);},680);
+  },{passive:true});
+})();
 
 })();
 </script>
