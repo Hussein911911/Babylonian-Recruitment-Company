@@ -1779,13 +1779,12 @@ body{
     width:clamp(56px,15vw,72px)!important;height:auto!important;max-height:60px;flex:none;
     filter:drop-shadow(0 6px 16px rgba(0,0,0,.35));
   }
-  /* لوحة فاتحة خلف الشعار حتى يظهر الكحلي على الهيدر الكحلي */
+  /* الشعار ذهبي بالكامل — يظهر بوضوح على الهيدر الكحلي بلا لوحة خلفية */
   .topbar .tb-logo{
-    background:linear-gradient(160deg,#fffdf8,#f7eed9);
-    border:1px solid rgba(200,162,74,.55);border-radius:16px;
-    padding:6px 8px;width:clamp(66px,17vw,84px)!important;max-height:none;
-    box-shadow:0 8px 20px rgba(6,18,36,.3);
+    width:clamp(52px,13.5vw,64px)!important;max-height:none;
+    filter:drop-shadow(0 6px 14px rgba(6,18,36,.45));
   }
+  .topbar .t1{letter-spacing:.01em}
   .topbar .t1{
     color:#fff!important;font-size:clamp(17px,2.3vw,22px)!important;
     letter-spacing:-.01em;text-shadow:0 2px 12px rgba(0,0,0,.22);
@@ -1820,10 +1819,15 @@ body{
 
   /* شريط علوي كحلي: هوية المنصة */
   .mk-top{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
     background:linear-gradient(120deg,#14335c,#0c2145 70%,#0a1b39);
-    padding:11px 18px 12px;text-align:start;
+    padding:10px 16px;text-align:start;
     border-block-end:1px solid rgba(200,162,74,.35);
   }
+  .mk-top-logo{display:block;flex:none;width:clamp(42px,11vw,50px)}
+  .mk-top-logo svg{filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
+  .mk-top-logo svg{display:block;width:100%;height:auto}
+  .mk-top-t{min-width:0;text-align:start}
   .mk-top-t b{
     display:block;color:#fff;font-size:clamp(12px,3.2vw,14px);font-weight:900;
     letter-spacing:.01em;line-height:1.5;
@@ -1837,7 +1841,7 @@ body{
   .mk-hero{
     position:relative;isolation:isolate;overflow:hidden;
     display:flex;flex-direction:column;align-items:center;text-align:center;
-    padding:clamp(18px,5vw,32px) clamp(16px,4.6vw,30px) clamp(64px,17vw,104px);
+    padding:clamp(16px,4.4vw,28px) clamp(16px,4.6vw,30px) clamp(74px,19vw,116px);
     background-color:#12294d;
     background-image:url("assets/img/mkseb-hero-m.webp");
     background-size:cover;background-position:center 42%;background-repeat:no-repeat;
@@ -1872,8 +1876,8 @@ body{
 
   /* الشعار */
   .mk-logo{
-    position:relative;display:block;width:clamp(140px,38vw,208px);
-    margin:6px auto 2px;filter:drop-shadow(0 12px 26px rgba(6,18,36,.45));
+    position:relative;display:block;width:clamp(92px,24vw,120px);
+    margin:2px auto 8px;filter:drop-shadow(0 12px 26px rgba(6,18,36,.5));
   }
   .mk-logo svg{display:block;width:100%;height:auto}
   .mk-logo::after{
@@ -1884,9 +1888,9 @@ body{
   @keyframes mkHalo{0%,100%{opacity:.55;transform:scale(.97)}50%{opacity:.95;transform:scale(1.05)}}
 
   .mk-hero h1{
-    margin:2px 0 0;font-size:clamp(26px,7.4vw,38px);font-weight:900;line-height:1.4;
+    margin:2px 0 0;font-size:clamp(24px,6.8vw,34px);font-weight:900;line-height:1.4;
     color:#fff;letter-spacing:-.01em;
-    text-shadow:0 4px 20px rgba(6,18,36,.4);
+    text-shadow:0 6px 26px rgba(4,14,30,.62),0 1px 3px rgba(4,14,30,.5);
   }
   .mk-hero h1 b{
     background:linear-gradient(100deg,#f6d99a,#d3a94f 55%,#b98f34);
@@ -1895,12 +1899,12 @@ body{
   }
   .mk-tag{
     margin:2px 0 0;font-size:clamp(13px,3.6vw,16px);font-weight:800;
-    color:#f7e9c6;line-height:1.7;text-shadow:0 2px 12px rgba(6,18,36,.45);
+    color:#f7e9c6;line-height:1.7;text-shadow:0 4px 18px rgba(4,14,30,.6);
   }
   .mk-desc{
     margin:clamp(10px,2.6vw,16px) auto 0;max-width:32ch;
     font-size:clamp(12px,3.3vw,14px);line-height:2;font-weight:700;
-    color:rgba(255,255,255,.93);text-shadow:0 2px 10px rgba(6,18,36,.4);
+    color:rgba(255,255,255,.96);text-shadow:0 3px 16px rgba(4,14,30,.6);
   }
   #welcome-status{
     min-height:0;margin:6px 0 0;font-size:clamp(10.5px,2.9vw,12.5px);font-weight:800;
@@ -2027,6 +2031,17 @@ body{
 
   .mk-anim{animation:mkRise .6s var(--ap-ease) both}
   @keyframes mkRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  /* ظهور متتالٍ لبطاقات المزايا عند الوصول إليها (انسيابي لا مفاجئ) */
+  .mk-feat.mk-wait{opacity:0;transform:translateY(16px)}
+  .mk-feat.mk-wait.mk-in{animation:mkFeatIn .62s var(--ap-ease) forwards}
+  .mk-feat.mk-wait:nth-child(2).mk-in{animation-delay:.07s}
+  .mk-feat.mk-wait:nth-child(3).mk-in{animation-delay:.14s}
+  .mk-feat.mk-wait:nth-child(4).mk-in{animation-delay:.21s}
+  @keyframes mkFeatIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){
+    .mk-feat.mk-wait{opacity:1!important;transform:none!important;animation:none!important}
+  }
 
   /* ── 4) شريط التقدّم ───────────────────────────────────────────────── */
   .steps-bar{
@@ -2297,7 +2312,7 @@ body{
 <div class="app" id="app">
   <!-- الشريط العلوي -->
   <div class="topbar" id="topbar" style="display:none">
-    <svg class="tb-logo" viewBox="0 0 200 160" aria-hidden="true"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg>
+    <svg class="tb-logo" viewBox="0 0 200 200" aria-hidden="true"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg>
     <div><div class="t1">منصة مكسب</div><div class="t2">منصة التوظيف · بابل، العراق</div></div>
   </div>
 
@@ -2333,6 +2348,9 @@ body{
 
         <!-- شريط علوي كحلي: هوية المنصة -->
         <div class="mk-top">
+          <span class="mk-top-logo" aria-hidden="true">
+            <svg viewBox="0 0 200 200"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg>
+          </span>
           <div class="mk-top-t">
             <b>منصة مكسب</b>
             <span>فرصتك لمستقبل أفضل</span>
@@ -2344,7 +2362,7 @@ body{
           <div class="mk-hero-veil" aria-hidden="true"></div>
 
           <span class="mk-logo anim-zoom anim-glow" aria-hidden="true">
-            <svg viewBox="0 0 200 160"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg>
+            <svg viewBox="0 0 200 200"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg>
           </span>
 
           <h1 id="welcome-title" class="anim-slide-r">منصة <b>مكسب</b></h1>
@@ -2423,7 +2441,7 @@ body{
       <div class="card-sheet-veil" onclick="G.closeCardDetails()"></div>
       <div class="card-sheet-box">
         <header class="card-sheet-head">
-          <span class="cs-emblem"><svg viewBox="0 0 200 160" width="42" height="34"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg></span>
+          <span class="cs-emblem"><svg viewBox="0 0 200 200" width="34" height="34"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg></span>
           <div class="cs-title">
             <h2 id="card-details-title">تفاصيل البطاقة</h2>
             <p id="card-details-serial" dir="ltr">—</p>
@@ -2668,14 +2686,20 @@ body{
 <linearGradient id="g-lapis" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b4287"/><stop offset="1" stop-color="#08132a"/></linearGradient>
 <!-- شعار منصة مكسب: حرف M كحلي + سهم ذهبي صاعد + رأس إنسان -->
 <linearGradient id="g-mk-navy" x1="0" y1="0" x2="0.7" y2="1"><stop offset="0" stop-color="#2a4f7d"/><stop offset="1" stop-color="#0a1c39"/></linearGradient>
-<linearGradient id="g-mk-gold" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#a9812a"/><stop offset=".5" stop-color="#d9b05c"/><stop offset="1" stop-color="#f9e6b4"/></linearGradient>
+<linearGradient id="g-mk-gold" x1=".1" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#f8e0ad"/><stop offset=".5" stop-color="#e2bb66"/><stop offset="1" stop-color="#bd8f2f"/></linearGradient>
 </defs>
-<symbol id="i-mkseb" viewBox="0 0 200 160">
-<path d="M24 132 V42 L100 94 L176 42 V132" fill="none" stroke="url(#g-mk-navy)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M42 118 L118 46" stroke="url(#g-mk-gold)" stroke-width="15" stroke-linecap="round"/>
-<path d="M96 30 H126 V60" fill="none" stroke="url(#g-mk-gold)" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="108" cy="20" r="13" fill="url(#g-mk-gold)"/>
-<path d="M90 50 a18 18 0 0 1 36 0z" fill="url(#g-mk-gold)"/>
+<symbol id="i-mkseb" viewBox="0 0 200 200">
+<circle cx="100" cy="100" r="92" fill="none" stroke="url(#g-mk-gold)" stroke-width="5"/>
+<circle cx="100" cy="100" r="81" fill="none" stroke="url(#g-mk-gold)" stroke-width="1.7" opacity=".85"/>
+<g fill="none" stroke="url(#g-mk-gold)" stroke-width="17" stroke-linecap="round" stroke-linejoin="round">
+<path d="M47 158 V86"/>
+<path d="M47 86 L98 133 L150 86"/>
+<path d="M150 158 V86"/>
+</g>
+<path d="M112 78 L162 34" fill="none" stroke="url(#g-mk-gold)" stroke-width="16" stroke-linecap="round"/>
+<path d="M143 30 h26 v26 z" fill="url(#g-mk-gold)"/>
+<circle cx="98" cy="50" r="13.5" fill="url(#g-mk-gold)"/>
+<path d="M81 86 a17 17 0 0 1 34 0z" fill="url(#g-mk-gold)"/>
 </symbol>
 <symbol id="i-emblem" viewBox="0 0 120 120">
 <circle cx="60" cy="60" r="57" fill="url(#g-lapis)" stroke="url(#g-gold)" stroke-width="3.5"/>
@@ -4152,6 +4176,31 @@ function startWatchdog(){
 
 if(document.readyState==='complete')startApp();
 else window.addEventListener('load',startApp);
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ظهور متتالٍ لبطاقات «لماذا مكسب؟» عند الوصول إليها
+   يتنحّى تماماً عند تعذّر المراقب أو عند طلب تقليل الحركة
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  if(!document.querySelectorAll)return;
+  var cards=document.querySelectorAll('#pg-welcome .mk-feat');
+  if(!cards.length)return;
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  if(reduce||typeof window.IntersectionObserver!=='function')return;
+  for(var i=0;i<cards.length;i++)cards[i].classList.add('mk-wait');
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting)return;
+      en.target.classList.add('mk-in');
+      io.unobserve(en.target);
+    });
+  },{rootMargin:'0px 0px -12% 0px',threshold:.12});
+  for(var j=0;j<cards.length;j++)io.observe(cards[j]);
+  /* شبكة أمان: لو ما اشتغل المراقب لأي سبب، كل البطاقات تظهر خلال 1.5 ثانية */
+  setTimeout(function(){
+    for(var k=0;k<cards.length;k++)cards[k].classList.add('mk-in');
+  },1500);
+})();
 
 /* ═══════════════════════════════════════════════════════════════════════
    موجات الضغط (Ripple) — إحساس ملموس عند لمس الأزرار والبطاقات

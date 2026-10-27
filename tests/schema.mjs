@@ -917,10 +917,22 @@ step(28, 'شاشة الترحيب «منصة مكسب» — مطابقة الم�
   check('الشريط العلوي العام مخفي في الترحيب ويظهر من الخطوة ١',
     /<div class="topbar" id="topbar" style="display:none">/.test(ap) &&
     /\$\('topbar'\)\.style\.display=showBar\?'flex':'none'/.test(ap));
-  check('الشعار الجديد (M كحلي + سهم ذهبي + رأس إنسان) معرّف كرمز SVG',
-    /<symbol id="i-mkseb" viewBox="0 0 200 160">/.test(ap) &&
-    (ap.match(/#i-mkseb/g) || []).length >= 3 &&
-    /g-mk-navy/.test(ap) && /g-mk-gold/.test(ap));
+  check('الشعار الجديد (حلقة ذهبية + M + صح + سهم + رأس إنسان) معرّف كرمز SVG',
+    /<symbol id="i-mkseb" viewBox="0 0 200 200">/.test(ap) &&
+    (ap.match(/#i-mkseb/g) || []).length >= 4 &&
+    /<circle cx="100" cy="100" r="92"[^>]*stroke="url\(#g-mk-gold\)"/.test(ap) &&
+    /g-mk-gold/.test(ap));
+  check('نفس الشعار في صفحة التقديم والموقع والترويسة والتذييل (رمز واحد)',
+    /id="i-mkseb"/.test(ap) &&
+    /<symbol id="i-mkseb" viewBox="0 0 200 200">/.test(readFileSync(join(ROOT, 'src/partials/sprite.html'), 'utf8')) &&
+    /#i-mkseb/.test(readFileSync(join(ROOT, 'src/partials/header.html'), 'utf8')) &&
+    /#i-mkseb/.test(readFileSync(join(ROOT, 'src/partials/footer.html'), 'utf8')) &&
+    /#i-mkseb/.test(readFileSync(join(ROOT, 'src/partials/public.html'), 'utf8')));
+  check('شاشة الترحيب تحمل الشعار في الشريط العلوي وفي وسط الواجهة',
+    /class="mk-top-logo"/.test(ap) && /class="mk-logo anim-zoom anim-glow"/.test(ap));
+  check('بطاقات المزايا تظهر متتالية عند الوصول (IntersectionObserver + شبكة أمان)',
+    /mk-wait/.test(ap) && /IntersectionObserver/.test(ap) &&
+    /setTimeout\(function\(\)\{[\s\S]{0,120}mk-in/.test(ap));
   check('الوعد والوصف كما في الملصق (فرصتك لمستقبل أفضل + منصة توظيف تربط…)',
     /class="mk-tag[^"]*">فرصتك لمستقبل أفضل</.test(ap) &&
     /id="welcome-intro"[^>]*>منصة توظيف تربط الباحثين عن عمل مع أصحاب العمل بكل سهولة وموثوقية</.test(ap));
