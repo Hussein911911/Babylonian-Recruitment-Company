@@ -566,8 +566,11 @@ check('التلميح يعرض الوظيفة الأولى وكودها ورقم
   /عامل إنتاج/.test($('jobs-hint').innerHTML) && /HRC-1042/.test($('jobs-hint').innerHTML) && /فرصة ١/.test($('jobs-hint').innerHTML),
   $('jobs-hint').innerHTML);
 check('زر «التالي» صار مفعّلاً بعد أول اختيار', $('btn-jobs-next').attrs.disabled === undefined, String($('btn-jobs-next').attrs.disabled));
-check('زر بطاقة الوظيفة المختارة يعرض «مختارة (فرصة ١)» وإلغاء التعيين',
-  /مختارة \(فرصة ١\)/.test(picked.innerHTML) && /إلغاء/.test(picked.innerHTML), picked.innerHTML.slice(0, 200));
+/* 2026-10-27: زر المختارة صار «متابعة للطلب» + «إلغاء الاختيار» (بلا تكرار
+   رقم الفرصة — الرقم ظاهر في شارة الحالة داخل الكارت نفسه). */
+check('زر بطاقة الوظيفة المختارة يعرض «متابعة للطلب» وإلغاء الاختيار',
+  /متابعة للطلب/.test(picked.innerHTML) && /إلغاء الاختيار/.test(picked.innerHTML) &&
+  /★ الفرصة ١/.test(picked.innerHTML), picked.innerHTML.slice(0, 240));
 
 /* الفرصة الثانية: تُعيَّن بنقرة ثانية على وظيفة أخرى */
 click(doc.querySelectorAll('.job-card')[1]);

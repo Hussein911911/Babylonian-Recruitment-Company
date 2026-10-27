@@ -1145,6 +1145,36 @@ step(32, 'الواجهة كحلية · التفاصيل بيضاء · الوظا
     /body\[data-step="7"\] \.rv-jobs \.rv-chip\{[\s\S]{0,200}white-space:nowrap/.test(ap));
 }
 
+/* ── 2026-10-27 (ز): كارت الوظيفة المرتّب · البورتريه · «اختيار الوظيفة» ── */
+step(33, 'كارت الوظيفة: ترتيب وأيقونات أصغر · بورتريه · «اختيار الوظيفة»');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('زر التعيين صار «اختيار الوظيفة» (لا «تعيين للفرصة»)',
+    /\">اختيار الوظيفة<\/button>/.test(ap) && /G\.pickJob\(/.test(ap) &&
+    !/تعيين للفرصة/.test(ap));
+  check('المختارة: «متابعة للطلب» + «إلغاء الاختيار» (بلا تكرار رقم الفرصة)',
+    /متابعة للطلب<\/button>/.test(ap) && /إلغاء الاختيار<\/button>/.test(ap) &&
+    !/مختارة \(فرصة /.test(ap));
+  check('«البورتريه»: المختارة تبرز (زوم إن) والبقية تُغبَّش وتُعتَّم',
+    /#jobs-list\.has-focus \.job-card:not\(\.selected\)\{[\s\S]{0,220}blur\(2\.6px\)[\s\S]{0,120}opacity:\.5/.test(ap) &&
+    /#jobs-list\.has-focus \.job-card\.selected\{[\s\S]{0,220}scale\(1\.03\)/.test(ap));
+  check('شبكة كل معلومة: أيقونة + تسمية صغيرة + قيمة (لا صفوف طويلة)',
+    /<div class="jm">'\+G\.jobIcon\('pin'\)\+'<span class="jm-k">المحافظة<\/span><span class="jm-v">/.test(ap) &&
+    /#jobs-list \.jm\{[\s\S]{0,320}grid-template-columns:22px 1fr/.test(ap) &&
+    /#jobs-list \.jm \.jm-k\{[\s\S]{0,120}font-size:10px/.test(ap));
+  check('كارت أصغر ومرتّب: حشوة 14px وشبكة عمودين وأزرار صفّ واحد',
+    /#jobs-list \.job-card\{[\s\S]{0,200}padding:14px 14px 0!important/.test(ap) &&
+    /#jobs-list \.job-meta\{[\s\S]{0,120}grid-template-columns:1fr 1fr/.test(ap));
+  check('المختارة لها تمييز واضح: حدّ ذهبي خارجي + شريط علوي + شارة داخلية',
+    /#jobs-list \.job-card\.selected\{[\s\S]{0,80}outline:2px solid #FABE04/.test(ap) &&
+    /#jobs-list \.job-card\.selected \.job-head::after\{/.test(ap) &&
+    /'★ الفرصة '\s*\+/.test(ap));
+  check('حركة دخول الكروت متتالية مع تقليل الحركة',
+    /@keyframes jobCardIn/.test(ap) && /job-card:nth-child\(n\+4\)\{animation-delay/.test(ap) &&
+    /prefers-reduced-motion:reduce\)\{\s*#jobs-list \.job-card[\s\S]{0,160}filter:none!important/.test(ap));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');
