@@ -2617,6 +2617,53 @@ img { max-width: 100%; height: auto; }
 /* لا تكبير لصور البطاقات عند المرور — يحافظ على كامل الصورة */
 .job-card:hover .job-image img { transform: none; }
 
+/* ======================= سجل التدقيق — قائمة مرتّبة (2026-10-25) =======================
+   بدل جدول بسبعة أعمدة ضيّقة كان يكسر النص عمودياً: صفوف واضحة بأربعة أقسام،
+   كلها عربية، وتتحول إلى بطاقات على الجوال. */
+.audit-list { border-top: 1px solid var(--line-soft); }
+.audit-list-head {
+  display: grid; grid-template-columns: 150px 190px minmax(0, 1.1fr) minmax(0, 1.4fr);
+  gap: 12px; padding: 10px 18px; background: #fff; border-bottom: 1px solid var(--line-soft);
+  font-size: .72rem; font-weight: 900; color: var(--gold-3);
+}
+.audit-rows { display: grid; }
+.audit-row {
+  display: grid; grid-template-columns: 150px 190px minmax(0, 1.1fr) minmax(0, 1.4fr);
+  gap: 12px; align-items: start; padding: 12px 18px;
+  border-bottom: 1px solid var(--line-soft); transition: background .15s;
+}
+.audit-row:hover { background: #fff; }
+.audit-row:last-child { border-bottom: 0; }
+.ar-time { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.ar-time .ic { width: 14px; height: 14px; color: var(--gold-3); flex: none; }
+.ar-time b { font-size: .74rem; font-weight: 800; color: #46536b; white-space: nowrap; }
+.ar-who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: .8rem; font-weight: 800; color: var(--lapis-2); min-width: 0; }
+.ar-what { min-width: 0; display: grid; gap: 3px; }
+.ar-what b { font-size: .82rem; font-weight: 900; color: var(--lapis-2); line-height: 1.7; }
+.ar-entity {
+  font-size: .7rem; font-weight: 700; color: var(--gold-3);
+  background: #fff; border: 1px solid #eee3c8; border-radius: 999px;
+  padding: 2px 9px; justify-self: start; max-width: 100%;
+}
+.ar-details { font-size: .76rem; line-height: 1.95; color: #5a687e; min-width: 0; overflow-wrap: anywhere; }
+.audit-rows .table-empty { padding: 26px; text-align: center; color: var(--muted); }
+
+@media (max-width: 900px) {
+  .audit-list-head { display: none; }
+  .audit-row { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 13px 15px; }
+  .ar-time b { font-size: .72rem; }
+  .ar-what { border-top: 1px dashed #eef1f6; padding-top: 6px; }
+}
+
+/* حقول التاريخ: تُعرض بصيغة يوم/شهر/سنة عربية الاتجاه في كل اللوحة
+   (كانت تظهر mm/dd/yyyy الإنجليزية من إعداد المتصفح). */
+input[type="date"] { direction: rtl; text-align: right; }
+input[type="date"]::-webkit-datetime-edit { direction: rtl; }
+input[type="date"]::-webkit-datetime-edit-year-field { order: 3; }
+input[type="date"]::-webkit-datetime-edit-month-field { order: 2; }
+input[type="date"]::-webkit-datetime-edit-day-field { order: 1; }
+input[type="date"]::-webkit-calendar-picker-indicator { margin-inline-start: 6px; opacity: .65; }
+
 /* ===========================================================================
  *  HRC — شاشة «قدّم ببطاقتك» (نافذة بطاقتي)
  *  ---------------------------------------------------------------------------
@@ -3115,27 +3162,30 @@ img { max-width: 100%; height: auto; }
 .cat.is-active .cat-ic { transform: scale(1.04); }
 .cat.is-active > span:not(.cat-ic) { color: var(--cat, var(--lapis-2)); }
 
-/* ── 4ب) صندوق الفلترة: مدمج ومرتّب (صفّ واحد) ── */
+/* ── 4ب) صندوق الفلترة: شكل واحد بسيط ومرتّب في كل الموقع ──
+   صفّ أعلى: البحث بعرض كامل. صفّ أسفل: ثلاثة اختيارات + تصفير بأعمدة متساوية.
+   كل الحقول بنفس الارتفاع ونصف القطر والأيقونة ⇒ لا تزاحم ولا ارتفاعات مختلفة. */
 #jobs .filters {
   display: grid; grid-template-columns: minmax(0, 1fr);
-  gap: 8px; padding: 9px 10px; margin-bottom: 14px;
+  gap: 8px; padding: 10px; margin-bottom: 14px;
   background: #fff; border: 1px solid #e9edf4; border-radius: 14px;
   box-shadow: 0 4px 14px rgba(6, 13, 31, .05);
 }
-#jobs .f-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; min-width: 0; }
-#jobs .f-row > .f-field { flex: 1 1 132px; min-width: 0; margin: 0; }
-#jobs .f-row > .f-field.f-search { flex: 3 1 220px; }
+#jobs .f-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; min-width: 0; }
+#jobs .f-row > .f-field { min-width: 0; margin: 0; }
+#jobs .f-row > .f-field.f-search { grid-column: 1 / -1; }
+#jobs .f-row .f-field { position: relative; }
 #jobs .f-row .f-field svg { width: 15px; height: 15px; inset-inline-start: 9px; }
 #jobs .f-row .f-field input,
 #jobs .f-row .f-field select {
-  height: 36px; font-size: .78rem; padding-block: 0;
-  border-radius: 10px; border-color: #e3e8f0;
+  height: 38px; font-size: .78rem; padding-block: 0; width: 100%;
+  border-radius: 10px; border-color: #e3e8f0; background: #fff;
 }
-#jobs .f-row .f-field.f-search input { padding-inline-start: 30px; }
-#jobs .f-row .f-field select { padding-inline-start: 28px; min-width: 0; width: 100%; }
+#jobs .f-row .f-field.f-search input { padding-inline-start: 32px; }
+#jobs .f-row .f-field select { padding-inline-start: 30px; padding-inline-end: 26px; min-width: 0; }
 #jobs .f-reset {
-  flex: 0 0 auto; height: 36px; min-height: 36px; padding: 0 12px;
-  font-size: .74rem; border-radius: 10px;
+  height: 38px; min-height: 38px; padding: 0 12px; width: 100%;
+  font-size: .76rem; border-radius: 10px; justify-content: center;
 }
 
 /* شرائح الفلاتر النشطة + إظهار عدد النتائج */
@@ -3579,10 +3629,8 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 .cat-grid { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
 @media (max-width: 860px) {
   #jobs .filters { padding: 8px; gap: 6px; }
-  #jobs .f-row { gap: 6px; }
-  #jobs .f-row > .f-field { flex: 1 1 46%; }
-  #jobs .f-row > .f-field.f-search { flex: 1 1 100%; }
-  #jobs .f-reset { flex: 0 0 auto; }
+  #jobs .f-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  #jobs .f-row > .f-field.f-search, #jobs .f-reset { grid-column: 1 / -1; }
   .cat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .cat { padding: 11px 6px 9px; border-radius: 15px; gap: 6px; }
   .cat .cat-ic { width: 40px; height: 40px; border-radius: 12px; }
@@ -4832,7 +4880,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
         </div>
         <div class="ov-welcome-time">
           <div class="time-big" id="ov-clock" dir="ltr" aria-label="الوقت بتوقيت بغداد">--:--</div>
-          <div class="date-sm" id="ov-date">—</div><div class="tiny">توقيت العراق · بغداد (UTC+3)</div>
+          <div class="date-sm" id="ov-date">—</div><div class="tiny">توقيت العراق · بغداد</div>
         </div>
       </div>
 
@@ -5030,7 +5078,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           <h3><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> سجل التدقيق اللحظي</h3>
           <div class="flex" style="gap:8px">
             <span class="badge info" id="audit-count-label">0</span>
-            <button class="btn btn-outline btn-sm" id="btn-export-audit"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير CSV</button>
+            <button class="btn btn-outline btn-sm" id="btn-export-audit"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير السجل</button>
           </div>
         </div>
         <div class="panel-body">
@@ -5047,7 +5095,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
               <select id="log-user"><option value="all">الكل</option></select>
             </div>
             <div class="field">
-              <label for="log-role">الصلاحية</label>
+              <label for="log-role">الرتبة</label>
               <select id="log-role">
                 <option value="all">الكل</option>
                 <option value="admin">مدير عام</option>
@@ -5055,10 +5103,10 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
                 <option value="system">النظام</option>
               </select>
             </div>
-            <div class="field"><label for="log-action">نوع العملية</label><select id="log-action"><option value="all">كل العمليات</option></select></div>
-            <div class="field"><label for="log-entity">نوع السجل</label><select id="log-entity"><option value="all">كل الأنواع</option></select></div>
-            <div class="field"><label for="log-from"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>من تاريخ</label><input type="date" id="log-from"></div>
-            <div class="field"><label for="log-to"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>إلى تاريخ</label><input type="date" id="log-to"></div>
+            <div class="field"><label for="log-action">العملية</label><select id="log-action"><option value="all">كل العمليات</option></select></div>
+            <div class="field"><label for="log-entity">القسم</label><select id="log-entity"><option value="all">كل الأنواع</option></select></div>
+            <div class="field"><label for="log-from"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>من تاريخ</label><input type="date" id="log-from" aria-label="من تاريخ" title="يوم / شهر / سنة"></div>
+            <div class="field"><label for="log-to"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>إلى تاريخ</label><input type="date" id="log-to" aria-label="إلى تاريخ" title="يوم / شهر / سنة"></div>
           </div>
           <div class="audit-quick" role="group" aria-label="فترات السجل السريعة">
             <button type="button" class="btn btn-outline btn-sm" data-audit-range="today">اليوم</button>
@@ -5071,18 +5119,19 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           <p class="tiny hidden" id="log-date-error" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.</p>
         </div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
-            <table class="data">
-              <thead><tr><th>الوقت (YYYY-MM-DD HH:mm:ss)</th><th>المستخدم</th><th>الصلاحية</th><th>IP الجلسة</th><th>العملية</th><th>السجل</th><th>التفاصيل</th></tr></thead>
-              <tbody id="audit-table-body"></tbody>
-            </table>
+          <!-- سجل بصيغة قائمة مرتّبة (لا جدول بأعمدة ضيّقة تُكسّر النص عمودياً) -->
+          <div class="audit-list" id="audit-list">
+            <div class="audit-list-head" aria-hidden="true">
+              <span>الوقت</span><span>المستخدم</span><span>العملية والسجل</span><span>التفاصيل</span>
+            </div>
+            <div id="audit-table-body" class="audit-rows"></div>
           </div>
           <div class="audit-pagination">
             <label for="log-page-size">سجل بالصفحة <select id="log-page-size"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></label>
             <label for="log-sort">الترتيب <select id="log-sort"><option value="newest">الأحدث أولاً</option><option value="oldest">الأقدم أولاً</option></select></label>
             <div class="audit-pages"><button type="button" class="btn btn-outline btn-sm" id="log-prev">السابق</button><span id="log-page-info" aria-live="polite"></span><button type="button" class="btn btn-outline btn-sm" id="log-next">التالي</button></div>
           </div>
-          <div class="tfoot-note">السجل المحمّل فقط · توقيت بغداد (العراق) · CSV يشمل كل النتائج المفلترة.</div>
+          <div class="tfoot-note">السجل المحمَّل فقط · التوقيت بتوقيت بغداد · ملف التصدير يشمل كل النتائج المصفّاة.</div>
         </div>
       </div>
     </section>
@@ -5095,8 +5144,8 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
         <div class="panel-head">
           <h3><svg class="ic"><use href="#i-chart" xlink:href="#i-chart"/></svg> التحصيل المتوقع لكل موظف</h3>
           <div class="toolbar">
-            <div class="field"><label for="fin-from">من</label><input type="date" id="fin-from"></div>
-            <div class="field"><label for="fin-to">إلى</label><input type="date" id="fin-to"></div>
+            <div class="field"><label for="fin-from">من</label><input type="date" id="fin-from" aria-label="من تاريخ" title="يوم / شهر / سنة"></div>
+            <div class="field"><label for="fin-to">إلى</label><input type="date" id="fin-to" aria-label="إلى تاريخ" title="يوم / شهر / سنة"></div>
             <button class="btn btn-lapis btn-sm" id="btn-fin-today"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> اليوم</button>
             <button class="btn btn-outline btn-sm" id="btn-fin-yesterday"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg> أمس</button>
             <button class="btn btn-outline btn-sm" id="btn-fin-reset"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> الكل</button>
@@ -15227,7 +15276,25 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
     });
   }
 
-  /* ======================= سجل التدقيق ======================= */
+  /* ======================= سجل التدقيق =======================
+   * كل ما يُعرض عربي: أسماء أقسام السجل والعمليات والرتب.
+   * الإنجليزية محصورة في معرّفات النظام (كود البطاقة/الوظيفة) لأنها أكواد مطبوعة. */
+  var AUDIT_ENTITY = {
+    applicant: 'بطاقة', job: 'وظيفة', attempt: 'فرصة', staff: 'موظف',
+    settings: 'إعدادات', backup: 'نسخة احتياطية', recovery: 'استرجاع',
+    audit: 'السجل', system: 'النظام', card: 'بطاقة', session: 'جلسة'
+  };
+  var AUDIT_USER = { system: 'النظام (تلقائي)', admin: 'المدير', staff: 'موظف' };
+  /* العمليات المتكررة تظهر عربية مضبوطة؛ أي عملية غير معروفة تُعرض كما هي (عربية أصلاً) */
+  var AUDIT_ACTION = {
+    'login': 'دخول', 'logout': 'خروج', 'sign in': 'دخول', 'sign out': 'خروج',
+    'create': 'إضافة', 'update': 'تعديل', 'delete': 'حذف'
+  };
+  function auditEntityLabel(v) {
+    if (!v) return '—';
+    return AUDIT_ENTITY[String(v).toLowerCase()] || v;
+  }
+
   function readAuditFilters() {
     ['q', 'user', 'role', 'action', 'entity', 'from', 'to', 'sort'].forEach(function (key) {
       var input = document.getElementById('log-' + key);
@@ -15246,12 +15313,21 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
       }).catch(function () { renderAudit._asked = false; });
     }
     var available = Store.listAudit({});
-    [['user', 'user', 'كل المستخدمين'], ['action', 'action', 'كل العمليات'], ['entity', 'entity', 'كل الأنواع']].forEach(function (spec) {
+    /* الفلاتر تُعرض عربية بالكامل: القيمة للمنطق والتسمية للعين */
+    [['user', 'user', 'كل المستخدمين'], ['action', 'action', 'كل العمليات'], ['entity', 'entity', 'كل الأقسام']].forEach(function (spec) {
       var select = document.getElementById('log-' + spec[0]);
+      if (!select) return;
       var values = available.map(function (r) { return r[spec[1]]; }).filter(Boolean);
       values = Array.from(new Set(values)).sort();
       if (state.log[spec[0]] !== 'all' && values.indexOf(state.log[spec[0]]) < 0) values.push(state.log[spec[0]]);
-      if (select) { UI.fillSelect(select, values, spec[2]); select.value = state.log[spec[0]]; }
+      var label = function (v) {
+        if (spec[0] === 'user') return AUDIT_USER[v] || v;
+        if (spec[0] === 'entity') return auditEntityLabel(v);
+        return AUDIT_ACTION[v] || v;
+      };
+      select.innerHTML = '<option value="all">' + UI.esc(spec[2]) + '</option>' +
+        values.map(function (v) { return '<option value="' + UI.esc(v) + '">' + UI.esc(label(v)) + '</option>'; }).join('');
+      select.value = state.log[spec[0]];
     });
     var invalid = !!(state.log.from && state.log.to && state.log.from > state.log.to);
     var error = document.getElementById('log-date-error');
@@ -15276,15 +15352,16 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
     document.getElementById('audit-table-body').innerHTML = rows.slice(start, start + state.logPageSize).map(function (l) {
       var roleBadge = l.role === 'admin' ? '<span class="badge danger">مدير عام</span>'
         : (l.role === 'staff' ? '<span class="badge info">موظف</span>' : '<span class="badge muted">النظام</span>');
-      return '<tr>' +
-        '<td class="mono tiny" dir="ltr">' + UI.esc(Store.fmtDateTime(l.ts)) + '</td>' +
-        '<td>' + UI.esc(l.name || l.user) + '<div class="tiny muted mono">' + UI.esc(l.user) + '</div></td>' +
-        '<td>' + roleBadge + '</td>' +
-        '<td class="tiny mono" dir="ltr">' + UI.esc(l.ip) + '</td>' +
-        '<td><b>' + UI.esc(l.action) + '</b></td>' +
-        '<td class="mono tiny">' + UI.esc(l.entityId) + '<div class="tiny muted">' + UI.esc(l.entity) + '</div></td>' +
-        '<td class="tiny muted">' + UI.esc(l.details) + '</td></tr>';
-    }).join('') || '<tr><td colspan="7" class="table-empty">لا سجلات مطابقة</td></tr>';
+      var who = l.name || AUDIT_USER[l.user] || l.user;
+      return '<article class="audit-row">' +
+        '<div class="ar-time">' + UI.ic('clock') + '<b>' + UI.esc(Store.fmtDateTime(l.ts)) + '</b></div>' +
+        '<div class="ar-who">' + UI.esc(who) + ' ' + roleBadge + '</div>' +
+        '<div class="ar-what"><b>' + UI.esc(AUDIT_ACTION[l.action] || l.action) + '</b>' +
+          '<span class="ar-entity">' + UI.esc(auditEntityLabel(l.entity)) +
+          (l.entityId ? ' · <span class="mono">' + UI.esc(l.entityId) + '</span>' : '') + '</span></div>' +
+        '<div class="ar-details">' + UI.esc(l.details || '—') + '</div>' +
+      '</article>';
+    }).join('') || '<div class="table-empty">لا سجلات مطابقة</div>';
   }
 
   /* ======================= اللوحة المالية ======================= */

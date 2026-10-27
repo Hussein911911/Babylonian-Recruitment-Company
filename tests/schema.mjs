@@ -817,6 +817,35 @@ step(24, 'التنقل — كل تبويب صفحة كاملة بمعلومات�
     /\.tabbar \{[\s\S]{0,200}display: flex;/.test(app));
 }
 
+/* ── 2026-10-25: سجل التدقيق قائمة عربية + فلاتر الموقع بسيطة ── */
+step(25, 'اللوحة — سجل مرتّب بلا كلمات إنجليزية، وفلاتر موحّدة');
+{
+  const dash = readFileSync(join(ROOT, 'src', 'partials', 'dashboard.html'), 'utf8');
+  const djs = readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8');
+  const css = readFileSync(join(ROOT, 'assets', 'css', 'style.css'), 'utf8');
+
+  check('السجل قائمة صفوف (لا جدول بأعمدة ضيّقة تُكسّر النص)',
+    /class="audit-list"/.test(dash) && /class="audit-row"/.test(djs) &&
+    /\.audit-row \{/.test(css) && !/<th>IP الجلسة<\/th>/.test(dash));
+  check('لا كلمات إنجليزية في واجهة السجل (CSV/IP/UTC/YYYY-MM-DD)',
+    !/CSV/.test(dash) && !/IP الجلسة/.test(dash) && !/UTC\+3/.test(dash) &&
+    !/YYYY-MM-DD/.test(dash));
+  check('أقسام السجل والرتب تُعرض عربية من قاموس صريح',
+    /AUDIT_ENTITY = \{/.test(djs) && /AUDIT_ACTION = \{/.test(djs) &&
+    /applicant: 'بطاقة'/.test(djs) && /auditEntityLabel/.test(djs));
+  check('فلاتر السجل تُبنى بتسميات عربية (القسم/العملية/المستخدم)',
+    /label\(v\)/.test(djs) && /كل الأقسام/.test(dash));
+  check('حقول التاريخ عربية الاتجاه (لا mm/dd/yyyy إنجليزية)',
+    /input\[type="date"\] \{ direction: rtl/.test(css));
+
+  /* فلاتر الموقع: عمود واحد على الجوال، وأربعة متساوية على الكمبيوتر */
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+  check('فلاتر الموقع شبكة موحّدة: بحث بعرض كامل + ٣ اختيارات + تصفير',
+    /#jobs \.f-row \{ display: grid; grid-template-columns: repeat\(4/.test(app) &&
+    /#jobs \.f-row > \.f-field\.f-search \{ grid-column: 1 \/ -1/.test(app) &&
+    /@media \(max-width: 860px\)[\s\S]{0,200}grid-template-columns: repeat\(2/.test(app));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');

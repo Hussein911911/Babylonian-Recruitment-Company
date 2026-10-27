@@ -24,7 +24,8 @@ const field = (key) => doc.getElementById('log-' + key);
 const change = (key, value) => { field(key).value = value; field(key).dispatchEvent(new w.Event('change', { bubbles: true })); };
 const wait = () => new Promise((r) => setTimeout(r, 240));
 const reset = () => doc.getElementById('log-reset').click();
-const visible = () => [...doc.querySelectorAll('#audit-table-body tr')].filter((r) => !r.querySelector('.table-empty'));
+/* 2026-10-25: السجل صار قائمة صفوف (.audit-row) بدل جدول — نفس الفحوص تنطبق */
+const visible = () => [...doc.querySelectorAll('#audit-table-body .audit-row')];
 try {
   const fixture = Array.from({length: 125}, (_,i) => ({
     id: 'row-' + i, ts: new Date(Date.UTC(2026,9,16,10,0,i)).toISOString(),

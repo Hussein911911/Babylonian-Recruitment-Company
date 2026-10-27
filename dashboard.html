@@ -16,8 +16,8 @@
 <link rel="preconnect" href="https://vqsvztudvfukyuerzcgx.supabase.co" crossorigin>
 <link rel="dns-prefetch" href="https://vqsvztudvfukyuerzcgx.supabase.co">
 
-<link rel="stylesheet" href="assets/css/style.css?v=271b09b3f0">
-<link rel="stylesheet" href="assets/css/notifications.css?v=271b09b3f0"><link rel="stylesheet" href="assets/css/image-editor.css?v=271b09b3f0"><link rel="stylesheet" href="assets/css/backup.css?v=271b09b3f0"><link rel="stylesheet" href="assets/css/workspace-layout.css?v=271b09b3f0"></head>
+<link rel="stylesheet" href="assets/css/style.css?v=36a493758b">
+<link rel="stylesheet" href="assets/css/notifications.css?v=36a493758b"><link rel="stylesheet" href="assets/css/image-editor.css?v=36a493758b"><link rel="stylesheet" href="assets/css/backup.css?v=36a493758b"><link rel="stylesheet" href="assets/css/workspace-layout.css?v=36a493758b"></head>
 <body>
 <!-- ===========================================================================
      مكتبة الأيقونات والرموز (SVG Sprite) — تُدرج مرة واحدة في كل صفحة
@@ -427,7 +427,7 @@
         </div>
         <div class="ov-welcome-time">
           <div class="time-big" id="ov-clock" dir="ltr" aria-label="الوقت بتوقيت بغداد">--:--</div>
-          <div class="date-sm" id="ov-date">—</div><div class="tiny">توقيت العراق · بغداد (UTC+3)</div>
+          <div class="date-sm" id="ov-date">—</div><div class="tiny">توقيت العراق · بغداد</div>
         </div>
       </div>
 
@@ -625,7 +625,7 @@
           <h3><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> سجل التدقيق اللحظي</h3>
           <div class="flex" style="gap:8px">
             <span class="badge info" id="audit-count-label">0</span>
-            <button class="btn btn-outline btn-sm" id="btn-export-audit"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير CSV</button>
+            <button class="btn btn-outline btn-sm" id="btn-export-audit"><svg class="ic"><use href="#i-download" xlink:href="#i-download"/></svg> تصدير السجل</button>
           </div>
         </div>
         <div class="panel-body">
@@ -642,7 +642,7 @@
               <select id="log-user"><option value="all">الكل</option></select>
             </div>
             <div class="field">
-              <label for="log-role">الصلاحية</label>
+              <label for="log-role">الرتبة</label>
               <select id="log-role">
                 <option value="all">الكل</option>
                 <option value="admin">مدير عام</option>
@@ -650,10 +650,10 @@
                 <option value="system">النظام</option>
               </select>
             </div>
-            <div class="field"><label for="log-action">نوع العملية</label><select id="log-action"><option value="all">كل العمليات</option></select></div>
-            <div class="field"><label for="log-entity">نوع السجل</label><select id="log-entity"><option value="all">كل الأنواع</option></select></div>
-            <div class="field"><label for="log-from"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>من تاريخ</label><input type="date" id="log-from"></div>
-            <div class="field"><label for="log-to"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>إلى تاريخ</label><input type="date" id="log-to"></div>
+            <div class="field"><label for="log-action">العملية</label><select id="log-action"><option value="all">كل العمليات</option></select></div>
+            <div class="field"><label for="log-entity">القسم</label><select id="log-entity"><option value="all">كل الأنواع</option></select></div>
+            <div class="field"><label for="log-from"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>من تاريخ</label><input type="date" id="log-from" aria-label="من تاريخ" title="يوم / شهر / سنة"></div>
+            <div class="field"><label for="log-to"><svg class="ic" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"/></svg>إلى تاريخ</label><input type="date" id="log-to" aria-label="إلى تاريخ" title="يوم / شهر / سنة"></div>
           </div>
           <div class="audit-quick" role="group" aria-label="فترات السجل السريعة">
             <button type="button" class="btn btn-outline btn-sm" data-audit-range="today">اليوم</button>
@@ -666,18 +666,19 @@
           <p class="tiny hidden" id="log-date-error" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.</p>
         </div>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
-            <table class="data">
-              <thead><tr><th>الوقت (YYYY-MM-DD HH:mm:ss)</th><th>المستخدم</th><th>الصلاحية</th><th>IP الجلسة</th><th>العملية</th><th>السجل</th><th>التفاصيل</th></tr></thead>
-              <tbody id="audit-table-body"></tbody>
-            </table>
+          <!-- سجل بصيغة قائمة مرتّبة (لا جدول بأعمدة ضيّقة تُكسّر النص عمودياً) -->
+          <div class="audit-list" id="audit-list">
+            <div class="audit-list-head" aria-hidden="true">
+              <span>الوقت</span><span>المستخدم</span><span>العملية والسجل</span><span>التفاصيل</span>
+            </div>
+            <div id="audit-table-body" class="audit-rows"></div>
           </div>
           <div class="audit-pagination">
             <label for="log-page-size">سجل بالصفحة <select id="log-page-size"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></label>
             <label for="log-sort">الترتيب <select id="log-sort"><option value="newest">الأحدث أولاً</option><option value="oldest">الأقدم أولاً</option></select></label>
             <div class="audit-pages"><button type="button" class="btn btn-outline btn-sm" id="log-prev">السابق</button><span id="log-page-info" aria-live="polite"></span><button type="button" class="btn btn-outline btn-sm" id="log-next">التالي</button></div>
           </div>
-          <div class="tfoot-note">السجل المحمّل فقط · توقيت بغداد (العراق) · CSV يشمل كل النتائج المفلترة.</div>
+          <div class="tfoot-note">السجل المحمَّل فقط · التوقيت بتوقيت بغداد · ملف التصدير يشمل كل النتائج المصفّاة.</div>
         </div>
       </div>
     </section>
@@ -690,8 +691,8 @@
         <div class="panel-head">
           <h3><svg class="ic"><use href="#i-chart" xlink:href="#i-chart"/></svg> التحصيل المتوقع لكل موظف</h3>
           <div class="toolbar">
-            <div class="field"><label for="fin-from">من</label><input type="date" id="fin-from"></div>
-            <div class="field"><label for="fin-to">إلى</label><input type="date" id="fin-to"></div>
+            <div class="field"><label for="fin-from">من</label><input type="date" id="fin-from" aria-label="من تاريخ" title="يوم / شهر / سنة"></div>
+            <div class="field"><label for="fin-to">إلى</label><input type="date" id="fin-to" aria-label="إلى تاريخ" title="يوم / شهر / سنة"></div>
             <button class="btn btn-lapis btn-sm" id="btn-fin-today"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg> اليوم</button>
             <button class="btn btn-outline btn-sm" id="btn-fin-yesterday"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg> أمس</button>
             <button class="btn btn-outline btn-sm" id="btn-fin-reset"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> الكل</button>
@@ -893,18 +894,18 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=271b09b3f0"></script>
-<script src="assets/vendor/supabase.js?v=271b09b3f0"></script>
-<script src="assets/js/supabase-config.js?v=271b09b3f0"></script>
-<script src="assets/js/qr.js?v=271b09b3f0"></script>
-<script src="assets/js/cloud.js?v=271b09b3f0"></script>
-<script src="assets/js/cloud-auth.js?v=271b09b3f0"></script>
-<script src="assets/js/cloud-sync.js?v=271b09b3f0"></script>
-<script src="assets/js/store.js?v=271b09b3f0"></script>
-<script src="assets/js/ui.js?v=271b09b3f0"></script>
-<script src="assets/js/nav.js?v=271b09b3f0"></script>
-<script src="assets/js/voucher.js?v=271b09b3f0"></script>
-<script src="assets/js/dashboard.js?v=271b09b3f0"></script>
-<script src="assets/js/notifications.js?v=271b09b3f0"></script>
+<script src="assets/js/config.js?v=36a493758b"></script>
+<script src="assets/vendor/supabase.js?v=36a493758b"></script>
+<script src="assets/js/supabase-config.js?v=36a493758b"></script>
+<script src="assets/js/qr.js?v=36a493758b"></script>
+<script src="assets/js/cloud.js?v=36a493758b"></script>
+<script src="assets/js/cloud-auth.js?v=36a493758b"></script>
+<script src="assets/js/cloud-sync.js?v=36a493758b"></script>
+<script src="assets/js/store.js?v=36a493758b"></script>
+<script src="assets/js/ui.js?v=36a493758b"></script>
+<script src="assets/js/nav.js?v=36a493758b"></script>
+<script src="assets/js/voucher.js?v=36a493758b"></script>
+<script src="assets/js/dashboard.js?v=36a493758b"></script>
+<script src="assets/js/notifications.js?v=36a493758b"></script>
 </body>
 </html>

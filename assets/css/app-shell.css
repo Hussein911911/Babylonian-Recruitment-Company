@@ -155,27 +155,30 @@
 .cat.is-active .cat-ic { transform: scale(1.04); }
 .cat.is-active > span:not(.cat-ic) { color: var(--cat, var(--lapis-2)); }
 
-/* ── 4ب) صندوق الفلترة: مدمج ومرتّب (صفّ واحد) ── */
+/* ── 4ب) صندوق الفلترة: شكل واحد بسيط ومرتّب في كل الموقع ──
+   صفّ أعلى: البحث بعرض كامل. صفّ أسفل: ثلاثة اختيارات + تصفير بأعمدة متساوية.
+   كل الحقول بنفس الارتفاع ونصف القطر والأيقونة ⇒ لا تزاحم ولا ارتفاعات مختلفة. */
 #jobs .filters {
   display: grid; grid-template-columns: minmax(0, 1fr);
-  gap: 8px; padding: 9px 10px; margin-bottom: 14px;
+  gap: 8px; padding: 10px; margin-bottom: 14px;
   background: #fff; border: 1px solid #e9edf4; border-radius: 14px;
   box-shadow: 0 4px 14px rgba(6, 13, 31, .05);
 }
-#jobs .f-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; min-width: 0; }
-#jobs .f-row > .f-field { flex: 1 1 132px; min-width: 0; margin: 0; }
-#jobs .f-row > .f-field.f-search { flex: 3 1 220px; }
+#jobs .f-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; min-width: 0; }
+#jobs .f-row > .f-field { min-width: 0; margin: 0; }
+#jobs .f-row > .f-field.f-search { grid-column: 1 / -1; }
+#jobs .f-row .f-field { position: relative; }
 #jobs .f-row .f-field svg { width: 15px; height: 15px; inset-inline-start: 9px; }
 #jobs .f-row .f-field input,
 #jobs .f-row .f-field select {
-  height: 36px; font-size: .78rem; padding-block: 0;
-  border-radius: 10px; border-color: #e3e8f0;
+  height: 38px; font-size: .78rem; padding-block: 0; width: 100%;
+  border-radius: 10px; border-color: #e3e8f0; background: #fff;
 }
-#jobs .f-row .f-field.f-search input { padding-inline-start: 30px; }
-#jobs .f-row .f-field select { padding-inline-start: 28px; min-width: 0; width: 100%; }
+#jobs .f-row .f-field.f-search input { padding-inline-start: 32px; }
+#jobs .f-row .f-field select { padding-inline-start: 30px; padding-inline-end: 26px; min-width: 0; }
 #jobs .f-reset {
-  flex: 0 0 auto; height: 36px; min-height: 36px; padding: 0 12px;
-  font-size: .74rem; border-radius: 10px;
+  height: 38px; min-height: 38px; padding: 0 12px; width: 100%;
+  font-size: .76rem; border-radius: 10px; justify-content: center;
 }
 
 /* شرائح الفلاتر النشطة + إظهار عدد النتائج */
@@ -619,10 +622,8 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 .cat-grid { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
 @media (max-width: 860px) {
   #jobs .filters { padding: 8px; gap: 6px; }
-  #jobs .f-row { gap: 6px; }
-  #jobs .f-row > .f-field { flex: 1 1 46%; }
-  #jobs .f-row > .f-field.f-search { flex: 1 1 100%; }
-  #jobs .f-reset { flex: 0 0 auto; }
+  #jobs .f-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  #jobs .f-row > .f-field.f-search, #jobs .f-reset { grid-column: 1 / -1; }
   .cat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .cat { padding: 11px 6px 9px; border-radius: 15px; gap: 6px; }
   .cat .cat-ic { width: 40px; height: 40px; border-radius: 12px; }

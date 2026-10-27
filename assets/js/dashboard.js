@@ -2206,7 +2206,25 @@
     });
   }
 
-  /* ======================= سجل التدقيق ======================= */
+  /* ======================= سجل التدقيق =======================
+   * كل ما يُعرض عربي: أسماء أقسام السجل والعمليات والرتب.
+   * الإنجليزية محصورة في معرّفات النظام (كود البطاقة/الوظيفة) لأنها أكواد مطبوعة. */
+  var AUDIT_ENTITY = {
+    applicant: 'بطاقة', job: 'وظيفة', attempt: 'فرصة', staff: 'موظف',
+    settings: 'إعدادات', backup: 'نسخة احتياطية', recovery: 'استرجاع',
+    audit: 'السجل', system: 'النظام', card: 'بطاقة', session: 'جلسة'
+  };
+  var AUDIT_USER = { system: 'النظام (تلقائي)', admin: 'المدير', staff: 'موظف' };
+  /* العمليات المتكررة تظهر عربية مضبوطة؛ أي عملية غير معروفة تُعرض كما هي (عربية أصلاً) */
+  var AUDIT_ACTION = {
+    'login': 'دخول', 'logout': 'خروج', 'sign in': 'دخول', 'sign out': 'خروج',
+    'create': 'إضافة', 'update': 'تعديل', 'delete': 'حذف'
+  };
+  function auditEntityLabel(v) {
+    if (!v) return '—';
+    return AUDIT_ENTITY[String(v).toLowerCase()] || v;
+  }
+
   function readAuditFilters() {
     ['q', 'user', 'role', 'action', 'entity', 'from', 'to', 'sort'].forEach(function (key) {
       var input = document.getElementById('log-' + key);
@@ -2225,12 +2243,21 @@
       }).catch(function () { renderAudit._asked = false; });
     }
     var available = Store.listAudit({});
-    [['user', 'user', 'كل المستخدمين'], ['action', 'action', 'كل العمليات'], ['entity', 'entity', 'كل الأنواع']].forEach(function (spec) {
+    /* الفلاتر تُعرض عربية بالكامل: القيمة للمنطق والتسمية للعين */
+    [['user', 'user', 'كل المستخدمين'], ['action', 'action', 'كل العمليات'], ['entity', 'entity', 'كل الأقسام']].forEach(function (spec) {
       var select = document.getElementById('log-' + spec[0]);
+      if (!select) return;
       var values = available.map(function (r) { return r[spec[1]]; }).filter(Boolean);
       values = Array.from(new Set(values)).sort();
       if (state.log[spec[0]] !== 'all' && values.indexOf(state.log[spec[0]]) < 0) values.push(state.log[spec[0]]);
-      if (select) { UI.fillSelect(select, values, spec[2]); select.value = state.log[spec[0]]; }
+      var label = function (v) {
+        if (spec[0] === 'user') return AUDIT_USER[v] || v;
+        if (spec[0] === 'entity') return auditEntityLabel(v);
+        return AUDIT_ACTION[v] || v;
+      };
+      select.innerHTML = '<option value="all">' + UI.esc(spec[2]) + '</option>' +
+        values.map(function (v) { return '<option value="' + UI.esc(v) + '">' + UI.esc(label(v)) + '</option>'; }).join('');
+      select.value = state.log[spec[0]];
     });
     var invalid = !!(state.log.from && state.log.to && state.log.from > state.log.to);
     var error = document.getElementById('log-date-error');
@@ -2255,15 +2282,16 @@
     document.getElementById('audit-table-body').innerHTML = rows.slice(start, start + state.logPageSize).map(function (l) {
       var roleBadge = l.role === 'admin' ? '<span class="badge danger">مدير عام</span>'
         : (l.role === 'staff' ? '<span class="badge info">موظف</span>' : '<span class="badge muted">النظام</span>');
-      return '<tr>' +
-        '<td class="mono tiny" dir="ltr">' + UI.esc(Store.fmtDateTime(l.ts)) + '</td>' +
-        '<td>' + UI.esc(l.name || l.user) + '<div class="tiny muted mono">' + UI.esc(l.user) + '</div></td>' +
-        '<td>' + roleBadge + '</td>' +
-        '<td class="tiny mono" dir="ltr">' + UI.esc(l.ip) + '</td>' +
-        '<td><b>' + UI.esc(l.action) + '</b></td>' +
-        '<td class="mono tiny">' + UI.esc(l.entityId) + '<div class="tiny muted">' + UI.esc(l.entity) + '</div></td>' +
-        '<td class="tiny muted">' + UI.esc(l.details) + '</td></tr>';
-    }).join('') || '<tr><td colspan="7" class="table-empty">لا سجلات مطابقة</td></tr>';
+      var who = l.name || AUDIT_USER[l.user] || l.user;
+      return '<article class="audit-row">' +
+        '<div class="ar-time">' + UI.ic('clock') + '<b>' + UI.esc(Store.fmtDateTime(l.ts)) + '</b></div>' +
+        '<div class="ar-who">' + UI.esc(who) + ' ' + roleBadge + '</div>' +
+        '<div class="ar-what"><b>' + UI.esc(AUDIT_ACTION[l.action] || l.action) + '</b>' +
+          '<span class="ar-entity">' + UI.esc(auditEntityLabel(l.entity)) +
+          (l.entityId ? ' · <span class="mono">' + UI.esc(l.entityId) + '</span>' : '') + '</span></div>' +
+        '<div class="ar-details">' + UI.esc(l.details || '—') + '</div>' +
+      '</article>';
+    }).join('') || '<div class="table-empty">لا سجلات مطابقة</div>';
   }
 
   /* ======================= اللوحة المالية ======================= */
