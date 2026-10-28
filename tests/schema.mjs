@@ -1214,6 +1214,37 @@ step(34, 'الألوان: أبيض · كحلي · ذهبي نيون فقط — �
     /body\[data-step="8"\] #result-content \.ok-hero\{[\s\S]{0,200}background:#ffffff/.test(ap));
 }
 
+/* ── 2026-10-28 (ط): أبيض + نيلي لصفحات البطاقة بعد الترحيب ─────────────── */
+step(35, 'صفحات البطاقة بعد الترحيب: أبيض + نيلي (لا أخضر/برتقالي)');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('لوحة نيلي معلنة لصفحات الإدخال (#1B4C8F · #2F6FD0 · #0E2E5C)',
+    /--in-indigo:#1B4C8F/.test(ap) && /--in-indigo-2:#2F6FD0/.test(ap) && /--in-indigo-3:#0E2E5C/.test(ap));
+  check('بطاقة الإدخال بيضاء بحدود نيلية رقيقة',
+    /body\[data-step="1"\] \.profile-card,[\s\S]{0,300}background:#FFFFFF!important/.test(ap) &&
+    /rgba\(216,227,242,\.9\)/.test(ap));
+  check('الحقول بيضاء وتتوهّج نيلي عند التركيز',
+    /body\[data-step="1"\] \.form-group input:focus,[\s\S]{0,700}border-color:#2F6FD0!important/.test(ap));
+  check('زر «التالي» نيلي بنص أبيض في خطوات الإدخال',
+    /body\[data-step="1"\] \.btn-primary,[\s\S]{0,360}linear-gradient\(135deg,#2F6FD0,#1B4C8F 58%,#0E2E5C\)/.test(ap));
+  check('نقاط التقدّم والكبسولة نيلية (بلا أخضر)',
+    /body\[data-step="1"\] \.step-dot\.done,[\s\S]{0,260}#1B4C8F,#60AAFF/.test(ap) &&
+    /body\[data-step="1"\] \.step-label \.pct[\s\S]{0,300}color:#1B4C8F/.test(ap));
+  check('الجنس: البطاقة المختارة نيلية وأيقونتها بيضاء',
+    /body\[data-step="5"\] \.gender-opt\.selected\{[\s\S]{0,300}border-color:#2F6FD0/.test(ap) &&
+    /body\[data-step="5"\] \.gender-opt\.selected \.icon\{[\s\S]{0,200}background:linear-gradient\(150deg,#2F6FD0,#1B4C8F\)/.test(ap));
+  check('خطوات الوظائف والمراجعة والنتيجة صارت نيلية (٦ · ٧ · ٨)',
+    /body\[data-step="6"\] \.jf-more\{[\s\S]{0,220}rgba\(47,111,208,\.30\)/.test(ap) &&
+    /body\[data-step="7"\] \.rv-jobs\{[\s\S]{0,260}linear-gradient\(165deg,#123A73,#0E2E5C 58%,#071C3A\)/.test(ap) &&
+    /#btn-finish\{[\s\S]{0,200}linear-gradient\(135deg,#2F6FD0,#1B4C8F 58%,#0E2E5C\)/.test(ap) &&
+    /body\[data-step="8"\] \.result-actions \.btn-ghost-gold\{[\s\S]{0,240}linear-gradient\(135deg,#123A73,#0E2E5C\)/.test(ap));
+  check('لا بقايا برتقالي/ذهبي في زخارف الصفحة (موجات SVG)',
+    !/%23c8a24a|%23e3c479|#f0d98a/.test(ap));
+  check('الكلمات المميّزة داخل ملاحظة المراجعة مقروءة (كحلي على نيلي فاتح)',
+    /\.rv-note b,\.rv-note strong\{color:#0E2E5C!important;background:#EAF2FF!important/.test(ap));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');
