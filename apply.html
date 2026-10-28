@@ -4333,6 +4333,142 @@ body.job-modal-open .app{
     .result-actions .btn:hover{transform:none}
   }
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   2026-10-29 · نافذة «تفاصيل البطاقة»: نص واضح وتباين قوي على الخلفية البيضاء
+   ─ كانت نصوصها مخصّصة لخلفية داكنة (#93a3bf / #f4efe2) فظهرت باهتة على الأبيض
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media screen{
+  :root{
+    --cs-label:#6F6152;     /* تسمية دافئة واضحة */
+    --cs-value:#16294A;     /* قيمة كحلية قوية */
+    --cs-muted:#7A8797;
+    --cs-line:#EFE7D6;
+    --cs-card:#FDFAF3;
+  }
+
+  /* ── صندوق النافذة ─────────────────────────────────────────────────── */
+  .card-sheet{z-index:520;padding:16px}
+  .card-sheet-veil{background:rgba(6,20,40,.58);backdrop-filter:blur(3px)}
+  .card-sheet-box{
+    width:min(620px,100%);max-height:min(90dvh,860px);
+    background:#FFFFFF!important;color:var(--cs-value)!important;
+    border:1px solid #E6DCC6!important;border-radius:20px!important;
+    box-shadow:0 30px 70px -28px rgba(4,16,34,.55)!important;
+  }
+
+  /* ── الرأس: كحلي بحدود ذهبية ───────────────────────────────────────── */
+  .card-sheet-head{
+    background:linear-gradient(120deg,#1E4270,#16304F 62%,#0D2247)!important;
+    border-block-end:1px solid rgba(200,162,74,.5)!important;
+    padding:13px 16px!important;gap:11px!important;
+  }
+  .cs-emblem{background:#fff!important;border:1px solid rgba(200,162,74,.6)!important;padding:5px}
+  .cs-title h2{font-size:16px!important;color:#fff!important;line-height:1.4}
+  .cs-title p{font-size:12px!important;color:#E3C479!important;letter-spacing:.08em;font-weight:800}
+  .cs-chip{font-size:11px!important;font-weight:900!important;padding:4px 10px!important}
+  .cs-chip.is-ok{color:#04231A!important;background:linear-gradient(140deg,#E8D089,#C8A24A)!important;border:1px solid rgba(255,255,255,.45)!important}
+  .cs-chip.is-warn{color:#5A2E12!important;background:linear-gradient(140deg,#F7D9A8,#E2AE6A)!important;border:1px solid rgba(255,255,255,.4)!important}
+  .cs-close{
+    width:34px!important;height:34px!important;border-radius:10px!important;
+    color:#F2E2AC!important;background:rgba(255,255,255,.10)!important;
+    border:1px solid rgba(232,208,137,.45)!important;font-size:20px!important;
+  }
+  .cs-close:hover{background:rgba(255,255,255,.2)!important;color:#fff!important}
+
+  /* ── الجسم: نصوص داكنة على أبيض ────────────────────────────────────── */
+  .card-sheet-body{padding:14px 16px 8px!important;background:#fff}
+  .cs-grid{gap:8px 10px!important}
+  .cs-f{
+    background:var(--cs-card)!important;border:1px solid var(--cs-line)!important;
+    border-radius:12px!important;padding:9px 12px!important;
+  }
+  .cs-f span{
+    display:block!important;font-size:11px!important;font-weight:800!important;
+    color:var(--cs-label)!important;margin-bottom:4px!important;letter-spacing:.01em;
+  }
+  .cs-f b{
+    display:block!important;font-size:14px!important;font-weight:900!important;
+    color:var(--cs-value)!important;line-height:1.6!important;
+    word-break:break-word;letter-spacing:0!important;
+  }
+  .cs-f b.mono{direction:ltr;text-align:start;font-variant-numeric:tabular-nums}
+  /* الحقول الفارغة */
+  .cs-f b:empty::after{content:'—';color:var(--cs-muted)}
+
+  /* ── الفرص ─────────────────────────────────────────────────────────── */
+  .cs-sub{
+    margin:16px 0 8px!important;font-size:12.5px!important;font-weight:900!important;
+    color:#12305C!important;gap:7px!important;
+  }
+  .cs-sub::before{width:4px!important;height:15px!important;background:linear-gradient(180deg,#E3C479,#C8A24A)!important}
+  .cs-chances{gap:7px!important}
+  .cs-chance{
+    background:var(--cs-card)!important;border:1px solid var(--cs-line)!important;
+    border-radius:12px!important;padding:9px 12px!important;
+    grid-template-columns:72px minmax(0,1fr) auto!important;gap:8px!important;
+  }
+  .cs-chance-no{font-size:11px!important;font-weight:900!important;color:#8A6D2C!important}
+  .cs-chance-job{font-size:13px!important;font-weight:800!important;color:var(--cs-value)!important}
+  .cs-chance-job b{font-size:11px!important;font-weight:700!important;color:#5A6C80!important;direction:ltr;unicode-bidi:isolate}
+  /* سطر تفاصيل الوظيفة داخل الفرصة: المحافظة · الدوام · الأجر */
+  .cs-chance-meta{
+    display:block;margin-top:3px;font-style:normal;
+    font-size:11px!important;font-weight:700!important;color:#7A8797!important;line-height:1.7;
+  }
+  .cs-chance-state{font-size:10.5px!important;font-weight:900!important;padding:3px 9px!important}
+  .cs-chance.is-open .cs-chance-state{color:#3F2E08!important;background:linear-gradient(140deg,#FFF1CB,#E8D089)!important;border:1px solid rgba(200,162,74,.55)!important}
+  .cs-chance.is-live .cs-chance-state{color:#0D2247!important;background:#E7EEF8!important;border:1px solid #C9D8EC!important}
+  .cs-chance.is-done .cs-chance-state{color:#1C5A3C!important;background:#E8F5EE!important;border:1px solid #BFE0CE!important}
+  .cs-chance.is-closed .cs-chance-state{color:#8A2B20!important;background:#FDECEA!important;border:1px solid #F2C9C3!important}
+
+  /* ── الملاحظة ──────────────────────────────────────────────────────── */
+  .cs-note{
+    color:var(--cs-muted)!important;border-top:1px dashed var(--cs-line)!important;
+    font-size:11.5px!important;line-height:1.95!important;margin:12px 0 0!important;padding-top:9px!important;
+  }
+
+  /* ── التذييل: أزرار طبيعية ─────────────────────────────────────────── */
+  .card-sheet-foot{
+    background:#FBF9F4!important;border-block-start:1px solid var(--cs-line)!important;
+    padding:11px 16px calc(11px + env(safe-area-inset-bottom,0px))!important;gap:8px!important;
+  }
+  .card-sheet-foot .btn{
+    min-height:44px!important;height:44px!important;font-size:13.5px!important;
+    border-radius:12px!important;font-weight:900!important;
+    background:linear-gradient(160deg,#1E4270,#16304F 52%,#0D2247)!important;
+    color:#fff!important;border:1.5px solid rgba(227,196,121,.85)!important;
+    box-shadow:0 8px 20px rgba(13,34,71,.22)!important;
+  }
+  .card-sheet-foot .btn *{color:#fff!important;stroke:#fff!important}
+  .btn-sheet-close{
+    min-height:44px!important;height:44px!important;padding:0 18px!important;
+    font-size:13px!important;font-weight:800!important;border-radius:12px!important;
+    background:#fff!important;color:#12305C!important;border:1.5px solid #E6DCC6!important;
+  }
+  .btn-sheet-close:hover{background:#FFFDF6!important;border-color:#C8A24A!important}
+
+  /* ── الجوال ─────────────────────────────────────────────────────────── */
+  @media(max-width:560px){
+    .card-sheet{padding:8px}
+    .card-sheet-box{max-height:92dvh;border-radius:16px!important}
+    .cs-grid{grid-template-columns:1fr 1fr;gap:7px!important}
+    .cs-f{padding:8px 10px!important}
+    .cs-f span{font-size:10.5px!important}
+    .cs-f b{font-size:13px!important}
+    .cs-chance{grid-template-columns:1fr auto!important;row-gap:3px!important}
+    .cs-chance-no{grid-column:1 / -1}
+    .card-sheet-foot{flex-direction:row!important}
+    .card-sheet-foot .btn{flex:1 1 0!important}
+    .btn-sheet-close{flex:0 0 auto!important;width:auto!important}
+  }
+  @media(max-width:360px){
+    .cs-grid{grid-template-columns:1fr!important}
+  }
+
+  @media(prefers-reduced-motion:reduce){
+    .card-sheet-box{animation:none!important}
+  }
+}
 </style>
 </head>
 <body>
@@ -4861,6 +4997,15 @@ function showEl(el,show){
   else{try{el.setAttribute('hidden','hidden');}catch(e){} el.hidden=true;}
 }
 function ar(n){var a=['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];return String(n).replace(/\d/g,function(d){return a[+d];});}
+/* تاريخ عربي واضح: 7 حزيران 1999 → ٧ حزيران ١٩٩٩ */
+function arabicDate(iso){
+  var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||'').slice(0,10));
+  if(!m)return String(iso||'—');
+  var months=['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
+  var d=Number(m[3]),mo=Number(m[2]),y=Number(m[1]);
+  if(!(d>=1&&d<=31&&mo>=1&&mo<=12))return String(iso||'—');
+  return ar(d)+' '+months[mo-1]+' '+ar(y);
+}
 function pad2(v){var s=String(v||'');return s.length<2?'0'+s:s;}
 function $(id){return document.getElementById(id);}
 function digitWord(n){return n===1?'رقم':(n===2?'رقمين':(n<=10?'أرقام':'رقم'));}
@@ -4930,7 +5075,7 @@ var G={
        dob:p.dob||lp.dob,gender:p.gender||lp.gender};
     var statusTxt=cardData.chancesLeft<=0?'مستنفدة الفرص':(cardData.status==='blank'?'بانتظار التعبئة':'سارية');
     var statusCls=cardData.chancesLeft<=0?'is-warn':'is-ok';
-    var dob=p.dob?String(p.dob).slice(0,10).split('-').reverse().join('/'):'—';
+    var dob=p.dob?G.arabicDate(String(p.dob).slice(0,10)):'—';
     var addr=[p.address,p.province].filter(Boolean).join(' — ')||'—';
     var chanceRows=(cardData.chances||[]).map(function(ch){
       var label=ch.slotStatus==='empty'?'متاحة للاستخدام'
@@ -4938,10 +5083,13 @@ var G={
         :(ch.slotStatus==='rejected'?'مرفوض'
         :(ch.slotStatus==='expired'?'انتهت':'قيد المتابعة')));
       var cls=ch.slotStatus==='empty'?'is-open':(ch.slotStatus==='succeeded'?'is-done':(ch.slotStatus==='rejected'||ch.slotStatus==='expired'?'is-closed':'is-live'));
+      var jj=ch.jobCode?(jobs.filter(function(x){return x.code===ch.jobCode;})[0]||null):null;
+      var meta=jj?[jobProvince(jj.governorate),jj.shift,(Number(jj.salaryMin)>0?money(jj.salaryMin)+' – '+money(jj.salaryMax)+' د.ع':'')].filter(Boolean).join(' · '):'';
       return '<li class="cs-chance '+cls+'">'+
         '<span class="cs-chance-no">الفرصة '+ar(ch.no||0)+'</span>'+
         '<span class="cs-chance-job">'+(ch.jobTitle?esc(ch.jobTitle):'لم تُستخدم بعد')+
-          (ch.jobCode?' <b class="mono" dir="ltr">('+esc(ch.jobCode)+')</b>':'')+'</span>'+
+          (ch.jobCode?' <b class="mono" dir="ltr">('+esc(ch.jobCode)+')</b>':'')+
+          (meta?'<i class="cs-chance-meta">'+esc(meta)+'</i>':'')+'</span>'+
         '<span class="cs-chance-state">'+label+'</span></li>';
     }).join('');
 
@@ -4973,6 +5121,7 @@ var G={
       try{(b||document.querySelector('.cs-close')).focus();}catch(e){}
     },40);
   },
+  arabicDate:arabicDate,
   closeCardDetails:function(){
     var sheet=$('card-details');
     if(!sheet)return;

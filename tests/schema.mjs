@@ -1359,6 +1359,37 @@ step(38, 'أزرار صفحة الاستمارة: مقاسات صغيرة · أ�
     /\.ac-badge\.is-vacant \{[\s\S]{0,140}#1E4270/.test(shell));
 }
 
+/* ── 2026-10-29 (م): نافذة «تفاصيل البطاقة»: تباين قوي ونصوص واضحة ───────── */
+step(39, 'تفاصيل البطاقة: نص داكن على أبيض · تاريخ عربي · تفاصيل كل فرصة');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('خلفية النافذة بيضاء وحدودها ذهبية',
+    /\.card-sheet-box\{[\s\S]{0,300}background:#FFFFFF!important;color:var\(--cs-value\)/.test(ap) &&
+    /border:1px solid #E6DCC6!important;border-radius:20px!important/.test(ap));
+  check('تسميات الحقول دافئة واضحة والقيم كحلية غامقة (لا #93a3bf الباهت)',
+    /--cs-label:#6F6152/.test(ap) && /--cs-value:#16294A/.test(ap) &&
+    /\.cs-f span\{[\s\S]{0,220}color:var\(--cs-label\)!important/.test(ap) &&
+    /\.cs-f b\{[\s\S]{0,220}color:var\(--cs-value\)!important/.test(ap));
+  check('حقول التفاصيل على خلفية عاجية فاتحة بحدود ناعمة',
+    /\.cs-f\{[\s\S]{0,200}background:var\(--cs-card\)!important/.test(ap));
+  check('تاريخ الميلاد يُعرض عربياً (يوم شهر سنة)',
+    /function arabicDate\(iso\)/.test(ap) &&
+    /var months=\['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران'/.test(ap) &&
+    /var dob=p\.dob\?G\.arabicDate/.test(ap));
+  check('كل فرصة تعرض تفاصيل وظيفتها (المحافظة · الدوام · الأجر)',
+    /cs-chance-meta/.test(ap) && /jobProvince\(jj\.governorate\)/.test(ap));
+  check('حالات الفرص بألوان واضحة (ذهبي/أزرق/أخضر/أحمر) بنص داكن',
+    /\.cs-chance\.is-open \.cs-chance-state\{[\s\S]{0,160}#FFF1CB/.test(ap) &&
+    /\.cs-chance\.is-closed \.cs-chance-state\{[\s\S]{0,160}#FDECEA/.test(ap));
+  check('أزرار النافذة بمقاس طبيعي ٤٤px وبلون الهوية',
+    /\.card-sheet-foot \.btn\{[\s\S]{0,260}height:44px!important/.test(ap) &&
+    /\.btn-sheet-close\{[\s\S]{0,220}background:#fff!important/.test(ap));
+  check('النافذة متجاوبة: عمودان على الجوال وعمود واحد تحت ٣٦٠px',
+    /@media\(max-width:560px\)\{[\s\S]{0,200}\.cs-grid\{grid-template-columns:1fr 1fr/.test(ap) &&
+    /@media\(max-width:360px\)\{\s*\.cs-grid\{grid-template-columns:1fr!important\}/.test(ap));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');
