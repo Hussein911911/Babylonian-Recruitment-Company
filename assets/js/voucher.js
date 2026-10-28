@@ -70,8 +70,8 @@
 .hc-contact .phones{font-family:'Courier New',monospace;direction:ltr;white-space:nowrap;font-size:6pt;font-weight:700;color:#f2d58d;}
 .hc-contact .addr{font-size:3.8pt;color:#d8e1ef;}
 .hc-bot2 .disc{font-size:3.8pt;line-height:1.6;color:#e2e8f2;margin-top:.8mm;}
-/* Babylonian Mکسَب card style: portrait, deep navy + warm ivory + gold. */
-.hrc-card{width:86mm;height:130mm;border-radius:4mm;padding:7mm 5mm;background:#f5f1e5;color:#112b49;box-shadow:0 12px 30px #07162935;}
+/* Babylonian Mكسَب card style: landscape, deep navy + warm ivory + gold. */
+.hrc-card{width:86mm;height:54mm;border-radius:3mm;padding:2.3mm 3mm;background:#f5f1e5;color:#112b49;box-shadow:0 12px 30px #07162935;}
 .hrc-card .frame{inset:1.4mm;border:.35mm solid #d6a92e;border-radius:3mm;box-shadow:none;}
 .hc-glow,.hc-guilloche,.hc-holo,.hc-ribbon{display:none!important;}
 .hrc-card[aria-label*=الأمامي]{background:linear-gradient(to bottom,#062d50 0%,#06385a 42%,#f5f1e5 42%,#f5f1e5 100%);}
@@ -109,8 +109,23 @@
 .hc-front-contact b{font-family:'Courier New',monospace;direction:ltr;font-size:9pt;}
 .hc-dates{position:relative;z-index:1;display:grid!important;grid-template-columns:1fr 1fr;border-top:.3mm solid #d6b64d;padding-top:1.5mm;gap:2mm;margin-top:1mm;}
 .hc-date{font-size:6pt;color:#173556;}.hc-date b{font-family:inherit;font-size:6pt;color:#173556;}
-.hc-identity{flex:1 1 auto;}
-@media print{@page{size:86mm 130mm;margin:0;}#print-root .hrc-card{width:86mm;height:130mm;border-radius:0;}}
+.hrc-card[aria-label*=الأمامي]{background:linear-gradient(to bottom,#062d50 0%,#06385a 47%,#f5f1e5 47%,#f5f1e5 100%);}
+.hrc-card[aria-label*=الأمامي]:before{top:39%;height:17%;border-top-width:.9mm;}
+.hc-top{padding:0 1mm 1mm;justify-content:space-between;border-bottom:0;}
+.hc-top .embl{width:9mm;height:9mm;}.hc-top .ar{font-size:9pt}.hc-top .en{font-size:4pt;}
+.hc-slogan{font-size:12pt;margin:0 0 1mm;}
+.hc-identity{display:grid;grid-template-columns:minmax(0,1fr) 27mm;gap:2mm;align-items:center;flex:1;padding:0;}
+.hc-identity-copy{text-align:right;}.hc-identity .lbl{font-size:5pt;color:#173556;}.hc-serial{font-size:8pt;text-align:center;margin:.5mm 0;}
+.hc-count{font-size:6pt}.hc-identity .hint{font-size:4.5pt;margin:0;}
+.hc-qr .box{width:25mm;height:25mm;padding:.6mm;}.hc-qr .caption{font-size:4.5pt;padding:.8mm 1mm;}
+.hc-steps{font-size:5pt;gap:1.5mm;padding:.5mm 0}.hc-steps i{font-size:9pt;}
+.hc-front-contact{gap:1.5mm;padding-top:.7mm;font-size:4.5pt}.hc-front-contact b{font-size:6pt;}
+.hc-dates{padding-top:.5mm;margin-top:.3mm;gap:1mm}.hc-date{font-size:4pt}.hc-date b{font-size:4pt;}
+.hrc-card[aria-label*=الخلفي]{padding:3mm 4mm;}
+.hc-back-head{padding:0 0 1mm;margin-bottom:1mm}.hc-back-head b{font-size:7.5pt}.hc-back-head span{font-size:4.5pt;}
+.hc-terms{gap:.8mm;margin:1mm 0}.hc-terms li{font-size:5pt;line-height:1.5;padding-inline-start:3mm}.hc-terms li:before{font-size:7pt;}
+.hc-bot2{padding:1mm 2mm;border-radius:1.5mm}.hc-contact{flex-direction:row;gap:1mm}.hc-contact .phones{font-size:6pt}.hc-contact .addr{font-size:4.5pt;}.hc-bot2 .disc{font-size:4pt;line-height:1.4;margin-top:.5mm;}
+@media print{@page{size:86mm 54mm;margin:0;}#print-root .hrc-card{width:86mm;height:54mm;border-radius:0;}}
 `
       /* معاينة داخل نافذة */
       + '.hrc-card-sheet{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;background:transparent;padding:6px;}'
