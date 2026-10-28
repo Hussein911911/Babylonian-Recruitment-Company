@@ -3842,6 +3842,157 @@ body{
     .profile-card::before,.mk-feat:hover{animation:none!important}
   }
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   2026-10-28 · نافذة الوظيفة: تنفتح بالضغط على أي وظيفة وكل ما وراءها يُغبَّش
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes jmIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes jmVeilIn{from{opacity:0}to{opacity:1}}
+
+/* flex بدل grid: يمنع تمدّد العمود بعرض المحتوى (كان يفيض أفقياً على الجوال) */
+.job-modal{
+  position:fixed;inset:0;z-index:520;
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:0;overflow:hidden;
+}
+.job-modal[hidden]{display:none!important}
+.job-modal-veil{
+  position:absolute;inset:0;background:rgba(6,20,40,.55);
+  backdrop-filter:blur(2px) saturate(.9);
+  animation:jmVeilIn .22s ease both;
+}
+/* كل ما وراء النافذة: تغبيش + تعتيم خفيف + بلا تفاعل */
+html:has(body.job-modal-open){overflow-x:clip}
+body.job-modal-open{overflow:hidden;max-width:100vw}
+body.job-modal-open .app{
+  filter:blur(7px) saturate(.92) brightness(.9);
+  pointer-events:none;user-select:none;
+  transition:filter .28s ease;
+}
+
+.job-modal-box{
+  position:relative;z-index:1;
+  width:100%;max-width:680px;min-width:0;max-height:90dvh;
+  display:flex;flex-direction:column;
+  background:#fff;border-radius:22px 22px 0 0;
+  border:1px solid #E6DCC6;border-bottom:0;
+  box-shadow:0 -24px 70px rgba(4,16,34,.42);
+  animation:jmIn .3s cubic-bezier(.22,1,.36,1) both;
+  overflow:hidden;
+}
+@media(min-width:761px){
+  .job-modal{align-items:center;padding:20px}
+  .job-modal-box{width:min(680px,100%);border-radius:22px;border-bottom:1px solid #E6DCC6}
+}
+
+/* رأس النافذة: كحلي بحدود ذهبية */
+.job-modal-head{
+  display:flex;align-items:center;gap:12px;padding:14px 16px;
+  background:linear-gradient(120deg,#1E4270,#16304F 62%,#0D2247);
+  border-block-end:1px solid rgba(200,162,74,.55);
+}
+.job-modal-head{min-width:0;flex-wrap:nowrap}
+/* ترتيب الرأس في RTL: الشعار يميناً · العنوان · الشارة · زر الإغلاق يساراً */
+.jm-logo{
+  display:grid;place-items:center;flex:none;width:44px;height:44px;order:1;
+  border-radius:13px;background:#fff;border:1px solid rgba(200,162,74,.6);padding:5px;
+}
+.jm-headtxt{order:2}
+.jm-state{order:3}
+.jm-close{order:4}
+.jm-logo svg{width:100%;height:100%}
+.jm-headtxt{flex:1 1 auto;min-width:0}
+.jm-headtxt h2{
+  margin:0;font-size:16.5px;font-weight:900;color:#fff;line-height:1.45;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;
+}
+.jm-headtxt p{margin:2px 0 0;font-size:11.5px;font-weight:700;color:#E3C479;letter-spacing:.08em}
+.jm-state{
+  flex:none;font-size:11px;font-weight:900;padding:5px 11px;border-radius:999px;
+  background:linear-gradient(140deg,#E8D089,#C8A24A);color:#241A05;white-space:nowrap;
+}
+.jm-close{
+  flex:none;width:36px;height:36px;border-radius:11px;cursor:pointer;
+  font-size:22px;line-height:1;color:#F2E2AC;
+  background:rgba(255,255,255,.10);border:1px solid rgba(232,208,137,.45);
+  transition:background .2s,transform .2s;
+}
+.jm-close:hover{background:rgba(255,255,255,.2);color:#fff}
+.jm-close:active{transform:scale(.94)}
+.jm-close:focus-visible{outline:2px solid #E3C479;outline-offset:2px}
+
+/* الجسم */
+.job-modal-body{
+  padding:14px 16px 6px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  display:grid;grid-template-columns:minmax(0,1fr);gap:12px;background:#FFFFFF;
+  overflow-wrap:anywhere;
+}
+.job-modal-body b{overflow-wrap:anywhere}
+.jm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.jm-cell{
+  display:grid;grid-template-columns:22px 1fr;grid-template-rows:auto auto;
+  column-gap:8px;align-items:center;
+  padding:9px 11px;border-radius:12px;background:#FDFAF3;border:1px solid #EFE7D6;
+}
+.jm-cell svg{grid-row:1 / span 2;width:19px;height:19px;color:#8A6D2C}
+.jm-cell .k{font-size:10px;font-weight:800;color:#8A7B5C;line-height:1.3}
+.jm-cell .v{font-size:13.5px;font-weight:900;color:#16294A;line-height:1.4}
+.jm-pay{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;min-width:0;
+  padding:10px 12px;border-radius:12px;background:#FDF3D8;border:1px solid #EFE0BD;
+}
+.jm-pay .k{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:#7A5F21}
+.jm-pay .k svg{width:16px;height:16px}
+.jm-pay .v{font-size:14px;font-weight:900;color:#6B5320;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.jm-sec{
+  border:1px solid #EFE7D6;border-radius:14px;padding:11px 13px;background:#FFFFFF;
+}
+.jm-sec h3{
+  margin:0 0 6px;font-size:12.5px;font-weight:900;color:#12305C;
+  display:flex;align-items:center;gap:7px;
+}
+.jm-sec h3::before{content:'';width:4px;height:15px;border-radius:2px;background:linear-gradient(180deg,#E3C479,#C8A24A)}
+.jm-sec p{margin:0;font-size:13px;line-height:1.95;color:#4E5F73}
+.jm-sec ul{margin:0;padding-inline-start:18px;display:grid;gap:4px}
+.jm-sec li{font-size:13px;line-height:1.8;color:#4E5F73}
+.jm-sec li::marker{color:#C8A24A}
+.jm-hint{
+  font-size:11.5px;line-height:1.9;color:#7A5F21;background:#FDF3D8;
+  border:1px dashed rgba(200,162,74,.5);border-radius:12px;padding:8px 11px;
+}
+
+/* الأزرار */
+.job-modal-foot{
+  display:flex;gap:8px;flex-wrap:wrap;min-width:0;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+  border-block-start:1px solid #EFE7D6;background:#FBF9F4;
+}
+.job-modal-foot .btn{
+  min-height:46px!important;font-size:14px!important;border-radius:13px!important;
+  flex:1 1 150px!important;
+}
+.job-modal-foot .btn-outline{flex:0 1 auto!important;min-width:104px!important}
+.job-modal-foot .btn-primary{
+  background:linear-gradient(160deg,#1E4270,#16304F 52%,#0D2247)!important;
+  color:#fff!important;border:1.5px solid rgba(227,196,121,.85)!important;
+}
+.job-modal-foot .btn-primary *{color:#fff!important;stroke:#fff!important}
+.job-modal-foot .btn-success{
+  background:linear-gradient(135deg,#E8D089,#C8A24A 55%,#B08D3C)!important;
+  color:#241A05!important;border:1.5px solid rgba(255,255,255,.5)!important;
+}
+@media(max-width:430px){
+  .jm-grid{grid-template-columns:1fr 1fr}
+  .jm-headtxt h2{font-size:14.5px}
+  .jm-state{font-size:10px;padding:4px 8px}
+  .jm-logo{width:38px;height:38px;padding:4px}
+  .jm-close{width:34px;height:34px}
+  .job-modal-foot .btn{flex:1 1 100%!important}
+  .job-modal-foot .btn-outline{flex:1 1 100%!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .job-modal-box,.job-modal-veil{animation:none!important}
+  body.job-modal-open .app{filter:brightness(.86)!important}
+}
 </style>
 </head>
 <body>
@@ -4276,6 +4427,25 @@ body{
 </symbol>
 </svg>
 
+
+<!-- ═══ نافذة الوظيفة (تُفتح بالضغط على أي وظيفة) ═══ -->
+<div class="job-modal" id="job-modal" hidden role="dialog" aria-modal="true" aria-labelledby="jm-title">
+  <div class="job-modal-veil" onclick="G.closeJob()"></div>
+  <div class="job-modal-box" role="document">
+    <header class="job-modal-head">
+      <span class="jm-logo" aria-hidden="true"><svg viewBox="0 0 415 418"><use href="#i-mkseb-dark" xlink:href="#i-mkseb-dark"/></svg></span>
+      <div class="jm-headtxt">
+        <h2 id="jm-title">الوظيفة</h2>
+        <p id="jm-sub" dir="ltr">—</p>
+      </div>
+      <span class="jm-state" id="jm-state">متاحة</span>
+      <button type="button" class="jm-close" id="jm-close" onclick="G.closeJob()" aria-label="إغلاق الوظيفة">&times;</button>
+    </header>
+    <div class="job-modal-body" id="job-modal-body"></div>
+    <footer class="job-modal-foot" id="job-modal-foot"></footer>
+  </div>
+</div>
+
 <!-- ── عميل الاتصال: محلي ومصغّر (نفس نمط بقية الصفحات العامة) ──
      قبل 2026-10-06 كانت هذه الصفحة تنزّل مكتبة سوبابيس الكاملة (213KB) من CDN
      خارجي، ولها مشكلتان حقيقيتان:
@@ -4313,6 +4483,8 @@ var chancesLeft=2, appliedJobs=[], selectedGender='ذكر', currentFilter='ال�
 var returnToReview=false;
 var lockedProfile=null;
 var jobFilters={q:'',province:'',shift:'',gender:'',salary:'',sort:'site',picked:false};
+/* نافذة الوظيفة: الكود المعروض + العنصر الذي نُعيد إليه التركيز عند الإغلاق */
+var jobModalCode='', jobModalReturn=null;
 function jobNorm(value){return String(value==null?'':value).replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);}).replace(/[۰-۹]/g,function(c){return String(c.charCodeAt(0)-1776);}).toLowerCase().replace(/[ًٌٍَُِّْٰـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();}
 function jobProvince(value){var n=jobNorm(value);var alias={'اربيل':'أربيل','اربیل':'أربيل','انبار':'الأنبار','الانبار':'الأنبار','ذيقار':'ذي قار','ذي قار':'ذي قار','الديوانيه':'القادسية','ديوانيه':'القادسية','القادسيه':'القادسية','سليمانيه':'السليمانية','حلبجه':'حلبجة'};if(Object.prototype.hasOwnProperty.call(alias,n))return alias[n];var found=Object.keys(IRAQ).concat(['حلبجة']).filter(function(p){return jobNorm(p)===n;})[0];return found||String(value||'').trim();}
 function jobSalary(value){var text=jobNorm(value).replace(/[,،٬\s]/g,'');if(!text)return 0;return /^\d+$/.test(text)&&isFinite(Number(text))?Number(text):null;}
@@ -4938,7 +5110,8 @@ var G={
       var place = jobProvince(j.governorate) || '';
       /* كارت الوظيفة: ترتيب واضح — عنوان · وسمان · شبكة أيقونات · أجر · أزرار */
       h+='<article class="job-card'+(picked?' selected':'')+(done?' is-done':'')+'" data-job="'+esc(j.code)+'"'
-        +(done?'':' onclick="G.pickJob(\''+esc(j.code)+'\')"')+'>'
+        +' onclick="G.openJob(\''+esc(j.code)+'\')" tabindex="0" role="button"'
+        +' aria-label="عرض تفاصيل وظيفة '+esc(j.title)+'">'
         +'<span class="pick-mark" aria-hidden="true">'+(picked?ar(G.chanceNumber(slotNo)):'✓')+'</span>'
 
         /* ── رأس الكارت ── */
@@ -4971,16 +5144,11 @@ var G={
           +'</div>'
         +'</div>'
 
-        /* ── تفاصيل قابلة للفتح ── */
-        +'<div class="job-details" id="details-'+esc(j.code)+'" hidden>'
-          +(j.description?'<div><b>وصف الوظيفة:</b> '+esc(j.description)+'</div>':'')
-          +(reqs?'<div><b>المتطلبات:</b><ul>'+reqs+'</ul></div>':'')
-          +(!j.description&&!reqs?'<div>لا توجد تفاصيل إضافية لهذه الوظيفة حالياً.</div>':'')
-        +'</div>'
+        /* (التفاصيل الكاملة صارت في نافذة الوظيفة — لا تكرار داخل الكارت) */
 
         /* ── أزرار الإجراء ── */
         +'<footer class="job-actions">'
-          +'<button type="button" class="btn btn-outline btn-sm job-details-btn" onclick="event.stopPropagation();G.toggleDetails(\''+esc(j.code)+'\')">تفاصيل الوظيفة</button>';
+          +'<button type="button" class="btn btn-outline btn-sm job-details-btn" onclick="event.stopPropagation();G.openJob(\''+esc(j.code)+'\')">تفاصيل الوظيفة</button>';
       if(done){h+='<button type="button" class="btn btn-outline btn-sm" disabled>تم التقديم</button>';}
       else if(chancesLeft<=0){h+='<button type="button" class="btn btn-outline btn-sm" disabled>انتهت الفرص</button>';}
       else if(picked){
@@ -5009,6 +5177,109 @@ var G={
     if(appliedJobs.some(function(a){return a.jobCode===code;}))return;
     if(!jobs.some(function(x){return x.code===code;}))return;
     G.pickJob(code);
+  },
+
+  /* ═══════════════════════════════════════════════════════════
+     نافذة الوظيفة: صفحة منبثقة تغبّش كل ما وراءها
+     ═══════════════════════════════════════════════════════════ */
+  openJob:function(code){
+    var job=jobs.find(function(x){return x.code===code;});
+    var modal=$('job-modal');
+    if(!job||!modal)return;
+    jobModalCode=code;
+    var done=appliedJobs.some(function(a){return a.jobCode===code;});
+    var slotNo=G.pickedIndex(code);
+    var picked=slotNo>=0;
+    var sal=money(job.salaryMin)+' – '+money(job.salaryMax);
+    var salKnown=Number(job.salaryMin)>0||Number(job.salaryMax)>0;
+    var place=jobProvince(job.governorate)||'—';
+
+    /* الرأس */
+    $('jm-title').textContent=job.title||'وظيفة';
+    $('jm-sub').textContent=job.code||'';
+    var st=$('jm-state');
+    st.textContent=done?'تم التقديم':(picked?'★ الفرصة '+ar(G.chanceNumber(slotNo)):'متاحة للتقديم');
+    st.className='jm-state'+(done?' is-done':'');
+
+    /* الجسم: شبكة معلومات + الأجر + الوصف + المتطلبات + ملاحظة */
+    var body=''
+      +'<div class="jm-grid">'
+        +'<div class="jm-cell">'+G.jobIcon('pin')+'<span class="k">المحافظة</span><span class="v">'+esc(place)+'</span></div>'
+        +'<div class="jm-cell">'+G.jobIcon('clock')+'<span class="k">الدوام</span><span class="v">'+esc(job.shift||'—')+'</span></div>'
+        +'<div class="jm-cell">'+G.jobIcon('user')+'<span class="k">الجنس المطلوب</span><span class="v">'+esc(job.gender||'لا فرق')+'</span></div>'
+        +'<div class="jm-cell">'+G.jobIcon('seat')+'<span class="k">الشواغر</span><span class="v">'+ar(job.vacancies||1)+'</span></div>'
+      +'</div>'
+      +'<div class="jm-pay"><span class="k">'+G.jobIcon('pay')+'الأجر الشهري</span>'
+        +'<span class="v">'+(salKnown?esc(sal):'يُحدَّد عند المقابلة')+'</span></div>';
+
+    if(job.description){
+      body+='<div class="jm-sec"><h3>وصف الوظيفة</h3><p>'+esc(job.description)+'</p></div>';
+    }
+    if((job.requirements||[]).length){
+      body+='<div class="jm-sec"><h3>المتطلبات</h3><ul>'
+        +job.requirements.map(function(r){return '<li>'+esc(r)+'</li>';}).join('')
+        +'</ul></div>';
+    }
+    if(!job.description&&!(job.requirements||[]).length){
+      body+='<div class="jm-sec"><h3>تفاصيل الوظيفة</h3><p>لا توجد تفاصيل إضافية منشورة لهذه الوظيفة — يمكنك سؤال الشركة عند المقابلة.</p></div>';
+    }
+    body+='<div class="jm-hint">'
+      +(done?'قدّمت على هذه الوظيفة سابقاً بهذه البطاقة — لا تُستهلك فرصة أخرى.'
+        :(chancesLeft<=0?'لا توجد فرص متبقية في بطاقتك — راجع مكتب الشركة لتجديدها.'
+          :'بالضغط على «اختيار الوظيفة» تُعيَّن لفرصة من فرصتيك (لكل فرصة وظيفة واحدة).'))
+      +'</div>';
+
+    /* شريط التخصص + الفرص المتاحة إن وُجدت */
+    if(job.category){
+      body+='<div class="jm-hint" style="background:#FDFAF3;border-color:#EFE7D6;color:#7A5F21">'
+        +'التخصص: <b>'+esc(job.category)+'</b> · الكود: <b dir="ltr">'+esc(job.code||'')+'</b></div>';
+    }
+    $('job-modal-body').innerHTML=body;
+
+    /* الأزرار */
+    var foot='';
+    if(done){
+      foot+='<button type="button" class="btn btn-outline" disabled>تم التقديم على هذه الوظيفة</button>';
+    }else if(chancesLeft<=0){
+      foot+='<button type="button" class="btn btn-outline" disabled>انتهت الفرص</button>';
+    }else if(picked){
+      foot+='<button type="button" class="btn btn-success" onclick="G.modalNext()">متابعة للطلب</button>';
+      foot+='<button type="button" class="btn btn-outline" onclick="G.pickFromModal(\''+esc(job.code)+'\')">إلغاء الاختيار</button>';
+    }else{
+      foot+='<button type="button" class="btn btn-primary" onclick="G.pickFromModal(\''+esc(job.code)+'\')">اختيار الوظيفة</button>';
+    }
+    foot+='<button type="button" class="btn btn-outline" onclick="G.closeJob()">إغلاق</button>';
+    $('job-modal-foot').innerHTML=foot;
+
+    jobModalReturn=document.activeElement;
+    showEl(modal,true);
+    document.body.classList.add('job-modal-open');
+    try{$('jm-close').focus({preventScroll:true});}catch(e){try{$('jm-close').focus();}catch(_e){}}
+    if(navigator.vibrate)try{navigator.vibrate(8);}catch(e2){}
+  },
+
+  closeJob:function(){
+    var modal=$('job-modal');
+    if(!modal)return;
+    showEl(modal,false);
+    document.body.classList.remove('job-modal-open');
+    jobModalCode='';
+    try{if(jobModalReturn&&jobModalReturn.focus)jobModalReturn.focus({preventScroll:true});}catch(e){}
+    jobModalReturn=null;
+  },
+
+  /* اختيار الوظيفة من داخل النافذة ثم إغلاقها.
+     pickJob وحدها تعيد رسم القائمة (نجاحاً) أو تُظهر رسالة التحذير (امتلاء الفرص)،
+     فلا نعيد الرسم هنا حتى لا تُمحى رسالة «أكملت اختيار وظيفتَي فرصتيك». */
+  pickFromModal:function(code){
+    G.closeJob();
+    G.pickJob(code);
+  },
+
+  /* «متابعة للطلب» من داخل النافذة */
+  modalNext:function(){
+    G.closeJob();
+    G.next();
   },
 
   /* تعيين وظيفة لفرصة (أو إلغاء تعيينها بالضغط عليها مرة ثانية) */
@@ -5801,6 +6072,21 @@ function startWatchdog(){
       'تحقق من الإنترنت (أو جرّب شبكة أخرى) ثم اضغط «إعادة المحاولة».');
   },20000);
 }
+
+/* ESC يغلق نافذة الوظيفة · ولوحة المفاتيح تفتح الكارت بـ Enter/Space */
+document.addEventListener('keydown',function(e){
+  var key=e.key||e.keyCode;
+  if((key==='Escape'||key===27)&&document.body.classList.contains('job-modal-open')){
+    e.preventDefault();
+    if(window.G&&G.closeJob)G.closeJob();
+    return;
+  }
+  if((key==='Enter'||key===' '||key==='Spacebar')&&e.target&&e.target.classList&&e.target.classList.contains('job-card')){
+    e.preventDefault();
+    var code=e.target.getAttribute('data-job');
+    if(code&&window.G&&G.openJob)G.openJob(code);
+  }
+});
 
 if(document.readyState==='complete')startApp();
 else window.addEventListener('load',startApp);

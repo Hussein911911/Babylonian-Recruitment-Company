@@ -1253,6 +1253,44 @@ step(35, 'صفحات البطاقة: كحلي + ذهبي + أبيض (هوية ا
     !/%2360AAFF/.test(ap));
 }
 
+/* ── 2026-10-28 (ي): نافذة الوظيفة المنبثقة وتغبيش ما وراءها ───────────── */
+step(36, 'نافذة الوظيفة: صفحة منبثقة وكل ما وراءها يُغبَّش');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('نافذة الوظيفة موجودة داخل الصفحة (role=dialog + aria-modal)',
+    /<div class="job-modal" id="job-modal" hidden role="dialog" aria-modal="true"/.test(ap) &&
+    /id="jm-title"/.test(ap) && /id="job-modal-body"/.test(ap) && /id="job-modal-foot"/.test(ap));
+  check('الضغط على أي كارت وظيفة يفتح النافذة (لا يعيّن مباشرة)',
+    /onclick="G\.openJob\(/.test(ap) && !/article class="job-card[\s\S]{0,200}G\.pickJob\(/.test(ap) &&
+    /tabindex="0" role="button"/.test(ap));
+  check('كل ما وراء النافذة يُغبَّش ويُعتَّم ويمتنع عن التفاعل',
+    /body\.job-modal-open \.app\{[\s\S]{0,220}filter:blur\(7px\)/.test(ap) &&
+    /pointer-events:none/.test(ap) &&
+    /html:has\(body\.job-modal-open\)\{overflow-x:clip\}/.test(ap));
+  check('النافذة بيضاء بحدود ذهبية ورأس كحلي (ورقة سفلية على الجوال، وسط على الكمبيوتر)',
+    /\.job-modal-box\{[\s\S]{0,260}background:#fff/.test(ap) &&
+    /@media\(min-width:761px\)\{[\s\S]{0,160}align-items:center/.test(ap));
+  check('داخل النافذة: المحافظة · الدوام · الجنس · الشواغر · الأجر · الوصف · المتطلبات',
+    /jm-cell[\s\S]{0,120}المحافظة/.test(ap) && /الجنس المطلوب/.test(ap) &&
+    /الشواغر/.test(ap) && /الأجر الشهري/.test(ap) &&
+    /وصف الوظيفة/.test(ap) && /المتطلبات/.test(ap));
+  check('أزرار النافذة: «اختيار الوظيفة» أو «متابعة للطلب» + «إغلاق»',
+    /G\.pickFromModal\(/.test(ap) && /G\.modalNext\(\)/.test(ap) &&
+    /class="btn btn-outline" onclick="G\.closeJob\(\)">إغلاق/.test(ap));
+  check('الإغلاق بالضغط على الخلفية أو زر الإغلاق أو مفتاح ESC',
+    /class="job-modal-veil" onclick="G\.closeJob\(\)"/.test(ap) &&
+    /id="jm-close" onclick="G\.closeJob\(\)"/.test(ap) &&
+    /Escape'\|\|key===27/.test(ap));
+  check('فتح الكارت بلوحة المفاتيح (Enter / Space)',
+    /key==='Enter'\|\|key===' '\|\|key==='Spacebar'/.test(ap) && /G\.openJob\(code\)/.test(ap));
+  check('النافذة خارج .app حتى لا تتأثر بالتغبيش',
+    !/job-modal" id="job-modal"[\s\S]{0,50}<\/div>\s*<div class="app"/.test(ap) &&
+    /<div class="job-modal" id="job-modal"/.test(ap));
+  check('تفاصيل الوظيفة لم تبقَ مكرّرة داخل الكارت',
+    !/id="details-'\+esc\(j\.code\)/.test(ap));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');
