@@ -461,6 +461,8 @@
     });
     var back = document.getElementById('pb-back');
     if (back) back.addEventListener('click', function () { openPage('home'); });
+    var homeBtn = document.getElementById('pb-home');
+    if (homeBtn) homeBtn.addEventListener('click', function () { openPage('home'); });
     window.addEventListener('popstate', function () {
       openPage(pageFromHash(), { keepHash: true, noScroll: true });
     });

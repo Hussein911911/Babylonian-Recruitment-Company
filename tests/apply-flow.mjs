@@ -735,10 +735,10 @@ step(13, 'اختيار الوظيفة: تأثير البورتريه (المخت
   check('البقية تُغبَّش وتُعتَّم (blur + تعتيم + تصغير)',
     /has-focus \.job-card:not\(\.selected\)\{[^}]*filter:blur/.test(src) &&
     /has-focus \.job-card:not\(\.selected\)\{[^}]*opacity:\.4/.test(src));
-  check('المختارة تبرز للأمام (z-index + تكبير + هالة ذهبية/نيون)',
+  check('المختارة تبرز للأمام (z-index + تكبير + هالة خضراء نيون)',
     /has-focus \.job-card\.selected\{[^}]*z-index:20/.test(src) &&
     /has-focus \.job-card\.selected\{[^}]*scale\(1\.0/.test(src) &&
-    /rgba\(255,214,120,\.45\)/.test(src));
+    /rgba\(34,197,94,\.\d+\)/.test(src));
   check('البقية المُغبَّشة لا تستقبل النقر (pointer-events:none) حتى يُلغى الاختيار',
     /has-focus \.job-card:not\(\.selected\)\{[^}]*pointer-events:none/.test(src));
   check('تأثير البورتريه يُلغى مع prefers-reduced-motion (ويبقى التعتيم وظيفياً)',

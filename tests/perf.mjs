@@ -91,7 +91,9 @@ const BUDGET = {
      التنقّل كله داخلي بلا أي طلب شبكة إضافي. */
   /* 2026-10-25: تعديلات السجل/الفلاتر مسّت dashboard.css وstyle.css فقط؛
      index نما 1KB من تنسيقات مشتركة. */
-  'index.html': { raw: 716, requests: 20 },
+  /* 2026-10-27: هيكل صفحة كاملة بلا كريمي + كحلي مزرق/أخضر نيون أضاف ~1KB
+     (قواعد لونية + شريط صفحة بزرّي رجوع/رئيسية). القياس: 717KB. لا طلب جديد. */
+  'index.html': { raw: 720, requests: 20 },
   'verify.html': { raw: 512, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */

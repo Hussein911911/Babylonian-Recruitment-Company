@@ -881,7 +881,7 @@ step(27, 'صفحات التقديم — هوية فاتحة (كريمي/كحلي
 
   /* 2026-10-27: ألغى المالك الكريمي نهائياً → الهوية: أبيض · كحلي · ذهبي نيون */
   check('لوحة الهوية معرّفة (أبيض · كحلي · ذهبي)',
-    /--ap-cream:#ffffff/.test(ap) && /--ap-navy:#012F3E/.test(ap) && /--ap-gold-2:#e3c479|--mk-gold:#FABE04/.test(ap) &&
+    /--ap-cream:#ffffff/.test(ap) && /--ap-navy:#012F3E/.test(ap) && /--mk-gold:#22C55E/.test(ap) &&
     !/--ap-cream:#fbf7ec/.test(ap));
   check('خلفية الترحيب بيضاء بموجات زخرفية أعلى وأسفل (بلا كريمي)',
     /body\{background-color:#ffffff!important\}/.test(ap) &&
@@ -890,10 +890,10 @@ step(27, 'صفحات التقديم — هوية فاتحة (كريمي/كحلي
   check('البطاقة بيضاء والحقول بيضاء والنص كحلي',
     /\.profile-card\{[\s\S]{0,260}background:#ffffff/.test(ap) &&
     /--ui-field:#ffffff/.test(ap) && /--ui-ink:#0d2f3d/.test(ap));
-  check('الأزرار: أساسي كحلي بحدود ذهبية وثانوي أبيض بحدود كحلية',
-    /\.btn-primary\{\s*\n?\s*background:linear-gradient\(135deg,var\(--ap-navy\)/.test(ap) &&
-    /\.btn-primary\{[\s\S]{0,300}rgba\(200,162,74,\.55\)/.test(ap) &&
-    /\.btn-outline\{[\s\S]{0,200}var\(--ap-navy\)/.test(ap));
+  check('الأزرار: أساسي أخضر نيون بنص كحلي وثانوي أبيض بحدّ رقيق',
+    /\.btn-primary\{[\s\S]{0,260}linear-gradient\(135deg,#41DE93,#22C55E 55%,#15803D\)/.test(ap) &&
+    /\.btn-primary\{[\s\S]{0,420}color:#04231A/.test(ap) &&
+    /\.btn-outline\{[\s\S]{0,240}#cfdae0/.test(ap));
   check('كروت الوظائف فاتحة بنصوص كحلية (لا نص أبيض على أبيض)',
     /#jobs-list \.title[\s\S]{0,120}--ap-navy/.test(ap) &&
     /\.job-tags \.job-code\{[\s\S]{0,160}#0f6d63/.test(ap));
@@ -923,11 +923,11 @@ step(28, 'شاشة الترحيب «منصة مكسب» — مطابقة الم�
   check('الشعار الصحيح (حرف مكسب + سهم ذهبي) معرّف كرمز SVG مقتفى من الصورة',
     /<symbol id="i-mkseb" viewBox="0 0 \d+ \d+">/.test(ap) &&
     (ap.match(/#i-mkseb(-dark)?/g) || []).length >= 4 &&
-    /fill="#FABE04"/.test(ap) && /fill="#fff"/.test(ap) &&
+    /fill="#22C55E"/.test(ap) && /fill="#fff"/.test(ap) &&
     /i-mkseb-dark/.test(ap));
   check('بلاطة الأيقونة (كحلي #012F3E وزوايا مستديرة) للشعار في الشريط والواجهة',
     /\.mk-tile\{/.test(ap) && /background:#012F3E/.test(ap) &&
-    /--mk-gold:#FABE04/.test(ap) && /--mk-green:#94D183/.test(ap) && /--mk-teal:#3FB190/.test(ap));
+    /--mk-gold:#22C55E/.test(ap) && /--mk-green:#94D183/.test(ap) && /--mk-teal:#3FB190/.test(ap));
   check('نفس الشعار في صفحة التقديم والموقع والترويسة والتذييل (رمز واحد)',
     /id="i-mkseb"/.test(ap) &&
     /<symbol id="i-mkseb" viewBox="0 0 \d+ \d+">/.test(readFileSync(join(ROOT, 'src/partials/sprite.html'), 'utf8')) &&
@@ -942,10 +942,10 @@ step(28, 'شاشة الترحيب «منصة مكسب» — مطابقة الم�
   check('الوعد والوصف كما في الملصق (فرصتك لمستقبل أفضل + منصة توظيف تربط…)',
     /class="mk-tag[^"]*">فرصتك لمستقبل أفضل</.test(ap) &&
     /id="welcome-intro"[^>]*>منصة توظيف تربط الباحثين عن عمل مع أصحاب العمل بكل سهولة وموثوقية</.test(ap));
-  check('زر البدء كبسولة كحلية بإطار ذهبي وسهم (كما في الملصق)',
-    /class="mk-cta[^"]*"[\s\S]{0,260}id="btn-start"/.test(ap) &&
+  check('زر البدء كبسولة أخضر نيون بسهم (كما في الملصق)',
+    /class="mk-cta[^"]*"[\s\S]{0,300}id="btn-start"/.test(ap) &&
     /\.mk-cta \.btn\{[\s\S]{0,600}border-radius:999px/.test(ap) &&
-    /\.mk-cta \.btn\{[\s\S]{0,900}border:2px solid rgba\(222,186,116,\.95\)/.test(ap));
+    /\.mk-cta \.btn\{[\s\S]{0,400}linear-gradient\(135deg,#41DE93,#22C55E 55%,#15803D\)/.test(ap));
   check('صورة واجهة بغداد محليّة (بلا طلب خارجي) مع تعتيم للقراءة',
     /background-image:url\("assets\/img\/mkseb-hero-m\.webp"\)/.test(ap) &&
     /assets\/img\/mkseb-hero\.webp/.test(ap) && /class="mk-hero-veil"/.test(ap) &&
@@ -1000,13 +1000,13 @@ step(29, 'حيوية شاشتَي الترحيب والإدخال + لوحة أ�
   check('بطاقة الخطوة بإطار متدرّج وشريط ألوان متحرك أعلاها',
     /padding-box/.test(ap) &&
     /@keyframes apRibbon/.test(ap) &&
-    /#012F3E,#0A4E60 28%,#FABE04 58%,#94D183 84%,#3FB190/.test(ap));
+    /#012F3E,#0A4E60 28%,#22C55E 58%,#94D183 84%,#3FB190/.test(ap));
   check('الحقول: أيقونة داخل كبسولة تتحول للكحلي/الذهبي عند التركيز + رفع خفيف',
     /\.fld:focus-within \.fld-ic\{[\s\S]{0,150}background:#012F3E/.test(ap) &&
     /\.fld:focus-within\{transform:translateY\(-2px\)\}/.test(ap));
-  check('الأزرار: لمعة تمرّ على الزر الكحلي وحدود ذهبية ورفع/ضغط محسوس',
+  check('الأزرار: لمعة تمرّ على الزر الأساسي وحدود فاتحة ورفع/ضغط محسوس',
     /\.btn-primary::before\{[\s\S]{0,240}animation:apShine/.test(ap) &&
-    /border:1\.5px solid rgba\(250,190,4,\.85\)/.test(ap));
+    /@keyframes apShine/.test(ap));
   check('الجنس: بطاقتان ملوّنتان بعلامة اختيار وأيقونات SVG (لا إيموجي)',
     /\.gender-opt\.selected::after\{[\s\S]{0,120}content:'✓'/.test(ap) &&
     /<span class="icon"><svg viewBox="0 0 24 24"/.test(ap) &&
@@ -1079,8 +1079,8 @@ step(31, 'تناسق صفحات المعلومات + بطاقة الوظيفة �
 {
   const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
 
-  check('نظام ألوان موحّد معلن مرة واحدة (كحلي · ذهب · أبيض · أخضر · أحمر)',
-    /--ui-ink:#0d2f3d/.test(ap) && /--ui-gold-2:#FABE04/.test(ap) &&
+  check('نظام ألوان موحّد معلن مرة واحدة (كحلي · أخضر نيون · أبيض · أحمر)',
+    /--ui-ink:#0d2f3d/.test(ap) && /--ui-gold-2:#22C55E/.test(ap) &&
     /--ui-green:#3FB190/.test(ap) && /--ui-red:#b3392b/.test(ap) && /--ui-cream:#ffffff/.test(ap));
   check('الحقول بيضاء بحدّ ذهبي عند التركيز',
     /--ui-field:#ffffff/.test(ap) && /--ui-field-line:#dbe4e9/.test(ap) &&
@@ -1100,10 +1100,10 @@ step(31, 'تناسق صفحات المعلومات + بطاقة الوظيفة �
   check('بطاقة الوظيفة المختارة كحلية بحدود ذهبية (طلب المالك)',
     /#jobs-list \.job-card\.selected\{[\s\S]{0,260}linear-gradient\(165deg,#0A3F50,#012F3E/.test(ap) &&
     /#jobs-list \.job-card\.selected\{[\s\S]{0,420}border:2px solid var\(--ui-gold-2\)/.test(ap));
-  check('نصوص/خلايا/أزرار الكارت المختار كلها مقروءة فوق الكحلي (أبيض + ذهبي)',
-    /#jobs-list \.job-card\.selected \.jm \.k,[\s\S]{0,160}color:#fff/.test(ap) &&
-    /#jobs-list \.job-card\.selected \.job-pay \*,[\s\S]{0,120}color:#ffe9ad/.test(ap) &&
-    /#jobs-list \.job-card\.selected \.job-actions \.btn-primary,[\s\S]{0,200}var\(--ui-gold-2\)/.test(ap));
+  check('نصوص/خلايا/أزرار الكارت المختار كلها مقروءة (نص كحلي على أبيض)',
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected \.jm \.k,[\s\S]{0,320}color:#0d2f3d/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected \.job-pay \*,[\s\S]{0,460}color:#0f6b3f/.test(ap) &&
+    /#jobs-list \.job-card\.selected \.job-actions \.btn-primary,[\s\S]{0,240}linear-gradient\(135deg,#41DE93,#22C55E\)/.test(ap));
   check('شارة الاختيار المكرّرة أُزيلت (بقيت شارة واحدة داخل الرأس)',
     /#jobs-list \.job-card\.selected \.job-head::before,[\s\S]{0,140}content:none!important/.test(ap));
   check('بقية البطاقات تُخفَّف قليلاً ليبقى الكحلي هو البطل (بلا تغبيش يمنع النقر)',
@@ -1116,8 +1116,9 @@ step(32, 'الواجهة كحلية · التفاصيل بيضاء · الوظا
 {
   const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
 
-  check('صفحات البيانات والقائمة والنتيجة كحلية (1..8) بخلفية متدرّجة واحدة',
-    /body\[data-step="1"\],body\[data-step="2"\],body\[data-step="3"\],[\s\S]{0,200}body\[data-step="7"\],body\[data-step="8"\]\{[\s\S]{0,300}background-color:#0a2c3a/.test(ap));
+  check('صفحات البيانات والقائمة والنتيجة كحلية مزرقّة (1..8)',
+    /body\[data-step="1"\][\s\S]{0,520}background-color:#07203F!important/.test(ap) &&
+    /body\[data-step="8"\]/.test(ap));
   check('شريط التقدّم زجاج كحلي بنص أبيض على هذه الصفحات',
     /body\[data-step="1"\] \.steps-bar[\s\S]{0,420}rgba\(255,255,255,\.07\)/.test(ap) &&
     /body\[data-step="1"\] \.step-label[\s\S]{0,220}rgba\(234,243,246,\.82\)/.test(ap));
@@ -1127,12 +1128,12 @@ step(32, 'الواجهة كحلية · التفاصيل بيضاء · الوظا
   check('لوحة الفلاتر زجاج كحلي بحقول بيضاء ونصوص فاتحة',
     /body\[data-step="6"\] \.job-filters\{[\s\S]{0,320}rgba\(255,255,255,\.10\)/.test(ap) &&
     /body\[data-step="6"\] \.job-filters input:not\(\[type=checkbox\]\)[\s\S]{0,200}background:#fff!important/.test(ap));
-  check('كل وظيفة في كارت أبيض بنصوص كحلية وأجر بحدّ ذهبي (بلا كريمي)',
-    /body\[data-step="6"\] #jobs-list \.job-card\{[\s\S]{0,220}background:#fff!important/.test(ap) &&
+  check('كل وظيفة في كارت أبيض بنصوص كحلية وأجر بحدّ أخضر نيون (بلا كريمي)',
+    /body\[data-step="6"\] #jobs-list \.job-card\{[\s\S]{0,120}background:#fff!important/.test(ap) &&
     /body\[data-step="6"\] #jobs-list \.jm\{[\s\S]{0,200}background:#f7f9fa/.test(ap) &&
-    /#jobs-list \.job-pay[\s\S]{0,200}rgba\(250,190,4,\.55\)/.test(ap));
-  check('الكارت المختار: حدّ ذهبي 2px بظل — والنصوص تبقى كحلية (لا أبيض على أبيض)',
-    /body\[data-step="6"\] #jobs-list \.job-card\.selected\{[\s\S]{0,520}border:2px solid #FABE04/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.job-card\{[\s\S]{0,200}color:#0d2f3d/.test(ap));
+  check('الكارت المختار: حدّ أخضر نيون 2px بظل — والنصوص تبقى كحلية (لا أبيض على أبيض)',
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected\{[\s\S]{0,200}border:2px solid #22C55E/.test(ap) &&
     /body\[data-step="6"\] #jobs-list \.job-card\.selected \.jm \.k,[\s\S]{0,320}color:#0d2f3d/.test(ap));
   check('المراجعة: بطاقة بيضاء + كارت كحلي للوظائف المختارة',
     /body\[data-step="7"\] \.rv-card\{[\s\S]{0,200}background:#fff!important/.test(ap) &&
@@ -1168,8 +1169,8 @@ step(33, 'كارت الوظيفة: ترتيب وأيقونات أصغر · بو�
   check('كارت أصغر ومرتّب: حشوة 14px وشبكة عمودين وأزرار صفّ واحد',
     /#jobs-list \.job-card\{[\s\S]{0,200}padding:14px 14px 0!important/.test(ap) &&
     /#jobs-list \.job-meta\{[\s\S]{0,120}grid-template-columns:1fr 1fr/.test(ap));
-  check('المختارة لها تمييز واضح: حدّ ذهبي خارجي + شريط علوي + شارة داخلية',
-    /#jobs-list \.job-card\.selected\{[\s\S]{0,80}outline:2px solid #FABE04/.test(ap) &&
+  check('المختارة لها تمييز واضح: حدّ أخضر خارجي + شريط علوي + شارة داخلية',
+    /#jobs-list \.job-card\.selected\{[\s\S]{0,400}outline:2px solid #22C55E/.test(ap) &&
     /#jobs-list \.job-card\.selected \.job-head::after\{/.test(ap) &&
     /'★ الفرصة '\s*\+/.test(ap));
   check('حركة دخول الكروت متتالية مع تقليل الحركة',
@@ -1190,18 +1191,19 @@ step(34, 'الألوان: أبيض · كحلي · ذهبي نيون فقط — �
   check('الأسطح كلها بيضاء صريحة (بطاقات · كروت · فلاتر · شرائح)',
     /\.profile-card,\.rv-card,\.job-filters,\.job-card,\.card-sheet-box,#jobs-empty\{background:#ffffff!important\}/.test(ap) &&
     /\.rv-chip,\.jf-chip,\.step-eyebrow,\.rv-note,\.identity-notice/.test(ap));
-  check('الذهبي النيون معتمد للزر الأساسي (تدرّج #FFD34D→#FABE04) بنص كحلي',
-    /\.btn-primary\{[\s\S]{0,220}linear-gradient\(135deg,#FFD34D,#FABE04 52%,#E8A600\)/.test(ap) &&
-    /\.btn-primary\{[\s\S]{0,320}color:#062B38/.test(ap));
+  check('الأخضر النيون معتمد للزر الأساسي (تدرّج #41DE93→#22C55E→#15803D) بنص كحلي',
+    /\.btn-primary\{[\s\S]{0,220}linear-gradient\(135deg,#41DE93,#22C55E 55%,#15803D\)/.test(ap) &&
+    /\.btn-primary\{[\s\S]{0,320}color:#04231A/.test(ap) &&
+    !/#FFD34D,#FABE04/.test(ap));
   check('مقاس الأزرار موحّد: ٥٠px عام · ٤٤px صغير · ٥٢px في صفحات الإدخال (بدل ٦٤)',
     /\.btn\{\s*min-height:50px!important/.test(ap) &&
     /\.btn-sm\{min-height:44px!important/.test(ap) &&
     /\.btn,\.jobs-foot > \.btn-row \.btn,#pg-review > \.btn-row \.btn\{[\s\S]{0,120}min-height:52px!important/.test(ap) &&
     !/min-height:64px;font-size:20px/.test(ap));
-  check('شريط المراجعة: زر رجوع صغير + «إتمام التقديم» ذهبي بارز بلمعة',
+  check('شريط المراجعة: زر رجوع صغير + «إتمام التقديم» أخضر نيون بارز بلمعة',
     /#pg-review > \.review-bar\{[\s\S]{0,400}position:sticky/.test(ap) &&
-    /#pg-review \.review-back\{[\s\S]{0,200}min-width:104px/.test(ap) &&
-    /#btn-finish\{[\s\S]{0,200}linear-gradient\(135deg,#FFD34D,#FABE04/.test(ap) &&
+    /#pg-review \.review-back\{[\s\S]{0,200}min-width:96px/.test(ap) &&
+    /#btn-finish\{[\s\S]{0,220}linear-gradient\(135deg,#41DE93,#22C55E/.test(ap) &&
     /@keyframes goShine/.test(ap));
   check('أزرار صفحة النتيجة شبكة مرتّبة: طباعة بعرض كامل + كحلي للباركود + رابط هادئ',
     /\.result-actions\{[\s\S]{0,160}grid-template-columns:1fr 1fr/.test(ap) &&
