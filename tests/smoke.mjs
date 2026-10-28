@@ -628,7 +628,7 @@ check('تصميم البطاقة يعرض رمز تحقق واحداً مستق�
     if (!svg || svg.getAttribute('viewBox') !== '0 0 ' + (modules + 8) + ' ' + (modules + 8)) return 'الهامش الأبيض للباركود غير كافٍ';
   }
   const style = site.doc.getElementById('hrc-card-style').textContent;
-  return (/box-sizing:border-box;width:86mm;height:54mm/.test(style) && /size:86mm 54mm/.test(style)) || 'تغير المقاس الفعلي';
+  return (/box-sizing:border-box;width:86mm;height:54mm/.test(style) && /size:A4 landscape/.test(style) && /zoom:3\.1/.test(style)) || 'مقاس البطاقة أو تكبيرها للطباعة على A4 غير مضبوط';
 });
 check('البطاقة الأصلية تُطبع بلا أي رمز فرصة مع حفظ الشروط', () => {
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
