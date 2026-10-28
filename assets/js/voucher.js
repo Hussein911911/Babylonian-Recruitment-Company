@@ -95,6 +95,21 @@
 .hc-bot2{border:0;margin-top:auto;background:#0a3558;color:white;border-radius:3mm;padding:3mm;}
 .hc-contact{flex-direction:column;gap:1mm}.hc-contact .phones{font-size:10pt;color:white}.hc-contact .addr{font-size:7pt;color:white;}
 .hc-bot2 .disc{font-size:6.5pt;line-height:1.65;color:#fff;margin-top:2mm;}
+.hc-slogan{position:relative;z-index:1;text-align:center;margin:4mm 0 0;color:#f2c53d;font-size:19pt;font-weight:900;line-height:1.3;}
+.hc-identity{gap:2mm;}
+.hc-identity-copy{width:100%;}
+.hc-identity .lbl{font-size:7pt;}
+.hc-serial{font-size:11pt;}
+.hc-count{font-size:9pt;}
+.hc-identity .hint{font-size:6.5pt;}
+.hc-qr .caption{font-weight:800;font-size:8pt;padding:2.5mm 3mm;}
+.hc-steps{position:relative;z-index:1;display:flex;justify-content:center;align-items:center;gap:3mm;color:#102f50;font-weight:900;font-size:8pt;padding:2mm 0;}
+.hc-steps i{font-size:15pt;font-style:normal;color:#d4a72d;}
+.hc-front-contact{position:relative;z-index:1;display:flex;justify-content:center;align-items:center;gap:3mm;border-top:.3mm solid #d6b64d;padding-top:2mm;color:#123555;font-size:7pt;}
+.hc-front-contact b{font-family:'Courier New',monospace;direction:ltr;font-size:9pt;}
+.hc-dates{position:relative;z-index:1;display:grid!important;grid-template-columns:1fr 1fr;border-top:.3mm solid #d6b64d;padding-top:1.5mm;gap:2mm;margin-top:1mm;}
+.hc-date{font-size:6pt;color:#173556;}.hc-date b{font-family:inherit;font-size:6pt;color:#173556;}
+.hc-identity{flex:1 1 auto;}
 @media print{@page{size:86mm 130mm;margin:0;}#print-root .hrc-card{width:86mm;height:130mm;border-radius:0;}}
 `
       /* معاينة داخل نافذة */
@@ -145,11 +160,14 @@
       '<svg class="embl" viewBox="0 0 120 120"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>' +
       '<div><div class="ar">' + esc(CFG.company.nameAr) + '</div><div class="en">' + esc(CFG.company.nameEn) + '</div></div></div>' +
       '<div class="hc-ctype"><span class="t1">بطاقة توظيف</span><span class="t2">EMPLOYMENT CARD</span></div></div>' +
+      '<div class="hc-slogan">فرصتك تبدأ من هنا</div>' +
       '<div class="hc-identity"><div class="hc-identity-copy"><div class="lbl">بطاقة الزبون — هوية الباركود</div>' +
       '<b class="hc-serial">' + esc(app.serial) + '</b><div class="hc-count">' + esc(count) + '</div>' +
       '<p class="hint">' + (blank ? 'تُفعّل عند البيع؛ الصلاحية تبدأ من التعبئة.' : 'بيانات الزبون على استمارة A4 بنفس الباركود.') + '</p></div>' +
       '<div class="hc-qr"><div class="box hrc-qr-slot">' + qrSvg(Store.cardUrl(app.serial), 200) + '</div>' +
       '<span class="caption">امسح لفتح «بطاقتي»</span></div></div>' +
+      '<div class="hc-steps"><span>امسح</span><i>›</i><span>سجّل</span><i>›</i><span>اختر وظيفتك</span></div>' +
+      '<div class="hc-front-contact"><span>خدمة العملاء</span><b>' + esc(CFG.company.phones[0] || '') + '</b></div>' +
       '<div class="hc-dates"><div class="hc-date"><span>الإصدار</span><b>' + (blank ? 'عند البيع' : esc(Store.fmtDate(app.issueDate))) + '</b></div>' +
       '<div class="hc-date"><span>الصلاحية</span><b>' + (blank ? '30 يوماً من البيع' : esc(Store.fmtDate(app.expiryDate))) + '</b></div></div></div>';
   }
