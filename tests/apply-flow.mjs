@@ -292,6 +292,10 @@ sandbox.self = sandbox;
 sandbox.globalThis = sandbox;
 const ctx = vm.createContext(sandbox);
 
+/* التقسيم الإداري العراقي صار ملفاً مستقلاً (assets/js/iraq-admin.js):
+   نُحمّله قبل السكربت المضمّن تماماً كما يفعل المتصفح. */
+vm.runInContext(readFileSync(join(ROOT, 'assets/js/iraq-admin.js'), 'utf8'), ctx, { filename: 'iraq-admin.js' });
+
 const inline = HTML.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/)[1];
 vm.runInContext(inline, ctx, { filename: 'apply-inline.js' });
 
@@ -336,15 +340,61 @@ check('صفحة الترحيب هي المعروضة بعد التحميل', act
 check('لا رمز بطاقة في نداء قراءة الباركود — الباركود وحده كافٍ (قرار 2026-10-06)',
   calls.filter((c) => c.name === 'self_service_card').every((c) => !('p_code' in c.args)),
   JSON.stringify(calls.find((c) => c.name === 'self_service_card')?.args));
-/* باب صاحب العمل: جملة أسفل «ابدأ الآن» تفتح صفحته بالباركود نفسه */
-const empLink = findByOnclick('G.openEmployer()');
-check('جملة «صاحب العمل؟» ظاهرة أسفل «ابدأ الآن» في صفحة الترحيب',
-  !!empLink && /صاحب العمل؟/.test(empLink.textContent), empLink ? empLink.textContent : 'غير موجودة');
-vm.runInContext('G.openEmployer()', ctx);
-check('الضغط عليها يفتح بوابة تحقق صاحب العمل بنفس الباركود',
-  /employer\.html\?form=HRC-BC-000120$/.test(String(sandbox.location.href)),
-  String(sandbox.location.href));
-sandbox.location.href = '';
+/* قرار 2026-10-24: أُزيل مدخل صاحب العمل ورمزه السري من مسار الزبون */
+check('لا زر «صاحب العمل» ولا دالة openEmployer في صفحة التقديم',
+  !doc.querySelector('.employer-link') && !findByOnclick('G.openEmployer()') &&
+  vm.runInContext('typeof G.openEmployer', ctx) === 'undefined');
+check('لا ذكر لدخول صاحب العمل أو رمزه السري في نصوص الصفحة',
+  !/الرمز السري/.test(doc.body.textContent) &&
+  !/صاحب العمل\؟/.test(doc.body.textContent));
+
+/* ===========================================================================
+ *  3ب) الوظيفة القادمة من الموقع (زر «قدّم ببطاقتك» في صفحة الوظائف)
+ *      الرابط: apply.html?form=<الباركود>&job=HRC-#### — تُعيَّن تلقائياً
+ *      للزبون حتى لا يبحث عنها من جديد في خطوة اختيار الوظيفة.
+ * =========================================================================== */
+step('1ب', 'الوظيفة القادمة من زر «قدّم ببطاقتك» تُعيَّن تلقائياً في خطوة الوظائف');
+const pickedCount = () => vm.runInContext("['HRC-1042','HRC-1047','HRC-1049'].filter(function(c){return G.pickedIndex(c)>=0;}).length", ctx);
+check('بلا بارامتر job في الرابط لا يوجد تعيين تلقائي',
+  vm.runInContext('G.preJobCode', ctx) === '', JSON.stringify(vm.runInContext('G.preJobCode', ctx)));
+vm.runInContext("G.preJobCode='HRC-1047'", ctx);
+vm.runInContext('G.applyPreJob()', ctx);
+check('كود الوظيفة القادم من الموقع يُعيَّن لفرصة الزبون تلقائياً',
+  vm.runInContext("G.pickedIndex('HRC-1047')", ctx) >= 0 && pickedCount() === 1,
+  'عدد المعيَّن: ' + pickedCount());
+vm.runInContext('G.applyPreJob()', ctx);
+check('لا يُعاد التعيين مرتين (البارامتر يُستهلك مرة واحدة)',
+  pickedCount() === 1 && vm.runInContext('G.preJobCode', ctx) === '');
+vm.runInContext("G.preJobCode='HRC-9999'", ctx);
+vm.runInContext('G.applyPreJob()', ctx);
+check('كود وظيفة غير موجود / غير متاحة لا يُعيّن شيئاً ولا يُربك الشاشة',
+  pickedCount() === 1 && active() === 'pg-welcome', activePages().join(','));
+vm.runInContext('G.removePickedJob(0)', ctx);
+check('إلغاء التعيين يعيد الاختيار فارغاً قبل متابعة المسار الطبيعي',
+  pickedCount() === 0);
+
+/* ===========================================================================
+ *  3ج) زر «عرض تفاصيل البطاقة» — يظهر بعد قراءة الباركود ويُظهر بيانات البطاقة
+ * =========================================================================== */
+step('1ج', 'زر «عرض تفاصيل البطاقة» في شاشة الترحيب');
+check('الزر مخفيّ في الوسم الأصلي (لا يظهر قبل قراءة بطاقة معبّأة)',
+  doc.getElementById('welcome-details-wrap').attrs.hidden !== undefined);
+check('بطاقة لم تُعبّأ بعد: الزر لا يظهر (لا تفاصيل بلا بيانات)',
+  doc.getElementById('welcome-details-wrap').attrs.hidden !== undefined);
+check('النافذة مغلقة ابتدائياً (hidden)',
+  doc.getElementById('card-details').attrs.hidden !== undefined);
+vm.runInContext('G.cardDetails()', ctx);
+await tick(20);
+check('النافذة تفتح وتضع رقم البطاقة وحالة كل فرصة',
+  doc.getElementById('card-details').attrs.hidden === undefined &&
+  $('card-details-serial').textContent === 'HRC-BC-000120' &&
+  /الفرصة ١/.test($('card-details-body').textContent) &&
+  /متاحة للاستخدام/.test($('card-details-body').textContent),
+  'الرقم: ' + $('card-details-serial').textContent);
+check('بطاقة لم تُعبّأ: شارة الحالة تقول «بانتظار التعبئة»',
+  /بانتظار التعبئة/.test($('card-details-status').textContent), $('card-details-status').textContent);
+vm.runInContext('G.closeCardDetails()', ctx);
+check('الإغلاق يُخفي النافذة', doc.getElementById('card-details').attrs.hidden !== undefined);
 
 /* ===========================================================================
  *  4) الخطوة 1 — الاسم الثلاثي
@@ -368,33 +418,71 @@ click(findByOnclick('G.next()'));
 await tick(30);
 check('اسم ثلاثي صحيح ⇒ صفحة السكن', active() === 'pg-addr', activePages().join(','));
 
+check('بعد تعبئة الاسم: زر «عرض تفاصيل البطاقة» يظهر مع عدّاد الفرص',
+  doc.getElementById('welcome-details-wrap').attrs.hidden === undefined &&
+  /الفرص المتاحة/.test($('bcd-count').textContent),
+  'العدّاد: «' + $('bcd-count').textContent + '»');
+vm.runInContext('G.cardDetails()', ctx);
+await tick(20);
+check('التفاصيل تعرض الاسم الذي كتبه الزبون وحالة البطاقة',
+  /أحمد محمد علي/.test($('card-details-body').textContent) &&
+  /سارية|بانتظار التعبئة/.test($('card-details-status').textContent),
+  'الشارة: ' + $('card-details-status').textContent);
+vm.runInContext('G.closeCardDetails()', ctx);
+
 /* ===========================================================================
- *  5) الخطوة 2 — السكن (محافظة ← قضاء ← ناحية ← نقطة دالة)
+ *  5) الخطوة 2 — السكن (محافظة + أقرب نقطة دالة فقط)
  * =========================================================================== */
-step(3, 'الخطوة ٢ — السكن بالترتيب: محافظة · قضاء · ناحية · أقرب نقطة دالة');
+step(3, 'الخطوة ٢ — السكن: محافظة · قضاء · ناحية · أقرب نقطة دالة');
 const provs = [...$('f-prov').children].map((o) => o.attrs.value).filter(Boolean);
-check('قائمة المحافظات مملوءة من الإعدادات', provs.length > 10, provs.length + ' محافظة');
-check('القضاء معطّل في الوسم قبل اختيار المحافظة (disabled)', $('f-dist').attrs.disabled !== undefined, JSON.stringify($('f-dist').attrs.disabled));
+check('قائمة المحافظات كاملة (١٩ محافظة)', provs.length === 19, provs.length + ' محافظة');
+check('التقسيم الإداري العراقي محمّل: ١٩ محافظة · ١٣٠ قضاء · ٤٢٧ ناحية',
+  vm.runInContext('window.HRC_IRAQ_COUNT.governorates', ctx) === 19 &&
+  vm.runInContext('window.HRC_IRAQ_COUNT.districts', ctx) === 130 &&
+  vm.runInContext('window.HRC_IRAQ_COUNT.subdistricts', ctx) === 427,
+  JSON.stringify(vm.runInContext('window.HRC_IRAQ_COUNT', ctx)));
+check('قائمة القضاء معطّلة قبل اختيار المحافظة', $('f-qada').attrs.disabled !== undefined);
 
 click(findByOnclick('G.next()'));
 await tick(20);
 check('بلا اختيار محافظة يُرفض الانتقال', active() === 'pg-addr' && /اختر المحافظة/.test($('err-addr').innerHTML));
 
 setVal('f-prov', 'بابل');
-vm.runInContext('G.noop=0', ctx);
 $('f-prov').dispatchEvent({ type: 'change', target: $('f-prov') });
 await tick(10);
-const dists = [...$('f-dist').children].map((o) => o.attrs.value).filter(Boolean);
-check('أقضية بابل تُملأ بعد اختيار المحافظة', dists.length > 0, dists.join(', '));
+check('المحافظة المختارة محفوظة في البيانات', vm.runInContext("G.readProfile().province", ctx) === 'بابل');
+const qadas = [...$('f-qada').children].map((o) => o.attrs.value).filter(Boolean);
+check('أقضية بابل السبعة تظهر بعد اختيار المحافظة (الحلة · المحاويل · كوثى · الهاشمية · الحمزة الغربي · المسيب · الكفل)',
+  qadas.length === 7 && qadas.indexOf('قضاء الحلة') >= 0 && qadas.indexOf('قضاء كوثى') >= 0 &&
+  qadas.indexOf('قضاء الحمزة الغربي') >= 0 && qadas.indexOf('قضاء الكفل') >= 0, qadas.join(' | '));
 
-setVal('f-dist', dists[0]);
-$('f-dist').dispatchEvent({ type: 'change', target: $('f-dist') });
+click(findByOnclick('G.next()'));
+await tick(20);
+check('بلا اختيار قضاء يُرفض الانتقال', active() === 'pg-addr' && /اختر القضاء/.test($('err-addr').innerHTML));
+
+setVal('f-qada', 'قضاء المسيب');
+$('f-qada').dispatchEvent({ type: 'change', target: $('f-qada') });
 await tick(10);
-check('حقل الناحية أُزيل من النموذج', !$('f-sub'), '');
+const naw = [...$('f-nah').children].map((o) => o.attrs.value).filter(Boolean);
+check('نواحي قضاء المسيب تظهر (المركز · الإسكندرية · سدة الهندية · جرف النصر · سوراء)',
+  naw.length === 5 && naw.indexOf('ناحية الإسكندرية') >= 0 && naw.indexOf('ناحية جرف النصر') >= 0, naw.join(' | '));
+
+click(findByOnclick('G.next()'));
+await tick(20);
+check('بلا اختيار ناحية يُرفض الانتقال', active() === 'pg-addr' && /اختر الناحية/.test($('err-addr').innerHTML));
+
+setVal('f-nah', 'ناحية الإسكندرية');
+$('f-nah').dispatchEvent({ type: 'change', target: $('f-nah') });
+await tick(10);
 setVal('f-lm', 'قرب مجمع الكرعاوي');
 click(findByOnclick('G.next()'));
 await tick(30);
 check('سكن كامل ⇒ صفحة تاريخ الميلاد', active() === 'pg-dob', activePages().join(','));
+const savedAddr = vm.runInContext('G.readProfile()', ctx);
+check('القضاء والناحية محفوظان في البيانات المرسلة للقاعدة',
+  savedAddr.district === 'قضاء المسيب' && savedAddr.subdistrict === 'ناحية الإسكندرية', JSON.stringify(savedAddr));
+check('العنوان الكامل مبني بالترتيب: محافظة — قضاء — ناحية — نقطة دالة',
+  savedAddr.address === 'بابل — قضاء المسيب — ناحية الإسكندرية — قرب مجمع الكرعاوي', savedAddr.address);
 
 /* ===========================================================================
  *  6) الخطوة 3 — تاريخ الميلاد (٣ قوائم أرقام)
@@ -478,8 +566,11 @@ check('التلميح يعرض الوظيفة الأولى وكودها ورقم
   /عامل إنتاج/.test($('jobs-hint').innerHTML) && /HRC-1042/.test($('jobs-hint').innerHTML) && /فرصة ١/.test($('jobs-hint').innerHTML),
   $('jobs-hint').innerHTML);
 check('زر «التالي» صار مفعّلاً بعد أول اختيار', $('btn-jobs-next').attrs.disabled === undefined, String($('btn-jobs-next').attrs.disabled));
-check('زر بطاقة الوظيفة المختارة يعرض «مختارة (فرصة ١)» وإلغاء التعيين',
-  /مختارة \(فرصة ١\)/.test(picked.innerHTML) && /إلغاء/.test(picked.innerHTML), picked.innerHTML.slice(0, 200));
+/* 2026-10-27: زر المختارة صار «متابعة للطلب» + «إلغاء الاختيار» (بلا تكرار
+   رقم الفرصة — الرقم ظاهر في شارة الحالة داخل الكارت نفسه). */
+check('زر بطاقة الوظيفة المختارة يعرض «متابعة للطلب» وإلغاء الاختيار',
+  /متابعة للطلب/.test(picked.innerHTML) && /إلغاء الاختيار/.test(picked.innerHTML) &&
+  /★ الفرصة ١/.test(picked.innerHTML), picked.innerHTML.slice(0, 240));
 
 /* الفرصة الثانية: تُعيَّن بنقرة ثانية على وظيفة أخرى */
 click(doc.querySelectorAll('.job-card')[1]);
@@ -559,8 +650,11 @@ check('الاسم المُرسل هو آخر تعديل (لا نسخة قديم�
 check('الهاتف والميلاد والجنس والمحافظة مُرسلة صحيحة',
   sent.phone === '07712345678' && sent.dob === '1996-06-15' && sent.gender === 'أنثى' && sent.province === 'بابل',
   JSON.stringify({ p: sent.phone, d: sent.dob, g: sent.gender, pr: sent.province }));
-check('نقطة الدالة والحقول الأربعة للحقول المطلوبة موجودة',
-  !!sent.landmark && !!sent.district && !sent.subdistrict, JSON.stringify(sent));
+/* 2026-10-27: أعادت الإدارة القضاء والناحية (تشترطهما دالة apply_with_card
+   في القاعدة: province + district + landmark) — فصارا يُرسلان مع العنوان. */
+check('نقطة الدالة والقضاء والناحية مُرسلة للقاعدة بالشكل الذي تشترطه',
+  !!sent.landmark && sent.district === 'قضاء المسيب' && sent.subdistrict === 'ناحية الإسكندرية' &&
+  /بابل — قضاء المسيب — ناحية الإسكندرية/.test(sent.address), JSON.stringify({ d: sent.district, n: sent.subdistrict, a: sent.address }));
 
 /* ===========================================================================
  *  12) صفحة النتيجة: النجاح + الاستمارة + الباركود
@@ -629,6 +723,27 @@ check('الاستمارة الاحتياطية تُخبر الزبون بألا 
   /لا تُعِد التقديم|لا تعيد التقديم/.test($('result-content').innerHTML));
 check('لا تُخفى الحقيقة: لا رسالة «خطأ اتصال» في مسار الحفظ الناجح',
   readFileSync(join(ROOT, 'apply.html'), 'utf8').includes('saved=true'));
+
+/* ===========================================================================
+ *  13) «البورتريه» في خطوة اختيار الوظيفة — بروز المختارة وتغبيش البقية
+ * =========================================================================== */
+step(13, 'اختيار الوظيفة: تأثير البورتريه (المختارة تبرز والبقية تُغبَّش)');
+{
+  const src = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+  check('القائمة تُفعّل has-focus عند وجود وظيفة مختارة',
+    /classList\.toggle\('has-focus',\s*pickedJobs\.length>0\)/.test(src));
+  check('البقية تُغبَّش وتُعتَّم (blur + تعتيم + تصغير)',
+    /has-focus \.job-card:not\(\.selected\)\{[^}]*filter:blur/.test(src) &&
+    /has-focus \.job-card:not\(\.selected\)\{[^}]*opacity:\.4/.test(src));
+  check('المختارة تبرز للأمام (z-index + تكبير + هالة خضراء نيون)',
+    /has-focus \.job-card\.selected\{[^}]*z-index:20/.test(src) &&
+    /has-focus \.job-card\.selected\{[^}]*scale\(1\.0/.test(src) &&
+    /rgba\(34,197,94,\.\d+\)/.test(src));
+  check('البقية المُغبَّشة لا تستقبل النقر (pointer-events:none) حتى يُلغى الاختيار',
+    /has-focus \.job-card:not\(\.selected\)\{[^}]*pointer-events:none/.test(src));
+  check('تأثير البورتريه يُلغى مع prefers-reduced-motion (ويبقى التعتيم وظيفياً)',
+    /prefers-reduced-motion:reduce[\s\S]{0,400}has-focus \.job-card\.selected\{ transform:none/.test(src));
+}
 
 /* ===========================================================================
  *  الخلاصة

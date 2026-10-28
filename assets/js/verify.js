@@ -310,7 +310,7 @@
         (isRequest ? '' :
           '<h3 class="mt-4">الفرص المرتبطة بالبطاقة</h3>' +
           '<div class="table-wrap"><div class="table-scroll"><table class="data" style="min-width:940px">' +
-            '<thead><tr><th>الفرصة</th><th>كود الوظيفة</th><th>المنطقة</th><th>الوظيفة</th>' +
+            '<thead><tr><th>الفرصة</th><th>كود الوظيفة</th><th>المحافظة</th><th>الوظيفة</th>' +
             '<th>هاتف جهة الاتصال</th><th>حالة المهلة</th><th>وقت الاختيار</th><th>مهلة الحجز</th><th>ملاحظة</th></tr></thead>' +
             '<tbody>' + rows + '</tbody>' +
           '</table></div></div>') +

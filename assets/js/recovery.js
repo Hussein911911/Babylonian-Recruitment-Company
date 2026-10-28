@@ -13,7 +13,11 @@
  }
  async function refresh(){
   if(busy)return;lock(true);
-  try{var res=await Store.recoveryRPC('list');copies=res.copies||[];paint();loaded=true;status(copies.length?'آخر نسخة ناجحة: '+Store.fmtDateTime(copies[0].createdAt):'لا توجد نسخة محفوظة بعد؛ أنشئ أول نسخة من بيانات القاعدة.');}
+  try{var res=await Store.recoveryRPC('list');copies=res.copies||[];paint();loaded=true;
+   var good=copies.filter(function(c){return c.restorable!==false;});
+   if(!copies.length)status('لا توجد نسخة محفوظة بعد؛ أنشئ أول نسخة من بيانات القاعدة.');
+   else if(!good.length)status('لا توجد نسخة قابلة للاسترجاع: شكل قاعدة البيانات تغيّر بعد آخر نسخة. اضغط «إنشاء نسخة الآن» فوراً.',true);
+   else status('آخر نسخة ناجحة: '+Store.fmtDateTime(good[0].createdAt)+' — قابلة للاسترجاع.'+((copies.length>good.length)?' ('+(copies.length-good.length)+' نسخة قديمة غير قابلة للاسترجاع)' : ''));}
   catch(e){status('تعذر قراءة النسخ من القاعدة: '+e.message,true);}
   finally{lock(false);}
  }
@@ -24,7 +28,13 @@
    var row=el('article',undefined,'recovery-copy'),details=el('div');
    details.append(el('h4',copy.name),el('p',Store.fmtDateTime(copy.createdAt)+' · '+countText(copy.counts),'recovery-copy-meta'));
    if(copy.safety)details.append(el('span','نسخة أمان قبل الاسترجاع','recovery-safety'));
-   var button=el('button','معاينة واسترجاع','btn btn-outline');button.type='button';button.onclick=function(){preview(copy);};
+   /* نسخة أقدم من هجرة أعمدة: لا يمكن استرجاعها (recovery_read يرفضها) —
+      نوضّحها هنا بدل أن يكتشفها المدير بعد ضغط «معاينة واسترجاع». */
+   var stale=copy.restorable===false;
+   if(stale)details.append(el('span','غير قابلة للاسترجاع — شكل قاعدة أقدم','recovery-stale'));
+   var button=el('button',stale?'غير قابلة للاسترجاع':'معاينة واسترجاع','btn btn-outline');button.type='button';
+   if(stale){button.disabled=true;button.title='أُنشئت قبل تغيير أعمدة الجداول؛ أنشئ نسخة جديدة من الزر أعلاه.';}
+   else button.onclick=function(){preview(copy);};
    var actions=el('div',undefined,'recovery-actions'),remove=el('button','حذف','btn btn-outline btn-sm');remove.type='button';remove.setAttribute('aria-label','حذف النسخة '+copy.name);remove.onclick=function(){removeCopy(copy);};actions.append(button,remove);row.append(details,actions);list.append(row);
   });
  }
@@ -86,15 +96,98 @@
    };
   }});
  }
+ /* ===================== جدولة النسخ التلقائي (المدير) =====================
+    تُخزَّن في القاعدة (brc.settings → recovery_schedule) وتُعيد ضبط مهمة
+    pg_cron فوراً — لا تعتمد على بقاء هذه الصفحة مفتوحة. */
+ var DAYS=[['0','الأحد'],['1','الاثنين'],['2','الثلاثاء'],['3','الأربعاء'],['4','الخميس'],['5','الجمعة'],['6','السبت']];
+ function paintSchedule(s){
+  var daysBox=box.querySelector('[data-recovery-days]');if(!daysBox)return;
+  var picked=(s&&s.days)||[];
+  daysBox.replaceChildren();
+  DAYS.forEach(function(d){
+   var id='recovery-day-'+d[0];
+   var label=el('label','','recovery-day');label.setAttribute('for',id);
+   var cb=document.createElement('input');cb.type='checkbox';cb.id=id;cb.value=d[0];
+   cb.checked=picked.map(String).indexOf(d[0])>=0;label.append(cb,el('span',d[1]));daysBox.append(label);
+  });
+  var time=box.querySelector('#recovery-sched-time');
+  if(time&&s&&s.time)time.value=s.time;
+  var on=!!(s&&s.enabled);
+  var badge=box.querySelector('[data-recovery-sched-badge]');
+  if(badge){badge.textContent=on?'مُفعّلة':'موقوفة';badge.classList.toggle('is-off',!on);}
+  var note=box.querySelector('[data-recovery-sched-note]');
+  if(note){
+   if(!s)note.textContent='';
+   else if(!on)note.textContent='لا نسخة تلقائية الآن — «حفظ الجدولة» بعد اختيار يوم يعيد التفعيل.';
+   else note.textContent='التالية: '+(s.nextRunText||'')+(s.lastRunText?' · آخر نسخة: '+s.lastRunText:'');
+  }
+ }
+ function readScheduleDays(){
+  return [].slice.call(box.querySelectorAll('[data-recovery-days] input:checked')).map(function(i){return Number(i.value);});
+ }
+ function nextRunText(days,time){
+  if(!days.length)return '';
+  var now=new Date(),pad2=function(n){return (n<10?'0':'')+n;};
+  var parts=String(time||'23:00').split(':'),hh=Number(parts[0])||0,mm=Number(parts[1])||0;
+  for(var i=0;i<8;i++){
+   var d=new Date(now.getTime()+i*86400000);
+   if(days.indexOf(d.getDay())<0)continue;
+   var slot=new Date(d.getFullYear(),d.getMonth(),d.getDate(),hh,mm,0,0);
+   if(slot.getTime()<=now.getTime())continue;
+   return new Intl.DateTimeFormat('ar-IQ',{weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Baghdad'}).format(slot);
+  }
+  return '';
+ }
+ async function loadSchedule(){
+  if(!box)return;
+  try{
+   var s=await Store.recoveryScheduleGet();
+   s.nextRunText=nextRunText((s.days||[]).map(Number),s.time);
+   s.lastRunText=s.lastRun?Store.fmtDateTime(s.lastRun):'';
+   paintSchedule(s);
+  }catch(e){
+   var note=box.querySelector('[data-recovery-sched-note]');
+   if(note)note.textContent='تعذّرت قراءة الجدولة: '+e.message;
+   var badge=box.querySelector('[data-recovery-sched-badge]');
+   if(badge)badge.textContent='غير متاحة';
+  }
+ }
+ async function saveSchedule(off){
+  var note=box.querySelector('[data-recovery-sched-note]');
+  var btn=box.querySelector('#recovery-sched-save');
+  var days=off?[]:readScheduleDays();
+  var time=(box.querySelector('#recovery-sched-time')||{}).value||'23:00';
+  if(!off&&!days.length){if(note){note.textContent='اختر يوماً واحداً على الأقل، أو اضغط «إيقاف التلقائي».';note.classList.add('is-error');}return;}
+  if(note){note.classList.remove('is-error');note.textContent='جارٍ الحفظ…';}
+  if(btn)btn.disabled=true;
+  try{
+   var s=await Store.recoveryScheduleSet(days,time);
+   s.nextRunText=nextRunText((s.days||[]).map(Number),s.time);
+   s.lastRunText=s.lastRun?Store.fmtDateTime(s.lastRun):'';
+   paintSchedule(s);
+   UI.toast('ok',off?'أُوقفت الجدولة':'حُفظت الجدولة',off?'لا نسخة تلقائية حتى تعيد التفعيل.':'تسري من اللحظة داخل القاعدة.');
+  }catch(e){
+   if(note){note.textContent='تعذّر الحفظ: '+e.message;note.classList.add('is-error');}
+   UI.toast('err','تعذّر حفظ الجدولة',e.message);
+  }finally{if(btn)btn.disabled=false;}
+ }
  root.HRCRecovery={mount:function(){
   if(!Store.isAdmin()||!Store.cloudStatus().enforceAuth)return;
   var target=document.getElementById('recovery-tools');if(!target)return;
   if(box!==target||!target.dataset.recoveryReady){box=target;target.dataset.recoveryReady='yes';
    box.className='recovery-console';
-   box.innerHTML='<header class="recovery-head"><div><span class="recovery-eyebrow">حماية بيانات الشركة</span><h3>النسخ الاحتياطي والاسترجاع</h3><p>احفظ نسخة، وارجع لها إذا انحذفت بيانات الموقع بالخطأ.</p></div><button type="button" class="btn btn-gold" id="recovery-create">إنشاء نسخة الآن</button></header><div class="recovery-strip"><span>نسخ مشفرة من القاعدة الفعلية</span><span>استرجاع بصلاحية المدير فقط</span></div><p data-recovery-status role="status">جارٍ الاتصال بخدمة النسخ…</p><div class="recovery-list-head"><h4>النسخ المحفوظة</h4><button type="button" class="btn btn-outline btn-sm" id="recovery-refresh">تحديث القائمة</button></div><div data-recovery-list></div><div class="recovery-scope">الحفظ داخل نفس مشروع القاعدة · Google Drive غير مربوط.<details><summary>نطاق النسخة وملاحظات الأمان</summary><p>استعادة لبيانات التشغيل وروابط الصور، وليست استرداداً لكود الموقع أو ملفات Storage أو حسابات الدخول. لا توجد جدولة تلقائية هنا، ولا تحمي هذه النسخ وحدها من حذف المشروع بالكامل. لقطات المتصفح القديمة ليست جزءاً من النظام الجديد ولم تُحذف.</p></details></div>';
-   box.querySelector('#recovery-create').onclick=create;box.querySelector('#recovery-refresh').onclick=refresh;loaded=false;
+   box.innerHTML='<header class="recovery-head"><div><span class="recovery-eyebrow">حماية بيانات الشركة</span><h3>النسخ الاحتياطي والاسترجاع</h3><p>احفظ نسخة، وارجع لها إذا انحذفت بيانات الموقع بالخطأ.</p></div><button type="button" class="btn btn-gold" id="recovery-create">إنشاء نسخة الآن</button></header><div class="recovery-strip"><span>نسخ مشفرة من القاعدة الفعلية</span><span>استرجاع بصلاحية المدير فقط</span></div><p data-recovery-status role="status">جارٍ الاتصال بخدمة النسخ…</p><section class="recovery-schedule" aria-labelledby="recovery-sched-title"><div class="recovery-schedule-head"><div><h4 id="recovery-sched-title">جدولة النسخ التلقائي</h4><p>يحددها المدير: اختر الأيام والساعة (بتوقيت بغداد)، وتُنفَّذ داخل القاعدة نفسها حتى لو كانت اللوحة مغلقة.</p></div><span class="recovery-sched-badge" data-recovery-sched-badge>جارٍ القراءة…</span></div><div class="recovery-days" data-recovery-days role="group" aria-label="أيام النسخ التلقائي"></div><div class="recovery-sched-foot"><label class="field" for="recovery-sched-time">الساعة<input type="time" id="recovery-sched-time" value="23:00" step="300"></label><button type="button" class="btn btn-gold btn-sm" id="recovery-sched-save">حفظ الجدولة</button><button type="button" class="btn btn-outline btn-sm" id="recovery-sched-off">إيقاف التلقائي</button><span class="recovery-sched-note" data-recovery-sched-note role="status"></span></div></section><div class="recovery-list-head"><h4>النسخ المحفوظة</h4><button type="button" class="btn btn-outline btn-sm" id="recovery-refresh">تحديث القائمة</button></div><div data-recovery-list></div><div class="recovery-scope">الحفظ داخل نفس مشروع القاعدة · Google Drive غير مربوط.<details><summary>نطاق النسخة وملاحظات الأمان</summary><p>استعادة لبيانات التشغيل وروابط الصور، وليست استرداداً لكود الموقع أو ملفات Storage أو حسابات الدخول. الجدولة أعلاه يضبطها المدير وتُنفَّذ داخل القاعدة، لكنها لا تحمي من حذف المشروع بالكامل. لقطات المتصفح القديمة ليست جزءاً من النظام الجديد ولم تُحذف.</p></details></div>';
+   box.querySelector('#recovery-create').onclick=create;box.querySelector('#recovery-refresh').onclick=refresh;
+   box.querySelector('#recovery-sched-save').onclick=function(){saveSchedule(false);};
+   box.querySelector('#recovery-sched-off').onclick=function(){saveSchedule(true);};
+   var t=box.querySelector('#recovery-sched-time');if(t)t.onchange=function(){
+     var note=box.querySelector('[data-recovery-sched-note]');
+     if(note){note.classList.remove('is-error');note.textContent='التالية: '+nextRunText(readScheduleDays(),t.value);}
+   };
+   paintSchedule(null);
+   loaded=false;
   }
-  if(!loaded&&!busy)refresh();
+  if(!loaded&&!busy){refresh();loadSchedule();}
  }};
  root.HRCRecovery.mount();
 })(window);

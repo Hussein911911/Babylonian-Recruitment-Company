@@ -47,7 +47,11 @@ if(!process.env.HRC_CAPACITY_OBSERVE){
  }});
  vm.runInContext(readFileSync(new URL('../assets/js/cloud-http.js',import.meta.url),'utf8'),httpContext);
  const publicResult=await C.fetchPublicJobs(httpContext.HRCHttp.createClient('https://synthetic.invalid','public-fixture'));
- assert.ok(publicResult.ok);assert.equal(publicResult.jobs.length,1000);assert.equal(requests.length,10);assert.ok(requests.every(r=>r.prefer==='count=exact'));assert.equal(requests.at(-1).offset,900);
+ assert.ok(publicResult.ok);assert.equal(publicResult.jobs.length,1000);assert.equal(requests.length,10);
+ /* 2026-10-24: القراءة العامة لم تعد تطلب count=exact — العدّ على public_jobs
+    يُنفّذ استعلامه الفرعي المترابط لكل صف، وهو أثقل ما يواجهه كل زائر. */
+ assert.ok(requests.every(r=>!r.prefer),'public reads must not request exact counts: '+JSON.stringify(requests.map(r=>r.prefer)));
+ assert.equal(requests.at(-1).offset,900);
 }
 mkdirSync(new URL('./.tmp/capacity/',import.meta.url),{recursive:true});
 writeFileSync(new URL('./.tmp/capacity/'+(process.env.HRC_CAPACITY_OBSERVE?'before':'after')+'.json',import.meta.url),JSON.stringify(results,null,2));

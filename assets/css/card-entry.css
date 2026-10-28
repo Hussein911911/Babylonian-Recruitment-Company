@@ -1,0 +1,268 @@
+/* ===========================================================================
+ *  HRC — شاشة «قدّم ببطاقتك» (نافذة بطاقتي)
+ *  ---------------------------------------------------------------------------
+ *  ملف مستقل يُحمَّل في الصفحة العامة (index) والملفين المستقلين فقط، لأن
+ *  نافذة الحجز لا تُفتح في لوحة الموظفين ولا صفحة التحقق — فلا تُثقل عليهما.
+ *  المصدر الوحيد لهذه الأنماط هو هذا الملف (نُقلت من style.css 2026-10-24).
+ * =========================================================================== */
+/* ══════════════════════════════════════════════════════════════════════════
+   شاشة «قدّم ببطاقتك» — ورقة فاتحة، مبدّل واحد، ولوحة واحدة (2026-10-24)
+   المبدأ: عنصر واحد يلفت النظر (زر ذهبي واحد). لا أزرار متجاورة متضاربة،
+   ولا حركات لانهائية: تبديل واحد بحركة قصيرة، ثم سكون.
+   ══════════════════════════════════════════════════════════════════════════ */
+/* العرض يُضبط مرة واحدة في style.css (.modal-booking) — لا تكرار هنا */
+.modal-booking .modal-head {
+  background: linear-gradient(135deg, #0d1f42, #1a3a72);
+  border-bottom: 1px solid rgba(200, 162, 74, .32);
+  color: #f6f1e3; padding: 16px 20px;
+}
+.modal-booking .modal-head h3 { color: #fff; font-size: 1rem; }
+.modal-booking .modal-head .tiny { color: #b9c7e2 !important; font-size: .76rem; }
+.modal-booking .modal-head .icon-btn {
+  color: #dbe4f5; border-color: rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .06);
+}
+.modal-booking .modal-head .icon-btn:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+.modal-booking .modal-body { background: #fff; padding: 18px 20px 16px; }
+
+.bk-sheet { display: grid; gap: 14px; animation: bkEnter .26s cubic-bezier(.22, 1, .36, 1) both; }
+
+/* ── سطر السياق: شارة صغيرة + كود الوظيفة إن وُجد ── */
+.bk-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.bk-eyebrow {
+  display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; font-weight: 800;
+  color: #7d6420; background: #fbf5e6; border: 1px solid rgba(200, 162, 74, .28);
+  border-radius: 999px; padding: 4px 10px;
+}
+.bk-eyebrow svg { width: 13px; height: 13px; }
+.bk-jobtap {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+  background: #f3f8f3; border: 1px solid rgba(31, 143, 78, .24);
+  font-size: .74rem; font-weight: 800; color: #1c6b3f;
+}
+.bk-jobtap svg { width: 13px; height: 13px; }
+.bk-jobtap b { letter-spacing: .04em; }
+
+/* ── شريط البطاقة: مربّع كيو آر + الرقم ── */
+.bk-card {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center; gap: 11px; padding: 10px 12px; border-radius: 13px;
+  background: linear-gradient(135deg, #0d1f42, #17376c);
+  border: 1px solid rgba(232, 208, 137, .22);
+  transition: border-color .25s ease;
+}
+/* مربّع الكيو آر الحقيقي — مساحة بيضاء نظيفة حوله كي يُقرأ فعلاً */
+.bk-card-qr {
+  width: 44px; height: 44px; border-radius: 7px; background-color: #fff;
+  background-repeat: no-repeat; background-size: 88% 88%; background-position: center;
+  box-shadow: 0 0 0 2px rgba(232, 208, 137, .35);
+  transition: box-shadow .25s ease;
+}
+.bk-card-main { display: grid; gap: 3px; min-width: 0; }
+.bk-card-brand {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .72rem; font-weight: 800; color: #e8d089; white-space: nowrap;
+}
+.bk-card-brand svg { width: 14px; height: 14px; }
+.bk-card-num {
+  font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  font-size: .84rem; font-weight: 700; letter-spacing: .16em; color: #cfd9ec;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr; text-align: right;
+  transition: color .25s ease;
+}
+.bk-card-tags { display: inline-flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.bk-card-tags b {
+  font-size: .62rem; font-weight: 800; color: #c9d4e8; background: rgba(255, 255, 255, .08);
+  border-radius: 6px; padding: 1px 7px; white-space: nowrap;
+}
+.bk-card.has-code { border-color: rgba(232, 208, 137, .5); }
+.bk-card.has-code .bk-card-num { color: #ffe6a2; }
+.bk-card.has-code .bk-card-qr { box-shadow: 0 0 0 2px rgba(232, 208, 137, .8), 0 0 14px -4px rgba(232, 208, 137, .8); }
+
+/* ── المبدّل: تبويبان وشريط واحد ينزلق ── */
+.bk-switch {
+  position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  background: #f2f4f8; border: 1px solid #e4e8f0; border-radius: 12px; padding: 4px;
+}
+.bk-switch-thumb {
+  position: absolute; top: 4px; bottom: 4px; inset-inline-start: 4px; width: calc(50% - 4px);
+  border-radius: 9px; background: #fff; border: 1px solid rgba(200, 162, 74, .45);
+  box-shadow: 0 2px 8px -4px rgba(11, 26, 58, .35);
+  transition: transform .24s cubic-bezier(.22, 1, .36, 1);
+}
+.bk-mode-manual .bk-switch-thumb { transform: translateX(calc(-100% - 4px)); }
+.bk-tab {
+  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center;
+  gap: 7px; min-height: 40px; padding: 6px 10px; border: none; background: none; cursor: pointer;
+  font: inherit; font-size: .82rem; font-weight: 800; color: #6b7793; border-radius: 9px;
+  transition: color .18s ease;
+}
+.bk-tab svg { width: 16px; height: 16px; }
+.bk-tab[aria-selected="true"] { color: var(--lapis); }
+.bk-tab[aria-selected="true"] svg { color: #a2811f; }
+.bk-tab:hover { color: var(--lapis-2); }
+.bk-tab:focus-visible { outline: 2px solid rgba(200, 162, 74, .7); outline-offset: 1px; }
+
+/* ── اللوحة: واحدة فقط ظاهرة ── */
+.bk-panel { display: none; }
+.bk-panel.is-open { display: grid; gap: 10px; animation: bkFade .2s ease-out both; }
+.bk-panel-manual.is-open { gap: 12px; }
+.bk-panel-manual .bk-field { margin: 0; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   منصّة المسح — كاميرا حيّة داخل الشاشة (2026-10-25)
+   ---------------------------------------------------------------------------
+   بدل مربّع كيو آر «توضيحي» بعدسة متحركة (كان يوهم الزبون بأن عليه مسح
+   الشاشة)، صار إطار كاميرا حقيقي: يعرض البث عند التشغيل، خط مسح نيون أثناء
+   القراءة، وطبقة شرح واضحة قبل التشغيل وعند الخطأ أو رفض الإذن.
+   ══════════════════════════════════════════════════════════════════════════ */
+.bk-scanner { display: grid; gap: 10px; }
+
+.bk-cam {
+  position: relative; overflow: hidden; border-radius: 16px;
+  aspect-ratio: 16 / 10; max-height: 232px; display: grid; place-items: center;
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgba(63, 193, 196, .12), transparent 62%),
+    linear-gradient(160deg, #0d1f42, #102a4f 60%, #0b1a35);
+  border: 1px solid rgba(232, 208, 137, .30);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.bk-cam[data-state="live"] {
+  border-color: rgba(56, 232, 212, .55);
+  box-shadow: 0 0 0 1px rgba(56, 232, 212, .25), 0 12px 30px -20px rgba(0, 0, 0, .9);
+}
+.bk-cam[data-state="starting"] { border-color: rgba(232, 208, 137, .6); }
+.bk-cam[data-state="error"] { border-color: rgba(201, 96, 92, .6); }
+
+/* بث الكاميرا */
+.bk-cam video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; opacity: 0; transition: opacity .25s ease;
+  background: #07111f;
+}
+.bk-cam[data-state="live"] video { opacity: 1; }
+
+/* زوايا الإطار */
+.bk-corner {
+  position: absolute; width: 20px; height: 20px; z-index: 3;
+  border: 2.5px solid rgba(232, 208, 137, .9);
+  filter: drop-shadow(0 0 6px rgba(232, 208, 137, .35));
+}
+.bk-corner.tl { top: 12px; inset-inline-start: 12px; border-width: 2.5px 0 0 2.5px; border-start-start-radius: 8px; }
+.bk-corner.tr { top: 12px; inset-inline-end: 12px; border-width: 2.5px 2.5px 0 0; border-start-end-radius: 8px; }
+.bk-corner.bl { bottom: 12px; inset-inline-start: 12px; border-width: 0 0 2.5px 2.5px; border-end-start-radius: 8px; }
+.bk-corner.br { bottom: 12px; inset-inline-end: 12px; border-width: 0 2.5px 2.5px 0; border-end-end-radius: 8px; }
+
+/* خط المسح: يظهر أثناء البث فقط */
+.bk-cam-line {
+  position: absolute; inset-inline: 14%; top: 22%; height: 2px; z-index: 2;
+  border-radius: 2px; opacity: 0;
+  background: linear-gradient(90deg, transparent, #38e8d4 22%, #a9fff5 50%, #38e8d4 78%, transparent);
+  box-shadow: 0 0 14px rgba(56, 232, 212, .85);
+  transition: opacity .2s ease;
+}
+.bk-cam[data-state="live"] .bk-cam-line { opacity: 1; animation: bkCamSweep 2.6s ease-in-out infinite; }
+@keyframes bkCamSweep {
+  0%, 100% { top: 20%; opacity: .55; }
+  50% { top: 78%; opacity: 1; }
+}
+
+/* طبقة الشرح (قبل التشغيل / جارٍ / خطأ) */
+.bk-cam-overlay {
+  position: relative; z-index: 4; display: grid; justify-items: center; gap: 7px;
+  text-align: center; padding: 20px 22px; max-width: 36ch;
+}
+.bk-cam[data-state="live"] .bk-cam-overlay { display: none; }
+.bk-cam-ic {
+  width: 48px; height: 48px; border-radius: 15px; display: grid; place-items: center;
+  color: #241a05; background: linear-gradient(145deg, #e8d089, #c8a24a);
+  box-shadow: 0 10px 22px -12px rgba(200, 162, 74, .95), inset 0 1px 0 rgba(255, 255, 255, .5);
+}
+.bk-cam-ic svg { width: 24px; height: 24px; }
+.bk-cam[data-state="starting"] .bk-cam-ic { animation: bkCamPulse 1.2s ease-in-out infinite; }
+@keyframes bkCamPulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+.bk-cam[data-state="error"] .bk-cam-ic {
+  color: #2a0a09; background: linear-gradient(145deg, #f6b7b3, #c9605c);
+  box-shadow: 0 10px 22px -12px rgba(201, 96, 92, .9);
+}
+.bk-cam-overlay b { font-size: .96rem; font-weight: 900; color: #f4f7ff; line-height: 1.6; }
+.bk-cam-sub { font-size: .79rem; line-height: 1.75; color: #c2cee4; }
+.bk-cam[data-state="error"] .bk-cam-sub { color: #ffc9c4; }
+
+/* روابط بديلة أسفل الزر */
+.bk-cam-alt {
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+}
+.bk-scanner-hint {
+  margin: 0; display: flex; align-items: flex-start; gap: 7px;
+  font-size: .74rem; color: var(--muted); line-height: 1.7; text-align: start;
+}
+.bk-scanner-hint svg { width: 14px; height: 14px; color: #9a8347; flex: none; margin-top: 2px; }
+
+/* الأزرار: واحد ذهبي في كل لوحة، والباقي روابط نصية */
+.bk-cta { width: 100%; justify-content: center; min-height: 46px; font-weight: 800; }
+.bk-cta.is-ready { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .4); }
+.bk-link {
+  justify-self: center; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  color: var(--lapis-2); font-weight: 700; background: none; border: none;
+  padding: 8px 6px; min-height: 40px; font: inherit; font-size: .78rem; border-radius: 8px;
+}
+.bk-link svg { width: 14px; height: 14px; color: #8d7c50; }
+.bk-link:hover { color: #8d6b1f; text-decoration: underline; text-underline-offset: 3px; }
+.bk-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* الحقل */
+.bk-scan-row { position: relative; }
+.bk-input-ic {
+  position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%);
+  color: #9a8347; pointer-events: none; display: grid;
+}
+.bk-input-ic svg { width: 17px; height: 17px; }
+.bk-scan-row input { padding-inline-start: 38px !important; min-height: 46px; letter-spacing: .1em; }
+
+/* ── التذييل: زران واضحان (لا روابط نصية) ── */
+.bk-entry-foot {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 9px;
+  border-top: 1px solid #eef1f6; padding-top: 12px;
+}
+.bk-footbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 46px; padding: 9px 12px; cursor: pointer; text-align: center;
+  font: inherit; font-size: .79rem; font-weight: 800; line-height: 1.5;
+  color: var(--lapis-2); background: #fff; border: 1px solid #e2e7f0; border-radius: 11px;
+  transition: border-color .16s ease, background .16s ease, color .16s ease;
+}
+.bk-footbtn-ic { display: grid; place-items: center; flex: none; }
+.bk-footbtn svg { width: 16px; height: 16px; color: #8d7c50; }
+.bk-footbtn:hover { border-color: rgba(200, 162, 74, .6); background: #fdfaf2; color: var(--lapis); }
+.bk-footbtn:active { background: #faf5e8; }
+.bk-footbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.bk-footbtn.is-wa { color: #1c7a45; border-color: #d6e8dd; background: #f7fbf8; }
+.bk-footbtn.is-wa svg { color: #1c7a45; }
+.bk-footbtn.is-wa:hover { border-color: #9fd0b4; background: #f1f9f4; }
+
+@keyframes bkEnter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes bkFade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 640px) {
+  .modal-booking .modal-body { padding: 15px 14px; }
+  .bk-card { padding: 10px 11px 8px; }
+  .bk-card-num { font-size: .82rem; letter-spacing: .16em; }
+  .bk-card { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 9px; }
+  .bk-card-qr { width: 38px; height: 38px; }
+  .bk-card-tags { flex-direction: row; }
+  .bk-cam { aspect-ratio: 4 / 3; max-height: 208px; border-radius: 14px; }
+  .bk-cam-overlay { padding: 16px 16px; }
+  .bk-cam-ic { width: 42px; height: 42px; border-radius: 13px; }
+  .bk-cam-sub { font-size: .76rem; }
+  .bk-entry-foot { grid-template-columns: 1fr; }
+  .bk-footbtn { font-size: .82rem; }
+  .bk-switch-thumb { transition-duration: .22s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-sheet, .bk-panel.is-open { animation: none !important; }
+  .bk-switch-thumb { transition: none; }
+  /* لا خط مسح متحرك ولا نبض — البث نفسه يبقى ظاهراً */
+  .bk-cam-line { animation: none !important; top: 50%; }
+  .bk-cam[data-state="starting"] .bk-cam-ic { animation: none !important; }
+}

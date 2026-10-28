@@ -37,7 +37,6 @@
   /* ------------------------- تحويل الوظائف (jobs) ------------------------- */
   function jobFromDb(r) {
     return {
-      employerPinSet: r.employer_pin_set === true,
       id: r.id,
       code: r.code,
       title: r.title,
@@ -171,12 +170,12 @@
       jobId: r.job_id || null,
       jobCode: r.job_code || (job ? job.code : null),
       jobTitle: job ? job.title : null,
-      location: job ? job.region : null,
+      location: job ? (job.governorate || '') : null,
       employerName: job ? job.employer.name : null,
       employerPhone: job ? job.employer.phone : null,
       vacancyNo: r.vacancy_no || null,
       slotStatus: r.slot_status || 'empty',
-      code: r.chance_code || null,          /* رمز الفرصة السري (ظهر البطاقة) */
+      code: r.chance_code || null,          /* تاريخي: رموز الفرص أُلغيت ولا تُطبع */
       selectedAt: toISO(r.selected_at),
       holdExpiresAt: toISO(r.hold_expires_at),
       closedAt: toISO(r.closed_at),
@@ -202,7 +201,7 @@
       job_id: UUID_RE.test(String(o.jobId || '')) ? o.jobId : null,
       job_code: o.jobCode || null,
       slot_status: o.slotStatus || 'empty',
-      chance_code: o.code || null,          /* رمز الفرصة السري (ظهر البطاقة) */
+      chance_code: o.code || null,          /* تاريخي: أُلغيت رموز الفرص ولا تُطبع */
       selected_at: o.selectedAt || null, hold_expires_at: o.holdExpiresAt || null,
       closed_at: o.closedAt || null, outcome_note: o.note || '',
       employer_decision: o.employerDecision || null, decision_at: o.decisionAt || null,
@@ -322,42 +321,157 @@
 
   // Stable, bounded pages: never silently adopt a truncated table. Exact counts
   // also handle API row caps SMALLER than our requested 500 rows.
-  function readPages(client, table, maximum) {
+  /* ═════════════════════════════════════════════════════════════════════════
+   *  قراءة جدول كامل بأقل عدد رحلات ممكنة إلى القاعدة
+   *  -------------------------------------------------------------------------
+   *  ما كان يحدث قبل 2026-10-24 (وسبب «تأخّر الاتصال» الذي شكا منه صاحب الشركة):
+   *    • كل صفحة ٥٠٠ صف، وكل صفحة **طلب منفصل بالتسلسل** (job_attempts بصفحتين
+   *      أو ثلاث، وaudit_log بأربع) فمجموع الانتظار = عدد الصفحات × زمن الرحلة.
+   *    • **كل** صفحة تطلب `count=exact` أي COUNT كامل للجدول بعد ترتيبه — وهذا
+   *      مكلف جداً، وعلى واجهة `public_jobs` أخطر: فيها استعلام فرعي مترابط
+   *      (عدّ المحاولات لكل وظيفة) يُنفَّذ لكل صف من أجل العدّ وحده.
+   *  الآن:
+   *    • صفحة ١٠٠٠ صف (حد Supabase الافتراضي) بدل ٥٠٠.
+   *    • العدّ الدقيق يُطلب **مرة واحدة** (الصفحة الأولى) ويمكن إلغاؤه للقراءة
+   *      العامة عبر `{ count:false }`.
+   *    • بقية الصفحات تُطلب **بالتوازي** (٤ في وقت واحد) بعد معرفة العدد،
+   *      فزمن الجدول الكبير ≈ زمن صفحتين لا خمس.
+   *    • تبقى كل حراسات السلامة: كشف تغيّر العدد أثناء التحميل، وتكرار المفاتيح،
+   *      وحدّ الحجم الأقصى — والنتيجة نفسها بالضبط.
+   * ═══════════════════════════════════════════════════════════════════════ */
+  var PAGE_SIZE = 1000;      /* حد PostgREST الافتراضي في سوبابيس */
+  var PAGE_PARALLEL = 4;     /* عدد الصفحات المتوازية */
+
+  /* تنفيذ مهام محدودة التوازي مع الحفاظ على الترتيب */
+  function mapLimit(items, limit, worker) {
+    var out = new Array(items.length), i = 0, active = 0;
+    return new Promise(function (resolve, reject) {
+      if (!items.length) return resolve(out);
+      var failed = false;
+      function next() {
+        if (failed) return;
+        if (i >= items.length && active === 0) return resolve(out);
+        while (active < limit && i < items.length) {
+          (function (index) {
+            active++;
+            Promise.resolve(worker(items[index], index)).then(function (v) {
+              out[index] = v; active--; next();
+            }, function (e) { failed = true; reject(e); });
+          })(i++);
+        }
+      }
+      next();
+    });
+  }
+
+  function readPages(client, table, maximum, opts) {
+    opts = opts || {};
     var keys = { jobs: 'code', applicants: 'serial', job_attempts: 'id', audit_log: 'id', settings: 'key', staff: 'id', public_jobs: 'code' };
-    keys.working_jobs='code';keys.working_applicants='serial';keys.working_job_attempts='id';
-    var key = keys[table], rows = [], expected = null, seen = Object.create(null);
-    function query() {
-      var q = client.from(table).select('*', { count: 'exact' });
+    keys.working_jobs = 'code'; keys.working_applicants = 'serial'; keys.working_job_attempts = 'id';
+    var key = keys[table] || 'id';
+    var rows = [], seen = Object.create(null), expected = null;
+    var wantCount = opts.count !== false;
+
+    function failure(message) { return { data: null, error: { message: message, code: 'INCOMPLETE_LOAD' } }; }
+
+    function query(withCount) {
+      var q = client.from(table).select(opts.cols || '*', withCount ? { count: 'exact' } : {});
       if (table === 'audit_log') q = q.order('ts', { ascending: false });
       return q.order(key, { ascending: true });
     }
-    var first = query();
-    // Compatibility with older injected adapters. All shipped production clients
-    // implement range; dedicated capped-API tests exercise that path.
-    if (typeof first.range !== 'function') return table === 'audit_log' ? first.limit(maximum) : first;
-    function failure(message) { return { data: null, error: { message: message, code: 'INCOMPLETE_LOAD' } }; }
-    function next(q) {
-      return Promise.resolve(q.range(rows.length, Math.min(rows.length + 499, maximum - 1))).then(function (res) {
-        if (!res || res.error) return res || failure('لا نتيجة من القاعدة');
-        var count = typeof res.count === 'number' ? res.count : null;
-        if (expected !== null && count !== null && count !== expected) return failure('تغير عدد السجلات أثناء التحميل؛ أعد التحديث');
-        if (expected === null) expected = count;
-        if (table !== 'audit_log' && count > maximum) return failure('حجم الجدول يتجاوز حد التحميل الآمن؛ يلزم تقسيم البيانات');
-        var page = Array.isArray(res.data) ? res.data : [];
-        for (var i = 0; i < page.length; i++) {
-          var id = String(page[i][key]);
-          if (seen[id]) return failure('تكرر سجل أثناء التحميل؛ أعد التحديث');
-          seen[id] = true; rows.push(page[i]);
-        }
-        var target = expected === null ? null : Math.min(expected, maximum);
-        if (target !== null && rows.length >= target) return { data: rows, error: null };
-        if (!page.length) return target === null ? { data: rows, error: null } : failure('لم يكتمل تحميل الجدول');
-        if (rows.length >= maximum) return table === 'audit_log' ? { data: rows, error: null } : failure('تجاوز حد التحميل الآمن');
-        if (target === null && page.length < 500) return { data: rows, error: null };
-        return next(query());
+
+    function fetchRange(from, to, withCount) {
+      var q = query(withCount);
+      if (typeof q.range !== 'function') {
+        return Promise.resolve(q.limit(maximum)).then(function (res) {
+          return { res: res, from: 0, to: maximum - 1 };
+        });
+      }
+      return Promise.resolve(q.range(from, to)).then(function (res) {
+        return { res: res || failure('لا نتيجة من القاعدة'), from: from, to: to };
       });
     }
-    return next(first);
+
+    /* يجمع صفحة في المصفوفة مع كشف التكرار */
+    function absorb(page) {
+      var list = Array.isArray(page) ? page : [];
+      for (var i = 0; i < list.length; i++) {
+        var id = String(list[i][key]);
+        if (seen[id]) return false;          /* تكرار = عدم اكتمال موثوق */
+        seen[id] = true; rows.push(list[i]);
+      }
+      return true;
+    }
+
+    var first = query(wantCount);
+    /* متوافق مع المحوّلات القديمة التي لا تدعم range */
+    if (typeof first.range !== 'function') {
+      return Promise.resolve().then(function () {
+        return table === 'audit_log' ? first.limit(maximum) : first;
+      });
+    }
+
+    /* 1) الصفحة الأولى: تجلب الصفوف والعدد معاً (العدّ مرة واحدة فقط) */
+    return Promise.resolve(first.range(0, Math.min(PAGE_SIZE, maximum) - 1)).then(function (res) {
+      if (!res || res.error) return res || failure('لا نتيجة من القاعدة');
+      var count = typeof res.count === 'number' ? res.count : null;
+      expected = count;
+      if (count !== null && table !== 'audit_log' && count > maximum) {
+        return failure('حجم الجدول يتجاوز حد التحميل الآمن؛ يلزم تقسيم البيانات');
+      }
+      if (!absorb(res.data)) return failure('تكرر سجل أثناء التحميل؛ أعد التحديث');
+      var target = count === null ? null : Math.min(count, maximum);
+      if (target !== null && rows.length >= target) return { data: rows, error: null };
+      var page = Array.isArray(res.data) ? res.data : [];
+      if (!page.length) return target === null ? { data: rows, error: null } : failure('لم يكتمل تحميل الجدول');
+      if (rows.length >= maximum) return table === 'audit_log' ? { data: rows, error: null } : failure('تجاوز حد التحميل الآمن');
+
+      /* 2) العدد غير معروف: نُكمل بالتسلسل حتى صفحة قصيرة (نادر — القراءة العامة) */
+      if (target === null) {
+        if (page.length < PAGE_SIZE) return { data: rows, error: null };
+        return (function step(stepSize) {
+          var from = rows.length, to = Math.min(from + stepSize, maximum) - 1;
+          return fetchRange(from, to, false).then(function (r) {
+            if (r.res && r.res.error) return r.res;
+            if (!absorb(r.res.data)) return failure('تكرر سجل أثناء التحميل؛ أعد التحديث');
+            var got = Array.isArray(r.res.data) ? r.res.data : [];
+            if (!got.length || got.length < stepSize) return { data: rows, error: null };
+            if (rows.length >= maximum) return table === 'audit_log' ? { data: rows, error: null } : failure('تجاوز حد التحميل الآمن');
+            return step(stepSize);
+          });
+        })(Math.min(PAGE_SIZE, Math.max(1, page.length)));
+      }
+
+      /* 3) العدد معروف: نطلب بقية الصفحات بالتوازي (٤ في وقت واحد).
+         حجم الخطوة يتبع ما عاد فعلاً: بعض إعدادات PostgREST تحدّ الصفحة بأقل
+         من المطلوب (max-rows)، فنكيّف الخطوة مع الحد الفعلي بدل الانقطاع. */
+      var stepSize = Math.min(PAGE_SIZE, Math.max(1, page.length));
+      var ranges = [];
+      for (var from = rows.length; from < target; from += stepSize) {
+        ranges.push({ from: from, to: Math.min(from + stepSize, target, maximum) - 1 });
+      }
+      /* الصفحة الأخيرة وحدها تطلب العدّ مرة ثانية: يكشف تغيّر عدد السجلات أثناء
+         التحميل (سلامة البيانات) بكلفة COUNT واحدة إضافية بدل واحدة لكل صفحة. */
+      var lastIndex = ranges.length - 1;
+      return mapLimit(ranges, PAGE_PARALLEL, function (r, index) {
+        /* القراءة العامة لا تطلب عدّاً إطلاقاً (أثقل استعلام على الواجهة) */
+        return fetchRange(r.from, r.to, wantCount && index === lastIndex);
+      }).then(function (pages) {
+        /* نُدخل الصفحات بترتيبها الأصلي (mapLimit يحفظ الترتيب) */
+        for (var i = 0; i < pages.length; i++) {
+          var r = pages[i];
+          if (!r || !r.res || r.res.error) return r && r.res && r.res.error ? r.res : failure('لم يكتمل تحميل الجدول');
+          if (!absorb(r.res.data)) return failure('تكرر سجل أثناء التحميل؛ أعد التحديث');
+        }
+        var last = pages[pages.length - 1];
+        var finalCount = last && last.res && typeof last.res.count === 'number' ? last.res.count : null;
+        if (finalCount !== null && expected !== null && finalCount !== expected) {
+          return failure('تغير عدد السجلات أثناء التحميل؛ أعد التحديث');
+        }
+        if (rows.length !== target) return failure('تغير عدد السجلات أثناء التحميل؛ أعد التحديث');
+        return { data: rows, error: null };
+      });
+    });
   }
 
   function fetchAll(client, opts) {
@@ -365,11 +479,21 @@
     var limit = opts.auditLimit || 2000;
 
     var queries = TABLES.map(function (t) {
+      /* سجل التدقيق مؤجَّل عند الطلب: أكبر جدول في الحمولة، ولا حاجة له قبل
+         فتح «سجل التدقيق». يُقرأ عبر loadAuditLog() عند الحاجة فقط. */
+      if (t === 'audit_log' && opts.deferAudit) return Promise.resolve({ data: [], error: null, deferred: true });
       var source=opts.workspace&&['jobs','applicants','job_attempts'].indexOf(t)>=0?'working_'+t:t;
       return readPages(client, source, t === 'audit_log' ? limit : 100000);
     });
 
-    if(opts.workspace){queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_card_report',{p_from:null,p_to:null});}).catch(function(){return {error:true};}));queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_issuance_registry',{p_serial:null});}).then(function(r){if(r.error)throw Error('تعذر قراءة سجل الرموز');setChanceRegistry(r.data);return {ok:true};}).catch(function(e){return {error:{message:e.message,code:'REGISTRY_REQUIRED'}};}));}
+    /* ⚠️ تقريران ثقيلان كانا يُنتظران في إقلاع اللوحة:
+       • staff_card_report: تجميع كل البطاقات (المالية والإحصاءات الكلية)
+       • staff_issuance_registry: يُرجع خريطة بتات **~595KB** (base64 ≈ 800KB)
+         لسجل الرموز المطبوعة — أي أكبر من كل الجداول مجتمعة.
+       لذلك صار الإقلاع يقرأ الجداول فقط (opts.deferReports)، ويُحمَّل التقريران
+       في الخلفية بعد ظهور اللوحة عبر loadWorkspaceReports. الوضع الافتراضي
+       (بلا deferReports) يبقى كما كان كي لا تتغيّر بقية الاستدعاءات. */
+    if(opts.workspace && !opts.deferReports){queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_card_report',{p_from:null,p_to:null});}).catch(function(){return {error:true};}));queries.push(Promise.resolve().then(function(){return rpcCall(client,'staff_issuance_registry',{p_serial:null});}).then(function(r){if(r.error)throw Error('تعذر قراءة سجل الرموز');setChanceRegistry(r.data);return {ok:true};}).catch(function(e){return {error:{message:e.message,code:'REGISTRY_REQUIRED'}};}));}
     return Promise.all(queries).then(function (results) {
       var failed = [];
       var data = {};
@@ -379,21 +503,139 @@
         else data[t] = (res && res.data) || [];
       });
       var db = buildDb(data);
-      if(opts.workspace&&results[TABLES.length+1].error&&!failed.some(function(f){return f.table==='job_attempts';}))failed.push({table:'job_attempts',error:results[TABLES.length+1].error});
+      if(opts.workspace && opts.deferReports){
+        /* التقارير مؤجَّلة: نعلن ذلك في meta كي تعرف الواجهة أنها قادمة */
+        db.meta.reportsPending = true;
+      }
+      if(opts.workspace && !opts.deferReports && results[TABLES.length+1] && results[TABLES.length+1].error && !failed.some(function(f){return f.table==='job_attempts';}))failed.push({table:'job_attempts',error:results[TABLES.length+1].error});
+      if (opts.deferAudit) db.meta.auditPending = true;
       db.meta.failedTables = failed.map(function (f) { return f.table; });
       db.meta.errors = failed;
-      if(opts.workspace){db.meta.workspace=true;db.meta.partialTables=['jobs','applicants','job_attempts'];var report=results[TABLES.length];if(report&&!report.error&&report.data&&report.data.stats&&Array.isArray(report.data.rows))db.meta.serverReport=report.data;}
+      if(opts.workspace){db.meta.workspace=true;db.meta.partialTables=['jobs','applicants','job_attempts'];if(!opts.deferReports){var report=results[TABLES.length];if(report&&!report.error&&report.data&&report.data.stats&&Array.isArray(report.data.rows))db.meta.serverReport=report.data;}}
       return db;
     });
   }
 
+  /* ═════════════════════════════════════════════════════════════════════════
+   *  تحميل تقارير اللوحة بعد الإقلاع (خلفية)
+   *  -------------------------------------------------------------------------
+   *  تُنفّذ النداءين معاً (متوازيين) وتُرجع:
+   *    { report, registry, errors[] } — وreport/registry = null عند الفشل.
+   *  • report: بيانات staff_card_report (إحصاءات كلية + صفوف مالية).
+   *  • registry: سجل الرموز المطبوعة (~800KB) يُخزَّن في الذاكرة فقط
+   *    (chanceBitmap) ولا يُسلسَل إلى أي ملف أو كاش.
+   *  ⚠️ فشل السجل لا يُسقط الجلسة ولا يُعلن جدولاً مفقوداً — كان سابقاً يضع
+   *     job_attempts في failedTables فيعود الموظف إلى واجهة الزائر.
+   * ═══════════════════════════════════════════════════════════════════════ */
+  function loadWorkspaceReports(client) {
+    var errors = [];
+    var pReport = Promise.resolve()
+      .then(function () { return rpcCall(client, 'staff_card_report', { p_from: null, p_to: null }); })
+      .then(function (r) {
+        if (r.error || !r.data || !r.data.stats || !Array.isArray(r.data.rows)) {
+          errors.push({ scope: 'report', error: r.error || { message: 'تقرير غير مكتمل' } });
+          return null;
+        }
+        return r.data;
+      })
+      .catch(function (e) { errors.push({ scope: 'report', error: { message: String(e && e.message || e) } }); return null; });
+
+    var pRegistry = Promise.resolve()
+      .then(function () { return rpcCall(client, 'staff_issuance_registry', { p_serial: null }); })
+      .then(function (r) {
+        if (r.error) throw Error(r.error.message || 'تعذر قراءة سجل الرموز');
+        setChanceRegistry(r.data);
+        return { ok: true };
+      })
+      .catch(function (e) {
+        errors.push({ scope: 'registry', error: { message: String(e && e.message || e), code: 'REGISTRY_REQUIRED' } });
+        return null;
+      });
+
+    return Promise.all([pReport, pRegistry]).then(function (out) {
+      return { report: out[0], registry: out[1], errors: errors };
+    });
+  }
+
+  /* سجل التدقيق عند الطلب (٣٠٠ صف افتراضياً — يكفي العرض والتصفية الأخيرة).
+     يُرتَّب من الأحدث، ويُدمج في الواجهة بلا تكرار. */
+  function loadAuditLog(client, opts) {
+    opts = opts || {};
+    var limit = opts.limit || 300;
+    return readPages(client, 'audit_log', limit).then(function (res) {
+      if (res && res.error) return { ok: false, error: res.error, rows: [] };
+      var rows = (res && res.data) || [];
+      return {
+        ok: true,
+        rows: rows.map(auditFromDb).sort(function (a, b) { return String(b.ts).localeCompare(String(a.ts)); })
+      };
+    }).catch(function (e) { return { ok: false, error: { message: String(e && e.message || e) }, rows: [] }; });
+  }
+
   // Public reads use the RLS-safe public_jobs view, never the jobs table.
+  /* أعمدة الواجهة العامة فقط — كانت select('*') تنزل حقولاً لا تعرضها القائمة
+     فيكبر الرد بلا داعٍ على شبكة بطيئة. */
+  var PUBLIC_JOB_COLS = 'code,title,category,region,governorate,shift,salary_min,salary_max,' +
+    'gender,vacancies,requirements,status,hold_expires_at,created_at,description,image_url,available_vacancies';
+
+  /* ⚡ ذاكرة عرض فورية لبيانات الوظائف العامة (٥ دقائق كحد أقصى)
+     -----------------------------------------------------------------------
+     • تحمل **بيانات قاعدة الشركة نفسها** التي وصلت آخر مرة — لا بيانات تجريبية.
+     • تُعرض فوراً (بلا هيكل انتظار)، ثم يُعاد التحقق من القاعدة **فوراً** في
+       الخلفية فتُستبدل بأحدث نسخة خلال أقل من ثانية.
+     • تنتهي صلاحيتها بعد ٥ دقائق فتُهمَل ولا تُعرض إطلاقاً.
+     • في التبويب نفسه تُستخدم من الذاكرة الفورية دائماً (تنقّل بلا انتظار). */
+  var PUB_CACHE_KEY = 'hrc_public_jobs_v1';
+  var PUB_CACHE_TTL = 5 * 60 * 1000;   /* أقصى عمر مقبول للعرض الفوري */
+  var pubMemCache = null;              /* نفس التبويب: بلا قراءة من التخزين */
+  var pubMemAt = 0;
+
+  /* التخزين يُقرأ من الجذر (window/localStorage) — يعمل في المتصفح وفي الاختبار */
+  function cacheStorage() {
+    try {
+      if (root.localStorage) return root.localStorage;
+      if (typeof localStorage !== 'undefined') return localStorage;
+    } catch (e) { /* تخزين محجوب */ }
+    return null;
+  }
+
+  function savePublicCache(jobs) {
+    pubMemCache = jobs; pubMemAt = Date.now();
+    var st = cacheStorage();
+    if (!st) return;
+    try { st.setItem(PUB_CACHE_KEY, JSON.stringify({ at: pubMemAt, jobs: jobs })); } catch (e) { }
+  }
+  function readPublicCache() {
+    if (pubMemCache && (Date.now() - pubMemAt) <= PUB_CACHE_TTL) return pubMemCache;
+    var st = cacheStorage();
+    if (!st) return null;
+    try {
+      var raw = st.getItem(PUB_CACHE_KEY);
+      if (!raw) return null;
+      var box = JSON.parse(raw);
+      if (!box || !Array.isArray(box.jobs) || !box.at) return null;
+      if (Date.now() - box.at > PUB_CACHE_TTL) { clearPublicCache(); return null; }
+      pubMemCache = box.jobs; pubMemAt = box.at;
+      return box.jobs;
+    } catch (e) { return null; }
+  }
+  function clearPublicCache() {
+    pubMemCache = null; pubMemAt = 0;
+    var st = cacheStorage();
+    if (!st) return;
+    try { st.removeItem(PUB_CACHE_KEY); } catch (e) { }
+  }
+
   function fetchPublicJobs(client) {
-    return readPages(client, 'public_jobs', 100000).then(function (res) {
+    /* بلا count=exact: العدّ على public_jobs يُنفّذ استعلامه الفرعي المترابط
+       لكل صف — وهو أثقل ما يواجهه كل زائر. نقرأ حتى صفحة قصيرة بدلاً منه. */
+    return readPages(client, 'public_jobs', 100000, { count: false, cols: PUBLIC_JOB_COLS }).then(function (res) {
       if (res && res.error) {
         return { ok: false, error: res.error, jobs: [] };
       }
-      return { ok: true, jobs: (res && res.data || []).map(jobFromDb) };
+      var jobs = (res && res.data || []).map(jobFromDb);
+      savePublicCache(jobs);
+      return { ok: true, jobs: jobs };
     });
   }
 
@@ -502,7 +744,7 @@
         /* تحديث البيانات المُسطّحة في المحاولات المرتبطة بهذه الوظيفة */
         db.attempts.forEach(function (a) {
           if (a.jobId === job.id || (a.jobCode && a.jobCode === job.code)) {
-            a.jobTitle = job.title; a.location = job.region;
+            a.jobTitle = job.title; a.location = job.governorate || '';
             a.employerName = job.employer.name; a.employerPhone = job.employer.phone;
             if (!a.jobId) a.jobId = job.id;
           }
@@ -614,12 +856,15 @@
       });
   }
 
-  /* التقديم الذاتي: الباركود + رمز الفرصة + الوظيفة */
+  /* التقديم الذاتي: الباركود + الوظيفة (رموز الفرص أُلغيت 2026-10-25) */
+  /* استخدام فرصة: الباركود وحده كافٍ — أُلغيت رموز الفرص (2026-10-25).
+     يُمرَّر p_code فارغاً فتُستهلك أول فرصة فارغة بالترتيب. */
   function useChanceRpc(client, serial, code, jobCode) {
-    if (!serial || !code || !jobCode)
-      return Promise.resolve({ ok: false, error: 'أكمل الباركود ورمز الفرصة والوظيفة' });
+    if (jobCode === undefined && code) { jobCode = code; code = ''; }
+    if (!serial || !jobCode)
+      return Promise.resolve({ ok: false, error: 'أكمل الباركود والوظيفة' });
     return rpcCall(client, 'use_chance', {
-      p_serial: String(serial).trim(), p_code: String(code).trim(), p_job_code: String(jobCode).trim()
+      p_serial: String(serial).trim(), p_code: String(code || '').trim(), p_job_code: String(jobCode).trim()
     })
       .then(function (res) {
         if (res && res.error) {
@@ -697,49 +942,8 @@
       });
   }
 
-  /* صفحة صاحب العمل: الباركود وحده يكفي — بلا رمز صاحب عمل وبلا رموز فرص
-     (قرار الإدارة 2026-10-06). ترجّع {ok, card} بنفس شكل employerView المحلية. */
-  function employerViewRpc(client, serial) {
-    if (!serial) return Promise.resolve({ ok: false, code: 'not_found', error: 'أدخل باركود البطاقة' });
-    return rpcCall(client, 'employer_view', { p_serial: String(serial).trim() })
-      .then(function (res) {
-        if (res && res.error) {
-          return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
-        }
-        var d = res && res.data;
-        if (!d || typeof d !== 'object') return { ok: false, code: 'empty', error: 'لا نتيجة من الخادم' };
-        if (d.ok === false) return { ok: false, code: d.code || 'not_found', error: d.error || 'لا توجد بطاقة بهذا الباركود' };
-        return { ok: true, card: d.card || null };
-      })
-      .catch(function (e) {
-        return { ok: false, code: 'network', error: 'تعذّر الاتصال: ' + (e && e.message || e) };
-      });
-  }
-
-  /* طلب صاحب العمل من صفحة الباركود — بلا رمز:
-     • hire   ⇒ الوظيفة «جاري التوظيف» حتى تثبيت الشركة
-     • reject ⇒ الوظيفة والفرصة «حرجة» مع السبب، والشركة تقرر: إرجاع أو حذف */
-  function employerDecideRpc(client, serial, decision, reason) {
-    if (!serial || !decision) return Promise.resolve({ ok: false, error: 'وسائط ناقصة' });
-    return rpcCall(client, 'employer_decide', {
-      p_serial: String(serial).trim(),
-      p_decision: String(decision).trim(),
-      p_reason: String(reason || '').trim()
-    })
-      .then(function (res) {
-        if (res && res.error) {
-          return { ok: false, error: res.error.message || 'تعذّر تسجيل القرار' };
-        }
-        var d = res && res.data;
-        if (!d || typeof d !== 'object') return { ok: false, error: 'لا نتيجة من الخادم' };
-        if (d.ok === false) return { ok: false, error: d.error || 'تعذّر تسجيل القرار' };
-        return { ok: true, attempt: d.attempt || null, job: d.job || null, decision: d.decision, reason: d.reason || '' };
-      })
-      .catch(function (e) {
-        return { ok: false, error: 'تعذّر الاتصال: ' + (e && e.message || e) };
-      });
-  }
-
+  /* حُذف مسار صاحب العمل من الويب (2026-10-25): لا صفحة ولا رمز سري ولا
+     قرار من الويب — طلب صاحب العمل يُسجَّل من لوحة الموظفين. */
   root.HRCCloud = {
     /* تحويل */
     jobFromDb: jobFromDb, jobToDb: jobToDb,
@@ -749,11 +953,11 @@
     staffFromDb: staffFromDb,
     settingsFromDb: settingsFromDb, settingsToDb: settingsToDb,
     /* بيانات */
-    chanceUsed:chanceUsed,rememberChance:rememberChance,clearChanceRegistry:clearChanceRegistry, rpcCall:rpcCall, buildDb: buildDb, fetchAll: fetchAll, TABLES: TABLES,
+    chanceUsed:chanceUsed,rememberChance:rememberChance,clearChanceRegistry:clearChanceRegistry, rpcCall:rpcCall, buildDb: buildDb, fetchAll: fetchAll, loadWorkspaceReports: loadWorkspaceReports, loadAuditLog: loadAuditLog, TABLES: TABLES,
 
-    fetchPublicJobs: fetchPublicJobs, verifyForm: verifyForm,
+    fetchPublicJobs: fetchPublicJobs, readPublicCache: readPublicCache, clearPublicCache: clearPublicCache, verifyForm: verifyForm,
     lookupCard: lookupCardRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,
-    activateCard: activateCardRpc, employerView: employerViewRpc, employerDecide: employerDecideRpc,
+    activateCard: activateCardRpc,
     requestForm: requestForm,
     applyChange: applyChange, subscribeAll: subscribeAll,
     synthId: synthId

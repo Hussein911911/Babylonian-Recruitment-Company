@@ -27,12 +27,12 @@
     grid-column: 2; margin: 0; line-height: 1.85; align-self: center;
   }
   .service > p, .contact-card > p, .steps .step > p { grid-column: 2; margin: 0; line-height: 1.95; }
-  .service > svg { padding: 10px; border-radius: 14px; background: #f7f2e7; color: var(--gold-3); }
+  .service > svg { padding: 10px; border-radius: 14px; background: #fff; border: 1px solid var(--line-soft); color: var(--gold-3); }
   .steps { grid-template-columns: repeat(auto-fit,minmax(min(100%,215px),1fr)); }
   .quick-search { flex-direction: row; flex-wrap: wrap; align-items: center; }
   .quick-search .qs-label { flex: 0 0 auto; }
   .quick-search .qs-main { flex: 2 1 260px; min-width: 0; }
-  .quick-search .qs-region { flex: 1 1 180px; min-width: 0; }
+  .quick-search .qs-gov { flex: 1 1 180px; min-width: 0; }
   .quick-search .qs-scan, .quick-search .qs-submit { flex: 0 1 auto; min-height: 44px; }
   .contact-card a { text-underline-offset: 5px; }
   .contact-card .contact-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
@@ -41,7 +41,7 @@
   .service, .contact-card, .steps .step { padding: 20px; column-gap: 12px; }
   .hero-cta .btn { flex: 1 1 200px; }
   .quick-search .qs-label, .quick-search .qs-main { flex-basis: 100%; }
-  .quick-search .qs-region { flex: 1 1 150px; }
+  .quick-search .qs-gov { flex: 1 1 150px; }
   .quick-search .qs-scan, .quick-search .qs-submit { flex: 1 1 90px; }
   .site-footer .foot-main { row-gap: 28px; }
 }

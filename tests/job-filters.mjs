@@ -33,6 +33,8 @@ const codes=()=>Array.from(w.G.filteredJobs(),j=>j.code);
 const set=(id,value,event='change')=>{const el=$(id);if(el.type==='checkbox')el.checked=value;else el.value=value;el.dispatchEvent(new w.Event(event,{bubbles:true}));};
 const reset=()=>w.G.resetJobFilters();
 try {
+  /* التقسيم الإداري العراقي صار ملفاً مستقلاً — يُحمَّل قبل السكربت كما في المتصفح */
+  w.eval(readFileSync(new URL('../assets/js/iraq-admin.js',import.meta.url),'utf8'));
   w.eval(inline);
   await new Promise(resolve=>setTimeout(resolve,60));
   w.G.renderFilters();w.G.renderJobs();
@@ -54,14 +56,24 @@ try {
   check('viewport permits user zoom instead of restricting accessibility',!w.document.querySelector('meta[name=viewport]').content.includes('maximum-scale'));
 
   check('all 19 Iraqi governorates plus all-option', $('jf-province').options.length===20);
+  check('governorate list matches config exactly (no duplicates, Qadisiyah included)',
+    (()=> {
+      const list = [...$('jf-province').options].map(o=>o.value).filter(Boolean);
+      const cfg = w.HRC_CONFIG.governorates;
+      return list.length===19 && list.length===new Set(list).size &&
+        cfg.every(g=>list.includes(g)) && list.includes('القادسية') && list.includes('حلبجة');
+    })(),
+    JSON.stringify([...$('jf-province').options].map(o=>o.value)));
   check('aliases normalized in mapped jobs', w.G.filteredJobs().find(j=>j.code==='F-500').governorate==='أربيل');
-  check('prototype-like categories and regions remain available',Array.from($('jf-category').options).some(o=>o.value==='constructor')&&Array.from($('jf-region').options).some(o=>o.value==='__proto__'));
+  check('prototype-like categories remain available (no region filter anymore)',
+    Array.from($('jf-category').options).some(o=>o.value==='constructor') && !$('jf-region'));
+  check('no region filter anywhere in the applicant filters (2026-10-24)',
+    !w.document.getElementById('jf-region') && !/المنطقة<\/label>/.test(w.document.querySelector('.jf-primary').innerHTML));
   check('untrusted labels never become markup',!w.document.querySelector('#jf-category img')&&!w.document.querySelector('#jobs-list script'));
   set('jf-province','بغداد');
   check('province filters exactly',codes().join(',')==='F-300,F-100');
-  check('region list depends on province',Array.from($('jf-region').options,o=>o.value).sort().join(',')===',الكرادة,المنصور');
-  set('jf-region','الكرادة');check('province and region intersect',codes().join(',')==='F-100');
-  set('jf-province','البصرة');check('changing province resets stale region',$('jf-region').value===''&&codes().join(',')==='F-200');
+  set('jf-province','البصرة');check('province filters exactly (replaces region filter)',codes().join(',')==='F-200');
+  set('jf-province','');
   set('jf-category','مبيعات');set('jf-shift','مسائي');set('jf-gender','أنثى');set('jf-salary','۸۰۰٬۰۰۰','input');
   check('category + shift + gender + Persian formatted salary intersect',codes().join(',')==='F-200');
   set('jf-salary','٨٠٠،٠٠١','input');check('salary uses advertised starting pay, not upper bound',codes().length===0);
@@ -102,5 +114,88 @@ try {
   w.document.head.appendChild(printStyle);
   check('print removes result actions and the separate back-navigation row',w.getComputedStyle($('result-actions')).display==='none'&&w.getComputedStyle(w.document.querySelector('#pg-result > .btn-row')).display==='none');
   check('A4 pages use breaks before subsequent forms, not a trailing blank page',printStyle.textContent.includes('.form-sheet + .form-sheet')&&printStyle.textContent.includes('break-before: page'));
+
+  /* ── فلتر مضغوط (2026-10-24) ── */
+  reset();
+  check('compact filter is one bar with only the four primary controls',
+    !!w.document.querySelector('.job-filters.jf-compact .jf-bar.jf-primary') &&
+    w.document.querySelectorAll('.jf-bar input, .jf-bar select').length === 4 &&
+    w.document.querySelector('.jf-bar #jf-query') && w.document.querySelector('.jf-bar #jf-province'));
+  check('advanced filters live in a collapsed panel, not the main bar',
+    w.document.getElementById('jf-advanced').hidden === true &&
+    !w.document.getElementById('jf-advanced').classList.contains('jf-primary') &&
+    w.document.getElementById('jf-advanced').contains(w.document.getElementById('jf-category')));
+  check('«فلاتر» button opens the panel and syncs aria-expanded',
+    (() => {
+      const btn = w.document.getElementById('jf-more');
+      btn.click();
+      const opened = w.document.getElementById('jf-advanced').hidden === false && btn.getAttribute('aria-expanded') === 'true';
+      btn.click();
+      const closed = w.document.getElementById('jf-advanced').hidden === true && btn.getAttribute('aria-expanded') === 'false';
+      return opened && closed;
+    })());
+  check('filter badge counts active filters and hides when none',
+    (() => {
+      const badge = w.document.getElementById('jf-badge');
+      if (!badge.hidden) return false;
+      set('jf-shift', 'مسائي'); set('jf-gender', 'أنثى');
+      return badge.hidden === false && badge.textContent.trim() === '٢' &&
+        w.document.getElementById('jf-more').classList.contains('has-filters');
+    })());
+  check('compact result counter still announces total and selection',
+    (() => {
+      reset();
+      const t = w.document.getElementById('jobs-count').textContent;
+      return /عرض/.test(t) && /مختارة/.test(t) && /[٠-٩]/.test(t);
+    })());
+  /* ── صورة الوظيفة داخل البطاقة ── */
+  check('active filters render as removable chips (not raw values scattered in fields)',
+    (() => {
+      reset();
+      set('jf-shift', 'مسائي');
+      const chips = [...w.document.querySelectorAll('#jf-chips .jf-chip')];
+      if (chips.length !== 1) return false;
+      if (!/مسائي/.test(chips[0].textContent)) return false;
+      chips[0].click();
+      const after = w.document.querySelectorAll('#jf-chips .jf-chip').length;
+      return after === 0 && $('jf-shift').value === '' && w.document.getElementById('jf-chips').hidden === true;
+    })());
+  check('job card is structured: state badge + 4 meta cells + pay row + actions',
+    (() => {
+      reset();
+      const card = w.document.querySelector('#jobs-list .job-card');
+      if (!card) return false;
+      const state = card.querySelector('.job-state');
+      const meta = card.querySelectorAll('.job-meta .jm');
+      const pay = card.querySelector('.job-pay .job-pay-v');
+      const acts = card.querySelectorAll('.job-actions .btn');
+      return !!state && meta.length === 4 && !!pay && acts.length >= 2 &&
+        card.querySelectorAll('.jm .jm-ic').length === 4;
+    })());
+  check('job images are shown whole (object-fit: contain) everywhere',
+    (() => {
+      const css = Array.from(w.document.styleSheets)
+        .flatMap((s) => { try { return Array.from(s.cssRules).map((r) => r.cssText); } catch (e) { return []; } }).join('\n');
+      const applySrc = w.document.documentElement.outerHTML;
+      const cover = /\.job-thumb img\{[^}]*object-fit:\s*cover/.test(css) ||
+        /\.job-image img\{[^}]*object-fit:\s*cover/.test(css);
+      if (cover) return 'ما زال هناك قصّ (cover) لصور الوظائف';
+      const containThumb = /\.job-thumb img\{[^}]*object-fit:\s*contain/.test(css) ||
+        /object-fit:contain/.test(applySrc);
+      return containThumb || 'مصغّرة الوظيفة ليست contain';
+    })());  check('job cards render a thumbnail only when the job has an image',
+    (() => {
+      /* الوظائف المعروضة في الصفحة (وليست مخزن المتصفح) */
+      const list = w.G.currentJobs();
+      list.forEach((j, i) => { j.imageUrl = i === 0 ? 'assets/img/jobs/job-truck.webp' : ''; });
+      w.G.renderJobs();
+      const cards = [...w.document.querySelectorAll('#jobs-list .job-card')];
+      const withThumb = cards.filter((c) => c.querySelector('.job-thumb img'));
+      const first = withThumb.length ? withThumb[0].querySelector('.job-thumb img') : null;
+      /* صفحة التقديم تعرض مصغّرة صورة الشركة فقط عند وجود صورة للوظيفة */
+      return withThumb.length === 1 && !!first &&
+        /job-truck\.webp$/.test(first.getAttribute('src')) &&
+        first.getAttribute('loading') === 'lazy';
+    })());
   console.log(`\nJob filters: ${checks} checks passed.`);
 } finally {dom.window.close();}

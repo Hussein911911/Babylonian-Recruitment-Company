@@ -141,18 +141,33 @@
     }
 
     /* ------------------------- استعادة الجلسة عند الإقلاع ------------------------- */
-    function restore() {
+    /* استعادة الجلسة: تُرجع الجلسة **فور** قراءتها من التخزين، والملف الشخصي
+       (سطر brc.staff) يُطلب على حدة عبر profileFor — كي يبدأ جلب البيانات
+       بالتوازي معه بدل انتظاره (رحلة كاملة أقل عند كل فتح للوحة). */
+    function sessionOnly() {
       return client.auth.getSession()
         .then(function (res) {
           var session = res && res.data ? res.data.session : null;
           if (!session || !session.user) return { ok: false, code: 'no_session' };
-          return loadProfile(client, session.user).then(function (prof) {
-            if (!prof) return { ok: false, code: 'no_staff_row', user: session.user };
-            if (prof.active === false) return { ok: false, code: 'inactive' };
-            return { ok: true, user: session.user, session: session, profile: prof };
-          });
+          return { ok: true, user: session.user, session: session };
         })
         .catch(function (e) { return { ok: false, code: 'network', error: String(e && e.message || e) }; });
+    }
+
+    function profileFor(session) {
+      if (!session || !session.user) return Promise.resolve({ ok: false, code: 'no_session' });
+      return loadProfile(client, session.user).then(function (prof) {
+        if (!prof) return { ok: false, code: 'no_staff_row', user: session.user };
+        if (prof.active === false) return { ok: false, code: 'inactive' };
+        return { ok: true, user: session.user, session: session, profile: prof };
+      }).catch(function (e) { return { ok: false, code: 'network', error: String(e && e.message || e) }; });
+    }
+
+    function restore() {
+      return sessionOnly().then(function (r) {
+        if (!r.ok) return r;
+        return profileFor(r.session);
+      });
     }
 
     /* -------------------------------- الخروج -------------------------------- */
@@ -650,7 +665,7 @@
     }
 
     return {
-      login: login, logout: logout, restore: restore,
+      login: login, logout: logout, restore: restore, sessionOnly: sessionOnly, profileFor: profileFor,
       changePassword: changePassword, toEmail: toEmail, loadProfile: loadProfile,
       createAccount: createAccount, updateAccount: updateAccount,
       deleteAccount: deleteAccount, setPassword: setPassword,

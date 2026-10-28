@@ -22,7 +22,7 @@
 
   var state = {
     view: 'overview',
-    j: { q: '', status: 'all', region: 'all', governorate: 'all', shift: 'all' },
+    j: { q: '', status: 'all', governorate: 'all', shift: 'all' },
     a: { q: '', status: 'all', user: 'all' },
     log: { q: '', user: 'all', role: 'all', action: 'all', entity: 'all', from: '', to: '', sort: 'newest' },
     logPage: 1, logPageSize: 25,
@@ -46,6 +46,7 @@
     bindNav();
     bindToolbars();
     bindActions();
+    bindArabicDates();
     bindSidebar();
     document.addEventListener('hrc:notification-open', function (e) {
       if (!Store.currentUser()) return;
@@ -56,9 +57,9 @@
         if (n.view === 'holds' && job && ['reserved', 'hiring'].indexOf(job.status) >= 0) {
           setView('holds'); openHoldsModal(n.jobCode); return;
         }
-        state.j = { q: n.jobCode, status: 'all', region: 'all', governorate: 'all', shift: 'all' };
+        state.j = { q: n.jobCode, status: 'all', governorate: 'all', shift: 'all' };
         document.getElementById('jq').value = n.jobCode;
-        ['j-status', 'j-region', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });
+        ['j-status', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });
         setView('jobs');
       } else if (n.view === 'applicants' && Store.isAdmin()) {
         state.a = { q: n.serial || '', status: 'all', user: 'all' };
@@ -135,7 +136,6 @@
 
   function fillStatic() {
     // الوظائف
-    UI.fillSelect(document.getElementById('j-region'), CFG.regions, 'كل المناطق');
     UI.fillSelect(document.getElementById('j-governorate'), CFG.governorates, 'كل المحافظات');
     UI.fillSelect(document.getElementById('j-shift'), CFG.shifts, 'كل الأوقات');
     // المستخدمون في الفلاتر
@@ -665,26 +665,13 @@
          متاحة (store.login يرفضه بنفسه أيضاً — حماية مزدوجة مقصودة).
          ⚠️ إن كنا نعلم مسبقاً أن الاتصال ساقط (degraded) فلا معنى لانتظار طلب
          شبكي محكوم عليه بالفشل: نُدخل الموظف محلياً فوراً مع بقاء التنبيه ظاهراً. */
-      if (cs && cs.configured && cs.state === 'connecting' && Store.signIn && Store.waitForCloud) {
-        busy(true, 'جارٍ الاتصال…');
-        Store.waitForCloud().then(function (st) {
-          busy(false, '');
-          if (st && st.state === 'on') { cloudLogin(); return; }
-          var stLocal = Store.cloudStatus ? Store.cloudStatus() : null;
-          UI.toast('warn', 'وضع محلي مؤقّت',
-            (stLocal && stLocal.enforceAuth && !stLocal.devAccountsActive)
-              ? 'تعذّر الاتصال بقاعدة الشركة — الدخول يتطلب إنترنت، والبيانات المعروضة نسخة محفوظة.'
-              : 'تعذّر الاتصال بالسحابة — الدخول محلي والبيانات غير مشتركة.');
-          localLogin();
-        });
-        return;
-      }
       if (cs && cs.configured && cs.state === 'on' && Store.signIn) { cloudLogin(); return; }
       localLogin();
 
       function cloudLogin() {
         busy(true, 'جارٍ التحقق…');
-        Store.signIn(u, p).then(function (r) {
+        /* signInFast: يتحقّق من الحساب ويُظهر اللوحة فوراً، والبيانات تُجلب بعدها */
+        (Store.signInFast || Store.signIn)(u, p).then(function (r) {
           busy(false, '');
           /* ✅ نجح الدخول السحابي */
           if (r && r.ok) {
@@ -1134,13 +1121,13 @@
       }
       if(Number(j.vacancies||1)>1)holdCell='<div class="tiny">'+v.available+' متاح · '+v.held+' محجوز · '+v.filled+' ممتلئ<br>المجموع '+v.total+'</div>';
       var imageCell = j.imageUrl
-        ? '<img src="' + UI.esc(j.imageUrl) + '" style="width:48px;height:48px;object-fit:cover;border-radius:10px;border:2px solid var(--line-soft)" alt="' + UI.esc(j.title) + '">'
-        : '<div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#eef1f7,#d9dfeb);display:flex;align-items:center;justify-content:center"><svg class="ic" style="width:20px;height:20px;color:#8fa0c4"><use href="#i-briefcase"/></svg></div>';
+        ? '<span class="job-cell-photo" style="--img:url(&quot;' + UI.esc(j.imageUrl) + '&quot;)"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '"></span>'
+        : '<span class="job-cell-photo is-empty"><svg class="ic" style="width:18px;height:18px;color:#8fa0c4"><use href="#i-briefcase"/></svg></span>';
       return '<tr>' +
         '<td>' + imageCell + '</td>' +
-        '<td><span class="chip chip-code mono" style="font-size:.8rem">' + UI.esc(j.code) + '</span><div class="tiny muted" style="margin-top:5px">' + (j.employerPinSet ? '🔒 رمز صاحب العمل مفعّل' : '⚠ يحتاج تعيين رمز صاحب العمل') + '</div></td>' +
+        '<td><span class="chip chip-code mono" style="font-size:.8rem">' + UI.esc(j.code) + '</span></td>' +
         '<td><b style="color:var(--lapis-2)">' + UI.esc(j.title) + '</b><div class="tiny muted" style="margin-top:2px">' + UI.esc(j.category) + '</div></td>' +
-        '<td><span style="font-weight:600">' + UI.esc(j.region) + '</span>' + (j.governorate ? '<br><span class="tiny muted">' + UI.esc(j.governorate) + '</span>' : '') + '</td>' +
+        '<td><span style="font-weight:600">' + UI.esc(j.governorate || '—') + '</span></td>' +
         '<td class="nowrap tiny"><b>' + Store.money(j.salaryMin) + '</b><br><span class="muted">إلى ' + Store.money(j.salaryMax) + '</span></td>' +
         '<td class="tiny"><span style="background:#eef1f7;padding:3px 8px;border-radius:6px;font-weight:600">' + UI.esc(j.shift) + '</span></td>' +
         '<td>' + UI.jobBadge(j.status) + '</td>' +
@@ -1205,8 +1192,6 @@
   /* نموذج إضافة/تعديل وظيفة */
   function jobModal(code) {
     var j = code ? Store.getJob(code) : null;
-    var pinCloud=Store.cloudStatus().state==='on'&&Store.cloudStatus().role==='staff';
-    var regionsList = CFG.regions.map(function (r) { return '<option' + (j && j.region === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
     var governoratesList = CFG.governorates.map(function (r) { return '<option' + (j && j.governorate === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
     var shiftsList = CFG.shifts.map(function (r) { return '<option' + (j && j.shift === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
     var cats = CFG.jobCategories.map(function (r) { return '<option' + (j && j.category === r ? ' selected' : '') + '>' + UI.esc(r) + '</option>'; }).join('');
@@ -1214,12 +1199,31 @@
 
     var body = '<form id="job-form" class="grid grid-2" style="gap:14px">' +
       '<div class="field" style="grid-column:1/-1"><label for="f-image">صورة الوظيفة (اختياري)</label>' +
-        '<input type="file" id="f-image" accept="image/*" style="margin-bottom:8px">' +
-        '<div id="image-preview" style="margin-top:8px">' + (j && j.imageUrl ? '<img src="' + UI.esc(j.imageUrl) + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #ddd">' : '') + '</div>' +
-        '<p class="tiny muted" style="margin:4px 0 0 0">ارفع صورة جذابة للوظيفة ( JPG, PNG )</p></div>' +
+        '<div class="img-field">' +
+          '<div class="img-pick">' +
+            '<label class="img-pick-btn" for="f-image">' + UI.ic('upload') + ' اختر صورة من الجهاز</label>' +
+            '<input type="file" id="f-image" accept="image/*" class="img-file">' +
+            '<span class="tiny muted">JPG أو PNG — حتى ٢ ميجابايت. تصغير وتكبير وتحريك كما تحب.</span>' +
+          '</div>' +
+          '<div class="img-empty" id="img-empty">لا توجد صورة بعد — اختر صورة لتظهر المعاينة هنا.</div>' +
+          '<div class="img-editor" id="img-editor" hidden>' +
+            '<div class="img-stage" id="img-stage" tabindex="0" role="application" aria-label="معاينة صورة الوظيفة — اسحب الصورة لتحريكها">' +
+              '<img id="img-target" alt="معاينة صورة الوظيفة" draggable="false">' +
+              '<span class="img-guide" aria-hidden="true"></span>' +
+            '</div>' +
+            '<div class="img-tools">' +
+              '<button type="button" class="img-tool" id="img-zoom-out" aria-label="تصغير الصورة">−</button>' +
+              '<input type="range" id="img-zoom" min="60" max="250" step="5" value="100" aria-label="نسبة تكبير الصورة (100% = ملء الإطار)">' +
+              '<button type="button" class="img-tool" id="img-zoom-in" aria-label="تكبير الصورة">+</button>' +
+              '<span class="img-zoom-val" id="img-zoom-val">100%</span>' +
+              '<button type="button" class="img-tool-text" id="img-reset">إعادة الضبط</button>' +
+              '<button type="button" class="img-tool-text is-danger" id="img-remove">إزالة الصورة</button>' +
+            '</div>' +
+            '<p class="img-hint" id="img-hint">اسحب الصورة لتحريكها داخل الإطار · استخدم + و− للتكبير.</p>' +
+          '</div>' +
+        '</div></div>' +
       '<div class="field"><label for="f-title">عنوان الوظيفة *</label><input type="text" id="f-title" required value="' + UI.esc(j ? j.title : '') + '"></div>' +
       '<div class="field"><label for="f-cat">التصنيف</label><select id="f-cat">' + cats + '</select></div>' +
-      '<div class="field"><label for="f-region">المنطقة *</label><select id="f-region">' + regionsList + '</select></div>' +
       '<div class="field"><label for="f-governorate">المحافظة</label><select id="f-governorate">' + governoratesList + '</select></div>' +
       '<div class="field"><label for="f-shift">الدوام</label><select id="f-shift">' + shiftsList + '</select></div>' +
       '<div class="field"><label for="f-min">الأجر الأدنى (د.ع)</label><input type="number" id="f-min" min="0" step="25000" value="' + (j ? j.salaryMin : 500000) + '"></div>' +
@@ -1230,8 +1234,6 @@
       '<div class="field" style="grid-column:1/-1"><label for="f-req">الشروط (نقطة لكل شرط)</label><textarea id="f-req" placeholder="خبرة سنة&#10;شهادة جنسية">' + UI.esc(j ? (j.requirements || []).join('\n') : '') + '</textarea></div>' +
       '<div class="field"><label for="f-ename">اسم صاحب العمل (داخلي) *</label><input type="text" id="f-ename" required value="' + UI.esc(e.name) + '"></div>' +
       '<div class="field"><label for="f-ephone">هاتف صاحب العمل *</label><input type="tel" id="f-ephone" required dir="ltr" value="' + UI.esc(e.phone) + '"></div>' +
-      '<div class="field"><label for="f-epin">الرمز السري لصاحب العمل · ٦ أرقام'+(!j||!j.employerPinSet?' *':'')+'</label><input type="password" id="f-epin" inputmode="numeric" autocomplete="new-password" maxlength="6" pattern="[0-9]{6}" dir="ltr" '+(pinCloud?(!j||!j.employerPinSet?'required':''):'disabled')+' placeholder="'+(j&&j.employerPinSet?'اتركه فارغاً للإبقاء على الرمز':'يختاره صاحب العمل')+'"><small class="muted">'+(pinCloud?'لا يظهر للمتقدم ولا يمكن استرجاعه. تغييره ينهي جلسات هذه الوظيفة.':'تعيين الرمز متاح عند اتصال الموظف بقاعدة الشركة فقط.')+'</small></div>' +
-      '<div class="field"><label for="f-epin-confirm">تأكيد الرمز السري</label><input type="password" id="f-epin-confirm" inputmode="numeric" autocomplete="new-password" maxlength="6" dir="ltr" '+(pinCloud?'':'disabled')+'></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="f-eaddr">عنوان صاحب العمل (داخلي)</label><input type="text" id="f-eaddr" value="' + UI.esc(e.address) + '"></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="f-interview">مكان المقابلة</label><input type="text" id="f-interview" value="' + UI.esc(j ? j.interviewLocation : 'مقر الشركة - الحلة') + '"></div>' +
       '</form>' +
@@ -1244,36 +1246,190 @@
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="job-save">' + UI.ic('check') + (j ? ' حفظ التعديلات' : ' إضافة الوظيفة') + '</button>',
       onMount: function (box, close) {
+        /* ── محرّر صورة الوظيفة: معاينة + تكبير/تصغير + سحب + إزالة ──
+           ما يراه الموظف في الإطار هو ما يُحفظ ويظهر للزبون (نُثبّت الإطار
+           بنسبة 10:7 في صورة واحدة عند الحفظ) — فلا مفاجآت بعد النشر. */
         var imageFile = box.querySelector('#f-image');
-        var imagePreview = box.querySelector('#image-preview');
-        var imageData = j ? j.imageUrl : '';
-        
-        // Handle image upload
-        imageFile.addEventListener('change', function(e) {
-          var file = e.target.files[0];
+        var editor = box.querySelector('#img-editor');
+        var stageEl = box.querySelector('#img-stage');
+        var target = box.querySelector('#img-target');
+        var emptyBox = box.querySelector('#img-empty');
+        var zoomRange = box.querySelector('#img-zoom');
+        var zoomVal = box.querySelector('#img-zoom-val');
+        var hint = box.querySelector('#img-hint');
+        var imageData = j ? (j.imageUrl || '') : '';
+        var dirty = false;                    /* هل عدّل الموظف الصورة؟ */
+        var cur = { zoom: 1, x: 0, y: 0 };    /* الحالة الحالية للإطار */
+        var nat = { w: 0, h: 0 };
+        /* ١٠٠٪ تعني «ملء الإطار» بنسبة 10:7 — فلا فراغ ولا أشرطة بعد الحفظ،
+           وكل صور الوظائف تخرج بمقاس واحد. النزول إلى ٦٠٪ يسمح بإظهار الصورة
+           كاملة (وخلفها تعبئة ضبابية في الموقع فلا تبدو ناقصة). */
+        var MIN_Z = 0.6, MAX_Z = 2.5, STEP_Z = 0.2;
+
+        function clampNum(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+        /* يرسم الصورة داخل الإطار حسب التكبير والموضع */
+        function layoutImage() {
+          /* واجهة التكبير تُحدَّث دائماً (حتى قبل تحميل الصورة أو بلا قياسات) */
+          var pctNow = Math.round(cur.zoom * 100);
+          if (zoomVal) zoomVal.textContent = pctNow + '%';
+          if (zoomRange) zoomRange.value = String(pctNow);
+          if (hint) {
+            hint.textContent = cur.zoom > 1.001
+              ? 'تكبير ' + pctNow + '% — اسحب الصورة لاختيار الجزء الظاهر.'
+              : (cur.zoom < 0.999
+                ? 'الصورة كاملة مع خلفية موحّدة — استخدم + لملء الإطار.'
+                : 'الإطار ممتلئ بالصورة · اسحب للتحريك أو استخدم + و− للتكبير.');
+          }
+          if (!nat.w || !stageEl || !stageEl.clientWidth) return;   /* بلا قياسات: لا تخطيط */
+          var sw = stageEl.clientWidth, sh = stageEl.clientHeight;
+          var base = Math.max(sw / nat.w, sh / nat.h);   /* ملء الإطار عند 100% */
+          var k = base * cur.zoom;
+          var w = nat.w * k, h = nat.h * k;
+          var maxX = Math.max(0, (w - sw) / 2);
+          var maxY = Math.max(0, (h - sh) / 2);
+          cur.x = clampNum(cur.x, -maxX, maxX);
+          cur.y = clampNum(cur.y, -maxY, maxY);
+          target.style.width = w + 'px';
+          target.style.height = h + 'px';
+          target.style.transform = 'translate(-50%,-50%) translate(' + cur.x + 'px,' + cur.y + 'px)';
+        }
+
+        function setZoom(z) {
+          cur.zoom = clampNum(Number(z) || 1, MIN_Z, MAX_Z);
+          layoutImage();
+          dirty = true;
+        }
+
+        function showImage(src) {
+          if (!src) return;
+          target.onload = function () {
+            nat.w = target.naturalWidth || 0;
+            nat.h = target.naturalHeight || 0;
+            if (editor) editor.hidden = false;
+            if (emptyBox) emptyBox.hidden = true;
+            layoutImage();
+          };
+          target.onerror = function () {
+            UI.toast('err', 'تعذّر عرض الصورة', 'جرّب صورة أخرى بصيغة JPG أو PNG.');
+          };
+          target.src = src;
+        }
+
+        function clearImage() {
+          imageData = '';
+          dirty = true;
+          nat = { w: 0, h: 0 };
+          cur = { zoom: 1, x: 0, y: 0 };
+          try { target.removeAttribute('src'); } catch (e) { target.src = ''; }
+          if (editor) editor.hidden = true;
+          if (emptyBox) emptyBox.hidden = false;
+        }
+
+        /* تثبيت ما يراه الموظف في صورة واحدة بنسبة الإطار (بلا قص زائد) */
+        function bakeImage() {
+          if (!dirty || !nat.w) return imageData;
+          try {
+            var sr = stageEl.getBoundingClientRect();
+            var ir = target.getBoundingClientRect();
+            if (!sr.width || !sr.height || !ir.width) return imageData;
+            var W = 1280, H = Math.round(W * (sr.height / sr.width));
+            var cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            var ctx = cv.getContext('2d');
+            if (!ctx) return imageData;
+            ctx.fillStyle = '#0c1d33'; ctx.fillRect(0, 0, W, H);
+            var f = W / sr.width;
+            ctx.drawImage(target, (ir.left - sr.left) * f, (ir.top - sr.top) * f, ir.width * f, ir.height * f);
+            var out = cv.toDataURL('image/jpeg', 0.86);
+            if (!out || out.length < 64) return imageData;
+            if (out.length > 1700000) out = cv.toDataURL('image/jpeg', 0.7);
+            return out;
+          } catch (e) { return imageData; }
+        }
+
+        if (imageData) showImage(imageData);
+
+        if (imageFile) imageFile.addEventListener('change', function () {
+          var file = imageFile.files && imageFile.files[0];
           if (!file) return;
-          
-          if (file.size > 2 * 1024 * 1024) {
-            UI.toast('err', 'حجم كبير', 'الحد الأقصى 2 ميجابايت');
+          if (!/^image\//.test(file.type || '')) {
+            UI.toast('err', 'ملف غير مدعوم', 'اختر صورة بصيغة JPG أو PNG.');
             return;
           }
-          
+          if (file.size > 2 * 1024 * 1024) {
+            UI.toast('err', 'حجم كبير', 'الحد الأقصى ٢ ميجابايت');
+            return;
+          }
           var reader = new FileReader();
-          reader.onload = function(e) {
-            imageData = e.target.result;
-            imagePreview.innerHTML = '<img src="' + imageData + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #ddd">';
+          reader.onload = function (ev) {
+            imageData = ev.target.result;
+            dirty = true;
+            cur = { zoom: 1, x: 0, y: 0 };
+            showImage(imageData);
+            UI.toast('ok', 'تم اختيار الصورة', 'اضبط التكبير والموضع ثم احفظ الوظيفة.');
           };
           reader.readAsDataURL(file);
         });
+
+        var zIn = box.querySelector('#img-zoom-in'), zOut = box.querySelector('#img-zoom-out');
+        if (zIn) zIn.addEventListener('click', function () { setZoom(cur.zoom + STEP_Z); });
+        if (zOut) zOut.addEventListener('click', function () { setZoom(cur.zoom - STEP_Z); });
+        if (zoomRange) zoomRange.addEventListener('input', function () { setZoom(Number(zoomRange.value) / 100); });
+        var zReset = box.querySelector('#img-reset');
+        if (zReset) zReset.addEventListener('click', function () {
+          cur = { zoom: 1, x: 0, y: 0 };
+          dirty = true;
+          layoutImage();
+        });
+        var zRemove = box.querySelector('#img-remove');
+        if (zRemove) zRemove.addEventListener('click', function () { clearImage(); });
+
+        /* السحب باللمس أو الفأرة */
+        var drag = null;
+        if (stageEl) {
+          stageEl.addEventListener('pointerdown', function (e) {
+            if (!nat.w || editor.hidden) return;
+            drag = { x: e.clientX, y: e.clientY, ox: cur.x, oy: cur.y };
+            stageEl.classList.add('is-drag');
+            if (stageEl.setPointerCapture) { try { stageEl.setPointerCapture(e.pointerId); } catch (err) { } }
+            e.preventDefault();
+          });
+          stageEl.addEventListener('pointermove', function (e) {
+            if (!drag) return;
+            cur.x = drag.ox + (e.clientX - drag.x);
+            cur.y = drag.oy + (e.clientY - drag.y);
+            layoutImage();
+            dirty = true;
+          });
+          var endDrag = function () { drag = null; stageEl.classList.remove('is-drag'); };
+          stageEl.addEventListener('pointerup', endDrag);
+          stageEl.addEventListener('pointercancel', endDrag);
+          stageEl.addEventListener('pointerleave', endDrag);
+          /* مفاتيح الأسهم للتحريك الدقيق بلا فأرة */
+          stageEl.addEventListener('keydown', function (e) {
+            if (!nat.w) return;
+            var step = e.shiftKey ? 20 : 6, used = true;
+            if (e.key === 'ArrowLeft') cur.x += step;
+            else if (e.key === 'ArrowRight') cur.x -= step;
+            else if (e.key === 'ArrowUp') cur.y += step;
+            else if (e.key === 'ArrowDown') cur.y -= step;
+            else if (e.key === '+' || e.key === '=') setZoom(cur.zoom + STEP_Z);
+            else if (e.key === '-') setZoom(cur.zoom - STEP_Z);
+            else used = false;
+            if (used) { e.preventDefault(); layoutImage(); dirty = true; }
+          });
+          if (window.ResizeObserver) {
+            try { new ResizeObserver(function () { layoutImage(); }).observe(stageEl); } catch (e) { }
+          }
+        }
         
-        ['f-epin','f-epin-confirm'].forEach(function(id){box.querySelector('#'+id).addEventListener('input',function(){this.value=this.value.replace(/[٠-٩۰-۹]/g,function(c){return String(c.charCodeAt(0)-(c<='٩'?1632:1776));}).replace(/\D/g,'').slice(0,6);});});
         box.querySelector('#job-save').addEventListener('click', function () {
           var f = box.querySelector('#job-form');
           if (!f.reportValidity()) return;
           var data = {
             title: box.querySelector('#f-title').value.trim(),
             category: box.querySelector('#f-cat').value,
-            region: box.querySelector('#f-region').value,
             governorate: box.querySelector('#f-governorate').value,
             shift: box.querySelector('#f-shift').value,
             salaryMin: Number(box.querySelector('#f-min').value),
@@ -1285,21 +1441,11 @@
             employerPhone: box.querySelector('#f-ephone').value.trim(),
             employerAddress: box.querySelector('#f-eaddr').value.trim(),
             interviewLocation: box.querySelector('#f-interview').value.trim(),
-            imageUrl: imageData
+            imageUrl: bakeImage()
           };
-          if(pinCloud){
-            var pin=box.querySelector('#f-epin').value,confirmation=box.querySelector('#f-epin-confirm').value;
-            if(pin!==confirmation){UI.toast('err','الرمزان غير متطابقين','أعد كتابة الرمز السري وتأكيده.');return;}
-            var button=box.querySelector('#job-save');if(button.disabled)return;button.disabled=true;
-            Store.saveJobWithPin(j?j.code:'',data,pin).then(function(result){
-              if(!result.ok){UI.toast('err','لم يُؤكَّد الحفظ',result.error);button.disabled=false;return;}
-              box.querySelector('#f-epin').value='';box.querySelector('#f-epin-confirm').value='';
-              UI.toast('ok','حُفظت الوظيفة بأمان',result.job.code+' — الرمز السري لا يُعرض بعد الحفظ.');close();
-            });return;
-          }
           if (j) {
             Store.updateJob(j.code, {
-              title: data.title, category: data.category, region: data.region, governorate: data.governorate, shift: data.shift,
+              title: data.title, category: data.category, governorate: data.governorate, shift: data.shift,
               salaryMin: data.salaryMin, salaryMax: data.salaryMax, gender: data.gender,
               vacancies: data.vacancies, requirements: data.requirements,
               employer: { name: data.employerName, phone: data.employerPhone, address: data.employerAddress },
@@ -1339,7 +1485,7 @@
       }).join('') + '</tbody></table></div></div>';
 
     UI.modal({
-      title: 'ترشيح على الوظيفة ' + code, subtitle: job.title + ' — ' + job.region, wide: true, body: body,
+      title: 'ترشيح على الوظيفة ' + code, subtitle: job.title + ' — ' + job.governorate, wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إغلاق</button>',
       onMount: function (box, close) {
         box.querySelectorAll('[data-pick]').forEach(function (b) {
@@ -1627,7 +1773,7 @@
         '<div class="data-item"><div class="k">الجنس</div><div class="v">' + UI.esc(app.gender || '—') + '</div></div>' +
         '<div class="data-item"><div class="k">العنوان</div><div class="v">' + UI.esc(app.address || '—') + '</div></div>' +
         '<div class="data-item" style="grid-column:1/-1"><div class="k">الوظيفة المطلوبة</div><div class="v">' +
-          (job ? '<span class="chip chip-code mono">' + UI.esc(job.code) + '</span> ' + UI.esc(job.title) + ' — ' + UI.esc(job.region) : (UI.esc(app.requestedCode || '—') + ' <span class="tiny muted">(كود غير معروف)</span>')) +
+          (job ? '<span class="chip chip-code mono">' + UI.esc(job.code) + '</span> ' + UI.esc(job.title) + ' — ' + UI.esc(job.governorate) : (UI.esc(app.requestedCode || '—') + ' <span class="tiny muted">(كود غير معروف)</span>')) +
         '</div></div>' +
       '</div>' +
       (rejectMode
@@ -1814,7 +1960,7 @@
       '<p class="muted small">اختر الوظيفة المطلوبة للفرصة رقم <b>#' + no + '</b>. الوظيفة ستُحجز مؤقتاً ' +
       Store.settings().holdHours + ' ساعة بانتظار نتيجة المقابلة؛ بعدها تصبح حرجة بانتظار قرار الشركة، ولا تُتاح تلقائياً.</p>' +
       '<div class="search-wrap mb-2"><svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>' +
-      '<input type="search" id="pick-q" placeholder="ابحث بالكود أو العنوان أو المنطقة..."></div>' +
+      '<input type="search" id="pick-q" placeholder="ابحث بالكود أو عنوان الوظيفة..."></div>' +
       '<div id="pick-list">' + pickListHtml(jobs) + '</div>';
 
     UI.modal({
@@ -1847,11 +1993,11 @@
   function pickListHtml(jobs) {
     if (!jobs.length) return '<div class="table-empty">لا توجد وظائف متاحة مطابقة</div>';
     return '<div class="table-wrap"><div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:620px">' +
-      '<thead><tr><th>الكود</th><th>الوظيفة</th><th>المنطقة</th><th>الأجر</th><th>الدوام</th><th>اختيار</th></tr></thead><tbody>' +
+      '<thead><tr><th>الكود</th><th>الوظيفة</th><th>المحافظة</th><th>الأجر</th><th>الدوام</th><th>اختيار</th></tr></thead><tbody>' +
       jobs.map(function (j) {
         return '<tr><td><span class="chip chip-code mono">' + UI.esc(j.code) + '</span></td>' +
           '<td><b>' + UI.esc(j.title) + '</b><div class="tiny muted">' + UI.esc(j.employer.name) + ' · <span dir="ltr">' + UI.esc(j.employer.phone) + '</span></div></td>' +
-          '<td>' + UI.esc(j.region) + '</td><td class="tiny nowrap">' + Store.money(j.salaryMin) + '</td>' +
+          '<td>' + UI.esc(j.governorate || '—') + '</td><td class="tiny nowrap">' + Store.money(j.salaryMin) + '</td>' +
           '<td class="tiny">' + UI.esc(j.shift) + '</td>' +
           '<td><button class="btn btn-gold btn-sm" data-assign-job="' + UI.esc(j.code) + '">ترشيح</button></td></tr>';
       }).join('') + '</tbody></table></div></div>';
@@ -1911,7 +2057,7 @@
     var empReason = (t && (t.reason || '')) || '';
     UI.modal({
       title: (hiring ? '🔵 قرار توظيف صاحب العمل — ' : empReject ? '🔴 رفض صاحب العمل — قرارك بالوظيفة — ' : critical ? '🔴 قرار حالة حرجة — ' : 'إدارة الحجز المؤقت — ') + job.code,
-      subtitle: job.title + ' · ' + job.region + ' · الشاغر ' + Number(t.vacancyNo||1) + ' من ' + Number(job.vacancies||1),
+      subtitle: job.title + ' · ' + job.governorate + ' · الشاغر ' + Number(t.vacancyNo||1) + ' من ' + Number(job.vacancies||1),
       body: '<div class="data-grid mb-3">' +
         '<div class="data-item"><div class="k">البطاقة المحجوزة</div><div class="v mono">' + UI.esc(serial) + '</div></div>' +
         '<div class="data-item"><div class="k">الفرصة</div><div class="v">#' + (t ? t.no : '—') + '</div></div>' +
@@ -1989,7 +2135,7 @@
     var hiringHtml = (pa.hiring || []).length ? pa.hiring.map(function (h) {
       return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;border-color:#bcd0ea;background:#f2f6fc">' +
         '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) +
-        '<small>' + UI.esc(h.job.region) + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
+        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
         '<div class="tiny muted mt-1">مكان المقابلة: ' + UI.esc(h.job.interviewLocation) + '</div></div>' +
         '<div><div class="tiny muted">البطاقة</div><div class="mono">' + UI.esc(h.serial || '—') + '</div><div class="tiny">الشاغر '+Number(h.vacancyNo||1)+'</div>' +
         '<span class="badge info">' + (h.decision === 'hire' ? 'طلب توظيف ✅ — ثبتّه أو ألغه' : 'طلب عدم توظيف — القرار بيدك') + '</span>' +
@@ -2002,7 +2148,7 @@
     var criticalHtml = (pa.critical || []).length ? pa.critical.map(function (h) {
       return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;border-color:#f0c3c1;background:#fdf5f4">' +
         '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) +
-        '<small>' + UI.esc(h.job.region) + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
+        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
         '<div class="tiny muted mt-1">مكان المقابلة: ' + UI.esc(h.job.interviewLocation) + '</div></div>' +
         '<div><div class="tiny muted">البطاقة</div><div class="mono">' + UI.esc(h.serial || '—') + '</div><div class="tiny">الشاغر '+Number(h.vacancyNo||1)+'</div>' +
         (h.decidedBy === 'employer'
@@ -2019,7 +2165,7 @@
       return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;' +
         (urgent ? 'border-color:#f0c3c1;background:#fdf5f4' : '') + '">' +
         '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) +
-        '<small>' + UI.esc(h.job.region) + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
+        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
         '<div class="tiny muted mt-1">مكان المقابلة: ' + UI.esc(h.job.interviewLocation) + '</div></div>' +
         '<div><div class="tiny muted">البطاقة</div><div class="mono">' + UI.esc(h.serial || '—') + '</div><div class="tiny">الشاغر '+Number(h.vacancyNo||1)+'</div>' +
         UI.holdHtml(h.job.holdExpiresAt) + '</div>' +
@@ -2061,7 +2207,66 @@
     });
   }
 
-  /* ======================= سجل التدقيق ======================= */
+  /* ======================= سجل التدقيق =======================
+   * كل ما يُعرض عربي: أسماء أقسام السجل والعمليات والرتب.
+   * الإنجليزية محصورة في معرّفات النظام (كود البطاقة/الوظيفة) لأنها أكواد مطبوعة. */
+  /* قاموس السجل: كل قيمة إنجليزية تُترجم — ولا تظهر كلمة إنجليزية في الواجهة
+     (بقيت الأكواد المطبوعة فقط: HRC-1042 وباركود البطاقة لأنها معرّفات لا كلمات). */
+  var AUDIT_ENTITY = {
+    applicant: 'بطاقة', applicants: 'بطاقة', card: 'بطاقة', cards: 'بطاقة',
+    job: 'وظيفة', jobs: 'وظيفة', vacancy: 'وظيفة', vacancies: 'وظيفة',
+    attempt: 'فرصة', attempts: 'فرصة', chance: 'فرصة',
+    staff: 'موظف', user: 'موظف', users: 'موظف', employee: 'موظف',
+    settings: 'إعدادات', setting: 'إعدادات', config: 'إعدادات',
+    backup: 'نسخة احتياطية', backups: 'نسخة احتياطية', recovery: 'استرجاع',
+    audit: 'السجل', log: 'السجل', system: 'النظام', session: 'جلسة',
+    hold: 'حجز', holds: 'حجز', print: 'طباعة', finance: 'المالية',
+    application: 'استمارة', applications: 'استمارة', form: 'استمارة', forms: 'استمارة'
+  };
+  var AUDIT_USER = { system: 'النظام (تلقائي)', admin: 'المدير', staff: 'موظف', public: 'زائر' };
+  var AUDIT_ACTION = {
+    'login': 'دخول', 'log in': 'دخول', 'sign in': 'دخول',
+    'logout': 'خروج', 'log out': 'خروج', 'sign out': 'خروج',
+    'create': 'إضافة', 'insert': 'إضافة', 'add': 'إضافة',
+    'update': 'تعديل', 'edit': 'تعديل', 'delete': 'حذف', 'remove': 'حذف',
+    'restore': 'استرجاع', 'backup': 'نسخ احتياطي', 'export': 'تصدير',
+    'print': 'طباعة', 'view': 'عرض', 'read': 'عرض'
+  };
+  /* أي قيمة إنجليزية غير معروفة لا تُعرض كما هي: تُوصف عربياً بدل تسريب كلمة أجنبية */
+  var LATIN_ONLY = /^[A-Za-z0-9 _\-\.]+$/;
+  function auditEntityLabel(v) {
+    if (!v) return '—';
+    var key = String(v).trim().toLowerCase();
+    return AUDIT_ENTITY[key] || (LATIN_ONLY.test(v) ? 'سجل' : v);
+  }
+  function auditActionLabel(v) {
+    if (!v) return '—';
+    var key = String(v).trim().toLowerCase();
+    return AUDIT_ACTION[key] || (LATIN_ONLY.test(v) ? 'عملية' : v);
+  }
+
+  /* عرض التاريخ بالعربية داخل حقل «من/إلى تاريخ» (السجل).
+     القيمة الحقيقية تبقى في input[type=date] المخفي، والعرض نص عربي فقط. */
+  var AR_MONTHS = ['كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران',
+    'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'];
+  function arabicDateText(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || ''));
+    if (!m) return '';
+    var d = Number(m[3]), mo = Number(m[2]) - 1, y = m[1];
+    if (!AR_MONTHS[mo]) return '';
+    return d + ' ' + AR_MONTHS[mo] + ' ' + y;      /* مثال: 27 تشرين الأول 2026 */
+  }
+  function paintArabicDates() {
+    document.querySelectorAll('.date-ar').forEach(function (wrap) {
+      var input = wrap.querySelector('input[type="date"]');
+      var label = wrap.querySelector('.da-text');
+      if (!input || !label) return;
+      var txt = arabicDateText(input.value);
+      label.textContent = txt || 'اختر التاريخ';
+      label.classList.toggle('is-empty', !txt);
+    });
+  }
+
   function readAuditFilters() {
     ['q', 'user', 'role', 'action', 'entity', 'from', 'to', 'sort'].forEach(function (key) {
       var input = document.getElementById('log-' + key);
@@ -2071,14 +2276,32 @@
   }
 
   function renderAudit() {
+    /* السجل مؤجَّل عن الإقلاع: أول فتح يطلبه في الخلفية ثم يُعاد الرسم */
+    if (Store.db().meta && Store.db().meta.auditPending && !renderAudit._asked) {
+      renderAudit._asked = true;
+      Store.loadAuditLog().then(function (done) {
+        renderAudit._asked = false;
+        if (done && state.view === 'audit') renderAudit();
+      }).catch(function () { renderAudit._asked = false; });
+    }
     var available = Store.listAudit({});
-    [['user', 'user', 'كل المستخدمين'], ['action', 'action', 'كل العمليات'], ['entity', 'entity', 'كل الأنواع']].forEach(function (spec) {
+    /* الفلاتر تُعرض عربية بالكامل: القيمة للمنطق والتسمية للعين */
+    [['user', 'user', 'كل المستخدمين'], ['action', 'action', 'كل العمليات'], ['entity', 'entity', 'كل الأقسام']].forEach(function (spec) {
       var select = document.getElementById('log-' + spec[0]);
+      if (!select) return;
       var values = available.map(function (r) { return r[spec[1]]; }).filter(Boolean);
       values = Array.from(new Set(values)).sort();
       if (state.log[spec[0]] !== 'all' && values.indexOf(state.log[spec[0]]) < 0) values.push(state.log[spec[0]]);
-      if (select) { UI.fillSelect(select, values, spec[2]); select.value = state.log[spec[0]]; }
+      var label = function (v) {
+        if (spec[0] === 'user') return AUDIT_USER[v] || v;
+        if (spec[0] === 'entity') return auditEntityLabel(v);
+        return auditActionLabel(v);
+      };
+      select.innerHTML = '<option value="all">' + UI.esc(spec[2]) + '</option>' +
+        values.map(function (v) { return '<option value="' + UI.esc(v) + '">' + UI.esc(label(v)) + '</option>'; }).join('');
+      select.value = state.log[spec[0]];
     });
+    paintArabicDates();
     var invalid = !!(state.log.from && state.log.to && state.log.from > state.log.to);
     var error = document.getElementById('log-date-error');
     if (error) error.classList.toggle('hidden', !invalid);
@@ -2102,15 +2325,17 @@
     document.getElementById('audit-table-body').innerHTML = rows.slice(start, start + state.logPageSize).map(function (l) {
       var roleBadge = l.role === 'admin' ? '<span class="badge danger">مدير عام</span>'
         : (l.role === 'staff' ? '<span class="badge info">موظف</span>' : '<span class="badge muted">النظام</span>');
+      var who = l.name || AUDIT_USER[l.user] || l.user;
       return '<tr>' +
-        '<td class="mono tiny" dir="ltr">' + UI.esc(Store.fmtDateTime(l.ts)) + '</td>' +
-        '<td>' + UI.esc(l.name || l.user) + '<div class="tiny muted mono">' + UI.esc(l.user) + '</div></td>' +
-        '<td>' + roleBadge + '</td>' +
-        '<td class="tiny mono" dir="ltr">' + UI.esc(l.ip) + '</td>' +
-        '<td><b>' + UI.esc(l.action) + '</b></td>' +
-        '<td class="mono tiny">' + UI.esc(l.entityId) + '<div class="tiny muted">' + UI.esc(l.entity) + '</div></td>' +
-        '<td class="tiny muted">' + UI.esc(l.details) + '</td></tr>';
-    }).join('') || '<tr><td colspan="7" class="table-empty">لا سجلات مطابقة</td></tr>';
+        '<td class="at-time">' + UI.esc(Store.fmtDateTime(l.ts)) + '</td>' +
+        '<td class="at-who">' + UI.esc(who) + '</td>' +
+        '<td class="at-role">' + roleBadge + '</td>' +
+        '<td class="at-entity">' + UI.esc(auditEntityLabel(l.entity)) +
+          (l.entityId ? ' <span class="tiny muted mono" dir="ltr">' + UI.esc(l.entityId) + '</span>' : '') + '</td>' +
+        '<td class="at-action"><b>' + UI.esc(auditActionLabel(l.action)) + '</b></td>' +
+        '<td class="at-details">' + UI.esc(l.details || '—') + '</td>' +
+      '</tr>';
+    }).join('') || '<tr><td colspan="6" class="table-empty">لا سجلات مطابقة</td></tr>';
   }
 
   /* ======================= اللوحة المالية ======================= */
@@ -2242,7 +2467,6 @@
     };
     bindInput('jq', state.j, 'q', renderJobs);
     bindInput('j-status', state.j, 'status', renderJobs);
-    bindInput('j-region', state.j, 'region', renderJobs);
     bindInput('j-governorate', state.j, 'governorate', renderJobs);
     bindInput('j-shift', state.j, 'shift', renderJobs);
     bindInput('aq', state.a, 'q', renderApplicants);
@@ -2349,7 +2573,7 @@
     var attempts = Store.db().attempts.filter(function (t) { return t.jobCode === code; });
     var body = '<div class="data-grid mb-3">' +
       '<div class="data-item"><div class="k">الحالة</div><div class="v">' + CFG.jobStatus[j.status].ar + '</div></div>' +
-      '<div class="data-item"><div class="k">المنطقة</div><div class="v">' + UI.esc(j.region) + '</div></div>' +
+      '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || '—') + '</div></div>' +
       '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || 'بابل') + '</div></div>' +
       '<div class="data-item"><div class="k">الأجر</div><div class="v">' + Store.money(j.salaryMin) + ' - ' + Store.money(j.salaryMax) + '</div></div>' +
       '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
@@ -2404,6 +2628,15 @@
     document.head.appendChild(js);
   }
 
+  function bindArabicDates() {
+    document.querySelectorAll('.date-ar input[type="date"]').forEach(function (input) {
+      ['change', 'input'].forEach(function (ev) {
+        input.addEventListener(ev, paintArabicDates);
+      });
+    });
+    paintArabicDates();
+  }
+
   function bindActions() {
     var history=document.getElementById('btn-card-history');if(history)history.onclick=function(){if(root.HRCArchive)return root.HRCArchive.open(Store,UI);history.disabled=true;var js=document.createElement('script');js.src='assets/js/card-archive.js';js.onload=function(){history.disabled=false;root.HRCArchive.open(Store,UI);};js.onerror=function(){history.disabled=false;UI.toast('err','تعذر فتح السجل','تحقق من الاتصال وأعد المحاولة');};document.head.appendChild(js);};
     var nj = document.getElementById('btn-new-job');
@@ -2455,7 +2688,7 @@
      والصلاحية (30 يوماً) تبدأ من هذه اللحظة لا من إصدار الدفعة. */
   function newApplicantModal(prefillSerial) {
     var blanks = Store.listBlankCards();
-    var regionsList = CFG.regions.map(function (r) { return '<option>' + UI.esc(r) + '</option>'; }).join('');
+    var govList = CFG.governorates.map(function (g) { return '<option>' + UI.esc(g) + '</option>'; }).join('');
     var posList = (Store.listPosNames ? Store.listPosNames() : []).map(function (n) { return '<option>' + UI.esc(n) + '</option>'; }).join('');
 
     if (!blanks.length) {
@@ -2479,7 +2712,7 @@
        الفرصة الأولى بحجز 24 ساعة بانتظار قرار صاحب العمل. */
     var jobsAvail = (Store.listJobs() || []).filter(function (j) { return j.status === 'available'; });
     var jobOptions = jobsAvail.map(function (j) {
-      return '<option value="' + UI.esc(j.code) + '">' + UI.esc(j.code + ' — ' + j.title + ' (' + j.region + ')') + '</option>';
+      return '<option value="' + UI.esc(j.code) + '">' + UI.esc(j.code + ' — ' + j.title + ' (' + (j.governorate || '—') + ')') + '</option>';
     }).join('');
 
     var body = '<form id="app-form" class="grid grid-2" style="gap:14px">' +
@@ -2490,7 +2723,7 @@
       '<div class="field"><label for="n-phone">هاتف الزبون *</label><input type="tel" id="n-phone" required dir="ltr" placeholder="07XXXXXXXXX"></div>' +
       '<div class="field"><label for="n-dob">تاريخ الميلاد</label><input type="date" id="n-dob"></div>' +
       '<div class="field"><label for="n-gender">الجنس</label><select id="n-gender"><option>ذكر</option><option>أنثى</option></select></div>' +
-      '<div class="field"><label for="n-region">منطقة السكن</label><select id="n-region">' + regionsList + '</select></div>' +
+      '<div class="field"><label for="n-gov">المحافظة</label><select id="n-gov">' + govList + '</select></div>' +
       '<div class="field"><label for="n-fee">سعر البطاقة (د.ع — كاش)</label><input type="number" id="n-fee" value="' + Store.settings().formFee + '" step="500"></div>' +
       '<div class="field"><label for="n-pos">نقطة البيع *</label><input type="text" id="n-pos" required list="pos-names" placeholder="مثال: مكتب استنساخ — شارع 40">' +
         '<datalist id="pos-names">' + posList + '</datalist></div>' +
@@ -2523,7 +2756,7 @@
             phone: box.querySelector('#n-phone').value.trim(),
             dob: box.querySelector('#n-dob').value,
             gender: box.querySelector('#n-gender').value,
-            address: box.querySelector('#n-address').value.trim() || box.querySelector('#n-region').value,
+            address: box.querySelector('#n-address').value.trim() || box.querySelector('#n-gov').value,
             fee: Number(box.querySelector('#n-fee').value),
             feePaid: true,
             posName: box.querySelector('#n-pos').value.trim(),

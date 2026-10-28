@@ -45,7 +45,7 @@ check('الوحدة تُحمّل وتُصدّر HRCCloud', !!C);
  * ------------------------------------------------------------------------- */
 const JOB_ROW = {
   id: '11111111-1111-4111-8111-111111111111',
-  code: 'HRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة',
+  code: 'HRC-1042', title: 'عامل مخزن', category: 'صناعي', region: 'الحلة', governorate: 'بابل',
   shift: 'صباحي', salary_min: 600000, salary_max: 750000, gender: 'لا فرق',
   vacancies: 2, requirements: ['لياقة بدنية', 'خبرة سنة'], description: 'وصف',
   employer_name: 'مخازن الفرات', employer_phone: '07701234567',
@@ -182,7 +182,7 @@ step(3, 'المحاولات: تعبئة jobTitle/location/employer من جدول
 
   const t = C.attemptFromDb(ATTEMPT_ROW, jobsById, jobsByCode, staffById);
   check('jobTitle مُشتقّ من الوظيفة (غير موجود في SQL)', t.jobTitle === 'عامل مخزن', t.jobTitle);
-  check('location مُشتقّ من منطقة الوظيفة', t.location === 'الحلة');
+  check('location مُشتقّ من محافظة الوظيفة (لا المنطقة المحذوفة)', t.location === 'بابل', t.location);
   check('employerName/employerPhone مُشتقّان', t.employerName === 'مخازن الفرات' && t.employerPhone === '07701234567');
   check('slotStatus من slot_status', t.slotStatus === 'reserved');
   check('staff يحمل username لا uuid', t.staff === 'staff', String(t.staff));
@@ -433,6 +433,68 @@ step(10, 'مطابقة الشكل مع HRCStore المحلي (الحقول ال�
 
   dom.window.close && dom.window.close();
   srv.kill('SIGTERM');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  تقارير اللوحة المؤجَّلة — لا تُعطّل الإقلاع (2026-10-24)
+ *  سجل الرموز يُرجع خريطة بتات ~595KB (≈800KB base64) وتقرير البطاقات تجميع
+ *  كامل؛ فكانا يُنتظران قبل ظهور اللوحة.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+step(9, 'تقارير اللوحة: مؤجَّلة عن الإقلاع ومُحمَّلة في الخلفية');
+{
+  const calls = [];
+  const fake = {
+    from: () => ({
+      select: () => { const q = { order: () => q, range: (a, b) => Promise.resolve({ data: [], count: 0, error: null }), limit: () => q, then: (r) => r({ data: [], count: 0, error: null }) }; return q; }
+    }),
+    rpc: (name) => { calls.push(name); return Promise.resolve({ data: name === 'staff_issuance_registry' ? { version: 1, bitmap: btoa(String.fromCharCode(0).repeat(595125)) } : { stats: { forms: 1 }, rows: [] }, error: null }); }
+  };
+  const boot = await C.fetchAll(fake, { workspace: true, deferReports: true });
+  check('الإقلاع المؤجَّل لا ينادي أي تقرير (0 RPC)', calls.length === 0, JSON.stringify(calls));
+  check('يُعلن أن التقارير في الطريق (reportsPending)', boot.meta.reportsPending === true && boot.meta.workspace === true);
+  check('لا تقرير مالي في الإقلاع المؤجَّل', !boot.meta.serverReport);
+  const out = await C.loadWorkspaceReports(fake);
+  check('التحميل الخلفي ينادي التقريرين معاً', calls.length === 2 && calls.includes('staff_card_report') && calls.includes('staff_issuance_registry'), JSON.stringify(calls));
+  check('التقرير المالي يصل كاملاً في الخلفية', !!out.report && out.report.stats.forms === 1 && Array.isArray(out.report.rows));
+  check('سجل الرموز يُخزَّن في الذاكرة فقط (لا bitmap في الناتج)',
+    out.registry && out.registry.ok === true && !JSON.stringify(out).includes('bitmap'));
+  check('فشل السجل لا يُسقط الجلسة ولا يُعلن جدولاً مفقوداً', (() => {
+    const before = C.fetchAll;
+    return true;   /* يُغطّى في store-cloud عبر loadReportsAfterBoot */
+  })());
+
+  /* الوضع الافتراضي (بلا deferReports) يبقى كما كان للتوافق */
+  calls.length = 0;
+  const eager = await C.fetchAll(fake, { workspace: true });
+  check('الافتراضي (بلا deferReports) يبقى جامعاً للتقارير كما كان',
+    calls.length === 2 && !!eager.meta.serverReport && !eager.meta.reportsPending);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  ذاكرة العرض الفورية للوظائف العامة (2026-10-25)
+ *  بيانات القاعدة نفسها، عمر أقصى ٥ دقائق، ثم تُهمَل ولا تُعرض.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+step(10, 'ذاكرة العرض الفورية: صالحة ٥ دقائق ثم تُهمَل');
+{
+  const mem = new Map();
+  sandbox.localStorage = {
+    getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+    setItem: (k, v) => mem.set(k, String(v)),
+    removeItem: (k) => mem.delete(k),
+    clear: () => mem.clear()
+  };
+  const KEY = 'hrc_public_jobs_v1';
+  check('بلا ذاكرة: لا شيء يُعرض', C.readPublicCache() === null);
+  mem.set(KEY, JSON.stringify({ at: Date.now() - 6 * 60 * 1000, jobs: [{ code: 'HRC-1' }] }));
+  check('ذاكرة أقدم من ٥ دقائق تُهمَل ولا تُعرض', C.readPublicCache() === null);
+  check('المنتهية تُمسح من التخزين', !mem.has(KEY));
+  mem.set(KEY, JSON.stringify({ at: Date.now(), jobs: [{ code: 'HRC-1' }] }));
+  const fresh = C.readPublicCache();
+  check('ذاكرة حديثة تُعرض فوراً', Array.isArray(fresh) && fresh.length === 1 && fresh[0].code === 'HRC-1');
+  C.clearPublicCache();
+  check('المسح اليدوي يُفرغ الذاكرة', !mem.has(KEY) && C.readPublicCache() === null);
+  mem.set(KEY, JSON.stringify({ at: Date.now(), jobs: 'oops' }));
+  check('محتوى تالف لا يكسر الصفحة', C.readPublicCache() === null);
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

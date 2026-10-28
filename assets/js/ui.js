@@ -68,11 +68,19 @@
       (opts.footer ? '<div class="modal-foot">' + opts.footer + '</div>' : '');
     backdrop.appendChild(box);
     host.appendChild(backdrop);
+    /* ⚠ طبقات: شريط التنقل السفلي (fixed, z-index 240) كان يغطّي أزرار أسفل
+       النافذة على الجوال. الآن: النافذة فوق كل شيء + قفل تمرير الصفحة + إخفاء
+       الشريط السفلي ما دامت نافذة مفتوحة (يُعاد عند إغلاق آخر نافذة). */
+    document.body.classList.add('modal-open');
+    Array.prototype.forEach.call(host.children, function (n2) {
+      n2.style.zIndex = String(400 + Math.min(host.children.length, 40));
+    });
 
     function close() {
       if (opts.canClose && !opts.canClose()) return;
       backdrop.remove();
       document.removeEventListener('keydown', onKey);
+      if (!host.querySelector('.modal-backdrop')) document.body.classList.remove('modal-open');
       if (opts.onClose) opts.onClose();
     }
     function onKey(e) { if (e.key === 'Escape') close(); }

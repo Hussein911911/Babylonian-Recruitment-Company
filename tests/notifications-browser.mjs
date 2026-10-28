@@ -17,6 +17,30 @@ import { join } from 'node:path';
 import { DEMO_SEED } from './fixtures/demo-seed.mjs';
 
 const base = 'http://127.0.0.1:4173/';
+
+/* تسجيل قرار صاحب العمل — حُذف مسار صاحب العمل من الويب (2026-10-25)، فصار
+   الموظف يسجّل القرار من اللوحة. هذا تجهيز اختبار فقط: نكتب الحقول نفسها
+   التي كانت تكتبها دالة القرار ثم نطلق تحديث المتجر. */
+async function recordEmployerDecision(page, serial, decision, reason) {
+  return page.evaluate(([serial, decision, reason]) => {
+    const S = HRCStore, db = S.db();
+    const t = db.attempts.filter((x) => x.serial === serial &&
+      ['reserved', 'critical', 'hiring'].includes(x.slotStatus))[0];
+    if (!t) return { ok: false, error: 'لا تقديم قيد القرار' };
+    t.employerDecision = decision;
+    t.decisionAt = new Date().toISOString();
+    t.holdExpiresAt = null;
+    if (decision === 'hire') { t.slotStatus = 'hiring'; t.reason = ''; t.note = 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة'; }
+    else { t.slotStatus = 'critical'; t.reason = reason; t.note = 'رفض صاحب العمل — السبب: ' + reason; }
+    const j = db.jobs.filter((x) => x.id === t.jobId)[0];
+    if (j) { j.status = decision === 'hire' ? 'hiring' : 'reserved'; j.critical = decision !== 'hire'; j.holdExpiresAt = null; }
+    db.audit.unshift({ id: 'log-fx-' + serial + '-' + t.no, ts: t.decisionAt, user: 'staff', role: 'staff', ip: '127.0.0.1',
+      name: 'موظف توظيف', action: decision === 'hire' ? 'طلب توظيف من صاحب العمل' : 'رفض من صاحب العمل مع السبب',
+      entity: 'applicant', entityId: serial, details: (reason || '') });
+    S.emit();
+    return { ok: true };
+  }, [serial, decision, reason]);
+}
 const output = fileURLToPath(new URL('./.tmp/layout-review/', import.meta.url));
 mkdirSync(output, { recursive: true });
 // Supply Chromium's packaged Linux libraries in minimal preview containers.
@@ -125,7 +149,8 @@ try {
     await page.locator('#notification-read-all').click();
     await page.keyboard.press('Escape');
     const reason = 'الدوام غير مناسب <img src=x onerror=window.__noticeXss=1> — نحتاج خبرة بمخزن المواد الكهربائية';
-    const decision = await page.evaluate(reason => HRCStore.employerDecide(__noticeBooking.serial, 'reject', reason), reason);
+    const serialNotice = await page.evaluate(() => __noticeBooking.serial);
+    const decision = await recordEmployerDecision(page, serialNotice, 'reject', reason);
     check(decision.ok, 'Fixture employer decision emits a Store update');
     await page.waitForFunction(()=>document.getElementById('notification-count').textContent === '1');
     check(await page.locator('#notification-count').textContent() === '1', 'One new decision, no duplicate audit/decision notices');

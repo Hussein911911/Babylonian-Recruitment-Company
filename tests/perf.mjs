@@ -70,11 +70,40 @@ const BUDGET = {
   /* +30KB للأخيرة (2026-10-13): إدارة حسابات الموظفين عبر الدالة السحابية
      hrc-staff-admin — نداء الدوال في cloud-auth.js ومسارات staffWrite في
      dashboard.js (تُقاس مقيسةً: 940KB خاماً). تبقى الرسالة: منع القفزات. */
-  'index.html': { raw: 580, requests: 20 },
-  'verify.html': { raw: 480, requests: 20 },
+  /* 2026-10-23: +12KB (580→592) لميزة المسح الضوئي لبطاقة التوظيف في نافذة
+     «بطاقتي»: نافذة مسح موحّدة في qr-scan.js (كاميرا + رفع صورة + تفاوض على
+     صيغ الباركود) وشاشة إدخال الباركود بزرَّي «مسح» و«ابدأ التقديم» في booking.js.
+     قابلة للقياس: 586KB. لا سكربت جديد ولا طلب قاعدة جديد للزائر (20 طلباً كما
+     هي)، وبقيت بقية السقوف دون تغيير. الغرض باقٍ: التقاط القفزات الكبيرة. */
+  /* 2026-10-23 (+26KB index / +20KB verify): شاشة «قدّم ببطاقتك» الجديدة —
+     وجه بطاقة بصري، زر مسح كبير، إدخال يدوي، وأنماط `.bk-entry*` في style.css
+     المشتركة، مع نافذة المسح الموحّدة. القياس بعد البناء: 607KB و490KB.
+     بلا سكربت أو طلب قاعدة جديد للزائر (20 طلباً كما هي). */
+  /* 2026-10-24: أُعيدت بطاقات الموقع العام إلى تصميمها السابق (التصميم الفاخر
+     صار في صفحة التقديل فقط) — index 618KB وverify 479KB بعد القياس. */
+  /* 2026-10-25: الهوية الجديدة (ترتيب التطبيق + شروط البطاقة + البانر) أضافت
+     ~6KB من HTML فقط؛ السقف رُفع بهامش بسيط وبلا أي طلب شبكة جديد. */
+  /* 2026-10-25: قسم البطاقة الحقيقي + نافذة التفاصيل الحيّة + الفلترة الموحّدة
+     أضافت ~4KB HTML فقط، بلا أي طلب شبكة جديد. */
+  /* 2026-10-25: قسم المفضلة + زر التصنيفات البطيّة أضافا ~5KB HTML فقط،
+     بلا أي طلب شبكة جديد (المفضلة من localStorage). */
+  /* 2026-10-25: شريط الصفحة ووسوم data-page أضافت ~2KB HTML فقط؛
+     التنقّل كله داخلي بلا أي طلب شبكة إضافي. */
+  /* 2026-10-25: تعديلات السجل/الفلاتر مسّت dashboard.css وstyle.css فقط؛
+     index نما 1KB من تنسيقات مشتركة. */
+  /* 2026-10-27: هيكل صفحة كاملة بلا كريمي + كحلي مزرق/أخضر نيون أضاف ~1KB
+     (قواعد لونية + شريط صفحة بزرّي رجوع/رئيسية). القياس: 717KB. لا طلب جديد. */
+  'index.html': { raw: 720, requests: 20 },
+  'verify.html': { raw: 512, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */
-  'dashboard.html': { raw: 964, requests: 20 }
+  /* 2026-10-24: +8KB لمحرّر صورة الوظيفة (معاينة + تكبير/تصغير + سحب +
+     تثبيت ما يراه الموظف) في ملف assets/css/image-editor.css الخاص باللوحة،
+     مع كود canvas في dashboard.js. القياس: 971KB. لا طلب جديد. */
+  /* 2026-10-27: شعار «منصة مكسب» الجديد أُضيف إلى السبرايت المشترك (رمز SVG
+     بحلقة ذهبية + M + صح + سهم + رأس) — ~0.6KB لكل صفحة، واللوحة نمت 1KB
+     فقط. لا سكربت ولا طلب شبكة جديد. القياس: 1001KB. */
+  'dashboard.html': { raw: 1010, requests: 20 }
 };
 
 function payloadOf(page) {
@@ -138,7 +167,64 @@ step(3, 'ميزانية القاعدة — طلبات Supabase لكل زيارة
   check('جداول الإقلاع للموظف ستة كما هو متوقّع', count === 6, String(count));
   check('الصفحات العامة لا تشترك في القناة اللحظية', !/subscribeAll/.test(readFileSync(join(ROOT, 'assets/js/public.js'), 'utf8')));
   check('مساعد القراءة العامة محصور بعرض public_jobs (صفحات عند كبر القائمة)',
-    /readPages\(client, 'public_jobs', 100000\)/.test(cloudJs) && !/from\('jobs'\)[\s\S]{0,80}fetchPublicJobs/.test(cloudJs));
+    /readPages\(client, 'public_jobs', 100000, \{ count: false, cols: PUBLIC_JOB_COLS \}\)/.test(cloudJs) &&
+    !/from\('jobs'\)[\s\S]{0,80}fetchPublicJobs/.test(cloudJs));
+  /* 2026-10-24: أسباب التأخير التي أُصلحت — نمنع رجوعها */
+  check('القراءة العامة بلا count=exact على public_jobs (العدّ أثقل استعلام)',
+    /readPages\(client, 'public_jobs', 100000, \{ count: false, cols: PUBLIC_JOB_COLS \}\)/.test(cloudJs));
+  check('صفحات القاعدة 1000 صف وبقية الصفحات متوازية (٤ معاً)',
+    /var PAGE_SIZE = 1000/.test(cloudJs) && /PAGE_PARALLEL = 4/.test(cloudJs) &&
+    /mapLimit\(ranges, PAGE_PARALLEL/.test(cloudJs));
+  check('العدّ الدقيق يُطلب مرة واحدة في الأولى ومرة في الأخيرة فقط (لا لكل صفحة)',
+    /var first = query\(wantCount\)/.test(cloudJs) &&
+    /fetchRange\(r.from, r.to, wantCount && index === lastIndex\)/.test(cloudJs) &&
+    !/fetchRange\(r.from, r.to, true\)/.test(cloudJs));
+  check('preconnect إلى قاعدة الشركة في كل صفحة منشورة', (() => {
+    const host = 'vqsvztudvfukyuerzcgx.supabase.co';
+    return ['index.html', 'verify.html', 'dashboard.html', '404.html'].every((f) => {
+      const html = readFileSync(join(ROOT, f), 'utf8');
+      return new RegExp('rel="preconnect" href="https://' + host + '"').test(html) &&
+        new RegExp('rel="dns-prefetch" href="https://' + host + '"').test(html);
+    });
+  })());
+  check('إقلاع اللوحة لا ينتظر تقارير 800KB (deferReports + تحميل خلفي)', (() => {
+    const storeJs = readFileSync(join(ROOT, 'assets/js/store.js'), 'utf8');
+    return /deferReports:\s*true/.test(storeJs) && /loadReportsAfterBoot\(\)/.test(storeJs) &&
+      /loadWorkspaceReports/.test(cloudJs) && /loadReportsAfterBoot/.test(storeJs);
+  })());
+  check('الصفحة العامة بلا أي رسالة انتظار (طلب صاحب الشركة 2026-10-25)', (() => {
+    const pub = readFileSync(join(ROOT, 'assets/js/public.js'), 'utf8');
+    const css = readFileSync(join(ROOT, 'assets/css/card-entry.css'), 'utf8');
+    const page = readFileSync(join(ROOT, 'index.html'), 'utf8');
+    return !/job-connecting|showConnecting|connectingTimer/.test(pub) &&
+      !/\.job-connecting/.test(css) &&
+      !/جارٍ الاتصال بقاعدة الشركة/.test(page);
+  })());
+  check('الوظائف العامة: أعمدة محدّدة (لا select *) وذاكرة عرض فورية ٥ دقائق', (() => {
+    const cloud = readFileSync(join(ROOT, 'assets/js/cloud.js'), 'utf8');
+    const store = readFileSync(join(ROOT, 'assets/js/store.js'), 'utf8');
+    return /PUBLIC_JOB_COLS/.test(cloud) && /hrc_public_jobs_v1/.test(cloud) &&
+      /PUB_CACHE_TTL = 5 \* 60 \* 1000/.test(cloud) &&
+      /readPublicCache\(\)/.test(store) && /savePublicCache/.test(cloud);
+  })());
+  check('الإقلاع المتوازي: الجلسة ثم الملف والبيانات معاً (لا انتظار متتالٍ)', (() => {
+    const store = readFileSync(join(ROOT, 'assets/js/store.js'), 'utf8');
+    const auth = readFileSync(join(ROOT, 'assets/js/cloud-auth.js'), 'utf8');
+    return /sessionOnly\(\)/.test(auth) && /profileFor: profileFor/.test(auth) &&
+      /Promise\.all\(\[pProfile, pData\]\)/.test(store) && !/unusedRestoreThenLoadLegacy/.test(store);
+  })());
+  check('سجل التدقيق مؤجَّل عن الإقلاع ويُقرأ عند فتح شاشته', (() => {
+    const store = readFileSync(join(ROOT, 'assets/js/store.js'), 'utf8');
+    const cloud = readFileSync(join(ROOT, 'assets/js/cloud.js'), 'utf8');
+    const dash = readFileSync(join(ROOT, 'assets/js/dashboard.js'), 'utf8');
+    return /deferAudit:true/.test(store) && /function loadAuditLog/.test(cloud) &&
+      /loadAuditLog/.test(store) && /auditPending/.test(dash);
+  })());
+  check('مهلة اتصال ومحاولة إعادة واحدة في عميل الزائر', (() => {
+    const http = readFileSync(join(ROOT, 'assets/js/cloud-http.js'), 'utf8');
+    return /TIMEOUT_MS/.test(http) && /AbortController/.test(http) &&
+      /r\.network \|\| method !== 'GET'/.test(http);
+  })());
   check('الإقلاع العام لا يقرأ جداول الموظفين (canReadStaffTables)', /canReadStaffTables/.test(cfgJs));
 }
 

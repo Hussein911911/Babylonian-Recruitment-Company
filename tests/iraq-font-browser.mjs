@@ -62,8 +62,7 @@ try{
   await page.evaluate(()=>{window.__applyPrints=0;window.print=()=>__applyPrints++;G.printApplication();});
   await page.waitForFunction(()=>__applyPrints===1);
   check('application preserves all Cairo print weights including 800: '+zone,await page.evaluate(()=>[400,600,700,800,900].every(w=>document.fonts.check(w+' 12px Cairo','العراق ABC 123'))));
-  await page.goto(base+'employer.html');await page.waitForFunction(()=>document.fonts.status==='loaded');
-  check('independent employer portal uses IBM Plex Sans Arabic: '+zone,(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)).split(',')[0].replace(/["']/g,'').trim()==='IBM Plex Sans Arabic' );
+  /* صفحة صاحب العمل حُذفت نهائياً (2026-10-25) — لا تحقّق خطوط لها بعد اليوم. */
   check('no runtime errors: '+zone,errors.length===0);await context.close();
  }
  console.log(`PASS ${n} native Iraq clock/font/print checks. No live backend requests.`);

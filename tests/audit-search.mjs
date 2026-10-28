@@ -24,6 +24,7 @@ const field = (key) => doc.getElementById('log-' + key);
 const change = (key, value) => { field(key).value = value; field(key).dispatchEvent(new w.Event('change', { bubbles: true })); };
 const wait = () => new Promise((r) => setTimeout(r, 240));
 const reset = () => doc.getElementById('log-reset').click();
+/* 2026-10-25: السجل جدول مرتّب — الصفوف داخل tbody بلا صفّ «فارغ» */
 const visible = () => [...doc.querySelectorAll('#audit-table-body tr')].filter((r) => !r.querySelector('.table-empty'));
 try {
   const fixture = Array.from({length: 125}, (_,i) => ({

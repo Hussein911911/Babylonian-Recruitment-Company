@@ -1,4 +1,4 @@
-// Service Worker للعمل أوفلاين — hrc-cache-v45
+// Service Worker للعمل أوفلاين — hrc-cache-v80
 // ---------------------------------------------------------------------------
 // سياسة التخزين منذ v4:
 //   • HTML و JS  → network-first: الشبكة أولاً (الزائر يرى آخر نسخة)، والكاش
@@ -28,15 +28,12 @@
    إن كان مطابقاً. إبقاء الرقم ثابتاً يُبقي الزوار القدامى على نسخة قديمة
    من index.html مهما أعدت النشر (ظهر فعلاً: زر دخول محذوف بقي على حاسبة
    زارت الموقع قبل الحذف، بينما اختفى على هاتف لم يزره من قبل). */
-const CACHE_NAME = 'hrc-cache-v45';
+const CACHE_NAME = 'hrc-cache-v80';
 const urlsToCache = [
   '/',
   '/index.html',
   '/assets/js/apply-navigation.js',
   '/apply.html',
-  '/employer.html',
-  '/assets/css/employer.css',
-  '/assets/js/employer.js',
   '/dashboard.html',
   '/assets/js/card-archive.js',
   '/verify.html',
@@ -56,7 +53,25 @@ const urlsToCache = [
   '/assets/js/public.js',
   '/assets/js/dashboard.js',
   '/assets/js/verify.js',
-  '/assets/js/qr.js'
+  '/assets/js/qr.js',
+  /* 2026-10-25: أُضيفت ملفات كانت تُترك للتحميل الوقتي — بلا تخزين مسبق
+     تظهر الصفحة بلا تنسيق إن فُتحت أول مرة بلا إنترنت. */
+  '/assets/css/card-entry.css',
+  '/assets/css/app-shell.css',
+  '/assets/img/hero-skyline.webp',
+  /* 2026-10-27: صورة واجهة شاشة الترحيب «منصة مكسب» (محلية، تُخزَّن مسبقاً) */
+  '/assets/img/mkseb-hero.webp',
+  '/assets/img/mkseb-hero-m.webp',
+  '/assets/css/backup.css',
+  '/assets/css/image-editor.css',
+  '/assets/js/qr-scan.js',
+  '/assets/js/voucher.js',
+  '/assets/js/cloud.js',
+  '/assets/js/cloud-http.js',
+  /* 2026-10-27: التقسيم الإداري العراقي (١٩ محافظة · ١٣٠ قضاء · ٤٢٧ ناحية) */
+  '/assets/js/iraq-admin.js',
+  '/assets/js/cloud-sync.js',
+  '/assets/js/cloud-auth.js'
 ];
 
 /* HTML و JS: شبكة أولاً */
@@ -124,9 +139,11 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  /* الأصول الثابتة: كاش أولاً (بصمة ?v= تُدير تحديثها) */
+  /* الأصول الثابتة: كاش أولاً (بصمة ?v= تُدير تحديثها).
+     ignoreSearch: الملفات المخزَّنة مسبقاً بلا ?v= — بدونها يفشل المطابق
+     أوفلاين عند أول زيارة فتظهر الصفحة بلا تنسيق. */
   event.respondWith(
-    caches.match(request).then(response => {
+    caches.match(request, { ignoreSearch: true }).then(response => {
       if (response) return response;
       return fetch(request).then(response => {
         if (!response || response.status !== 200 || response.type !== 'basic') {

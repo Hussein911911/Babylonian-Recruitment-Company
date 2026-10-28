@@ -13,8 +13,11 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-<link rel="stylesheet" href="assets/css/style.css?v=d89836e6c8">
-<link rel="stylesheet" href="assets/css/public-polish.css?v=d89836e6c8"></head>
+<link rel="preconnect" href="https://vqsvztudvfukyuerzcgx.supabase.co" crossorigin>
+<link rel="dns-prefetch" href="https://vqsvztudvfukyuerzcgx.supabase.co">
+
+<link rel="stylesheet" href="assets/css/style.css?v=69e47d15a3">
+<link rel="stylesheet" href="assets/css/card-entry.css?v=69e47d15a3"><link rel="stylesheet" href="assets/css/public-polish.css?v=69e47d15a3"><link rel="stylesheet" href="assets/css/app-shell.css?v=69e47d15a3"></head>
 <body>
 <!-- ===========================================================================
      مكتبة الأيقونات والرموز (SVG Sprite) — تُدرج مرة واحدة في كل صفحة
@@ -30,7 +33,22 @@
     <linearGradient id="g-gold-line" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="transparent"/><stop offset=".5" stop-color="#c8a24a"/><stop offset="1" stop-color="transparent"/>
     </linearGradient>
+    <!-- ذهب شعار «منصة مكسب» -->
+    <linearGradient id="g-mk-gold" x1=".1" y1="0" x2=".9" y2="1">
+      <stop offset="0" stop-color="#f8e0ad"/><stop offset=".5" stop-color="#e2bb66"/><stop offset="1" stop-color="#bd8f2f"/>
+    </linearGradient>
   </defs>
+
+  <!-- شعار «منصة مكسب»: حلقة ذهبية + حرف M + علامة صح + سهم صاعد + رأس إنسان
+       (مطابق لشعار المنصة في صفحة التقديم وapply.html — رمز واحد للهوية) -->
+  <symbol id="i-mkseb" viewBox="0 0 415 418">
+<path d="M80.6 331.4C79.2 330.0 79.0 328.6 79.4 324.1C79.8 321.0 80.9 306.6 82.0 292.0C85.6 244.4 86.6 235.0 89.1 228.6C95.3 212.7 114.9 201.0 135.4 201.0C145.9 201.0 145.6 196.2 139.9 263.8C138.3 282.7 134.8 281.0 174.9 280.9C192.8 280.8 222.1 280.5 240.0 280.1C272.5 279.5 272.5 279.5 279.1 276.4C291.0 270.7 297.2 258.1 292.5 249.0C286.5 237.5 270.7 243.2 260.9 260.4C257.6 266.4 256.7 266.9 249.8 266.9C247.3 266.8 244.3 267.3 243.2 267.9C240.2 269.5 228.5 269.2 224.3 267.5C220.8 266.0 220.8 265.9 221.2 261.2C221.8 255.3 227.1 242.6 232.1 235.1C237.6 226.8 255.3 209.3 264.0 203.5C275.2 196.1 283.3 194.6 295.9 197.5C330.3 205.6 347.1 240.8 333.9 276.7C323.5 304.7 297.9 323.3 259.5 330.7C252.8 332.0 237.8 332.3 166.9 332.7C87.8 333.1 82.2 333.0 80.6 331.4Z" fill="#fff"/>
+<path d="M172.0 256.2C169.5 255.4 169.0 253.8 169.5 248.5C170.8 235.2 174.2 205.3 174.6 203.8C174.9 202.9 190.7 186.9 209.8 168.4C228.9 149.9 247.0 132.3 250.0 129.3C256.6 122.9 256.4 122.0 246.5 117.0C239.3 113.4 236.4 109.6 238.5 106.5C242.2 101.3 255.4 85.8 256.8 85.1C257.7 84.6 273.6 83.9 292.1 83.5C324.5 82.8 325.8 82.8 326.8 84.6C327.4 85.9 327.3 95.9 326.4 114.5C325.7 129.9 325.1 144.8 325.0 147.7C325.0 151.7 324.4 153.5 322.4 155.9C319.5 159.4 300.6 173.0 298.6 173.0C296.6 173.0 294.6 170.1 291.6 163.0C288.4 155.3 286.3 152.0 284.9 152.0C283.8 152.0 249.2 185.0 194.0 238.6C177.0 255.1 174.6 257.1 172.0 256.2Z" fill="#FABE04"/>
+</symbol>
+<symbol id="i-mkseb-dark" viewBox="0 0 415 418">
+<path d="M80.6 331.4C79.2 330.0 79.0 328.6 79.4 324.1C79.8 321.0 80.9 306.6 82.0 292.0C85.6 244.4 86.6 235.0 89.1 228.6C95.3 212.7 114.9 201.0 135.4 201.0C145.9 201.0 145.6 196.2 139.9 263.8C138.3 282.7 134.8 281.0 174.9 280.9C192.8 280.8 222.1 280.5 240.0 280.1C272.5 279.5 272.5 279.5 279.1 276.4C291.0 270.7 297.2 258.1 292.5 249.0C286.5 237.5 270.7 243.2 260.9 260.4C257.6 266.4 256.7 266.9 249.8 266.9C247.3 266.8 244.3 267.3 243.2 267.9C240.2 269.5 228.5 269.2 224.3 267.5C220.8 266.0 220.8 265.9 221.2 261.2C221.8 255.3 227.1 242.6 232.1 235.1C237.6 226.8 255.3 209.3 264.0 203.5C275.2 196.1 283.3 194.6 295.9 197.5C330.3 205.6 347.1 240.8 333.9 276.7C323.5 304.7 297.9 323.3 259.5 330.7C252.8 332.0 237.8 332.3 166.9 332.7C87.8 333.1 82.2 333.0 80.6 331.4Z" fill="#012F3E"/>
+<path d="M172.0 256.2C169.5 255.4 169.0 253.8 169.5 248.5C170.8 235.2 174.2 205.3 174.6 203.8C174.9 202.9 190.7 186.9 209.8 168.4C228.9 149.9 247.0 132.3 250.0 129.3C256.6 122.9 256.4 122.0 246.5 117.0C239.3 113.4 236.4 109.6 238.5 106.5C242.2 101.3 255.4 85.8 256.8 85.1C257.7 84.6 273.6 83.9 292.1 83.5C324.5 82.8 325.8 82.8 326.8 84.6C327.4 85.9 327.3 95.9 326.4 114.5C325.7 129.9 325.1 144.8 325.0 147.7C325.0 151.7 324.4 153.5 322.4 155.9C319.5 159.4 300.6 173.0 298.6 173.0C296.6 173.0 294.6 170.1 291.6 163.0C288.4 155.3 286.3 152.0 284.9 152.0C283.8 152.0 249.2 185.0 194.0 238.6C177.0 255.1 174.6 257.1 172.0 256.2Z" fill="#FABE04"/>
+</symbol>
 
   <!-- شعار الشركة: ختم بابلي — بوابة عشتار + نجمة عشتار الثمانية -->
   <symbol id="i-emblem" viewBox="0 0 120 120">
@@ -174,9 +192,6 @@
   <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
     <path d="M6 6l12 12M18 6L6 18"/>
   </symbol>
-  <symbol id="i-star8" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 1.6l2.3 5.1 5-2.3-2.3 5 5.1 2.3-5.1 2.3 2.3 5-5-2.3-2.3 5.1-2.3-5.1-5 2.3 2.3-5L1.6 14l5.1-2.3-2.3-5 5 2.3z"/>
-  </symbol>
   <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/>
     <rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>
@@ -204,9 +219,30 @@
     <path d="M6 14.5h3.2M12 14.5h2.4"/>
   </symbol>
   <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M8.2 12.4l2.7 2.7 5-5.6"/></symbol>
+  <!-- مسح ضوئي: إطار بزوايا + خط قراءة (زر «مسح الباركود» في بطاقتي) -->
+  <symbol id="i-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 8V5.6A2.6 2.6 0 0 1 5.6 3H8M16 3h2.4A2.6 2.6 0 0 1 21 5.6V8M21 16v2.4A2.6 2.6 0 0 1 18.4 21H16M8 21H5.6A2.6 2.6 0 0 1 3 18.4V16"/>
+    <path d="M3.6 12h16.8"/>
+  </symbol>
   <!-- سهم لليمين (زر «السابق» في نافذة الحجز — الواجهة RTL) -->
   <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M5 12h14M13 6l6 6-6 6"/>
+  </symbol>
+  <!-- معلومات (شروح الواجهة الجديدة) -->
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.6h.01"/>
+  </symbol>
+  <!-- قلب المفضلة في بطاقة الوظيفة -->
+  <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 20s-7-4.4-7-9.3A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7 3.1C19 15.6 12 20 12 20z"/>
+  </symbol>
+  <!-- بيت (زر «الرئيسية» في شريط التطبيق السفلي) -->
+  <symbol id="i-house" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 10.6 12 4l8 6.6V20a1 1 0 0 1-1 1h-4.5v-5.5h-5V21H5a1 1 0 0 1-1-1z"/>
+  </symbol>
+  <!-- حقيبة (تصنيف «تجاري») -->
+  <symbol id="i-bag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 8h12l-1 12H7z"/><path d="M9 8V6.2A3 3 0 0 1 12 3.2a3 3 0 0 1 3 3V8"/>
   </symbol>
 </svg>
 
@@ -217,10 +253,10 @@
       <!-- اسم الشركة = بوابة الموظفين المخفية: نقرة عادية → أعلى الصفحة،
            وضغطة مطوّلة (1.2 ثانية) → شاشة تسجيل الدخول. المنطق في nav.js. -->
       <a class="brand" id="brand-home" href="index.html#home" data-staff-gate>
-        <svg class="emblem" viewBox="0 0 120 120" role="img" aria-label="شعار شركة الهدف للتوظيف"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
+        <span class="emblem mk-tile mk-tile-light"><svg viewBox="0 0 415 418" role="img" aria-label="شعار منصة مكسب للتوظيف"><use href="#i-mkseb-dark" xlink:href="#i-mkseb-dark"/></svg></span>
         <span class="brand-text">
-          <b>شركة الهدف للتوظيف</b>
-          <span>Al-Hadaf Recruitment Co.</span>
+          <b>منصة مكسب</b>
+          <span>مكسب للتوظيف — بابل، العراق</span>
         </span>
       </a>
 
@@ -275,90 +311,91 @@
   </div>
 </header>
 
-<!-- ============================== الواجهة الرئيسية ============================== -->
-<section class="hero" id="home">
-  <div class="hero-bg" role="img" aria-label="بوابة عشتار البابلية"></div>
-  <div class="hero-veil"></div>
-  <div class="container hero-inner">
-    <div>
-      <span class="hero-badge">
-        <svg class="ic"><use href="#i-star8" xlink:href="#i-star8"/></svg>
-        شركة مسجّلة في بابل — إجازة عمل رسمية
-      </span>
-      <h1>شركة الهدف للتوظيف<br><span class="accent">نصل الأيدي العاملة بأصحاب العمل</span></h1>
-      <p class="hero-lede">تصفّح وظائف بابل والفرات الأوسط وقدّم ببطاقة التوظيف من نقاط البيع المعتمدة. <b>فرصتان حالياً، وصلاحية 30 يوماً، والدفع كاش.</b></p>
-      <div class="hero-cta">
-        <button type="button" class="btn btn-gold btn-lg" data-action="open-booking">
-          <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg>
-          بطاقتي — تابع بطاقتك
-        </button>
-        <a href="#jobs" class="btn btn-ghost btn-lg">
-          <svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg>
-          تصفّح الوظائف المتاحة
-        </a>
-      </div>
-      <div class="hero-stats" id="hero-stats"></div>
-    </div>
+<!-- شريط صفحة التطبيق: يظهر عند فتح صفحة من الشريط السفلي -->
+<div class="page-bar" id="page-bar" hidden>
+  <button type="button" class="pb-back" id="pb-back" aria-label="رجوع للرئيسية">
+    <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
+  </button>
+  <div class="pb-copy"><b id="pb-title">الوظائف</b><span id="pb-sub"></span></div>
+  <span class="pb-badge" id="pb-badge" hidden></span>
+  <button type="button" class="pb-home" id="pb-home" aria-label="الرئيسية">
+    <svg class="ic"><use href="#i-house" xlink:href="#i-house"/></svg>
+  </button>
+</div>
 
-    <!-- أسد بابل في الواجهة -->
-    <aside class="hero-figure">
-      <img src="assets/img/lion-of-babylon.jpg" alt="أسد بابل — رمز القوة والأمانة في الحضارة البابلية" loading="eager">
-      <div class="figure-cap">
-        <b>أسد بابل — رمز القوة والأمانة</b>
-        <span>نحمل رمز الحضارة البابلية في كل بطاقة نُصدرها: التزام، وثقة، وأثر لا يُمحى.</span>
-      </div>
-    </aside>
+<!-- ============================== الواجهة الرئيسية ============================== -->
+<section class="hero hero-app" id="home" data-page="home">
+  <div class="hero-bg" role="img" aria-label="مدينة بغداد على ضفاف دجلة عند الغروب"></div>
+  <div class="hero-veil"></div>
+
+  <!-- الشعار والوعد في وسط الصورة -->
+  <div class="app-hero">
+    <div class="app-brand brand" data-staff-gate>
+      <span class="app-emblem mk-tile"><svg viewBox="0 0 415 418"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg></span>
+      <b class="app-wordmark">منصة <span class="accent">مكسب</span> للتوظيف</b>
+      <span class="app-tagline">منصة الفرص والوظائف</span>
+    </div>
+    <h1 class="app-headline">فرصتك لمستقبل أفضل</h1>
+    <p class="app-sub">وظيفة مناسبة .. لحياة أجمل</p>
+    <span class="app-hero-note">خطوتك تبدأ من هنا</span>
   </div>
-  <div class="crenel"></div>
 </section>
 
 <!-- ============================== البحث السريع ============================== -->
-<section class="section" style="padding-top:26px">
+<section class="app-search-wrap" data-page="jobs">
   <div class="container">
-    <form class="quick-search" id="qs-form" autocomplete="off">
-      <span class="qs-label">
-        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> بحث سريع
-      </span>
-      <div class="qs-field qs-main">
-        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
-        <input type="text" id="qs-code" placeholder="اكتب كود الوظيفة أو اسمها..." aria-label="كود الوظيفة أو اسمها">
-      </div>
-      <button type="button" class="btn btn-ghost qs-scan" id="qs-scan" title="البحث بمسح الكيو آر كود">
-        <svg class="ic"><use href="#i-qr" xlink:href="#i-qr"/></svg> مسح QR
+    <form class="app-search" id="qs-form" autocomplete="off">
+      <svg class="ic as-ic"><use href="#i-search" xlink:href="#i-search"/></svg>
+      <input type="text" id="qs-code" placeholder="ابحث عن وظيفة، محل أو شركة..." aria-label="كود الوظيفة أو اسمها">
+      <select id="qs-governorate" aria-label="المحافظة" class="as-gov">
+        <option value="all">كل المحافظات</option>
+      </select>
+      <button type="button" class="as-scan" id="qs-scan" title="البحث بمسح الكيو آر كود" aria-label="مسح QR">
+        <svg class="ic"><use href="#i-scan" xlink:href="#i-scan"/></svg>
       </button>
-      <div class="qs-field qs-region">
-        <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
-        <select id="qs-region" aria-label="المنطقة"><option value="all">كل مناطق بابل</option></select>
-      </div>
-      <button class="btn btn-gold qs-submit" type="submit">
-        <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> ابحث
+      <button class="as-go" type="submit" aria-label="ابحث">
+        <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
       </button>
     </form>
   </div>
 </section>
 
-<!-- ============================== لوحة الوظائف ============================== -->
-<section class="section section-alt" id="jobs" style="padding-top:20px">
+<!-- ============================== التصنيفات ============================== -->
+<section class="section cats-section" id="categories" data-page="jobs" style="padding-top:10px;padding-bottom:0">
   <div class="container">
-    <div class="section-head">
-      <span class="eyebrow">الفرص المتاحة الآن</span>
-      <h2>لوحة الوظائف في بابل والفرات الأوسط</h2>
-      <p>حجز الوظيفة 24 ساعة؛ بعدها تصبح حرجة بانتظار قرار الشركة، ولا تعود متاحة تلقائياً.</p>
-      <svg class="ornament" viewBox="0 0 74 18" fill="none" aria-hidden="true">
-        <path d="M0 9h22" stroke="url(#g-gold-line)" stroke-width="1.4"/>
-        <path d="M52 9h22" stroke="url(#g-gold-line)" stroke-width="1.4"/>
-        <path d="M37 1.5l2.9 4.6 5.1-2.3-2.3 5.1 4.6 2.9-4.6 2.9 2.3 5.1-5.1-2.3L37 20l-2.9-4.5-5.1 2.3 2.3-5.1L26.7 9.8l4.6-2.9-2.3-5.1 5.1 2.3z" fill="#c8a24a" transform="translate(0,-1.9) scale(.72) translate(14.6,2.6)"/>
-      </svg>
+    <div class="cats-head">
+      <div>
+        <h2><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg> تصفّح حسب التخصص</h2>
+        <p>اضغط الزر لعرض التخصصات واختيار ما يناسبك</p>
+      </div>
+      <div class="cats-tools">
+        <span class="cats-hint" id="cats-hint"></span>
+        <button type="button" class="cats-toggle" id="cats-toggle" aria-expanded="false" aria-controls="cat-rail">
+          <svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg>
+          <span>عرض التخصصات</span>
+          <svg class="ic chev"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg>
+        </button>
+      </div>
     </div>
+    <!-- مخفيّة حتى تُضغط: لا تُزاحم الصفحة -->
+    <div class="cat-grid is-collapsed" id="cat-rail" role="tablist" aria-label="تصنيفات الوظائف" hidden></div>
+  </div>
+</section>
 
-    <div class="filters">
+<!-- ============================== لوحة الوظائف ============================== -->
+<section class="section app-section" id="jobs" data-page="jobs" style="padding-top:22px">
+  <div class="container">
+    <div class="jobs-head">
+      <h2><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> أحدث الوظائف</h2>
+      <a class="jobs-all" href="#jobs">عرض الكل <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg></a>
+    </div>
+    <p class="jobs-sub">حجز الوظيفة 24 ساعة؛ بعدها تصبح حرجة بانتظار قرار الشركة، ولا تعود متاحة تلقائياً.</p>
+
+    <div class="filters" role="search" aria-label="تصفية الوظائف">
+      <div class="f-row">
       <div class="f-field f-search">
         <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
         <input type="search" id="filter-q" placeholder="بحث بالكود أو العنوان..." aria-label="بحث بالكود أو العنوان">
-      </div>
-      <div class="f-field">
-        <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
-        <select id="filter-region" aria-label="المنطقة"><option value="all">كل المناطق</option></select>
       </div>
       <div class="f-field">
         <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg>
@@ -380,6 +417,8 @@
       <button class="btn btn-outline btn-sm f-reset" id="filter-reset" type="button" title="مسح كل عوامل التصفية">
         <svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تصفير
       </button>
+      </div>
+      <div class="f-active" id="f-active" hidden></div>
     </div>
 
     <div class="flex-between mb-2">
@@ -390,6 +429,8 @@
       </p>
     </div>
 
+    <!-- مراجع صريحة لأيقونات التصنيفات التي يبنيها الكود ديناميكياً -->
+    <svg width="0" height="0" aria-hidden="true" style="position:absolute;opacity:0"><use href="#i-bag" xlink:href="#i-bag"/><use href="#i-list" xlink:href="#i-list"/><use href="#i-chart" xlink:href="#i-chart"/><use href="#i-server" xlink:href="#i-server"/><use href="#i-sparkle" xlink:href="#i-sparkle"/></svg>
     <div class="jobs-grid" id="jobs-grid"></div>
     <div class="empty-state hidden" id="jobs-empty">
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
@@ -399,8 +440,70 @@
   </div>
 </section>
 
+<!-- ============================== المفضلة ============================== -->
+<section class="section app-section app-only" id="favorites" data-page="favorites" style="padding-top:6px">
+  <div class="container">
+    <div class="jobs-head">
+      <h2><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg> المفضلة</h2>
+      <button type="button" class="jobs-all fav-clear" id="fav-clear" hidden>مسح الكل</button>
+    </div>
+    <p class="jobs-sub">الوظائف التي حفظتها بضغطة القلب — محفوظة على جهازك فقط، وتظهر هنا مباشرة.</p>
+    <div class="jobs-grid" id="fav-grid"></div>
+    <div class="fav-empty" id="fav-empty">
+      <svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg>
+      <h3>لا توجد وظائف في المفضلة بعد</h3>
+      <p>اضغط أيقونة القلب على أي وظيفة تعجبك وستجدها هنا.</p>
+      <a class="btn btn-gold btn-sm" href="#jobs">تصفّح الوظائف</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== بطاقتي — إدخال الرقم أو المسح ثم التفاصيل ============================== -->
+<section class="section app-section card-page" id="card" data-page="card">
+  <div class="container">
+    <!-- (١) شاشة الإدخال -->
+    <div class="cp-entry" id="cp-entry">
+      <div class="cp-entry-card">
+        <span class="cp-ic"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg></span>
+        <h2>ادخل رقم بطاقتك</h2>
+        <p>اكتب رقم البطاقة المطبوع عليها، أو امسح الباركود بكاميرا هاتفك — وتظهر لك حالتها وفرصها كاملة.</p>
+        <form class="cp-form" id="cp-form" autocomplete="off">
+          <label class="cp-label" for="cp-serial">رقم البطاقة (الباركود)</label>
+          <div class="cp-field">
+            <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg>
+            <input id="cp-serial" type="text" inputmode="text" spellcheck="false" dir="ltr"
+                   placeholder="مثال: K7M2XQ9T4R" maxlength="18" aria-describedby="cp-err">
+          </div>
+          <div class="cp-actions">
+            <button type="submit" class="btn btn-gold btn-lg" id="cp-go">
+              <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg> اعرض بطاقتي
+            </button>
+            <button type="button" class="btn btn-outline btn-lg" id="cp-scan">
+              <svg class="ic"><use href="#i-scan" xlink:href="#i-scan"/></svg> مسح الباركود
+            </button>
+          </div>
+          <p class="cp-err" id="cp-err" role="alert"></p>
+        </form>
+        <p class="cp-note"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
+          بياناتك تُعرض مختصرة (اسم وهاتف مقنّعان) — التفاصيل الكاملة على استمارتك المطبوعة.</p>
+      </div>
+    </div>
+
+    <!-- (٢) شاشة التفاصيل (تُرسم بعد البحث) -->
+    <div class="cp-result" id="cp-result" hidden></div>
+  </div>
+</section>
+
+<!-- ============================== أرقام سريعة (نمط التطبيق) ============================== -->
+<section class="section app-section" data-page="home" style="padding-top:26px;padding-bottom:0">
+  <div class="container">
+    <!-- الأرقام تُرسم من الكود نفسه (renderHeroStats) بأصناف شريط التطبيق -->
+    <div class="app-stats" id="hero-stats"></div>
+  </div>
+</section>
+
 <!-- ============================== كيف نعمل ============================== -->
-<section class="section" id="how">
+<section class="section" id="how" data-page="home">
   <div class="container">
     <div class="section-head reveal">
       <span class="eyebrow">آلية العمل</span>
@@ -410,7 +513,7 @@
       <div class="step reveal" data-d="0">
         <div class="num">1</div>
         <h3>شراء البطاقة</h3>
-        <p>اشترِ بطاقة التوظيف <b>كاشاً</b> من نقطة بيع معتمدة، وعبّئ بياناتك.</p>
+        <p>اشترِ بطاقة التوظيف <b>الدفع كاش</b> من نقطة بيع معتمدة، وعبّئ بياناتك.</p>
       </div>
       <div class="step reveal" data-d="120">
         <div class="num">2</div>
@@ -437,7 +540,7 @@
 </section>
 
 <!-- ============================== الخدمات ============================== -->
-<section class="section section-alt" id="services">
+<section class="section section-alt" id="services" data-page="home">
   <div class="container">
     <div class="section-head reveal">
       <span class="eyebrow">خدماتنا</span>
@@ -474,7 +577,7 @@
 </section>
 
 <!-- ============================== عن الشركة + أسد بابل ============================== -->
-<section class="section section-about" id="about">
+<section class="section section-about" id="about" data-page="home">
   <div class="container">
     <div class="lion-grid">
       <div class="lion-frame reveal" data-d="0">
@@ -501,7 +604,7 @@
 </section>
 
 <!-- ============================== الحجز والتحقق ============================== -->
-<section class="section section-alt" id="verify">
+<section class="section section-alt" id="verify" data-page="home">
   <div class="container">
     <div class="split-2">
       <div>
@@ -517,7 +620,7 @@
           <div class="contact-card" style="text-align:right">
             <div class="ic"><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg></div>
             <h3>لصاحب العمل</h3>
-            <p>امسح باركود استمارة المتقدم للاطلاع على طلبه وتسجيل نتيجة المقابلة لدى الشركة.</p>
+            <p>تستلم استمارة المتقدم مطبوعة بباركود بطاقته، وتبلّغ الشركة بنتيجة المقابلة وهي التي تثبّتها في ملف المرشح.</p>
           </div>
         </div>
         <div class="flex flex-wrap mt-3" style="gap:10px">
@@ -525,7 +628,7 @@
             <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> افتح بطاقتي الآن
           </button>
           <a class="btn btn-outline" href="https://wa.me/9647760058007" target="_blank" rel="noopener">
-            <svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg> أو خابرنا واتساب
+            <svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg> أو اتصل بنا واتساب
           </a>
           <a class="btn btn-outline" href="https://www.google.com/maps?q=32.4823913,44.4105048" target="_blank" rel="noopener">
             <svg class="ic"><use href="#i-pin" xlink:href="#i-pin"/></svg> موقع المكتب على الخريطة
@@ -543,7 +646,7 @@
 </section>
 
 <!-- ============================== شريط الاقتباس ============================== -->
-<section class="quote-band">
+<section class="quote-band" data-page="home">
   <div class="container">
     <blockquote>
       «خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية.»
@@ -553,7 +656,7 @@
 </section>
 
 <!-- ============================== التواصل ============================== -->
-<section class="section" id="contact">
+<section class="section" id="contact" data-page="contact">
   <div class="container">
     <div class="section-head">
       <span class="eyebrow">تواصل معنا</span>
@@ -592,13 +695,34 @@
             <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> بطاقتي
           </button>
           <a class="btn btn-ghost btn-lg" href="https://wa.me/9647760058007" target="_blank" rel="noopener">
-            <svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg> خابرنا واتساب
+            <svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg> اتصل بنا واتساب
           </a>
         </div>
       </div>
     </div>
   </div>
 </section>
+
+<!-- ============================== شريط التطبيق السفلي (جوال) ============================== -->
+<nav class="tabbar" aria-label="تنقل سريع">
+  <button type="button" class="tab-item" data-page-tab="jobs">
+    <svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg><span>الوظائف</span>
+  </button>
+  <button type="button" class="tab-item" data-page-tab="favorites">
+    <span class="tab-ic"><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg>
+      <b class="tab-badge" id="fav-count" hidden>0</b></span><span>المفضلة</span>
+  </button>
+  <button type="button" class="tab-center" data-page-tab="home">
+    <span class="tab-fab"><svg class="ic"><use href="#i-house" xlink:href="#i-house"/></svg></span>
+    <span>الرئيسية</span>
+  </button>
+  <button type="button" class="tab-item" data-page-tab="card">
+    <svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg><span>بطاقتي</span>
+  </button>
+  <button type="button" class="tab-item" data-page-tab="contact">
+    <svg class="ic"><use href="#i-phone" xlink:href="#i-phone"/></svg><span>تواصل</span>
+  </button>
+</nav>
 
 <!-- ============================== التذييل ============================== -->
 <footer class="site-footer">
@@ -607,10 +731,10 @@
     <div class="foot-main">
       <div>
         <div class="brand mb-2">
-          <svg class="emblem" viewBox="0 0 120 120" role="img" aria-label="شعار الشركة"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
+          <span class="emblem mk-tile mk-tile-light"><svg viewBox="0 0 415 418" role="img" aria-label="شعار منصة مكسب"><use href="#i-mkseb-dark" xlink:href="#i-mkseb-dark"/></svg></span>
           <span class="brand-text">
-            <b>شركة الهدف للتوظيف</b>
-            <span>Al-Hadaf Recruitment Co.</span>
+            <b>منصة مكسب للتوظيف</b>
+            <span>مكسب للتوظيف — بابل، العراق</span>
           </span>
         </div>
         <p style="font-size:.89rem;color:#a9b6d2">
@@ -677,18 +801,18 @@
 <div class="toast-wrap" id="toast-root" aria-live="polite"></div>
 <div id="print-root"></div>
 
-<script src="assets/js/config.js?v=d89836e6c8"></script>
-<script src="assets/js/supabase-config.js?v=d89836e6c8"></script>
-<script src="assets/js/cloud-http.js?v=d89836e6c8"></script>
-<script src="assets/js/qr.js?v=d89836e6c8"></script>
-<script src="assets/js/qr-scan.js?v=d89836e6c8"></script>
-<script src="assets/js/cloud.js?v=d89836e6c8"></script>
-<script src="assets/js/cloud-sync.js?v=d89836e6c8"></script>
-<script src="assets/js/store.js?v=d89836e6c8"></script>
-<script src="assets/js/ui.js?v=d89836e6c8"></script>
-<script src="assets/js/nav.js?v=d89836e6c8"></script>
-<script src="assets/js/voucher.js?v=d89836e6c8"></script>
-<script src="assets/js/booking.js?v=d89836e6c8"></script>
-<script src="assets/js/public.js?v=d89836e6c8"></script>
+<script src="assets/js/config.js?v=69e47d15a3"></script>
+<script src="assets/js/supabase-config.js?v=69e47d15a3"></script>
+<script src="assets/js/cloud-http.js?v=69e47d15a3"></script>
+<script src="assets/js/qr.js?v=69e47d15a3"></script>
+<script src="assets/js/qr-scan.js?v=69e47d15a3"></script>
+<script src="assets/js/cloud.js?v=69e47d15a3"></script>
+<script src="assets/js/cloud-sync.js?v=69e47d15a3"></script>
+<script src="assets/js/store.js?v=69e47d15a3"></script>
+<script src="assets/js/ui.js?v=69e47d15a3"></script>
+<script src="assets/js/nav.js?v=69e47d15a3"></script>
+<script src="assets/js/voucher.js?v=69e47d15a3"></script>
+<script src="assets/js/booking.js?v=69e47d15a3"></script>
+<script src="assets/js/public.js?v=69e47d15a3"></script>
 </body>
 </html>

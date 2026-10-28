@@ -843,8 +843,8 @@ section('10) بطاقة التوظيف المطبوعة (86×54مم) — الب�
 
   const codeBoxes = (html.match(/class="code"/g) || []).length;
   const faces = (html.match(/class="hrc-card[" ]/g) || []).length;
-  if (codeBoxes !== 2 || faces !== 2) bad('البطاقة تعرض وجهين ورمزي الفرصتين', 'أوجه ' + faces + ' / صناديق رموز ' + codeBoxes);
-  else ok('البطاقة تعرض وجهين (أمامي/خلفي) وصندوق رمزي الفرصتين');
+  if (codeBoxes !== 0 || faces !== 2) bad('البطاقة تعرض وجهين بلا رموز فرص', 'أوجه ' + faces + ' / صناديق رموز ' + codeBoxes);
+  else ok('البطاقة تعرض وجهين (أمامي/خلفي) بلا أي رموز فرص');
 
   const svgCount = (html.match(/<svg/g) || []).length;
   const hasQrPath = /<path[^>]+d="M[\d. ]/.test(html);
@@ -1126,6 +1126,91 @@ section('11) التنقّل — كل رابط في الترويسة والتذي
     if (issues.length) bad('عامل الخدمة لا يُبقي الزوّار على نسخة قديمة', issues.join(' | '));
     else ok('عامل الخدمة: جيل v' + gen + ' · nav.js و404.html مخزَّنان · تثبيت لا يسقط بفشل ملف واحد');
   }
+}
+
+/* ═══ 12) صور المحتوى تُعرض كاملة بلا أي قص (قرار 2026-10-24) ═══════════ */
+section('12) الصور — كاملة بنسبتها الطبيعية في كل الصفحات (لا قصّ ولا تمديد)');
+{
+  const css = readFileSync(join(ROOT, 'assets/css/style.css'), 'utf8');
+  const applySrc = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+  /* كل محدّد صورة محتوى يجب أن يكون contain (أو بلا كائن يفرض cover) */
+  const contentSelectors = [
+    ['.job-image img', 'صور بطاقات الوظائف (الموقع)'],
+    ['.job-detail-image img', 'صورة نافذة تفاصيل الوظيفة'],
+    ['.hero-figure img', 'صورة واجهة الموقع'],
+    ['.lion-frame img', 'صور قسم «عن الشركة»']
+  ];
+  const offenders = [];
+  for (const [sel, label] of contentSelectors) {
+    const esc = sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rule = new RegExp(esc + '\\s*\\{([^}]*)\\}', 'g');
+    let m, found = false, hasContain = false;
+    while ((m = rule.exec(css))) {
+      found = true;
+      if (/object-fit:\s*contain/.test(m[1])) hasContain = true;
+      if (/object-fit:\s*cover/.test(m[1])) offenders.push(label + ' (cover)');
+    }
+    if (found && !hasContain) offenders.push(label + ' (بلا contain)');
+  }
+  if (offenders.length) bad('صور المحتوى بلا قصّ في الموقع العام', offenders.join(' | '));
+  else ok('صور المحتوى بلا قصّ في الموقع العام (4 محدّدات: بطاقة · تفاصيل · واجهة · عن الشركة)');
+
+  /* صفحة التقديل: مصغّرة الوظيفة contain */
+  const thumb = /\.job-thumb img\{([^}]*)\}/.exec(applySrc);
+  if (!thumb) bad('مصغّرة الوظيفة في صفحة التقديل معرّفة', 'لا قاعدة .job-thumb img');
+  else if (!/object-fit:\s*contain/.test(thumb[1]) || /object-fit:\s*cover/.test(thumb[1])) {
+    bad('مصغّرة الوظيفة في صفحة التقديل بلا قصّ', thumb[1].trim().slice(0, 90));
+  } else ok('مصغّرة الوظيفة في صفحة التقديل بلا قصّ (contain)');
+
+  /* ═══ توحيد إطار صورة الوظيفة في كل المواضع (2026-10-25) ═══ */
+  {
+    const applySrc2 = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+    const dashCss = readFileSync(join(ROOT, 'assets/css/workspace-layout.css'), 'utf8');
+    const issues = [];
+    /* إطار واحد بنسبة 10:7 في: بطاقة الموقع · نافذة التفاصيل · بطاقة التقديم · جدول اللوحة */
+    const frames = [
+      [/\.job-image\s*\{([^}]*)\}.*?aspect-ratio:\s*10\s*\/\s*7/s, 'بطاقة الموقع'],
+      [/\.job-detail-image\s*\{([^}]*)\}.*?aspect-ratio:\s*10\s*\/\s*7/s, 'نافذة التفاصيل'],
+      [/\.job-thumb\s*\{([^}]*)\}.*?aspect-ratio:\s*10\s*\/\s*7/s, 'بطاقة التقديم']
+    ];
+    if (!/\.job-image[\s\S]{0,200}aspect-ratio:\s*10\s*\/\s*7/.test(css)) issues.push('بطاقة الموقع');
+    if (!/\.job-detail-image[\s\S]{0,200}aspect-ratio:\s*10\s*\/\s*7/.test(css)) issues.push('نافذة التفاصيل');
+    if (!/\.job-thumb[\s\S]{0,260}aspect-ratio:\s*10\s*\/\s*7/.test(applySrc2)) issues.push('بطاقة التقديم');
+    if (!/\.job-cell-photo[\s\S]{0,200}aspect-ratio:\s*10\s*\/\s*7/.test(dashCss)) issues.push('جدول اللوحة');
+    if (issues.length) bad('إطار صورة الوظيفة موحّد (10:7) في كل المواضع', 'ناقص: ' + issues.join(' · '));
+    else ok('إطار صورة الوظيفة موحّد (10:7) في أربعة مواضع: البطاقة · التفاصيل · التقديم · اللوحة');
+
+    /* التعبئة الضبابية: لا فراغ ولا حدود بيضاء داخل الإطار */
+    const fills = [
+      [/\.job-image::before/.test(css), 'بطاقة الموقع'],
+      [/\.job-detail-image::before/.test(css), 'نافذة التفاصيل'],
+      [/\.job-thumb::before/.test(applySrc2), 'بطاقة التقديم'],
+      [/\.job-cell-photo::before/.test(dashCss), 'جدول اللوحة']
+    ];
+    const noFill = fills.filter(([ok2]) => !ok2).map(([, n]) => n);
+    if (noFill.length) bad('تعبئة ضبابية خلف الصورة (لا فراغ ولا حواف)', noFill.join(' · '));
+    else ok('تعبئة ضبابية خلف الصورة في المواضع الأربعة (لا فراغ ولا قصّ)');
+
+    /* الصورة نفسها لا تُقصّ في أي موضع */
+    if (/\.job-(image|thumb)[^{]*\{[^}]*object-fit:\s*cover/.test(css) ||
+        /\.job-thumb img\{[^}]*object-fit:\s*cover/.test(applySrc2)) {
+      bad('صورة الوظيفة لا تُقصّ (contain في كل المواضع)', 'وُجد cover');
+    } else ok('صورة الوظيفة لا تُقصّ — contain في كل المواضع');
+
+    /* لا خلفية بيضاء ولا حشوة داخل مصغّرة التقديم (سبب «حدود صغيرة») */
+    const thumbRule = (/\.job-thumb\s*\{([^}]*)\}/.exec(applySrc2) || [, ''])[1];
+    if (/background:\s*#fff/.test(thumbRule) || /padding:\s*3px/.test((/\.job-thumb img\{([^}]*)\}/.exec(applySrc2) || [, ''])[1])) {
+      bad('مصغّرة التقديم بلا حواف بيضاء أو حشوة', thumbRule.trim().slice(0, 80));
+    } else ok('مصغّرة التقديم بلا حواف بيضاء ولا حشوة داخلية');
+  }
+
+  /* قاعدة عامة: لا تمديد فوق الحجم الطبيعي */
+  if (/img\s*\{[^}]*max-width:\s*100%/.test(css)) ok('قاعدة عامة: الصور لا تتجاوز حاوياتها (max-width:100%)');
+  else bad('قاعدة عامة للصور', 'max-width:100% غير موجودة');
+
+  /* الخلفيات الزخرفية مسموح لها cover — نوثّقها كاستثناء مقصود */
+  const bgCover = (css.match(/background-size:\s*cover/g) || []).length;
+  ok('الخلفيات الزخرفية (' + bgCover + ') تستخدم cover عمداً — ليست صور محتوى');
 }
 
 /* ═══ الخلاصة ═══════════════════════════════════════════════════════════ */

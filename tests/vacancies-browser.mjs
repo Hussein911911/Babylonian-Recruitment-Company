@@ -12,6 +12,30 @@ const libs=new URL('libraries/',out),packed=new URL('../node_modules/@sparticuz/
 if(existsSync(packed)&&!existsSync(new URL('lib/',libs))){mkdirSync(libs,{recursive:true});const tar=new URL('libs.tar',libs);writeFileSync(tar,brotliDecompressSync(readFileSync(packed)));execFileSync('tar',['xf',tar.pathname,'-C',libs.pathname]);}
 const browser=await playwright.launch({executablePath:await chromium.executablePath(),args:chromium.args.filter(s=>!['--disable-web-security','--single-process','--in-process-gpu','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'].includes(s)).concat('--disable-gpu'),env:{...process.env,LD_LIBRARY_PATH:[new URL('lib/',libs).pathname,process.env.LD_LIBRARY_PATH].filter(Boolean).join(':')},headless:true});
 let checks=0;function check(v,label){assert.ok(v,label);checks++;}
+
+/* تسجيل قرار صاحب العمل — حُذف مسار صاحب العمل من الويب (2026-10-25)، فصار
+   الموظف يسجّل القرار من اللوحة. هذا تجهيز اختبار فقط: نكتب الحقول نفسها
+   التي كانت تكتبها دالة القرار ثم نطلق تحديث المتجر. */
+async function recordEmployerDecision(page, serial, decision, reason) {
+  return page.evaluate(([serial, decision, reason]) => {
+    const S = HRCStore, db = S.db();
+    const t = db.attempts.filter((x) => x.serial === serial &&
+      ['reserved', 'critical', 'hiring'].includes(x.slotStatus))[0];
+    if (!t) return { ok: false, error: 'لا تقديم قيد القرار' };
+    t.employerDecision = decision;
+    t.decisionAt = new Date().toISOString();
+    t.holdExpiresAt = null;
+    if (decision === 'hire') { t.slotStatus = 'hiring'; t.reason = ''; t.note = 'طلب صاحب العمل: تم التوظيف — بانتظار تثبيت الشركة'; }
+    else { t.slotStatus = 'critical'; t.reason = reason; t.note = 'رفض صاحب العمل — السبب: ' + reason; }
+    const j = db.jobs.filter((x) => x.id === t.jobId)[0];
+    if (j) { j.status = decision === 'hire' ? 'hiring' : 'reserved'; j.critical = decision !== 'hire'; j.holdExpiresAt = null; }
+    db.audit.unshift({ id: 'log-fx-' + serial + '-' + t.no, ts: t.decisionAt, user: 'staff', role: 'staff', ip: '127.0.0.1',
+      name: 'موظف توظيف', action: decision === 'hire' ? 'طلب توظيف من صاحب العمل' : 'رفض من صاحب العمل مع السبب',
+      entity: 'applicant', entityId: serial, details: (reason || '') });
+    S.emit();
+    return { ok: true };
+  }, [serial, decision, reason]);
+}
 try{
  for(const width of [375,1440]){
   const p=await browser.newPage({viewport:{width,height:1000},serviceWorkers:'block'}),errors=[];p.on('pageerror',e=>errors.push(e.message));
@@ -28,7 +52,7 @@ try{
   check(await p.evaluate(()=>HRCStore.setJobStatus('MULTI-1','available').status==='reserved'),'reopen never invents a free occupied seat');
   check(!(await p.evaluate(()=>HRCStore.selectAttempt('D','MULTI-1'))).ok,'fourth denied');
   await p.evaluate(async()=>{await HRCNotifications.refresh();});await p.locator('#notification-toggle').click();await p.locator('#notification-read-all').click();await p.keyboard.press('Escape');
-  check((await p.evaluate(()=>HRCStore.employerDecide('A','hire'))).ok,'employer request accepted');
+  check((await recordEmployerDecision(p,'A','hire')).ok,'employer request accepted');
   await p.waitForFunction(()=>document.querySelector('#notification-count').textContent==='1');
   await p.locator('#notification-toggle').click();await p.locator('[data-filter="decision"]').click();
   await p.locator('.notice-item').filter({hasText:'البطاقة A'}).locator('[data-notice-open]').click();
@@ -43,7 +67,7 @@ try{
   check(await p.evaluate(()=>HRCStore.getAttempts('B')[0].slotStatus==='expired'&&HRCStore.attemptsLeft('B')===1),'consumed opportunity never returned');
   await p.evaluate(()=>document.querySelector('[data-view="holds"]').click());
   await p.locator('[data-hold-manage][data-hold-serial="C"]').click();
-  await p.evaluate(()=>HRCStore.employerDecide('C','reject','سبب رفض حقيقي من صاحب العمل'));
+  await recordEmployerDecision(p,'C','reject','سبب رفض حقيقي من صاحب العمل');
   await p.waitForFunction(()=>[...document.querySelectorAll('.modal-backdrop')].some(m=>m.textContent.includes('سبب رفض حقيقي')));
   check((await p.locator('.modal-backdrop').last().textContent()).includes('الشاغر 3'),'live details remain scoped to C seat3');
   check(await p.locator('#h-del').count()===0,'no whole-ad deletion from one-seat decision');

@@ -68,9 +68,24 @@ const partials = {
 };
 const CSS = read('assets/css/style.css');
 const PUBLIC_CSS = read('assets/css/public-polish.css');
+const APP_CSS = read('assets/css/app-shell.css');
 const NOTIFICATION_CSS = read('assets/css/notifications.css');
 const BACKUP_CSS = read('assets/css/backup.css');
 const WORKSPACE_CSS = read('assets/css/workspace-layout.css');
+const CARD_CSS = read('assets/css/card-entry.css');
+/* مضيف قاعدة الشركة — يُقرأ من إعداد الاتصال نفسه كي يتبعه preconnect تلقائياً */
+const SUPABASE_HOST = (function () {
+  const cfg = read('assets/js/supabase-config.js');
+  const m = /url:\s*'([^']+)'/.exec(cfg);
+  try { return m ? new URL(m[1]).origin : ''; } catch (e) { return ''; }
+})();
+/* preconnect/dns-prefetch: يبدأ DNS وTLS للقاعدة قبل أن يطلبها JS، فيوفّر
+   رحلة كاملة (~100–300ms على شبكات العراق) من زمن أول تحميل للبيانات. */
+const SUPABASE_HINTS = SUPABASE_HOST
+  ? '<link rel="preconnect" href="' + SUPABASE_HOST + '" crossorigin>\n' +
+    '<link rel="dns-prefetch" href="' + SUPABASE_HOST + '">\n'
+  : '';
+const EDITOR_CSS = read('assets/css/image-editor.css');
 /* ---------------------------------------------------------------------------
  *  بذرة العرض للملف المستقل
  *  ---------------------------------------------------------------------------
@@ -127,7 +142,7 @@ const scriptPath = (n) => n.startsWith('vendor/')
    تعديل cloud-sync.js — فيبقى المتصفح على نسخة قديمة **بصمت**، وهو أسوأ أنواع
    الأخطاء لأن الكود الجديد لا يصل أصلاً. */
 const ASSET_VER = process.env.HRC_ASSET_VER || createHash('sha1')
-  .update([CSS, PUBLIC_CSS, NOTIFICATION_CSS, BACKUP_CSS, WORKSPACE_CSS, read('assets/js/recovery.js'), ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
+  .update([CSS, CARD_CSS, PUBLIC_CSS, APP_CSS, NOTIFICATION_CSS, EDITOR_CSS, BACKUP_CSS, WORKSPACE_CSS, read('assets/js/recovery.js'), ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
            ...CLOUD_ORDER.map((n) => read(scriptPath(n)))].join('\u0000'))
   .digest('hex').slice(0, 10);
 const verQ = (p) => `${p}?v=${ASSET_VER}`;
@@ -154,6 +169,7 @@ function docHead({ title, desc, css = null, icon = 'assets/img/favicon.svg', ext
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="${icon}">
+${SUPABASE_HINTS}
 ${css ? `<link rel="stylesheet" href="${verQ(css)}">` : ''}
 ${extra}</head>
 <body>
@@ -161,10 +177,11 @@ ${extra}</head>
 }
 
 /* ---------------- الصفحات المنفصلة ---------------- */
-function buildPage({ title, desc, body, scripts, publicStyle = false, staffStyle = false }) {
+function buildPage({ title, desc, body, scripts, publicStyle = false, staffStyle = false, cardStyle = false }) {
   return docHead({ title, desc, css: 'assets/css/style.css',
-    extra: (publicStyle ? `<link rel="stylesheet" href="${verQ('assets/css/public-polish.css')}">` : '') +
-      (staffStyle ? `<link rel="stylesheet" href="${verQ('assets/css/notifications.css')}"><link rel="stylesheet" href="${verQ('assets/css/backup.css')}"><link rel="stylesheet" href="${verQ('assets/css/workspace-layout.css')}">` : '') }) +
+    extra: (cardStyle ? `<link rel="stylesheet" href="${verQ('assets/css/card-entry.css')}">` : '') +
+      (publicStyle ? `<link rel="stylesheet" href="${verQ('assets/css/public-polish.css')}"><link rel="stylesheet" href="${verQ('assets/css/app-shell.css')}">` : '') +
+      (staffStyle ? `<link rel="stylesheet" href="${verQ('assets/css/notifications.css')}"><link rel="stylesheet" href="${verQ('assets/css/image-editor.css')}"><link rel="stylesheet" href="${verQ('assets/css/backup.css')}"><link rel="stylesheet" href="${verQ('assets/css/workspace-layout.css')}">` : '') }) +
     partials.sprite + '\n' +
     partials.header + '\n' +
     body + '\n' +
@@ -174,7 +191,8 @@ function buildPage({ title, desc, body, scripts, publicStyle = false, staffStyle
 }
 
 writeFileSync(P('index.html'), buildPage({
-  title: META.title, desc: META.desc, body: partials.public, scripts: SCRIPTS.public, publicStyle: true
+  title: META.title, desc: META.desc, body: partials.public, scripts: SCRIPTS.public,
+  publicStyle: true, cardStyle: true
 }));
 writeFileSync(P('verify.html'), buildPage({
   title: 'التحقق من بطاقة التوظيف | شركة الهدف للتوظيف',
@@ -209,7 +227,7 @@ function buildStandalone() {
   const stats = { fonts: 0, cssImgs: 0, htmlImgs: 0 };
 
   // 1) CSS مع دمج الخطوط والصور
-  let css = (CSS + '\n' + PUBLIC_CSS + '\n' + NOTIFICATION_CSS + '\n' + BACKUP_CSS + '\n' + WORKSPACE_CSS).replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
+  let css = (CSS + '\n' + CARD_CSS + '\n' + PUBLIC_CSS + '\n' + APP_CSS + '\n' + NOTIFICATION_CSS + '\n' + EDITOR_CSS + '\n' + BACKUP_CSS + '\n' + WORKSPACE_CSS).replace(/url\(['"]?\.\.\/fonts\/([^'")]+)['"]?\)/g, (m, f) => {
     const d = dataUri('assets/fonts/' + f); if (!d) return m;
     stats.fonts += d.size; return `url(${d.uri})`;
   });

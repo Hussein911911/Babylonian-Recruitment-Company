@@ -23,10 +23,10 @@
     var st = document.createElement('style');
     st.id = STYLE_ID;
     st.textContent = `
-.hrc-card{box-sizing:border-box;width:86mm;height:54mm;flex:0 0 auto;border-radius:3.5mm;position:relative;overflow:hidden;background:linear-gradient(125deg,#142d51,#09172f 65%);box-shadow:0 10px 30px rgba(6,13,31,.22);color:#fff;display:flex;flex-direction:column;padding:3mm 3.6mm;font-family:Cairo,'Segoe UI',Tahoma,sans-serif;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.hrc-card{box-sizing:border-box;width:86mm;height:54mm;flex:0 0 auto;border-radius:3.5mm;position:relative;overflow:hidden;background:radial-gradient(120% 150% at 92% 8%,rgba(200,162,74,.20) 0%,rgba(200,162,74,0) 46%),radial-gradient(100% 130% at 4% 96%,rgba(31,143,150,.18) 0%,rgba(31,143,150,0) 52%),linear-gradient(128deg,#16345f 0%,#0b1a35 42%,#07101f 100%);box-shadow:0 12px 32px rgba(6,13,31,.30),0 1px 0 rgba(255,255,255,.06) inset;color:#fff;display:flex;flex-direction:column;padding:3mm 3.6mm;font-family:Cairo,'Segoe UI',Tahoma,sans-serif;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .hrc-card *{box-sizing:border-box;}
-.hrc-card .frame{position:absolute;inset:1.5mm;border:.25mm solid #b99548;border-radius:2.5mm;pointer-events:none;}
-.hc-top{display:flex;align-items:center;justify-content:space-between;gap:2mm;border-bottom:.2mm solid #826b3f;padding-bottom:1.7mm;}
+.hrc-card .frame{position:absolute;inset:1.4mm;border:.28mm solid #cfa958;border-radius:2.6mm;pointer-events:none;box-shadow:inset 0 0 0 .55mm rgba(6,13,31,1),inset 0 0 0 .78mm rgba(207,169,88,.45);}
+.hc-glow{position:absolute;inset:-30% -20% auto auto;width:60mm;height:60mm;border-radius:50%;background:radial-gradient(circle,rgba(232,208,137,.22),rgba(232,208,137,0) 62%);pointer-events:none;}.hc-guilloche{position:absolute;inset:0;pointer-events:none;opacity:.10;background-image:radial-gradient(circle at 50% 50%,rgba(232,208,137,.55) 0 .18mm,transparent .18mm 1.6mm),linear-gradient(115deg,transparent 47.6%,rgba(232,208,137,.35) 48%,rgba(232,208,137,.35) 48.4%,transparent 48.8%);background-size:3.2mm 3.2mm,100% 100%;}.hc-holo{position:absolute;inset-inline-start:2.2mm;inset-block-end:5.6mm;width:7mm;height:7mm;border-radius:50%;pointer-events:none;background:conic-gradient(from 210deg,#e8d089,#8fd3cf,#c8a24a,#e8d089);opacity:.75;box-shadow:0 0 0 .25mm rgba(255,255,255,.35) inset;filter:saturate(.9);}.hc-ribbon{position:absolute;inset-block-start:1.4mm;inset-inline-end:30mm;z-index:2;background:linear-gradient(180deg,rgba(232,208,137,.96),rgba(200,162,74,.96));color:#1c1405;font-size:2.6pt;font-weight:900;letter-spacing:.04em;padding:.55mm 1.6mm;border-radius:.8mm;box-shadow:0 .2mm .6mm rgba(0,0,0,.25);}.hc-top{display:flex;align-items:center;justify-content:space-between;gap:2mm;border-bottom:.2mm solid #826b3f;padding-bottom:1.7mm;position:relative;z-index:1;}
 .hc-top .brand{display:flex;align-items:center;gap:1.8mm;min-width:0;}
 .hc-top .embl{width:8mm;height:8mm;flex:none;color:#e8cc86;}
 .hc-top .ar{font-size:7pt;font-weight:900;line-height:1.5;color:#f2d58d;}
@@ -37,11 +37,11 @@
 .hc-identity{display:grid;grid-template-columns:minmax(0,1fr) 23mm;gap:3mm;align-items:center;flex:1;padding:1.7mm 0;}
 .hc-identity-copy{min-width:0;}
 .hc-identity .lbl{font-size:4pt;line-height:1.5;color:#d8e1ef;}
-.hc-serial{display:block;direction:ltr;text-align:right;white-space:nowrap;font-family:'Courier New',monospace;font-size:10pt;font-weight:900;letter-spacing:.03em;color:#f5d88e;margin:1mm 0;line-height:1.4;}
+.hc-serial{display:block;direction:ltr;text-align:right;white-space:nowrap;font-family:'Courier New',monospace;font-size:11pt;font-weight:900;letter-spacing:.09em;color:#ffe6a6;margin:1mm 0;line-height:1.35;text-shadow:0 0 .5mm rgba(232,208,137,.45);}
 .hc-count{font-size:5.5pt;font-weight:700;line-height:1.5;}
 .hc-identity .hint{font-size:4pt;line-height:1.65;color:#d8e1ef;margin:.6mm 0 0;}
 .hc-qr{display:flex;flex-direction:column;align-items:center;gap:.5mm;}
-.hc-qr .box{width:23mm;height:23mm;background:#fff;border-radius:1.2mm;padding:.4mm;}
+.hc-qr .box{width:23mm;height:23mm;background:#fff;border-radius:1.6mm;padding:.5mm;border:.3mm solid #e1c16b;box-shadow:0 0 0 .6mm rgba(6,13,31,.55);}
 .hrc-qr-slot svg{width:100%;height:100%;display:block;}
 .hc-qr .caption{font-size:4pt;line-height:1.3;color:#f2d58d;}
 .hc-dates{display:grid;grid-template-columns:1fr 1fr;border-top:.2mm solid #826b3f;padding-top:1mm;gap:3mm;}
@@ -97,7 +97,6 @@
 
   function esc(v) { return UI ? UI.esc(String(v == null ? '' : v)) : String(v == null ? '' : v); }
 
-  function fmtCode(code) { return String(code || '————'); }
 
   /* الوجه الأمامي بلا بيانات شخصية؛ الصلاحية تبدأ عند البيع. */
   function isBlank(app) {
@@ -110,7 +109,13 @@
     var blank = isBlank(app);
     var count = attempts.length === 2 ? 'فرصتان مستقلتان' : attempts.length + ' فرص مستقلة';
     return '<div class="hrc-card" aria-label="الوجه الأمامي لبطاقة التوظيف">' +
-      '<div class="frame"></div><div class="hc-top"><div class="brand">' +
+      /* طبقات الزخرفة: وهج ذهبي + نقش إرشادي + لمعة هولوغرام (تُطبع كخلفية فقط) */
+      '<span class="hc-glow" aria-hidden="true"></span>' +
+      '<span class="hc-guilloche" aria-hidden="true"></span>' +
+      '<span class="hc-holo" aria-hidden="true"></span>' +
+      '<div class="frame"></div>' +
+      '<span class="hc-ribbon" aria-hidden="true">بطاقة توظيف معتمدة</span>' +
+      '<div class="hc-top"><div class="brand">' +
       '<svg class="embl" viewBox="0 0 120 120"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>' +
       '<div><div class="ar">' + esc(CFG.company.nameAr) + '</div><div class="en">' + esc(CFG.company.nameEn) + '</div></div></div>' +
       '<div class="hc-ctype"><span class="t1">بطاقة توظيف</span><span class="t2">EMPLOYMENT CARD</span></div></div>' +
@@ -127,7 +132,9 @@
     // Legacy cards print one of their existing codes; both old codes still verify.
     var secret = app.cardPrintCode || (attempts[0] && attempts[0].code) || '';
     var printed = app.cardPrintCode ? secret.match(/.{1,4}/g).join('-') : secret;
-    return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف"><div class="frame"></div>' +
+    return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف">' +
+      '<span class="hc-glow" aria-hidden="true"></span><span class="hc-guilloche" aria-hidden="true"></span>' +
+      '<div class="frame"></div>' +
       '<div class="hc-back-head"><b>رمز التحقق من البطاقة</b><span>خاص بإعادة الطباعة</span></div>' +
       '<div class="hc-codes single"><div class="hc-codebox"><div class="clbl">احتفظ بهذا الرمز ولا تشاركه</div>' +
       '<div class="code">' + esc(printed || 'راجع الإدارة قبل الطباعة') + '</div></div></div>' +
@@ -138,14 +145,14 @@
       '<span class="addr">' + esc(CFG.company.addressShort) + '</span></div><div class="disc">' + esc(DISCLAIMER) + '</div></div></div>';
   }
 
+  /* ظهر البطاقة بلا أي رموز فرص (قرار 2026-10-25): الشروط والتواصل فقط.
+     البطاقة نفسها بباركودها هي إثبات الحيازة عند التقديم. */
   function backHtml(app, attempts) {
     if (app.cardPrintCode) return independentBackHtml(app, attempts);
-    var layout = attempts.length === 1 ? ' single' : attempts.length > 6 ? ' many dense' : attempts.length > 2 ? ' many' : '';
-    return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف"><div class="frame"></div>' +
-      '<div class="hc-back-head"><b>رموز فرص البطاقة</b><span>احتفظ بالبطاقة ورموزها</span></div>' +
-      '<div class="hc-codes' + layout + '">' + attempts.map(function (t, i) {
-        return '<div class="hc-codebox"><div class="clbl">رمز الفرصة ' + (i + 1) + '</div><div class="code">' + esc(fmtCode(t.code)) + '</div></div>';
-      }).join('') + '</div>' +
+    return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف">' +
+      '<span class="hc-glow" aria-hidden="true"></span><span class="hc-guilloche" aria-hidden="true"></span>' +
+      '<div class="frame"></div>' +
+      '<div class="hc-back-head"><b>شروط استخدام البطاقة</b><span>لا تحتاج أي رمز — باركود البطاقة يكفي</span></div>' +
       '<ul class="hc-terms">' + TERMS.map(function (n) {
         return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>';
       }).join('') + '</ul>' +
@@ -292,7 +299,7 @@
       field('تاريخ الميلاد', app.dob ? Store.fmtDate(app.dob) : '') + field('الجنسية', app.nationality) + '</div>');
     var jobDetails = section('job', '02', 'تفاصيل الوظيفة', attempt ? '<div class="ff-grid">' +
       field('الوظيفة المطلوبة', attempt.jobTitle || (job && job.title), 'ff-wide') + field('كود الوظيفة', attempt.jobCode, 'ff-ltr') +
-      field('المنطقة', attempt.location || (job && job.region)) +
+      field('المحافظة', (job && job.governorate) || attempt.governorate || '—') +
       field('الأجر الشهري', job ? Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) : '') +
       field('الدوام', job && job.shift) + field('حالة التقديم', slotText(attempt)) +
       field('تاريخ التقديم', attempt.selectedAt ? Store.fmtDateTime(attempt.selectedAt) : '', 'ff-wide') + '</div>' :

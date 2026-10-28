@@ -13,7 +13,8 @@
  *  لا يحتاج قاعدة بيانات ولا حزماً خارجية — تحليل نصي دقيق مع تجريد كتل
  *  الاقتباس الدولاري ($$…$$) حتى لا تتشوّش الأجساد الداخلية للدوال.
  * =========================================================================== */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import vm from 'node:vm';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -77,7 +78,16 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 /* 30 = 29 السابقة + إصلاح 2026-10-06: ترميم خانات الفرص الناقصة
    (ensure_card_attempts) — بطاقة جديدة كانت تظهر «انتهت فرصك» بلا أي تقديم
    لأن مزامنة لوحة الموظفين كانت تحذف خاناتها من القاعدة. */
-check('تعريفات الدوال: 59 تعريفاً، 56 دالة فعلية (3 تحديثات مقصودة)', funcs.length === 59 && new Set(funcs.map(x=>x.name)).size === 56, funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
+/* 2026-10-25: حُذفت 6 دوال ميتة بلا أي مستخدم — employer_view · employer_decide
+   (ومعهما employer_decide_original على القاعدة) وemployer_otp_issue/delivery/
+   verify/action — بعد حذف مسار صاحب العمل من الويب. فصار العدد 49 تعريفاً
+   و47 دالة فعلية (trg_attempt_hold وrun_auto_release معرَّفتان مرتين). */
+/* 2026-10-25 (لاحقاً): +5 دوال لجدولة النسخ التي يضبطها المدير
+   (recovery_cron_expr · _schedule_get · _schedule_set · _run_scheduled ·
+   recovery_ensure_fresh) ⇒ 54 تعريفاً و52 دالة فعلية. */
+check('تعريفات الدوال: 54 تعريفاً، 52 دالة فعلية (تحديثان مقصودان)',
+  funcs.length === 54 && new Set(funcs.map(x=>x.name)).size === 52,
+  funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
 const EXPECTED_FUNCS = ['brc.recovery_manage', 'brc.office_submit', 'brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
@@ -85,8 +95,12 @@ const EXPECTED_FUNCS = ['brc.recovery_manage', 'brc.office_submit', 'brc.next_jo
   'brc.run_auto_release', 'brc.is_staff', 'brc.is_admin', 'brc.current_staff_id',
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
   'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold',
-  'brc.activate_card', 'brc.employer_view', 'brc.employer_decide',
-  'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts', 'brc.employer_otp_issue', 'brc.employer_otp_delivery', 'brc.employer_otp_verify', 'brc.employer_otp_action', 'brc.staff_save_job_pin', 'brc.employer_pin_login', 'brc.employer_pin_action'];
+  'brc.activate_card',
+  'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts',
+  'brc.recovery_cron_expr', 'brc.recovery_schedule_get', 'brc.recovery_schedule_set',
+  'brc.recovery_run_scheduled', 'brc.recovery_ensure_fresh'];
+/* 2026-10-25: حُذف رمز صاحب العمل — لا دوال OTP ولا PIN ولا employer_view/
+   employer_decide تُتوقَّع بعد اليوم. */
 check('كل الدوال المتوقّعة موجودة بالاسم', EXPECTED_FUNCS.every((n) => funcs.some((x) => x.name === n)),
   'المفقود: ' + EXPECTED_FUNCS.filter((n) => !funcs.some((x) => x.name === n)).join(', '));
 
@@ -279,6 +293,18 @@ check('تعريفات المشغّلات بما فيها حاجز الاسترج
 step(9, 'ملف الـ migration — متطابق مع المصدر (تكاملة GitHub في Supabase)');
 
 const MIG_DIR = join(ROOT, 'supabase', 'migrations');
+/* الهجرات التي يجب أن تكون موجودة على كل قاعدة قائمة (2026-10-25) */
+const REQUIRED_MIGRATIONS = [
+  '20261025000000_retire_chance_codes.sql',
+  '20261026000000_remove_employer_pin_and_region.sql',
+  '20261026100000_fix_verify_card_code_print_column.sql',
+  '20261026110000_drop_dormant_employer_functions.sql',
+  '20261026120000_prune_legacy_card_functions.sql',
+  '20261026130000_add_card_print_code_column.sql',
+  '20261026140000_recovery_always_restorable.sql',
+  '20261026150000_recovery_admin_schedule.sql',
+  '20261026160000_drop_recovery_weekly.sql'
+];
 const MIG_NAME = '20260915000000_brc_initial_schema.sql';
 let migNames = [];
 try { migNames = readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql')); } catch { migNames = []; }
@@ -320,8 +346,8 @@ step(11, 'اللوبات — لا return داخل اللوب بعد exit (نمط
 
 /* ── 2026-10-06: الدرس الأهم من عطل «باركود البطاقة يفتح خطأً» ──
    الدالتان كانتا مكتوبتين في ملف هجرة داخل supabase/migrations/ وحده، ولم
-   تُضافا إلى مسار التحديث الذي تستعمله الإدارة (db-update.html و
-   docs/UPDATE-*.sql) ولا إلى المصدر docs/schema.sql. النتيجة: الكود ينادي
+   تُضافا إلى مسار التحديث الذي كانت تستعمله الإدارة آنذاك (صفحة اللصق
+   اليدوي، المحذوفة الآن) ولا إلى المصدر docs/schema.sql. النتيجة: الكود ينادي
    دالة غير موجودة على القاعدة ⇒ خطأ PostgREST إنكليزي خام عند الزبون.
    هذا الفحص يمنع تكرار النمط: كل دالة يناديها باركود البطاقة يجب أن تكون
    معرَّفة في المصدر، وممنوحة للزائر، وموجودة في مسار التحديث. */
@@ -356,59 +382,836 @@ step(12, 'مسار التحديث — كل دالة يناديها باركود 
   check('دوال التقديم الذاتي مُدرجة في docs/schema.sql (المصدر الوحيد)', defined(RAW).length === 0,
     'ناقص: ' + defined(RAW).join(', '));
 
-  /* مسار التحديث الفعلي: الملف + صفحة اللصق */
-  const upFile = join(ROOT, 'docs', 'UPDATE-2026-10-06.sql');
-  let upSql = '';
-  try { upSql = readFileSync(upFile, 'utf8'); } catch { upSql = ''; }
-  check('ملف تحديث 2026-10-06 موجود', upSql.length > 0, upFile);
-  check('ملف التحديث يُنشئ دالتَي التقديم الذاتي كاملتين', defined(upSql).length === 0,
-    'ناقص: ' + defined(upSql).join(', '));
-  check('ملف التحديث يُعيد تحميل ذاكرة المخطط (بدونه يبقى «in the schema cache»)',
-    /notify\s+pgrst\s*,\s*'reload schema'/i.test(upSql));
-
-  /* ج5 2026-10-06: مسار تحديث ثانٍ لنفس اليوم — «الباركود يكفي + فرصتان +
-     رفض بالسبب». نفحصه بنفس الصرامة: ملف تحديث + جزء لصق مطابق له حرفياً
-     + عمود السبب + توقيع employer_decide الجديد (مع السبب) + إعادة تحميل الذاكرة. */
-  const upTwoFile = join(ROOT, 'docs', 'UPDATE-2026-10-06-two-jobs.sql');
-  let upTwo = '';
-  try { upTwo = readFileSync(upTwoFile, 'utf8'); } catch { upTwo = ''; }
-  check('ملف تحديث ج5 (باركود + فرصتان + رفض بالسبب) موجود', upTwo.length > 0, upTwoFile);
-  check('ملف ج5 يسجّل السبب في عمود employer_reason',
-    /add column if not exists employer_reason text/i.test(upTwo) &&
-    /employer_reason = v_reason/i.test(upTwo));
-  check('ملف ج5 يعرّف employer_decide بوسيط السبب (text, text, text)',
-    /function\s+brc\.employer_decide\s*\(\s*p_serial\s+text,\s*p_decision\s+text,\s*p_reason\s+text default ''/i.test(upTwo));
-  check('ملف ج5 يحذف النسخ المشغولة بالرمز (بلا رمز بطاقة ولا رمز صاحب عمل)',
-    /drop function if exists brc\.self_service_card\(text, text\)/i.test(upTwo) &&
-    /drop function if exists brc\.employer_decide\(text, text\)/i.test(upTwo));
-  check('ملف ج5 يجعل اختيار الوظيفة اختيارياً (بيع بلا وظيفة)',
-    /بلا اختيار وظيفة/.test(upTwo) && !/اختيار الوظيفة إلزامي/.test(upTwo));
-
-  const upd = readFileSync(join(ROOT, 'db-update.html'), 'utf8');
-  const part5 = (upd.match(/<textarea id="sql5"[\s\S]*?<\/textarea>/) || [''])[0];
-  check('صفحة تحديث القاعدة فيها جزء للباركود يُنشئ الدالتين', defined(part5).length === 0,
-    'ناقص في الجزء 5: ' + defined(part5).join(', '));
-  check('صفحة تحديث القاعدة فيها زر نسخ للجزء الجديد', /cp\('sql5'\)/.test(upd) && /id="ok5"/.test(upd));
-  /* النص في صفحة اللصق يجب أن يطابق ملف التحديث حرفياً بعد فك ترميز HTML */
-  const part5Sql = part5.replace(/^<textarea[^>]*>/, '').replace(/<\/textarea>\s*$/, '')
-    .replace(/&lt;/g, '<').replace(/&amp;/g, '&');
-  check('نص الجزء 5 مطابق حرفياً لملف docs/UPDATE-2026-10-06.sql', part5Sql === upSql,
-    'طول الصفحة ' + part5Sql.length + ' مقابل ' + upSql.length + ' — أعِد تضمينه');
-
-  /* جزء اللصق رقم 6 في صفحة التحديث = ملف ج5 حرفياً (نفس نمط الجزء 5) */
-  const part6 = (upd.match(/<textarea id="sql6"[\s\S]*?<\/textarea>/) || [''])[0];
-  const part6Sql = part6.replace(/^<textarea[^>]*>/, '').replace(/<\/textarea>\s*$/, '')
-    .replace(/&lt;/g, '<').replace(/&amp;/g, '&');
-  check('صفحة تحديث القاعدة فيها جزء 6 لِج5 وزر نسخ', /cp\('sql6'\)/.test(upd) && /id="ok6"/.test(upd));
-  check('نص الجزء 6 مطابق حرفياً لملف docs/UPDATE-2026-10-06-two-jobs.sql', part6Sql === upTwo,
-    'طول الصفحة ' + part6Sql.length + ' مقابل ' + upTwo.length + ' — أعِد تضمينه');
-  check('جزء إعادة تحميل الذاكرة بقي موجوداً (صار الجزء 7)', /cp\('sql7'\)/.test(upd) && /id="ok7"/.test(upd));
+  /* مسار التحديث الفعلي (2026-10-25): الهجرات وحدها.
+     حُذفت صفحة اللصق اليدوي db-update.html وأُرشفت ملفات docs/UPDATE-*.sql في
+     docs/archive/legacy-sql/ لأنها كانت تُعيد دوال صاحب العمل ورموز الفرص
+     المحذوفة (نصها منسوخ من مخطّط قديم). */
+  check('صفحة اللصق اليدوي db-update.html محذوفة', !existsSync(join(ROOT, 'db-update.html')));
+  check('ملفات التحديث القديمة أُرشفت ولا تُنفَّذ', !existsSync(join(ROOT, 'docs', 'UPDATE-2026-10-06.sql')) &&
+    existsSync(join(ROOT, 'docs', 'archive', 'legacy-sql', 'README.md')));
+  check('لا صفحة منشورة تشير إلى db-update.html', readdirSync(ROOT)
+    .filter((f) => f.endsWith('.html'))
+    .every((f) => !/db-update\.html/.test(readFileSync(join(ROOT, f), 'utf8'))));
+  check('كل دوال مسار البطاقة موجودة كهجرات قابلة للتطبيق', REQUIRED_MIGRATIONS
+    .every((f) => existsSync(join(MIG_DIR, f))), REQUIRED_MIGRATIONS.filter((f) => !existsSync(join(MIG_DIR, f))).join(', '));
 
   /* الواجهة: لا CDN خارجي — العميل المصغّر المحلي يعلن السكيما في الترويستين */
   check('صفحة الباركود تستعمل عميل الاتصال المحلي (cloud-http.js)',
     /assets\/js\/cloud-http\.js/.test(applySrc) && !/cdn\.jsdelivr|unpkg\.com|esm\.sh/i.test(applySrc));
   check('صفحة الباركود تشرح للمستخدم العربي سبب الخطأ بدل رسالة الخادم الخام',
     /isMissingFunction/.test(applySrc) && /docs\/schema\.sql/.test(applySrc) && /الهجرات الحديثة/.test(applySrc));
+}
+
+/* ── 2026-10-25: عطل حيّ في الإنتاج — verify_card_code وعمود غائب ──
+   قاعدة الإنتاج أُنشئت قبل الهجرة 20261016090000 فليس فيها العمود
+   card_print_code، وكانت الدالة تقرأه مباشرةً (f.card_print_code) فتفشل كل
+   نداءات إعادة الطباعة بـ42703. القراءة عبر to_jsonb لا تفشل عند غياب العمود.
+   هذا الفحص يمنع عودة القراءة المباشرة في المصدر أو في أي هجرة. */
+step(13, 'إعادة الطباعة — لا قراءة مباشرة لعمود قد يكون غائباً (42703)');
+{
+  const SRC = [join(ROOT, 'docs', 'schema.sql')]
+    .concat(readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql')).map((f) => join(MIG_DIR, f)));
+  /* الهجرة التاريخية 20261016090000 تضيف العمود بنفسها فقراءتها المباشرة سليمة
+     هناك ولا تُعدَّل (ملفات الهجرات لا تُحرَّر بعد تطبيقها). الفحص على غيرها. */
+  const direct = SRC.filter((f) => {
+    const body = readFileSync(f, 'utf8').replace(/--[^\n]*/g, '');
+    return /\bf\.card_print_code\b/.test(body) && !/add column if not exists card_print_code/i.test(body);
+  });
+  check('لا قراءة مباشرة لـ f.card_print_code في المصدر أو الهجرات (عدا التي تُنشئ العمود)',
+    direct.length === 0, direct.map((f) => f.split('/').pop()).join(', '));
+  check('verify_card_code يقرأ رمز التحقق عبر to_jsonb(f)', /to_jsonb\(f\)->>'card_print_code'/.test(RAW));
+  const fix = '20261026100000_fix_verify_card_code_print_column.sql';
+  check('هجرة إصلاح verify_card_code موجودة وتُبقي المخطط كما هو (بلا إضافة عمود)',
+    migNames.includes(fix) &&
+    !/alter\s+table[^;]*add\s+column[^;]*card_print_code/i.test(readFileSync(join(MIG_DIR, fix), 'utf8')),
+    fix);
+}
+
+/* ── 2026-10-25: دوال صاحب العمل الميتة لا تعود ──
+   employer_view · employer_decide · employer_decide_original · employer_otp_* ‎
+   بلا أي مستخدم: لا واجهة تنادي عليها، ولا دالة/عرض يعتمد عليها، وصلاحيتها
+   مسحوبة من anon/authenticated/service_role. حُذفت من المصدر والقاعدة. */
+step(14, 'دوال صاحب العمل القديمة — محذوفة ولا تُعاد إلى المصدر');
+{
+  const DEAD = /create\s+or\s+replace\s+function\s+brc\.(employer_view|employer_decide|employer_decide_original|employer_otp_\w+)/i;
+  check('المصدر (schema.sql) لا يعرّف أي دالة employer_* ميتة', !DEAD.test(RAW));
+  const guarded = readFileSync(join(MIG_DIR, '20261026110000_drop_dormant_employer_functions.sql'), 'utf8');
+  check('هجرة الحذف تستعمل drop function if exists (آمنة للتكرار)',
+    /drop\s+function\s+if\s+exists\s+brc\.employer_view/i.test(guarded) &&
+    /drop\s+function\s+if\s+exists\s+brc\.employer_decide/i.test(guarded));
+  check('هجرة الحذف لا تمسّ الجداول التي تلتقطها نسخ الاسترجاع',
+    !/drop\s+table/i.test(guarded));
+}
+
+/* ── 2026-10-25: مراجعة شاملة — لا تكرار ولا تداخل في الواجهة ──
+   نتيجة مراجعة الموقع: نافذة «بطاقتي» كان عرضها معرَّفاً مرتين بقيمتين
+   مختلفتين (680px في style.css و600px في card-entry.css) فتختلف بين الصفحة
+   الرئيسية واللوحة؛ وصفحة التقديم كان فيها ستة <h1> (عنوان لكل خطوة). */
+step(15, 'الواجهة — مصدر واحد لكل قيمة، وعنوان رئيسي واحد للصفحة');
+{
+  const cssFiles = readdirSync(join(ROOT, 'assets', 'css')).filter((f) => f.endsWith('.css'));
+  const widthOwners = cssFiles.filter((f) =>
+    /\.modal-booking\s*\{[^}]*\bwidth\s*:/.test(readFileSync(join(ROOT, 'assets', 'css', f), 'utf8')));
+  check('عرض نافذة «بطاقتي» معرَّف في ملف واحد فقط', widthOwners.length === 1, widthOwners.join(', '));
+
+  const pages = readdirSync(ROOT).filter((f) => f.endsWith('.html') &&
+    !/^hrc-(standalone|light)\.html$/.test(f));   /* الحزمتان تجمعان صفحات كاملة */
+  const multiH1 = pages.filter((f) => (readFileSync(join(ROOT, f), 'utf8').match(/<h1[\s>]/g) || []).length > 1);
+  check('كل صفحة فيها عنوان h1 واحد على الأكثر', multiH1.length === 0, multiH1.join(', '));
+
+  const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
+  const cacheName = (sw.match(/CACHE_NAME = '([^']+)'/) || [])[1] || '';
+  check('تعليق رأس sw.js يطابق اسم الكاش الفعلي',
+    new RegExp(cacheName).test(sw.split('\n')[0]), sw.split('\n')[0]);
+  const precache = [...((sw.match(/const urlsToCache = \[([\s\S]*?)\];/) || [])[1] || '').matchAll(/'([^']+)'/g)]
+    .map((m) => m[1]).filter((u) => u !== '/');
+  const gone = precache.filter((u) => !existsSync(join(ROOT, u.replace(/^\//, ''))));
+  check('كل ملف في قائمة التخزين المسبق موجود فعلاً', gone.length === 0, gone.join(', '));
+  check('أنماط «بطاقتي» المطلوبة مخزَّنة مسبقاً (تعمل أوفلاين من أول زيارة)',
+    precache.includes('/assets/css/card-entry.css') && precache.includes('/assets/js/qr-scan.js'));
+
+  const publicHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  check('الموقع العام لا يَعِد بخدمة صاحب عمل محذوفة (مسح الاستمارة وتسجيل القرار)',
+    !/امسح باركود استمارة المتقدم/.test(publicHtml));
+}
+
+/* ── 2026-10-25: نسخة الاسترجاع لا تبقى «غير قابلة للاسترجاع» بصمت ──
+   بصمة المخطط تتبع أعمدة 5 جداول، فأي هجرة أعمدة تُبطل النسخ الأقدم،
+   وrecovery_weekly يحتفظ بنسخة واحدة فقط. النتيجة: فجوة تصل أسبوعاً بلا نسخة
+   صالحة (حدثت فعلاً: نسخة 2026-10-23 صارت غير قابلة للاسترجاع). */
+step(16, 'الاسترجاع — نسخة صالحة دائماً وحالة واضحة في اللوحة');
+{
+  const up = readFileSync(join(MIG_DIR, '20261026140000_recovery_always_restorable.sql'), 'utf8');
+  check('هجرة ضمان النسخة الصالحة موجودة وتُشغَّل دورياً',
+    /create or replace function brc\.recovery_ensure_fresh/.test(up) &&
+    /cron\.schedule/.test(up) && /recovery_ensure_fresh\(\)/.test(up));
+  check('الدالة لا تُنشئ نسخة إن وُجدت نسخة صالحة (لا تستهلك قرصاً بلا داعٍ)',
+    /if exists \(select 1 from brc\.recovery_copies where schema_hash = brc\.recovery_schema_hash\(\)\)/.test(up));
+  check('الدالة مسحوبة الصلاحيات عن المتصفح',
+    /revoke all on function brc\.recovery_ensure_fresh\(\) from public, anon, authenticated/.test(up));
+
+  const ui = readFileSync(join(ROOT, 'assets', 'js', 'recovery.js'), 'utf8');
+  check('اللوحة تُميّز النسخة غير القابلة للاسترجاع وتُعطّل زرها',
+    /recovery-stale/.test(ui) && /button\.disabled=true/.test(ui) && /restorable===false/.test(ui));
+  check('اللوحة تحذّر بوضوح إن لم تبقَ أي نسخة صالحة',
+    /لا توجد نسخة قابلة للاسترجاع/.test(ui));
+  check('نمط الشارة موجود في الأنماط', /\.recovery-stale\{/.test(readFileSync(join(ROOT, 'assets', 'css', 'backup.css'), 'utf8')));
+}
+
+/* ── 2026-10-25: جدولة النسخ يحددها المدير (لا موعد ثابت في cron) ── */
+step(17, 'جدولة النسخ الاحتياطي — يضبطها المدير من الإعدادات');
+{
+  check('دوال الجدولة موجودة في المصدر',
+    ['recovery_schedule_get','recovery_schedule_set','recovery_run_scheduled','recovery_cron_expr']
+      .every((n) => new RegExp('function\\s+brc\\.' + n + '\\s*\\(').test(RAW)));
+  check('الجدولة محفوظة في إعدادات القاعدة لا في المتصفح',
+    /'recovery_schedule'/.test(RAW) && /insert into brc\.settings/.test(RAW));
+  check('تعديل الجدولة محصور بالمدير',
+    /function brc\.recovery_schedule_set[\s\S]{0,400}if not brc\.is_admin\(\)/.test(RAW));
+  check('الجدولة مسحوبة الصلاحيات عن المتصفح وتمنح للموظف المُصدَّق فقط',
+    /revoke all on function brc\.recovery_cron_expr\(int\[\],text\)[^;]*from public,anon,authenticated/.test(RAW) &&
+    /grant execute on function brc\.recovery_schedule_set\(int\[\],text\) to authenticated/.test(RAW));
+  check('التحويل من توقيت بغداد إلى UTC داخل القاعدة',
+    /utc_h := h - 3/.test(RAW) && /Asia\/Baghdad/.test(RAW));
+  check('المهمة الثابتة القديمة لم تعد تُنشأ في المصدر',
+    !/cron\.schedule\('hrc-weekly-recovery'/.test(RAW) && /cron\.schedule\('recovery-auto-backup'/.test(RAW));
+
+  const ui = readFileSync(join(ROOT, 'assets', 'js', 'recovery.js'), 'utf8');
+  check('لوحة النسخ فيها اختيار الأيام والساعة وحفظها',
+    /recovery-sched-save/.test(ui) && /recovery-days/.test(ui) && /type="time"/.test(ui));
+  check('فيها زر إيقاف التلقائي وخيار الحفظ بلا أيام',
+    /recovery-sched-off/.test(ui) && /saveSchedule\(true\)/.test(ui));
+  check('المتجر يمرّر الجدولة إلى القاعدة (لا تخزين محلي)',
+    /recoveryScheduleSet/.test(readFileSync(join(ROOT, 'assets', 'js', 'store.js'), 'utf8')) &&
+    /rpc\('recovery_schedule_set'/.test(readFileSync(join(ROOT, 'assets', 'js', 'store.js'), 'utf8')));
+  check('نمط بطاقة الجدولة موجود في الأنماط',
+    /\.recovery-schedule\{/.test(readFileSync(join(ROOT, 'assets', 'css', 'backup.css'), 'utf8')));
+}
+
+/* ── 2026-10-25: منفّذ نسخ واحد فقط (لا نسختان من نفس المنطق) ──
+   recovery_weekly بقيت بلا مستخدم بعد أن صارت الجدولة بيد المدير: صفر مهمة
+   cron تناديها، صفر دالة، وصلاحيتها postgres وحده. حُذفت من القاعدة. */
+step(18, 'النسخ المجدول — منفّذ واحد لا اثنان');
+{
+  check('المصدر لا يعرّف recovery_weekly', !/function brc\.recovery_weekly/.test(RAW));
+  check('المنفّذ الوحيد هو recovery_run_scheduled',
+    /function brc\.recovery_run_scheduled/.test(RAW) &&
+    /cron\.schedule\('recovery-auto-backup'/.test(RAW));
+  const drop = readFileSync(join(MIG_DIR, '20261026160000_drop_recovery_weekly.sql'), 'utf8');
+  check('هجرة الحذف آمنة للتكرار وتزيل أي مهمة قديمة تشير إليها',
+    /drop function if exists brc\.recovery_weekly\(\)/.test(drop) &&
+    /cron\.unschedule/.test(drop) && /recovery_weekly%/.test(drop));
+  check('هجرة الحذف لا تلمس recovery_run_scheduled',
+    !/drop function if exists brc\.recovery_run_scheduled/.test(drop));
+  const recTest = readFileSync(join(ROOT, 'tests', 'recovery-sql.mjs'), 'utf8');
+  check('فحوص الأمان تُجرى على المنفّذ المجدول الفعلي',
+    /brc\.recovery_run_scheduled\(\)/.test(recTest) &&
+    !/select brc\.recovery_weekly\(\)/.test(recTest));
+}
+
+/* ── 2026-10-25: الهوية الجديدة — ترتيب التطبيق بألوان الشركة والصور ── */
+step(19, 'الواجهة العامة — ترتيب تطبيق بهوية الشركة وصور محلية');
+{
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+
+  /* الترتيب الاحترافي (2026-10-25 بعد طلب المالك): واجهة ← بحث ← تصنيفات ←
+     الوظائف (أهم شيء أولاً) ← بطاقة التوظيف ← الأرقام ← آلية العمل … */
+  /* 2026-10-25 (نهائي): التصنيفات عادت قسماً مستقلاً بشبكة مربّعات ملوّنة،
+     وصندوق الفلترة صار مدمجاً صغيراً في قسم الوظائف. */
+  check('ترتيب الأقسام: واجهة · بحث · تصنيفات · وظائف(بفلترتها) · بطاقة · أرقام',
+    pub.indexOf('id="home"') < pub.indexOf('app-search') &&
+    pub.indexOf('app-search') < pub.indexOf('id="categories"') &&
+    pub.indexOf('id="categories"') < pub.indexOf('id="cat-rail"') &&
+    pub.indexOf('id="cat-rail"') < pub.indexOf('id="jobs"') &&
+    pub.indexOf('id="jobs"') < pub.indexOf('id="jobs-grid"') &&
+    pub.indexOf('id="jobs-grid"') < pub.indexOf('id="card"') &&
+    pub.indexOf('id="card"') < pub.indexOf('id="hero-stats"') &&
+    pub.indexOf('id="hero-stats"') < pub.indexOf('id="how"'));
+  check('التصنيفات شبكة مربّعات ملوّنة مستقلة (بطيّة)، والفلترة صندوق مدمج منفصل',
+    (pub.match(/id="cat-rail"/g) || []).length === 1 &&
+    /class="cat-grid/.test(pub) &&
+    !/cats-row/.test(pub) &&
+    /--cat/.test(readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8')));
+  check('لا شريط علوي (نجمة/حسابي/موقع) — أُزيل بطلب المالك',
+    !/app-topbar/.test(pub) && !/i-star8/.test(pub) && !/حسابي/.test(pub) &&
+    !/class="app-loc"/.test(pub));
+  const tabFlat = pub.replace(/\s+/g, ' ');
+  /* خمسة عناصر كما في الموك-أب: الوظائف · خدماتنا · الرئيسية (وسط بارز) · بطاقتي · تواصل */
+  /* 2026-10-25: التبويبات صارت تفتح **صفحات** (data-page-tab) لا مراسي تمرير. */
+  check('شريط تنقل سفلي: الوظائف · المفضلة · الرئيسية (بارز) · بطاقتي · تواصل',
+    /class="tabbar"/.test(tabFlat) &&
+    (tabFlat.match(/data-page-tab="/g) || []).length === 5 &&
+    /data-page-tab="jobs"/.test(tabFlat) && /data-page-tab="favorites"/.test(tabFlat) &&
+    /data-page-tab="card"/.test(tabFlat) && /data-page-tab="contact"/.test(tabFlat) &&
+    /<button[^>]*class="tab-center"[^>]*data-page-tab="home"/.test(tabFlat) &&
+    !/data-tab="services"/.test(tabFlat));
+
+  /* الهوية: ألوان الشركة فقط — لا لون أزرق/بنفسجي جديد من الموك-أب */
+  const vars = readFileSync(join(ROOT, 'assets', 'css', 'style.css'), 'utf8');
+  check('الأنماط الجديدة تستعمل متغيّرات الشركة (--lapis/--gold) لا ألواناً جديدة',
+    /var\(--gold\)/.test(app) && /var\(--lapis-2\)/.test(app) && /--gold:/.test(vars));
+
+  /* الصور: محلية + بصيغة webp + بلا نص عربي داخل الصورة */
+  const imgs = ['hero-skyline', 'jobs/job-truck', 'jobs/job-cashier', 'jobs/job-chef',
+    'jobs/job-electrician', 'jobs/job-engineer', 'jobs/job-nurse', 'jobs/job-sales', 'jobs/job-warehouse'];
+  const missing = imgs.filter((n) => !existsSync(join(ROOT, 'assets', 'img', n + '.webp')));
+  check('كل صور الهوية الجديدة موجودة محلياً بصيغة webp', missing.length === 0, missing.join(', '));
+  const big = imgs.map((n) => join(ROOT, 'assets', 'img', n + '.webp')).filter((f) => {
+    try { return readFileSync(f).length > 150 * 1024; } catch { return false; }
+  });
+  check('لا صورة تتجاوز 150KB (سرعة على الجوال)', big.length === 0, big.map((f) => f.split('/').pop()).join(', '));
+
+  /* 2026-10-25 (بعد طلب المالك): لا يُعرض أي شكل/صورة للبطاقة على الموقع.
+     صفحة «بطاقتي» = إدخال رقم/مسح ثم تفاصيل حقيقية من القاعدة. */
+  check('لا شكل بطاقة معروض في الموقع (حُذف عرض الوجهين)',
+    !/id="card-showcase"/.test(pub) && !/card-showcase/.test(js) &&
+    !/cs-front|cs-badge|cs-cards/.test(app));
+  check('صفحة «بطاقتي»: حقل إدخال الرقم + زر مسح + منطقة تفاصيل',
+    /id="cp-serial"/.test(pub) && /id="cp-scan"/.test(pub) &&
+    /id="cp-result"/.test(pub) && /id="cp-again"/.test(js));
+  check('البحث يستعمل Store.cardLookup ويشرح الخطأ داخل الشاشة',
+    /Store\.cardLookup\(serial\)/.test(js) && /function cpSay/.test(js) &&
+    /id="cp-err"/.test(pub));
+  check('التفاصيل تعرض الصلاحية والمتبقي والفرص ووظائفها وتواريخها',
+    /بداية الصلاحية/.test(js) && /تنتهي في/.test(js) && /الفرص المتبقية/.test(js) &&
+    /cp-chance/.test(js) && /selectedAt/.test(js));
+  check('المسح الحقيقي مربوط (HRCQRScan) ويقبل باركود البطاقة فقط',
+    /root\.HRCQRScan/.test(js) && /validate: function/.test(js));
+  check('كل وظيفة بلا صورة تحصل على صورة تخصص محلية (لا أيقونة مكسورة)',
+    /function defaultJobImage/.test(js) && /assets\/img\/jobs\//.test(js));
+  check('المفضلة تُحفظ على جهاز الزائر وحده ولا تُرسل للشركة',
+    /hrc_fav_jobs_v1/.test(js) && /localStorage/.test(js));
+  check('شريط التنقل السفلي لا يظهر على الكمبيوتر (جوال فقط)',
+    /\.tabbar\s*\{[^}]*display:\s*none/.test(app) && /@media \(max-width: 860px\)/.test(app));
+}
+
+/* ── 2026-10-25: جولة المالك الأخيرة — نظافة بصرية وبوابة موظفين فعّالة ── */
+step(20, 'الواجهة العامة — أبيض نقيّ، بوابة الموظفين، ولا كود ميت');
+{
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const nav = readFileSync(join(ROOT, 'assets', 'js', 'nav.js'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+
+  /* 1) كل خلفية قريبة من الأبيض صارت أبيض نقيّاً (لا درجات كريمية متبقّية) */
+  const near = (hex) => {
+    const h = hex.replace('#', '');
+    if (h.length !== 6) return false;
+    return Math.min(parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)) >= 236;
+  };
+  const offenders = [];
+  /* الاستثناء المقصود: خلفيات شارات الحالة الدلالية (نجاح/خطأ/معلّق) — لون
+     أخضر/أحمر/أصفر قريب من الأبيض مقصود ليُقرأ كشارة، وليس درجة كريمية. */
+  const STATUS_TINTS = new Set(['#eefaf3', '#fdeeee', '#f7f9fc', '#fff8ea', '#f2fbfa', '#f4f8ff', '#fffaf2', '#f4fcf7']);
+  for (const f of ['style.css', 'app-shell.css', 'public-polish.css']) {
+    const css = readFileSync(join(ROOT, 'assets', 'css', f), 'utf8');
+    for (const m of css.matchAll(/background(?:-color)?\s*:\s*([^;}]+)/g)) {
+      for (const hex of m[1].matchAll(/#[0-9a-fA-F]{6}/g)) {
+        if (near(hex[0]) && !STATUS_TINTS.has(hex[0].toLowerCase())) offenders.push(f + ':' + hex[0]);
+      }
+    }
+  }
+  check('لا خلفيات كريمية متبقية (خلفيات شارات الحالة الدلالية مستثناة وعياً)', offenders.length === 0,
+    [...new Set(offenders)].slice(0, 6).join(', '));
+
+  /* 2) بوابة الموظفين: الضغطة المطوّلة تعمل على **كل** أسماء الشركة،
+        لأن شعار الواجهة هو الظاهر على الجوال (الترويسة مخفية). */
+  check('بوابة الموظفين تُربط على كل عناصر اسم الشركة لا أولها فقط',
+    /querySelectorAll\('\.brand\[data-staff-gate\], \[data-staff-gate\]'\)/.test(nav) &&
+    /function bindOneGate/.test(nav));
+  check('شعار الواجهة معلَّم كبوابة موظفين', /app-brand brand" data-staff-gate/.test(pub));
+  check('اسم الشركة بلا تحديد نص/قائمة سياق تقطع الإيماءة',
+    /user-select: none/.test(readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8')));
+
+  /* 3) لا كود ميت: بقايا الشريط العلوي والبانر الوهمي أُزيلت */
+  check('لا بقايا للشريط العلوي المحذوف في الكود',
+    !/app-topbar|app-alerts|renderAlerts|app-loc/.test(pub + js));
+  check('لا بقايا للبانر الوهمي (promo-*) في الكود',
+    !/promo-banner|promo-qr|renderPromoQr|promo-dots/.test(pub + js));
+
+  /* 4) تصميم بطاقتنا الحقيقي معروض على الموقع من نفس قالب الطباعة */
+  check('صفحة البطاقة تعرض تفاصيل حقيقية من القاعدة لا شكلاً مرسوماً',
+    /id="cp-result"/.test(pub) && /Store\.cardLookup/.test(js));
+}
+
+/* ── 2026-10-25: فلترة موحّدة + طبقات نظيفة + بطاقة فخمة + تفاصيل حيّة ── */
+step(21, 'الوظائف — فلترة موحّدة، طبقات فوق بعضها، وتفاصيل حيّة');
+{
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+  const ui = readFileSync(join(ROOT, 'assets', 'js', 'ui.js'), 'utf8');
+  const vou = readFileSync(join(ROOT, 'assets', 'js', 'voucher.js'), 'utf8');
+
+  /* 1) الفلترة والتصنيفات في صندوق واحد + شرائح تصفية نشطة */
+  check('صندوق الفلترة مدمج (صفّ واحد) بلا تكرار للتصنيفات داخله',
+    /class="filters"[\s\S]*?id="filter-q"[\s\S]*?id="filter-status"/.test(pub) &&
+    !/class="filters"[\s\S]*?id="cat-rail"/.test(pub));
+  check('شرائح «مطبَّق» تُظهر ما تمت تصفيته ويُزال بزر',
+    /id="f-active"/.test(pub) && /function renderActiveChips/.test(js) && /data-clear=/.test(js));
+  check('التصفير يشمل التصنيف أيضاً', /category: 'all' \}/.test(js));
+
+  /* 2) الطبقات: لا شريط سفلي يغطّي أزرار النافذة */
+  check('النافذة فوق الشريط السفلي وقفل تمرير الصفحة أثناء فتحها',
+    /\.modal-backdrop \{ z-index: 400 !important; \}/.test(app) &&
+    /body\.modal-open \{ overflow: hidden; \}/.test(app) &&
+    /body\.modal-open \.tabbar \{ display: none !important; \}/.test(app) &&
+    /classList\.add\('modal-open'\)/.test(ui));
+  check('روابط السكرول لها هامش سفلي (لا تختفي تحت الترويسة)',
+    /scroll-margin-block-start/.test(app) && /scroll-padding-block-start/.test(app));
+
+  /* 3) البطاقة: وجهان فخمان + صيغة الباركود الحالية */
+  check('البطاقة فيها زخرفة وفخامة (نقش + هولوغرام + إطار مزدوج + شريط)',
+    /\.hc-guilloche/.test(vou) && /\.hc-holo/.test(vou) &&
+    /\.hc-ribbon/.test(vou) && /inset 0 0 0 \.78mm/.test(vou));
+  check('الوجه الخلفي يحمل نفس الزخرفة (لا وجه فقير ووجه غني)',
+    (vou.match(/hc-guilloche/g) || []).length >= 3);
+  /* نجرّد التعليقات: الصيغة القديمة مذكورة في تعليق توضيحي مقصود */
+  const jsCode = js.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  check('لا أرقام بطاقات وهمية في الواجهة (الصيغة القديمة محذوفة)',
+    !/HRC-BC-000000/.test(jsCode) &&
+    /function randomCardCode/.test(readFileSync(join(ROOT, 'assets', 'js', 'store.js'), 'utf8')));
+
+  /* 4) تفاصيل الوظيفة: نافذة حيّة بعناصر واضحة */
+  check('تفاصيل الوظيفة: غلاف صورة + شريط أرقام + متطلبات + خطوات + خصوصية',
+    /jd-hero/.test(js) && /jd-stats/.test(js) && /jd-reqs/.test(js) &&
+    /jd-steps/.test(js) && /jd-privacy/.test(js));
+  check('أنماط تفاصيل الوظيفة موجودة ومتجاوبة',
+    /\.jd-hero \{/.test(app) && /\.jd-steps li::before/.test(app) &&
+    /@media \(max-width: 620px\) \{\s*\.jd-stats/.test(app));
+  check('زر «قدّم» داخل النافذة يغلقها ثم يفتح «بطاقتي» (لا نوافذ متراكبة)',
+    /b\.closest\('\.modal-backdrop'\)/.test(js) && /HRCBooking\.open/.test(js));
+}
+
+/* ── 2026-10-25: ألوان حيّة + «اتصل بنا» + بطاقة ككارت حقيقي ── */
+step(22, 'الواجهة — ألوان حيّة، لغة موحّدة، وكارت البطاقة');
+{
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+  const vou = readFileSync(join(ROOT, 'assets', 'js', 'voucher.js'), 'utf8');
+
+  /* 1) ألوان حيّة: لوحة متغيّرات + لون لكل تخصص + أيقونات أرقام ملوّنة */
+  check('لوحة ألوان حيّة معرَّفة (teal/blue/violet/amber/green… )',
+    /--v-teal:/.test(app) && /--v-violet:/.test(app) && /--v-amber:/.test(app));
+  check('كل تخصص له لون ثابت في التصنيفات والشرائح',
+    /PALETTE = \['#0f9c94'/.test(js) && /--cat:' \+ catColor\[c\]/.test(js));
+  check('أيقونات شريط الأرقام ملوّنة (لا رمادي باهت)',
+    /\.app-stat:nth-child\(1\) > \.ic \{ background: var\(--v-teal\)/.test(app));
+
+  /* 2) لغة موحّدة: لا «خابرنا» في أي نص عام */
+  const codeOnly = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
+  check('لا كلمة «خابرنا» في الصفحة العامة أو كودها (اتصل بنا بدلاً منها)',
+    !/خابرنا/.test(pub) && !/خابرنا/.test(codeOnly(js)) && /اتصل بنا/.test(pub));
+
+  /* 3) البطاقة ككارت حقيقي: ميل ثلاثي الأبعاد + ظلّ + واجهة برمجية للوجهين */
+  check('لا عرض لكارت البطاقة على الموقع ولا واجهة عرض له في القالب',
+    !/perspective: 1200px/.test(app) && !/frontHtml: function/.test(vou) &&
+    !/backHtml: function/.test(vou));
+  check('صفحة البطاقة تعرض بطاقة تفاصيل مرتّبة (شبكة قيم + فرص)',
+    /\.cp-grid \{/.test(app) && /\.cp-kv \{/.test(app) &&
+    /\.cp-chance \{/.test(app) && /\.cp-badge\.ok/.test(app));
+}
+
+/* ── 2026-10-25: تصنيفات بطيّة + قسم المفضلة ── */
+step(23, 'الوظائف — تصنيفات تُفتح بضغطة وقسم مفضلة يعمل فعلاً');
+{
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+
+  /* 1) التصنيفات مخفيّة حتى تُضغط */
+  check('شبكة التصنيفات مخفيّة افتراضياً مع زر إظهار/إخفاء',
+    /id="cat-rail"[^>]*hidden/.test(pub) && /id="cats-toggle"/.test(pub) &&
+    /function bindCatsToggle/.test(js) && /grid\.hidden = !open/.test(js));
+  check('زر التصنيفات يعلن حالته للقارئ الشاشي (aria-expanded)',
+    /aria-expanded="false"[^>]*aria-controls="cat-rail"/.test(pub) &&
+    /setAttribute\('aria-expanded'/.test(js));
+
+  /* 2) المفضلة: قسم + تبويب + شارة عدد + مسح */
+  check('قسم «المفضلة» موجود بعد الوظائف بشبكة كروت حالته الفارغة واضحة',
+    /id="favorites"/.test(pub) && /id="fav-grid"/.test(pub) &&
+    /id="fav-empty"/.test(pub) && /function renderFavorites/.test(js));
+  check('تبويب الشريط السفلي صار «المفضلة» بشارة عدد (لا «خدماتنا»)',
+    /data-page-tab="favorites"/.test(pub) && /id="fav-count"/.test(pub) &&
+    !/<span>خدماتنا<\/span>/.test(pub));
+  check('إضافة/إزالة تعمل من أي كرت وتُحدّث القسم والعدّاد فوراً',
+    /favToggle\(code\)/.test(js) && /renderFavorites\(\)/.test(js) &&
+    /document\.addEventListener\('click'/.test(js));
+  check('المفضلة محفوظة على جهاز الزائر فقط + زر مسح الكل',
+    /localStorage\.setItem\(FAV_KEY/.test(js) && /id="fav-clear"/.test(pub) &&
+    /removeItem\(FAV_KEY\)/.test(js));
+  check('أنماط المفضلة والتصنيفات البطيّة موجودة',
+    /\.cats-toggle \{/.test(app) && /\.cat-grid\[hidden\]/.test(app) &&
+    /\.fav-empty \{/.test(app) && /\.tab-badge \{/.test(app));
+}
+
+/* ── 2026-10-25: تبويبات تفتح صفحات كاملة (نمط التطبيقات) ── */
+step(24, 'التنقل — كل تبويب صفحة كاملة بمعلوماتها');
+{
+  const pub = readFileSync(join(ROOT, 'src', 'partials', 'public.html'), 'utf8');
+  const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+
+  check('شريط صفحة بعنوان ووصف وزر رجوع وشارة عدد',
+    /id="page-bar"/.test(pub) && /id="pb-back"/.test(pub) &&
+    /id="pb-title"/.test(pub) && /id="pb-badge"/.test(pub));
+  check('كل قسم موسوم بالصفحة التي ينتمي إليها (data-page)',
+    (pub.match(/data-page="/g) || []).length >= 10 &&
+    /id="jobs"[^>]*data-page="jobs"/.test(pub.replace(/\n/g, ' ')) &&
+    /id="favorites"[^>]*data-page="favorites"/.test(pub.replace(/\n/g, ' ')) &&
+    /id="card"[^>]*data-page="card"/.test(pub.replace(/\n/g, ' ')) &&
+    /id="contact"[^>]*data-page="contact"/.test(pub.replace(/\n/g, ' ')));
+  check('موجّه الصفحات: openPage + حالة في الرابط + دعم زر الرجوع',
+    /function openPage\(page, opts\)/.test(js) &&
+    /history\.pushState/.test(js) &&
+    /addEventListener\('popstate'/.test(js) &&
+    /#!\//.test(js));
+  check('صفحة واحدة ظاهرة فقط في نمط الصفحات، والرئيسية تُعيد الكل',
+    /body\.app-focus \[data-page\] \{ display: none !important; \}/.test(app) &&
+    /body\.app-focus\[data-app-page="jobs"\] \[data-page="jobs"\]/.test(app));
+  check('المفضلة لا تظهر في الرئيسية الطويلة (صفحة مستقلة)',
+    /class="[^"]*app-only[^"]*"[^>]*id="favorites"/.test(pub) &&
+    /body:not\(\.app-focus\) \.app-only/.test(app));
+  check('الشريط السفلي ظاهر على الكمبيوتر أيضاً (تنقّل تطبيق)',
+    /\.tabbar \{[\s\S]{0,200}display: flex;/.test(app));
+}
+
+/* ── 2026-10-25: سجل التدقيق قائمة عربية + فلاتر الموقع بسيطة ── */
+step(25, 'اللوحة — سجل مرتّب بلا كلمات إنجليزية، وفلاتر موحّدة');
+{
+  const dash = readFileSync(join(ROOT, 'src', 'partials', 'dashboard.html'), 'utf8');
+  const djs = readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8');
+  const css = readFileSync(join(ROOT, 'assets', 'css', 'style.css'), 'utf8');
+
+  /* 2026-10-25 (نهائي): السجل جدول مرتّب ستة أعمدة بعرض كافٍ ومنع التفاف
+     في الأعمدة القصيرة، وعمود التفاصيل وحده يلتف. */
+  check('السجل جدول مرتّب بأعمدة واضحة (لا كسر نص عمودياً)',
+    /class="data audit-table"/.test(dash) && /at-time/.test(djs) && /at-details/.test(djs) &&
+    /table\.data\.audit-table \.at-time \{[\s\S]{0,120}white-space: nowrap/.test(css) &&
+    /min-width: 980px/.test(css));
+  check('رأس الجدول عربي بالكامل وبلا أعمدة إنجليزية',
+    ['الوقت', 'المستخدم', 'الرتبة', 'القسم', 'العملية', 'التفاصيل']
+      .every((h) => new RegExp('<th scope="col">' + h + '</th>').test(dash)) &&
+    !/IP الجلسة|<th>السجل<\/th>/.test(dash));
+  check('لا كلمات إنجليزية في واجهة السجل (CSV/IP/UTC/YYYY-MM-DD)',
+    !/CSV/.test(dash) && !/IP الجلسة/.test(dash) && !/UTC\+3/.test(dash) &&
+    !/YYYY-MM-DD/.test(dash));
+  check('أقسام السجل والرتب تُعرض عربية من قاموس صريح',
+    /AUDIT_ENTITY = \{/.test(djs) && /AUDIT_ACTION = \{/.test(djs) &&
+    /applicant: 'بطاقة'/.test(djs) && /auditEntityLabel/.test(djs));
+  check('فلاتر السجل تُبنى بتسميات عربية (القسم/العملية/المستخدم)',
+    /label\(v\)/.test(djs) && /كل الأقسام/.test(dash));
+  /* المتصفح يفرض صيغة نظامه (mm/dd/yyyy) ولا تُغيَّر بـCSS؛ نعرض نحن تنسيقاً
+     عربياً فوق منتقي التاريخ الحقيقي (‎.date-ar‎ + arabicDateText). */
+  check('حقول التاريخ تُعرض عربية (يوم/شهر/سنة) فوق منتقي التاريخ الحقيقي',
+    /\.date-ar \{/.test(css) && /\.date-ar input\[type="date"\]/.test(css) &&
+    /function arabicDateText/.test(readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8')) &&
+    /data-da-text="log-from"/.test(dash));
+
+  /* فلاتر الموقع: عمود واحد على الجوال، وأربعة متساوية على الكمبيوتر */
+  const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
+  check('فلاتر الموقع شبكة موحّدة: بحث بعرض كامل + ٣ اختيارات + تصفير',
+    /#jobs \.f-row \{ display: grid; grid-template-columns: repeat\(4/.test(app) &&
+    /#jobs \.f-row > \.f-field\.f-search \{ grid-column: 1 \/ -1/.test(app) &&
+    /@media \(max-width: 860px\)[\s\S]{0,200}grid-template-columns: repeat\(2/.test(app));
+}
+
+/* ── 2026-10-25: لا كلمات إنجليزية في واجهة السجل (job/application…) ── */
+step(26, 'السجل — كل التسميات عربية بلا كلمات أجنبية');
+{
+  const djs = readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8');
+  const maps = djs.slice(djs.indexOf('var AUDIT_ENTITY'), djs.indexOf('function auditEntityLabel'));
+  /* كل قيمة معروضة في القواميس يجب أن تكون عربية (لا job/application/… ) */
+  const latinValues = [...maps.matchAll(/:\s*'([^']+)'/g)].map((m) => m[1])
+    .filter((v) => /^[A-Za-z][A-Za-z \-]*$/.test(v) && !['login', 'logout', 'sign in', 'sign out',
+      'create', 'update', 'delete', 'insert', 'add', 'edit', 'remove', 'restore', 'backup',
+      'export', 'print', 'view', 'read', 'log in', 'log out'].includes(v));
+  check('قواميس السجل لا تحتوي قيماً إنجليزية تُعرض للمستخدم', latinValues.length === 0,
+    latinValues.join(', '));
+  check('أي قيمة إنجليزية غير معروفة تُعرض بوصف عربي (لا تُسرَّب)',
+    /LATIN_ONLY/.test(djs) && /\? 'سجل'/.test(djs) && /\? 'عملية'/.test(djs));
+}
+
+/* ── 2026-10-27: هوية فاتحة كريمية لصفحات التقديم (apply.html) ── */
+step(27, 'صفحات التقديم — هوية فاتحة (كريمي/كحلي/ذهب) بلا مساس بالطباعة');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  /* 2026-10-27: ألغى المالك الكريمي نهائياً → الهوية: أبيض · كحلي · ذهبي نيون */
+  check('لوحة الهوية معرّفة (أبيض · كحلي · ذهبي)',
+    /--ap-cream:#ffffff/.test(ap) && /--ap-navy:#012F3E/.test(ap) && /--mk-gold:#22C55E/.test(ap) &&
+    !/--ap-cream:#fbf7ec/.test(ap));
+  check('خلفية الترحيب بيضاء بموجات زخرفية أعلى وأسفل (بلا كريمي)',
+    /body\{background-color:#ffffff!important\}/.test(ap) &&
+    /body::before/.test(ap) && /body::after/.test(ap) &&
+    /preserveAspectRatio='none'/.test(ap));
+  check('البطاقة بيضاء والحقول بيضاء والنص كحلي',
+    /\.profile-card\{[\s\S]{0,260}background:#ffffff/.test(ap) &&
+    /--ui-field:#ffffff/.test(ap) && /--ui-ink:#0d2f3d/.test(ap));
+  check('الأزرار: أساسي أخضر نيون بنص كحلي وثانوي أبيض بحدّ رقيق',
+    /\.btn-primary\{[\s\S]{0,260}linear-gradient\(135deg,#41DE93,#22C55E 55%,#15803D\)/.test(ap) &&
+    /\.btn-primary\{[\s\S]{0,420}color:#04231A/.test(ap) &&
+    /\.btn-outline\{[\s\S]{0,240}#cfdae0/.test(ap));
+  check('كروت الوظائف فاتحة بنصوص كحلية (لا نص أبيض على أبيض)',
+    /#jobs-list \.title[\s\S]{0,120}--ap-navy/.test(ap) &&
+    /\.job-tags \.job-code\{[\s\S]{0,160}#0f6d63/.test(ap));
+  check('شريط التقدم يعرض النسبة داخل كبسولة فاتحة',
+    /\.step-label \.pct\{[\s\S]{0,260}--ap-field/.test(ap));
+  check('الهوية داخل @media screen فقط (الطباعة A4 لم تتغيّر)',
+    ap.indexOf('@media screen {\n  :root{\n    --ap-cream') > 0 &&
+    (ap.match(/@media print/g) || []).length >= 3);
+}
+
+/* ── 2026-10-27 (ب): شاشة ترحيب «منصة مكسب» مطابقة للملصق (موبايل أولاً) ── */
+step(28, 'شاشة الترحيب «منصة مكسب» — مطابقة الملصق + حركة وضغط أزرار');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('اسم المنصة صار «منصة مكسب» في العنوان والشاشة والترحيب والتذييل',
+    /<title>[^<]*منصة مكسب للتوظيف/.test(ap) &&
+    /id="welcome-title"[^>]*>منصة <b>مكسب<\/b>/.test(ap) &&
+    /منصة مكسب للتوظيف — بابل، العراق/.test(ap) &&
+    /<div class="mk-top-t">[\s\S]{0,120}منصة مكسب/.test(ap));
+  check('شريط علوي كحلي خاص بالترحيب: «منصة مكسب» + «فرصتك لمستقبل أفضل»',
+    /class="mk-top"/.test(ap) && /<b>منصة مكسب<\/b>/.test(ap) &&
+    /<span>فرصتك لمستقبل أفضل<\/span>/.test(ap));
+  check('الشريط العلوي العام مخفي في الترحيب ويظهر من الخطوة ١',
+    /<div class="topbar" id="topbar" style="display:none">/.test(ap) &&
+    /\$\('topbar'\)\.style\.display=showBar\?'flex':'none'/.test(ap));
+  check('الشعار الصحيح (حرف مكسب + سهم ذهبي) معرّف كرمز SVG مقتفى من الصورة',
+    /<symbol id="i-mkseb" viewBox="0 0 \d+ \d+">/.test(ap) &&
+    (ap.match(/#i-mkseb(-dark)?/g) || []).length >= 4 &&
+    /fill="#22C55E"/.test(ap) && /fill="#fff"/.test(ap) &&
+    /i-mkseb-dark/.test(ap));
+  check('بلاطة الأيقونة (كحلي #012F3E وزوايا مستديرة) للشعار في الشريط والواجهة',
+    /\.mk-tile\{/.test(ap) && /background:#012F3E/.test(ap) &&
+    /--mk-gold:#22C55E/.test(ap) && /--mk-green:#94D183/.test(ap) && /--mk-teal:#3FB190/.test(ap));
+  check('نفس الشعار في صفحة التقديم والموقع والترويسة والتذييل (رمز واحد)',
+    /id="i-mkseb"/.test(ap) &&
+    /<symbol id="i-mkseb" viewBox="0 0 \d+ \d+">/.test(readFileSync(join(ROOT, 'src/partials/sprite.html'), 'utf8')) &&
+    /#i-mkseb/.test(readFileSync(join(ROOT, 'src/partials/header.html'), 'utf8')) &&
+    /#i-mkseb/.test(readFileSync(join(ROOT, 'src/partials/footer.html'), 'utf8')) &&
+    /#i-mkseb/.test(readFileSync(join(ROOT, 'src/partials/public.html'), 'utf8')));
+  check('شاشة الترحيب تحمل الشعار في الشريط العلوي وفي وسط الواجهة',
+    /class="mk-top-logo[^"]*"/.test(ap) && /class="mk-logo anim-zoom anim-glow"/.test(ap));
+  check('بطاقات المزايا تظهر متتالية عند الوصول (IntersectionObserver + شبكة أمان)',
+    /mk-wait/.test(ap) && /IntersectionObserver/.test(ap) &&
+    /setTimeout\(function\(\)\{[\s\S]{0,120}mk-in/.test(ap));
+  check('الوعد والوصف كما في الملصق (فرصتك لمستقبل أفضل + منصة توظيف تربط…)',
+    /class="mk-tag[^"]*">فرصتك لمستقبل أفضل</.test(ap) &&
+    /id="welcome-intro"[^>]*>منصة توظيف تربط الباحثين عن عمل مع أصحاب العمل بكل سهولة وموثوقية</.test(ap));
+  check('زر البدء كبسولة أخضر نيون بسهم (كما في الملصق)',
+    /class="mk-cta[^"]*"[\s\S]{0,300}id="btn-start"/.test(ap) &&
+    /\.mk-cta \.btn\{[\s\S]{0,600}border-radius:999px/.test(ap) &&
+    /\.mk-cta \.btn\{[\s\S]{0,400}linear-gradient\(135deg,#41DE93,#22C55E 55%,#15803D\)/.test(ap));
+  check('صورة واجهة بغداد محليّة (بلا طلب خارجي) مع تعتيم للقراءة',
+    /background-image:url\("assets\/img\/mkseb-hero-m\.webp"\)/.test(ap) &&
+    /assets\/img\/mkseb-hero\.webp/.test(ap) && /class="mk-hero-veil"/.test(ap) &&
+    !/mkseb-hero[^"']*\.(jpg|png)/.test(ap));
+  check('موجة بيضاء أسفل الصورة وموجة كحلية ذهبية في الخاتمة',
+    /class="mk-sweep"/.test(ap) && /class="mk-end-wave"/.test(ap) &&
+    /fill="#ffffff"/.test(ap) && /fill="#0d2247"/.test(ap));
+  check('فاصل «خطوة بسيطة .. وباب جديد لفرصك» بين الزر وقسم المزايا',
+    /class="mk-sep"><span>خطوة بسيطة \.\. وباب جديد لفرصك<\/span>/.test(ap));
+  check('قسم «لماذا مكسب؟» + سطر «لأن مستقبلك يستحق الأفضل» + أربع مزايا بنصوص الملصق',
+    /class="mk-why-t">لماذا مكسب؟</.test(ap) &&
+    /class="mk-why-s">لأن مستقبلك يستحق الأفضل</.test(ap) &&
+    (ap.match(/class="mk-feat"/g) || []).length === 4 &&
+    /تطوير مستقبلك/.test(ap) && /دعم مستمر/.test(ap) &&
+    /فرص متنوعة/.test(ap) && /موثوق وآمن/.test(ap) &&
+    /نساعدك على بناء مسارك المهني/.test(ap) && /فريقنا معك في كل خطوة/.test(ap) &&
+    /وظائف تناسب جميع المؤهلات والخبرات والتخصصات/.test(ap) &&
+    /نتعامل مع جهات معتمدة/.test(ap));
+  check('تركيب الشاشة موبايل أولاً: عمود بعرض الجوال على الهاتف وبطاقة متمركزة على الكمبيوتر',
+    /\.mk-screen\{[\s\S]{0,220}max-width:640px/.test(ap) &&
+    /@media\(min-width:641px\)\{[\s\S]{0,220}\.mk-screen\{[\s\S]{0,220}border-radius:28px/.test(ap));
+  check('الشريط العلوي العام (خطوات الإدخال) يستخدم شعار مكسب أيضاً',
+    /<div class="topbar" id="topbar"[\s\S]{0,200}#i-mkseb/.test(ap) &&
+    /<div class="t1">منصة مكسب<\/div>/.test(ap));
+  check('الاستمارة المطبوعة تحمل اسم «منصة مكسب للتوظيف» بلا سطر إنجليزي',
+    /n1">منصة مكسب للتوظيف/.test(ap) && !/AL-HADAF RECRUITMENT/.test(ap));
+  check('الأيقونات داخل الحقول (اسم · محافظة · قضاء · ناحية · نقطة دالة · هاتف) سليمة',
+    (ap.match(/class="fld-ic"/g) || []).length === 6 &&
+    /id="f-name"/.test(ap) && /id="f-lm"/.test(ap) && /id="f-phone"/.test(ap));
+  check('الخلفية الموجية العامة تختفي في شاشة الترحيب (تركيبها الخاص)',
+    /body\[data-step="0"\]::before,body\[data-step="0"\]::after\{display:none/.test(ap));
+  check('خلفية موجية للخطوات تتنفّس ببطء مع احترام تقليل الحركة',
+    /@keyframes apWaveTop/.test(ap) && /@keyframes apWaveBottom/.test(ap) &&
+    /@media\(prefers-reduced-motion:reduce\)\{\s*body::before,body::after[\s\S]{0,120}animation:none/.test(ap));
+  check('ضغط الأزرار محسوس (translate + scale) مع موجة لمس',
+    /\.btn:not\(:disabled\):active\{[\s\S]{0,160}scale\(\.98/.test(ap) &&
+    /@keyframes apRipple/.test(ap) && /className='ap-rp'/.test(ap));
+  check('انتقال الصفحات ناعم وبلا كسر لقفل الانتقال',
+    /transform \.46s cubic-bezier\(\.16,1,\.3,1\)/.test(ap) && /\},420\);/.test(ap));
+  check('الصفحة الحالية معلنة على <body> لعرض شريط التقدم بعرض البطاقة',
+    /setAttribute\('data-step'/.test(ap) && /body\[data-step="6"\] \.steps-bar/.test(ap));
+}
+
+/* ── 2026-10-27 (ج): حيوية الصفحات · إطارات ملوّنة · كيبورد بلا قفز ── */
+step(29, 'حيوية شاشتَي الترحيب والإدخال + لوحة أزرار لا تقفز مع الكيبورد');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('خلفية حيّة: هالتان ملوّنتان تسبحان ببطء خلف صفحات الإدخال',
+    /body\[data-step\]:not\(\[data-step="0"\]\) \.app::before/.test(ap) &&
+    /@keyframes apFloat/.test(ap));
+  check('بطاقة الخطوة بإطار متدرّج وشريط ألوان متحرك أعلاها',
+    /padding-box/.test(ap) &&
+    /@keyframes apRibbon/.test(ap) &&
+    /#012F3E,#0A4E60 28%,#22C55E 58%,#94D183 84%,#3FB190/.test(ap));
+  check('الحقول: أيقونة داخل كبسولة تتحول للكحلي/الذهبي عند التركيز + رفع خفيف',
+    /\.fld:focus-within \.fld-ic\{[\s\S]{0,150}background:#012F3E/.test(ap) &&
+    /\.fld:focus-within\{transform:translateY\(-2px\)\}/.test(ap));
+  check('الأزرار: لمعة تمرّ على الزر الأساسي وحدود فاتحة ورفع/ضغط محسوس',
+    /\.btn-primary::before\{[\s\S]{0,240}animation:apShine/.test(ap) &&
+    /@keyframes apShine/.test(ap));
+  check('الجنس: بطاقتان ملوّنتان بعلامة اختيار وأيقونات SVG (لا إيموجي)',
+    /\.gender-opt\.selected::after\{[\s\S]{0,120}content:'✓'/.test(ap) &&
+    /<span class="icon"><svg viewBox="0 0 24 24"/.test(ap) &&
+    !/👨|👩/.test(ap));
+  check('المزايا الأربع بأربعة ألوان من هوية الشعار',
+    /\.mk-feat:nth-child\(1\) \.mk-feat-ic/.test(ap) &&
+    /\.mk-feat:nth-child\(4\) \.mk-feat-ic/.test(ap) &&
+    /rgba\(148,209,131/.test(ap) && /rgba\(63,177,144/.test(ap));
+  check('شعار الترحيب يطفو ببطء وزر «ابدأ الآن» يتنفّس بحدود ذهبية',
+    /\.mk-logo\{animation:mkFloat/.test(ap) && /@keyframes mkBreath/.test(ap));
+  check('لوحة الأزرار مع الكيبورد: شريط سفلي ثابت بلا قفزة وبترتيب الصفحة',
+    /animation:apDockUp/.test(ap) && /inset-inline:0!important/.test(ap) &&
+    /#keyboard-navigation \.btn-row\{[\s\S]{0,200}flex-direction:column-reverse!important/.test(ap) &&
+    /\.page\.active\{min-height:0!important\}/.test(ap));
+  check('لا يفتح الكيبورد تلقائياً على الجوال (لا قفزة عند الوصول لخطوة)',
+    /pointer:fine/.test(ap) && /preventScroll:true/.test(ap));
+  check('كل الحركات الجديدة تتوقف عند prefers-reduced-motion',
+    /@media\(prefers-reduced-motion:reduce\)\{[\s\S]{0,320}apShine|mkFloat|apFloat/.test(ap) ||
+    /preters/.test(ap) === false && /prefers-reduced-motion:reduce/.test(ap));
+}
+
+/* ── 2026-10-27 (د): خطوة السكن — محافظة · قضاء · ناحية (تقسيم العراق كامل) ── */
+step(30, 'السكن: محافظة ← قضاء ← ناحية بلا خطأ + نقطة دالة');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+  const admin = readFileSync(join(ROOT, 'assets/js/iraq-admin.js'), 'utf8');
+  const sandbox = {window: {}};
+  vm.runInNewContext(admin, sandbox);
+  const IRAQ = sandbox.window.HRC_IRAQ;
+  const ORDER = sandbox.window.HRC_IRAQ_ORDER;
+  const COUNT = sandbox.window.HRC_IRAQ_COUNT;
+
+  check('ملف التقسيم الإداري مستقل ومربوط بالصفحة قبل السكربت المضمّن',
+    /<script src="assets\/js\/iraq-admin.js"><\/script>/.test(ap) &&
+    /var IRAQ=\(window\.HRC_IRAQ\)\|\|\{\}/.test(ap));
+  check('١٩ محافظة كاملة بالترتيب المعتمد (منها حلبجة)',
+    COUNT.governorates === 19 && ORDER.length === 19 && ORDER.indexOf('حلبجة') >= 0,
+    JSON.stringify(COUNT));
+  check('كل محافظة في البيانات لها أقضية ونواحٍ (لا محافظة فارغة)',
+    ORDER.every((p) => IRAQ[p] && Object.keys(IRAQ[p]).length > 0 &&
+      Object.keys(IRAQ[p]).every((q) => Array.isArray(IRAQ[p][q]) && IRAQ[p][q].length > 0)));
+  check('التغطية: ١٣٠ قضاءً و٤٢٧ ناحية (يشمل مراكز الأقضية)',
+    COUNT.districts === 130 && COUNT.subdistricts === 427, JSON.stringify(COUNT));
+  check('نماذج محافظات حقيقية: بابل ٧ أقضية · بغداد ١٠ · الأنبار ١٠ · البصرة ٧',
+    Object.keys(IRAQ['بابل']).length === 7 && Object.keys(IRAQ['بغداد']).length === 10 &&
+    Object.keys(IRAQ['الأنبار']).length === 10 && Object.keys(IRAQ['البصرة']).length === 7);
+  check('كل قضاء بابل موجود بأسمائه الرسمية (الحلة · المحاويل · كوثى · الهاشمية · الحمزة الغربي · المسيب · الكفل)',
+    ['قضاء الحلة', 'قضاء المحاويل', 'قضاء كوثى', 'قضاء الهاشمية', 'قضاء الحمزة الغربي', 'قضاء المسيب', 'قضاء الكفل']
+      .every((d) => !!IRAQ['بابل'][d]));
+  check('لا ناحية مكرّرة داخل المحافظة نفسها (يفسد الاختيار)',
+    ORDER.every((p) => {
+      const seen = new Set();
+      return Object.keys(IRAQ[p]).every((q) => IRAQ[p][q].every((n) => (seen.has(n) ? false : (seen.add(n), true))));
+    }));
+  check('الحقول الأربعة موجودة: المحافظة · القضاء · الناحية · أقرب نقطة دالة',
+    /id="f-prov"/.test(ap) && /id="f-qada"/.test(ap) && /id="f-nah"/.test(ap) && /id="f-lm"/.test(ap));
+  check('القضاء والناحية معطّلان حتى يُختار ما قبلهما، ويُعاد بناؤهما عند كل تغيير',
+    /sel\.disabled=!province/.test(ap) && /sel\.disabled=!list\.length/.test(ap) &&
+    /provSel\.addEventListener\('change',function\(\)\{fillQada\(provSel\.value,'',''\);\}\)/.test(ap) &&
+    /qadaSel\.addEventListener\('change',function\(\)\{fillNahiya\(\$\('f-prov'\)\.value,qadaSel\.value,''\);\}\)/.test(ap));
+  check('التحقق يطالب بالقضاء ثم الناحية برسائل عربية واضحة',
+    /اختر القضاء التابع لمحافظتك/.test(ap) && /اختر الناحية التابعة لقضائك/.test(ap));
+  check('العنوان المرسل للقاعدة: محافظة — قضاء — ناحية — نقطة دالة',
+    /\[province,qada,nah,\$\('f-lm'\)\.value\.trim\(\)\]\.filter\(Boolean\)\.join\(' — '\)/.test(ap) &&
+    /district:qada,subdistrict:nah/.test(ap));
+}
+
+/* ── 2026-10-27 (هـ): تناسق صفحات المعلومات + كارت الوظيفة المختارة الكحلي ── */
+step(31, 'تناسق صفحات المعلومات + بطاقة الوظيفة المختارة كحلية بإطار ذهبي');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('نظام ألوان موحّد معلن مرة واحدة (كحلي · أخضر نيون · أبيض · أحمر)',
+    /--ui-ink:#0d2f3d/.test(ap) && /--ui-gold-2:#22C55E/.test(ap) &&
+    /--ui-green:#3FB190/.test(ap) && /--ui-red:#b3392b/.test(ap) && /--ui-cream:#ffffff/.test(ap));
+  check('الحقول بيضاء بحدّ ذهبي عند التركيز',
+    /--ui-field:#ffffff/.test(ap) && /--ui-field-line:#dbe4e9/.test(ap) &&
+    /\.form-group input:focus,\.form-group select:focus\{[\s\S]{0,160}var\(--ui-gold-2\)/.test(ap) &&
+    !/--ap-field:#e9eefb; *$/.test(ap.split('--ui-field:#f9f5ea')[0].slice(-40)));
+  check('كل التنبيهات بشكل واحد: حد جانبي ملوّن + أيقونة SVG (لا إيموجي)',
+    /\.alert-error\{[\s\S]{0,200}border-inline-start-color:var\(--ui-red\)/.test(ap) &&
+    /\.alert-info\{[\s\S]{0,200}border-inline-start-color:#2d7fa8/.test(ap) &&
+    /var AICO=\{/.test(ap) && /function aico\(name,cls\)/.test(ap));
+  check('لا إيموجي في واجهة الزبون (📅 ⚠️ 🧾 👤 🖨 🔗 📷 🔄 ✅)',
+    !/[📅⚠🧾👤🖨🔗📷🔄✅]/u.test(ap));
+  check('صفحة المراجعة بنفس اللغة: بطاقة بيضاء + صفوف منقّطة + أزرار «تعديل» كبسولية',
+    /\.rv-card\{[\s\S]{0,220}var\(--ui-cream\)/.test(ap) &&
+    /\.rv-row\{border-bottom:1px dashed #e4eaef/.test(ap) &&
+    /\.rv-edit\{[\s\S]{0,220}border-radius:999px/.test(ap) &&
+    /\.rv-sub\{[\s\S]{0,260}background:#ffffff/.test(ap));
+  check('بطاقة الوظيفة المختارة كحلية بحدود ذهبية (طلب المالك)',
+    /#jobs-list \.job-card\.selected\{[\s\S]{0,260}linear-gradient\(165deg,#0A3F50,#012F3E/.test(ap) &&
+    /#jobs-list \.job-card\.selected\{[\s\S]{0,420}border:2px solid var\(--ui-gold-2\)/.test(ap));
+  check('نصوص/خلايا/أزرار الكارت المختار كلها مقروءة (نص كحلي على أبيض)',
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected \.jm \.k,[\s\S]{0,320}color:#0d2f3d/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected \.job-pay \*,[\s\S]{0,460}color:#0f6b3f/.test(ap) &&
+    /#jobs-list \.job-card\.selected \.job-actions \.btn-primary,[\s\S]{0,240}linear-gradient\(135deg,#41DE93,#22C55E\)/.test(ap));
+  check('شارة الاختيار المكرّرة أُزيلت (بقيت شارة واحدة داخل الرأس)',
+    /#jobs-list \.job-card\.selected \.job-head::before,[\s\S]{0,140}content:none!important/.test(ap));
+  check('بقية البطاقات تُخفَّف قليلاً ليبقى الكحلي هو البطل (بلا تغبيش يمنع النقر)',
+    /#jobs-list\.has-focus \.job-card:not\(\.selected\):not\(\.is-done\)\{opacity:\.78\}/.test(ap) &&
+    !/pointer-events:none/.test(ap.split('#jobs-list.has-focus .job-card:not(.selected):not(.is-done)')[1]?.slice(0, 120) || ''));
+}
+
+/* ── 2026-10-27 (و): واجهة كحلية + تفاصيل بيضاء + كروت وظائف بيضاء ── */
+step(32, 'الواجهة كحلية · التفاصيل بيضاء · الوظائف في كروت بيضاء · «اختر الوظيفة»');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('صفحات البيانات والقائمة والنتيجة كحلية مزرقّة (1..8)',
+    /body\[data-step="1"\][\s\S]{0,520}background-color:#07203F!important/.test(ap) &&
+    /body\[data-step="8"\]/.test(ap));
+  check('شريط التقدّم زجاج كحلي بنص أبيض على هذه الصفحات',
+    /body\[data-step="1"\] \.steps-bar[\s\S]{0,420}rgba\(255,255,255,\.07\)/.test(ap) &&
+    /body\[data-step="1"\] \.step-label[\s\S]{0,220}rgba\(234,243,246,\.82\)/.test(ap));
+  check('بطاقة البيانات بيضاء نظيفة (لا كريمي) والحقول بيضاء',
+    /body\[data-step="1"\] \.profile-card[\s\S]{0,260}background:#fff!important/.test(ap) &&
+    /--ui-field:#ffffff/.test(ap) && /--ui-cream:#ffffff/.test(ap));
+  check('لوحة الفلاتر زجاج كحلي بحقول بيضاء ونصوص فاتحة',
+    /body\[data-step="6"\] \.job-filters\{[\s\S]{0,320}rgba\(255,255,255,\.10\)/.test(ap) &&
+    /body\[data-step="6"\] \.job-filters input:not\(\[type=checkbox\]\)[\s\S]{0,200}background:#fff!important/.test(ap));
+  check('كل وظيفة في كارت أبيض بنصوص كحلية وأجر بحدّ أخضر نيون (بلا كريمي)',
+    /body\[data-step="6"\] #jobs-list \.job-card\{[\s\S]{0,120}background:#fff!important/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.jm\{[\s\S]{0,200}background:#f7f9fa/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.job-card\{[\s\S]{0,200}color:#0d2f3d/.test(ap));
+  check('الكارت المختار: حدّ أخضر نيون 2px بظل — والنصوص تبقى كحلية (لا أبيض على أبيض)',
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected\{[\s\S]{0,200}border:2px solid #22C55E/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected \.jm \.k,[\s\S]{0,320}color:#0d2f3d/.test(ap));
+  check('المراجعة: بطاقة بيضاء + كارت كحلي للوظائف المختارة',
+    /body\[data-step="7"\] \.rv-card\{[\s\S]{0,200}background:#fff!important/.test(ap) &&
+    /\.rv-jobs\{[\s\S]{0,300}linear-gradient\(165deg,#0A3F50,#012F3E/.test(ap) &&
+    /h\+='<div class="rv-jobs">'/.test(ap));
+  check('زر الوظائف في المراجعة اسمه «اختر الوظيفة» (لا «تعديل»)',
+    /var label=\(step===6\)\?'اختر الوظيفة':'تعديل'/.test(ap) &&
+    !/onclick="G.editStep\(6\)">تعديل</.test(ap));
+  check('زر الإتمام بلون الهوية التركوازي',
+    /#btn-finish\{[\s\S]{0,220}linear-gradient\(135deg,#2FA98C,#1C7E68/.test(ap));
+  check('شرائح المراجعة سطر واحد بلا التفاف داخل الكارت الكحلي',
+    /body\[data-step="7"\] \.rv-jobs \.rv-chip\{[\s\S]{0,200}white-space:nowrap/.test(ap));
+}
+
+/* ── 2026-10-27 (ز): كارت الوظيفة المرتّب · البورتريه · «اختيار الوظيفة» ── */
+step(33, 'كارت الوظيفة: ترتيب وأيقونات أصغر · بورتريه · «اختيار الوظيفة»');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('زر التعيين صار «اختيار الوظيفة» (لا «تعيين للفرصة»)',
+    /\">اختيار الوظيفة<\/button>/.test(ap) && /G\.pickJob\(/.test(ap) &&
+    !/تعيين للفرصة/.test(ap));
+  check('المختارة: «متابعة للطلب» + «إلغاء الاختيار» (بلا تكرار رقم الفرصة)',
+    /متابعة للطلب<\/button>/.test(ap) && /إلغاء الاختيار<\/button>/.test(ap) &&
+    !/مختارة \(فرصة /.test(ap));
+  check('«البورتريه»: المختارة تبرز (زوم إن) والبقية تُغبَّش وتُعتَّم',
+    /#jobs-list\.has-focus \.job-card:not\(\.selected\)\{[\s\S]{0,220}blur\(2\.6px\)[\s\S]{0,120}opacity:\.5/.test(ap) &&
+    /#jobs-list\.has-focus \.job-card\.selected\{[\s\S]{0,220}scale\(1\.03\)/.test(ap));
+  check('شبكة كل معلومة: أيقونة + تسمية صغيرة + قيمة (لا صفوف طويلة)',
+    /<div class="jm">'\+G\.jobIcon\('pin'\)\+'<span class="jm-k">المحافظة<\/span><span class="jm-v">/.test(ap) &&
+    /#jobs-list \.jm\{[\s\S]{0,320}grid-template-columns:22px 1fr/.test(ap) &&
+    /#jobs-list \.jm \.jm-k\{[\s\S]{0,120}font-size:10px/.test(ap));
+  check('كارت أصغر ومرتّب: حشوة 14px وشبكة عمودين وأزرار صفّ واحد',
+    /#jobs-list \.job-card\{[\s\S]{0,200}padding:14px 14px 0!important/.test(ap) &&
+    /#jobs-list \.job-meta\{[\s\S]{0,120}grid-template-columns:1fr 1fr/.test(ap));
+  check('المختارة لها تمييز واضح: حدّ أخضر خارجي + شريط علوي + شارة داخلية',
+    /#jobs-list \.job-card\.selected\{[\s\S]{0,400}outline:2px solid #22C55E/.test(ap) &&
+    /#jobs-list \.job-card\.selected \.job-head::after\{/.test(ap) &&
+    /'★ الفرصة '\s*\+/.test(ap));
+  check('حركة دخول الكروت متتالية مع تقليل الحركة',
+    /@keyframes jobCardIn/.test(ap) && /job-card:nth-child\(n\+4\)\{animation-delay/.test(ap) &&
+    /prefers-reduced-motion:reduce\)\{\s*#jobs-list \.job-card[\s\S]{0,160}filter:none!important/.test(ap));
+}
+
+/* ── 2026-10-27 (ح): لا كريمي · أزرار الإتمام والنتيجة ─────────────────── */
+step(34, 'الألوان: أبيض · كحلي · ذهبي نيون فقط — وأزرار الإتمام والنتيجة');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('لا درجات كريمية في صفحة التقديم (خلفيات/بطاقات/شرائح)',
+    !/#fbf7ec|#fffdf8|#fbf4e4|#fdf9ef|#f7f0df|#f9f5ea|#fff8e4|#fff6dc|#fdf8ec|#fff7e2|#fffaeb/i.test(ap));
+  check('متغيّرات الهوية: كريمي = أبيض صريح، النص كحلي',
+    /--ap-cream:#ffffff/.test(ap) && /--ui-cream:#ffffff/.test(ap) &&
+    /--ui-ink:#0d2f3d/.test(ap));
+  check('الأسطح كلها بيضاء صريحة (بطاقات · كروت · فلاتر · شرائح)',
+    /\.profile-card,\.rv-card,\.job-filters,\.job-card,\.card-sheet-box,#jobs-empty\{background:#ffffff!important\}/.test(ap) &&
+    /\.rv-chip,\.jf-chip,\.step-eyebrow,\.rv-note,\.identity-notice/.test(ap));
+  check('الأخضر النيون معتمد للزر الأساسي (تدرّج #41DE93→#22C55E→#15803D) بنص كحلي',
+    /\.btn-primary\{[\s\S]{0,220}linear-gradient\(135deg,#41DE93,#22C55E 55%,#15803D\)/.test(ap) &&
+    /\.btn-primary\{[\s\S]{0,320}color:#04231A/.test(ap) &&
+    !/#FFD34D,#FABE04/.test(ap));
+  check('مقاس الأزرار موحّد: ٥٠px عام · ٤٤px صغير · ٥٢px في صفحات الإدخال (بدل ٦٤)',
+    /\.btn\{\s*min-height:50px!important/.test(ap) &&
+    /\.btn-sm\{min-height:44px!important/.test(ap) &&
+    /\.btn,\.jobs-foot > \.btn-row \.btn,#pg-review > \.btn-row \.btn\{[\s\S]{0,120}min-height:52px!important/.test(ap) &&
+    !/min-height:64px;font-size:20px/.test(ap));
+  check('شريط المراجعة: زر رجوع صغير + «إتمام التقديم» أخضر نيون بارز بلمعة',
+    /#pg-review > \.review-bar\{[\s\S]{0,400}position:sticky/.test(ap) &&
+    /#pg-review \.review-back\{[\s\S]{0,200}min-width:96px/.test(ap) &&
+    /#btn-finish\{[\s\S]{0,220}linear-gradient\(135deg,#41DE93,#22C55E/.test(ap) &&
+    /@keyframes goShine/.test(ap));
+  check('أزرار صفحة النتيجة شبكة مرتّبة: طباعة بعرض كامل + كحلي للباركود + رابط هادئ',
+    /\.result-actions\{[\s\S]{0,160}grid-template-columns:1fr 1fr/.test(ap) &&
+    /\.result-actions \.btn-ghost-gold\{[\s\S]{0,260}linear-gradient\(135deg,#0A4E60,#012F3E/.test(ap) &&
+    /\.btn-quiet\{[\s\S]{0,200}background:transparent/.test(ap));
+  check('صفحة النتيجة داخل الواجهة الكحلية والاستمارة تبقى بيضاء',
+    /body\[data-step="8"\]\{color:#eaf3f6!important\}/.test(ap) &&
+    /body\[data-step="8"\] #result-content \.ok-hero\{[\s\S]{0,200}background:#ffffff/.test(ap));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */
