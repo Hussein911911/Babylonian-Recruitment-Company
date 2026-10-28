@@ -738,7 +738,7 @@ step(22, 'الواجهة — ألوان حيّة، لغة موحّدة، وكا�
   check('كل تخصص له لون ثابت في التصنيفات والشرائح',
     /PALETTE = \['#0f9c94'/.test(js) && /--cat:' \+ catColor\[c\]/.test(js));
   check('أيقونات شريط الأرقام ملوّنة (لا رمادي باهت)',
-    /\.app-stat:nth-child\(1\) > \.ic \{ background: var\(--v-teal\)/.test(app));
+    /\.app-stat:nth-child\(1\) > \.ic \{ background: linear-gradient\(140deg, var\(--lapis-3\)/.test(app));
 
   /* 2) لغة موحّدة: لا «خابرنا» في أي نص عام */
   const codeOnly = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -880,9 +880,10 @@ step(27, 'صفحات التقديم — هوية فاتحة (كريمي/كحلي
   const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
 
   /* 2026-10-27: ألغى المالك الكريمي نهائياً → الهوية: أبيض · كحلي · ذهبي نيون */
-  check('لوحة الهوية معرّفة (أبيض · كحلي · ذهبي)',
-    /--ap-cream:#ffffff/.test(ap) && /--ap-navy:#012F3E/.test(ap) && /--mk-gold:#22C55E/.test(ap) &&
-    !/--ap-cream:#fbf7ec/.test(ap));
+  /* 2026-10-28: الهوية النهائية = هوية الملصق (كحلي · ذهبي · أبيض) */
+  check('لوحة الهوية معرّفة (كحلي #16304F · ذهبي #C8A24A · أبيض)',
+    /--ps-navy:#16304F/.test(ap) && /--ps-gold:#C8A24A/.test(ap) &&
+    /--ps-line:#E6DCC6/.test(ap) && !/--ap-cream:#fbf7ec/.test(ap));
   check('خلفية الترحيب بيضاء بموجات زخرفية أعلى وأسفل (بلا كريمي)',
     /body\{background-color:#ffffff!important\}/.test(ap) &&
     /body::before/.test(ap) && /body::after/.test(ap) &&
@@ -890,10 +891,10 @@ step(27, 'صفحات التقديم — هوية فاتحة (كريمي/كحلي
   check('البطاقة بيضاء والحقول بيضاء والنص كحلي',
     /\.profile-card\{[\s\S]{0,260}background:#ffffff/.test(ap) &&
     /--ui-field:#ffffff/.test(ap) && /--ui-ink:#0d2f3d/.test(ap));
-  check('الأزرار: أساسي أخضر نيون بنص كحلي وثانوي أبيض بحدّ رقيق',
-    /\.btn-primary\{[\s\S]{0,260}linear-gradient\(135deg,#41DE93,#22C55E 55%,#15803D\)/.test(ap) &&
-    /\.btn-primary\{[\s\S]{0,420}color:#04231A/.test(ap) &&
-    /\.btn-outline\{[\s\S]{0,240}#cfdae0/.test(ap));
+  check('الأزرار: أساسي كحلي بحدود ذهبية (زر الملصق) وثانوي أبيض',
+    /\.btn-primary,body\[data-step\] \.btn-primary,#btn-finish\{[\s\S]{0,200}linear-gradient\(135deg,#1E4270,#16304F 52%,#0D2247\)/.test(ap) &&
+    /border:1\.5px solid rgba\(227,196,121,\.85\)/.test(ap) &&
+    /\.btn-outline,body\[data-step\] \.btn-outline\{[\s\S]{0,200}background:#FFFFFF!important/.test(ap));
   check('كروت الوظائف فاتحة بنصوص كحلية (لا نص أبيض على أبيض)',
     /#jobs-list \.title[\s\S]{0,120}--ap-navy/.test(ap) &&
     /\.job-tags \.job-code\{[\s\S]{0,160}#0f6d63/.test(ap));
@@ -923,11 +924,11 @@ step(28, 'شاشة الترحيب «منصة مكسب» — مطابقة الم�
   check('الشعار الصحيح (حرف مكسب + سهم ذهبي) معرّف كرمز SVG مقتفى من الصورة',
     /<symbol id="i-mkseb" viewBox="0 0 \d+ \d+">/.test(ap) &&
     (ap.match(/#i-mkseb(-dark)?/g) || []).length >= 4 &&
-    /fill="#22C55E"/.test(ap) && /fill="#fff"/.test(ap) &&
+    /fill="#C8A24A"/.test(ap) && /fill="#fff"/.test(ap) &&
     /i-mkseb-dark/.test(ap));
   check('بلاطة الأيقونة (كحلي #012F3E وزوايا مستديرة) للشعار في الشريط والواجهة',
-    /\.mk-tile\{/.test(ap) && /background:#012F3E/.test(ap) &&
-    /--mk-gold:#22C55E/.test(ap) && /--mk-green:#94D183/.test(ap) && /--mk-teal:#3FB190/.test(ap));
+    /\.mk-tile\{/.test(ap) && /background:#16304F/.test(ap) &&
+    /--ps-gold:#C8A24A/.test(ap) && /--ps-navy:#16304F/.test(ap));
   check('نفس الشعار في صفحة التقديم والموقع والترويسة والتذييل (رمز واحد)',
     /id="i-mkseb"/.test(ap) &&
     /<symbol id="i-mkseb" viewBox="0 0 \d+ \d+">/.test(readFileSync(join(ROOT, 'src/partials/sprite.html'), 'utf8')) &&
@@ -942,10 +943,10 @@ step(28, 'شاشة الترحيب «منصة مكسب» — مطابقة الم�
   check('الوعد والوصف كما في الملصق (فرصتك لمستقبل أفضل + منصة توظيف تربط…)',
     /class="mk-tag[^"]*">فرصتك لمستقبل أفضل</.test(ap) &&
     /id="welcome-intro"[^>]*>منصة توظيف تربط الباحثين عن عمل مع أصحاب العمل بكل سهولة وموثوقية</.test(ap));
-  check('زر البدء كبسولة أخضر نيون بسهم (كما في الملصق)',
+  check('زر البدء كبسولة كحلية بحدود ذهبية (زر الملصق)',
     /class="mk-cta[^"]*"[\s\S]{0,300}id="btn-start"/.test(ap) &&
     /\.mk-cta \.btn\{[\s\S]{0,600}border-radius:999px/.test(ap) &&
-    /\.mk-cta \.btn\{[\s\S]{0,400}linear-gradient\(135deg,#41DE93,#22C55E 55%,#15803D\)/.test(ap));
+    /\.mk-cta \.btn\{[\s\S]{0,400}linear-gradient\(160deg,#1E4270,#16304F 52%,#0D2247\)/.test(ap));
   check('صورة واجهة بغداد محليّة (بلا طلب خارجي) مع تعتيم للقراءة',
     /background-image:url\("assets\/img\/mkseb-hero-m\.webp"\)/.test(ap) &&
     /assets\/img\/mkseb-hero\.webp/.test(ap) && /class="mk-hero-veil"/.test(ap) &&
@@ -1000,10 +1001,10 @@ step(29, 'حيوية شاشتَي الترحيب والإدخال + لوحة أ�
   check('بطاقة الخطوة بإطار متدرّج وشريط ألوان متحرك أعلاها',
     /padding-box/.test(ap) &&
     /@keyframes apRibbon/.test(ap) &&
-    /#012F3E,#0A4E60 28%,#22C55E 58%,#94D183 84%,#3FB190/.test(ap));
+    /#B08D3C,#E3C479 42%,#F7ECC8 70%,#C8A24A/.test(ap));
   check('الحقول: أيقونة داخل كبسولة تتحول للكحلي/الذهبي عند التركيز + رفع خفيف',
-    /\.fld:focus-within \.fld-ic\{[\s\S]{0,150}background:#012F3E/.test(ap) &&
-    /\.fld:focus-within\{transform:translateY\(-2px\)\}/.test(ap));
+    /\.fld:focus-within \.fld-ic\{[\s\S]{0,160}background:#16304F!important/.test(ap) &&
+    /\.fld:focus-within \.fld-ic\{[\s\S]{0,200}color:#E3C479!important/.test(ap));
   check('الأزرار: لمعة تمرّ على الزر الأساسي وحدود فاتحة ورفع/ضغط محسوس',
     /\.btn-primary::before\{[\s\S]{0,240}animation:apShine/.test(ap) &&
     /@keyframes apShine/.test(ap));
@@ -1079,13 +1080,12 @@ step(31, 'تناسق صفحات المعلومات + بطاقة الوظيفة �
 {
   const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
 
-  check('نظام ألوان موحّد معلن مرة واحدة (كحلي · أخضر نيون · أبيض · أحمر)',
-    /--ui-ink:#0d2f3d/.test(ap) && /--ui-gold-2:#22C55E/.test(ap) &&
-    /--ui-green:#3FB190/.test(ap) && /--ui-red:#b3392b/.test(ap) && /--ui-cream:#ffffff/.test(ap));
+  check('نظام ألوان موحّد معلن مرة واحدة (كحلي · ذهبي · أبيض · أحمر)',
+    /--ps-ink:#16294A/.test(ap) && /--ps-gold:#C8A24A/.test(ap) &&
+    /--ps-line:#E6DCC6/.test(ap) && /--ps-gold-2:#E3C479/.test(ap) && /--ui-red:#b3392b/.test(ap));
   check('الحقول بيضاء بحدّ ذهبي عند التركيز',
-    /--ui-field:#ffffff/.test(ap) && /--ui-field-line:#dbe4e9/.test(ap) &&
-    /\.form-group input:focus,\.form-group select:focus\{[\s\S]{0,160}var\(--ui-gold-2\)/.test(ap) &&
-    !/--ap-field:#e9eefb; *$/.test(ap.split('--ui-field:#f9f5ea')[0].slice(-40)));
+    /\.form-group input,\.form-group select\{[\s\S]{0,160}background:#FFFFFF!important/.test(ap) &&
+    /\.form-group input:focus,\.form-group select:focus\{[\s\S]{0,200}border-color:#C8A24A!important/.test(ap));
   check('كل التنبيهات بشكل واحد: حد جانبي ملوّن + أيقونة SVG (لا إيموجي)',
     /\.alert-error\{[\s\S]{0,200}border-inline-start-color:var\(--ui-red\)/.test(ap) &&
     /\.alert-info\{[\s\S]{0,200}border-inline-start-color:#2d7fa8/.test(ap) &&
@@ -1094,16 +1094,15 @@ step(31, 'تناسق صفحات المعلومات + بطاقة الوظيفة �
     !/[📅⚠🧾👤🖨🔗📷🔄✅]/u.test(ap));
   check('صفحة المراجعة بنفس اللغة: بطاقة بيضاء + صفوف منقّطة + أزرار «تعديل» كبسولية',
     /\.rv-card\{[\s\S]{0,220}var\(--ui-cream\)/.test(ap) &&
-    /\.rv-row\{border-bottom:1px dashed #e4eaef/.test(ap) &&
+    /border-bottom:1px dashed #EFE7D6!important/.test(ap) &&
     /\.rv-edit\{[\s\S]{0,220}border-radius:999px/.test(ap) &&
     /\.rv-sub\{[\s\S]{0,260}background:#ffffff/.test(ap));
-  check('بطاقة الوظيفة المختارة كحلية بحدود ذهبية (طلب المالك)',
-    /#jobs-list \.job-card\.selected\{[\s\S]{0,260}linear-gradient\(165deg,#0A3F50,#012F3E/.test(ap) &&
-    /#jobs-list \.job-card\.selected\{[\s\S]{0,420}border:2px solid var\(--ui-gold-2\)/.test(ap));
+  check('الكارت المختار: إطار ذهبي واضح على بطاقة بيضاء',
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected\{[\s\S]{0,160}border:2px solid #C8A24A!important/.test(ap));
   check('نصوص/خلايا/أزرار الكارت المختار كلها مقروءة (نص كحلي على أبيض)',
-    /body\[data-step="6"\] #jobs-list \.job-card\.selected \.jm \.k,[\s\S]{0,320}color:#0d2f3d/.test(ap) &&
-    /body\[data-step="6"\] #jobs-list \.job-card\.selected \.job-pay \*,[\s\S]{0,460}color:#0f6b3f/.test(ap) &&
-    /#jobs-list \.job-card\.selected \.job-actions \.btn-primary,[\s\S]{0,240}linear-gradient\(135deg,#41DE93,#22C55E\)/.test(ap));
+    /body\[data-step="6"\] #jobs-list \.jm \.jm-k\{color:#8A7B5C!important\}/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.job-pay \*,[\s\S]{0,240}color:#7A5F21!important/.test(ap) &&
+    /#jobs-list \.job-card\.selected \.job-actions \.btn-primary\{[\s\S]{0,240}linear-gradient\(135deg,#E8D089,#C8A24A 55%,#B08D3C\)/.test(ap));
   check('شارة الاختيار المكرّرة أُزيلت (بقيت شارة واحدة داخل الرأس)',
     /#jobs-list \.job-card\.selected \.job-head::before,[\s\S]{0,140}content:none!important/.test(ap));
   check('بقية البطاقات تُخفَّف قليلاً ليبقى الكحلي هو البطل (بلا تغبيش يمنع النقر)',
@@ -1116,8 +1115,8 @@ step(32, 'الواجهة كحلية · التفاصيل بيضاء · الوظا
 {
   const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
 
-  check('صفحات البيانات والقائمة والنتيجة كحلية مزرقّة (1..8)',
-    /body\[data-step="1"\][\s\S]{0,520}background-color:#07203F!important/.test(ap) &&
+  check('صفحات البيانات والقائمة والنتيجة كحلية الملصق (1..8)',
+    /body\[data-step="1"\][\s\S]{0,520}background-color:#0F2444!important/.test(ap) &&
     /body\[data-step="8"\]/.test(ap));
   check('شريط التقدّم زجاج كحلي بنص أبيض على هذه الصفحات',
     /body\[data-step="1"\] \.steps-bar[\s\S]{0,420}rgba\(255,255,255,\.07\)/.test(ap) &&
@@ -1132,18 +1131,18 @@ step(32, 'الواجهة كحلية · التفاصيل بيضاء · الوظا
     /body\[data-step="6"\] #jobs-list \.job-card\{[\s\S]{0,120}background:#fff!important/.test(ap) &&
     /body\[data-step="6"\] #jobs-list \.jm\{[\s\S]{0,200}background:#f7f9fa/.test(ap) &&
     /body\[data-step="6"\] #jobs-list \.job-card\{[\s\S]{0,200}color:#0d2f3d/.test(ap));
-  check('الكارت المختار: حدّ أخضر نيون 2px بظل — والنصوص تبقى كحلية (لا أبيض على أبيض)',
-    /body\[data-step="6"\] #jobs-list \.job-card\.selected\{[\s\S]{0,200}border:2px solid #22C55E/.test(ap) &&
-    /body\[data-step="6"\] #jobs-list \.job-card\.selected \.jm \.k,[\s\S]{0,320}color:#0d2f3d/.test(ap));
+  check('الكارت المختار: حدّ ذهبي 2px بظل — والنصوص تبقى كحلية (لا أبيض على أبيض)',
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected\{[\s\S]{0,200}border:2px solid #C8A24A/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.jm \.jm-k\{color:#8A7B5C!important\}/.test(ap));
   check('المراجعة: بطاقة بيضاء + كارت كحلي للوظائف المختارة',
-    /body\[data-step="7"\] \.rv-card\{[\s\S]{0,200}background:#fff!important/.test(ap) &&
-    /\.rv-jobs\{[\s\S]{0,300}linear-gradient\(165deg,#0A3F50,#012F3E/.test(ap) &&
+    /body\[data-step="7"\] \.rv-card\{[\s\S]{0,200}background:#FFFFFF!important/.test(ap) &&
+    /\.rv-jobs\{[\s\S]{0,300}linear-gradient\(165deg,#1E4270,#16304F 58%,#0D2247\)/.test(ap) &&
     /h\+='<div class="rv-jobs">'/.test(ap));
   check('زر الوظائف في المراجعة اسمه «اختر الوظيفة» (لا «تعديل»)',
     /var label=\(step===6\)\?'اختر الوظيفة':'تعديل'/.test(ap) &&
     !/onclick="G.editStep\(6\)">تعديل</.test(ap));
-  check('زر الإتمام بلون الهوية التركوازي',
-    /#btn-finish\{[\s\S]{0,220}linear-gradient\(135deg,#2FA98C,#1C7E68/.test(ap));
+  check('زر الإتمام ذهبي بلمعة (نقطة القرار)',
+    /#btn-finish\{[\s\S]{0,240}linear-gradient\(135deg,#E8D089,#C8A24A 55%,#B08D3C\)/.test(ap));
   check('شرائح المراجعة سطر واحد بلا التفاف داخل الكارت الكحلي',
     /body\[data-step="7"\] \.rv-jobs \.rv-chip\{[\s\S]{0,200}white-space:nowrap/.test(ap));
 }
@@ -1169,8 +1168,8 @@ step(33, 'كارت الوظيفة: ترتيب وأيقونات أصغر · بو�
   check('كارت أصغر ومرتّب: حشوة 14px وشبكة عمودين وأزرار صفّ واحد',
     /#jobs-list \.job-card\{[\s\S]{0,200}padding:14px 14px 0!important/.test(ap) &&
     /#jobs-list \.job-meta\{[\s\S]{0,120}grid-template-columns:1fr 1fr/.test(ap));
-  check('المختارة لها تمييز واضح: حدّ أخضر خارجي + شريط علوي + شارة داخلية',
-    /#jobs-list \.job-card\.selected\{[\s\S]{0,400}outline:2px solid #22C55E/.test(ap) &&
+  check('المختارة لها تمييز واضح: حدّ ذهبي خارجي + شريط علوي + شارة داخلية',
+    /#jobs-list \.job-card\.selected\{[\s\S]{0,400}outline:2px solid #C8A24A/.test(ap) &&
     /#jobs-list \.job-card\.selected \.job-head::after\{/.test(ap) &&
     /'★ الفرصة '\s*\+/.test(ap));
   check('حركة دخول الكروت متتالية مع تقليل الحركة',
@@ -1183,35 +1182,212 @@ step(34, 'الألوان: أبيض · كحلي · ذهبي نيون فقط — �
 {
   const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
 
-  check('لا درجات كريمية في صفحة التقديم (خلفيات/بطاقات/شرائح)',
-    !/#fbf7ec|#fffdf8|#fbf4e4|#fdf9ef|#f7f0df|#f9f5ea|#fff8e4|#fff6dc|#fdf8ec|#fff7e2|#fffaeb/i.test(ap));
+  check('لا خلفيات كريمية كبيرة (الأسطح بيضاء · الذهب الفاتح للشرائح فقط)',
+    !/#fbf7ec|#fbf4e4|#fdf9ef|#f7f0df|#f9f5ea|#fff8e4|#fff6dc|#fdf8ec|#fff7e2|#fffaeb/i.test(ap) &&
+    /background:#FFFFFF!important/.test(ap));
   check('متغيّرات الهوية: كريمي = أبيض صريح، النص كحلي',
     /--ap-cream:#ffffff/.test(ap) && /--ui-cream:#ffffff/.test(ap) &&
     /--ui-ink:#0d2f3d/.test(ap));
   check('الأسطح كلها بيضاء صريحة (بطاقات · كروت · فلاتر · شرائح)',
     /\.profile-card,\.rv-card,\.job-filters,\.job-card,\.card-sheet-box,#jobs-empty\{background:#ffffff!important\}/.test(ap) &&
     /\.rv-chip,\.jf-chip,\.step-eyebrow,\.rv-note,\.identity-notice/.test(ap));
-  check('الأخضر النيون معتمد للزر الأساسي (تدرّج #41DE93→#22C55E→#15803D) بنص كحلي',
-    /\.btn-primary\{[\s\S]{0,220}linear-gradient\(135deg,#41DE93,#22C55E 55%,#15803D\)/.test(ap) &&
-    /\.btn-primary\{[\s\S]{0,320}color:#04231A/.test(ap) &&
-    !/#FFD34D,#FABE04/.test(ap));
+  check('الذهبي هو زر الإتمام وزر الرئيسي كحلي بحدوده (هوية الملصق)',
+    /#btn-finish\{[\s\S]{0,260}linear-gradient\(135deg,#E8D089,#C8A24A 55%,#B08D3C\)/.test(ap) &&
+    /\.btn-primary,body\[data-step\] \.btn-primary,#btn-finish\{[\s\S]{0,200}#1E4270/.test(ap) &&
+    !/#41DE93/.test(ap));
   check('مقاس الأزرار موحّد: ٥٠px عام · ٤٤px صغير · ٥٢px في صفحات الإدخال (بدل ٦٤)',
     /\.btn\{\s*min-height:50px!important/.test(ap) &&
     /\.btn-sm\{min-height:44px!important/.test(ap) &&
     /\.btn,\.jobs-foot > \.btn-row \.btn,#pg-review > \.btn-row \.btn\{[\s\S]{0,120}min-height:52px!important/.test(ap) &&
     !/min-height:64px;font-size:20px/.test(ap));
-  check('شريط المراجعة: زر رجوع صغير + «إتمام التقديم» أخضر نيون بارز بلمعة',
+  check('شريط المراجعة: زر رجوع صغير + «إتمام التقديم» ذهبي بارز بلمعة',
     /#pg-review > \.review-bar\{[\s\S]{0,400}position:sticky/.test(ap) &&
-    /#pg-review \.review-back\{[\s\S]{0,200}min-width:96px/.test(ap) &&
-    /#btn-finish\{[\s\S]{0,220}linear-gradient\(135deg,#41DE93,#22C55E/.test(ap) &&
+    /#pg-review \.review-back\{[\s\S]{0,240}min-width:104px/.test(ap) &&
+    /#btn-finish\{[\s\S]{0,260}linear-gradient\(135deg,#E8D089,#C8A24A 55%,#B08D3C\)/.test(ap) &&
     /@keyframes goShine/.test(ap));
-  check('أزرار صفحة النتيجة شبكة مرتّبة: طباعة بعرض كامل + كحلي للباركود + رابط هادئ',
+  check('أزرار صفحة النتيجة شبكة مرتّبة: طباعة ذهبية + باركود كحلي + رابط هادئ',
     /\.result-actions\{[\s\S]{0,160}grid-template-columns:1fr 1fr/.test(ap) &&
-    /\.result-actions \.btn-ghost-gold\{[\s\S]{0,260}linear-gradient\(135deg,#0A4E60,#012F3E/.test(ap) &&
+    /body\[data-step="8"\] \.result-actions \.btn-primary\{[\s\S]{0,240}linear-gradient\(135deg,#E8D089/.test(ap) &&
     /\.btn-quiet\{[\s\S]{0,200}background:transparent/.test(ap));
   check('صفحة النتيجة داخل الواجهة الكحلية والاستمارة تبقى بيضاء',
     /body\[data-step="8"\]\{color:#eaf3f6!important\}/.test(ap) &&
     /body\[data-step="8"\] #result-content \.ok-hero\{[\s\S]{0,200}background:#ffffff/.test(ap));
+}
+
+/* ── 2026-10-28 (ط): هوية الملصق (كحلي · ذهبي · أبيض) على كل صفحات التقديم ── */
+step(35, 'صفحات البطاقة: كحلي + ذهبي + أبيض (هوية الملصق)');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('لوحة الملصق معلنة (#16304F كحلي · #C8A24A ذهبي · #E6DCC6 حدود)',
+    /--ps-navy:#16304F/.test(ap) && /--ps-gold:#C8A24A/.test(ap) &&
+    /--ps-gold-2:#E3C479/.test(ap) && /--ps-line:#E6DCC6/.test(ap));
+  check('خلفية صفحات التقديم كحلي الملصق بهالتين ذهبيتين',
+    /body\[data-step="1"\],body\[data-step="2"\],body\[data-step="3"\],body\[data-step="4"\],/.test(ap) &&
+    /background-color:#0F2444!important/.test(ap) &&
+    /rgba\(200,162,74,\.26\)/.test(ap));
+  check('بطاقة البيانات بيضاء بحدود ذهبية رقيقة',
+    /\.profile-card,\.rv-card,\.job-filters,\.job-card,\.card-sheet-box,#jobs-empty\{[\s\S]{0,160}border:1px solid var\(--ps-line\)/.test(ap));
+  check('الحقول بيضاء وتتوهّج ذهبياً عند التركيز',
+    /\.form-group input:focus,\.form-group select:focus\{[\s\S]{0,200}border-color:#C8A24A!important/.test(ap));
+  check('زر «التالي» كحلي بحدود ذهبية (زر الملصق)',
+    /\.btn-primary,body\[data-step\] \.btn-primary,#btn-finish\{[\s\S]{0,220}linear-gradient\(135deg,#1E4270,#16304F 52%,#0D2247\)/.test(ap));
+  check('نقاط التقدّم ذهبية والكبسولة ذهبية شفافة',
+    /\.step-dot\.done\{background:linear-gradient\(90deg,#B08D3C,#E3C479\)/.test(ap) &&
+    /\.step-dot\.active\{[\s\S]{0,180}linear-gradient\(90deg,#E8D089,#C8A24A\)/.test(ap) &&
+    /rgba\(200,162,74,\.18\)!important/.test(ap));
+  check('الجنس: المختارة ذهبية وأيقونتها كحلية بذهبي',
+    /\.gender-opt\.selected\{[\s\S]{0,240}border-color:#C8A24A!important/.test(ap) &&
+    /\.gender-opt\.selected \.icon\{background:#16304F!important/.test(ap));
+  check('خطوات الوظائف والمراجعة والنتيجة ذهبية/كحلية (٦ · ٧ · ٨)',
+    /body\[data-step="6"\] \.jf-more\{[\s\S]{0,220}rgba\(200,162,74,\.22\)/.test(ap) &&
+    /body\[data-step="7"\] \.rv-jobs\{[\s\S]{0,260}linear-gradient\(165deg,#1E4270,#16304F 58%,#0D2247\)/.test(ap) &&
+    /body\[data-step="8"\] \.result-actions \.btn-ghost-gold\{[\s\S]{0,240}linear-gradient\(135deg,#1E4270,#16304F\)/.test(ap));
+  check('زر «إتمام التقديم» ذهبي بارز بلمعة',
+    /#btn-finish\{[\s\S]{0,260}linear-gradient\(135deg,#E8D089,#C8A24A 55%,#B08D3C\)/.test(ap) &&
+    /@keyframes goShine/.test(ap));
+  check('الكلمات المميّزة في ملاحظة المراجعة مقروءة (كحلي على ذهبي فاتح)',
+    /\.rv-note b,\.rv-note strong\{color:#0D2247!important;background:#FDF3D8!important/.test(ap));
+  check('لا أخضر نيون ولا نيلي في صفحة التقديم (هوية واحدة فقط)',
+    !/#22C55E|#6EE7A8|#1B4C8F|#2F6FD0|#60AAFF/.test(ap) &&
+    !/%2360AAFF/.test(ap));
+}
+
+/* ── 2026-10-28 (ي): نافذة الوظيفة المنبثقة وتغبيش ما وراءها ───────────── */
+step(36, 'نافذة الوظيفة: صفحة منبثقة وكل ما وراءها يُغبَّش');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('نافذة الوظيفة موجودة داخل الصفحة (role=dialog + aria-modal)',
+    /<div class="job-modal" id="job-modal" hidden role="dialog" aria-modal="true"/.test(ap) &&
+    /id="jm-title"/.test(ap) && /id="job-modal-body"/.test(ap) && /id="job-modal-foot"/.test(ap));
+  check('الضغط على أي كارت وظيفة يفتح النافذة (لا يعيّن مباشرة)',
+    /onclick="G\.openJob\(/.test(ap) && !/article class="job-card[\s\S]{0,200}G\.pickJob\(/.test(ap) &&
+    /tabindex="0" role="button"/.test(ap));
+  check('كل ما وراء النافذة يُغبَّش ويُعتَّم ويمتنع عن التفاعل',
+    /body\.job-modal-open \.app\{[\s\S]{0,220}filter:blur\(7px\)/.test(ap) &&
+    /pointer-events:none/.test(ap) &&
+    /html:has\(body\.job-modal-open\)\{overflow-x:clip\}/.test(ap));
+  check('النافذة بيضاء بحدود ذهبية ورأس كحلي (ورقة سفلية على الجوال، وسط على الكمبيوتر)',
+    /\.job-modal-box\{[\s\S]{0,260}background:#fff/.test(ap) &&
+    /@media\(min-width:761px\)\{[\s\S]{0,160}align-items:center/.test(ap));
+  check('داخل النافذة: المحافظة · الدوام · الجنس · الشواغر · الأجر · الوصف · المتطلبات',
+    /jm-cell[\s\S]{0,120}المحافظة/.test(ap) && /الجنس المطلوب/.test(ap) &&
+    /الشواغر/.test(ap) && /الأجر الشهري/.test(ap) &&
+    /وصف الوظيفة/.test(ap) && /المتطلبات/.test(ap));
+  check('أزرار النافذة: «اختيار الوظيفة» أو «متابعة للطلب» + «إغلاق»',
+    /G\.pickFromModal\(/.test(ap) && /G\.modalNext\(\)/.test(ap) &&
+    /class="btn btn-outline" onclick="G\.closeJob\(\)">إغلاق/.test(ap));
+  check('الإغلاق بالضغط على الخلفية أو زر الإغلاق أو مفتاح ESC',
+    /class="job-modal-veil" onclick="G\.closeJob\(\)"/.test(ap) &&
+    /id="jm-close" onclick="G\.closeJob\(\)"/.test(ap) &&
+    /Escape'\|\|key===27/.test(ap));
+  check('فتح الكارت بلوحة المفاتيح (Enter / Space)',
+    /key==='Enter'\|\|key===' '\|\|key==='Spacebar'/.test(ap) && /G\.openJob\(code\)/.test(ap));
+  check('النافذة خارج .app حتى لا تتأثر بالتغبيش',
+    !/job-modal" id="job-modal"[\s\S]{0,50}<\/div>\s*<div class="app"/.test(ap) &&
+    /<div class="job-modal" id="job-modal"/.test(ap));
+  check('تفاصيل الوظيفة لم تبقَ مكرّرة داخل الكارت',
+    !/id="details-'\+esc\(j\.code\)/.test(ap));
+}
+
+/* ── 2026-10-28 (ك): كروت وظائف البطاقة بنفس شكل كروت الموقع ─────────────── */
+step(37, 'كروت الوظائف في البطاقة: نفس شكل كروت الموقع الرئيسي');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('الكارت يبدأ بمساحة صورة (job-media) وشارة الحالة فوقها',
+    /<div class="job-media'\+\(j\.imageUrl\?' has-img':''\)\+'">/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.job-media\{[\s\S]{0,220}aspect-ratio:16\/9/.test(ap));
+  check('الصورة تُعرض كاملة ووسط تعبئة ضبابية (contain + blur)',
+    /#jobs-list \.job-thumb img\{[\s\S]{0,160}object-fit:contain!important/.test(ap) &&
+    /#jobs-list \.job-thumb::before\{[\s\S]{0,160}blur\(14px\)/.test(ap));
+  check('شارة «متاحة» ذهبية فاتحة (هوية الملصق) لا خضراء',
+    /body\[data-step="6"\] #jobs-list \.job-state\.is-open\{[\s\S]{0,200}linear-gradient\(135deg,#FFF4D6,#EFDDA8\)/.test(ap));
+  check('العنوان ثم شريحتا الكود والتخصص داخل المتن',
+    /<h4 class="title">'\+esc\(j\.title\)/.test(ap) &&
+    /<span class="job-code">'\+esc\(j\.code\)/.test(ap) &&
+    /<span class="job-cat">'\+esc\(j\.category\|\|'—'\)/.test(ap));
+  check('صفوف المعلومات: أيقونة + تسمية صغيرة + قيمة في كل صف',
+    /body\[data-step="6"\] #jobs-list \.jm\{[\s\S]{0,260}flex-direction:row-reverse/.test(ap) &&
+    /\.jm \.jm-k\{[\s\S]{0,120}font-size:10\.5px/.test(ap) &&
+    /\.jm \.jm-v\{[\s\S]{0,160}margin-inline-start:auto/.test(ap));
+  check('سطر الأجر شريط ذهبي فاتح واضح',
+    /body\[data-step="6"\] #jobs-list \.job-pay\{[\s\S]{0,240}background:#FDF6E4!important/.test(ap));
+  check('زرّا الكارت جنباً إلى جنب: «اختيار الوظيفة» كحلي + «تفاصيل الوظيفة» أبيض',
+    /body\[data-step="6"\] #jobs-list \.job-actions\{[\s\S]{0,220}grid-template-columns:1\.15fr \.95fr/.test(ap) &&
+    /onclick="event\.stopPropagation\(\);G\.pickJob\([\s\S]{0,80}>اختيار الوظيفة/.test(ap) &&
+    /job-details-btn" onclick="event\.stopPropagation\(\);G\.openJob\(/.test(ap));
+  check('الضغط على الكارت يفتح النافذة ويُغبّش المحيط (كما هو)',
+    /onclick="G\.openJob\(/.test(ap) && /body\.job-modal-open \.app\{[\s\S]{0,160}blur\(7px\)/.test(ap));
+  check('الكارت المختار: إطار ذهبي ونصوصه تبقى كحلية',
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected\{[\s\S]{0,200}border:2px solid #C8A24A/.test(ap) &&
+    /\.job-card\.selected \.jm \.jm-v,[\s\S]{0,140}color:#16294A!important/.test(ap));
+}
+
+/* ── 2026-10-28 (ل): أزرار ما بعد الاستمارة: صغيرة ومرتّبة وحركة ظهور ────── */
+step(38, 'أزرار صفحة الاستمارة: مقاسات صغيرة · ألوان الهوية · ظهور متتالٍ');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+  const shell = readFileSync(join(ROOT, 'assets/css/app-shell.css'), 'utf8');
+
+  check('أزرار النتيجة ٤٢px (والطباعة ٤٤px) لا ٥٤px',
+    /\.result-actions \.btn\{[\s\S]{0,260}height:42px!important/.test(ap) &&
+    /\.ra-print,[\s\S]{0,160}height:44px!important/.test(ap));
+  check('النصوص مختصرة: «طباعة الاستمارة» · «وظيفة ثانية» · «نسخ الرابط»',
+    /rar-print/.test(ap) === false &&
+    /طباعة الاستمارة<\/button>/.test(ap) &&
+    /وظيفة ثانية<\/button>/.test(ap) &&
+    /نسخ الرابط<\/button>/.test(ap));
+  check('التفاصيل الكاملة في aria-label (وصولية بلا نص طويل)',
+    /aria-label="طباعة الاستمارة على ورقة A4"/.test(ap) &&
+    /aria-label="استخدام باركود البطاقة لاختيار وظيفة ثانية"/.test(ap));
+  check('الألوان: طباعة ذهبية · وظيفة ثانية كحلية بحدود ذهبية · نسخ أبيض',
+    /\.result-actions \.ra-print\{[\s\S]{0,300}linear-gradient\(135deg,#E8D089,#C8A24A 58%,#B08D3C\)/.test(ap) &&
+    /\.result-actions \.ra-second\{[\s\S]{0,220}linear-gradient\(140deg,#1E4270,#16304F 60%,#0D2247\)/.test(ap) &&
+    /\.result-actions \.ra-copy\{[\s\S]{0,160}background:#fff!important/.test(ap));
+  check('ظهور متتالٍ هادئ للأزرار + احترام تقليل الحركة',
+    /@keyframes raIn/.test(ap) && /animation-delay:\.16s/.test(ap) &&
+    /prefers-reduced-motion:reduce\)\{\s*\.result-actions \.btn\{animation:none!important\}/.test(ap));
+  check('زر «العودة للوظائف» رابط هادئ صغير (٣٤px)',
+    /\.result-back \.btn-quiet\{[\s\S]{0,200}height:34px!important/.test(ap));
+  check('شريط الأزرار لا يمتدّ بعرض الصفحة على الكمبيوتر (٤٦٠px)',
+    /\.result-actions\{[\s\S]{0,260}max-width:460px/.test(ap));
+  check('ألوان الموقع العام كلها من كحلي/ذهبي (لا أخضر/بنفسجي/تركوازي)',
+    /--v-teal: #1E4270/.test(shell) && /--v-amber: #C8A24A/.test(shell) &&
+    !/#0f9c94|#2563d9|#7c4ddb|#d98324|#16a34a/.test(shell) &&
+    /\.ac-badge\.is-vacant \{[\s\S]{0,140}#1E4270/.test(shell));
+}
+
+/* ── 2026-10-29 (م): نافذة «تفاصيل البطاقة»: تباين قوي ونصوص واضحة ───────── */
+step(39, 'تفاصيل البطاقة: نص داكن على أبيض · تاريخ عربي · تفاصيل كل فرصة');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('خلفية النافذة بيضاء وحدودها ذهبية',
+    /\.card-sheet-box\{[\s\S]{0,300}background:#FFFFFF!important;color:var\(--cs-value\)/.test(ap) &&
+    /border:1px solid #E6DCC6!important;border-radius:20px!important/.test(ap));
+  check('تسميات الحقول دافئة واضحة والقيم كحلية غامقة (لا #93a3bf الباهت)',
+    /--cs-label:#6F6152/.test(ap) && /--cs-value:#16294A/.test(ap) &&
+    /\.cs-f span\{[\s\S]{0,220}color:var\(--cs-label\)!important/.test(ap) &&
+    /\.cs-f b\{[\s\S]{0,220}color:var\(--cs-value\)!important/.test(ap));
+  check('حقول التفاصيل على خلفية عاجية فاتحة بحدود ناعمة',
+    /\.cs-f\{[\s\S]{0,200}background:var\(--cs-card\)!important/.test(ap));
+  check('تاريخ الميلاد يُعرض عربياً (يوم شهر سنة)',
+    /function arabicDate\(iso\)/.test(ap) &&
+    /var months=\['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران'/.test(ap) &&
+    /var dob=p\.dob\?G\.arabicDate/.test(ap));
+  check('كل فرصة تعرض تفاصيل وظيفتها (المحافظة · الدوام · الأجر)',
+    /cs-chance-meta/.test(ap) && /jobProvince\(jj\.governorate\)/.test(ap));
+  check('حالات الفرص بألوان واضحة (ذهبي/أزرق/أخضر/أحمر) بنص داكن',
+    /\.cs-chance\.is-open \.cs-chance-state\{[\s\S]{0,160}#FFF1CB/.test(ap) &&
+    /\.cs-chance\.is-closed \.cs-chance-state\{[\s\S]{0,160}#FDECEA/.test(ap));
+  check('أزرار النافذة بمقاس طبيعي ٤٤px وبلون الهوية',
+    /\.card-sheet-foot \.btn\{[\s\S]{0,260}height:44px!important/.test(ap) &&
+    /\.btn-sheet-close\{[\s\S]{0,220}background:#fff!important/.test(ap));
+  check('النافذة متجاوبة: عمودان على الجوال وعمود واحد تحت ٣٦٠px',
+    /@media\(max-width:560px\)\{[\s\S]{0,200}\.cs-grid\{grid-template-columns:1fr 1fr/.test(ap) &&
+    /@media\(max-width:360px\)\{\s*\.cs-grid\{grid-template-columns:1fr!important\}/.test(ap));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */

@@ -321,6 +321,16 @@ const findByOnclick = (needle, scope) => {
   return null;
 };
 const setVal = (id, v) => { const el = $(id); el.value = v; return el; };
+/* 2026-10-28: الضغط على أي وظيفة يفتح نافذة التفاصيل، والاختيار يصير من زرها */
+const jobCard = (code) => doc.querySelectorAll('.job-card').find((c) => c.attrs['data-job'] === code);
+const pickViaModal = async (code) => {
+  click(jobCard(code));
+  await tick(10);
+  const btn = findByOnclick(`G.pickFromModal('${code}')`);
+  if (!btn) throw new Error('زر «اختيار الوظيفة» داخل نافذة الوظيفة غير موجود');
+  click(btn);
+  await tick(20);
+};
 
 console.log('\n' + '═'.repeat(74));
 console.log('  HRC — اختبار مسار التقديم الذاتي من باركود البطاقة');
@@ -554,8 +564,29 @@ check('«التالي» بلا اختيار لا يعبر (رسالة تحذير
  *  9) اختيار الوظيفة بالنقر على بطاقتها
  * =========================================================================== */
 step(7, 'اختيار وظيفتين للفرصتين — صاحب البطاقة يعيّن كل فرصة بنفسه');
-click(doc.querySelectorAll('.job-card')[0]);
-await tick(20);
+
+/* ── 2026-10-28: كل وظيفة تُفتح كنافذة منبثقة وكل ما وراءها يُغبَّش ── */
+check('الضغط على الكارت لا يعيّن مباشرة — يفتح نافذة التفاصيل',
+  doc.querySelectorAll('.job-card.selected').length === 0);
+click(jobCard('HRC-1042'));
+await tick(10);
+check('نافذة الوظيفة تُفتح وتحمل العنوان والكود والوصف والمتطلبات',
+  doc.getElementById('job-modal').attrs.hidden === undefined &&
+  $('jm-title').textContent === 'عامل إنتاج' && $('jm-sub').textContent === 'HRC-1042' &&
+  /خط إنتاج/.test($('job-modal-body').innerHTML) && /خبرة سنة/.test($('job-modal-body').innerHTML),
+  $('jm-title').textContent + ' | ' + $('jm-sub').textContent);
+check('النافذة تُغبّش كل ما وراءها (job-modal-open على body)',
+  doc.body.classList.contains('job-modal-open'));
+check('داخل النافذة زر «اختيار الوظيفة» وزر «إغلاق»',
+  !!findByOnclick("G.pickFromModal('HRC-1042')") && !!findByOnclick('G.closeJob()'));
+click(findByOnclick('G.closeJob()'));
+await tick(10);
+check('الإغلاق يُخفي النافذة ويُلغي التغبيش',
+  doc.getElementById('job-modal').attrs.hidden !== undefined &&
+  !doc.body.classList.contains('job-modal-open'));
+check('الإغلاق لا يعيّن الوظيفة (لا اختيار بالخطأ)', doc.querySelectorAll('.job-card.selected').length === 0);
+
+await pickViaModal('HRC-1042');
 const picked = doc.querySelectorAll('.job-card.selected')[0];
 check('البطاقة المختارة تُعلَّم «selected» مع علامة اختيار',
   !!picked && !!picked.querySelector('.pick-mark') && picked.attrs['data-job'] === 'HRC-1042',
@@ -572,9 +603,8 @@ check('زر بطاقة الوظيفة المختارة يعرض «متابعة �
   /متابعة للطلب/.test(picked.innerHTML) && /إلغاء الاختيار/.test(picked.innerHTML) &&
   /★ الفرصة ١/.test(picked.innerHTML), picked.innerHTML.slice(0, 240));
 
-/* الفرصة الثانية: تُعيَّن بنقرة ثانية على وظيفة أخرى */
-click(doc.querySelectorAll('.job-card')[1]);
-await tick(20);
+/* الفرصة الثانية: تُعيَّن بفتح وظيفة أخرى والاختيار من نافذتها */
+await pickViaModal('HRC-1047');
 const sel2 = doc.querySelectorAll('.job-card.selected');
 check('وظيفتان مختارتان في الجلسة نفسها (فرصة ١ + فرصة ٢)',
   sel2.length === 2 && sel2[1].attrs['data-job'] === 'HRC-1047', String(sel2.length));
@@ -585,8 +615,7 @@ check('التلميح يعدّ الاختيارين ويعرض الفرصتين'
   /٢/.test($('jobs-hint').innerHTML), $('jobs-hint').innerHTML);
 
 /* لا فرصة ثالثة: الوظيفة الثالثة لا تُعيَّن */
-click(doc.querySelectorAll('.job-card')[2]);
-await tick(20);
+await pickViaModal('HRC-1049');
 check('تعيين وظيفة ثالثة ممنوع — البطاقة بفرصتين فقط',
   doc.querySelectorAll('.job-card.selected').length === 2 && /أكملت اختيار وظيفتَي فرصتيك/.test($('jobs-hint').innerHTML),
   $('jobs-hint').innerHTML);
@@ -735,10 +764,10 @@ step(13, 'اختيار الوظيفة: تأثير البورتريه (المخت
   check('البقية تُغبَّش وتُعتَّم (blur + تعتيم + تصغير)',
     /has-focus \.job-card:not\(\.selected\)\{[^}]*filter:blur/.test(src) &&
     /has-focus \.job-card:not\(\.selected\)\{[^}]*opacity:\.4/.test(src));
-  check('المختارة تبرز للأمام (z-index + تكبير + هالة خضراء نيون)',
+  check('المختارة تبرز للأمام (z-index + تكبير + هالة ذهبية)',
     /has-focus \.job-card\.selected\{[^}]*z-index:20/.test(src) &&
     /has-focus \.job-card\.selected\{[^}]*scale\(1\.0/.test(src) &&
-    /rgba\(34,197,94,\.\d+\)/.test(src));
+    /rgba\(200,162,74,\.\d+\)/.test(src));
   check('البقية المُغبَّشة لا تستقبل النقر (pointer-events:none) حتى يُلغى الاختيار',
     /has-focus \.job-card:not\(\.selected\)\{[^}]*pointer-events:none/.test(src));
   check('تأثير البورتريه يُلغى مع prefers-reduced-motion (ويبقى التعتيم وظيفياً)',

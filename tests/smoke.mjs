@@ -650,10 +650,13 @@ check('التقديم الذاتي يحفظ بيانات المتقدم ويتي
     page.includes('G.go(6)') && migration.includes('self_application_data') &&
     migration.includes("'employer_phone'") || 'مسار حفظ الملف الشخصي/إعادة المحاولة غير مكتمل';
 });
-check('تفاصيل الوظيفة تشمل الوصف والمتطلبات مع زر فتح/إغلاق', () => {
+/* 2026-10-28: التفاصيل الكاملة انتقلت من داخل الكارت إلى نافذة منبثقة
+   تُفتح بالضغط على الوظيفة (وصف + متطلبات + أزرار فتح/إغلاق). */
+check('تفاصيل الوظيفة تشمل الوصف والمتطلبات داخل نافذة تُفتح/تُغلق', () => {
   const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
-  return page.includes('j.description') && page.includes('j.requirements') &&
-    page.includes('G.toggleDetails') || 'تفاصيل بطاقة الوظيفة غير مكتملة';
+  return page.includes('j.description') && page.includes('job.requirements') &&
+    page.includes('G.openJob') && page.includes('G.closeJob') &&
+    page.includes('job-modal') || 'تفاصيل بطاقة الوظيفة غير مكتملة';
 });
 /* ── 2026-10-06 (طلب الإدارة): ترتيب المسار وصفحة المراجعة والاستمارة ──
    الترتيب المطلوب: الاسم ← السكن ← الميلاد ← الهاتف ← الجنس ← الوظائف ←
