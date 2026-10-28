@@ -23,65 +23,51 @@
     var st = document.createElement('style');
     st.id = STYLE_ID;
     st.textContent = `
-.hrc-card{box-sizing:border-box;width:86mm;height:54mm;flex:0 0 auto;border-radius:3.5mm;position:relative;overflow:hidden;background:radial-gradient(120% 150% at 92% 8%,rgba(200,162,74,.20) 0%,rgba(200,162,74,0) 46%),radial-gradient(100% 130% at 4% 96%,rgba(31,143,150,.18) 0%,rgba(31,143,150,0) 52%),linear-gradient(128deg,#16345f 0%,#0b1a35 42%,#07101f 100%);box-shadow:0 12px 32px rgba(6,13,31,.30),0 1px 0 rgba(255,255,255,.06) inset;color:#fff;display:flex;flex-direction:column;padding:3mm 3.6mm;font-family:Cairo,'Segoe UI',Tahoma,sans-serif;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-.hrc-card *{box-sizing:border-box;}
-.hrc-card .frame{position:absolute;inset:1.4mm;border:.28mm solid #cfa958;border-radius:2.6mm;pointer-events:none;box-shadow:inset 0 0 0 .55mm rgba(6,13,31,1),inset 0 0 0 .78mm rgba(207,169,88,.45);}
-.hc-glow{position:absolute;inset:-30% -20% auto auto;width:60mm;height:60mm;border-radius:50%;background:radial-gradient(circle,rgba(232,208,137,.22),rgba(232,208,137,0) 62%);pointer-events:none;}.hc-guilloche{position:absolute;inset:0;pointer-events:none;opacity:.10;background-image:radial-gradient(circle at 50% 50%,rgba(232,208,137,.55) 0 .18mm,transparent .18mm 1.6mm),linear-gradient(115deg,transparent 47.6%,rgba(232,208,137,.35) 48%,rgba(232,208,137,.35) 48.4%,transparent 48.8%);background-size:3.2mm 3.2mm,100% 100%;}.hc-holo{position:absolute;inset-inline-start:2.2mm;inset-block-end:5.6mm;width:7mm;height:7mm;border-radius:50%;pointer-events:none;background:conic-gradient(from 210deg,#e8d089,#8fd3cf,#c8a24a,#e8d089);opacity:.75;box-shadow:0 0 0 .25mm rgba(255,255,255,.35) inset;filter:saturate(.9);}.hc-ribbon{position:absolute;inset-block-start:1.4mm;inset-inline-end:30mm;z-index:2;background:linear-gradient(180deg,rgba(232,208,137,.96),rgba(200,162,74,.96));color:#1c1405;font-size:2.6pt;font-weight:900;letter-spacing:.04em;padding:.55mm 1.6mm;border-radius:.8mm;box-shadow:0 .2mm .6mm rgba(0,0,0,.25);}.hc-top{display:flex;align-items:center;justify-content:space-between;gap:2mm;border-bottom:.2mm solid #826b3f;padding-bottom:1.7mm;position:relative;z-index:1;}
-.hc-top .brand{display:flex;align-items:center;gap:1.8mm;min-width:0;}
-.hc-top .embl{width:8mm;height:8mm;flex:none;color:#e8cc86;}
-.hc-top .ar{font-size:7pt;font-weight:900;line-height:1.5;color:#f2d58d;}
-.hc-top .en{font-size:3.5pt;color:#d8e1ef;direction:ltr;line-height:1.7;}
-.hc-ctype{text-align:left;flex:none;}
-.hc-ctype .t1{display:block;font-size:5.5pt;font-weight:900;color:#f2d58d;}
-.hc-ctype .t2{display:block;font-size:3pt;color:#d8e1ef;letter-spacing:.06em;direction:ltr;}
-.hc-identity{display:grid;grid-template-columns:minmax(0,1fr) 23mm;gap:3mm;align-items:center;flex:1;padding:1.7mm 0;}
-.hc-identity-copy{min-width:0;}
-.hc-identity .lbl{font-size:4pt;line-height:1.5;color:#d8e1ef;}
-.hc-serial{display:block;direction:ltr;text-align:right;white-space:nowrap;font-family:'Courier New',monospace;font-size:11pt;font-weight:900;letter-spacing:.09em;color:#ffe6a6;margin:1mm 0;line-height:1.35;text-shadow:0 0 .5mm rgba(232,208,137,.45);}
-.hc-count{font-size:5.5pt;font-weight:700;line-height:1.5;}
-.hc-identity .hint{font-size:4pt;line-height:1.65;color:#d8e1ef;margin:.6mm 0 0;}
-.hc-qr{display:flex;flex-direction:column;align-items:center;gap:.5mm;}
-.hc-qr .box{width:23mm;height:23mm;background:#fff;border-radius:1.6mm;padding:.5mm;border:.3mm solid #e1c16b;box-shadow:0 0 0 .6mm rgba(6,13,31,.55);}
-.hrc-qr-slot svg{width:100%;height:100%;display:block;}
-.hc-qr .caption{font-size:4pt;line-height:1.3;color:#f2d58d;}
-.hc-dates{display:grid;grid-template-columns:1fr 1fr;border-top:.2mm solid #826b3f;padding-top:1mm;gap:3mm;}
-.hc-date{display:flex;align-items:center;justify-content:space-between;gap:1mm;font-size:4.5pt;line-height:1.6;color:#d8e1ef;}
-.hc-date b{font-family:'Courier New',monospace;font-size:5.5pt;direction:ltr;color:#fff;}
-.hc-back-head{display:flex;align-items:center;justify-content:space-between;gap:2mm;padding-bottom:1mm;}
-.hc-back-head b{font-size:6.5pt;color:#f2d58d;}
-.hc-back-head span{font-size:3.8pt;color:#d8e1ef;}
-.hc-codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2mm;}
-.hc-codebox{border:.2mm solid #e1c16b;border-radius:1.8mm;padding:.9mm 1.2mm;background:#f7f0df;color:#14203a;text-align:center;}
-.hc-codebox .clbl{font-size:4.5pt;font-weight:700;line-height:1.4;}
-.hc-codebox .code{font-family:'Courier New',monospace;font-size:10pt;font-weight:900;letter-spacing:.03em;direction:ltr;line-height:1.4;}
-.hc-codes.single{grid-template-columns:1fr;}
-.hc-codes.many{grid-template-columns:repeat(3,minmax(0,1fr));gap:.8mm;}
-.hc-codes.many .hc-codebox{padding:.5mm;}
-.hc-codes.many .code{font-size:7pt;letter-spacing:0;}
-.hc-codes.many .clbl{font-size:3.5pt;}
-.hc-codes.dense{grid-template-columns:repeat(5,minmax(0,1fr));}
-.hc-codes.dense .code{font-size:5.7pt;}
-.hc-terms{list-style:none;padding:0;margin:1.4mm 0;display:grid;gap:.5mm;}
-.hc-terms li{font-size:4pt;line-height:1.65;padding-inline-start:2mm;position:relative;}
-.hc-terms li:before{content:'•';position:absolute;inset-inline-start:0;color:#f2d58d;}
-.hc-terms b{color:#f2d58d;font-weight:700;}
-.hc-bot2{margin-top:auto;border-top:.2mm solid #826b3f;padding-top:.8mm;}
-.hc-contact{display:flex;justify-content:space-between;align-items:center;gap:1mm;}
-.hc-contact .phones{font-family:'Courier New',monospace;direction:ltr;white-space:nowrap;font-size:6pt;font-weight:700;color:#f2d58d;}
-.hc-contact .addr{font-size:3.8pt;color:#d8e1ef;}
-.hc-bot2 .disc{font-size:3.8pt;line-height:1.6;color:#e2e8f2;margin-top:.8mm;}
-`
-      /* معاينة داخل نافذة */
-      + '.hrc-card-sheet{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;background:transparent;padding:6px;}'
-      /* الطباعة: صفحتان 86×54مم */
-      + '@media print{'
-      +   '@page{size:86mm 54mm;margin:0;}'
-      +   'html,body{background:#fff !important;padding:0 !important;margin:0 !important;}'
-      +   '#print-root{display:block !important;position:static !important;width:auto !important;}'
-      +   '#print-root .hrc-card{box-shadow:none !important;margin:0 !important;page-break-after:always;break-after:page;border-radius:3.5mm;}'
-      +   '#print-root .hrc-card:last-child{page-break-after:auto;break-after:auto;}'
-      +   '#print-root .hrc-card-sheet{display:block !important;padding:0 !important;}'
-      + '}';
+.hrc-card,.hrc-card *{box-sizing:border-box}
+.hrc-card{box-sizing:border-box;width:86mm;height:54mm;flex:0 0 auto;position:relative;overflow:hidden;border-radius:3mm;padding:2.6mm;background:#f5f1e5;color:#112f4d;display:flex;flex-direction:column;font-family:Cairo,'Segoe UI',Tahoma,sans-serif;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact;box-shadow:0 10px 24px #06172a35}
+.hrc-card .frame{position:absolute;inset:1mm;border:.3mm solid #d5aa32;border-radius:2.4mm;pointer-events:none;z-index:5}
+.hrc-card[aria-label*=الأمامي]{background:linear-gradient(180deg,#062e51 0%,#073b60 72%,#f5f1e5 72%,#f5f1e5 100%);}
+.hrc-card[aria-label*=الأمامي]:before{content:'';position:absolute;z-index:0;left:-7%;top:61%;width:114%;height:15%;background:#f5f1e5;border-top:.9mm solid #e2b433;border-radius:0 0 50% 50%;}
+.card-front-top,.card-front-main,.card-front-bottom,.card-back-top,.card-back-content,.card-back-bottom{position:relative;z-index:1}
+.card-front-top{height:10mm;display:flex;align-items:center;justify-content:space-between;padding:0 1mm}
+.card-brand{display:flex;align-items:center;gap:1.5mm;min-width:0}.card-brand .embl{width:8mm;height:8mm;color:#f3c331;flex:none}
+.card-brand .ar{font-size:8pt;line-height:1.25;font-weight:900;color:#fff}.card-brand .en{font-size:3.6pt;line-height:1.2;color:#e7edf2;direction:ltr}
+.card-type{font-size:5pt;font-weight:900;color:#fff;text-align:left;white-space:nowrap}
+.card-front-main{display:grid;grid-template-columns:minmax(0,1fr) 25mm;gap:2mm;align-items:center;flex:1;min-height:0;padding:0 1mm 1mm}
+.card-front-copy{min-width:0;color:#fff;text-align:center}
+.card-slogan{font-size:12pt;line-height:1.15;font-weight:900;color:#f3c331;margin:0 0 1mm;white-space:nowrap}
+.card-front-copy .serial-label{font-size:4.4pt;color:#e6edf2}
+.card-front-copy .hc-serial{display:block;direction:ltr;text-align:center;white-space:nowrap;font:900 8pt 'Courier New',monospace;letter-spacing:.03em;color:#fff;margin:.6mm 0}
+.card-front-copy .hc-count{font-size:5.5pt;font-weight:800;color:#fff}
+.card-front-copy .hint{font-size:4pt;line-height:1.35;color:#e5edf1;margin:.6mm 0 0}
+.hc-qr{display:flex;flex-direction:column;align-items:center;gap:.5mm}
+.hc-qr .box{width:22mm;height:22mm;padding:.6mm;background:#fff;border:.8mm solid #d9ad30;border-radius:2mm;box-shadow:0 1mm 2mm #06172a35}
+.hrc-qr-slot svg{display:block;width:100%;height:100%}
+.hc-qr .caption{font-size:4pt;line-height:1.2;font-weight:900;text-align:center;background:#073858;color:#fff;padding:.5mm 1mm;border-radius:1mm;width:100%}
+.card-front-bottom{height:11mm;display:grid;grid-template-columns:1.05fr .9fr 1fr;align-items:center;gap:1mm;padding:.5mm 1.5mm 0;color:#153654}
+.card-steps{display:flex;align-items:center;justify-content:center;gap:.7mm;font-size:3.8pt;font-weight:900;white-space:nowrap}
+.card-steps i{font-style:normal;color:#d1a52c;font-size:7pt}
+.card-contact{display:flex;flex-direction:column;align-items:center;line-height:1.2;border-inline-start:.25mm solid #cfa72e}
+.card-contact span{font-size:3.5pt}.card-contact b{font:900 5pt 'Courier New',monospace;direction:ltr}
+.hc-dates{display:grid;grid-template-columns:1fr;gap:.5mm;border-inline-start:.25mm solid #cfa72e;padding-inline-start:1mm}
+.hc-date{display:flex;justify-content:space-between;gap:.5mm;font-size:3.2pt;line-height:1.2;white-space:nowrap}.hc-date b{font-size:3.2pt;color:#153654}
+.hrc-card[aria-label*=الخلفي]{background:#f5f1e5;padding:2.8mm 3.2mm;color:#123553}
+.card-back-top{display:flex;align-items:center;justify-content:space-between;gap:2mm;border-bottom:.3mm solid #173b5d;padding:0 0 1mm;margin-bottom:1mm}
+.card-back-title{font-size:8pt;font-weight:900;color:#143758;white-space:nowrap}
+.card-back-tag{font-size:4pt;color:#163b5b;background:#e7bd4b;border-radius:3mm;padding:.8mm 2mm;font-weight:800;white-space:nowrap}
+.card-back-content{display:flex;flex-direction:column;justify-content:center;gap:.8mm;flex:1;min-height:0}
+.hc-terms{list-style:none;margin:0;padding:0;display:grid;gap:.65mm}
+.hc-terms li{position:relative;font-size:4.25pt;line-height:1.45;padding-inline-start:4mm;color:#173957}
+.hc-terms li:before{content:'✓';position:absolute;inset-inline-start:0;top:0;width:2.7mm;height:2.7mm;border-radius:50%;display:grid;place-items:center;background:#e2b638;color:#123553;font-size:4pt;font-weight:900}
+.hc-terms b{font-weight:900;color:#102f4f}
+.hc-codes{display:grid;grid-template-columns:1fr;gap:1mm}.hc-codebox{padding:.6mm 1mm;border:.25mm solid #d3a72d;border-radius:1mm;background:#fff;color:#123553;text-align:center}
+.hc-codebox .clbl{font-size:4pt;font-weight:800}.hc-codebox .code{font:900 6pt 'Courier New',monospace;direction:ltr;letter-spacing:.03em;line-height:1.2}
+.hc-back-notice{font-size:3.7pt;line-height:1.3;background:#e3edf7;border-radius:1.5mm;padding:.8mm 1.5mm;color:#173957}
+.card-back-bottom{display:flex;align-items:center;justify-content:space-between;gap:2mm;background:#0a3558;color:#fff;border-radius:1.7mm;padding:1mm 2mm;margin-top:.7mm}
+.hc-contact{display:flex;flex-direction:column;align-items:center;gap:.3mm;white-space:nowrap}.hc-contact .phones{font:900 6pt 'Courier New',monospace;direction:ltr;color:#fff}.hc-contact .addr{font-size:3.7pt;color:#f5f1e5}
+.hc-bot2 .disc{font-size:3.3pt;line-height:1.3;color:#fff;max-width:61%;text-align:right}
+@media print{@page{size:A4 landscape;margin:0}html,body{background:#fff!important;margin:0!important;padding:0!important}body>*{display:none!important}#print-root{display:block!important;position:static!important;width:auto!important}#print-root .hrc-card{width:86mm;height:54mm;zoom:3.1;margin:6.8mm auto 0!important;box-shadow:none!important;border-radius:0!important;page-break-after:always;break-after:page}#print-root .hrc-card:last-child{page-break-after:auto;break-after:auto}#print-root .hrc-card-sheet{display:block!important;padding:0!important}}
+`;
     document.head.appendChild(st);
   }
 
@@ -109,55 +95,48 @@
     var blank = isBlank(app);
     var count = attempts.length === 2 ? 'فرصتان مستقلتان' : attempts.length + ' فرص مستقلة';
     return '<div class="hrc-card" aria-label="الوجه الأمامي لبطاقة التوظيف">' +
-      /* طبقات الزخرفة: وهج ذهبي + نقش إرشادي + لمعة هولوغرام (تُطبع كخلفية فقط) */
-      '<span class="hc-glow" aria-hidden="true"></span>' +
-      '<span class="hc-guilloche" aria-hidden="true"></span>' +
-      '<span class="hc-holo" aria-hidden="true"></span>' +
       '<div class="frame"></div>' +
-      '<span class="hc-ribbon" aria-hidden="true">بطاقة توظيف معتمدة</span>' +
-      '<div class="hc-top"><div class="brand">' +
+      '<div class="card-front-top"><div class="card-brand">' +
       '<svg class="embl" viewBox="0 0 120 120"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>' +
       '<div><div class="ar">' + esc(CFG.company.nameAr) + '</div><div class="en">' + esc(CFG.company.nameEn) + '</div></div></div>' +
-      '<div class="hc-ctype"><span class="t1">بطاقة توظيف</span><span class="t2">EMPLOYMENT CARD</span></div></div>' +
-      '<div class="hc-identity"><div class="hc-identity-copy"><div class="lbl">بطاقة الزبون — هوية الباركود</div>' +
-      '<b class="hc-serial">' + esc(app.serial) + '</b><div class="hc-count">' + esc(count) + '</div>' +
-      '<p class="hint">' + (blank ? 'تُفعّل عند البيع؛ الصلاحية تبدأ من التعبئة.' : 'بيانات الزبون على استمارة A4 بنفس الباركود.') + '</p></div>' +
+      '<div class="card-type">منصة توظيف<br>بطاقة فرص</div></div>' +
+      '<div class="card-front-main"><div class="card-front-copy"><div class="card-slogan">فرصتك تبدأ من هنا</div>' +
+      '<div class="serial-label">بطاقة الزبون — هوية الباركود</div><b class="hc-serial">' + esc(app.serial) + '</b>' +
+      '<div class="hc-count">' + esc(count) + '</div><p class="hint">' +
+      (blank ? 'تُفعّل عند البيع؛ الصلاحية 30 يوماً.' : 'بيانات الزبون على الاستمارة بنفس الباركود.') + '</p></div>' +
       '<div class="hc-qr"><div class="box hrc-qr-slot">' + qrSvg(Store.cardUrl(app.serial), 200) + '</div>' +
-      '<span class="caption">امسح لفتح «بطاقتي»</span></div></div>' +
+      '<span class="caption">امسح للوصول إلى «بطاقتي»</span></div></div>' +
+      '<div class="card-front-bottom"><div class="card-steps"><span>امسح</span><i>›</i><span>سجّل</span><i>›</i><span>اختر وظيفتك</span></div>' +
       '<div class="hc-dates"><div class="hc-date"><span>الإصدار</span><b>' + (blank ? 'عند البيع' : esc(Store.fmtDate(app.issueDate))) + '</b></div>' +
-      '<div class="hc-date"><span>الصلاحية</span><b>' + (blank ? '30 يوماً من البيع' : esc(Store.fmtDate(app.expiryDate))) + '</b></div></div></div>';
+      '<div class="hc-date"><span>الصلاحية</span><b>' + (blank ? '30 يوماً من البيع' : esc(Store.fmtDate(app.expiryDate))) + '</b></div></div>' +
+      '<div class="card-contact"><span>خدمة العملاء</span><b>' + esc(CFG.company.phones[0] || '') + '</b></div></div></div>';
   }
 
   function independentBackHtml(app, attempts) {
-    // Legacy cards print one of their existing codes; both old codes still verify.
     var secret = app.cardPrintCode || (attempts[0] && attempts[0].code) || '';
     var printed = app.cardPrintCode ? secret.match(/.{1,4}/g).join('-') : secret;
-    return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف">' +
-      '<span class="hc-glow" aria-hidden="true"></span><span class="hc-guilloche" aria-hidden="true"></span>' +
-      '<div class="frame"></div>' +
-      '<div class="hc-back-head"><b>رمز التحقق من البطاقة</b><span>خاص بإعادة الطباعة</span></div>' +
-      '<div class="hc-codes single"><div class="hc-codebox"><div class="clbl">احتفظ بهذا الرمز ولا تشاركه</div>' +
+    return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف"><div class="frame"></div>' +
+      '<div class="card-back-top"><b class="card-back-title">معلومات مهمة</b><span class="card-back-tag">شروط استخدام البطاقة</span></div>' +
+      '<div class="card-back-content"><div class="hc-codes single"><div class="hc-codebox"><div class="clbl">رمز إعادة الطباعة — احتفظ به ولا تشاركه</div>' +
       '<div class="code">' + esc(printed || 'راجع الإدارة قبل الطباعة') + '</div></div></div>' +
       '<ul class="hc-terms">' + TERMS.map(function (n) {
         return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>';
       }).join('') + '</ul>' +
-      '<div class="hc-bot2"><div class="hc-contact"><span class="phones">' + esc(CFG.company.phones.join(' · ')) + '</span>' +
-      '<span class="addr">' + esc(CFG.company.addressShort) + '</span></div><div class="disc">' + esc(DISCLAIMER) + '</div></div></div>';
+      '<div class="hc-back-notice">هذه البطاقة غير قابلة للاسترجاع. لا تشارك بياناتك مع أي شخص.</div></div>' +
+      '<div class="card-back-bottom"><div class="hc-contact"><span class="phones">' + esc(CFG.company.phones.join(' · ')) + '</span>' +
+      '<span class="addr">' + esc(CFG.company.addressShort) + '</span></div><div class="hc-bot2 disc">' + esc(DISCLAIMER) + '</div></div></div>';
   }
 
-  /* ظهر البطاقة بلا أي رموز فرص (قرار 2026-10-25): الشروط والتواصل فقط.
-     البطاقة نفسها بباركودها هي إثبات الحيازة عند التقديم. */
   function backHtml(app, attempts) {
     if (app.cardPrintCode) return independentBackHtml(app, attempts);
-    return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف">' +
-      '<span class="hc-glow" aria-hidden="true"></span><span class="hc-guilloche" aria-hidden="true"></span>' +
-      '<div class="frame"></div>' +
-      '<div class="hc-back-head"><b>شروط استخدام البطاقة</b><span>لا تحتاج أي رمز — باركود البطاقة يكفي</span></div>' +
-      '<ul class="hc-terms">' + TERMS.map(function (n) {
+    return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف"><div class="frame"></div>' +
+      '<div class="card-back-top"><b class="card-back-title">معلومات مهمة</b><span class="card-back-tag">شروط استخدام البطاقة</span></div>' +
+      '<div class="card-back-content"><ul class="hc-terms">' + TERMS.map(function (n) {
         return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>';
       }).join('') + '</ul>' +
-      '<div class="hc-bot2"><div class="hc-contact"><span class="phones">' + esc(CFG.company.phones.join(' · ')) + '</span>' +
-      '<span class="addr">' + esc(CFG.company.addressShort) + '</span></div><div class="disc">' + esc(DISCLAIMER) + '</div></div></div>';
+      '<div class="hc-back-notice">هذه البطاقة غير قابلة للاسترجاع. لا تشارك بياناتك مع أي شخص.</div></div>' +
+      '<div class="card-back-bottom"><div class="hc-contact"><span class="phones">' + esc(CFG.company.phones.join(' · ')) + '</span>' +
+      '<span class="addr">' + esc(CFG.company.addressShort) + '</span></div><div class="hc-bot2 disc">' + esc(DISCLAIMER) + '</div></div></div>';
   }
 
   /* ==========================================================================
