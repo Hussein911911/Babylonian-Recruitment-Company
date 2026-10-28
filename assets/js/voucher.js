@@ -70,6 +70,32 @@
 .hc-contact .phones{font-family:'Courier New',monospace;direction:ltr;white-space:nowrap;font-size:6pt;font-weight:700;color:#f2d58d;}
 .hc-contact .addr{font-size:3.8pt;color:#d8e1ef;}
 .hc-bot2 .disc{font-size:3.8pt;line-height:1.6;color:#e2e8f2;margin-top:.8mm;}
+/* Babylonian Mکسَب card style: portrait, deep navy + warm ivory + gold. */
+.hrc-card{width:86mm;height:130mm;border-radius:4mm;padding:7mm 5mm;background:#f5f1e5;color:#112b49;box-shadow:0 12px 30px #07162935;}
+.hrc-card .frame{inset:1.4mm;border:.35mm solid #d6a92e;border-radius:3mm;box-shadow:none;}
+.hc-glow,.hc-guilloche,.hc-holo,.hc-ribbon{display:none!important;}
+.hrc-card[aria-label*=الأمامي]{background:linear-gradient(to bottom,#062d50 0%,#06385a 42%,#f5f1e5 42%,#f5f1e5 100%);}
+.hrc-card[aria-label*=الأمامي]:before{content:'';position:absolute;top:35%;left:-10%;width:120%;height:14%;background:#f5f1e5;border-top:1.5mm solid #dfb536;border-radius:0 0 50% 50%;z-index:0;}
+.hc-top{position:relative;z-index:1;border:0;padding:4mm 1mm 0;justify-content:center;}
+.hc-top .brand{gap:2mm}.hc-top .embl{width:13mm;height:13mm;color:#f0c32b;}
+.hc-top .ar{font-size:14pt;color:#fff}.hc-top .en{font-size:6pt;color:#e9eef2;}
+.hc-ctype{display:none!important;}
+.hc-identity{position:relative;z-index:1;display:flex;flex-direction:column-reverse;gap:3mm;justify-content:center;flex:1;padding:0;}
+.hc-identity-copy{text-align:center;color:#102c4a;}
+.hc-identity .lbl{font-size:8pt;color:#173556;}.hc-serial{font-size:12pt;text-align:center;color:#173556;margin:1mm 0;}
+.hc-count{font-size:10pt}.hc-identity .hint{font-size:7pt;color:#304762;}
+.hc-qr .box{width:46mm;height:46mm;padding:1.5mm;border:1mm solid #d5aa2c;border-radius:3mm;box-shadow:0 2mm 5mm #07162924;}
+.hc-qr .caption{font-size:8pt;color:#fff;background:#062f53;padding:2mm 5mm;border-radius:3mm;width:100%;text-align:center;}
+.hc-dates{display:none!important;}
+.hrc-card[aria-label*=الخلفي]{background:#f5f1e5;color:#173556;padding-top:8mm;}
+.hc-back-head{border-bottom:.3mm solid #183959;padding:3mm 1mm 2mm;margin-bottom:3mm;}
+.hc-back-head b{font-size:13pt;color:#123555;}.hc-back-head span{font-size:7pt;color:#36516c;}
+.hc-terms{gap:3mm;margin:4mm 0;}.hc-terms li{font-size:8pt;line-height:1.7;padding-inline-start:5mm;color:#173556;}
+.hc-terms li:before{color:#d4a72d;font-size:12pt}.hc-terms b{color:#173556;}
+.hc-bot2{border:0;margin-top:auto;background:#0a3558;color:white;border-radius:3mm;padding:3mm;}
+.hc-contact{flex-direction:column;gap:1mm}.hc-contact .phones{font-size:10pt;color:white}.hc-contact .addr{font-size:7pt;color:white;}
+.hc-bot2 .disc{font-size:6.5pt;line-height:1.65;color:#fff;margin-top:2mm;}
+@media print{@page{size:86mm 130mm;margin:0;}#print-root .hrc-card{width:86mm;height:130mm;border-radius:0;}}
 `
       /* معاينة داخل نافذة */
       + '.hrc-card-sheet{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;background:transparent;padding:6px;}'
