@@ -4228,6 +4228,111 @@ body.job-modal-open .app{
     body[data-step="6"] #jobs-list .job-card:hover{transform:none}
   }
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   2026-10-28 · أزرار ما بعد الاستمارة: صغيرة · مرتّبة · بألوان الهوية وحركة هادئة
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media screen{
+
+  /* ── شريط الإجراءات: لا يمتدّ بعرض الصفحة على الكمبيوتر ───────────────── */
+  .result-actions{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;margin-top:14px!important;
+    width:100%;max-width:460px;margin-inline:auto!important;
+  }
+  .result-actions .btn{
+    width:100%!important;min-width:0!important;max-width:none!important;
+    height:42px!important;min-height:42px!important;max-height:42px!important;
+    padding:0 10px!important;gap:6px!important;
+    font-size:12.5px!important;font-weight:800!important;border-radius:11px!important;
+    white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;
+    box-shadow:0 4px 12px rgba(13,34,71,.10)!important;
+    transition:transform .18s cubic-bezier(.2,1,.3,1),box-shadow .22s ease,
+               background-color .22s ease,border-color .22s ease,filter .22s ease!important;
+  }
+  .result-actions .btn svg{width:15px!important;height:15px!important;flex:none}
+
+  /* الصف الأول: الطباعة (أساسي، ذهبي) بعرض كامل لكن بارتفاع ٤٢px فقط */
+  .result-actions .ra-print{
+    grid-column:1 / -1;
+    height:44px!important;min-height:44px!important;max-height:44px!important;
+    font-size:13.5px!important;font-weight:900!important;
+    background:linear-gradient(135deg,#E8D089,#C8A24A 58%,#B08D3C)!important;
+    color:#241A05!important;border:1.5px solid rgba(255,255,255,.55)!important;
+    box-shadow:0 8px 20px rgba(200,162,74,.28)!important;
+  }
+  .result-actions .ra-print svg{stroke:#241A05!important;color:#241A05!important}
+
+  /* الصف الثاني: «وظيفة ثانية» كحلي بحدود ذهبية + «نسخ الرابط» أبيض */
+  .result-actions .ra-second{
+    background:linear-gradient(140deg,#1E4270,#16304F 60%,#0D2247)!important;
+    color:#F7EFD9!important;border:1.5px solid rgba(200,162,74,.65)!important;
+  }
+  .result-actions .ra-second svg{color:#E3C479!important;stroke:#E3C479!important}
+  .result-actions .ra-copy{
+    background:#fff!important;color:#12305C!important;
+    border:1.5px solid #E6DCC6!important;
+  }
+  .result-actions .ra-copy svg{color:#B08D3C!important;stroke:#B08D3C!important}
+
+  /* تجاوز القواعد القديمة (كانت تجعل كل زر بعرض كامل وارتفاع ٥٤px) */
+  body[data-step="8"] .result-actions .ra-print,
+  .result-actions .ra-print{
+    grid-column:1 / -1!important;
+    height:44px!important;min-height:44px!important;max-height:44px!important;
+    font-size:13.5px!important;padding:0 12px!important;
+  }
+  body[data-step="8"] .result-actions .ra-copy,
+  .result-actions .ra-copy{grid-column:auto!important;height:42px!important;min-height:42px!important}
+  body[data-step="8"] .result-actions .ra-second{grid-column:auto!important}
+  /* عند غياب زر «وظيفة ثانية» يبقى النسخ بعرض كامل */
+  body[data-step="8"] .result-actions .ra-print + .ra-copy{grid-column:1 / -1!important}
+
+  /* تفاعل محسوس وناعم */
+  .result-actions .btn:not(:disabled):hover{transform:translateY(-1px);filter:brightness(1.04)}
+  .result-actions .btn:not(:disabled):active{transform:translateY(1px) scale(.99)!important}
+  .result-actions .btn:focus-visible{outline:3px solid #C8A24A!important;outline-offset:2px}
+
+  /* ظهور متتالٍ هادئ لأزرار الاستمارة بعد نزول الصفحة */
+  @media(prefers-reduced-motion:no-preference){
+    .result-actions .btn{animation:raIn .42s cubic-bezier(.2,1,.3,1) both}
+    .result-actions .btn:nth-child(1){animation-delay:.04s}
+    .result-actions .btn:nth-child(2){animation-delay:.10s}
+    .result-actions .btn:nth-child(3){animation-delay:.16s}
+    .result-actions .btn:nth-child(4){animation-delay:.22s}
+  }
+  @keyframes raIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* «العودة للوظائف»: رابط هادئ صغير أسفل الأزرار */
+  .result-back{display:flex!important;justify-content:center!important;margin-top:6px!important}
+  .result-back .btn-quiet{
+    min-height:34px!important;height:34px!important;font-size:12px!important;
+    color:#BFDBFE!important;gap:5px!important;
+  }
+  .result-back .btn-quiet svg{width:14px!important;height:14px!important}
+  .result-back .btn-quiet:hover{color:#fff!important;background:rgba(255,255,255,.10)!important}
+
+  @media(max-width:430px){
+    .result-actions{gap:7px!important;max-width:none!important}
+    .result-actions .btn{font-size:12px!important;padding:0 8px!important}
+    .result-actions .ra-print{font-size:13px!important}
+  }
+
+  /* ── مراجعة عامة: زر «إتمام التقديم» وشريط المراجعة بمقاس طبيعي ───────── */
+  #pg-review .review-go{height:46px!important;min-height:46px!important;font-size:14.5px!important}
+  #pg-review .review-back{height:46px!important;min-height:46px!important;font-size:13.5px!important}
+
+  /* ── توحيد تفاعل كل الأزرار في الصفحة (رفع خفيف + ضغط محسوس) ─────────── */
+  .btn{transition:transform .18s cubic-bezier(.2,1,.3,1),box-shadow .22s ease,
+       background-color .22s ease,border-color .22s ease,filter .22s ease!important}
+  .btn:not(:disabled):active{transform:translateY(1px) scale(.99)!important}
+  .btn:focus-visible{outline:2.5px solid #C8A24A!important;outline-offset:2px}
+
+  @media(prefers-reduced-motion:reduce){
+    .result-actions .btn{animation:none!important}
+    .result-actions .btn:hover{transform:none}
+  }
+}
 </style>
 </head>
 <body>
@@ -5762,10 +5867,9 @@ var G={
       +'</div>';
     var acts=$('result-actions');
     if(acts){
-      var a='<button class="btn btn-primary btn-sm btn-shine" onclick="G.printApplication()">'+AICO.print+'طباعة</button>';
-      a+='<button class="btn btn-outline btn-sm" onclick="G.copyLink()">'+AICO.link+'نسخ رابط الاستمارة</button>';
-      if(chancesLeft>0)a+='<button class="btn btn-ghost-gold" onclick="G.go(6)">'+AICO.camera+'استخدام الباركود لاختيار وظيفة ثانية</button>';
-      a+='<button class="btn btn-outline btn-sm" onclick="G.backToJobs()">← العودة للوظائف</button>';
+      var a='<button type="button" class="btn btn-primary ra-print" onclick="G.printApplication()" aria-label="طباعة الاستمارة">'+AICO.print+'طباعة الاستمارة</button>';
+      if(chancesLeft>0)a+='<button type="button" class="btn ra-second" onclick="G.go(6)" aria-label="اختيار وظيفة ثانية بالباركود">'+AICO.camera+'وظيفة ثانية</button>';
+      a+='<button type="button" class="btn btn-outline ra-copy" onclick="G.copyLink()" aria-label="نسخ رابط الاستمارة">'+AICO.link+'نسخ الرابط</button>';
       acts.innerHTML=a;
     }
     G.go(8);
@@ -5925,12 +6029,17 @@ var G={
     host.innerHTML=hero+sheets+failNote+note;
     $('steps-bar').style.display='none';
 
-    /* ── أزرار ما بعد الاستمارة: طباعة · وظيفة أخرى · نسخ الرابط ── */
-    var acts='<button class="btn btn-primary btn-shine" onclick="G.printApplication()">'+AICO.print+'طباعة الاستمارة (A4)</button>';
+    /* ── أزرار ما بعد الاستمارة: طباعة (أساسي) · وظيفة ثانية · نسخ الرابط ──
+       مختصرة ومصغّرة عمداً: كل زر يحمل أيقونة ونصاً قصيراً، والنص الكامل في
+       aria-label، فلا تكبر الأزرار على الجوال وتزاحم الاستمارة. */
+    var acts='<button type="button" class="btn btn-primary ra-print" onclick="G.printApplication()"'
+      +' aria-label="طباعة الاستمارة على ورقة A4">'+AICO.print+'طباعة الاستمارة</button>';
     if(chancesLeft>0){
-      acts+='<button class="btn btn-ghost-gold" onclick="G.go(6)">'+AICO.camera+'استخدام الباركود لاختيار وظيفة ثانية</button>';
+      acts+='<button type="button" class="btn ra-second" onclick="G.go(6)"'
+        +' aria-label="استخدام باركود البطاقة لاختيار وظيفة ثانية">'+AICO.camera+'وظيفة ثانية</button>';
     }
-    acts+='<button class="btn btn-outline" onclick="G.copyLink()">'+AICO.link+'نسخ رابط الاستمارة (يفتحه الباركود)</button>';
+    acts+='<button type="button" class="btn btn-outline ra-copy" onclick="G.copyLink()"'
+      +' aria-label="نسخ رابط الاستمارة الذي يفتحه الباركود">'+AICO.link+'نسخ الرابط</button>';
     var actsHost=$('result-actions');
     if(actsHost)actsHost.innerHTML=acts;
 

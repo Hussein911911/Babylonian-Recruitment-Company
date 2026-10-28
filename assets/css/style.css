@@ -30,8 +30,8 @@
   --gold: #C8A24A;
   --gold-2: #E3C479;
   --gold-3: #8A6D2C;
-  --turq: #1f8f96;
-  --turq-2: #3ec1c4;
+  --turq: #B08D3C;
+  --turq-2: #E3C479;
   --cream: #ffffff;   /* 2026-10-25: كل خلفية قريبة من الأبيض صارت أبيض نقيّاً */
   --sand: #f0e9db;
   --white: #ffffff;
@@ -342,7 +342,7 @@ a.hc-item:hover { color: var(--gold-2); }
 }
 .scan-status { text-align: center; font-size: .85rem; color: var(--muted); margin: 12px 0 0; min-height: 1.4em; }
 .scan-status.error { color: #d98a84; }
-.scan-status.ok { color: #58d68d; }
+.scan-status.ok { color: #8A6D2C; }
 .scan-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 .hero-figure { position: relative; }
 /* الصورة كاملة بنسبتها الطبيعية (1408×768) — لا قصّ ولا تمديد.
@@ -745,7 +745,7 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 }
 @keyframes slideIn { from { transform: translateX(-16px); opacity: 0 } to { transform: none; opacity: 1 } }
 .toast svg { width: 20px; height: 20px; flex: none; margin-top: 2px; }
-.toast.ok svg { color: #58d68d; } .toast.warn svg { color: var(--gold-2); } .toast.err svg { color: #f1948a; } .toast.info svg { color: var(--turq-2); }
+.toast.ok svg { color: #8A6D2C; } .toast.warn svg { color: var(--gold-2); } .toast.err svg { color: #f1948a; } .toast.info svg { color: var(--turq-2); }
 .toast b { display: block; font-size: .9rem; } .toast span { font-size: .82rem; color: #c3cee5; }
 
 /* ============================ 15) الجداول ============================ */

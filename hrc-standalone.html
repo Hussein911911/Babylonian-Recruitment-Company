@@ -50,8 +50,8 @@
   --gold: #C8A24A;
   --gold-2: #E3C479;
   --gold-3: #8A6D2C;
-  --turq: #1f8f96;
-  --turq-2: #3ec1c4;
+  --turq: #B08D3C;
+  --turq-2: #E3C479;
   --cream: #ffffff;   /* 2026-10-25: كل خلفية قريبة من الأبيض صارت أبيض نقيّاً */
   --sand: #f0e9db;
   --white: #ffffff;
@@ -362,7 +362,7 @@ a.hc-item:hover { color: var(--gold-2); }
 }
 .scan-status { text-align: center; font-size: .85rem; color: var(--muted); margin: 12px 0 0; min-height: 1.4em; }
 .scan-status.error { color: #d98a84; }
-.scan-status.ok { color: #58d68d; }
+.scan-status.ok { color: #8A6D2C; }
 .scan-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 .hero-figure { position: relative; }
 /* الصورة كاملة بنسبتها الطبيعية (1408×768) — لا قصّ ولا تمديد.
@@ -765,7 +765,7 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 }
 @keyframes slideIn { from { transform: translateX(-16px); opacity: 0 } to { transform: none; opacity: 1 } }
 .toast svg { width: 20px; height: 20px; flex: none; margin-top: 2px; }
-.toast.ok svg { color: #58d68d; } .toast.warn svg { color: var(--gold-2); } .toast.err svg { color: #f1948a; } .toast.info svg { color: var(--turq-2); }
+.toast.ok svg { color: #8A6D2C; } .toast.warn svg { color: var(--gold-2); } .toast.err svg { color: #f1948a; } .toast.info svg { color: var(--turq-2); }
 .toast b { display: block; font-size: .9rem; } .toast span { font-size: .82rem; color: #c3cee5; }
 
 /* ============================ 15) الجداول ============================ */
@@ -3147,7 +3147,7 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
   display: inline-flex; align-items: center; gap: 8px; margin: 0 0 4px;
   font-size: clamp(1rem, 3.6vw, 1.2rem); color: var(--lapis-2); font-weight: 900;
 }
-.cats-head h2 .ic { width: 19px; height: 19px; color: var(--turq); }
+.cats-head h2 .ic { width: 19px; height: 19px; color: var(--gold-3); }
 .cats-head p { margin: 0; font-size: .76rem; color: var(--muted); font-weight: 600; }
 .cats-hint { font-size: .72rem; font-weight: 800; color: var(--gold-3); }
 
@@ -3296,7 +3296,7 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 .cp-kv span { font-size: .66rem; font-weight: 700; color: var(--muted); }
 .cp-kv b { font-size: .84rem; font-weight: 900; color: var(--lapis-2); }
 .cp-h { display: flex; align-items: center; gap: 7px; margin: 4px 2px 0; font-size: .92rem; color: var(--lapis-2); font-weight: 900; }
-.cp-h .ic { width: 18px; height: 18px; color: var(--v-teal); }
+.cp-h .ic { width: 18px; height: 18px; color: var(--gold-3); }
 .cp-chances { display: grid; gap: 10px; }
 .cp-chance {
   background: #fff; border: 1px solid var(--line-soft); border-radius: 16px; padding: 13px 15px;
@@ -3368,7 +3368,7 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 }
 .app-card::after {
   content: ''; position: absolute; inset-block-start: 0; inset-inline: 0; height: 3px;
-  background: linear-gradient(90deg, var(--v-teal), var(--gold), var(--v-violet));
+  background: linear-gradient(90deg, var(--lapis-3), var(--gold), var(--gold-2));
   opacity: .95;
 }
 .app-card .job-image { border-radius: 0; aspect-ratio: 16 / 10; background: #0b1a3a; }
@@ -3378,16 +3378,27 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
   position: absolute; inset-block-start: 10px; inset-inline: 10px; z-index: 2;
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
 }
+/* 2026-10-28: الشارات كلها من لوحة الملصق (كحلي/ذهبي) — لا أخضر ولا بنفسجي */
 .ac-badge {
-  font-size: .66rem; font-weight: 900; color: #fff; border-radius: 999px;
+  font-size: .66rem; font-weight: 900; border-radius: 999px;
   padding: 5px 12px; line-height: 1.2;
-  background: linear-gradient(135deg, #1f8f6b, #14775a);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, .22);
+  color: #3F2E08;
+  background: linear-gradient(135deg, #FFF1CB, #E8D089);
+  border: 1px solid rgba(200, 162, 74, .55);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .16);
 }
-.ac-badge.is-new { background: linear-gradient(135deg, #2b6bd6, #1b4ea8); }
-.ac-badge.is-vacant { background: linear-gradient(135deg, #7b52c9, #5a37a0); }
-.ac-badge.is-reserved { background: linear-gradient(135deg, var(--gold), #966f1d); }
-.ac-badge.is-closed { background: linear-gradient(135deg, #6b7280, #4b5563); }
+.ac-badge.is-new {
+  color: #fff;
+  background: linear-gradient(135deg, #2A5590, #16304F);
+  border-color: rgba(255, 255, 255, .28);
+}
+.ac-badge.is-vacant {
+  color: #fff;
+  background: linear-gradient(135deg, #1E4270, #0D2247);
+  border-color: rgba(200, 162, 74, .55);
+}
+.ac-badge.is-reserved { color: #3F2E08; background: linear-gradient(135deg, #F7ECC8, #C8A24A); }
+.ac-badge.is-closed { color: #fff; background: linear-gradient(135deg, #6B7280, #4B5563); border-color: rgba(255,255,255,.2); }
 .ac-fav {
   width: 30px; height: 30px; border-radius: 999px; border: 0; cursor: pointer;
   display: grid; place-items: center; color: #fff;
@@ -3424,7 +3435,7 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 }
 .app-stat:first-child { border-inline-start: 0; }
 .app-stat > .ic { width: 26px; height: 26px; padding: 5px; border-radius: 9px; order: -1; margin-bottom: 3px; color: #fff; }
-.app-stat:nth-child(1) > .ic { background: var(--v-teal); box-shadow: 0 6px 14px rgba(15, 156, 148, .28); }
+.app-stat:nth-child(1) > .ic { background: linear-gradient(140deg, var(--lapis-3), var(--lapis-2)); box-shadow: 0 6px 14px rgba(22, 48, 79, .28); }
 .app-stat:nth-child(2) > .ic { background: var(--v-blue); box-shadow: 0 6px 14px rgba(37, 99, 217, .28); }
 .app-stat:nth-child(3) > .ic { background: var(--v-amber); box-shadow: 0 6px 14px rgba(217, 131, 36, .28); }
 .app-stat:nth-child(4) > .ic { background: var(--v-violet); box-shadow: 0 6px 14px rgba(124, 77, 219, .28); }
@@ -3501,9 +3512,10 @@ body.kbd .tabbar a:focus-visible { outline: 2px solid var(--gold); outline-offse
      600 التوستات · 700 حوارات الطباعة. النافذة دائمًا فوق الشريط السفلي. */
 /* لوحة ألوان حيّة للموقع العام (تُستخدم في التصنيفات والشارات واللمسات) */
 :root {
-  --v-teal: #0f9c94; --v-blue: #2563d9; --v-violet: #7c4ddb;
-  --v-amber: #d98324; --v-green: #16a34a; --v-rose: #db3d6a;
-  --v-cyan: #0891b2;
+  /* 2026-10-28: كل الأكسنتات مشتقة من كحلي/ذهبي الملصق (لا ألوان دخيلة) */
+  --v-teal: #1E4270; --v-blue: #16304F; --v-violet: #0D2247;
+  --v-amber: #C8A24A; --v-green: #8A6D2C; --v-rose: #B08D3C;
+  --v-cyan: #E3C479;
 }
 .modal-backdrop { z-index: 400 !important; }
 .toast-wrap { z-index: 600 !important; }
@@ -3648,10 +3660,10 @@ html { scroll-padding-block-start: var(--anchor-offset); }
   filter: blur(10px); pointer-events: none; z-index: 0;
 }
 #jobs > .container, #categories > .container { position: relative; z-index: 1; }
-.jobs-head h2 .ic { color: var(--v-teal) !important; }
-.jobs-all { color: var(--v-blue); }
+.jobs-head h2 .ic { color: var(--gold-3) !important; }
+.jobs-all { color: var(--lapis-3); }
 .jobs-all:hover { color: var(--lapis-2); }
-.eyebrow-line::after { background: linear-gradient(90deg, var(--v-teal), var(--gold)); }
+.eyebrow-line::after { background: linear-gradient(90deg, var(--gold), var(--gold-2)); }
 .hero-app .app-tagline { color: var(--gold-2); }
 .app-headline .accent, .app-headline { text-shadow: 0 6px 22px rgba(0, 0, 0, .55); }
 .cat-grid { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
@@ -3686,7 +3698,7 @@ html { scroll-padding-block-start: var(--anchor-offset); }
 
 /* ═══ قسم المفضلة ═══ */
 #favorites { position: relative; }
-#favorites .jobs-head h2 .ic { color: var(--v-rose) !important; }
+#favorites .jobs-head h2 .ic { color: #B0483F !important; }
 .fav-clear {
   border: 1px solid #f0c9c0; background: #fff; color: #8a3a2c;
   border-radius: 999px; padding: 6px 14px; font-size: .74rem; font-weight: 900;

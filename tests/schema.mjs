@@ -738,7 +738,7 @@ step(22, 'الواجهة — ألوان حيّة، لغة موحّدة، وكا�
   check('كل تخصص له لون ثابت في التصنيفات والشرائح',
     /PALETTE = \['#0f9c94'/.test(js) && /--cat:' \+ catColor\[c\]/.test(js));
   check('أيقونات شريط الأرقام ملوّنة (لا رمادي باهت)',
-    /\.app-stat:nth-child\(1\) > \.ic \{ background: var\(--v-teal\)/.test(app));
+    /\.app-stat:nth-child\(1\) > \.ic \{ background: linear-gradient\(140deg, var\(--lapis-3\)/.test(app));
 
   /* 2) لغة موحّدة: لا «خابرنا» في أي نص عام */
   const codeOnly = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -1323,6 +1323,40 @@ step(37, 'كروت الوظائف في البطاقة: نفس شكل كروت ا
   check('الكارت المختار: إطار ذهبي ونصوصه تبقى كحلية',
     /body\[data-step="6"\] #jobs-list \.job-card\.selected\{[\s\S]{0,200}border:2px solid #C8A24A/.test(ap) &&
     /\.job-card\.selected \.jm \.jm-v,[\s\S]{0,140}color:#16294A!important/.test(ap));
+}
+
+/* ── 2026-10-28 (ل): أزرار ما بعد الاستمارة: صغيرة ومرتّبة وحركة ظهور ────── */
+step(38, 'أزرار صفحة الاستمارة: مقاسات صغيرة · ألوان الهوية · ظهور متتالٍ');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+  const shell = readFileSync(join(ROOT, 'assets/css/app-shell.css'), 'utf8');
+
+  check('أزرار النتيجة ٤٢px (والطباعة ٤٤px) لا ٥٤px',
+    /\.result-actions \.btn\{[\s\S]{0,260}height:42px!important/.test(ap) &&
+    /\.ra-print,[\s\S]{0,160}height:44px!important/.test(ap));
+  check('النصوص مختصرة: «طباعة الاستمارة» · «وظيفة ثانية» · «نسخ الرابط»',
+    /rar-print/.test(ap) === false &&
+    /طباعة الاستمارة<\/button>/.test(ap) &&
+    /وظيفة ثانية<\/button>/.test(ap) &&
+    /نسخ الرابط<\/button>/.test(ap));
+  check('التفاصيل الكاملة في aria-label (وصولية بلا نص طويل)',
+    /aria-label="طباعة الاستمارة على ورقة A4"/.test(ap) &&
+    /aria-label="استخدام باركود البطاقة لاختيار وظيفة ثانية"/.test(ap));
+  check('الألوان: طباعة ذهبية · وظيفة ثانية كحلية بحدود ذهبية · نسخ أبيض',
+    /\.result-actions \.ra-print\{[\s\S]{0,300}linear-gradient\(135deg,#E8D089,#C8A24A 58%,#B08D3C\)/.test(ap) &&
+    /\.result-actions \.ra-second\{[\s\S]{0,220}linear-gradient\(140deg,#1E4270,#16304F 60%,#0D2247\)/.test(ap) &&
+    /\.result-actions \.ra-copy\{[\s\S]{0,160}background:#fff!important/.test(ap));
+  check('ظهور متتالٍ هادئ للأزرار + احترام تقليل الحركة',
+    /@keyframes raIn/.test(ap) && /animation-delay:\.16s/.test(ap) &&
+    /prefers-reduced-motion:reduce\)\{\s*\.result-actions \.btn\{animation:none!important\}/.test(ap));
+  check('زر «العودة للوظائف» رابط هادئ صغير (٣٤px)',
+    /\.result-back \.btn-quiet\{[\s\S]{0,200}height:34px!important/.test(ap));
+  check('شريط الأزرار لا يمتدّ بعرض الصفحة على الكمبيوتر (٤٦٠px)',
+    /\.result-actions\{[\s\S]{0,260}max-width:460px/.test(ap));
+  check('ألوان الموقع العام كلها من كحلي/ذهبي (لا أخضر/بنفسجي/تركوازي)',
+    /--v-teal: #1E4270/.test(shell) && /--v-amber: #C8A24A/.test(shell) &&
+    !/#0f9c94|#2563d9|#7c4ddb|#d98324|#16a34a/.test(shell) &&
+    /\.ac-badge\.is-vacant \{[\s\S]{0,140}#1E4270/.test(shell));
 }
 
 /* ---------------------------------- الخلاصة ---------------------------------- */
