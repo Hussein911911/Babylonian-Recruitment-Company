@@ -1291,6 +1291,40 @@ step(36, 'نافذة الوظيفة: صفحة منبثقة وكل ما وراء�
     !/id="details-'\+esc\(j\.code\)/.test(ap));
 }
 
+/* ── 2026-10-28 (ك): كروت وظائف البطاقة بنفس شكل كروت الموقع ─────────────── */
+step(37, 'كروت الوظائف في البطاقة: نفس شكل كروت الموقع الرئيسي');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('الكارت يبدأ بمساحة صورة (job-media) وشارة الحالة فوقها',
+    /<div class="job-media'\+\(j\.imageUrl\?' has-img':''\)\+'">/.test(ap) &&
+    /body\[data-step="6"\] #jobs-list \.job-media\{[\s\S]{0,220}aspect-ratio:16\/9/.test(ap));
+  check('الصورة تُعرض كاملة ووسط تعبئة ضبابية (contain + blur)',
+    /#jobs-list \.job-thumb img\{[\s\S]{0,160}object-fit:contain!important/.test(ap) &&
+    /#jobs-list \.job-thumb::before\{[\s\S]{0,160}blur\(14px\)/.test(ap));
+  check('شارة «متاحة» ذهبية فاتحة (هوية الملصق) لا خضراء',
+    /body\[data-step="6"\] #jobs-list \.job-state\.is-open\{[\s\S]{0,200}linear-gradient\(135deg,#FFF4D6,#EFDDA8\)/.test(ap));
+  check('العنوان ثم شريحتا الكود والتخصص داخل المتن',
+    /<h4 class="title">'\+esc\(j\.title\)/.test(ap) &&
+    /<span class="job-code">'\+esc\(j\.code\)/.test(ap) &&
+    /<span class="job-cat">'\+esc\(j\.category\|\|'—'\)/.test(ap));
+  check('صفوف المعلومات: أيقونة + تسمية صغيرة + قيمة في كل صف',
+    /body\[data-step="6"\] #jobs-list \.jm\{[\s\S]{0,260}flex-direction:row-reverse/.test(ap) &&
+    /\.jm \.jm-k\{[\s\S]{0,120}font-size:10\.5px/.test(ap) &&
+    /\.jm \.jm-v\{[\s\S]{0,160}margin-inline-start:auto/.test(ap));
+  check('سطر الأجر شريط ذهبي فاتح واضح',
+    /body\[data-step="6"\] #jobs-list \.job-pay\{[\s\S]{0,240}background:#FDF6E4!important/.test(ap));
+  check('زرّا الكارت جنباً إلى جنب: «اختيار الوظيفة» كحلي + «تفاصيل الوظيفة» أبيض',
+    /body\[data-step="6"\] #jobs-list \.job-actions\{[\s\S]{0,220}grid-template-columns:1\.15fr \.95fr/.test(ap) &&
+    /onclick="event\.stopPropagation\(\);G\.pickJob\([\s\S]{0,80}>اختيار الوظيفة/.test(ap) &&
+    /job-details-btn" onclick="event\.stopPropagation\(\);G\.openJob\(/.test(ap));
+  check('الضغط على الكارت يفتح النافذة ويُغبّش المحيط (كما هو)',
+    /onclick="G\.openJob\(/.test(ap) && /body\.job-modal-open \.app\{[\s\S]{0,160}blur\(7px\)/.test(ap));
+  check('الكارت المختار: إطار ذهبي ونصوصه تبقى كحلية',
+    /body\[data-step="6"\] #jobs-list \.job-card\.selected\{[\s\S]{0,200}border:2px solid #C8A24A/.test(ap) &&
+    /\.job-card\.selected \.jm \.jm-v,[\s\S]{0,140}color:#16294A!important/.test(ap));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');

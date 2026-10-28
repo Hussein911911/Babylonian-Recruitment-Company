@@ -3993,6 +3993,241 @@ body.job-modal-open .app{
   .job-modal-box,.job-modal-veil{animation:none!important}
   body.job-modal-open .app{filter:brightness(.86)!important}
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   2026-10-28 · كروت الوظائف في صفحة التقديم بنفس شكل كروت الموقع الرئيسي
+   ─ كارت أبيض: صورة أعلى · عنوان وشارة · صفوف معلومات بأيقونات · أجر · زر كحلي
+   ─ والضغط على الكارت يفتح نافذة الوظيفة ويُغبّش كل ما وراءها (كما هو)
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media screen{
+
+  /* ── شبكة الكروت: نفس إيقاع الموقع (أعمدة متساوية ومسافات هادئة) ─────── */
+  body[data-step="6"] #jobs-list{
+    display:grid!important;
+    grid-template-columns:repeat(auto-fill,minmax(min(100%,286px),1fr))!important;
+    gap:16px!important;align-items:stretch!important;
+    padding:4px 0 2px!important;position:relative;
+  }
+
+  /* ── الكارت ─────────────────────────────────────────────────────────── */
+  body[data-step="6"] #jobs-list .job-card{
+    position:relative;display:flex!important;flex-direction:column;
+    padding:0!important;border-radius:18px!important;overflow:hidden;
+    background:#fff!important;border:1px solid #E9EDF4!important;
+    box-shadow:0 10px 26px rgba(6,13,31,.10)!important;
+    color:#16294A!important;cursor:pointer;
+    transition:transform .26s cubic-bezier(.2,1,.3,1),box-shadow .26s ease,border-color .26s ease!important;
+  }
+  body[data-step="6"] #jobs-list .job-card:hover{
+    transform:translateY(-3px);box-shadow:0 18px 38px rgba(6,13,31,.16)!important;border-color:#E3D5B4!important;
+  }
+  /* شريط علوي ذهبي–كحلي مثل كروت الموقع */
+  body[data-step="6"] #jobs-list .job-card::before{
+    content:'';position:absolute;inset-block-start:0;inset-inline:0;height:3px;z-index:3;
+    background:linear-gradient(90deg,#C8A24A,#E3C479 40%,#1E4270 100%);
+    opacity:1!important;
+  }
+  body[data-step="6"] #jobs-list .job-card:focus-visible{
+    outline:3px solid #C8A24A;outline-offset:2px;
+  }
+
+  /* ── الصورة أعلى الكارت (تعبئة ضبابية + الصورة كاملة بلا قصّ) ────────── */
+  body[data-step="6"] #jobs-list .job-media{
+    position:relative;width:100%;aspect-ratio:16/9;flex:none;
+    background:linear-gradient(150deg,#16304F,#0D2247);overflow:hidden;
+  }
+  body[data-step="6"] #jobs-list .job-media::after{
+    content:'';position:absolute;inset-inline:0;inset-block-end:0;height:46%;
+    background:linear-gradient(180deg,rgba(13,34,71,0),rgba(13,34,71,.42));pointer-events:none;
+  }
+  body[data-step="6"] #jobs-list .job-thumb{
+    display:block;position:absolute!important;inset:0!important;
+    width:100%!important;height:100%!important;aspect-ratio:auto!important;
+    border:0!important;border-radius:0!important;box-shadow:none!important;background:#0D2247!important;
+  }
+  body[data-step="6"] #jobs-list .job-thumb::before{
+    filter:blur(14px) saturate(1.1) brightness(.7);opacity:.9;transform:scale(1.15);
+  }
+  body[data-step="6"] #jobs-list .job-thumb img{
+    object-fit:contain!important;object-position:center;padding:6px;
+  }
+  /* بلا صورة: نفس الارتفاع بزرع شعار مكسب في منتصف مساحة كحلية ذهبية */
+  body[data-step="6"] #jobs-list .job-media:not(.has-img){
+    aspect-ratio:16/9;
+    background:
+      radial-gradient(120% 160% at 100% 0%,rgba(200,162,74,.38),transparent 62%),
+      radial-gradient(110% 150% at 0% 100%,rgba(227,196,121,.22),transparent 60%),
+      linear-gradient(150deg,#1E4270,#16304F 60%,#0D2247);
+    display:grid;place-items:center;
+  }
+  body[data-step="6"] #jobs-list .job-media:not(.has-img)::before{
+    content:'';width:56px;height:56px;border-radius:18px;
+    background:
+      radial-gradient(circle at 50% 50%,rgba(255,255,255,.12),transparent 70%),
+      url("assets/img/favicon-mkseb.svg") center/58% no-repeat,
+      #0F2444;
+    border:1px solid rgba(227,196,121,.55);
+    box-shadow:0 10px 24px rgba(4,16,34,.35);
+    filter:drop-shadow(0 6px 14px rgba(0,0,0,.28));
+  }
+  body[data-step="6"] #jobs-list .job-media:not(.has-img)::after{display:none}
+
+  /* شارة الحالة: كبسولة فوق الصورة (يمين أعلى) */
+  body[data-step="6"] #jobs-list .job-state{
+    position:absolute;inset-block-start:10px;inset-inline-start:10px;z-index:2;
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:11px!important;font-weight:900!important;line-height:1.2;
+    padding:5px 11px!important;border-radius:999px!important;white-space:nowrap;
+    box-shadow:0 6px 14px rgba(6,13,31,.20);
+    border:1px solid transparent!important;
+  }
+  body[data-step="6"] #jobs-list .job-state.is-open{
+    background:linear-gradient(135deg,#FFF4D6,#EFDDA8)!important;color:#6B5320!important;
+    border-color:rgba(200,162,74,.55)!important;
+  }
+  body[data-step="6"] #jobs-list .job-state.is-picked{
+    background:linear-gradient(135deg,#E8D089,#C8A24A)!important;color:#241A05!important;
+  }
+  body[data-step="6"] #jobs-list .job-state.is-done{
+    background:linear-gradient(135deg,#6B7280,#4B5563)!important;color:#fff!important;
+  }
+
+  /* ── متن الكارت ─────────────────────────────────────────────────────── */
+  body[data-step="6"] #jobs-list .job-body{
+    padding:12px 13px 0!important;display:grid!important;gap:8px!important;
+  }
+  body[data-step="6"] #jobs-list .title{
+    margin:0!important;font-size:15.5px!important;font-weight:900!important;line-height:1.55!important;
+    color:#16294A!important;overflow-wrap:anywhere;
+  }
+  body[data-step="6"] #jobs-list .job-tags{gap:6px!important;margin:0!important}
+  body[data-step="6"] #jobs-list .job-code,
+  body[data-step="6"] #jobs-list .job-cat{
+    font-size:10.5px!important;font-weight:800!important;
+    padding:3px 9px!important;border-radius:8px!important;line-height:1.4;
+  }
+  body[data-step="6"] #jobs-list .job-code{
+    background:#F1F9F6!important;border:1px solid #CFE7DE!important;color:#0F6D63!important;
+    direction:ltr;letter-spacing:.02em;
+  }
+  body[data-step="6"] #jobs-list .job-cat{
+    background:#FDFAF3!important;border:1px solid #EFE7D6!important;color:#8A6D2C!important;
+  }
+
+  /* صفوف المعلومات: أيقونة · تسمية صغيرة · قيمة (سطر لكل معلومة) */
+  body[data-step="6"] #jobs-list .job-meta{
+    display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:0!important;
+  }
+  body[data-step="6"] #jobs-list .jm{
+    display:flex!important;flex-direction:row-reverse;align-items:center;justify-content:flex-start;
+    gap:8px;padding:6px 0!important;
+    background:transparent!important;border:0!important;
+    border-bottom:1px dashed #F0ECE2!important;border-radius:0!important;min-height:0!important;
+  }
+  body[data-step="6"] #jobs-list .jm:last-child{border-bottom:0!important}
+  body[data-step="6"] #jobs-list .jm .jm-ic{
+    width:15px!important;height:15px!important;color:#B08D3C!important;grid-row:auto!important;
+  }
+  body[data-step="6"] #jobs-list .jm .jm-k{
+    font-size:10.5px!important;font-weight:700!important;color:#8A7B5C!important;
+    line-height:1.4!important;white-space:nowrap;flex:none;
+  }
+  body[data-step="6"] #jobs-list .jm .jm-v{
+    font-size:12.5px!important;font-weight:900!important;color:#16294A!important;
+    margin-inline-start:auto;text-align:start;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:58%;
+  }
+
+  /* سطر الأجر: شريط ذهبي فاتح واضح */
+  body[data-step="6"] #jobs-list .job-pay{
+    display:flex!important;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+    margin:2px 0 0!important;padding:9px 11px!important;border-radius:12px!important;
+    background:#FDF6E4!important;border:1px solid #EFE0BD!important;
+  }
+  body[data-step="6"] #jobs-list .job-pay-k{
+    display:inline-flex!important;align-items:center;gap:5px;
+    font-size:10.5px!important;font-weight:800!important;color:#8A6D2C!important;
+  }
+  body[data-step="6"] #jobs-list .job-pay-k svg{width:14px;height:14px;color:#B08D3C}
+  body[data-step="6"] #jobs-list .job-pay-v{
+    font-size:13px!important;font-weight:900!important;color:#6B5320!important;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+  }
+
+  /* ── أزرار الكارت (أسفل الكارت، بنفس زر الموقع) ─────────────────────── */
+  body[data-step="6"] #jobs-list .job-actions{
+    margin:12px 0 0!important;padding:10px 13px 13px!important;
+    display:grid!important;grid-template-columns:1.15fr .95fr;gap:8px!important;align-items:stretch;
+    background:transparent!important;border:0!important;border-top:1px solid #F2F5F9!important;
+    margin-top:auto!important;
+  }
+  body[data-step="6"] #jobs-list .job-actions .btn{
+    width:100%!important;flex:none!important;min-width:0!important;max-width:none!important;
+    min-height:40px!important;border-radius:12px!important;
+    font-size:12px!important;font-weight:900!important;padding:9px 6px!important;
+    white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;
+    display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  }
+  /* زر واحد (مثل المختارة/المنتهية) يمتد بعرض الكارت */
+  body[data-step="6"] #jobs-list .job-actions .btn:only-child{grid-column:1 / -1}
+  body[data-step="6"] #jobs-list .job-actions .job-details-btn{
+    flex:0 0 auto!important;min-width:0!important;
+    background:#fff!important;border:1px solid #E6DCC6!important;color:#12305C!important;
+    box-shadow:none!important;
+  }
+  body[data-step="6"] #jobs-list .job-actions .job-details-btn:hover{
+    border-color:#C8A24A!important;background:#FFFDF6!important;
+  }
+  body[data-step="6"] #jobs-list .job-actions .btn-primary{
+    background:linear-gradient(140deg,#1E4270,#16304F 60%,#0D2247)!important;
+    color:#F7EFD9!important;border:1px solid rgba(200,162,74,.5)!important;
+    box-shadow:0 8px 18px rgba(11,26,58,.22)!important;
+  }
+  body[data-step="6"] #jobs-list .job-actions .btn-primary *{color:#F7EFD9!important;stroke:#E3C479!important}
+  body[data-step="6"] #jobs-list .job-actions .btn-primary:hover{filter:brightness(1.12)}
+  body[data-step="6"] #jobs-list .job-actions .btn-success{
+    background:linear-gradient(135deg,#E8D089,#C8A24A 58%,#B08D3C)!important;
+    color:#241A05!important;border:1px solid rgba(255,255,255,.5)!important;
+    box-shadow:0 8px 18px rgba(200,162,74,.28)!important;
+  }
+  body[data-step="6"] #jobs-list .job-actions .job-cancel-btn{
+    flex:0 0 auto!important;min-width:0!important;border-color:#E6DCC6!important;color:#8A4B3A!important;
+  }
+
+  /* ── الكارت المختار: إطار ذهبي سميك + علامة الفرصة ──────────────────── */
+  body[data-step="6"] #jobs-list .job-card.selected{
+    border:2px solid #C8A24A!important;background:#fff!important;
+    box-shadow:0 18px 40px rgba(6,13,31,.20),0 0 0 4px rgba(200,162,74,.18)!important;
+  }
+  body[data-step="6"] #jobs-list .job-card.selected .jm .jm-v,
+  body[data-step="6"] #jobs-list .job-card.selected .title{color:#16294A!important}
+  body[data-step="6"] #jobs-list .job-card.selected .jm .jm-k{color:#8A7B5C!important}
+  body[data-step="6"] #jobs-list .job-card.selected .job-media::after{
+    background:linear-gradient(180deg,rgba(200,162,74,0),rgba(200,162,74,.30));
+  }
+  body[data-step="6"] #jobs-list .job-card .pick-mark{
+    position:absolute;inset-block-start:10px;inset-inline-end:10px;z-index:4;
+    width:30px;height:30px;font-size:12.5pt;
+  }
+  body[data-step="6"] #jobs-list .job-card.is-done{opacity:.86}
+
+  /* ── «البورتريه»: المختارة تبرز والبقية تُغبَّش (يبقى كما هو) ─────────── */
+  body[data-step="6"] #jobs-list.has-focus .job-card:not(.selected):not(.is-done){
+    filter:blur(2.6px) saturate(.6) brightness(.96)!important;opacity:.55!important;
+    transform:scale(.965)!important;
+  }
+  body[data-step="6"] #jobs-list.has-focus .job-card.selected{
+    transform:translateY(-4px) scale(1.02)!important;filter:none!important;opacity:1!important;z-index:6;
+  }
+
+  @media(max-width:640px){
+    body[data-step="6"] #jobs-list{grid-template-columns:1fr!important;gap:14px!important}
+    body[data-step="6"] #jobs-list .job-media{aspect-ratio:16/8}
+  }
+  @media(prefers-reduced-motion:reduce){
+    body[data-step="6"] #jobs-list .job-card{transition:none!important}
+    body[data-step="6"] #jobs-list .job-card:hover{transform:none}
+  }
+}
 </style>
 </head>
 <body>
@@ -5114,28 +5349,26 @@ var G={
         +' aria-label="عرض تفاصيل وظيفة '+esc(j.title)+'">'
         +'<span class="pick-mark" aria-hidden="true">'+(picked?ar(G.chanceNumber(slotNo)):'✓')+'</span>'
 
-        /* ── رأس الكارت ── */
-        +'<header class="job-head">'
+        /* ── نفس ترتيب كارت الموقع الرئيسي: صورة · عنوان وشارة · صفوف · أجر · أزرار ── */
+        +'<div class="job-media'+(j.imageUrl?' has-img':'')+'">'
           +(j.imageUrl
-            ? '<span class="job-thumb" style="--img:url(&quot;'+esc(j.imageUrl)+'&quot;)"><img src="'+esc(j.imageUrl)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"'
+            ? '<span class="job-thumb" style="--img:url(&quot;'+esc(j.imageUrl)+'&quot;)">'
+              +'<img src="'+esc(j.imageUrl)+'" alt="صورة وظيفة '+esc(j.title)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer"'
               +' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.remove()"></span>'
             : '')
-          +'<div class="job-id">'
-            +'<h4 class="title">'+esc(j.title)+'</h4>'
-            +'<div class="job-tags">'
-              +'<span class="job-code">'+esc(j.code)+'</span>'
-              +'<span class="job-cat">'+esc(j.category)+'</span>'
-            +'</div>'
-          +'</div>'
           +'<span class="job-state '+stateCls+'">'+stateTxt+'</span>'
-        +'</header>'
+        +'</div>'
 
-        /* ── شبكة المعلومات: أيقونة + تسمية صغيرة + قيمة (أصغر وأرتب) ── */
         +'<div class="job-body">'
+          +'<h4 class="title">'+esc(j.title)+'</h4>'
+          +'<div class="job-tags">'
+            +'<span class="job-code">'+esc(j.code)+'</span>'
+            +'<span class="job-cat">'+esc(j.category||'—')+'</span>'
+          +'</div>'
           +'<div class="job-meta">'
             +'<div class="jm">'+G.jobIcon('pin')+'<span class="jm-k">المحافظة</span><span class="jm-v">'+esc(place||'—')+'</span></div>'
-            +'<div class="jm">'+G.jobIcon('clock')+'<span class="jm-k">الدوام</span><span class="jm-v">'+esc(j.shift)+'</span></div>'
-            +'<div class="jm">'+G.jobIcon('user')+'<span class="jm-k">الجنس</span><span class="jm-v">'+esc(j.gender)+'</span></div>'
+            +'<div class="jm">'+G.jobIcon('clock')+'<span class="jm-k">الدوام</span><span class="jm-v">'+esc(j.shift||'—')+'</span></div>'
+            +'<div class="jm">'+G.jobIcon('user')+'<span class="jm-k">الجنس</span><span class="jm-v">'+esc(j.gender||'لا فرق')+'</span></div>'
             +'<div class="jm">'+G.jobIcon('seat')+'<span class="jm-k">الشواغر</span><span class="jm-v">'+ar(j.vacancies||1)+'</span></div>'
           +'</div>'
           +'<div class="job-pay">'
@@ -5147,16 +5380,17 @@ var G={
         /* (التفاصيل الكاملة صارت في نافذة الوظيفة — لا تكرار داخل الكارت) */
 
         /* ── أزرار الإجراء ── */
-        +'<footer class="job-actions">'
-          +'<button type="button" class="btn btn-outline btn-sm job-details-btn" onclick="event.stopPropagation();G.openJob(\''+esc(j.code)+'\')">تفاصيل الوظيفة</button>';
-      if(done){h+='<button type="button" class="btn btn-outline btn-sm" disabled>تم التقديم</button>';}
-      else if(chancesLeft<=0){h+='<button type="button" class="btn btn-outline btn-sm" disabled>انتهت الفرص</button>';}
+        +'<footer class="job-actions">';
+      /* الإجراء الأساسي أولاً (يمين الكارت في RTL) ثم «تفاصيل الوظيفة» */
+      if(done){h+='<button type="button" class="btn btn-outline btn-sm job-main-btn" disabled>تم التقديم</button>';}
+      else if(chancesLeft<=0){h+='<button type="button" class="btn btn-outline btn-sm job-main-btn" disabled>انتهت الفرص</button>';}
       else if(picked){
-        /* المختارة: زر واحد واضح «متابعة» + إلغاء الاختيار (لا نُكرّر رقم الفرصة هنا) */
-        h+='<button type="button" class="btn btn-success btn-sm" onclick="event.stopPropagation();G.next()">متابعة للطلب</button>';
-        h+='<button type="button" class="btn btn-outline btn-sm" onclick="event.stopPropagation();G.pickJob(\''+esc(j.code)+'\')">إلغاء الاختيار</button>';
+        h+='<button type="button" class="btn btn-success btn-sm job-main-btn" onclick="event.stopPropagation();G.next()">متابعة للطلب</button>';
+        h+='<button type="button" class="btn btn-outline btn-sm job-cancel-btn" onclick="event.stopPropagation();G.pickJob(\''+esc(j.code)+'\')">إلغاء الاختيار</button>';
       }
-      else{h+='<button type="button" class="btn btn-primary btn-sm" onclick="event.stopPropagation();G.pickJob(\''+esc(j.code)+'\')">اختيار الوظيفة</button>';}
+      else{h+='<button type="button" class="btn btn-primary btn-sm job-main-btn" onclick="event.stopPropagation();G.pickJob(\''+esc(j.code)+'\')">اختيار الوظيفة</button>';}
+      if(!picked&&!done){h+='<button type="button" class="btn btn-outline btn-sm job-details-btn" onclick="event.stopPropagation();G.openJob(\''+esc(j.code)+'\')">تفاصيل الوظيفة</button>';}
+      else if(done){h+='<button type="button" class="btn btn-outline btn-sm job-details-btn" onclick="event.stopPropagation();G.openJob(\''+esc(j.code)+'\')">تفاصيل الوظيفة</button>';}
       h+='</footer>'
       +'</article>';
     });
