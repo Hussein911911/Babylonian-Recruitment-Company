@@ -18,7 +18,7 @@ body{
   background:#0b1a3a;color:#f4efe2;direction:rtl;
   min-height:100vh;min-height:100dvh;overflow-x:hidden;
   background-image:
-    radial-gradient(ellipse 60% 40% at 20% 10%,rgba(34,197,94,.06),transparent),
+    radial-gradient(ellipse 60% 40% at 20% 10%,rgba(200,162,74,.06),transparent),
     radial-gradient(ellipse 50% 50% at 80% 90%,rgba(63,193,196,.05),transparent);
 }
 
@@ -28,10 +28,10 @@ body{
 /* ── الشريط العلوي ── */
 .topbar{
   display:flex;align-items:center;gap:8px;padding:8px 0;
-  border-bottom:1px solid rgba(34,197,94,.15);margin-bottom:14px;
+  border-bottom:1px solid rgba(200,162,74,.15);margin-bottom:14px;
 }
 .topbar svg{width:32px;height:32px;flex-shrink:0}
-.topbar .t1{font-size:12pt;font-weight:900;color:#dcfce9;line-height:1.2}
+.topbar .t1{font-size:12pt;font-weight:900;color:#F7ECC8;line-height:1.2}
 .topbar .t2{font-size:5.5pt;font-weight:600;color:rgba(249,246,239,.45);letter-spacing:.1em;direction:ltr}
 
 /* ── عداد الخطوات (شريط تقدم فخم) ── */
@@ -41,10 +41,10 @@ body{
   height:6px;border-radius:3px;flex:0 0 8px;background:rgba(249,246,239,.1);
   transition:flex-basis .55s cubic-bezier(.22,1,.36,1),background .4s ease,box-shadow .4s ease;
 }
-.step-dot.done{background:linear-gradient(90deg,#2E9E6B,#15803D);box-shadow:0 0 8px rgba(34,197,94,.3)}
+.step-dot.done{background:linear-gradient(90deg,#B08D3C,#8A6D2C);box-shadow:0 0 8px rgba(200,162,74,.3)}
 .step-dot.active{flex:0 0 34px;background:linear-gradient(90deg,#1d6bc4,#6db8ff);box-shadow:0 0 12px rgba(29,107,196,.45)}
 .step-label{text-align:center;font-size:8pt;font-weight:700;color:rgba(249,246,239,.42)}
-.step-label b{color:#dcfce9}
+.step-label b{color:#F7ECC8}
 .step-label .pct{color:#5ee8a0;font-weight:900}
 
 /* ── نظام الصفحات ── */
@@ -86,18 +86,18 @@ body{
 @keyframes aSlideR{0%{opacity:0;transform:translateX(-42px) scale(.94)}75%{opacity:1;transform:translateX(4px) scale(1.015)}100%{opacity:1;transform:translateX(0) scale(1)}}
 @keyframes aSlideLZoom{0%{opacity:0;transform:translateX(42px) scale(.82)}70%{opacity:1;transform:translateX(-4px) scale(1.04)}100%{opacity:1;transform:translateX(0) scale(1)}}
 @keyframes aFadeUp{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-@keyframes aGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(34,197,94,.25))}50%{filter:drop-shadow(0 0 18px rgba(34,197,94,.55))}}
+@keyframes aGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(200,162,74,.25))}50%{filter:drop-shadow(0 0 18px rgba(200,162,74,.55))}}
 
 /* ── بطاقة ── */
 .card{
-  background:rgba(255,255,255,.04);border:1px solid rgba(34,197,94,.15);
+  background:rgba(255,255,255,.04);border:1px solid rgba(200,162,74,.15);
   border-radius:14px;padding:16px;margin-bottom:14px;
   position:relative;overflow:hidden;
 }
 /* وهج ذهبي خفيف يمرّ على البطاقة عند دخول الخطوة */
 .card::after{
   content:'';position:absolute;top:0;bottom:0;width:45%;left:-70%;pointer-events:none;
-  background:linear-gradient(100deg,transparent,rgba(34,197,94,.09),transparent);
+  background:linear-gradient(100deg,transparent,rgba(200,162,74,.09),transparent);
   transform:skewX(-18deg);
 }
 .page.active .card::after{animation:cardSheen 1.5s cubic-bezier(.4,0,.2,1) .1s both}
@@ -115,9 +115,9 @@ body{
 /* ── الترحيب ── */
 .welcome{text-align:center;padding-top:36px}
 .welcome .emblem{width:85px;height:85px;margin:0 auto 14px;display:block}
-.welcome h1{font-size:19pt;font-weight:900;color:#dcfce9;margin-bottom:5px}
+.welcome h1{font-size:19pt;font-weight:900;color:#F7ECC8;margin-bottom:5px}
 .welcome .sub{font-size:10.5pt;color:rgba(249,246,239,.6);margin-bottom:20px;line-height:1.8}
-.gold-line{height:1px;background:linear-gradient(90deg,transparent,#2E9E6B 50%,transparent);margin:14px auto;width:75%}
+.gold-line{height:1px;background:linear-gradient(90deg,transparent,#B08D3C 50%,transparent);margin:14px auto;width:75%}
 
 /* ── الأزرار ── */
 .btn{
@@ -132,7 +132,7 @@ body{
 .btn-primary{background:linear-gradient(135deg,#1d6bc4,#1455a0);color:#fff;box-shadow:0 3px 16px rgba(29,107,196,.3)}
 .btn-success{background:linear-gradient(135deg,#1e9e55,#188045);color:#fff;box-shadow:0 3px 16px rgba(34,160,91,.3)}
 .btn-danger{background:linear-gradient(135deg,#d03030,#b01818);color:#fff;box-shadow:0 3px 12px rgba(217,53,53,.25)}
-.btn-outline{background:transparent;border:1.5px solid rgba(34,197,94,.35);color:#dcfce9}
+.btn-outline{background:transparent;border:1.5px solid rgba(200,162,74,.35);color:#F7ECC8}
 .btn-sm{padding:10px 18px;font-size:10.5pt;border-radius:10px}
 .btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
 .btn:disabled::after{display:none}
@@ -142,11 +142,11 @@ body{
 
 /* ── النماذج ── */
 .form-group{margin-bottom:14px}
-.form-group label{display:block;font-size:9.5pt;font-weight:700;color:#dcfce9;margin-bottom:4px}
+.form-group label{display:block;font-size:9.5pt;font-weight:700;color:#F7ECC8;margin-bottom:4px}
 .form-group label .req{color:#f08080;margin-right:2px}
 .form-group input,.form-group select{
   width:100%;padding:12px 12px;border-radius:10px;font-family:inherit;font-size:11pt;
-  background:rgba(255,255,255,.06);border:1.5px solid rgba(34,197,94,.2);
+  background:rgba(255,255,255,.06);border:1.5px solid rgba(200,162,74,.2);
   color:#f4efe2;direction:rtl;transition:all .25s;-webkit-appearance:none;
 }
 .form-group input:focus,.form-group select:focus{
@@ -160,7 +160,7 @@ body{
 
 /* ── مقياس رقم الهاتف (11 رقم) ── */
 .phone-meter{display:flex;align-items:center;gap:8px;margin-top:8px;direction:ltr}
-.phone-meter .pc-num{font:900 12pt 'IBM Plex Sans Arabic',sans-serif;color:#dcfce9;min-width:20px;text-align:center;transition:color .3s}
+.phone-meter .pc-num{font:900 12pt 'IBM Plex Sans Arabic',sans-serif;color:#F7ECC8;min-width:20px;text-align:center;transition:color .3s}
 .phone-meter .pc-of{font:700 8pt 'IBM Plex Sans Arabic',sans-serif;color:rgba(249,246,239,.35)}
 .phone-meter .pc-track{flex:1;height:5px;border-radius:3px;background:rgba(249,246,239,.1);overflow:hidden}
 .phone-meter .pc-track i{display:block;height:100%;width:0;border-radius:3px;transition:width .3s cubic-bezier(.22,1,.36,1),background .3s;background:linear-gradient(90deg,#1d6bc4,#6db8ff)}
@@ -173,10 +173,10 @@ body{
 
 /* ── العنوان ── */
 .section-title{
-  font-size:12pt;font-weight:900;color:#dcfce9;margin-bottom:12px;
+  font-size:12pt;font-weight:900;color:#F7ECC8;margin-bottom:12px;
   display:flex;align-items:center;gap:7px;
 }
-.section-title::before{content:'';width:3px;height:16px;background:#2E9E6B;border-radius:2px;flex-shrink:0}
+.section-title::before{content:'';width:3px;height:16px;background:#B08D3C;border-radius:2px;flex-shrink:0}
 
 /* ── عداد الفرص ── */
 .chances-bar{
@@ -197,23 +197,23 @@ body{
 .filter-row::-webkit-scrollbar{display:none}
 .filter-chip{
   padding:6px 12px;border-radius:16px;font-size:9pt;font-weight:700;
-  background:rgba(255,255,255,.04);border:1.5px solid rgba(34,197,94,.15);
+  background:rgba(255,255,255,.04);border:1.5px solid rgba(200,162,74,.15);
   color:rgba(249,246,239,.5);cursor:pointer;white-space:nowrap;transition:all .25s;flex-shrink:0;
 }
 .filter-chip.active{background:rgba(29,107,196,.15);border-color:rgba(29,107,196,.5);color:#6db8ff}
-.filter-chip:hover{border-color:rgba(34,197,94,.35)}
+.filter-chip:hover{border-color:rgba(200,162,74,.35)}
 
-.job-filters{padding:16px;margin-bottom:16px;border:1px solid #2E9E6B45;border-radius:16px;background:#ffffff05;}
+.job-filters{padding:16px;margin-bottom:16px;border:1px solid #B08D3C45;border-radius:16px;background:#ffffff05;}
 .jf-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}.jf-top b{font-size:12pt;color:#ecd89d}.jf-top p{font-size:8pt;line-height:1.8;color:#bec9dc;margin:4px 0 0;max-width:390px}
-.jf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.jf-grid>div{min-width:0}.job-filters label{display:block;font-size:9pt;color:#e8e9ee;margin:0 0 5px}.job-filters input:not([type=checkbox]),.job-filters select{width:100%;min-height:44px;box-sizing:border-box;background:#10223d;color:#f9f6ef;border:1px solid #58657a;border-radius:9px;padding:9px;font:inherit;font-size:10pt}.job-filters input::placeholder{color:#9caac1}.job-filters input:focus,.job-filters select:focus{outline:2px solid #d8b65c;outline-offset:2px}.job-filters option{background:#10223d;color:#fff}.jf-advanced{margin-top:12px;border-top:1px solid #ffffff15;padding-top:10px}.jf-advanced summary{cursor:pointer;color:#dbc587;font-size:9pt;padding:5px 0}.jf-advanced .jf-grid{margin-top:10px}.jf-bottom{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}.job-filters .jf-check{display:flex;align-items:center;gap:6px;margin:0;font-size:9pt}.jf-check input{width:18px;height:18px;accent-color:#2E9E6B}.job-filters #jobs-count{font-size:9pt;color:#c9d4e5;border-top:1px solid #ffffff12;padding-top:10px;margin-top:12px}.job-filters #jf-error{color:#ffb7ad;font-size:9pt}.job-filters .btn{white-space:normal}.job-remove{margin-inline-start:5px;background:none;border:1px solid #2E9E6B70;border-radius:6px;color:#ead9ae;font:inherit;font-size:8pt;cursor:pointer}
+.jf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.jf-grid>div{min-width:0}.job-filters label{display:block;font-size:9pt;color:#e8e9ee;margin:0 0 5px}.job-filters input:not([type=checkbox]),.job-filters select{width:100%;min-height:44px;box-sizing:border-box;background:#10223d;color:#f9f6ef;border:1px solid #58657a;border-radius:9px;padding:9px;font:inherit;font-size:10pt}.job-filters input::placeholder{color:#9caac1}.job-filters input:focus,.job-filters select:focus{outline:2px solid #d8b65c;outline-offset:2px}.job-filters option{background:#10223d;color:#fff}.jf-advanced{margin-top:12px;border-top:1px solid #ffffff15;padding-top:10px}.jf-advanced summary{cursor:pointer;color:#dbc587;font-size:9pt;padding:5px 0}.jf-advanced .jf-grid{margin-top:10px}.jf-bottom{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}.job-filters .jf-check{display:flex;align-items:center;gap:6px;margin:0;font-size:9pt}.jf-check input{width:18px;height:18px;accent-color:#B08D3C}.job-filters #jobs-count{font-size:9pt;color:#c9d4e5;border-top:1px solid #ffffff12;padding-top:10px;margin-top:12px}.job-filters #jf-error{color:#ffb7ad;font-size:9pt}.job-filters .btn{white-space:normal}.job-remove{margin-inline-start:5px;background:none;border:1px solid #B08D3C70;border-radius:6px;color:#ead9ae;font:inherit;font-size:8pt;cursor:pointer}
 @media(max-width:420px){.jf-grid{grid-template-columns:1fr}.jf-top{flex-wrap:wrap}.job-filters{padding:12px}.jf-bottom .btn{width:100%}}
 
 /* ── بطاقة الوظيفة ── */
 .job-card{
-  background:rgba(255,255,255,.035);border:1px solid rgba(34,197,94,.1);
+  background:rgba(255,255,255,.035);border:1px solid rgba(200,162,74,.1);
   border-radius:12px;padding:12px;margin-bottom:9px;transition:all .25s;
 }
-.job-card:hover{border-color:rgba(34,197,94,.3);background:rgba(255,255,255,.05)}
+.job-card:hover{border-color:rgba(200,162,74,.3);background:rgba(255,255,255,.05)}
 .job-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .job-head .title{font-size:11.5pt;font-weight:800;color:#f4efe2}
 .job-head .badge{
@@ -224,7 +224,7 @@ body{
 .job-item{display:flex;align-items:baseline;gap:4px}
 .job-item .k{font-size:7.5pt;color:rgba(249,246,239,.4);white-space:nowrap}
 .job-item .v{font-size:9.5pt;font-weight:700;color:#f4efe2}
-.job-category{display:inline-flex;align-items:center;gap:5px;color:#dcfce9;font-size:8pt;margin:-2px 0 7px}
+.job-category{display:inline-flex;align-items:center;gap:5px;color:#F7ECC8;font-size:8pt;margin:-2px 0 7px}
 .job-details{margin:8px 0;padding:10px;border-radius:10px;background:rgba(29,107,196,.08);border:1px solid rgba(29,107,196,.18);font-size:9pt;line-height:1.8;color:rgba(249,246,239,.78)}
 .job-details[hidden]{display:none}.job-details ul{padding-inline-start:20px;margin:4px 0 0}.job-actions{display:flex;gap:8px;margin-top:9px}.job-actions .btn{flex:1}
 
@@ -232,10 +232,10 @@ body{
 .gender-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .gender-opt{
   padding:16px;border-radius:12px;text-align:center;cursor:pointer;
-  background:rgba(255,255,255,.03);border:2px solid rgba(34,197,94,.12);
+  background:rgba(255,255,255,.03);border:2px solid rgba(200,162,74,.12);
   transition:all .3s;font-size:11pt;font-weight:800;color:rgba(249,246,239,.5);
 }
-.gender-opt:hover{border-color:rgba(34,197,94,.35);background:rgba(255,255,255,.05)}
+.gender-opt:hover{border-color:rgba(200,162,74,.35);background:rgba(255,255,255,.05)}
 .gender-opt.selected{border-color:#1d6bc4;background:rgba(29,107,196,.12);color:#6db8ff}
 .gender-opt .icon{font-size:24pt;display:block;margin-bottom:4px}
 
@@ -253,12 +253,12 @@ body{
 .fs-head{
   background:linear-gradient(135deg,#0f1f3d,#1d3a6e 55%,#16294d);color:#f4efe2;
   min-height:20mm;padding:7px 14px;display:flex;justify-content:space-between;align-items:center;
-  border-bottom:1.2mm solid #2E9E6B;
+  border-bottom:1.2mm solid #B08D3C;
   box-shadow:inset 0 -1.1mm 0 rgba(255,255,255,.06);
 }
 .fs-head .brand{display:flex;align-items:center;gap:8px}
 .fs-head .brand svg{width:36px;height:36px}
-.fs-head .brand .n1{font-size:14pt;font-weight:900;color:#dcfce9;line-height:1.15}
+.fs-head .brand .n1{font-size:14pt;font-weight:900;color:#F7ECC8;line-height:1.15}
 .fs-head .brand .n2{font-size:4.8pt;color:rgba(249,246,239,.55);letter-spacing:.13em;direction:ltr}
 .fs-head .ttl{font-size:13pt;font-weight:900;color:#f7f0dc;line-height:1.2}
 .fs-head .ttl2{font-size:4.8pt;color:rgba(249,246,239,.5);letter-spacing:.18em;direction:ltr;text-align:left}
@@ -268,7 +268,7 @@ body{
 .fs-meta{display:flex;gap:9px;align-items:stretch;margin-bottom:5px}
 .fs-qr{
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
-  min-width:31mm;padding:5px 6px;background:#fdfcf7;border:1.2px solid #2E9E6B;border-radius:9px;
+  min-width:31mm;padding:5px 6px;background:#fdfcf7;border:1.2px solid #B08D3C;border-radius:9px;
 }
 .fs-qr .box{padding:2px;background:#fff;border-radius:3px;line-height:0}
 .fs-qr .cap{font-size:6.4pt;font-weight:900;color:#16294d;direction:ltr;letter-spacing:.03em}
@@ -279,7 +279,7 @@ body{
 .fs-f .v{font-size:8.5pt;font-weight:800;color:#16294d;line-height:1.3;overflow-wrap:anywhere}
 .fs-qr-note{
   grid-column:1/-1;font-size:6pt;line-height:1.55;color:#6b5320;background:#fdf9ee;
-  border:1px dashed #2E9E6B;border-radius:4px;padding:2.5px 6px;margin-top:3px;text-align:center;
+  border:1px dashed #B08D3C;border-radius:4px;padding:2.5px 6px;margin-top:3px;text-align:center;
 }
 
 /* ── عنوان قسم ── */
@@ -288,7 +288,7 @@ body{
   font-size:9pt;font-weight:900;color:#16294d;
   padding-bottom:2px;border-bottom:1px solid #e3d7b4;
 }
-.fs-h3::before{content:'';width:2.4mm;height:2.4mm;background:linear-gradient(135deg,#dcfce9,#a8781a);
+.fs-h3::before{content:'';width:2.4mm;height:2.4mm;background:linear-gradient(135deg,#F7ECC8,#a8781a);
   border-radius:50%;flex-shrink:0}
 .fs-h3 .en{font-size:4.6pt;color:#a89a78;font-weight:700;letter-spacing:.1em;direction:ltr;margin-inline-start:auto}
 
@@ -315,7 +315,7 @@ body{
 }
 .fs-emp-hd{
   display:flex;align-items:center;gap:5px;margin-bottom:4px;padding-bottom:3px;
-  font-size:8.4pt;font-weight:900;color:#15803D;border-bottom:1px solid #e6d7ae;
+  font-size:8.4pt;font-weight:900;color:#8A6D2C;border-bottom:1px solid #e6d7ae;
 }
 .fs-emp .fs-tbl{border-color:#efe4c8;background:transparent}
 .fs-emp .fs-td{background:transparent!important;border-bottom-color:#efe4c8}
@@ -323,7 +323,7 @@ body{
 /* ── الشروط: شرائح مرتبة ── */
 .fs-terms{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
 .fs-terms li{font-size:6.4pt;line-height:1.55;color:#3a2f14;padding-inline-start:9px;position:relative}
-.fs-terms li::before{content:'★';position:absolute;inset-inline-start:0;top:0;color:#2E9E6B;font-size:5pt}
+.fs-terms li::before{content:'★';position:absolute;inset-inline-start:0;top:0;color:#B08D3C;font-size:5pt}
 
 /* ── تعليمات صاحب العمل ── */
 .fs-emp-box{
@@ -331,12 +331,12 @@ body{
   border-radius:8px;padding:5px 8px;margin-top:5px;
   display:flex;gap:10px;align-items:flex-start;
 }
-.fs-emp-box h5{margin:0;font-size:7.8pt;color:#dcfce9;white-space:nowrap;line-height:1.6}
+.fs-emp-box h5{margin:0;font-size:7.8pt;color:#F7ECC8;white-space:nowrap;line-height:1.6}
 .fs-emp-box ol{
   margin:0;padding-inline-start:12px;font-size:6.1pt;line-height:1.7;
   columns:2;column-gap:12px;flex:1;
 }
-.fs-emp-box b{color:#dcfce9}
+.fs-emp-box b{color:#F7ECC8}
 
 /* ── التوقيعات ── */
 .fs-sign{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:6px}
@@ -380,7 +380,7 @@ body{
 
 /* ── التحميل ── */
 .spinner{display:inline-block;width:18px;height:18px;border:2.5px solid rgba(249,246,239,.12);
-  border-top-color:#dcfce9;border-radius:50%;animation:spin .5s linear infinite}
+  border-top-color:#F7ECC8;border-radius:50%;animation:spin .5s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading{text-align:center;padding:50px 16px}
 .loading .spinner{width:28px;height:28px;margin-bottom:12px}
@@ -393,7 +393,7 @@ body{
 .job-card{position:relative;cursor:pointer}
 .job-card.is-done{cursor:default;opacity:.72}
 .job-card.selected{
-  border:2px solid #e8c766;background:linear-gradient(180deg,rgba(232,199,102,.32),rgba(34,197,94,.16));
+  border:2px solid #e8c766;background:linear-gradient(180deg,rgba(232,199,102,.32),rgba(200,162,74,.16));
   box-shadow:0 0 0 2px rgba(232,199,102,.75),0 10px 32px rgba(232,199,102,.38);
   transform:translateY(-2px);
 }
@@ -401,7 +401,7 @@ body{
 .job-card .pick-mark{
   position:absolute;top:-9px;inset-inline-start:-9px;width:30px;height:30px;border-radius:50%;
   display:none;place-items:center;font-size:13pt;font-weight:900;color:#0b1a3a;
-  background:linear-gradient(135deg,#f2e2ac,#2E9E6B);box-shadow:0 4px 14px rgba(34,197,94,.45);
+  background:linear-gradient(135deg,#f2e2ac,#B08D3C);box-shadow:0 4px 14px rgba(200,162,74,.45);
 }
 .job-card.selected .pick-mark{display:grid;animation:pickPop .5s cubic-bezier(.22,1.4,.36,1) both}
 @keyframes pickPop{0%{transform:scale(0) rotate(-40deg);opacity:0}60%{transform:scale(1.25) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0)}}
@@ -413,34 +413,34 @@ body{
 .jobs-hint{
   font-size:8.5pt;font-weight:700;color:rgba(249,246,239,.5);text-align:center;
   padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.03);
-  border:1px dashed rgba(34,197,94,.25);margin-bottom:10px;transition:all .3s;
+  border:1px dashed rgba(200,162,74,.25);margin-bottom:10px;transition:all .3s;
 }
-.jobs-hint.picked{color:#dcfce9;background:rgba(34,197,94,.08);border-style:solid;border-color:rgba(34,197,94,.4)}
+.jobs-hint.picked{color:#F7ECC8;background:rgba(200,162,74,.08);border-style:solid;border-color:rgba(200,162,74,.4)}
 .jobs-hint .warn{color:#f0c060}
-.jobs-hint b{color:#dcfce9}
+.jobs-hint b{color:#F7ECC8}
 
 /* ═══════════════════════════════════════════════════════════════════════
    صفحة المراجعة قبل الإتمام
    ═══════════════════════════════════════════════════════════════════════ */
 .rv-card{
   background:linear-gradient(180deg,rgba(22,41,77,.75),rgba(13,31,66,.7));
-  border:1px solid rgba(34,197,94,.22);border-radius:16px;padding:16px;margin-bottom:14px;
+  border:1px solid rgba(200,162,74,.22);border-radius:16px;padding:16px;margin-bottom:14px;
   position:relative;overflow:hidden;
 }
-.rv-top{display:flex;gap:10px;align-items:center;padding-bottom:12px;border-bottom:1px solid rgba(34,197,94,.18);margin-bottom:12px}
+.rv-top{display:flex;gap:10px;align-items:center;padding-bottom:12px;border-bottom:1px solid rgba(200,162,74,.18);margin-bottom:12px}
 .rv-ic{
   width:44px;height:44px;flex:none;border-radius:12px;display:grid;place-items:center;font-size:18pt;
-  background:linear-gradient(135deg,rgba(29,107,196,.3),rgba(34,197,94,.18));border:1px solid rgba(34,197,94,.3);
+  background:linear-gradient(135deg,rgba(29,107,196,.3),rgba(200,162,74,.18));border:1px solid rgba(200,162,74,.3);
 }
-.rv-t{font-size:12pt;font-weight:900;color:#dcfce9;line-height:1.4}
+.rv-t{font-size:12pt;font-weight:900;color:#F7ECC8;line-height:1.4}
 .rv-s{font-size:8pt;color:rgba(249,246,239,.5);margin-top:2px;line-height:1.6}
 .rv-head{
-  font-size:9.5pt;font-weight:900;color:#dcfce9;margin:14px 0 8px;
+  font-size:9.5pt;font-weight:900;color:#F7ECC8;margin:14px 0 8px;
   display:flex;align-items:center;gap:6px;
 }
 .rv-head:first-of-type{margin-top:0}
 .rv-sub{font-size:9pt;font-weight:800;color:#6db8ff;margin:10px 0 4px;padding-inline-start:9px;border-inline-start:2px solid rgba(29,107,196,.5)}
-.rv-head::before{content:'';width:3px;height:14px;background:#2E9E6B;border-radius:2px;flex:none}
+.rv-head::before{content:'';width:3px;height:14px;background:#B08D3C;border-radius:2px;flex:none}
 .rv-row{
   display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed rgba(249,246,239,.07);
   animation:rvIn .45s cubic-bezier(.22,1,.36,1) both;
@@ -458,14 +458,14 @@ body{
 .rv-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .rv-chip{
   font-size:8pt;font-weight:800;padding:5px 10px;border-radius:8px;
-  background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.28);color:#dcfce9;
+  background:rgba(200,162,74,.1);border:1px solid rgba(200,162,74,.28);color:#F7ECC8;
 }
 .rv-chip.ok{background:rgba(34,160,91,.12);border-color:rgba(34,160,91,.3);color:#5ee8a0}
 .rv-note{
   font-size:8pt;line-height:1.9;color:rgba(249,246,239,.5);margin-top:12px;
   background:rgba(255,255,255,.03);border-radius:10px;padding:10px 12px;
 }
-.rv-note b{color:#dcfce9}
+.rv-note b{color:#F7ECC8}
 .rv-warn-move{animation:shake .45s ease}
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -490,10 +490,10 @@ body{
 @keyframes okRing{0%{transform:scale(.92);opacity:.75}100%{transform:scale(1.65);opacity:0}}
 .ok-title{font-size:14pt;font-weight:900;color:#5ee8a0;margin-bottom:4px}
 .ok-sub{font-size:9pt;color:rgba(249,246,239,.6);line-height:1.9}
-.ok-sub b{color:#dcfce9}
+.ok-sub b{color:#F7ECC8}
 .spark{
   position:absolute;top:52px;left:50%;width:7px;height:7px;border-radius:50%;pointer-events:none;
-  background:linear-gradient(135deg,#f2e2ac,#2E9E6B);opacity:0;
+  background:linear-gradient(135deg,#f2e2ac,#B08D3C);opacity:0;
   animation:sparkFly 1.5s cubic-bezier(.2,.7,.3,1) forwards;
 }
 @keyframes sparkFly{
@@ -506,7 +506,7 @@ body{
 @keyframes sheetUp{from{opacity:0;transform:translateY(26px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 .result-actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .result-actions .btn{width:100%}
-.btn-ghost-gold{background:rgba(34,197,94,.08);border:1.5px solid rgba(34,197,94,.4);color:#dcfce9}
+.btn-ghost-gold{background:rgba(200,162,74,.08);border:1.5px solid rgba(200,162,74,.4);color:#F7ECC8}
 
 /* ولمعة تمرّ على الأزرار المهمّة */
 .btn-shine::before{
@@ -547,7 +547,7 @@ body{
   .steps-bar{padding:18px 24px;border:1px solid #ffffff16;border-radius:16px;background:#ffffff04;margin-bottom:24px}.steps-track{gap:8px}.step-dot{flex:1 1 0;height:7px}.step-dot.active{flex:1.4 1 0}.step-label{font-size:16px;color:#c2ccdd}
   .pages-wrap{overflow:clip}.page{min-width:0}.page.active{min-height:calc(100dvh - 240px)}
   .profile-card{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:clamp(28px,5vw,90px);align-items:center;min-height:calc(100dvh - 340px);padding:clamp(24px,4vw,64px);border-radius:24px;background:linear-gradient(135deg,#162b4b,#10203b);border-color:#ffffff1c;box-shadow:0 20px 70px #00000020}
-  .step-intro{padding-inline-end:clamp(16px,3vw,48px);border-inline-end:1px solid #2E9E6B38}.step-eyebrow{display:inline-block;font-size:14px;font-weight:800;color:#e6c878;margin-bottom:18px;letter-spacing:.03em}.step-intro h1,.step-intro h2{font-size:clamp(28px,3vw,44px);line-height:1.6;color:#faf5e8;margin-bottom:14px}.step-intro p{font-size:18px;line-height:2;color:#c5d0e2}.step-assurance{font-size:14px;color:#e3cb95;border-top:1px solid #ffffff15;padding-top:20px;margin-top:28px}
+  .step-intro{padding-inline-end:clamp(16px,3vw,48px);border-inline-end:1px solid #B08D3C38}.step-eyebrow{display:inline-block;font-size:14px;font-weight:800;color:#e6c878;margin-bottom:18px;letter-spacing:.03em}.step-intro h1,.step-intro h2{font-size:clamp(28px,3vw,44px);line-height:1.6;color:#faf5e8;margin-bottom:14px}.step-intro p{font-size:18px;line-height:2;color:#c5d0e2}.step-assurance{font-size:14px;color:#e3cb95;border-top:1px solid #ffffff15;padding-top:20px;margin-top:28px}
   .step-fields{min-width:0}.section-title{font-size:22px;margin-bottom:20px}.section-title::before{height:24px;width:4px}.form-group{margin-bottom:22px}.form-group label{font-size:16px;color:#ead7a7;margin-bottom:10px}.form-group input,.form-group select{min-height:58px;font-size:18px!important;background:#0b1b32;border-color:#63738c;color:#fff;padding:14px 16px}.form-group input::placeholder{color:#a5b1c6}.form-group select:disabled{opacity:.65}.form-row3{gap:14px;grid-template-columns:repeat(3,minmax(0,1fr))}.form-row{grid-template-columns:repeat(2,minmax(0,1fr))}.form-row3 .form-group{min-width:0}
   .btn{min-height:52px;font-size:17px}.btn-row{gap:16px;margin-top:22px}.btn-row .btn{min-width:0}.btn:focus-visible,.gender-opt:focus-visible,.job-remove:focus-visible{outline:3px solid #e6c878;outline-offset:4px}.gender-opt{font-size:20px;padding:30px 16px;min-height:160px}.gender-opt .icon{font-size:42px}.phone-meter .pc-of,.phone-meter .pc-state,.dob-meter{font-size:14px}.phone-meter .pc-num{font-size:20px}
   .welcome{min-height:calc(100dvh - 150px);display:grid;align-content:center;justify-items:center;padding:40px 24px;border:1px solid #ffffff18;border-radius:24px;background:linear-gradient(140deg,#162b4b,#0d1e37)}.welcome .emblem{width:120px;height:120px}.welcome h1{font-size:clamp(28px,3.5vw,48px)}.welcome .sub{font-size:20px;color:#c5d0e2}.welcome .anim-fade-up2{width:min(100%,600px)}.welcome .gold-line{width:100%;margin:24px 0}#welcome-status{font-size:16px!important;margin-bottom:20px}
@@ -557,7 +557,7 @@ body{
   #result-content>.form-sheet{margin-top:24px}#result-content .fs-head{padding:22px}#result-content .fs-body{padding:20px}#result-content .fs-head .n1,#result-content .fs-head .ttl{font-size:24px}#result-content .fs-head .n2,#result-content .fs-head .ttl2,#result-content .fs-qr .cap2{font-size:12px}#result-content .fs-meta{gap:24px}#result-content .fs-f .k,#result-content .fs-section .fs-td .k{font-size:15px;line-height:1.8}#result-content .fs-f .v,#result-content .fs-section .fs-td .v{font-size:18px;line-height:1.8}#result-content .fs-section .fs-h3{font-size:20px}#result-content .fs-qr-note,#result-content .fs-notes,#result-content .fs-foot{font-size:14px;line-height:1.9}
   .footer{font-size:14px;color:#a5b4cc;padding-top:24px}.loading{min-height:65dvh;display:grid;align-content:center;justify-items:center;gap:16px}.loading p{font-size:18px;color:#c5d0e2}#error-msg{font-size:18px!important}.alert{font-size:16px}
   @media(max-width:1100px){.jf-primary{grid-template-columns:repeat(3,minmax(0,1fr))}.jf-search{grid-column:span 2}.jf-grid:not(.jf-primary){grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:760px){.app{padding:16px}.profile-card{grid-template-columns:1fr;gap:28px;padding:24px;min-height:calc(100dvh - 330px)}.step-intro{border-inline-end:0;border-bottom:1px solid #2E9E6B38;padding:0 0 24px}.step-intro h1,.step-intro h2{font-size:28px}.step-intro p{font-size:16px}.step-eyebrow{margin-bottom:10px}.step-assurance{display:none}.topbar .t2{font-size:10px;letter-spacing:0}.steps-bar{padding:16px}.welcome{padding:32px 20px}.job-filters{padding:20px}.jf-top{align-items:flex-start;flex-wrap:wrap}.jf-primary,.jf-grid:not(.jf-primary){grid-template-columns:repeat(2,minmax(0,1fr))}.jf-top>.btn{width:100%}.jf-search{grid-column:1/-1}.jf-bottom>.btn{width:100%}.rv-row{gap:10px;flex-wrap:wrap}.rv-k{flex-basis:100%;font-size:15px}.rv-v{font-size:18px}.rv-t{font-size:22px}.rv-top{align-items:flex-start}.rv-edit{padding:8px 12px}.form-group input,.form-group select{font-size:16px!important}.form-row3{gap:8px}.form-row3 select{padding:12px 7px}.form-row3 label{font-size:14px}#result-content .fs-meta{flex-wrap:wrap}#result-content .fs-fields{flex-basis:100%;grid-template-columns:repeat(2,minmax(0,1fr))}#result-content .fs-head{flex-wrap:wrap;gap:14px}#result-content .fs-f .v,#result-content .fs-section .fs-td .v{font-size:16px}}
+  @media(max-width:760px){.app{padding:16px}.profile-card{grid-template-columns:1fr;gap:28px;padding:24px;min-height:calc(100dvh - 330px)}.step-intro{border-inline-end:0;border-bottom:1px solid #B08D3C38;padding:0 0 24px}.step-intro h1,.step-intro h2{font-size:28px}.step-intro p{font-size:16px}.step-eyebrow{margin-bottom:10px}.step-assurance{display:none}.topbar .t2{font-size:10px;letter-spacing:0}.steps-bar{padding:16px}.welcome{padding:32px 20px}.job-filters{padding:20px}.jf-top{align-items:flex-start;flex-wrap:wrap}.jf-primary,.jf-grid:not(.jf-primary){grid-template-columns:repeat(2,minmax(0,1fr))}.jf-top>.btn{width:100%}.jf-search{grid-column:1/-1}.jf-bottom>.btn{width:100%}.rv-row{gap:10px;flex-wrap:wrap}.rv-k{flex-basis:100%;font-size:15px}.rv-v{font-size:18px}.rv-t{font-size:22px}.rv-top{align-items:flex-start}.rv-edit{padding:8px 12px}.form-group input,.form-group select{font-size:16px!important}.form-row3{gap:8px}.form-row3 select{padding:12px 7px}.form-row3 label{font-size:14px}#result-content .fs-meta{flex-wrap:wrap}#result-content .fs-fields{flex-basis:100%;grid-template-columns:repeat(2,minmax(0,1fr))}#result-content .fs-head{flex-wrap:wrap;gap:14px}#result-content .fs-f .v,#result-content .fs-section .fs-td .v{font-size:16px}}
   @media(max-width:420px){.app{padding:12px}.profile-card{padding:20px}.jf-primary,.jf-grid:not(.jf-primary){grid-template-columns:1fr}.jf-search{grid-column:auto}.job-card{padding:20px}.job-head{flex-wrap:wrap}.btn-row{gap:10px}.btn-row .btn{padding:12px 10px;font-size:16px}.topbar .t1{font-size:20px}}
 }
 
@@ -570,7 +570,7 @@ body{
   .app{isolation:isolate}.topbar{position:relative}.topbar::after{content:'رحلتك إلى فرصة جديدة';margin-inline-start:auto;font-size:14px;color:#b6c8df;border:1px solid #b5cae125;padding:8px 16px;border-radius:999px;background:#ffffff05}
   .step-intro h1,.step-intro h2{letter-spacing:-.03em}.step-eyebrow{padding:6px 12px;border:1px solid #d7b96535;border-radius:8px;background:#d7b96509}.profile-card{box-shadow:0 16px 56px #00000024,inset 0 1px 0 #ffffff0c}.profile-card::after{display:none}.step-fields{padding:clamp(8px,1.4vw,24px);background:#07162b30;border:1px solid #ffffff0a;border-radius:18px}.form-group label{transition:color .2s}.form-group:focus-within label{color:#fff2c6}.form-group input:focus,.form-group select:focus{border-color:#7aaef5;box-shadow:0 0 0 4px #659cf01f}.btn-primary{background:linear-gradient(120deg,#2379d4,#1858a2);box-shadow:0 8px 24px #0a6dd52b}.btn:not(:disabled):hover{filter:brightness(1.09)}.btn:not(:disabled):active{transform:translateY(1px) scale(.99)}
   .identity-notice{padding:18px 22px;margin-bottom:20px;border:1px solid #d9bd724f;border-inline-start:4px solid #dfc27c;border-radius:14px;background:linear-gradient(110deg,#d0b46512,#182b43);color:#f2dfb3;font-size:16px;line-height:1.9}.profile-locked .step-dot:nth-child(-n+5){display:none}.profile-locked .steps-bar{border-color:#dcc27c30}.profile-locked .rv-top{border-color:#dcc27c40}.profile-locked #btn-jobs-next{flex-basis:100%}
-  .job-card{transition:border-color .2s,box-shadow .2s,background .2s,translate .2s}.job-card:hover{translate:0 -3px;box-shadow:0 14px 32px #00000024}.job-card.selected{border-color:#f1d99c;box-shadow:0 0 0 1px #f1d99c80,0 14px 34px #2E9E6B20}.job-filters:focus-within{border-color:#2E9E6B65}.page.active .job-filters{animation:stageReveal .4s both}.page.active .step-intro{animation:stageReveal .5s both}.page.active .step-fields{animation:stageReveal .5s .08s both}.page.active #jobs-list .job-card{animation-duration:.4s}.page.active #jobs-list .job-card:nth-child(2){animation-delay:.04s}.page.active #jobs-list .job-card:nth-child(3){animation-delay:.08s}.page.active #jobs-list .job-card:nth-child(n+4){animation-delay:.12s}
+  .job-card{transition:border-color .2s,box-shadow .2s,background .2s,translate .2s}.job-card:hover{translate:0 -3px;box-shadow:0 14px 32px #00000024}.job-card.selected{border-color:#f1d99c;box-shadow:0 0 0 1px #f1d99c80,0 14px 34px #B08D3C20}.job-filters:focus-within{border-color:#B08D3C65}.page.active .job-filters{animation:stageReveal .4s both}.page.active .step-intro{animation:stageReveal .5s both}.page.active .step-fields{animation:stageReveal .5s .08s both}.page.active #jobs-list .job-card{animation-duration:.4s}.page.active #jobs-list .job-card:nth-child(2){animation-delay:.04s}.page.active #jobs-list .job-card:nth-child(3){animation-delay:.08s}.page.active #jobs-list .job-card:nth-child(n+4){animation-delay:.12s}
   @keyframes stageReveal{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
   @media(max-width:760px){.topbar::after{display:none}.step-fields{padding:16px}.profile-card{padding:20px;gap:22px}.identity-notice{padding:16px;font-size:16px}.step-intro p{line-height:1.9}.step-intro{padding-bottom:20px}}
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.job-card:hover{translate:none}}
@@ -589,9 +589,9 @@ body{
 }
 .btn-card-details:hover{border-color:#e2c77f;background:#1a3457}
 .btn-card-details:focus-visible{outline:3px solid #e2c77f;outline-offset:4px}
-.btn-card-details svg{flex:none;color:#dcfce9}
+.btn-card-details svg{flex:none;color:#F7ECC8}
 .bcd-count{
-  font-size:12.5px;font-weight:700;color:#0f2440;background:#dcfce9;
+  font-size:12.5px;font-weight:700;color:#0f2440;background:#F7ECC8;
   border-radius:999px;padding:2px 10px;white-space:nowrap
 }
 .card-sheet{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:18px}
@@ -626,8 +626,8 @@ body{
 .cs-f{background:#ffffff08;border:1px solid #ffffff12;border-radius:11px;padding:9px 12px;min-width:0}
 .cs-f span{display:block;font-size:11px;font-weight:700;color:#93a3bf;margin-bottom:3px}
 .cs-f b{display:block;font-size:13.5px;font-weight:800;color:#f4efe2;word-break:break-word}
-.cs-sub{margin:16px 0 8px;font-size:13px;font-weight:900;color:#dcfce9;display:flex;align-items:center;gap:7px}
-.cs-sub::before{content:'';width:4px;height:14px;border-radius:2px;background:#2E9E6B}
+.cs-sub{margin:16px 0 8px;font-size:13px;font-weight:900;color:#F7ECC8;display:flex;align-items:center;gap:7px}
+.cs-sub::before{content:'';width:4px;height:14px;border-radius:2px;background:#B08D3C}
 .cs-chances{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .cs-chance{
   display:grid;grid-template-columns:78px minmax(0,1fr) auto;align-items:center;gap:10px;
@@ -720,7 +720,7 @@ body{
   --lux-navy-2:#0b1d33;
   --lux-navy-3:#0f2742;
   --lux-gold:#ffd977;
-  --lux-gold-2:#15803D;
+  --lux-gold-2:#8A6D2C;
   --lux-gold-3:#a8842f;
   --lux-neon:#38e8d4;
   --lux-neon-2:#7ff8ec;
@@ -1373,7 +1373,7 @@ body{
   position:absolute; top:-14px; inset-inline-end:14px;
   font-size:9.5pt; font-weight:800; color:#20180a; white-space:nowrap;
   padding:4px 12px; border-radius:999px;
-  background:linear-gradient(140deg,#d1fae5,#15803D);
+  background:linear-gradient(140deg,#d1fae5,#8A6D2C);
   box-shadow:0 8px 20px -8px rgba(110,231,168,.9);
   animation:pickPop .45s cubic-bezier(.22,1.4,.36,1) both;
 }
@@ -1417,7 +1417,7 @@ body{
   :root{
     --ap-cream:#ffffff; --ap-cream-2:#f4f7f9;
     --ap-navy:#12305c; --ap-navy-2:#0d2247; --ap-navy-3:#1b4480;
-    --ap-gold:#2E9E6B; --ap-gold-2:#6EE7A8; --ap-gold-soft:#f0e2bd;
+    --ap-gold:#B08D3C; --ap-gold-2:#E3C479; --ap-gold-soft:#f0e2bd;
     --ap-ink:#16294a; --ap-muted:#6a7891;
     --ap-field:#e9eefb; --ap-field-line:#d8e2ec;
     --ap-card:#ffffff; --ap-line:#e4eaef;
@@ -1428,7 +1428,7 @@ body{
     background-color:#ffffff !important;
     background-image:
       radial-gradient(1000px 380px at 12% -6%, rgba(18,48,92,.10), transparent 70%),
-      radial-gradient(820px 320px at 92% 4%, rgba(34,197,94,.14), transparent 72%),
+      radial-gradient(820px 320px at 92% 4%, rgba(200,162,74,.14), transparent 72%),
       linear-gradient(180deg,#ffffff 0%,#ffffff 45%,#ffffff 100%) !important;
     color:var(--ap-ink) !important;
   }
@@ -1438,18 +1438,18 @@ body{
   }
   body::before{
     inset-block-start:0; height:190px;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 190' preserveAspectRatio='none'><path d='M0 0h1200v96c-150 42-330 62-600 62S150 138 0 96z' fill='%2312305c'/><path d='M0 96c150 42 330 62 600 62s450-20 600-62v14c-150 44-330 64-600 64S150 154 0 110z' fill='%2360AAFF' opacity='.55'/></svg>");
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 190' preserveAspectRatio='none'><path d='M0 0h1200v96c-150 42-330 62-600 62S150 138 0 96z' fill='%2312305c'/><path d='M0 96c150 42 330 62 600 62s450-20 600-62v14c-150 44-330 64-600 64S150 154 0 110z' fill='%23C8A24A' opacity='.55'/></svg>");
   }
   body::after{
     inset-block-end:0; height:150px;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 150' preserveAspectRatio='none'><path d='M0 150h1200v-52c-150-40-330-58-600-58S150 58 0 98z' fill='%2312305c'/><path d='M0 98c150-40 330-58 600-58s450 18 600 58v-12c-150-42-330-60-600-60S150 44 0 86z' fill='%2360AAFF' opacity='.5'/></svg>");
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 150' preserveAspectRatio='none'><path d='M0 150h1200v-52c-150-40-330-58-600-58S150 58 0 98z' fill='%2312305c'/><path d='M0 98c150-40 330-58 600-58s450 18 600 58v-12c-150-42-330-60-600-60S150 44 0 86z' fill='%23C8A24A' opacity='.5'/></svg>");
   }
   .app{position:relative; z-index:1}
 
   /* ── الشريط العلوي: كحلي بحدود ذهبية ── */
   .topbar{
     background:linear-gradient(120deg,var(--ap-navy-2),var(--ap-navy) 55%,var(--ap-navy-3));
-    border:1px solid rgba(34,197,94,.45); border-radius:18px;
+    border:1px solid rgba(200,162,74,.45); border-radius:18px;
     padding:14px 20px !important; margin-bottom:20px !important;
     box-shadow:0 12px 30px rgba(13,34,71,.22);
   }
@@ -1466,7 +1466,7 @@ body{
   .steps-track{gap:9px; justify-content:flex-start}
   .step-dot{flex:0 0 26px; height:8px; border-radius:99px; background:#dfe6f3 !important; box-shadow:none !important}
   .step-dot.done{background:linear-gradient(90deg,var(--ap-gold),var(--ap-gold-2)) !important}
-  .step-dot.active{flex:0 0 44px; background:linear-gradient(90deg,var(--ap-gold),var(--ap-gold-2)) !important; box-shadow:0 0 0 3px rgba(34,197,94,.18) !important}
+  .step-dot.active{flex:0 0 44px; background:linear-gradient(90deg,var(--ap-gold),var(--ap-gold-2)) !important; box-shadow:0 0 0 3px rgba(200,162,74,.18) !important}
   .step-label{color:var(--ap-muted) !important; font-weight:800}
   .step-label b{color:var(--ap-navy) !important}
   .step-label .pct{
@@ -1498,7 +1498,7 @@ body{
   }
   .step-intro p{color:var(--ap-muted) !important}
   .step-assurance{
-    color:#15803D !important; border-top:1px solid var(--ap-line) !important;
+    color:#8A6D2C !important; border-top:1px solid var(--ap-line) !important;
   }
   .section-title{color:var(--ap-navy) !important}
   .section-title::before{background:linear-gradient(180deg,var(--ap-gold),var(--ap-gold-2)) !important}
@@ -1513,7 +1513,7 @@ body{
   .form-group input::placeholder{color:#93a3bd !important}
   .form-group input:focus, .form-group select:focus{
     border-color:var(--ap-gold) !important; background:#f3f6ff !important;
-    box-shadow:0 0 0 4px rgba(34,197,94,.16) !important;
+    box-shadow:0 0 0 4px rgba(200,162,74,.16) !important;
   }
   .form-group select option{background:#fff !important; color:var(--ap-ink) !important}
   .form-group input.valid, .form-group select.valid{border-color:#1f8f4e !important}
@@ -1523,7 +1523,7 @@ body{
   .btn{border-radius:13px !important}
   .btn-primary{
     background:linear-gradient(135deg,var(--ap-navy),var(--ap-navy-3)) !important;
-    color:#fff !important; border:1.5px solid rgba(34,197,94,.55) !important;
+    color:#fff !important; border:1.5px solid rgba(200,162,74,.55) !important;
     box-shadow:0 10px 24px rgba(13,34,71,.28) !important;
   }
   .btn-primary:hover{background:linear-gradient(135deg,var(--ap-navy-3),var(--ap-navy)) !important}
@@ -1536,7 +1536,7 @@ body{
 
   /* ── الترحيب ── */
   .mk-screen{background:var(--ap-cream) !important}
-  #welcome-status{color:#15803D !important}
+  #welcome-status{color:#8A6D2C !important}
   .btn-card-details{
     background:#ffffff !important; border:1.5px solid var(--ap-field-line) !important;
     color:var(--ap-navy) !important;
@@ -1564,7 +1564,7 @@ body{
     background:#ffffff !important; border:1px solid var(--ap-line) !important;
     box-shadow:0 10px 26px rgba(18,48,92,.08) !important;
   }
-  .job-card.selected{border-color:var(--ap-gold) !important; box-shadow:0 0 0 2px rgba(34,197,94,.35),0 14px 30px rgba(18,48,92,.12) !important}
+  .job-card.selected{border-color:var(--ap-gold) !important; box-shadow:0 0 0 2px rgba(200,162,74,.35),0 14px 30px rgba(18,48,92,.12) !important}
   .job-head .title{color:var(--ap-navy) !important}
   .job-item .k{color:var(--ap-muted) !important}
   .job-item .v{color:var(--ap-ink) !important}
@@ -1583,7 +1583,7 @@ body{
   .rv-head, .rv-sub{color:var(--ap-navy) !important}
   .rv-row{border-color:var(--ap-line) !important}
   .rv-chip{background:var(--ap-field) !important; color:var(--ap-navy) !important; border-color:var(--ap-field-line) !important}
-  .rv-note{background:var(--ap-cream-2) !important; color:#15803D !important}
+  .rv-note{background:var(--ap-cream-2) !important; color:#8A6D2C !important}
   .rv-edit{background:#fff !important; color:var(--ap-navy) !important; border-color:var(--ap-field-line) !important}
   .ok-title{color:var(--ap-navy) !important}
   .ok-sub{color:var(--ap-muted) !important}
@@ -1595,11 +1595,11 @@ body{
   }
   .gender-opt.selected, .gender-opt[aria-pressed=true]{
     background:var(--ap-field) !important; border-color:var(--ap-gold) !important;
-    box-shadow:0 0 0 3px rgba(34,197,94,.18) !important;
+    box-shadow:0 0 0 3px rgba(200,162,74,.18) !important;
   }
   .phone-meter{color:var(--ap-muted) !important}
   .phone-meter .pc-num{color:var(--ap-navy) !important}
-  .alert{background:#fff7ea !important; border:1px solid var(--ap-gold-soft) !important; color:#15803D !important}
+  .alert{background:#fff7ea !important; border:1px solid var(--ap-gold-soft) !important; color:#8A6D2C !important}
   .loading p{color:var(--ap-muted) !important}
   #error-msg{color:#b02a2a !important}
   .footer{color:#8a94a6 !important}
@@ -1617,22 +1617,22 @@ body{
   /* ── تنبيه «البيانات مثبتة» (كان تدرّجاً داكناً) ── */
   .identity-notice, .profile-locked .identity-notice{
     background:#FFFFFF !important;
-    border:1px solid #D8E6FA !important;
-    border-inline-start:4px solid #2F6FD0 !important;
-    color:#1B4C8F !important; border-radius:14px !important;
+    border:1px solid #E8DDC4 !important;
+    border-inline-start:4px solid #1B4480 !important;
+    color:#12305C !important; border-radius:14px !important;
   }
-  .identity-notice b, .identity-notice strong{color:#0E2E5C !important}
+  .identity-notice b, .identity-notice strong{color:#0D2247 !important}
 
   /* ── بطاقات الوظائف: نصوص واضحة على الأبيض ── */
   .job-card .job-head .title{color:var(--ap-navy) !important}
-  .job-category, .job-category span{color:#15803D !important}
+  .job-category, .job-category span{color:#8A6D2C !important}
   .job-head .badge{
     background:var(--ap-field) !important; color:var(--ap-navy) !important;
     border:1px solid var(--ap-field-line) !important; border-radius:999px !important;
     padding:4px 12px !important; font-weight:900 !important;
   }
   .job-head .badge.ok{background:#ffffff !important; color:#1a6b3f !important; border-color:#bfe0cb !important}
-  .job-head .badge.warn{background:#ffffff !important; color:#15803D !important; border-color:var(--ap-gold-soft) !important}
+  .job-head .badge.warn{background:#ffffff !important; color:#8A6D2C !important; border-color:var(--ap-gold-soft) !important}
   .job-head .badge.muted{background:#eef1f7 !important; color:#5a6880 !important; border-color:#dbe2ee !important}
   .job-item .k{color:var(--ap-muted) !important}
   .job-item .v{color:var(--ap-ink) !important; font-weight:800}
@@ -1640,7 +1640,7 @@ body{
   .job-actions .btn-outline{background:#fff !important}
   .job-actions .btn-primary{
     background:linear-gradient(135deg,var(--ap-navy),var(--ap-navy-3)) !important;
-    color:#fff !important; border:1.5px solid rgba(34,197,94,.55) !important;
+    color:#fff !important; border:1.5px solid rgba(200,162,74,.55) !important;
   }
   .job-remove{color:#8a3a2c !important; border-color:#eccfc9 !important}
 
@@ -1669,7 +1669,7 @@ body{
     border:1px solid #b8e2da !important; border-radius:8px !important;
   }
   .job-tags .job-cat{
-    color:#15803D !important; background:#ffffff !important;
+    color:#8A6D2C !important; background:#ffffff !important;
     border:1px solid var(--ap-gold-soft) !important; border-radius:8px !important;
   }
   .job-state.is-open{color:#1d6b4f !important; background:#e8f7f0 !important; border:1px solid #b9e4d1 !important}
@@ -1687,10 +1687,10 @@ body{
   #jobs-list .job-actions .btn-outline{background:#fff !important; border-color:var(--ap-navy) !important; color:var(--ap-navy) !important}
   #jobs-list .job-actions .btn-primary{
     background:linear-gradient(135deg,var(--ap-navy),var(--ap-navy-3)) !important;
-    color:#fff !important; border:1.5px solid rgba(34,197,94,.5) !important;
+    color:#fff !important; border:1.5px solid rgba(200,162,74,.5) !important;
   }
   .pick-mark{background:var(--ap-gold) !important; color:#1c1405 !important; border-color:#fff !important}
-  .job-card.selected{border-color:var(--ap-gold) !important; box-shadow:0 0 0 2px rgba(34,197,94,.35),0 16px 34px rgba(18,48,92,.14) !important}
+  .job-card.selected{border-color:var(--ap-gold) !important; box-shadow:0 0 0 2px rgba(200,162,74,.35),0 16px 34px rgba(18,48,92,.14) !important}
   /* بطاقة الوظيفة: إطار داخلي فاتح */
   #jobs-list .job-card::before{opacity:0 !important}
   #jobs-list .job-card{background:#ffffff !important}
@@ -1699,10 +1699,10 @@ body{
   /* ── سطر الأجر داخل بطاقة الوظيفة + منطقة الأزرار ── */
   #jobs-list .job-pay, #jobs-list .job-pay-row, #jobs-list .job-salary{
     background:#ffffff !important; border:1px solid var(--ap-gold-soft) !important;
-    color:#15803D !important; border-radius:12px !important;
+    color:#8A6D2C !important; border-radius:12px !important;
   }
   #jobs-list .job-pay *, #jobs-list .job-pay-row *, #jobs-list .job-salary *{
-    color:#15803D !important;
+    color:#8A6D2C !important;
   }
   #jobs-list .job-pay b, #jobs-list .job-pay-row b, #jobs-list .job-salary b{
     color:#6b4f14 !important; font-weight:900 !important;
@@ -1724,11 +1724,11 @@ body{
   /* ── 1) الرموز والخلفية ─────────────────────────────────────────────── */
   :root{
     --ap-cream:#ffffff; --ap-cream-2:#f4f7f9; --ap-cream-3:#ffffff;
-    /* كحلي «منصة مكسب» #012F3E وذهبه #22C55E والأخضران #94D183 / #3FB190 */
-    --ap-navy:#012F3E; --ap-navy-2:#01222C; --ap-navy-3:#0A4E60;
-    --ap-gold:#2E9E6B; --ap-gold-2:#6EE7A8; --ap-gold-3:#9d7a2c; --ap-gold-soft:#f0e2bd;
-    --mk-gold:#22C55E; --mk-gold-2:#6EE7A8;
-    --mk-green:#94D183; --mk-teal:#3FB190;
+    /* كحلي «منصة مكسب» #16304F وذهبه #C8A24A والأخضران #94D183 / #1F8F96 */
+    --ap-navy:#16304F; --ap-navy-2:#0D2247; --ap-navy-3:#12305C;
+    --ap-gold:#B08D3C; --ap-gold-2:#E3C479; --ap-gold-3:#9d7a2c; --ap-gold-soft:#f0e2bd;
+    --mk-gold:#C8A24A; --mk-gold-2:#E3C479;
+    --mk-green:#94D183; --mk-teal:#1F8F96;
     --ap-ink:#16294a; --ap-muted:#6c7a92;
     --ap-field:#e9eefb; --ap-field-2:#f4f7ff; --ap-field-line:#d3def2;
     --ap-card:#ffffff; --ap-line:#e4eaef;
@@ -1744,7 +1744,7 @@ body{
     background-color:var(--ap-cream)!important;
     background-image:
       radial-gradient(760px 320px at 4% -4%,rgba(18,48,92,.13),transparent 72%),
-      radial-gradient(900px 400px at 96% -10%,rgba(34,197,94,.22),transparent 72%),
+      radial-gradient(900px 400px at 96% -10%,rgba(200,162,74,.22),transparent 72%),
       linear-gradient(180deg,#ffffff 0%,#ffffff 48%,#ffffff 100%)!important;
     color:var(--ap-ink)!important;
     -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
@@ -1756,12 +1756,12 @@ body{
   }
   body::before{
     inset-block-start:0;height:clamp(148px,24vw,214px);
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 200' preserveAspectRatio='none'><path d='M0 0h1200v90c-165 45-350 67-600 67S165 135 0 90z' fill='%2312305c'/><path d='M0 0h1200v70c-165 39-350 57-600 57S165 109 0 70z' fill='%230c2247' opacity='.9'/><path d='M0 90c165 45 350 67 600 67s435-22 600-67v11c-165 47-350 69-600 69S165 149 0 101z' fill='%2360AAFF'/><path d='M0 101c165 47 350 69 600 69s435-22 600-69v9c-165 49-350 71-600 71S165 160 0 110z' fill='%23ffffff' opacity='.8'/></svg>");
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 200' preserveAspectRatio='none'><path d='M0 0h1200v90c-165 45-350 67-600 67S165 135 0 90z' fill='%2312305c'/><path d='M0 0h1200v70c-165 39-350 57-600 57S165 109 0 70z' fill='%230c2247' opacity='.9'/><path d='M0 90c165 45 350 67 600 67s435-22 600-67v11c-165 47-350 69-600 69S165 149 0 101z' fill='%23C8A24A'/><path d='M0 101c165 47 350 69 600 69s435-22 600-69v9c-165 49-350 71-600 71S165 160 0 110z' fill='%23ffffff' opacity='.8'/></svg>");
     animation:apWaveTop 18s ease-in-out infinite alternate;
   }
   body::after{
     inset-block-end:0;height:clamp(104px,17vw,158px);
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 160' preserveAspectRatio='none'><path d='M0 160h1200v-52c-165-40-350-59-600-59S165 68 0 108z' fill='%2312305c'/><path d='M0 160h1200v-32c-165-36-350-53-600-53S165 92 0 128z' fill='%230c2247' opacity='.9'/><path d='M0 108c165-40 350-59 600-59s435 19 600 59v-11c-165-42-350-61-600-61S165 55 0 97z' fill='%2360AAFF'/><path d='M0 97c165-42 350-61 600-61s435 19 600 61v-9c-165-44-350-63-600-63S165 46 0 88z' fill='%23ffffff' opacity='.8'/></svg>");
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 160' preserveAspectRatio='none'><path d='M0 160h1200v-52c-165-40-350-59-600-59S165 68 0 108z' fill='%2312305c'/><path d='M0 160h1200v-32c-165-36-350-53-600-53S165 92 0 128z' fill='%230c2247' opacity='.9'/><path d='M0 108c165-40 350-59 600-59s435 19 600 59v-11c-165-42-350-61-600-61S165 55 0 97z' fill='%23C8A24A'/><path d='M0 97c165-42 350-61 600-61s435 19 600 61v-9c-165-44-350-63-600-63S165 46 0 88z' fill='%23ffffff' opacity='.8'/></svg>");
     animation:apWaveBottom 18s ease-in-out infinite alternate;
   }
   @keyframes apWaveTop{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,-7px,0)}}
@@ -1787,7 +1787,7 @@ body{
     display:inline-grid;place-items:center;flex:none;
     width:var(--tile,56px);height:var(--tile,56px);
     border-radius:calc(var(--tile,56px) * .26);
-    background:#012F3E;
+    background:#16304F;
     box-shadow:0 10px 24px rgba(4,18,28,.35),inset 0 1px 0 rgba(255,255,255,.06);
   }
   .mk-tile svg{display:block;width:100%;height:100%;border-radius:inherit}
@@ -1820,7 +1820,7 @@ body{
   }
   @media(min-width:641px){
     .mk-screen{
-      border-radius:28px;border:1px solid rgba(34,197,94,.35);
+      border-radius:28px;border:1px solid rgba(200,162,74,.35);
       box-shadow:0 34px 90px rgba(13,34,71,.24);
     }
   }
@@ -1830,7 +1830,7 @@ body{
     display:flex;align-items:center;justify-content:space-between;gap:14px;
     background:linear-gradient(120deg,#14335c,#0c2145 70%,#0a1b39);
     padding:10px 16px;text-align:start;
-    border-block-end:1px solid rgba(34,197,94,.35);
+    border-block-end:1px solid rgba(200,162,74,.35);
   }
   .mk-top-logo{--tile:clamp(38px,10vw,46px)}
   .mk-top-logo svg{display:block;width:100%;height:auto}
@@ -1890,7 +1890,7 @@ body{
   .mk-logo .mk-tile{display:grid;width:var(--tile);height:var(--tile);margin-inline:auto}
   .mk-logo::after{
     content:'';position:absolute;inset:-12% -18%;z-index:-1;border-radius:50%;
-    background:radial-gradient(circle,rgba(34,197,94,.30),rgba(34,197,94,0) 66%);
+    background:radial-gradient(circle,rgba(200,162,74,.30),rgba(200,162,74,0) 66%);
     animation:mkHalo 6.5s ease-in-out infinite;
   }
   @keyframes mkHalo{0%,100%{opacity:.55;transform:scale(.97)}50%{opacity:.95;transform:scale(1.05)}}
@@ -1901,7 +1901,7 @@ body{
     text-shadow:0 6px 26px rgba(4,14,30,.62),0 1px 3px rgba(4,14,30,.5);
   }
   .mk-hero h1 b{
-    background:linear-gradient(100deg,#86efac,#22C55E 55%,#15803D);
+    background:linear-gradient(100deg,#E8D089,#C8A24A 55%,#8A6D2C);
     -webkit-background-clip:text;background-clip:text;color:transparent;
     -webkit-text-fill-color:transparent;
   }
@@ -1926,12 +1926,12 @@ body{
     width:min(100%,330px);margin-inline:auto;min-height:clamp(52px,13vw,56px);
     border-radius:999px!important;
     font-size:clamp(15px,4vw,17px)!important;font-weight:900!important;gap:10px!important;
-    background:linear-gradient(135deg,#41DE93,#22C55E 55%,#15803D)!important;
-    color:#04231A!important;
+    background:linear-gradient(135deg,#E8D089,#C8A24A 55%,#8A6D2C)!important;
+    color:#241A05!important;
     border:2px solid rgba(255,255,255,.55)!important;
     box-shadow:
       0 16px 34px rgba(21,128,61,.34),
-      0 0 0 4px rgba(34,197,94,.14),
+      0 0 0 4px rgba(200,162,74,.14),
       inset 0 1px 0 rgba(255,255,255,.45)!important;
     transition:transform .22s var(--ap-ease),box-shadow .28s ease,filter .28s ease!important;
   }
@@ -1943,7 +1943,7 @@ body{
   /* تفاصيل البطاقة (تظهر بعد قراءة البطاقة فقط) */
   .welcome-details{width:min(100%,330px);margin-top:12px;position:relative;z-index:2}
   .btn-card-details{
-    background:rgba(255,253,248,.94)!important;border:1.5px solid rgba(34,197,94,.7)!important;
+    background:rgba(255,253,248,.94)!important;border:1.5px solid rgba(200,162,74,.7)!important;
     color:var(--ap-navy)!important;border-radius:16px!important;
     min-height:54px!important;font-size:clamp(12.5px,3.2vw,14px)!important;font-weight:900!important;
     box-shadow:0 10px 24px rgba(6,18,36,.3)!important;
@@ -1952,9 +1952,9 @@ body{
   }
   .btn-card-details:hover{background:#fff!important;transform:translateY(-1px)}
   .btn-card-details:active{transform:translateY(1px) scale(.988)!important}
-  .btn-card-details svg{color:#15803D!important}
+  .btn-card-details svg{color:#8A6D2C!important}
   .bcd-count{
-    background:#ffffff!important;color:#15803D!important;border:1px solid var(--ap-gold-soft)!important;
+    background:#ffffff!important;color:#8A6D2C!important;border:1px solid var(--ap-gold-soft)!important;
     border-radius:999px!important;padding:3px 11px!important;font-size:.86em!important;font-weight:900!important;
   }
 
@@ -1999,7 +1999,7 @@ body{
     display:grid;place-items:center;width:clamp(44px,12vw,54px);height:clamp(44px,12vw,54px);
     border-radius:clamp(12px,3.4vw,16px);
     background:linear-gradient(160deg,#ffffff,#f9f1de);
-    border:1px solid rgba(34,197,94,.45);color:var(--ap-navy);
+    border:1px solid rgba(200,162,74,.45);color:var(--ap-navy);
     box-shadow:0 6px 16px rgba(120,92,36,.10);
   }
   .mk-feat-ic svg{width:clamp(22px,6vw,26px);height:clamp(22px,6vw,26px)}
@@ -2015,11 +2015,11 @@ body{
     .mk-feats{grid-template-columns:repeat(4,minmax(0,1fr))}
     .mk-feat + .mk-feat::before{
       content:'';position:absolute;inset-block:12%;inset-inline-start:0;width:1px;
-      background:linear-gradient(180deg,transparent,rgba(34,197,94,.55),transparent);
+      background:linear-gradient(180deg,transparent,rgba(200,162,74,.55),transparent);
     }
   }
   @media(max-width:719px){
-    .mk-feat:nth-child(n+3){border-top:1px solid rgba(34,197,94,.28);padding-top:clamp(12px,3.4vw,18px)}
+    .mk-feat:nth-child(n+3){border-top:1px solid rgba(200,162,74,.28);padding-top:clamp(12px,3.4vw,18px)}
   }
 
   /* خاتمة كحلية بموجة ذهبية (كما في الملصق) */
@@ -2068,7 +2068,7 @@ body{
   .step-dot.done{background:linear-gradient(90deg,var(--mk-teal),var(--mk-green))!important}
   .step-dot.active{
     background:linear-gradient(90deg,var(--mk-gold),var(--mk-gold-2))!important;
-    box-shadow:0 0 0 3px rgba(34,197,94,.22)!important;
+    box-shadow:0 0 0 3px rgba(200,162,74,.22)!important;
   }
   .step-label{
     display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:6px!important;
@@ -2093,7 +2093,7 @@ body{
   }
   .profile-card::before{
     content:'';position:absolute;inset-block-start:0;inset-inline-start:0;width:100%;height:4px;
-    background:linear-gradient(90deg,var(--ap-gold),var(--ap-gold-2) 40%,rgba(34,197,94,0));
+    background:linear-gradient(90deg,var(--ap-gold),var(--ap-gold-2) 40%,rgba(200,162,74,0));
   }
   .profile-card::after{display:none!important}
   .step-intro{
@@ -2146,7 +2146,7 @@ body{
   .form-group input::placeholder{color:#9aa9c1!important;font-weight:600}
   .form-group input:focus,.form-group select:focus{
     background:#f7faff!important;border-color:var(--ap-gold)!important;
-    box-shadow:0 0 0 4px rgba(34,197,94,.16)!important;outline:none!important;
+    box-shadow:0 0 0 4px rgba(200,162,74,.16)!important;outline:none!important;
   }
   .form-group input.valid,.form-group select.valid{
     border-color:#1f8f4e!important;box-shadow:0 0 0 4px rgba(31,143,78,.12)!important;
@@ -2181,7 +2181,7 @@ body{
   }
   .btn-primary{
     background:linear-gradient(135deg,var(--ap-navy-2),var(--ap-navy) 48%,var(--ap-navy-3))!important;
-    color:#fff!important;border:1px solid rgba(34,197,94,.5)!important;
+    color:#fff!important;border:1px solid rgba(200,162,74,.5)!important;
     box-shadow:0 10px 24px rgba(13,34,71,.22),inset 0 1px 0 rgba(255,255,255,.14)!important;
   }
   .btn-outline{
@@ -2212,7 +2212,7 @@ body{
     margin-top:clamp(18px,3vw,28px)!important;padding:12px 0 0!important;
     text-align:center;font-size:clamp(10.5px,2.8vw,12.5px)!important;font-weight:700;
     color:#7b8698!important;letter-spacing:.02em;
-    border-top:1px solid rgba(34,197,94,.28);
+    border-top:1px solid rgba(200,162,74,.28);
     max-width:820px;margin-inline:auto;
   }
 
@@ -2225,7 +2225,7 @@ body{
     animation:apRipple .62s var(--ap-ease) forwards;
   }
   .btn-outline .ap-rp,.btn-card-details .ap-rp,.gender-opt .ap-rp,.mk-feat .ap-rp{
-    background:radial-gradient(circle,rgba(34,197,94,.42),rgba(34,197,94,0) 68%);
+    background:radial-gradient(circle,rgba(200,162,74,.42),rgba(200,162,74,0) 68%);
   }
   @keyframes apRipple{
     from{opacity:.85;transform:translate(-50%,-50%) scale(0)}
@@ -2242,7 +2242,7 @@ body{
     opacity:.9!important;
   }
   .job-filters:focus-within{
-    border-color:rgba(34,197,94,.55)!important;
+    border-color:rgba(200,162,74,.55)!important;
     box-shadow:0 10px 30px rgba(18,48,92,.10)!important;
   }
   .jf-more{
@@ -2251,7 +2251,7 @@ body{
     transition:transform .2s var(--ap-ease),background-color .24s ease,border-color .24s ease!important;
   }
   .jf-more:hover{background:var(--ap-field)!important;border-color:var(--ap-gold)!important}
-  .jf-more[aria-expanded="true"]{background:var(--ap-field)!important;box-shadow:0 0 0 3px rgba(34,197,94,.16)!important}
+  .jf-more[aria-expanded="true"]{background:var(--ap-field)!important;box-shadow:0 0 0 3px rgba(200,162,74,.16)!important}
   .jf-more.has-filters{background:linear-gradient(140deg,var(--ap-gold),var(--ap-gold-2))!important;color:#1c1405!important;border-color:transparent!important}
   .jf-more:not(:disabled):active{transform:translateY(1px) scale(.985)}
   .jf-badge{background:var(--ap-navy)!important;color:#fff!important}
@@ -2261,9 +2261,9 @@ body{
   }
   .jf-reset:hover{color:var(--ap-gold-3)!important;border-color:var(--ap-gold)!important;background:var(--ap-field)!important}
   .jf-chips{border-top:1px solid var(--ap-line)!important}
-  .jf-chip{color:#15803D!important;background:#ffffff!important;border:1px solid var(--ap-gold-soft)!important}
+  .jf-chip{color:#8A6D2C!important;background:#ffffff!important;border:1px solid var(--ap-gold-soft)!important}
   .jf-chip:hover{background:#ffffff!important;border-color:var(--ap-gold)!important}
-  .jf-chip-x{background:rgba(122,95,33,.14)!important;color:#15803D!important}
+  .jf-chip-x{background:rgba(122,95,33,.14)!important;color:#8A6D2C!important}
   .jf-chip:hover .jf-chip-x{background:var(--ap-gold)!important;color:#fff!important}
   .jf-panel{
     background:#ffffff!important;border:1px solid var(--ap-line)!important;border-radius:16px!important;
@@ -2279,7 +2279,7 @@ body{
   }
   .job-filters .jf-check{color:var(--ap-navy)!important;font-weight:800}
   .chances-bar.has2{background:#ffffff!important;border-color:#bfe0cb!important;color:#1a6b3f!important}
-  .chances-bar.has1{background:#ffffff!important;border-color:var(--ap-gold-soft)!important;color:#15803D!important}
+  .chances-bar.has1{background:#ffffff!important;border-color:var(--ap-gold-soft)!important;color:#8A6D2C!important}
   .chances-bar.has0{background:#fdecea!important;border-color:#f2c8c2!important;color:#a3341f!important}
   .chances-bar.has2 b,.chances-bar.has1 b,.chances-bar.has0 b{color:inherit!important}
   .job-filters #jobs-count{
@@ -2295,8 +2295,8 @@ body{
     border:1px dashed var(--ap-line)!important;border-radius:18px!important;padding:26px 18px!important;
   }
   #jobs-empty p{color:var(--ap-muted)!important;font-weight:700;line-height:1.9}
-  .jobs-hint{border:1px dashed rgba(34,197,94,.45)!important}
-  .jobs-hint.picked{background:#ffffff!important;color:#15803D!important;border-style:solid!important}
+  .jobs-hint{border:1px dashed rgba(200,162,74,.45)!important}
+  .jobs-hint.picked{background:#ffffff!important;color:#8A6D2C!important;border-style:solid!important}
   .jobs-hint b{color:#6b4f14!important}
 
   /* شاشة الوظائف تبقى بعرض الصفحة الكامل */
@@ -2328,7 +2328,7 @@ body{
   }
   body[data-step]:not([data-step="0"]) .app::before{
     inset-block-start:4%;inset-inline-start:-16%;
-    background:radial-gradient(circle,rgba(34,197,94,.16),rgba(34,197,94,0) 68%);
+    background:radial-gradient(circle,rgba(200,162,74,.16),rgba(200,162,74,0) 68%);
   }
   body[data-step]:not([data-step="0"]) .app::after{
     inset-block-end:-6%;inset-inline-end:-18%;animation-delay:-6s;
@@ -2344,13 +2344,13 @@ body{
     border:1.5px solid transparent!important;
     background:
       linear-gradient(#ffffff,#ffffff) padding-box,
-      linear-gradient(135deg,rgba(1,47,62,.55),rgba(34,197,94,.75) 45%,rgba(63,177,144,.5)) border-box!important;
+      linear-gradient(135deg,rgba(1,47,62,.55),rgba(200,162,74,.75) 45%,rgba(63,177,144,.5)) border-box!important;
     box-shadow:0 22px 54px rgba(1,47,62,.13),0 2px 0 rgba(255,255,255,.9) inset!important;
     overflow:hidden;
   }
   .profile-card::before{
     height:6px!important;
-    background:linear-gradient(90deg,#012F3E,#0A4E60 28%,#22C55E 58%,#94D183 84%,#3FB190)!important;
+    background:linear-gradient(90deg,#16304F,#12305C 28%,#C8A24A 58%,#94D183 84%,#1F8F96)!important;
     background-size:220% 100%!important;
     animation:apRibbon 9s linear infinite;
   }
@@ -2361,7 +2361,7 @@ body{
   .step-intro h2::after{
     content:'';position:absolute;inset-block-end:0;inset-inline-start:0;
     width:56px;height:4px;border-radius:99px;
-    background:linear-gradient(90deg,#22C55E,rgba(34,197,94,0));
+    background:linear-gradient(90deg,#C8A24A,rgba(200,162,74,0));
   }
   .step-eyebrow{
     background:linear-gradient(135deg,#eef4ff,#e6f6ef)!important;
@@ -2370,8 +2370,8 @@ body{
   }
   .section-title::before{
     width:5px!important;height:22px!important;
-    background:linear-gradient(180deg,#22C55E,#3FB190)!important;
-    box-shadow:0 2px 8px rgba(34,197,94,.35);
+    background:linear-gradient(180deg,#C8A24A,#1F8F96)!important;
+    box-shadow:0 2px 8px rgba(200,162,74,.35);
   }
 
   /* ── 3) الحقول: إطار متدرّج، أيقونة في كبسولة، ورفع خفيف عند التركيز ── */
@@ -2394,18 +2394,18 @@ body{
   .fld input,.fld select{padding-inline-start:50px!important}
   .fld-ic{
     inset-inline-start:14px;width:24px;height:24px;padding:3px;box-sizing:content-box;
-    border-radius:9px;background:#ffffff;border:1px solid rgba(34,197,94,.45);
-    color:#15803D!important;opacity:1!important;
+    border-radius:9px;background:#ffffff;border:1px solid rgba(200,162,74,.45);
+    color:#8A6D2C!important;opacity:1!important;
     box-shadow:0 2px 6px rgba(1,47,62,.06);
     transition:background .22s ease,border-color .22s ease,color .22s ease,transform .22s var(--ap-ease)!important;
   }
   .fld:focus-within .fld-ic{
-    background:#012F3E;border-color:#012F3E;color:#22C55E!important;transform:scale(1.04);
+    background:#16304F;border-color:#16304F;color:#C8A24A!important;transform:scale(1.04);
   }
   .form-group input:focus,.form-group select:focus{
     background:#fbfdff!important;
-    border-color:#22C55E!important;
-    box-shadow:0 0 0 4px rgba(34,197,94,.2),0 10px 22px rgba(1,47,62,.08)!important;
+    border-color:#C8A24A!important;
+    box-shadow:0 0 0 4px rgba(200,162,74,.2),0 10px 22px rgba(1,47,62,.08)!important;
   }
   .fld:focus-within{transform:translateY(-2px)}
   .form-group select:disabled{
@@ -2414,7 +2414,7 @@ body{
   }
   .form-group select:disabled + .fld-ic{opacity:.55!important}
   .form-group input.valid,.form-group select.valid{
-    border-color:#3FB190!important;
+    border-color:#1F8F96!important;
     box-shadow:0 0 0 4px rgba(63,177,144,.14)!important;
   }
   .form-group input.invalid,.form-group select.invalid{
@@ -2424,8 +2424,8 @@ body{
   /* ── 4) الأزرار: كحلي بحدود ذهبية + لمعة تمرّ + رفع/ضغط محسوس ───────── */
   .btn{position:relative;overflow:hidden;isolation:isolate}
   .btn-primary{
-    background:linear-gradient(135deg,#0A4E60,#012F3E 55%,#01222C)!important;
-    border:1.5px solid rgba(34,197,94,.85)!important;
+    background:linear-gradient(135deg,#12305C,#16304F 55%,#0D2247)!important;
+    border:1.5px solid rgba(200,162,74,.85)!important;
     box-shadow:0 12px 26px rgba(1,47,62,.3),inset 0 1px 0 rgba(255,255,255,.16)!important;
   }
   .btn-primary::before{
@@ -2441,10 +2441,10 @@ body{
   .btn-outline{
     background:#ffffff!important;
     border:1.5px solid #cfdcf0!important;
-    color:#012F3E!important;
+    color:#16304F!important;
     box-shadow:0 6px 16px rgba(1,47,62,.07)!important;
   }
-  .btn-outline:hover{border-color:#22C55E!important;background:#fffaf0!important}
+  .btn-outline:hover{border-color:#C8A24A!important;background:#fffaf0!important}
   .btn:not(:disabled):hover{transform:translateY(-2px)}
   .btn-primary:not(:disabled):hover{box-shadow:0 18px 34px rgba(1,47,62,.34)!important}
 
@@ -2456,16 +2456,16 @@ body{
     border:1.5px solid #d7e3f5!important;
     transition:transform .22s var(--ap-ease),box-shadow .24s ease,border-color .24s ease,background .24s ease!important;
   }
-  .gender-opt:hover{transform:translateY(-2px);border-color:#22C55E!important;box-shadow:0 12px 26px rgba(1,47,62,.1)}
+  .gender-opt:hover{transform:translateY(-2px);border-color:#C8A24A!important;box-shadow:0 12px 26px rgba(1,47,62,.1)}
   .gender-opt.selected{
     background:linear-gradient(160deg,#ffffff,#e6f2ff)!important;
-    border-color:#3FB190!important;
+    border-color:#1F8F96!important;
     box-shadow:0 0 0 3px rgba(63,177,144,.18),0 12px 26px rgba(1,47,62,.1)!important;
   }
   .gender-opt.selected::after{
     content:'✓';position:absolute;inset-block-start:8px;inset-inline-start:10px;
     width:22px;height:22px;display:grid;place-items:center;border-radius:50%;
-    background:#3FB190;color:#fff;font-size:12px;font-weight:900;
+    background:#1F8F96;color:#fff;font-size:12px;font-weight:900;
     box-shadow:0 4px 10px rgba(63,177,144,.45);
     animation:apPop .3s var(--ap-ease) both;
   }
@@ -2474,12 +2474,12 @@ body{
     display:grid!important;place-items:center;
     width:62px;height:62px;margin:0 auto 10px!important;
     background:linear-gradient(145deg,#ffffff,#ffeeb8);
-    border:1px solid rgba(34,197,94,.55);border-radius:18px;
-    box-shadow:0 6px 14px rgba(34,197,94,.22);
+    border:1px solid rgba(200,162,74,.55);border-radius:18px;
+    box-shadow:0 6px 14px rgba(200,162,74,.22);
     font-size:0!important;line-height:0;
     transition:transform .24s var(--ap-ease),background .24s ease,border-color .24s ease,box-shadow .24s ease;
   }
-  .gender-opt .icon svg{width:32px;height:32px;color:#15803D}
+  .gender-opt .icon svg{width:32px;height:32px;color:#8A6D2C}
   .gender-opt.selected .icon{
     background:linear-gradient(145deg,#eaf9f3,#d9f2e8);
     border-color:rgba(63,177,144,.6);
@@ -2498,13 +2498,13 @@ body{
   .step-dot.done{box-shadow:0 0 10px rgba(63,177,144,.4)!important}
   .step-dot.active{animation:apDot 2.6s ease-in-out infinite}
   @keyframes apDot{
-    0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,.18)}
-    50%{box-shadow:0 0 0 6px rgba(34,197,94,.10)}
+    0%,100%{box-shadow:0 0 0 3px rgba(200,162,74,.18)}
+    50%{box-shadow:0 0 0 6px rgba(200,162,74,.10)}
   }
   .step-label .pct{
-    background:linear-gradient(135deg,#ffffff,#c8f7dc)!important;
-    border-color:#f2d98a!important;color:#15803D!important;
-    box-shadow:0 2px 8px rgba(34,197,94,.2);
+    background:linear-gradient(135deg,#ffffff,#F2E2AC)!important;
+    border-color:#f2d98a!important;color:#8A6D2C!important;
+    box-shadow:0 2px 8px rgba(200,162,74,.2);
   }
 
   /* ── 7) شاشة الترحيب: حركة أوضح للشعار والزر ─────────────────────────── */
@@ -2513,19 +2513,19 @@ body{
     0%,100%{transform:translateY(0)}
     50%{transform:translateY(-7px)}
   }
-  .mk-logo .mk-tile{box-shadow:0 22px 40px rgba(1,47,62,.4),0 0 0 6px rgba(34,197,94,.14),inset 0 1px 0 rgba(255,255,255,.1)}
+  .mk-logo .mk-tile{box-shadow:0 22px 40px rgba(1,47,62,.4),0 0 0 6px rgba(200,162,74,.14),inset 0 1px 0 rgba(255,255,255,.1)}
   .mk-cta .btn{border-width:2px!important;animation:mkBreath 3.6s ease-in-out infinite}
   @keyframes mkBreath{
-    0%,100%{box-shadow:0 16px 34px rgba(5,16,34,.42),0 0 0 4px rgba(34,197,94,.12),inset 0 1px 0 rgba(255,255,255,.22)}
-    50%{box-shadow:0 20px 40px rgba(21,128,61,.42),0 0 0 8px rgba(34,197,94,.10),inset 0 1px 0 rgba(255,255,255,.5)}
+    0%,100%{box-shadow:0 16px 34px rgba(5,16,34,.42),0 0 0 4px rgba(200,162,74,.12),inset 0 1px 0 rgba(255,255,255,.22)}
+    50%{box-shadow:0 20px 40px rgba(21,128,61,.42),0 0 0 8px rgba(200,162,74,.10),inset 0 1px 0 rgba(255,255,255,.5)}
   }
   /* كلمة «مكسب»: أخضر نيون واضح مع هالة خفيفة (بلا تدرّج يشوّش القراءة) */
   .mk-hero h1 b{
     background:none!important;
     -webkit-background-clip:initial!important;background-clip:initial!important;
-    -webkit-text-fill-color:#6EE7A8!important;
-    color:#6EE7A8!important;
-    text-shadow:0 0 18px rgba(34,197,94,.55),0 4px 18px rgba(4,14,30,.5);
+    -webkit-text-fill-color:#E3C479!important;
+    color:#E3C479!important;
+    text-shadow:0 0 18px rgba(200,162,74,.55),0 4px 18px rgba(4,14,30,.5);
     animation:none!important;
   }
   @media(prefers-reduced-motion:reduce){
@@ -2534,18 +2534,18 @@ body{
   .mk-feat{
     border:1.5px solid transparent!important;
     background:linear-gradient(#ffffff,#ffffff) padding-box,
-               linear-gradient(150deg,rgba(34,197,94,.55),rgba(63,177,144,.28)) border-box!important;
+               linear-gradient(150deg,rgba(200,162,74,.55),rgba(63,177,144,.28)) border-box!important;
     transition:transform .26s var(--ap-ease),box-shadow .26s ease!important;
   }
   .mk-feat:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(1,47,62,.1)}
   .mk-feat-ic{
     background:linear-gradient(150deg,#fff8e6,#ffffff)!important;
-    border-color:rgba(34,197,94,.5)!important;
+    border-color:rgba(200,162,74,.5)!important;
   }
   /* لكل ميزة لونها من هوية الشعار (ذهب · أخضر · تركوازي · كحلي) */
   .mk-feat:nth-child(1) .mk-feat-ic{
     background:linear-gradient(150deg,#fff6d8,#ffe9a8)!important;
-    border-color:rgba(34,197,94,.6)!important;color:#15803D!important;
+    border-color:rgba(200,162,74,.6)!important;color:#8A6D2C!important;
   }
   .mk-feat:nth-child(2) .mk-feat-ic{
     background:linear-gradient(150deg,#eef9e9,#d7f0cd)!important;
@@ -2557,17 +2557,17 @@ body{
   }
   .mk-feat:nth-child(4) .mk-feat-ic{
     background:linear-gradient(150deg,#e9f0fa,#d3e2f6)!important;
-    border-color:rgba(1,47,62,.32)!important;color:#012F3E!important;
+    border-color:rgba(1,47,62,.32)!important;color:#16304F!important;
   }
   .mk-feat{
     border-width:1px!important;border-radius:18px!important;
     padding:clamp(12px,3.2vw,18px) clamp(8px,2.4vw,14px)!important;
     box-shadow:0 8px 20px rgba(1,47,62,.05)!important;
   }
-  .mk-feat:nth-child(1){background:linear-gradient(#ffffff,#ffffff) padding-box,linear-gradient(150deg,rgba(34,197,94,.42),rgba(34,197,94,.08)) border-box!important}
+  .mk-feat:nth-child(1){background:linear-gradient(#ffffff,#ffffff) padding-box,linear-gradient(150deg,rgba(200,162,74,.42),rgba(200,162,74,.08)) border-box!important}
   .mk-feat:nth-child(2){background:linear-gradient(#ffffff,#ffffff) padding-box,linear-gradient(150deg,rgba(148,209,131,.55),rgba(148,209,131,.10)) border-box!important}
   .mk-feat:nth-child(3){background:linear-gradient(#ffffff,#ffffff) padding-box,linear-gradient(150deg,rgba(63,177,144,.55),rgba(63,177,144,.10)) border-box!important}
-  .mk-feat:nth-child(4){background:linear-gradient(#ffffff,#ffffff) padding-box,linear-gradient(150deg,rgba(1,47,62,.28),rgba(34,197,94,.16)) border-box!important}
+  .mk-feat:nth-child(4){background:linear-gradient(#ffffff,#ffffff) padding-box,linear-gradient(150deg,rgba(1,47,62,.28),rgba(200,162,74,.16)) border-box!important}
 
   /* ── 8) لوحة الأزرار مع الكيبورد: لا قفزة، ولا اختفاء ───────────────── */
   /* البطاقة لا تتمدّد مع ارتفاع نافذة العرض المتغيّر (كان سبب الطفرة) */
@@ -2577,7 +2577,7 @@ body{
     inset-inline:0!important;
     left:0;right:0;
     padding:10px clamp(12px,4vw,20px) calc(10px + env(safe-area-inset-bottom,0px))!important;
-    border:0!important;border-block-start:1.5px solid rgba(34,197,94,.55)!important;
+    border:0!important;border-block-start:1.5px solid rgba(200,162,74,.55)!important;
     border-radius:18px 18px 0 0!important;
     background:linear-gradient(180deg,rgba(255,253,248,.97),rgba(251,247,236,.99))!important;
     box-shadow:0 -14px 34px rgba(1,47,62,.16)!important;
@@ -2603,7 +2603,7 @@ body{
   /* ── 9) لمسات: تركيز واضح بلون الهوية ────────────────────────────────── */
   .btn:focus-visible,.btn-card-details:focus-visible,.gender-opt:focus-visible,
   .job-card:focus-visible,.mk-feat:focus-visible{
-    outline:3px solid #22C55E!important;outline-offset:3px;
+    outline:3px solid #C8A24A!important;outline-offset:3px;
   }
 
   @media(prefers-reduced-motion:reduce){
@@ -2627,9 +2627,9 @@ body{
     --ui-field-line:#d5e0ea;   /* حد الحقل */
     --ui-cream:#ffffff;
     --ui-cream-2:#f4f7f9;
-    --ui-gold:#2E9E6B;
-    --ui-gold-2:#22C55E;
-    --ui-green:#3FB190;
+    --ui-gold:#B08D3C;
+    --ui-gold-2:#C8A24A;
+    --ui-green:#1F8F96;
     --ui-green-soft:#e9f7f1;
     --ui-red:#b3392b;
     --ui-red-soft:#fdeeeb;
@@ -2697,7 +2697,7 @@ body{
     color:var(--ui-ink)!important;border-radius:14px!important;font-size:13px!important;font-weight:800!important;
   }
   .chances-bar.has2{background:var(--ui-green-soft)!important;border-color:#c8e8da!important;color:#1c6a51!important}
-  .chances-bar.has1{background:#ffffff!important;border-color:#bbf0d3!important;color:#15803D!important}
+  .chances-bar.has1{background:#ffffff!important;border-color:#EFE0BD!important;color:#8A6D2C!important}
   .chances-bar.has0{background:var(--ui-red-soft)!important;border-color:#f3cfc8!important;color:#8f2c1f!important}
   .chances-bar b{color:inherit!important}
 
@@ -2716,7 +2716,7 @@ body{
   .rv-ic{
     display:grid!important;place-items:center;width:44px;height:44px;flex:none;
     border-radius:14px;background:linear-gradient(150deg,#ffffff,#f2f8f4);
-    border:1px solid rgba(34,197,94,.45);color:#15803D;
+    border:1px solid rgba(200,162,74,.45);color:#8A6D2C;
   }
   .rv-ic svg{width:22px;height:22px}
   .rv-t{color:var(--ui-ink)!important;font-size:17px!important;font-weight:900!important}
@@ -2746,16 +2746,16 @@ body{
   }
   .rv-chips{display:flex!important;flex-wrap:wrap!important;gap:7px!important;align-items:center!important}
   .rv-note{
-    background:#FFFFFF!important;border:1px solid #D8E6FA!important;
-    color:#1B4C8F!important;border-radius:14px!important;font-size:12.5px!important;line-height:1.95;
+    background:#FFFFFF!important;border:1px solid #E8DDC4!important;
+    color:#12305C!important;border-radius:14px!important;font-size:12.5px!important;line-height:1.95;
   }
   .rv-card .rv-top{flex-wrap:nowrap}
   /* عنوان الفرصة داخل المراجعة: ذهبي بكحلي لا أزرق فاتح غريب */
   .rv-sub{
-    color:#15803D!important;font-size:13px!important;font-weight:900!important;
+    color:#8A6D2C!important;font-size:13px!important;font-weight:900!important;
     margin:18px 0 6px!important;padding:5px 12px!important;
-    background:#ffffff!important;border:1px solid #bbf0d3!important;
-    border-inline-start:1px solid #bbf0d3!important;
+    background:#ffffff!important;border:1px solid #EFE0BD!important;
+    border-inline-start:1px solid #EFE0BD!important;
     border-radius:999px!important;display:inline-flex!important;align-items:center;gap:6px;
   }
   .ok-ico{
@@ -2778,21 +2778,21 @@ body{
   #jobs-list .job-card.selected .pick-mark{display:none!important}
 
   #jobs-list .job-card.selected{
-    background:linear-gradient(165deg,#0A3F50,#012F3E 55%,#01222C)!important;
+    background:linear-gradient(165deg,#0A3F50,#16304F 55%,#0D2247)!important;
     border:2px solid var(--ui-gold-2)!important;
-    box-shadow:0 20px 44px rgba(1,34,44,.34),0 0 0 4px rgba(34,197,94,.16)!important;
+    box-shadow:0 20px 44px rgba(1,34,44,.34),0 0 0 4px rgba(200,162,74,.16)!important;
     color:#fff!important;
   }
   #jobs-list .job-card.selected::before{
     height:5px!important;opacity:1!important;
-    background:linear-gradient(90deg,var(--ui-gold-2),#dcfce9,var(--ui-gold-2))!important;
+    background:linear-gradient(90deg,var(--ui-gold-2),#F7ECC8,var(--ui-gold-2))!important;
   }
   #jobs-list .job-card.selected .job-head .title,
   #jobs-list.has-focus .job-card.selected .job-head .title{
     color:#fff!important;text-shadow:none!important;font-size:19px!important;
   }
   #jobs-list .job-card.selected .job-code{
-    background:rgba(34,197,94,.18)!important;border-color:rgba(34,197,94,.6)!important;color:#ffe08a!important;
+    background:rgba(200,162,74,.18)!important;border-color:rgba(200,162,74,.6)!important;color:#ffe08a!important;
   }
   #jobs-list .job-card.selected .job-cat{
     background:rgba(255,255,255,.1)!important;border-color:rgba(255,255,255,.24)!important;color:#fff!important;
@@ -2807,21 +2807,21 @@ body{
   #jobs-list .job-card.selected .jm span,
   #jobs-list .job-card.selected .jm b{color:#fff!important}
   #jobs-list .job-card.selected .jm svg,
-  #jobs-list .job-card.selected .jm .ic{color:#22C55E!important}
+  #jobs-list .job-card.selected .jm .ic{color:#C8A24A!important}
   #jobs-list .job-card.selected .job-details{color:rgba(255,255,255,.8)!important}
   #jobs-list .job-card.selected .job-pay,
   #jobs-list .job-card.selected .job-pay-row,
   #jobs-list .job-card.selected .job-salary{
-    background:rgba(34,197,94,.16)!important;border:1px solid rgba(34,197,94,.5)!important;
-    color:#c8f7dc!important;border-radius:12px!important;
+    background:rgba(200,162,74,.16)!important;border:1px solid rgba(200,162,74,.5)!important;
+    color:#F2E2AC!important;border-radius:12px!important;
   }
   #jobs-list .job-card.selected .job-pay *,
   #jobs-list .job-card.selected .job-pay-row *,
-  #jobs-list .job-card.selected .job-salary *{color:#c8f7dc!important}
+  #jobs-list .job-card.selected .job-salary *{color:#F2E2AC!important}
   #jobs-list .job-card.selected .job-pay b,
   #jobs-list .job-card.selected .job-salary b{color:#fff!important}
   #jobs-list .job-card.selected .job-actions{
-    background:rgba(0,0,0,.22)!important;border-top:1px solid rgba(34,197,94,.35)!important;
+    background:rgba(0,0,0,.22)!important;border-top:1px solid rgba(200,162,74,.35)!important;
   }
   #jobs-list .job-card.selected .job-actions .btn-outline{
     background:transparent!important;border-color:rgba(255,255,255,.4)!important;color:#fff!important;
@@ -2830,7 +2830,7 @@ body{
   #jobs-list .job-card.selected .job-actions .btn-success{
     background:linear-gradient(135deg,var(--ui-gold-2),#e0a800)!important;
     color:#20242a!important;border-color:transparent!important;
-    box-shadow:0 10px 22px rgba(34,197,94,.3)!important;
+    box-shadow:0 10px 22px rgba(200,162,74,.3)!important;
   }
   #jobs-list .job-card.selected .job-state.is-picked{
     background:linear-gradient(140deg,#FFE28A,var(--ui-gold-2))!important;
@@ -2846,7 +2846,7 @@ body{
   }
   .job-filters #jobs-count::before{background:var(--ui-gold-2)!important}
   .job-filters #jobs-count b{color:var(--ui-ink)!important}
-  .jf-chip{background:#ffffff!important;border-color:#bbf0d3!important;color:#15803D!important}
+  .jf-chip{background:#ffffff!important;border-color:#EFE0BD!important;color:#8A6D2C!important}
 }
 
 /* ── 6) تصحيح الدفعة الأخيرة: حقول **دافئة** (كريمي/ذهبي) لا رمادية باردة ── */
@@ -2866,16 +2866,16 @@ body{
   .form-group select{font-weight:800!important}
   .form-group input:focus,.form-group select:focus{
     background:#ffffff!important;border-color:var(--ui-gold-2)!important;
-    box-shadow:0 0 0 4px rgba(34,197,94,.18),0 8px 18px rgba(13,47,61,.06)!important;
+    box-shadow:0 0 0 4px rgba(200,162,74,.18),0 8px 18px rgba(13,47,61,.06)!important;
   }
   /* الأيقونة داخل الحقل: كبسولة كريمية بحدود ذهبية → كحلية عند التركيز */
   .fld-ic{
     background:#ffffff!important;border:1px solid var(--ui-field-line)!important;
-    color:#15803D!important;
+    color:#8A6D2C!important;
   }
   .fld:focus-within .fld-ic{
-    background:var(--ap-navy,#012F3E)!important;border-color:var(--ap-navy,#012F3E)!important;
-    color:#22C55E!important;
+    background:var(--ap-navy,#16304F)!important;border-color:var(--ap-navy,#16304F)!important;
+    color:#C8A24A!important;
   }
   /* حقل معطّل: واضح أنه غير متاح بلا لون باهت غريب */
   .form-group select:disabled{
@@ -2884,7 +2884,7 @@ body{
   /* البطاقة: بيضاء كريمية + حدّ دافئ وظل بسيط */
   .profile-card{
     background:linear-gradient(#ffffff,#ffffff) padding-box,
-               linear-gradient(135deg,rgba(1,47,62,.5),rgba(34,197,94,.8) 45%,rgba(63,177,144,.45)) border-box!important;
+               linear-gradient(135deg,rgba(1,47,62,.5),rgba(200,162,74,.8) 45%,rgba(63,177,144,.45)) border-box!important;
     box-shadow:0 18px 44px rgba(13,47,61,.12)!important;
   }
   /* اسم القسم داخل الحقول */
@@ -2894,7 +2894,7 @@ body{
   .step-eyebrow{background:#ffffff!important;border-color:#ecdfc2!important;color:#7a6331!important}
   /* زر الرجوع: أبيض بحدّ دافئ */
   .btn-outline{border-color:#e2d8bf!important;color:#12404f!important}
-  .btn-outline:hover{border-color:#22C55E!important;background:#ffffff!important}
+  .btn-outline:hover{border-color:#C8A24A!important;background:#ffffff!important}
 }
 /* ═══════════════════════════════════════════════════════════════════════════
    2026-10-27 · واجهة كحلية لصفحات البيانات والقائمة (طلب المالك)
@@ -2907,11 +2907,11 @@ body{
   /* ── 1) اللوحة الكحلية لصفحات البيانات والوظائف والمراجعة ───────────── */
   body[data-step="1"],body[data-step="2"],body[data-step="3"],
   body[data-step="4"],body[data-step="5"],body[data-step="6"],body[data-step="7"],body[data-step="8"]{
-    background-color:#07203F!important;
+    background-color:#16304F!important;
     background-image:
-      radial-gradient(900px 380px at 8% -8%,rgba(34,197,94,.16),transparent 70%),
+      radial-gradient(900px 380px at 8% -8%,rgba(200,162,74,.16),transparent 70%),
       radial-gradient(760px 360px at 98% 0%,rgba(63,177,144,.10),transparent 72%),
-      linear-gradient(180deg,#134079 0%,#0A2A55 46%,#04152C 100%)!important;
+      linear-gradient(180deg,#1E4270 0%,#0F2444 46%,#0A1A33 100%)!important;
     color:#eaf3f6!important;
   }
   /* موجات الصفحة القديمة (كريمية) تُستبدل بشعرة ذهبية رقيقة أعلى وأسفل */
@@ -2919,20 +2919,20 @@ body{
   body[data-step="4"]::before,body[data-step="5"]::before,body[data-step="6"]::before,
   body[data-step="7"]::before,body[data-step="8"]::before{
     display:block!important;height:4px!important;
-    background-image:linear-gradient(90deg,transparent,rgba(34,197,94,.85) 22%,rgba(255,255,255,.55) 50%,rgba(34,197,94,.85) 78%,transparent)!important;
+    background-image:linear-gradient(90deg,transparent,rgba(200,162,74,.85) 22%,rgba(255,255,255,.55) 50%,rgba(200,162,74,.85) 78%,transparent)!important;
     animation:none!important;
   }
   body[data-step="1"]::after,body[data-step="2"]::after,body[data-step="3"]::after,
   body[data-step="4"]::after,body[data-step="5"]::after,body[data-step="6"]::after,
   body[data-step="7"]::after,body[data-step="8"]::after{
     display:block!important;height:clamp(70px,12vw,110px)!important;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'><path d='M0 120V64c205-44 430-64 600-64s395 20 600 64v56z' fill='%23041830'/><path d='M0 64c205-44 430-64 600-64s395 20 600 64' fill='none' stroke='%2360AAFF' stroke-width='2' opacity='.65'/></svg>")!important;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'><path d='M0 120V64c205-44 430-64 600-64s395 20 600 64v56z' fill='%230A1A33'/><path d='M0 64c205-44 430-64 600-64s395 20 600 64' fill='none' stroke='%23C8A24A' stroke-width='2' opacity='.65'/></svg>")!important;
     animation:none!important;
   }
   body[data-step="1"] .app::before,body[data-step="2"] .app::before,body[data-step="3"] .app::before,
   body[data-step="4"] .app::before,body[data-step="5"] .app::before,body[data-step="6"] .app::before,
   body[data-step="7"] .app::before,body[data-step="8"] .app::before{
-    background:radial-gradient(circle,rgba(34,197,94,.14),rgba(34,197,94,0) 68%)!important;
+    background:radial-gradient(circle,rgba(200,162,74,.14),rgba(200,162,74,0) 68%)!important;
   }
   body[data-step="1"] .app::after,body[data-step="2"] .app::after,body[data-step="3"] .app::after,
   body[data-step="4"] .app::after,body[data-step="5"] .app::after,body[data-step="6"] .app::after,
@@ -2943,7 +2943,7 @@ body{
   body[data-step="1"] .footer,body[data-step="2"] .footer,body[data-step="3"] .footer,
   body[data-step="4"] .footer,body[data-step="5"] .footer,body[data-step="6"] .footer,
   body[data-step="7"] .footer,body[data-step="8"] .footer{
-    color:rgba(234,243,246,.7)!important;border-block-start:1px solid rgba(34,197,94,.35)!important;
+    color:rgba(234,243,246,.7)!important;border-block-start:1px solid rgba(200,162,74,.35)!important;
   }
 
   /* ── 2) شريط التقدّم: زجاج كحلي بنص أبيض (بدل البطاقة البيضاء) ───────── */
@@ -2951,7 +2951,7 @@ body{
   body[data-step="4"] .steps-bar,body[data-step="5"] .steps-bar,body[data-step="6"] .steps-bar,
   body[data-step="7"] .steps-bar,body[data-step="8"] .steps-bar{
     background:rgba(255,255,255,.07)!important;
-    border:1px solid rgba(34,197,94,.32)!important;
+    border:1px solid rgba(200,162,74,.32)!important;
     box-shadow:0 12px 30px rgba(2,20,28,.32),inset 0 1px 0 rgba(255,255,255,.08)!important;
     backdrop-filter:blur(6px);
   }
@@ -2967,8 +2967,8 @@ body{
   body[data-step="1"] .step-label .pct,body[data-step="2"] .step-label .pct,body[data-step="3"] .step-label .pct,
   body[data-step="4"] .step-label .pct,body[data-step="5"] .step-label .pct,body[data-step="6"] .step-label .pct,
   body[data-step="7"] .step-label .pct{
-    background:rgba(34,197,94,.16)!important;border:1px solid rgba(34,197,94,.55)!important;
-    color:#a9f0c7!important;box-shadow:none!important;
+    background:rgba(200,162,74,.16)!important;border:1px solid rgba(200,162,74,.55)!important;
+    color:#E8D089!important;box-shadow:none!important;
   }
 
   /* ── 3) بطاقة البيانات: بيضاء نظيفة (التفاصيل كما هي) + حقول بيضاء ───── */
@@ -3002,22 +3002,22 @@ body{
 
   /* ── 4) شاشة الوظائف: كحلية كاملة + كروت بيضاء ──────────────────────── */
   body[data-step="6"] .section-title{color:#fff!important}
-  body[data-step="6"] .section-title::before{background:linear-gradient(180deg,#22C55E,#3FB190)!important}
+  body[data-step="6"] .section-title::before{background:linear-gradient(180deg,#C8A24A,#1F8F96)!important}
 
   /* شريط «متبقي لك»: زجاج كحلي */
   body[data-step="6"] .chances-bar{
     background:rgba(255,255,255,.09)!important;
-    border:1px solid rgba(34,197,94,.4)!important;color:#fff!important;
+    border:1px solid rgba(200,162,74,.4)!important;color:#fff!important;
     box-shadow:0 12px 26px rgba(2,20,28,.3);
   }
-  body[data-step="6"] .chances-bar b{color:#a9f0c7!important}
+  body[data-step="6"] .chances-bar b{color:#E8D089!important}
   body[data-step="6"] .chances-bar.has2,body[data-step="6"] .chances-bar.has1,
-  body[data-step="6"] .chances-bar.has0{background:rgba(255,255,255,.09)!important;border-color:rgba(34,197,94,.4)!important;color:#fff!important}
+  body[data-step="6"] .chances-bar.has0{background:rgba(255,255,255,.09)!important;border-color:rgba(200,162,74,.4)!important;color:#fff!important}
 
   /* لوحة الفلاتر: زجاج كحلي بنصوص بيضاء وحقول بيضاء */
   body[data-step="6"] .job-filters{
     background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.05))!important;
-    border:1px solid rgba(34,197,94,.35)!important;
+    border:1px solid rgba(200,162,74,.35)!important;
     box-shadow:0 20px 46px rgba(2,20,28,.34),inset 0 1px 0 rgba(255,255,255,.1)!important;
     backdrop-filter:blur(8px);
   }
@@ -3030,44 +3030,44 @@ body{
     background:#fff!important;border:1px solid rgba(255,255,255,.6)!important;color:#0d2f3d!important;
   }
   body[data-step="6"] .job-filters input::placeholder{color:#8a9aa4!important}
-  body[data-step="6"] .jf-ic{color:#22C55E!important}
+  body[data-step="6"] .jf-ic{color:#C8A24A!important}
   body[data-step="6"] .jf-more{
-    background:rgba(34,197,94,.22)!important;border:1.5px solid rgba(34,197,94,.85)!important;
+    background:rgba(200,162,74,.22)!important;border:1.5px solid rgba(200,162,74,.85)!important;
     color:#fff!important;font-weight:900!important;
   }
-  body[data-step="6"] .jf-more svg{color:#22C55E!important}
-  body[data-step="6"] .jf-more:hover{background:rgba(34,197,94,.26)!important}
+  body[data-step="6"] .jf-more svg{color:#C8A24A!important}
+  body[data-step="6"] .jf-more:hover{background:rgba(200,162,74,.26)!important}
   body[data-step="6"] .jf-reset{
     background:rgba(255,255,255,.1)!important;border-color:rgba(255,255,255,.35)!important;color:#fff!important;
   }
-  body[data-step="6"] .jf-reset:hover{color:#a9f0c7!important;border-color:rgba(34,197,94,.7)!important}
+  body[data-step="6"] .jf-reset:hover{color:#E8D089!important;border-color:rgba(200,162,74,.7)!important}
   body[data-step="6"] .jf-panel{
-    background:rgba(2,26,36,.35)!important;border:1px solid rgba(34,197,94,.3)!important;
+    background:rgba(2,26,36,.35)!important;border:1px solid rgba(200,162,74,.3)!important;
   }
-  body[data-step="6"] .jf-panel-title{color:#a9f0c7!important}
+  body[data-step="6"] .jf-panel-title{color:#E8D089!important}
   body[data-step="6"] .job-filters #jobs-count{
-    background:rgba(34,197,94,.16)!important;border:1px solid rgba(34,197,94,.5)!important;color:#c8f7dc!important;
+    background:rgba(200,162,74,.16)!important;border:1px solid rgba(200,162,74,.5)!important;color:#F2E2AC!important;
   }
   body[data-step="6"] .job-filters #jobs-count b{color:#fff!important}
-  body[data-step="6"] .job-filters #jobs-count::before{background:#22C55E!important}
+  body[data-step="6"] .job-filters #jobs-count::before{background:#C8A24A!important}
   body[data-step="6"] .job-filters .jf-check{color:#dbe9ef!important}
-  body[data-step="6"] .jf-chip{background:rgba(34,197,94,.16)!important;border-color:rgba(34,197,94,.45)!important;color:#c8f7dc!important}
-  body[data-step="6"] .jf-chip-x{background:rgba(0,0,0,.3)!important;color:#c8f7dc!important}
+  body[data-step="6"] .jf-chip{background:rgba(200,162,74,.16)!important;border-color:rgba(200,162,74,.45)!important;color:#F2E2AC!important}
+  body[data-step="6"] .jf-chip-x{background:rgba(0,0,0,.3)!important;color:#F2E2AC!important}
 
   /* تلميح الاختيار أسفل القائمة */
   body[data-step="6"] .jobs-hint{
     background:rgba(255,255,255,.08)!important;color:rgba(234,243,246,.9)!important;
-    border:1px dashed rgba(34,197,94,.5)!important;
+    border:1px dashed rgba(200,162,74,.5)!important;
   }
   body[data-step="6"] .jobs-hint.picked{
-    background:rgba(34,197,94,.16)!important;border:1px solid rgba(34,197,94,.55)!important;color:#c8f7dc!important;
+    background:rgba(200,162,74,.16)!important;border:1px solid rgba(200,162,74,.55)!important;color:#F2E2AC!important;
   }
   body[data-step="6"] .jobs-hint b{color:#fff!important}
   body[data-step="6"] .job-remove{
     background:rgba(0,0,0,.25)!important;color:#ffd6c9!important;border-color:rgba(255,255,255,.28)!important;
   }
   body[data-step="6"] #jobs-empty{
-    background:rgba(255,255,255,.06)!important;border:1px dashed rgba(34,197,94,.45)!important;color:rgba(234,243,246,.85)!important;
+    background:rgba(255,255,255,.06)!important;border:1px dashed rgba(200,162,74,.45)!important;color:rgba(234,243,246,.85)!important;
   }
   body[data-step="6"] #jobs-empty p{color:rgba(234,243,246,.85)!important}
   body[data-step="6"] #jobs-empty .btn-outline{background:rgba(255,255,255,.95)!important;color:#0d2f3d!important}
@@ -3083,11 +3083,11 @@ body{
   }
   body[data-step="6"] #jobs-list .jm .k,body[data-step="6"] #jobs-list .jm .v,
   body[data-step="6"] #jobs-list .jm span,body[data-step="6"] #jobs-list .jm b{color:#0d2f3d!important}
-  body[data-step="6"] #jobs-list .jm svg,body[data-step="6"] #jobs-list .jm .ic{color:#15803D!important}
+  body[data-step="6"] #jobs-list .jm svg,body[data-step="6"] #jobs-list .jm .ic{color:#8A6D2C!important}
   body[data-step="6"] #jobs-list .job-pay,body[data-step="6"] #jobs-list .job-salary{
-    background:#ffffff!important;border:1px solid #bbf0d3!important;color:#15803D!important;
+    background:#ffffff!important;border:1px solid #EFE0BD!important;color:#8A6D2C!important;
   }
-  body[data-step="6"] #jobs-list .job-pay *,body[data-step="6"] #jobs-list .job-salary *{color:#15803D!important}
+  body[data-step="6"] #jobs-list .job-pay *,body[data-step="6"] #jobs-list .job-salary *{color:#8A6D2C!important}
   body[data-step="6"] #jobs-list .job-pay b,body[data-step="6"] #jobs-list .job-salary b{color:#5f4a12!important}
   body[data-step="6"] #jobs-list .job-details{color:#5f7380!important}
   body[data-step="6"] #jobs-list .job-actions{
@@ -3097,26 +3097,26 @@ body{
     background:#fff!important;border-color:#cfdae0!important;color:#0d2f3d!important;
   }
   body[data-step="6"] #jobs-list .job-actions .btn-primary{
-    background:linear-gradient(135deg,#0A4E60,#012F3E 60%)!important;
-    color:#fff!important;border:1.5px solid rgba(34,197,94,.75)!important;
+    background:linear-gradient(135deg,#12305C,#16304F 60%)!important;
+    color:#fff!important;border:1.5px solid rgba(200,162,74,.75)!important;
   }
   body[data-step="6"] #jobs-list .job-tags .job-code{
     background:#ffffff!important;border:1px solid #bfe4d6!important;color:#1c6a51!important;
   }
   body[data-step="6"] #jobs-list .job-tags .job-cat{
-    background:#ffffff!important;border:1px solid #bbf0d3!important;color:#15803D!important;
+    background:#ffffff!important;border:1px solid #EFE0BD!important;color:#8A6D2C!important;
   }
   /* الكارت المختار: إطار ذهبي وهوية واضحة على الأبيض */
   body[data-step="6"] #jobs-list .job-card.selected{
-    background:#fff!important;border:2px solid #22C55E!important;
-    box-shadow:0 24px 54px rgba(2,20,28,.36),0 0 0 4px rgba(34,197,94,.22)!important;
+    background:#fff!important;border:2px solid #C8A24A!important;
+    box-shadow:0 24px 54px rgba(2,20,28,.36),0 0 0 4px rgba(200,162,74,.22)!important;
   }
   body[data-step="6"] #jobs-list .job-card.selected .job-head .title{color:#0d2f3d!important;font-size:20px!important}
   body[data-step="6"] #jobs-list .job-card.selected .job-state.is-picked{
-    background:linear-gradient(140deg,#FFE28A,#22C55E)!important;color:#1c1405!important;border-color:transparent!important;
+    background:linear-gradient(140deg,#FFE28A,#C8A24A)!important;color:#1c1405!important;border-color:transparent!important;
   }
   body[data-step="6"] #jobs-list .job-card.selected .jm{
-    background:#ffffff!important;border-color:#bbf0d3!important;
+    background:#ffffff!important;border-color:#EFE0BD!important;
   }
   /* (قواعد قديمة كانت تجعل نص الكارت المختار أبيض — تُبطَل هنا لأن الكارت أبيض) */
   body[data-step="6"] #jobs-list .job-card.selected .jm .k,
@@ -3127,28 +3127,28 @@ body{
     color:#0d2f3d!important;
   }
   body[data-step="6"] #jobs-list .job-card.selected .jm svg,
-  body[data-step="6"] #jobs-list .job-card.selected .jm .ic{color:#15803D!important}
+  body[data-step="6"] #jobs-list .job-card.selected .jm .ic{color:#8A6D2C!important}
   body[data-step="6"] #jobs-list .job-card.selected .job-pay,
   body[data-step="6"] #jobs-list .job-card.selected .job-pay-row,
   body[data-step="6"] #jobs-list .job-card.selected .job-salary{
-    background:#ffffff!important;border:1px solid rgba(34,197,94,.45)!important;
+    background:#ffffff!important;border:1px solid rgba(200,162,74,.45)!important;
   }
   body[data-step="6"] #jobs-list .job-card.selected .job-pay *,
   body[data-step="6"] #jobs-list .job-card.selected .job-pay-row *,
-  body[data-step="6"] #jobs-list .job-card.selected .job-salary *{color:#0f6b3f!important}
+  body[data-step="6"] #jobs-list .job-card.selected .job-salary *{color:#6B5320!important}
   body[data-step="6"] #jobs-list .job-card.selected .job-details{color:#4d6470!important}
   body[data-step="6"] #jobs-list .job-card.selected .job-head .title{color:#0d2f3d!important}
   body[data-step="6"] #jobs-list .job-card.selected .job-tags .job-code{
     background:#ffffff!important;border-color:#bfe4d6!important;color:#1c6a51!important;
   }
   body[data-step="6"] #jobs-list .job-card.selected .job-tags .job-cat{
-    background:#ffffff!important;border-color:#bbf0d3!important;color:#15803D!important;
+    background:#ffffff!important;border-color:#EFE0BD!important;color:#8A6D2C!important;
   }
   body[data-step="6"] #jobs-list .job-card.selected .job-actions .btn-outline{
     background:#fff!important;border-color:#cfdae0!important;color:#0d2f3d!important;
   }
   body[data-step="6"] #jobs-list .job-card.selected .job-actions{
-    background:#ffffff!important;border-top:1px solid #bbf0d3!important;
+    background:#ffffff!important;border-top:1px solid #EFE0BD!important;
   }
   body[data-step="6"] #jobs-list .job-card.selected::after{display:none!important}
   /* البقية واضحة تماماً (بلا غباش) — يبقى التمييز بالحدّ الذهبي وحده */
@@ -3168,7 +3168,7 @@ body{
   }
   body[data-step="7"] .rv-row{border-bottom:1px dashed #e6edf0!important}
   body[data-step="7"] .rv-edit{background:#fff!important;border-color:#dbe4e9!important;color:#0d2f3d!important}
-  body[data-step="7"] .rv-edit:hover{border-color:#22C55E!important;background:#fffdf3!important}
+  body[data-step="7"] .rv-edit:hover{border-color:#C8A24A!important;background:#fffdf3!important}
   body[data-step="7"] .btn-row .btn-outline{
     background:rgba(255,255,255,.95)!important;border-color:rgba(255,255,255,.65)!important;color:#0d2f3d!important;
   }
@@ -3188,22 +3188,22 @@ body{
   /* كارت الوظائف المختارة: كحلي بحدود ذهبية */
   .rv-jobs{
     margin:6px 0 4px;padding:14px 16px 6px;border-radius:18px;
-    background:linear-gradient(165deg,#0A3F50,#012F3E 58%,#01222C);
-    border:1.5px solid rgba(34,197,94,.75);
+    background:linear-gradient(165deg,#0A3F50,#16304F 58%,#0D2247);
+    border:1.5px solid rgba(200,162,74,.75);
     box-shadow:0 16px 34px rgba(2,20,28,.28);
   }
   .rv-jobs .rv-sub{
-    background:rgba(34,197,94,.18)!important;border:1px solid rgba(34,197,94,.55)!important;
-    color:#c8f7dc!important;margin:10px 0 6px!important;
+    background:rgba(200,162,74,.18)!important;border:1px solid rgba(200,162,74,.55)!important;
+    color:#F2E2AC!important;margin:10px 0 6px!important;
   }
   body[data-step="7"] .rv-jobs .rv-row{border-bottom:1px dashed rgba(255,255,255,.18)!important}
   body[data-step="7"] .rv-jobs .rv-k{color:rgba(234,243,246,.72)!important}
   body[data-step="7"] .rv-jobs .rv-v{color:#fff!important;font-weight:800}
   body[data-step="7"] .rv-jobs .rv-edit{
-    background:rgba(34,197,94,.2)!important;border:1.5px solid rgba(34,197,94,.75)!important;
-    color:#c8f7dc!important;font-weight:900!important;
+    background:rgba(200,162,74,.2)!important;border:1.5px solid rgba(200,162,74,.75)!important;
+    color:#F2E2AC!important;font-weight:900!important;
   }
-  body[data-step="7"] .rv-jobs .rv-edit:hover{background:rgba(34,197,94,.34)!important;color:#fff!important}
+  body[data-step="7"] .rv-jobs .rv-edit:hover{background:rgba(200,162,74,.34)!important;color:#fff!important}
   body[data-step="7"] .rv-jobs .rv-chip{
     background:rgba(255,255,255,.12)!important;border-color:rgba(255,255,255,.26)!important;color:#fff!important;
     flex:0 0 auto!important;white-space:nowrap!important;
@@ -3212,8 +3212,8 @@ body{
   body[data-step="7"] .rv-jobs .rv-chips{
     display:flex!important;flex-wrap:wrap!important;gap:7px!important;padding:6px 0 4px;
   }
-  body[data-step="7"] .rv-jobs .rv-chip svg{color:#22C55E!important}
-  body[data-step="7"] .rv-jobs .rv-empty{color:#c8f7dc!important}
+  body[data-step="7"] .rv-jobs .rv-chip svg{color:#C8A24A!important}
+  body[data-step="7"] .rv-jobs .rv-empty{color:#F2E2AC!important}
 }
 /* ═══════════════════════════════════════════════════════════════════════════
    2026-10-27 · كارت الوظيفة: مرتب · أصغر · أيقونات · و«البورتريه»
@@ -3268,7 +3268,7 @@ body{
     min-height:0!important;
   }
   body[data-step="6"] #jobs-list .jm svg{
-    grid-row:1 / span 2;width:19px;height:19px;color:#15803D!important;align-self:center;
+    grid-row:1 / span 2;width:19px;height:19px;color:#8A6D2C!important;align-self:center;
   }
   body[data-step="6"] #jobs-list .jm .jm-k{
     font-size:10px!important;font-weight:800!important;color:#8b9aa3!important;line-height:1.3;
@@ -3282,15 +3282,15 @@ body{
   body[data-step="6"] #jobs-list .job-pay{
     display:flex!important;align-items:center;justify-content:space-between;gap:8px;
     margin-top:10px!important;padding:9px 12px!important;border-radius:12px!important;
-    background:#ffffff!important;border:1px solid #bbf0d3!important;
+    background:#ffffff!important;border:1px solid #EFE0BD!important;
   }
   body[data-step="6"] #jobs-list .job-pay-k{
     display:inline-flex!important;align-items:center;gap:6px;
-    font-size:11px!important;font-weight:800!important;color:#15803D!important;
+    font-size:11px!important;font-weight:800!important;color:#8A6D2C!important;
   }
   body[data-step="6"] #jobs-list .job-pay-k svg{width:16px;height:16px}
   body[data-step="6"] #jobs-list .job-pay-v{
-    font-size:13.5px!important;font-weight:900!important;color:#0f6b3f!important;white-space:nowrap;
+    font-size:13.5px!important;font-weight:900!important;color:#6B5320!important;white-space:nowrap;
   }
 
   /* أزرار الكارت: صفّ واحد مرتّب */
@@ -3323,7 +3323,7 @@ body{
     z-index:6;
     transform:translateY(-6px) scale(1.03)!important;
     filter:none!important;opacity:1!important;
-    box-shadow:0 26px 60px rgba(2,20,28,.3),0 0 0 3px rgba(34,197,94,.35)!important;
+    box-shadow:0 26px 60px rgba(2,20,28,.3),0 0 0 3px rgba(200,162,74,.35)!important;
   }
   /* طبقة تعتيم ناعمة خلف المختارة (لا تمنع النقر على البطاقة نفسها) */
   #jobs-list.has-focus::before{
@@ -3332,11 +3332,11 @@ body{
   }
   /* شارة «مختارة» داخل الكارت: واضحة ومرتبة */
   #jobs-list .job-card.selected{
-    outline:2px solid #22C55E;outline-offset:-2px;
+    outline:2px solid #C8A24A;outline-offset:-2px;
   }
   #jobs-list .job-card.selected .job-head::after{
     content:'';position:absolute;inset-block-start:-1px;inset-inline:18px;height:3px;border-radius:0 0 3px 3px;
-    background:linear-gradient(90deg,transparent,#22C55E,transparent);
+    background:linear-gradient(90deg,transparent,#C8A24A,transparent);
   }
 
   /* حركات دخول الكروت واحدة بعد الأخرى */
@@ -3368,7 +3368,7 @@ body{
   body{background-color:#ffffff!important}
   body[data-step="0"]{
     background-image:
-      radial-gradient(720px 300px at 8% -6%,rgba(34,197,94,.10),transparent 70%),
+      radial-gradient(720px 300px at 8% -6%,rgba(200,162,74,.10),transparent 70%),
       radial-gradient(760px 320px at 96% 0%,rgba(1,47,62,.07),transparent 72%),
       linear-gradient(180deg,#ffffff 0%,#ffffff 100%)!important;
   }
@@ -3381,24 +3381,24 @@ body{
     background:#ffffff!important;
   }
   .rv-chip{border-color:#e4eaef!important;color:#12404f!important}
-  .jf-chip{background:#ffffff!important;border:1px solid rgba(34,197,94,.55)!important;color:#15803D!important}
+  .jf-chip{background:#ffffff!important;border:1px solid rgba(200,162,74,.55)!important;color:#8A6D2C!important}
   .step-eyebrow{background:#ffffff!important;border-color:#e4eaef!important;color:#12404f!important}
-  .rv-note{background:#ffffff!important;border:1px solid #D8E6FA!important;border-inline-start:4px solid #2F6FD0!important;color:#1B4C8F!important}
-  .identity-notice{background:#ffffff!important;border:1px solid rgba(34,197,94,.55)!important;border-inline-start:4px solid #22C55E!important;color:#15803D!important}
+  .rv-note{background:#ffffff!important;border:1px solid #E8DDC4!important;border-inline-start:4px solid #1B4480!important;color:#12305C!important}
+  .identity-notice{background:#ffffff!important;border:1px solid rgba(200,162,74,.55)!important;border-inline-start:4px solid #C8A24A!important;color:#8A6D2C!important}
   .chances-bar.has1,.chances-bar.has2{background:#ffffff!important;border-color:#e4eaef!important;color:#0d2f3d!important}
   .chances-bar.has0{background:#ffffff!important;border-color:#f0c9c2!important;color:#8f2c1f!important}
   .alert-info{background:#ffffff!important;border:1px solid #cfe6f2!important;border-inline-start:4px solid #2d7fa8!important}
   .alert-error{background:#ffffff!important;border:1px solid #f3cfc8!important;border-inline-start:4px solid #b3392b!important;color:#8f2c1f!important}
   /* سطر الأجر وشريط النسبة والأيقونات: أبيض + ذهبي نيون */
   #jobs-list .job-pay,#jobs-list .job-salary,.job-pay,#jobs-list .job-pay-row{
-    background:#ffffff!important;border:1.5px solid rgba(34,197,94,.55)!important;
+    background:#ffffff!important;border:1.5px solid rgba(200,162,74,.55)!important;
   }
-  #jobs-list .job-pay *,#jobs-list .job-salary *,#jobs-list .job-pay-row *{color:#15803D!important}
+  #jobs-list .job-pay *,#jobs-list .job-salary *,#jobs-list .job-pay-row *{color:#8A6D2C!important}
   #jobs-list .job-pay b,#jobs-list .job-salary b{color:#0d2f3d!important}
-  .step-label .pct{background:#ffffff!important;border:1.5px solid rgba(34,197,94,.7)!important;color:#15803D!important;box-shadow:none!important}
-  .gender-opt .icon,.gender-opt.selected .icon{background:#ffffff!important;border-color:rgba(34,197,94,.65)!important}
+  .step-label .pct{background:#ffffff!important;border:1.5px solid rgba(200,162,74,.7)!important;color:#8A6D2C!important;box-shadow:none!important}
+  .gender-opt .icon,.gender-opt.selected .icon{background:#ffffff!important;border-color:rgba(200,162,74,.65)!important}
   .gender-opt{background:#ffffff!important}
-  .gender-opt.selected{background:#ffffff!important;border-color:#22C55E!important;box-shadow:0 0 0 3px rgba(34,197,94,.2)!important}
+  .gender-opt.selected{background:#ffffff!important;border-color:#C8A24A!important;box-shadow:0 0 0 3px rgba(200,162,74,.2)!important}
   .mk-feat{background:#ffffff!important}
   .mk-feat-ic,.mk-feat:nth-child(n) .mk-feat-ic{background:#ffffff!important}
   .btn-card-details{background:#ffffff!important}
@@ -3420,9 +3420,9 @@ body{
 
   /* الأساسي = ذهبي نيون بنص كحلي (هوية المنصة) */
   .btn-primary{
-    background:linear-gradient(135deg,#6EE7A8,#22C55E 52%,#15803D)!important;
+    background:linear-gradient(135deg,#E3C479,#C8A24A 52%,#8A6D2C)!important;
     color:#062B38!important;border:1.5px solid rgba(255,255,255,.55)!important;
-    box-shadow:0 12px 26px rgba(34,197,94,.30),inset 0 1px 0 rgba(255,255,255,.6)!important;
+    box-shadow:0 12px 26px rgba(200,162,74,.30),inset 0 1px 0 rgba(255,255,255,.6)!important;
   }
   .btn-primary:not(:disabled):hover{filter:brightness(1.05);transform:translateY(-2px)}
   .btn-primary:not(:disabled):active{transform:translateY(1px) scale(.985)!important}
@@ -3459,8 +3459,8 @@ body{
     gap:10px!important;margin-top:18px!important;
     padding:10px!important;border-radius:18px!important;
     background:rgba(255,255,255,.94)!important;
-    border:1px solid rgba(34,197,94,.55)!important;
-    box-shadow:0 -2px 0 rgba(34,197,94,.55) inset,0 18px 40px rgba(2,20,28,.16)!important;
+    border:1px solid rgba(200,162,74,.55)!important;
+    box-shadow:0 -2px 0 rgba(200,162,74,.55) inset,0 18px 40px rgba(2,20,28,.16)!important;
     backdrop-filter:blur(10px) saturate(1.1);
   }
   #pg-review .review-back{
@@ -3502,11 +3502,11 @@ body{
   /* «استخدام الباركود» كحلي بحدود ذهبية (إجراء مميّز) */
   .result-actions .btn-ghost-gold{
     grid-column:1 / -1;min-height:50px!important;
-    background:linear-gradient(135deg,#0A4E60,#012F3E 60%)!important;
-    color:#ffffff!important;border:1.5px solid rgba(34,197,94,.8)!important;
+    background:linear-gradient(135deg,#12305C,#16304F 60%)!important;
+    color:#ffffff!important;border:1.5px solid rgba(200,162,74,.8)!important;
     box-shadow:0 12px 24px rgba(2,20,28,.24)!important;
   }
-  .result-actions .btn-ghost-gold svg{color:#22C55E}
+  .result-actions .btn-ghost-gold svg{color:#C8A24A}
   .result-back{display:flex!important;justify-content:center!important;margin-top:8px!important}
   .result-back .btn-quiet{width:auto!important}
   @media(max-width:420px){
@@ -3516,8 +3516,8 @@ body{
 
   /* ── 5) أزرار كروت الوظائف: كحلي متّسق مع النظام ─────────────────────── */
   #jobs-list .job-actions .btn-primary{
-    background:linear-gradient(135deg,#0A4E60,#012F3E 62%)!important;
-    color:#ffffff!important;border:1.5px solid rgba(34,197,94,.75)!important;
+    background:linear-gradient(135deg,#12305C,#16304F 62%)!important;
+    color:#ffffff!important;border:1.5px solid rgba(200,162,74,.75)!important;
     box-shadow:0 8px 18px rgba(2,20,28,.18)!important;
   }
   #jobs-list .job-actions .btn-primary:hover{filter:brightness(1.12)}
@@ -3533,11 +3533,11 @@ body{
 /* ── 7) مكمّلات: زر الإتمام ذهبي (يلغي الأخضر القديم) + رأس الوظيفة في المراجعة ── */
 @media screen{
   #btn-finish{
-    background:linear-gradient(135deg,#6EE7A8,#22C55E 52%,#15803D)!important;
+    background:linear-gradient(135deg,#E3C479,#C8A24A 52%,#8A6D2C)!important;
     color:#062B38!important;border:1.5px solid rgba(255,255,255,.6)!important;
-    box-shadow:0 14px 30px rgba(34,197,94,.34),inset 0 1px 0 rgba(255,255,255,.6)!important;
+    box-shadow:0 14px 30px rgba(200,162,74,.34),inset 0 1px 0 rgba(255,255,255,.6)!important;
   }
-  #btn-finish:not(:disabled):hover{box-shadow:0 18px 36px rgba(34,197,94,.42)!important;filter:brightness(1.04)}
+  #btn-finish:not(:disabled):hover{box-shadow:0 18px 36px rgba(200,162,74,.42)!important;filter:brightness(1.04)}
   #btn-finish svg{color:#062B38;stroke-width:2.6}
   /* رأس كارت الفرصة في المراجعة: العنوان يساراً والزر يميناً */
   body[data-step="7"] .rv-jobs .rv-sub{
@@ -3546,11 +3546,11 @@ body{
   }
   body[data-step="7"] .rv-jobs .rv-sub>span{font-size:12.5px!important;font-weight:900!important;letter-spacing:.01em}
   body[data-step="7"] .rv-jobs .rv-sub .rv-edit{
-    background:#22C55E!important;color:#062B38!important;border:1.5px solid rgba(255,255,255,.55)!important;
+    background:#C8A24A!important;color:#062B38!important;border:1.5px solid rgba(255,255,255,.55)!important;
     font-size:11.5px!important;font-weight:900!important;padding:5px 12px!important;min-height:32px!important;
-    box-shadow:0 6px 14px rgba(34,197,94,.28);
+    box-shadow:0 6px 14px rgba(200,162,74,.28);
   }
-  body[data-step="7"] .rv-jobs .rv-sub .rv-edit:hover{background:#6EE7A8!important;color:#062B38!important}
+  body[data-step="7"] .rv-jobs .rv-sub .rv-edit:hover{background:#E3C479!important;color:#062B38!important}
 }
 /* ── 8) صفحة النتيجة: كحلية · الاستمارة بيضاء · أزرار شبكة مرتّبة ───────── */
 @media screen{
@@ -3575,466 +3575,271 @@ body{
   body[data-step="8"] .result-back .btn-quiet:hover{color:#ffffff!important;background:rgba(255,255,255,.1)!important}
 }
 /* ═══════════════════════════════════════════════════════════════════════════
-   2026-10-27 · كحلي مزرق نيون + أخضر نيون (بدل البرتقالي) + أزرار طبيعية
+   2026-10-28 · هوية الملصق: كحلي + ذهبي + أبيض  (الترحيب وكل ما بعده)
+   ─ الكحلي #16304F / #0F2444 / #0D2247 · الذهبي #C8A24A / #E3C479 / #E8D089
+   ─ الأسطح بيضاء · الحدود ذهبية رقيقة · لا أخضر ولا نيلي ولا كريمي ثقيل
    ═══════════════════════════════════════════════════════════════════════════ */
 @media screen{
   :root{
-    /* كحلي مزرق */
-    --nv-1:#134079;   /* أفتح */
-    --nv-2:#0A2A55;   /* أساسي */
-    --nv-3:#04152C;   /* أغمق */
-    --nv-line:rgba(96,170,255,.30);
-    /* أخضر نيون بدل الذهبي/البرتقالي */
-    --gn-1:#6EE7A8;
-    --gn-2:#22C55E;
-    --gn-3:#15803D;
-    --mk-gold:#22C55E; --mk-gold-2:#6EE7A8;
-    --ui-gold:#15803D; --ui-gold-2:#22C55E;
-    --ap-gold:#22C55E; --ap-gold-2:#6EE7A8; --ap-gold-3:#15803D;
+    --ps-navy:#16304F;  --ps-navy-2:#0F2444;  --ps-navy-3:#0D2247;
+    --ps-gold:#C8A24A;  --ps-gold-2:#E3C479;  --ps-gold-3:#E8D089; --ps-gold-4:#B08D3C;
+    --ps-line:#E6DCC6;  --ps-ink:#16294A;      --ps-muted:#6E7C8E;
   }
 
-  /* ── 1) الخلفية: كحلي مزرق نيون مع هالات زرقاء ─────────────────────── */
-  body[data-step="1"],body[data-step="2"],body[data-step="3"],
-  body[data-step="4"],body[data-step="5"],body[data-step="6"],
-  body[data-step="7"],body[data-step="8"]{
-    background-color:#07203F!important;
+  /* ── 1) الخلفية: كحلي الملصق بهالتين ذهبيتين ─────────────────────────── */
+  body[data-step="1"],body[data-step="2"],body[data-step="3"],body[data-step="4"],
+  body[data-step="5"],body[data-step="6"],body[data-step="7"],body[data-step="8"]{
+    background-color:#0F2444!important;
     background-image:
-      radial-gradient(880px 420px at 8% -10%,rgba(59,130,246,.34),transparent 70%),
-      radial-gradient(760px 380px at 98% 2%,rgba(34,197,94,.18),transparent 72%),
-      linear-gradient(180deg,#134079 0%,#0A2A55 46%,#04152C 100%)!important;
+      radial-gradient(880px 420px at 8% -10%,rgba(200,162,74,.26),transparent 70%),
+      radial-gradient(760px 380px at 98% 2%,rgba(30,66,112,.55),transparent 72%),
+      linear-gradient(180deg,#1E4270 0%,#16304F 46%,#0A1A33 100%)!important;
   }
   body[data-step="1"] .app::before,body[data-step="2"] .app::before,body[data-step="3"] .app::before,
   body[data-step="4"] .app::before,body[data-step="5"] .app::before,body[data-step="6"] .app::before,
   body[data-step="7"] .app::before,body[data-step="8"] .app::before{
-    background:radial-gradient(circle,rgba(59,130,246,.30),rgba(59,130,246,0) 68%)!important;
+    background:radial-gradient(circle,rgba(200,162,74,.24),rgba(200,162,74,0) 68%)!important;
   }
   body[data-step="1"] .app::after,body[data-step="2"] .app::after,body[data-step="3"] .app::after,
   body[data-step="4"] .app::after,body[data-step="5"] .app::after,body[data-step="6"] .app::after,
   body[data-step="7"] .app::after,body[data-step="8"] .app::after{
-    background:radial-gradient(circle,rgba(34,197,94,.22),rgba(34,197,94,0) 68%)!important;
+    background:radial-gradient(circle,rgba(227,196,121,.16),rgba(227,196,121,0) 68%)!important;
   }
   body[data-step="1"]::before,body[data-step="2"]::before,body[data-step="3"]::before,
   body[data-step="4"]::before,body[data-step="5"]::before,body[data-step="6"]::before,
   body[data-step="7"]::before,body[data-step="8"]::before{
-    background-image:linear-gradient(90deg,transparent,rgba(96,170,255,.9) 25%,rgba(34,197,94,.9) 62%,transparent)!important;
-  }
-  /* الشريط العلوي في الترحيب + خاتمتها: كحلي مزرق */
-  .mk-top{background:linear-gradient(120deg,#134079,#0A2A55 62%,#07203F)!important}
-  .mk-end-in{background:linear-gradient(180deg,#0A2A55,#07203F)!important}
-
-  /* ── 2) الأزرار: أخضر نيون · والذهبي القديم انتهى ───────────────────── */
-  .btn-primary{
-    background:linear-gradient(135deg,#41DE93,#22C55E 55%,#15803D)!important;
-    color:#04231A!important;border:1.5px solid rgba(255,255,255,.55)!important;
-    box-shadow:0 12px 26px rgba(34,197,94,.30),inset 0 1px 0 rgba(255,255,255,.55)!important;
-  }
-  .btn-primary:not(:disabled):hover{filter:brightness(1.06)}
-  .btn-primary *{color:#04231A}
-  .btn-primary svg{stroke:#04231A!important}
-  #btn-finish{
-    background:linear-gradient(135deg,#41DE93,#22C55E 55%,#15803D)!important;
-    color:#04231A!important;border:1.5px solid rgba(255,255,255,.55)!important;
-    box-shadow:0 12px 26px rgba(34,197,94,.32),0 0 0 4px rgba(34,197,94,.16)!important;
-  }
-  #btn-finish svg{color:#04231A;stroke:#04231A!important}
-  #pg-review .review-go::before{background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent)}
-  /* زر الباركود في النتيجة: أخضر بحدود فاتحة */
-  .result-actions .btn-ghost-gold{
-    background:linear-gradient(135deg,#2FBF77,#15803D 62%)!important;
-    color:#ffffff!important;border:1.5px solid rgba(110,231,168,.8)!important;
-    box-shadow:0 10px 22px rgba(21,128,61,.28)!important;
-  }
-  .result-actions .btn-ghost-gold svg{color:#dcfce9!important}
-  /* الأزرار داخل الكارت المختار */
-  #jobs-list .job-actions .btn-primary{
-    background:linear-gradient(135deg,#2FBF77,#15803D 62%)!important;color:#fff!important;
-    border:1.5px solid rgba(110,231,168,.7)!important;
-  }
-  #jobs-list .job-card.selected .job-actions .btn-primary,
-  #jobs-list .job-card.selected .job-actions .btn-success{
-    background:linear-gradient(135deg,#41DE93,#22C55E)!important;color:#04231A!important;
-  }
-  .rv-jobs .rv-sub .rv-edit,#jobs-list .job-state.is-picked{
-    background:linear-gradient(140deg,#6EE7A8,#22C55E)!important;color:#04231A!important;
+    background-image:linear-gradient(90deg,transparent,rgba(200,162,74,.95) 30%,rgba(232,208,137,.95) 62%,transparent)!important;
   }
 
-  /* ── 3) أزرار الاستمارة (بعد التقديم): مقاسات طبيعية ────────────────── */
-  .result-actions{
-    display:grid!important;grid-template-columns:1fr 1fr!important;
-    gap:8px!important;margin-top:14px!important;
+  /* ── 2) شريط التقدّم: زجاج كحلي بحدود ذهبية ونقاط ذهبية ─────────────── */
+  body[data-step="1"] .steps-bar,body[data-step="2"] .steps-bar,body[data-step="3"] .steps-bar,
+  body[data-step="4"] .steps-bar,body[data-step="5"] .steps-bar,body[data-step="6"] .steps-bar,
+  body[data-step="7"] .steps-bar,body[data-step="8"] .steps-bar{
+    background:rgba(255,255,255,.06)!important;border:1px solid rgba(200,162,74,.45)!important;
+    box-shadow:0 12px 30px rgba(4,16,34,.30),inset 0 1px 0 rgba(255,255,255,.08)!important;
   }
-  .result-actions .btn{
-    width:auto!important;min-height:44px!important;height:44px!important;
-    font-size:13px!important;font-weight:800!important;border-radius:12px!important;
-    padding:8px 12px!important;gap:6px!important;
+  .step-dot{background:rgba(255,255,255,.20)!important}
+  .step-dot.done{background:linear-gradient(90deg,#B08D3C,#E3C479)!important;box-shadow:none!important}
+  .step-dot.active{
+    background:linear-gradient(90deg,#E8D089,#C8A24A)!important;
+    box-shadow:0 0 0 3px rgba(200,162,74,.22)!important;animation:none!important;
   }
-  .result-actions .btn:first-child,
-  .result-actions .btn-ghost-gold,
-  .result-actions .btn-quiet{grid-column:1 / -1}
-  .result-actions .btn:first-child{min-height:46px!important;height:46px!important;font-size:13.5px!important}
-  .result-actions .btn svg{width:16px!important;height:16px!important}
-  .result-back{margin-top:6px!important}
-  .result-back .btn-quiet{min-height:36px!important;height:36px!important;font-size:12.5px!important}
-  @media(max-width:420px){
-    .result-actions .btn{font-size:12.5px!important;height:42px!important;min-height:42px!important}
-  }
-
-  /* ── 4) شريط المراجعة: نفس الشيء بحجم طبيعي ─────────────────────────── */
-  #pg-review .review-back{min-height:46px!important;font-size:13.5px!important;min-width:96px!important}
-  #pg-review .review-go{min-height:46px!important;font-size:14.5px!important}
-  #pg-review > .review-bar{padding:8px!important;border-radius:16px!important;gap:8px!important}
-
-  /* ── 5) تفاصيل الألوان: أشرطة الفرص والشرائح صارت خضراء ─────────────── */
-  .step-dot.done{background:linear-gradient(90deg,#22C55E,#6EE7A8)!important}
-  .step-dot.active{background:linear-gradient(90deg,#41DE93,#22C55E)!important;box-shadow:0 0 0 3px rgba(34,197,94,.22)!important}
-  .step-label .pct{background:#ffffff!important;border:1.5px solid rgba(34,197,94,.55)!important;color:#15803D!important}
-  .rv-ic{background:linear-gradient(150deg,#ffffff,#f2fbf6)!important;border-color:rgba(34,197,94,.45)!important;color:#15803D!important}
-  .btn-outline,.btn-quiet,.jf-reset,.rv-edit{border-color:#cfdae0!important}
-  .form-group input:focus,.form-group select:focus{border-color:#22C55E!important;box-shadow:0 0 0 4px rgba(34,197,94,.18)!important}
-  .fld:focus-within .fld-ic{background:#0A2A55!important;border-color:#0A2A55!important;color:#6EE7A8!important}
-  .fld-ic{color:#15803D!important;border-color:#cfdae0!important}
-  #jobs-list .job-card.selected{outline-color:#22C55E!important;border-color:#22C55E!important}
-  #jobs-list .job-card.selected .job-head::after{background:linear-gradient(90deg,transparent,#22C55E,transparent)!important}
-  #jobs-list .job-card.selected{box-shadow:0 24px 54px rgba(2,20,28,.36),0 0 0 4px rgba(34,197,94,.20)!important}
-  .mk-feat:nth-child(1) .mk-feat-ic{background:#fff!important;border-color:rgba(34,197,94,.55)!important;color:#15803D!important}
-  .mk-feat:nth-child(1){background:linear-gradient(#fff,#fff) padding-box,linear-gradient(150deg,rgba(34,197,94,.45),rgba(34,197,94,.08)) border-box!important}
-  .mk-sep span,.wl-divider span{color:#15803D!important}
-  .mk-sep::before,.mk-sep::after{background:linear-gradient(90deg,transparent,rgba(34,197,94,.6),transparent)!important}
-}
-/* ═══════════════════════════════════════════════════════════════════════════
-   2026-10-28 · صفحات إدخال البيانات (بعد الترحيب): أبيض + نيلي فقط
-   ─ إلغاء كل الأخضر/البرتقالي من هذه الخطوات (1..5) واستبداله بنيلي أنيق.
-   ─ الكحلي المزرق للخلفية · الكارت أبيض · الأزرار والحقول بيضاء بنيلي.
-   ═══════════════════════════════════════════════════════════════════════════ */
-@media screen{
-  :root{
-    /* نيلي الهوية لصفحات الإدخال */
-    --in-indigo:#1B4C8F;      /* نيلي أساسي */
-    --in-indigo-2:#2F6FD0;    /* نيلي فاتح */
-    --in-indigo-3:#0E2E5C;    /* نيلي غامق */
-    --in-line:#D8E3F2;        /* حدود باردة */
-    --in-ink:#0B1F3A;         /* نص */
+  body[data-step] .step-label{color:rgba(244,239,226,.84)!important}
+  body[data-step] .step-label b{color:#FFFFFF!important}
+  body[data-step] .step-label .pct{
+    background:rgba(200,162,74,.18)!important;border:1px solid rgba(227,196,121,.7)!important;
+    color:#F2E2AC!important;box-shadow:none!important;
   }
 
-  /* ── 1) شريط التقدّم: النقاط والكبسولة نيلي ─────────────────────────── */
-  body[data-step="1"] .step-dot.done,body[data-step="2"] .step-dot.done,
-  body[data-step="3"] .step-dot.done,body[data-step="4"] .step-dot.done,
-  body[data-step="5"] .step-dot.done{
-    background:linear-gradient(90deg,#1B4C8F,#60AAFF)!important;box-shadow:none!important;
+  /* ── 3) البطاقات: بيضاء · حدود ذهبية · شريط ذهبي متحرّك ─────────────── */
+  .profile-card,.rv-card,.job-filters,.job-card,.card-sheet-box,#jobs-empty{
+    background:#FFFFFF!important;border:1px solid var(--ps-line)!important;
   }
-  body[data-step="1"] .step-dot.active,body[data-step="2"] .step-dot.active,
-  body[data-step="3"] .step-dot.active,body[data-step="4"] .step-dot.active,
-  body[data-step="5"] .step-dot.active{
-    background:linear-gradient(90deg,#8FC4FF,#2F6FD0)!important;
-    box-shadow:0 0 0 3px rgba(96,170,255,.22)!important;
-    animation:none!important;
-  }
-  body[data-step="1"] .step-label .pct,body[data-step="2"] .step-label .pct,
-  body[data-step="3"] .step-label .pct,body[data-step="4"] .step-label .pct,
-  body[data-step="5"] .step-label .pct{
-    background:#FFFFFF!important;border:1.5px solid rgba(96,170,255,.55)!important;
-    color:#1B4C8F!important;box-shadow:none!important;
-  }
-
-  /* ── 2) الكارت: أبيض نظيف بحدود نيلية رقيقة ─────────────────────────── */
-  body[data-step="1"] .profile-card,body[data-step="2"] .profile-card,
-  body[data-step="3"] .profile-card,body[data-step="4"] .profile-card,
-  body[data-step="5"] .profile-card{
-    background:#FFFFFF!important;
-    border:1px solid rgba(216,227,242,.9)!important;
-    box-shadow:0 22px 50px rgba(6,23,48,.34)!important;
-  }
-  body[data-step="1"] .profile-card::before,body[data-step="2"] .profile-card::before,
-  body[data-step="3"] .profile-card::before,body[data-step="4"] .profile-card::before,
-  body[data-step="5"] .profile-card::before{
-    background:linear-gradient(90deg,#0E2E5C,#1B4C8F 38%,#60AAFF 72%,#DCEBFF)!important;
+  .profile-card,.rv-card{box-shadow:0 22px 50px rgba(4,16,34,.34)!important}
+  .profile-card::before{
+    background:linear-gradient(90deg,#B08D3C,#E3C479 42%,#F7ECC8 70%,#C8A24A)!important;
     background-size:200% 100%!important;animation:apRibbon 12s linear infinite!important;
   }
+  .step-eyebrow{background:#FFFFFF!important;border:1px solid var(--ps-line)!important;color:#12305C!important}
+  .section-title{color:var(--ps-ink)!important}
+  .section-title::before{background:linear-gradient(180deg,#E3C479,#C8A24A)!important;box-shadow:none!important}
+  .step-intro h2::after{background:linear-gradient(90deg,#C8A24A,rgba(200,162,74,0))!important}
 
-  /* العناوين والشرائط الصغيرة: نيلي */
-  body[data-step="1"] .step-eyebrow,body[data-step="2"] .step-eyebrow,
-  body[data-step="3"] .step-eyebrow,body[data-step="4"] .step-eyebrow,
-  body[data-step="5"] .step-eyebrow{
-    background:#FFFFFF!important;border:1px solid var(--in-line)!important;
-    color:#1B4C8F!important;
+  /* ── 4) الحقول: بيضاء بحدّ ذهبي عند التركيز ─────────────────────────── */
+  .form-group label{color:#12305C!important}
+  .form-group input,.form-group select{
+    background:#FFFFFF!important;border:1.5px solid var(--ps-line)!important;color:var(--ps-ink)!important;
   }
-  body[data-step="1"] .section-title::before,body[data-step="2"] .section-title::before,
-  body[data-step="3"] .section-title::before,body[data-step="4"] .section-title::before,
-  body[data-step="5"] .section-title::before{
-    background:linear-gradient(180deg,#2F6FD0,#1B4C8F)!important;box-shadow:none!important;
+  .form-group input:focus,.form-group select:focus{
+    border-color:#C8A24A!important;box-shadow:0 0 0 4px rgba(200,162,74,.18)!important;background:#FFFDF8!important;
   }
-  body[data-step="1"] .step-intro h2::after,body[data-step="2"] .step-intro h2::after,
-  body[data-step="3"] .step-intro h2::after,body[data-step="4"] .step-intro h2::after,
-  body[data-step="5"] .step-intro h2::after{
-    background:linear-gradient(90deg,#2F6FD0,rgba(47,111,208,0))!important;
+  .fld-ic{background:#FFFDF8!important;border:1px solid var(--ps-line)!important;color:#8A6D2C!important}
+  .fld:focus-within .fld-ic{background:#16304F!important;border-color:#16304F!important;color:#E3C479!important}
+  .form-group input.valid,.form-group select.valid{
+    border-color:#C8A24A!important;box-shadow:0 0 0 4px rgba(200,162,74,.16)!important;
   }
-
-  /* ── 3) الحقول: بيضاء بنيلي عند التركيز ─────────────────────────────── */
-  body[data-step="1"] .form-group label,body[data-step="2"] .form-group label,
-  body[data-step="3"] .form-group label,body[data-step="4"] .form-group label,
-  body[data-step="5"] .form-group label{color:#1B4C8F!important}
-  body[data-step="1"] .form-group input,body[data-step="1"] .form-group select,
-  body[data-step="2"] .form-group input,body[data-step="2"] .form-group select,
-  body[data-step="3"] .form-group input,body[data-step="3"] .form-group select,
-  body[data-step="4"] .form-group input,body[data-step="4"] .form-group select,
-  body[data-step="5"] .form-group input,body[data-step="5"] .form-group select{
-    background:#FFFFFF!important;border:1.5px solid var(--in-line)!important;color:var(--in-ink)!important;
-  }
-  body[data-step="1"] .form-group input:focus,body[data-step="1"] .form-group select:focus,
-  body[data-step="2"] .form-group input:focus,body[data-step="2"] .form-group select:focus,
-  body[data-step="3"] .form-group input:focus,body[data-step="3"] .form-group select:focus,
-  body[data-step="4"] .form-group input:focus,body[data-step="4"] .form-group select:focus,
-  body[data-step="5"] .form-group input:focus,body[data-step="5"] .form-group select:focus{
-    border-color:#2F6FD0!important;box-shadow:0 0 0 4px rgba(47,111,208,.16)!important;background:#FFFFFF!important;
-  }
-  body[data-step="1"] .fld-ic,body[data-step="2"] .fld-ic,body[data-step="3"] .fld-ic,
-  body[data-step="4"] .fld-ic,body[data-step="5"] .fld-ic{
-    background:#FFFFFF!important;border:1px solid var(--in-line)!important;color:#2F6FD0!important;
-  }
-  body[data-step="1"] .fld:focus-within .fld-ic,body[data-step="2"] .fld:focus-within .fld-ic,
-  body[data-step="3"] .fld:focus-within .fld-ic,body[data-step="4"] .fld:focus-within .fld-ic,
-  body[data-step="5"] .fld:focus-within .fld-ic{
-    background:#1B4C8F!important;border-color:#1B4C8F!important;color:#FFFFFF!important;
-  }
-  /* حالات التحقق: نيلي للحقل الصحيح (بلا أخضر) وأحمر للخطأ */
-  body[data-step="1"] .form-group input.valid,body[data-step="2"] .form-group input.valid,
-  body[data-step="2"] .form-group select.valid,body[data-step="3"] .form-group select.valid,
-  body[data-step="4"] .form-group input.valid,body[data-step="5"] .form-group select.valid{
-    border-color:#2F6FD0!important;box-shadow:0 0 0 4px rgba(47,111,208,.14)!important;
-  }
-  body[data-step="1"] .form-group input.invalid,body[data-step="2"] .form-group input.invalid,
-  body[data-step="2"] .form-group select.invalid,body[data-step="3"] .form-group select.invalid,
-  body[data-step="4"] .form-group input.invalid,body[data-step="5"] .form-group select.invalid{
+  .form-group input.invalid,.form-group select.invalid{
     border-color:#B3392B!important;box-shadow:0 0 0 4px rgba(179,57,43,.13)!important;
   }
 
-  /* ── 4) الأزرار: أساسي نيلي · ثانوي أبيض ────────────────────────────── */
-  body[data-step="1"] .btn-primary,body[data-step="2"] .btn-primary,
-  body[data-step="3"] .btn-primary,body[data-step="4"] .btn-primary,
-  body[data-step="5"] .btn-primary{
-    background:linear-gradient(135deg,#2F6FD0,#1B4C8F 58%,#0E2E5C)!important;
-    color:#FFFFFF!important;border:1.5px solid rgba(143,196,255,.65)!important;
-    box-shadow:0 14px 30px rgba(11,31,58,.36),inset 0 1px 0 rgba(255,255,255,.18)!important;
+  /* ── 5) الأزرار: كحلي بحدود ذهبية (زر الملصق) + ذهبي للإتمام ────────── */
+  .btn-primary,body[data-step] .btn-primary,#btn-finish{
+    background:linear-gradient(135deg,#1E4270,#16304F 52%,#0D2247)!important;
+    color:#FFFFFF!important;border:1.5px solid rgba(227,196,121,.85)!important;
+    box-shadow:0 14px 30px rgba(13,34,71,.38),inset 0 1px 0 rgba(255,255,255,.16)!important;
   }
-  body[data-step="1"] .btn-primary *,body[data-step="2"] .btn-primary *,
-  body[data-step="3"] .btn-primary *,body[data-step="4"] .btn-primary *,
-  body[data-step="5"] .btn-primary *{color:#FFFFFF!important;stroke:#FFFFFF!important}
-  body[data-step="1"] .btn-primary::before,body[data-step="2"] .btn-primary::before,
-  body[data-step="3"] .btn-primary::before,body[data-step="4"] .btn-primary::before,
-  body[data-step="5"] .btn-primary::before{
-    background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent)!important;
+  .btn-primary *,body[data-step] .btn-primary *,#btn-finish *{color:#FFFFFF!important;stroke:#FFFFFF!important}
+  .btn-primary::before,#btn-finish::before{
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.22),transparent)!important;
   }
-  body[data-step="1"] .btn-outline,body[data-step="2"] .btn-outline,
-  body[data-step="3"] .btn-outline,body[data-step="4"] .btn-outline,
-  body[data-step="5"] .btn-outline{
-    background:#FFFFFF!important;border:1.5px solid var(--in-line)!important;
-    color:#1B4C8F!important;box-shadow:0 6px 16px rgba(11,31,58,.10)!important;
+  /* إتمام التقديم: ذهبي بارز بلمعة (نقطة القرار) */
+  #btn-finish{
+    background:linear-gradient(135deg,#E8D089,#C8A24A 55%,#B08D3C)!important;
+    color:#241A05!important;border:1.5px solid rgba(255,255,255,.55)!important;
   }
-  body[data-step="1"] .btn-outline:hover,body[data-step="2"] .btn-outline:hover,
-  body[data-step="3"] .btn-outline:hover,body[data-step="4"] .btn-outline:hover,
-  body[data-step="5"] .btn-outline:hover{border-color:#2F6FD0!important;background:#F7FAFF!important}
+  #btn-finish *,#btn-finish svg{color:#241A05!important;stroke:#241A05!important}
+  .btn-outline,body[data-step] .btn-outline{
+    background:#FFFFFF!important;border:1.5px solid var(--ps-line)!important;color:#12305C!important;
+  }
+  .btn-outline:hover{border-color:#C8A24A!important;background:#FFFDF6!important}
 
-  /* ── 5) الجنس والهاتف والتنبيهات: نيلي بدل الأخضر ───────────────────── */
-  body[data-step="5"] .gender-opt{background:#FFFFFF!important;border-color:var(--in-line)!important}
-  body[data-step="5"] .gender-opt .icon{background:#FFFFFF!important;border-color:var(--in-line)!important;color:#2F6FD0!important}
-  body[data-step="5"] .gender-opt.selected{
-    background:#F4F8FF!important;border-color:#2F6FD0!important;
-    box-shadow:0 0 0 3px rgba(47,111,208,.16)!important;color:#0B1F3A!important;
+  /* ── 6) الجنس والهاتف والتنبيهات ────────────────────────────────────── */
+  .gender-opt{background:#FFFFFF!important;border-color:var(--ps-line)!important}
+  .gender-opt .icon{background:#FFFDF8!important;border-color:var(--ps-line)!important;color:#8A6D2C!important}
+  .gender-opt:hover{border-color:#C8A24A!important}
+  .gender-opt.selected{
+    background:#FFFCF3!important;border-color:#C8A24A!important;
+    box-shadow:0 0 0 3px rgba(200,162,74,.20)!important;color:#16294A!important;
   }
-  body[data-step="5"] .gender-opt.selected .icon{background:#1B4C8F!important;border-color:#1B4C8F!important;color:#FFFFFF!important}
-  body[data-step="5"] .gender-opt.selected::after{background:#2F6FD0!important}
-  body[data-step="4"] .phone-meter .pc-track i{background:linear-gradient(90deg,#2F6FD0,#8FC4FF)!important}
-  body[data-step="4"] .phone-meter .pc-num{color:#1B4C8F!important}
-  body[data-step="4"] .phone-meter.done .pc-track i{background:linear-gradient(90deg,#1B4C8F,#60AAFF)!important}
-  body[data-step="4"] .phone-meter.done .pc-num,body[data-step="4"] .phone-meter.done .pc-state{color:#1B4C8F!important}
-  body[data-step="1"] .alert-error,body[data-step="2"] .alert-error,
-  body[data-step="3"] .alert-error,body[data-step="4"] .alert-error,
-  body[data-step="5"] .alert-error{
-    background:#FFFFFF!important;border:1px solid #F0C9C2!important;
-    border-inline-start:4px solid #B3392B!important;color:#8F2C1F!important;
-  }
+  .gender-opt.selected .icon{background:#16304F!important;border-color:#16304F!important;color:#E3C479!important}
+  .gender-opt.selected .icon svg{color:#E3C479!important}
+  .gender-opt.selected::after{background:#C8A24A!important;color:#241A05!important}
+  .phone-meter .pc-track{background:#E9E2D2!important}
+  .phone-meter .pc-track i{background:linear-gradient(90deg,#C8A24A,#E3C479)!important}
+  .phone-meter .pc-num{color:#12305C!important}
+  .phone-meter.done .pc-track i{background:linear-gradient(90deg,#B08D3C,#E8D089)!important}
+  .alert-error{background:#FFFFFF!important;border:1px solid #F0C9C2!important;border-inline-start:4px solid #B3392B!important;color:#8F2C1F!important}
+  .alert-info{background:#FFFFFF!important;border:1px solid #D9E4F2!important;border-inline-start:4px solid #1E4270!important;color:#12305C!important}
+  .identity-notice{background:#FFFFFF!important;border:1px solid var(--ps-line)!important;border-inline-start:4px solid #C8A24A!important;color:#6B5320!important}
+  .identity-notice b,.identity-notice strong{color:#0D2247!important}
 
-  /* قواعد عامة كانت تُبقى أخضر — تُبطَل داخل خطوة الجنس */
-  body[data-step="5"] .gender-opt:hover{
-    border-color:#2F6FD0!important;box-shadow:0 10px 24px rgba(27,76,143,.12)!important;
-  }
-  body[data-step="5"] .gender-opt .icon{
-    background:#FFFFFF!important;border:1px solid var(--in-line)!important;
-    box-shadow:0 4px 12px rgba(27,76,143,.10)!important;
-  }
-  body[data-step="5"] .gender-opt.selected{
-    background:linear-gradient(160deg,#F2F7FF,#E8F1FF)!important;
-    border-color:#2F6FD0!important;color:#0B1F3A!important;
-    box-shadow:0 0 0 3px rgba(47,111,208,.18),0 12px 26px rgba(11,31,58,.10)!important;
-  }
-  body[data-step="5"] .gender-opt.selected .icon{
-    background:linear-gradient(150deg,#2F6FD0,#1B4C8F)!important;
-    border-color:#1B4C8F!important;box-shadow:0 10px 22px rgba(27,76,143,.30)!important;
-  }
-  /* أيقونات الجنس: نيلي (كانت خضراء) */
-  body[data-step="5"] .gender-opt .icon svg{color:#2F6FD0!important}
-  body[data-step="5"] .gender-opt.selected .icon svg{color:#FFFFFF!important}
-  body[data-step="5"] .gender-opt.selected .icon{box-shadow:0 8px 18px rgba(27,76,143,.28)!important}
-  /* خط التذييل أعلى الصفحة: نيلي بدل أخضر */
-  .footer{border-block-start:1px solid rgba(96,170,255,.35)!important}
-  body[data-step="1"] .footer,body[data-step="2"] .footer,body[data-step="3"] .footer,
-  body[data-step="4"] .footer,body[data-step="5"] .footer{
-    color:#B9CDE8!important;border-block-start:1px solid rgba(96,170,255,.32)!important;
-  }
-  /* البطاقات الصغيرة داخل خطوات الإدخال (شرائح/تلميحات): نيلي بلا أخضر */
-  body[data-step="1"] .chances-bar,body[data-step="2"] .chances-bar,
-  body[data-step="3"] .chances-bar,body[data-step="4"] .chances-bar,
-  body[data-step="5"] .chances-bar{
-    background:#FFFFFF!important;border:1px solid var(--in-line)!important;color:#1B4C8F!important;
-  }
-  body[data-step="1"] .chances-bar b,body[data-step="2"] .chances-bar b,
-  body[data-step="3"] .chances-bar b,body[data-step="4"] .chances-bar b,
-  body[data-step="5"] .chances-bar b{color:#1B4C8F!important}
-
-  /* ── 6) التذييل والهالات: نيلية هادئة ───────────────────────────────── */
-  body[data-step="1"] .app::before,body[data-step="2"] .app::before,
-  body[data-step="3"] .app::before,body[data-step="4"] .app::before,
-  body[data-step="5"] .app::before{background:radial-gradient(circle,rgba(47,111,208,.30),rgba(47,111,208,0) 68%)!important}
-  body[data-step="1"] .app::after,body[data-step="2"] .app::after,
-  body[data-step="3"] .app::after,body[data-step="4"] .app::after,
-  body[data-step="5"] .app::after{background:radial-gradient(circle,rgba(96,170,255,.22),rgba(96,170,255,0) 68%)!important}
-}
-/* ═══════════════════════════════════════════════════════════════════════════
-   2026-10-28 (٢) · استكمال الهوية البيضاء/النيلية على بقية خطوات البطاقة
-   (اختيار الوظيفة · المراجعة · النتيجة) — لا أخضر ولا برتقالي بعد الترحيب
-   ═══════════════════════════════════════════════════════════════════════════ */
-@media screen{
-  /* ── شريط التقدّم للخطوات ٦ · ٧ · ٨ ─────────────────────────────────── */
-  body[data-step="6"] .step-dot.done,body[data-step="7"] .step-dot.done,body[data-step="8"] .step-dot.done{
-    background:linear-gradient(90deg,#1B4C8F,#60AAFF)!important;box-shadow:none!important;
-  }
-  body[data-step="6"] .step-dot.active,body[data-step="7"] .step-dot.active,body[data-step="8"] .step-dot.active{
-    background:linear-gradient(90deg,#8FC4FF,#2F6FD0)!important;box-shadow:0 0 0 3px rgba(96,170,255,.22)!important;animation:none!important;
-  }
-  body[data-step="6"] .step-label .pct,body[data-step="7"] .step-label .pct,body[data-step="8"] .step-label .pct{
-    background:#FFFFFF!important;border:1.5px solid rgba(96,170,255,.55)!important;color:#1B4C8F!important;
-  }
-
-  /* ── اختيار الوظيفة (٦): نيلي بدل الأخضر ───────────────────────────── */
+  /* ── 7) شاشة الوظائف: كحلي + ذهبي · كروت بيضاء ──────────────────────── */
+  body[data-step="6"] .section-title{color:#FFFFFF!important}
+  body[data-step="6"] .section-title::before{background:linear-gradient(180deg,#E3C479,#C8A24A)!important}
   body[data-step="6"] .chances-bar,body[data-step="6"] .chances-bar.has2,
   body[data-step="6"] .chances-bar.has1,body[data-step="6"] .chances-bar.has0{
-    background:rgba(255,255,255,.10)!important;border:1px solid rgba(96,170,255,.45)!important;color:#FFFFFF!important;
+    background:rgba(255,255,255,.08)!important;border:1px solid rgba(200,162,74,.45)!important;color:#F4EFE2!important;
   }
-  body[data-step="6"] .chances-bar b{color:#E3EEFF!important}
-  body[data-step="6"] .chances-bar .chip-dot.on{background:#93C5FD!important}
-  body[data-step="6"] .chances-bar .chip-dot.off{background:#F0A9A0!important}
+  body[data-step="6"] .chances-bar b{color:#F2E2AC!important}
+  body[data-step="6"] .chances-bar .chip-dot.on{background:#E3C479!important}
   body[data-step="6"] .job-filters{
-    background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.05))!important;
-    border:1px solid rgba(96,170,255,.38)!important;box-shadow:0 20px 46px rgba(4,16,34,.40)!important;
+    background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.04))!important;
+    border:1px solid rgba(200,162,74,.40)!important;
   }
+  body[data-step="6"] .job-filters label,body[data-step="6"] .jf-cell label{color:#EFE6D2!important}
+  body[data-step="6"] .jf-top b,body[data-step="6"] .jf-note{color:rgba(239,230,210,.9)!important}
+  body[data-step="6"] .job-filters input:not([type=checkbox]),body[data-step="6"] .job-filters select{
+    background:#FFFFFF!important;border:1px solid rgba(232,221,196,.9)!important;color:#16294A!important;
+  }
+  body[data-step="6"] .jf-ic{color:#C8A24A!important}
   body[data-step="6"] .jf-more{
-    background:rgba(47,111,208,.30)!important;border:1.5px solid rgba(143,196,255,.85)!important;color:#FFFFFF!important;
+    background:rgba(200,162,74,.22)!important;border:1.5px solid rgba(227,196,121,.85)!important;color:#FFFFFF!important;
   }
-  body[data-step="6"] .jf-more svg{color:#BFDBFE!important}
-  body[data-step="6"] .jf-ic{color:#93C5FD!important}
-  body[data-step="6"] .jf-reset{border-color:rgba(147,197,253,.45)!important;color:#E3EEFF!important}
-  body[data-step="6"] .jf-reset:hover{color:#FFFFFF!important;border-color:#93C5FD!important}
-  body[data-step="6"] .jf-panel{background:rgba(4,24,48,.42)!important;border:1px solid rgba(96,170,255,.35)!important}
-  body[data-step="6"] .jf-panel-title{color:#BFDBFE!important}
+  body[data-step="6"] .jf-more svg{color:#F2E2AC!important}
+  body[data-step="6"] .jf-reset{background:rgba(255,255,255,.10)!important;border-color:rgba(232,208,137,.5)!important;color:#F4EFE2!important}
+  body[data-step="6"] .jf-panel{background:rgba(10,26,51,.40)!important;border:1px solid rgba(200,162,74,.35)!important}
+  body[data-step="6"] .jf-panel-title{color:#F2E2AC!important}
   body[data-step="6"] .job-filters #jobs-count{
-    background:rgba(47,111,208,.30)!important;border:1px solid rgba(143,196,255,.6)!important;color:#E3EEFF!important;
+    background:rgba(200,162,74,.20)!important;border:1px solid rgba(227,196,121,.6)!important;color:#F7ECC8!important;
   }
   body[data-step="6"] .job-filters #jobs-count b{color:#FFFFFF!important}
-  body[data-step="6"] .job-filters #jobs-count::before{background:#93C5FD!important}
-  body[data-step="6"] .jf-chip{background:rgba(47,111,208,.30)!important;border-color:rgba(143,196,255,.6)!important;color:#E3EEFF!important}
-  body[data-step="6"] .jf-chip-x{background:rgba(0,0,0,.30)!important;color:#E3EEFF!important}
-  body[data-step="6"] .jobs-hint{background:rgba(255,255,255,.10)!important;border:1px dashed rgba(147,197,253,.6)!important;color:#E3EEFF!important}
-  body[data-step="6"] .jobs-hint.picked{background:rgba(47,111,208,.30)!important;border:1px solid rgba(143,196,255,.7)!important;color:#FFFFFF!important}
+  body[data-step="6"] .job-filters #jobs-count::before{background:#E3C479!important}
+  body[data-step="6"] .jf-chip{background:rgba(200,162,74,.20)!important;border-color:rgba(227,196,121,.6)!important;color:#F7ECC8!important}
+  body[data-step="6"] .jobs-hint{background:rgba(255,255,255,.08)!important;border:1px dashed rgba(232,208,137,.55)!important;color:#F4EFE2!important}
+  body[data-step="6"] .jobs-hint.picked{background:rgba(200,162,74,.18)!important;border:1px solid rgba(227,196,121,.7)!important;color:#F7ECC8!important}
   body[data-step="6"] .jobs-hint b{color:#FFFFFF!important}
-  body[data-step="6"] .job-remove{background:rgba(0,0,0,.25)!important;color:#DCE9FF!important;border-color:rgba(147,197,253,.45)!important}
-  body[data-step="6"] .section-title::before{background:linear-gradient(180deg,#93C5FD,#2F6FD0)!important}
-  body[data-step="6"] #jobs-empty{border:1px dashed rgba(147,197,253,.5)!important;color:rgba(227,238,255,.9)!important}
-  body[data-step="6"] #jobs-empty p{color:rgba(227,238,255,.9)!important}
-  body[data-step="6"] #jobs-empty .btn-outline{background:#FFFFFF!important;color:#1B4C8F!important}
-
-  /* كروت الوظائف: بيضاء ونيلية */
-  body[data-step="6"] #jobs-list .jm{background:#F5F8FD!important;border:1px solid #E2EAF6!important}
-  body[data-step="6"] #jobs-list .jm svg{color:#2F6FD0!important}
+  body[data-step="6"] #jobs-empty{border:1px dashed rgba(232,208,137,.5)!important;color:rgba(244,239,226,.9)!important}
+  body[data-step="6"] #jobs-empty p{color:rgba(244,239,226,.9)!important}
+  /* الكروت البيضاء */
+  body[data-step="6"] #jobs-list .job-card{background:#FFFFFF!important;border:1px solid #EFE7D6!important;color:#16294A!important}
+  body[data-step="6"] #jobs-list .jm{background:#FDFAF3!important;border:1px solid #EFE7D6!important}
+  body[data-step="6"] #jobs-list .jm .k,body[data-step="6"] #jobs-list .jm .jm-k{color:#8A7B5C!important}
+  body[data-step="6"] #jobs-list .jm .v,body[data-step="6"] #jobs-list .jm .jm-v{color:#16294A!important}
+  body[data-step="6"] #jobs-list .jm svg{color:#8A6D2C!important}
   body[data-step="6"] #jobs-list .job-pay,body[data-step="6"] #jobs-list .job-salary{
-    background:#F3F7FF!important;border:1px solid #D8E6FA!important;
+    background:#FDF3D8!important;border:1px solid #EFE0BD!important;
   }
-  body[data-step="6"] #jobs-list .job-pay *,body[data-step="6"] #jobs-list .job-salary *{color:#1B4C8F!important}
-  body[data-step="6"] #jobs-list .job-tags .job-code{background:#EAF2FF!important;border:1px solid #CBDDFB!important;color:#1B4C8F!important}
-  body[data-step="6"] #jobs-list .job-tags .job-cat{background:#F3F6FB!important;border:1px solid #DFE8F5!important;color:#3E5A7A!important}
-  body[data-step="6"] #jobs-list .job-state.is-open{background:#EAF2FF!important;border-color:#CBDDFB!important;color:#1B4C8F!important}
-  body[data-step="6"] #jobs-list .job-actions .btn-primary{
-    background:linear-gradient(135deg,#2F6FD0,#1B4C8F 58%,#0E2E5C)!important;color:#FFFFFF!important;
-    border:1.5px solid rgba(143,196,255,.7)!important;box-shadow:0 10px 22px rgba(11,31,58,.24)!important;
-  }
+  body[data-step="6"] #jobs-list .job-pay *,body[data-step="6"] #jobs-list .job-salary *{color:#7A5F21!important}
+  body[data-step="6"] #jobs-list .job-tags .job-code{background:#F1F7F5!important;border:1px solid #CFE4DC!important;color:#1F6B57!important}
+  body[data-step="6"] #jobs-list .job-tags .job-cat{background:#FDF3D8!important;border:1px solid #EFE0BD!important;color:#7A5F21!important}
+  body[data-step="6"] #jobs-list .job-state.is-open{background:#F1F7F5!important;border-color:#CFE4DC!important;color:#1F6B57!important}
+  body[data-step="6"] #jobs-list .job-actions{background:#FBF9F4!important;border-top:1px solid #EFE7D6!important}
+  body[data-step="6"] #jobs-list .job-actions .btn-outline{background:#FFFFFF!important;border-color:#E6DCC6!important;color:#12305C!important}
+  /* المختارة: ذهبية واضحة */
   body[data-step="6"] #jobs-list .job-card.selected{
-    background:#FFFFFF!important;border:2px solid #2F6FD0!important;
-    box-shadow:0 24px 54px rgba(4,16,34,.30),0 0 0 4px rgba(47,111,208,.20)!important;
+    background:#FFFFFF!important;border:2px solid #C8A24A!important;
+    box-shadow:0 24px 54px rgba(4,16,34,.28),0 0 0 4px rgba(200,162,74,.22)!important;
   }
   body[data-step="6"] #jobs-list .job-card.selected .job-state.is-picked{
-    background:linear-gradient(140deg,#93C5FD,#2F6FD0)!important;color:#FFFFFF!important;border-color:transparent!important;
+    background:linear-gradient(140deg,#E8D089,#C8A24A)!important;color:#241A05!important;border-color:transparent!important;
   }
-  body[data-step="6"] #jobs-list .job-card.selected .jm{background:#F3F7FF!important;border-color:#D8E6FA!important}
-  body[data-step="6"] #jobs-list .job-card.selected .job-actions{background:#F7FAFF!important;border-top:1px solid #E2EAF6!important}
-  body[data-step="6"] #jobs-list .job-card.selected .job-actions .btn-primary,
-  body[data-step="6"] #jobs-list .job-card.selected .job-actions .btn-success{
-    background:linear-gradient(135deg,#2F6FD0,#1B4C8F)!important;color:#FFFFFF!important;
+  body[data-step="6"] #jobs-list .job-card.selected .jm{background:#FDF3D8!important;border-color:#EFE0BD!important}
+  body[data-step="6"] #jobs-list .job-card.selected .job-actions{background:#FDF3D8!important;border-top:1px solid #EFE0BD!important}
+  body[data-step="6"] #jobs-list .job-card.selected .job-actions .btn-primary{
+    background:linear-gradient(135deg,#E8D089,#C8A24A 55%,#B08D3C)!important;color:#241A05!important;
+    border-color:rgba(255,255,255,.55)!important;
   }
-  body[data-step="6"] #jobs-list .job-card.selected .job-pay,
-  body[data-step="6"] #jobs-list .job-card.selected .job-pay-row,
-  body[data-step="6"] #jobs-list .job-card.selected .job-salary{
-    background:#EEF5FF!important;border:1px solid #D3E3FA!important;
-  }
-  body[data-step="6"] #jobs-list .job-card.selected .job-pay *,
-  body[data-step="6"] #jobs-list .job-card.selected .job-salary *{color:#1B4C8F!important}
-  body[data-step="6"] #jobs-list.has-focus .job-card.selected{box-shadow:0 26px 60px rgba(4,16,34,.32),0 0 0 3px rgba(47,111,208,.32)!important}
+  body[data-step="6"] #jobs-list .job-card.selected .job-actions .btn-primary *{color:#241A05!important}
 
-  /* ── المراجعة (٧): كارت الوظائف نيلي ────────────────────────────────── */
-  body[data-step="7"] .rv-ic{background:#F5F8FD!important;border-color:#D8E6FA!important;color:#2F6FD0!important}
-  body[data-step="7"] .rv-head::before{background:linear-gradient(180deg,#93C5FD,#2F6FD0)!important}
+  /* ── 8) المراجعة: كارت كحلي ذهبي + أزرار ────────────────────────────── */
+  body[data-step="7"] .rv-card{background:#FFFFFF!important;border:1px solid var(--ps-line)!important}
+  body[data-step="7"] .rv-ic{background:#FFFDF8!important;border-color:var(--ps-line)!important;color:#8A6D2C!important}
+  body[data-step="7"] .rv-head::before{background:linear-gradient(180deg,#E3C479,#C8A24A)!important}
+  body[data-step="7"] .rv-sub{background:#FDF3D8!important;border:1px solid #EFE0BD!important;color:#7A5F21!important}
+  body[data-step="7"] .rv-row{border-bottom:1px dashed #EFE7D6!important}
+  body[data-step="7"] .rv-edit{background:#FFFFFF!important;border-color:#E6DCC6!important;color:#12305C!important}
+  body[data-step="7"] .rv-edit:hover{border-color:#C8A24A!important;background:#FFFDF6!important}
+  body[data-step="7"] .rv-chip{background:#FDFAF3!important;border-color:#EFE7D6!important;color:#7A5F21!important}
+  body[data-step="7"] .rv-note{background:#FFFFFF!important;border:1px solid #EFE0BD!important;border-inline-start:4px solid #C8A24A!important;color:#7A5F21!important}
+  .rv-note b,.rv-note strong{color:#0D2247!important;background:#FDF3D8!important;padding:0 5px;border-radius:6px;font-weight:900}
   body[data-step="7"] .rv-jobs{
-    background:linear-gradient(165deg,#123A73,#0E2E5C 58%,#071C3A)!important;
-    border:1.5px solid rgba(143,196,255,.75)!important;
+    background:linear-gradient(165deg,#1E4270,#16304F 58%,#0D2247)!important;
+    border:1.5px solid rgba(227,196,121,.75)!important;
   }
   body[data-step="7"] .rv-jobs .rv-sub{
-    background:rgba(47,111,208,.34)!important;border:1px solid rgba(143,196,255,.6)!important;color:#E3EEFF!important;
+    background:rgba(200,162,74,.24)!important;border:1px solid rgba(227,196,121,.6)!important;color:#F7ECC8!important;
   }
   body[data-step="7"] .rv-jobs .rv-sub .rv-edit{
-    background:linear-gradient(135deg,#2F6FD0,#1B4C8F)!important;color:#FFFFFF!important;
-    border:1.5px solid rgba(191,219,254,.7)!important;
+    background:linear-gradient(135deg,#E8D089,#C8A24A)!important;color:#241A05!important;
+    border:1.5px solid rgba(255,255,255,.5)!important;
   }
-  body[data-step="7"] .rv-jobs .rv-chip{background:rgba(255,255,255,.12)!important;border-color:rgba(191,219,254,.28)!important;color:#FFFFFF!important}
-  body[data-step="7"] .rv-jobs .rv-chip svg{color:#93C5FD!important}
-  body[data-step="7"] .rv-edit:hover{border-color:#2F6FD0!important;background:#F5F9FF!important}
-  body[data-step="7"] .rv-note{background:#FFFFFF!important;border:1px solid #D8E6FA!important;border-inline-start:4px solid #2F6FD0!important;color:#1B4C8F!important}
-  /* الكلمات المميّزة داخل الملاحظة كانت خضراء فاتحة على أبيض (غير مقروءة) */
-  .rv-note b,.rv-note strong{color:#0E2E5C!important;background:#EAF2FF!important;
-    padding:0 5px;border-radius:6px;font-weight:900}
-  body[data-step="7"] .rv-chip{background:#F5F8FD!important;border-color:#DCE8F7!important;color:#1B4C8F!important}
-  #pg-review > .review-bar{border:1px solid rgba(96,170,255,.55)!important;box-shadow:0 -2px 0 rgba(96,170,255,.55) inset,0 18px 40px rgba(4,16,34,.20)!important}
-  #btn-finish{
-    background:linear-gradient(135deg,#2F6FD0,#1B4C8F 58%,#0E2E5C)!important;
-    color:#FFFFFF!important;border:1.5px solid rgba(191,219,254,.65)!important;
-    box-shadow:0 14px 30px rgba(11,31,58,.30),0 0 0 4px rgba(47,111,208,.14)!important;
-  }
-  #btn-finish svg{color:#FFFFFF!important;stroke:#FFFFFF!important}
-  #pg-review .review-back{background:#FFFFFF!important;border-color:#D8E6FA!important;color:#1B4C8F!important}
+  body[data-step="7"] .rv-jobs .rv-chip{background:rgba(255,255,255,.12)!important;border-color:rgba(239,224,189,.28)!important;color:#FFFFFF!important}
+  body[data-step="7"] .rv-jobs .rv-chip svg{color:#E3C479!important}
+  #pg-review > .review-bar{border:1px solid rgba(200,162,74,.55)!important;box-shadow:0 -2px 0 rgba(200,162,74,.55) inset,0 18px 40px rgba(4,16,34,.20)!important}
+  #pg-review .review-back{background:#FFFFFF!important;border-color:#E6DCC6!important;color:#12305C!important}
 
-  /* ── النتيجة (٨): أزرار نيلية ───────────────────────────────────────── */
-  body[data-step="8"] .result-actions .btn-primary{
-    background:linear-gradient(135deg,#2F6FD0,#1B4C8F 58%,#0E2E5C)!important;
-    color:#FFFFFF!important;border:1.5px solid rgba(191,219,254,.6)!important;
-  }
-  body[data-step="8"] .result-actions .btn-primary *{color:#FFFFFF!important;stroke:#FFFFFF!important}
+  /* ── 9) النتيجة ─────────────────────────────────────────────────────── */
+  body[data-step="8"] #result-content .ok-hero{background:#FFFFFF!important;border:1px solid var(--ps-line)!important}
+  body[data-step="8"] .ok-ico{background:linear-gradient(150deg,#FFFDF8,#F7ECC8)!important;border:1.5px solid #E3C479!important;color:#8A6D2C!important;box-shadow:0 10px 24px rgba(200,162,74,.20)!important}
+  body[data-step="8"] .result-actions .btn-primary{background:linear-gradient(135deg,#E8D089,#C8A24A 55%,#B08D3C)!important;color:#241A05!important;border:1.5px solid rgba(255,255,255,.55)!important}
+  body[data-step="8"] .result-actions .btn-primary *{color:#241A05!important;stroke:#241A05!important}
   body[data-step="8"] .result-actions .btn-ghost-gold{
-    background:linear-gradient(135deg,#123A73,#0E2E5C)!important;
-    color:#FFFFFF!important;border:1.5px solid rgba(143,196,255,.8)!important;
+    background:linear-gradient(135deg,#1E4270,#16304F)!important;color:#FFFFFF!important;
+    border:1.5px solid rgba(227,196,121,.8)!important;
   }
-  body[data-step="8"] .result-actions .btn-ghost-gold svg{color:#BFDBFE!important}
-  body[data-step="8"] .result-back .btn-quiet{color:#BFDBFE!important}
-  body[data-step="8"] .ok-ico{
-    background:linear-gradient(150deg,#EEF4FF,#DCE9FF)!important;
-    border:1.5px solid #CBDDFB!important;color:#1B4C8F!important;
-    box-shadow:0 10px 24px rgba(27,76,143,.16)!important;
+  body[data-step="8"] .result-actions .btn-ghost-gold svg{color:#E3C479!important}
+  body[data-step="8"] .result-back .btn-quiet{color:#E3C479!important}
+  body[data-step="8"] .footer{color:rgba(244,239,226,.66)!important}
+
+  /* ── 10) الترحيب: زر الملصق (كحلي بحدود ذهبية) والموجات الذهبية ──────── */
+  .mk-cta .btn{
+    background:linear-gradient(160deg,#1E4270,#16304F 52%,#0D2247)!important;
+    color:#FFFFFF!important;border:2px solid rgba(227,196,121,.95)!important;
+    box-shadow:0 16px 34px rgba(5,16,34,.44),0 0 0 4px rgba(200,162,74,.14),inset 0 1px 0 rgba(255,255,255,.18)!important;
+    animation:none!important;
+  }
+  .mk-cta .btn *{color:#FFFFFF!important;stroke:#FFFFFF!important}
+  .mk-logo .mk-tile{box-shadow:0 22px 40px rgba(5,16,34,.42),0 0 0 6px rgba(200,162,74,.16),inset 0 1px 0 rgba(255,255,255,.1)!important}
+  .mk-hero h1 b{color:#E3C479!important;-webkit-text-fill-color:#E3C479!important;text-shadow:0 0 18px rgba(200,162,74,.5),0 4px 18px rgba(4,14,30,.5)!important}
+  .mk-tag{color:#F2E2AC!important}
+  .mk-sep span{color:#8A6D2C!important}
+  .mk-sep::before,.mk-sep::after{background:linear-gradient(90deg,transparent,rgba(200,162,74,.65),transparent)!important}
+  .mk-why-t{color:#12305C!important}
+  .mk-why-t::before,.mk-why-t::after{background:linear-gradient(90deg,transparent,rgba(200,162,74,.85))!important}
+  .mk-why-s{color:#8A7B5C!important}
+  .mk-feat{background:#FFFFFF!important;border-color:#EFE7D6!important}
+  .mk-feat-ic,.mk-feat:nth-child(n) .mk-feat-ic{background:#FFFDF8!important;border-color:rgba(200,162,74,.45)!important;color:#8A6D2C!important}
+  .mk-feat b{color:#12305C!important}
+  .mk-feat i{color:#6E7C8E!important}
+  .mk-feat:nth-child(1){background:linear-gradient(#fff,#fff) padding-box,linear-gradient(150deg,rgba(200,162,74,.55),rgba(200,162,74,.10)) border-box!important}
+  .mk-feat:nth-child(2){background:linear-gradient(#fff,#fff) padding-box,linear-gradient(150deg,rgba(200,162,74,.40),rgba(200,162,74,.08)) border-box!important}
+  .mk-feat:nth-child(3){background:linear-gradient(#fff,#fff) padding-box,linear-gradient(150deg,rgba(30,66,112,.35),rgba(200,162,74,.12)) border-box!important}
+  .mk-feat:nth-child(4){background:linear-gradient(#fff,#fff) padding-box,linear-gradient(150deg,rgba(22,48,79,.35),rgba(200,162,74,.14)) border-box!important}
+  .mk-top{background:linear-gradient(120deg,#1E4270,#16304F 62%,#0F2444)!important}
+  .mk-end-in{background:linear-gradient(180deg,#16304F,#0A1A33)!important}
+
+  @media(prefers-reduced-motion:reduce){
+    .profile-card::before,.mk-feat:hover{animation:none!important}
   }
 }
 </style>
@@ -4123,7 +3928,7 @@ body{
           <!-- الموجة الكريمية أسفل الصورة -->
           <svg class="mk-sweep" viewBox="0 0 1200 200" preserveAspectRatio="none" aria-hidden="true">
             <path d="M0 200 V132 C 190 62 420 26 640 40 C 860 54 1030 104 1200 150 V200 Z" fill="#ffffff"/>
-            <path d="M0 132 C 190 62 420 26 640 40 C 860 54 1030 104 1200 150" fill="none" stroke="#2E9E6B" stroke-width="3" opacity=".8"/>
+            <path d="M0 132 C 190 62 420 26 640 40 C 860 54 1030 104 1200 150" fill="none" stroke="#B08D3C" stroke-width="3" opacity=".8"/>
           </svg>
         </section>
 
@@ -4162,7 +3967,7 @@ body{
         <div class="mk-end">
           <svg class="mk-end-wave" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
             <path d="M0 120 V58 C 210 8 460 -2 690 30 C 890 58 1060 86 1200 100 V120 Z" fill="#0d2247"/>
-            <path d="M0 58 C 210 8 460 -2 690 30 C 890 58 1060 86 1200 100" fill="none" stroke="#2E9E6B" stroke-width="2.4" opacity=".75"/>
+            <path d="M0 58 C 210 8 460 -2 690 30 C 890 58 1060 86 1200 100" fill="none" stroke="#B08D3C" stroke-width="2.4" opacity=".75"/>
           </svg>
           <div class="mk-end-in">منصة مكسب للتوظيف — بابل، العراق</div>
         </div>
@@ -4447,19 +4252,19 @@ body{
 <!-- ═══ SVG ═══ -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
 <defs>
-<linearGradient id="g-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f2e2ac"/><stop offset=".45" stop-color="#2E9E6B"/><stop offset="1" stop-color="#15803D"/></linearGradient>
+<linearGradient id="g-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f2e2ac"/><stop offset=".45" stop-color="#B08D3C"/><stop offset="1" stop-color="#8A6D2C"/></linearGradient>
 <linearGradient id="g-lapis" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b4287"/><stop offset="1" stop-color="#08132a"/></linearGradient>
 <!-- شعار منصة مكسب: حرف M كحلي + سهم ذهبي صاعد + رأس إنسان -->
 <linearGradient id="g-mk-navy" x1="0" y1="0" x2="0.7" y2="1"><stop offset="0" stop-color="#2a4f7d"/><stop offset="1" stop-color="#0a1c39"/></linearGradient>
-<linearGradient id="g-mk-gold" x1=".1" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#86efac"/><stop offset=".5" stop-color="#22C55E"/><stop offset="1" stop-color="#15803D"/></linearGradient>
+<linearGradient id="g-mk-gold" x1=".1" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#E8D089"/><stop offset=".5" stop-color="#C8A24A"/><stop offset="1" stop-color="#8A6D2C"/></linearGradient>
 </defs>
 <symbol id="i-mkseb" viewBox="0 0 415 418">
 <path d="M80.6 331.4C79.2 330.0 79.0 328.6 79.4 324.1C79.8 321.0 80.9 306.6 82.0 292.0C85.6 244.4 86.6 235.0 89.1 228.6C95.3 212.7 114.9 201.0 135.4 201.0C145.9 201.0 145.6 196.2 139.9 263.8C138.3 282.7 134.8 281.0 174.9 280.9C192.8 280.8 222.1 280.5 240.0 280.1C272.5 279.5 272.5 279.5 279.1 276.4C291.0 270.7 297.2 258.1 292.5 249.0C286.5 237.5 270.7 243.2 260.9 260.4C257.6 266.4 256.7 266.9 249.8 266.9C247.3 266.8 244.3 267.3 243.2 267.9C240.2 269.5 228.5 269.2 224.3 267.5C220.8 266.0 220.8 265.9 221.2 261.2C221.8 255.3 227.1 242.6 232.1 235.1C237.6 226.8 255.3 209.3 264.0 203.5C275.2 196.1 283.3 194.6 295.9 197.5C330.3 205.6 347.1 240.8 333.9 276.7C323.5 304.7 297.9 323.3 259.5 330.7C252.8 332.0 237.8 332.3 166.9 332.7C87.8 333.1 82.2 333.0 80.6 331.4Z" fill="#fff"/>
-<path d="M172.0 256.2C169.5 255.4 169.0 253.8 169.5 248.5C170.8 235.2 174.2 205.3 174.6 203.8C174.9 202.9 190.7 186.9 209.8 168.4C228.9 149.9 247.0 132.3 250.0 129.3C256.6 122.9 256.4 122.0 246.5 117.0C239.3 113.4 236.4 109.6 238.5 106.5C242.2 101.3 255.4 85.8 256.8 85.1C257.7 84.6 273.6 83.9 292.1 83.5C324.5 82.8 325.8 82.8 326.8 84.6C327.4 85.9 327.3 95.9 326.4 114.5C325.7 129.9 325.1 144.8 325.0 147.7C325.0 151.7 324.4 153.5 322.4 155.9C319.5 159.4 300.6 173.0 298.6 173.0C296.6 173.0 294.6 170.1 291.6 163.0C288.4 155.3 286.3 152.0 284.9 152.0C283.8 152.0 249.2 185.0 194.0 238.6C177.0 255.1 174.6 257.1 172.0 256.2Z" fill="#22C55E"/>
+<path d="M172.0 256.2C169.5 255.4 169.0 253.8 169.5 248.5C170.8 235.2 174.2 205.3 174.6 203.8C174.9 202.9 190.7 186.9 209.8 168.4C228.9 149.9 247.0 132.3 250.0 129.3C256.6 122.9 256.4 122.0 246.5 117.0C239.3 113.4 236.4 109.6 238.5 106.5C242.2 101.3 255.4 85.8 256.8 85.1C257.7 84.6 273.6 83.9 292.1 83.5C324.5 82.8 325.8 82.8 326.8 84.6C327.4 85.9 327.3 95.9 326.4 114.5C325.7 129.9 325.1 144.8 325.0 147.7C325.0 151.7 324.4 153.5 322.4 155.9C319.5 159.4 300.6 173.0 298.6 173.0C296.6 173.0 294.6 170.1 291.6 163.0C288.4 155.3 286.3 152.0 284.9 152.0C283.8 152.0 249.2 185.0 194.0 238.6C177.0 255.1 174.6 257.1 172.0 256.2Z" fill="#C8A24A"/>
 </symbol>
 <symbol id="i-mkseb-dark" viewBox="0 0 415 418">
-<path d="M80.6 331.4C79.2 330.0 79.0 328.6 79.4 324.1C79.8 321.0 80.9 306.6 82.0 292.0C85.6 244.4 86.6 235.0 89.1 228.6C95.3 212.7 114.9 201.0 135.4 201.0C145.9 201.0 145.6 196.2 139.9 263.8C138.3 282.7 134.8 281.0 174.9 280.9C192.8 280.8 222.1 280.5 240.0 280.1C272.5 279.5 272.5 279.5 279.1 276.4C291.0 270.7 297.2 258.1 292.5 249.0C286.5 237.5 270.7 243.2 260.9 260.4C257.6 266.4 256.7 266.9 249.8 266.9C247.3 266.8 244.3 267.3 243.2 267.9C240.2 269.5 228.5 269.2 224.3 267.5C220.8 266.0 220.8 265.9 221.2 261.2C221.8 255.3 227.1 242.6 232.1 235.1C237.6 226.8 255.3 209.3 264.0 203.5C275.2 196.1 283.3 194.6 295.9 197.5C330.3 205.6 347.1 240.8 333.9 276.7C323.5 304.7 297.9 323.3 259.5 330.7C252.8 332.0 237.8 332.3 166.9 332.7C87.8 333.1 82.2 333.0 80.6 331.4Z" fill="#012F3E"/>
-<path d="M172.0 256.2C169.5 255.4 169.0 253.8 169.5 248.5C170.8 235.2 174.2 205.3 174.6 203.8C174.9 202.9 190.7 186.9 209.8 168.4C228.9 149.9 247.0 132.3 250.0 129.3C256.6 122.9 256.4 122.0 246.5 117.0C239.3 113.4 236.4 109.6 238.5 106.5C242.2 101.3 255.4 85.8 256.8 85.1C257.7 84.6 273.6 83.9 292.1 83.5C324.5 82.8 325.8 82.8 326.8 84.6C327.4 85.9 327.3 95.9 326.4 114.5C325.7 129.9 325.1 144.8 325.0 147.7C325.0 151.7 324.4 153.5 322.4 155.9C319.5 159.4 300.6 173.0 298.6 173.0C296.6 173.0 294.6 170.1 291.6 163.0C288.4 155.3 286.3 152.0 284.9 152.0C283.8 152.0 249.2 185.0 194.0 238.6C177.0 255.1 174.6 257.1 172.0 256.2Z" fill="#22C55E"/>
+<path d="M80.6 331.4C79.2 330.0 79.0 328.6 79.4 324.1C79.8 321.0 80.9 306.6 82.0 292.0C85.6 244.4 86.6 235.0 89.1 228.6C95.3 212.7 114.9 201.0 135.4 201.0C145.9 201.0 145.6 196.2 139.9 263.8C138.3 282.7 134.8 281.0 174.9 280.9C192.8 280.8 222.1 280.5 240.0 280.1C272.5 279.5 272.5 279.5 279.1 276.4C291.0 270.7 297.2 258.1 292.5 249.0C286.5 237.5 270.7 243.2 260.9 260.4C257.6 266.4 256.7 266.9 249.8 266.9C247.3 266.8 244.3 267.3 243.2 267.9C240.2 269.5 228.5 269.2 224.3 267.5C220.8 266.0 220.8 265.9 221.2 261.2C221.8 255.3 227.1 242.6 232.1 235.1C237.6 226.8 255.3 209.3 264.0 203.5C275.2 196.1 283.3 194.6 295.9 197.5C330.3 205.6 347.1 240.8 333.9 276.7C323.5 304.7 297.9 323.3 259.5 330.7C252.8 332.0 237.8 332.3 166.9 332.7C87.8 333.1 82.2 333.0 80.6 331.4Z" fill="#16304F"/>
+<path d="M172.0 256.2C169.5 255.4 169.0 253.8 169.5 248.5C170.8 235.2 174.2 205.3 174.6 203.8C174.9 202.9 190.7 186.9 209.8 168.4C228.9 149.9 247.0 132.3 250.0 129.3C256.6 122.9 256.4 122.0 246.5 117.0C239.3 113.4 236.4 109.6 238.5 106.5C242.2 101.3 255.4 85.8 256.8 85.1C257.7 84.6 273.6 83.9 292.1 83.5C324.5 82.8 325.8 82.8 326.8 84.6C327.4 85.9 327.3 95.9 326.4 114.5C325.7 129.9 325.1 144.8 325.0 147.7C325.0 151.7 324.4 153.5 322.4 155.9C319.5 159.4 300.6 173.0 298.6 173.0C296.6 173.0 294.6 170.1 291.6 163.0C288.4 155.3 286.3 152.0 284.9 152.0C283.8 152.0 249.2 185.0 194.0 238.6C177.0 255.1 174.6 257.1 172.0 256.2Z" fill="#C8A24A"/>
 </symbol>
 <symbol id="i-emblem" viewBox="0 0 120 120">
 <circle cx="60" cy="60" r="57" fill="url(#g-lapis)" stroke="url(#g-gold)" stroke-width="3.5"/>
@@ -5756,7 +5561,7 @@ function fatal(msg,hintHtml){
     box.textContent=msg;
     if(hintHtml){
       var h=document.createElement('div');
-      h.style.cssText='margin-top:12px;font-size:16px;color:#dcfce9;line-height:2;text-align:right;max-width:none;width:100%';
+      h.style.cssText='margin-top:12px;font-size:16px;color:#F7ECC8;line-height:2;text-align:right;max-width:none;width:100%';
       h.innerHTML=hintHtml;
       box.parentNode.insertBefore(h,box.nextSibling);
     }
@@ -5798,7 +5603,7 @@ function isMissingFunction(err){
 }
 
 var DB_UPDATE_HINT='للإدارة: طبّق الهجرات الحديثة من مستودع المشروع بالترتيب، أو راجع <b dir="ltr">docs/schema.sql</b>، ثم أعد تحميل ذاكرة المخطط. لا تعِد تطبيق تحديثات الباركود القديمة بعد تحديث بوابة صاحب العمل.<br>'+
-  '<a href="index.html#contact" style="color:#93C5FD;text-decoration:underline">تواصل مع الشركة للمساعدة</a>';
+  '<a href="index.html#contact" style="color:#E8D089;text-decoration:underline">تواصل مع الشركة للمساعدة</a>';
 
 /* ═══════════════════════════════════════════════════════════════
    تحميل البيانات
