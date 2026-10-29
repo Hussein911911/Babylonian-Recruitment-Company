@@ -540,6 +540,10 @@
 
   function cpSerialFromText(text) {
     var t = String(text || '').trim();
+    var scanner = root.HRCQRScan;
+    // QR cards encode an application URL, not just the printed serial number.
+    var scanned = scanner && scanner.serialFrom ? scanner.serialFrom(t) : '';
+    if (scanned) return scanned;
     var S = Store;
     if (S.normalizeCardSerial) { try { t = S.normalizeCardSerial(t); } catch (e) { } }
     return t.toUpperCase();
@@ -684,7 +688,7 @@
     if (scan) scan.addEventListener('click', function () {
       var Q = root.HRCQRScan;
       if (!Q || !Q.open) { cpSay('المسح غير متاح في هذا المتصفح — اكتب الرقم يدوياً.', true); return; }
-      Q.open({
+      var opened = Q.open({
         title: 'مسح باركود البطاقة',
         subtitle: 'وجّه الكاميرا نحو الباركود المطبوع على بطاقتك.',
         validate: function (text) {
@@ -698,6 +702,7 @@
           cpLookup(v);
         }
       });
+      if (!opened) cpSay('المسح غير متاح في هذا المتصفح — اكتب الرقم يدوياً.', true);
     });
     /* عودة الزائر: نُعيد فتح آخر بطاقة تلقائياً (على جهازه فقط) */
     try {

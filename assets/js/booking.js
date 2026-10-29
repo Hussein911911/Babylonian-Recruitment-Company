@@ -416,7 +416,7 @@
     var camToggle = document.getElementById('bk-cam-toggle');
     var camManual = document.getElementById('bk-cam-manual');
     var fileInp = document.getElementById('bk-scan-file');
-    var camStream = null, camRaf = null, camWarned = false, camTeardown = false;
+    var camStream = null, camRaf = null, camWarned = false, camTeardown = false, camGeneration = 0, lastFrame = 0;
 
     function camSet(state, title, sub) {
       if (camBox) camBox.setAttribute('data-state', state);
@@ -433,6 +433,7 @@
     }
 
     function stopCam(silent) {
+      camGeneration++;
       if (camRaf) { try { cancelAnimationFrame(camRaf); } catch (e) { } camRaf = null; }
       if (camStream) { try { camStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { } camStream = null; }
       if (camVideo) { try { camVideo.srcObject = null; } catch (e) { } }
@@ -462,14 +463,17 @@
       return true;
     }
 
-    function camTick() {
+    function camTick(timestamp) {
       if (!camStream || camTeardown) return;
+      if (timestamp && timestamp - lastFrame < 160) { camRaf = requestAnimationFrame(camTick); return; }
+      lastFrame = timestamp || 0;
+      var generation = camGeneration;
       Promise.resolve(root.HRCQRScan.detectVideoFrame(camVideo)).then(function (vals) {
-        if (!camStream || camTeardown) return;
+        if (!camStream || camTeardown || generation !== camGeneration) return;
         if (vals && vals.length && onScanned(vals[0])) return;
         camRaf = requestAnimationFrame(camTick);
       }).catch(function () {
-        if (camStream && !camTeardown) camRaf = requestAnimationFrame(camTick);
+        if (camStream && !camTeardown && generation === camGeneration) camRaf = requestAnimationFrame(camTick);
       });
     }
 
@@ -480,10 +484,11 @@
           'هذا المتصفح لا يسمح بالكاميرا — ارفع صورة للباركود أو اكتب الرقم يدوياً.');
         return;
       }
+      var generation = ++camGeneration;
       camSet('starting', 'جارٍ تشغيل الكاميرا…', 'اسمح للموقع باستخدام الكاميرا من نافذة المتصفح.');
       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
         .then(function (st) {
-          if (camTeardown) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
+          if (camTeardown || generation !== camGeneration || document.hidden) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
           camStream = st;
           if (camVideo) {
             camVideo.srcObject = st;
@@ -494,12 +499,13 @@
           camTick();
         })
         .catch(function () {
+          if (camTeardown || generation !== camGeneration) return;
           camSet('error', 'تعذّر تشغيل الكاميرا',
             'لم يُسمح بالكاميرا أو لا توجد كاميرا. ارفع صورة للباركود أو اكتب الرقم يدوياً.');
         });
     }
 
-    entryCamPause = function () { if (camStream) stopCam(true); };
+    entryCamPause = function () { stopCam(); };
     entryCamStop = function () { camTeardown = true; stopCam(true); };
 
     var goBtn = document.getElementById('bk-apply');

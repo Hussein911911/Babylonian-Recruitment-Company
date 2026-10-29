@@ -111,7 +111,7 @@ const DEMO_SEED_JSON = (() => {
   });
 })();
 
-const JS_ORDER = ['config', 'qr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard', 'notifications', 'legacy-backup', 'card-archive'];
+const JS_ORDER = ['config', 'qr', 'vendor/jsqr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard', 'notifications', 'legacy-backup', 'card-archive'];
 
 /* ---------------------------------------------------------------------------
  *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
@@ -126,7 +126,7 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
    ولا اتصالاً لحظياً. قياس الحجم أظهر أن المكتبة الكاملة كانت ثلث ما ينزّله.
    اللوحة تبقى على المكتبة الكاملة لأنها تحتاج Auth و Realtime فعلاً. */
 const SCRIPTS = {
-  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
+  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'vendor/jsqr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
   verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
   dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard', 'notifications']
 };
@@ -142,7 +142,7 @@ const scriptPath = (n) => n.startsWith('vendor/')
    تعديل cloud-sync.js — فيبقى المتصفح على نسخة قديمة **بصمت**، وهو أسوأ أنواع
    الأخطاء لأن الكود الجديد لا يصل أصلاً. */
 const ASSET_VER = process.env.HRC_ASSET_VER || createHash('sha1')
-  .update([CSS, CARD_CSS, PUBLIC_CSS, APP_CSS, NOTIFICATION_CSS, EDITOR_CSS, BACKUP_CSS, WORKSPACE_CSS, read('assets/js/recovery.js'), ...JS_ORDER.map((n) => read(`assets/js/${n}.js`)),
+  .update([CSS, CARD_CSS, PUBLIC_CSS, APP_CSS, NOTIFICATION_CSS, EDITOR_CSS, BACKUP_CSS, WORKSPACE_CSS, read('assets/js/recovery.js'), ...JS_ORDER.map((n) => read(scriptPath(n))),
            ...CLOUD_ORDER.map((n) => read(scriptPath(n)))].join('\u0000'))
   .digest('hex').slice(0, 10);
 const verQ = (p) => `${p}?v=${ASSET_VER}`;
@@ -261,7 +261,7 @@ function buildStandalone() {
      بالسلاسل) يجب أن تُعاد كتابتها أيضاً، وإلا بقي في الملف المستقل رابط إلى
      صفحة منفصلة (dashboard.html/index.html) فيسقط فحص الاكتفاء الذاتي ويخرج
      البناء بكود 1 — وهو ما يُفشل النشر الآلي على Cloudflare Pages. */
-  const jsBundle = JS_ORDER.map((n) => `/* ===================== ${n}.js ===================== */\n` + rewriteLinks(read(`assets/js/${n}.js`))).join('\n;\n');
+  const jsBundle = JS_ORDER.map((n) => `/* ===================== ${n}.js ===================== */\n` + rewriteLinks(read(scriptPath(n)))).join('\n;\n');
   const icon = dataUri('assets/img/favicon.svg');
 
   const boot = `

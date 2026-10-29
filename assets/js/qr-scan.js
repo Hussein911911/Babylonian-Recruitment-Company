@@ -9,7 +9,7 @@
   'use strict';
 
   var WANTED = ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'itf', 'codabar'];
-  var hasApi = (typeof BarcodeDetector !== 'undefined');
+  var hasApi = (typeof root.BarcodeDetector !== 'undefined');
   var detector = null, waiting = null;
 
   function read(codes) {
@@ -24,32 +24,69 @@
     if (!hasApi) return Promise.resolve(null);
     if (detector) return Promise.resolve(detector);
     if (waiting) return waiting;
-    var asked = (typeof BarcodeDetector.getSupportedFormats === 'function')
-      ? Promise.resolve(BarcodeDetector.getSupportedFormats()).catch(function () { return null; })
+    var asked = (typeof root.BarcodeDetector.getSupportedFormats === 'function')
+      ? Promise.resolve().then(function () { return root.BarcodeDetector.getSupportedFormats(); }).catch(function () { return null; })
       : Promise.resolve(null);
     waiting = asked.then(function (list) {
       var formats = WANTED.filter(function (f) { return !list || list.indexOf(f) >= 0; });
       if (!formats.length) formats = ['qr_code'];
-      try { detector = new BarcodeDetector({ formats: formats }); }
-      catch (e) { try { detector = new BarcodeDetector(); } catch (e2) { detector = null; } }
+      try { detector = new root.BarcodeDetector({ formats: formats }); }
+      catch (e) { try { detector = new root.BarcodeDetector(); } catch (e2) { detector = null; } }
       return detector;
     });
     return waiting;
   }
 
+  /* قارئ QR احتياطي محلي للمتصفحات التي لا تدعم BarcodeDetector، أو حين
+     يفشل القارئ الأصلي في قراءة إطار. لا تُرسل الصور خارج الجهاز. */
+  function decodePixels(source) {
+    if (typeof root.jsQR !== 'function' || !source) return [];
+    var width = source.videoWidth || source.naturalWidth || source.width;
+    var height = source.videoHeight || source.naturalHeight || source.height;
+    if (!width || !height) return [];
+    try {
+      var scale = Math.min(1, 1600 / Math.max(width, height));
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      var ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return [];
+      ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+      var pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var qr = root.jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: 'attemptBoth' });
+      return qr && qr.data ? [String(qr.data)] : [];
+    } catch (e) { return []; }
+  }
+
+  function decodeFile(file) {
+    if (!root.URL || !root.URL.createObjectURL || typeof root.Image !== 'function') return Promise.resolve([]);
+    return new Promise(function (resolve) {
+      var url = root.URL.createObjectURL(file);
+      var img = new root.Image();
+      function finish(vals) { root.URL.revokeObjectURL(url); resolve(vals); }
+      img.onload = function () { finish(decodePixels(img)); };
+      img.onerror = function () { finish([]); };
+      img.src = url;
+    });
+  }
+
+  function fallback(source) {
+    if (root.Blob && source instanceof root.Blob) return decodeFile(source);
+    return Promise.resolve(decodePixels(source));
+  }
+
   function detectImage(source) {
     return build().then(function (d) {
-      if (!d) return Promise.reject(new Error('unsupported'));
-      return d.detect(source).then(read);
+      if (!d) return fallback(source);
+      return Promise.resolve().then(function () { return d.detect(source); }).then(read)
+        .catch(function () { return []; })
+        .then(function (vals) { return vals.length ? vals : fallback(source); });
     });
   }
 
   function detectVideoFrame(video) {
     if (!video || !video.videoWidth) return Promise.resolve([]);
-    return build().then(function (d) {
-      if (!d) return [];
-      return d.detect(video).then(read).catch(function () { return []; });
-    });
+    return detectImage(video);
   }
 
   /* باركود البطاقة من نص مقروء: رابط apply.html?form=… · باركود مجرد · HRC-BC-###### */
@@ -81,7 +118,7 @@
   function open(opts) {
     opts = opts || {};
     var UI = root.HRCUI;
-    if (!UI || typeof UI.modal !== 'function' || !hasApi) return false;
+    if (!UI || typeof UI.modal !== 'function' || !supported()) return false;
 
     var stream = null, timer = null, stopped = false, paused = false, hintShown = false, hintTimer = null;
 
@@ -182,8 +219,10 @@
     return true;
   }
 
+  function supported() { return !!hasApi || typeof root.jsQR === 'function'; }
+
   root.HRCQRScan = {
-    supported: function () { return !!hasApi; },
+    supported: supported,
     formats: WANTED.slice(),
     detectImage: detectImage,
     detectVideoFrame: detectVideoFrame,

@@ -278,6 +278,23 @@ check('فلتر المحافظة يطابق الأسماء البديلة (ال�
     S.govKey('حلبجه') === S.govKey('حلبجة')) || 'تطبيع الأسماء لا يعمل';
 });
 
+await (async () => {
+  const name = 'صفحة بطاقتي: تقبل رابط QR المطبوع وتبحث برقم البطاقة فقط';
+  const w = site.window, originalScan = w.HRCQRScan, originalLookup = w.HRCStore.cardLookup;
+  let options, lookedUp = '';
+  w.HRCQRScan = Object.assign({}, originalScan, { open: (opts) => { options = opts; return true; } });
+  w.HRCStore.cardLookup = (serial) => { lookedUp = serial; return Promise.resolve({ ok: false, error: 'اختبار' }); };
+  try {
+    site.doc.getElementById('cp-scan').click();
+    const text = 'https://example.com/apply.html?form=HRC-BC-000117';
+    if (!options || !options.validate(text) || options.validate('https://example.com/not-a-card')) return bad(name, 'تحقق رمز QR غير صحيح');
+    options.onResult(text);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    if (lookedUp !== 'HRC-BC-000117' || site.doc.getElementById('cp-serial').value !== lookedUp) return bad(name, 'لم يُستخرج رقم البطاقة: ' + lookedUp);
+    return ok(name);
+  } finally { w.HRCQRScan = originalScan; w.HRCStore.cardLookup = originalLookup; }
+})();
+
 /* ═══ المسح الضوئي للبطاقة وفتح صفحة التقديم (طلب صاحب الشركة 2026-10-23) ═══ */
 await (async () => {
   const jobBtn = [...site.doc.querySelectorAll('#jobs-grid .job-card [data-action="open-booking"]')]
