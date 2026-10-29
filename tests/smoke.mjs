@@ -628,7 +628,7 @@ check('تصميم البطاقة يعرض رمز تحقق واحداً مستق�
     if (!svg || svg.getAttribute('viewBox') !== '0 0 ' + (modules + 8) + ' ' + (modules + 8)) return 'الهامش الأبيض للباركود غير كافٍ';
   }
   const style = site.doc.getElementById('hrc-card-style').textContent;
-  return (/box-sizing:border-box;width:54mm;height:86mm/.test(style) && /size:A4 landscape/.test(style) && /zoom:2\.35/.test(style)) || 'مقاس البطاقة أو تكبيرها للطباعة على A4 غير مضبوط';
+  return (/box-sizing:border-box;width:54mm;height:86mm/.test(style) && /size:A4 landscape/.test(style) && /zoom:1/.test(style)) || 'مقاس البطاقة أو تكبيرها للطباعة على A4 غير مضبوط';
 });
 check('البطاقة الأصلية تُطبع بلا أي رمز فرصة مع حفظ الشروط', () => {
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
@@ -1009,15 +1009,19 @@ check('إصدار دفعة بطاقات فارغة: باركودات عشوائ�
   btn.dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   const box = lastModal(dash.doc);
   if (!box) return 'لم تُفتح نافذة الدفعة';
-  box.querySelector('#b-count').value = '5';
+  const cnt = box.querySelector('#b-count');
+  if (cnt.value !== '9' || cnt.min !== '9' || cnt.max !== '90' || cnt.step !== '9') return 'قيود عدد الدفعة غير صحيحة';
+  for (const n of [0, 8, 10, 91]) { cnt.value = String(n); if (cnt.checkValidity()) return 'قُبل عدد غير صالح: ' + n; }
+  for (let n = 9; n <= 90; n += 9) { cnt.value = String(n); if (!cnt.checkValidity()) return 'رُفض عدد صالح: ' + n; }
+  cnt.value = '9';
   box.querySelector('#b-notes').value = 'دفعة اختبار';
   box.querySelector('#b-save').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   const made = dash.window.HRCStore.listBlankCards().length - before;
-  if (made !== 5) return 'الدفعة: قبل ' + before + ' بعد +' + made;
-  const blanks = dash.window.HRCStore.listBlankCards().slice(0, 5);
+  if (made !== 9) return 'الدفعة: قبل ' + before + ' بعد +' + made;
+  const blanks = dash.window.HRCStore.listBlankCards().slice(0, 9);
   const serials = blanks.map((b) => b.serial);
   const uniq = new Set(serials);
-  if (uniq.size !== 5) return 'باركودات مكررة بالدفعة: ' + serials.join(',');
+  if (uniq.size !== 9) return 'باركودات مكررة بالدفعة: ' + serials.join(',');
   if (!serials.every((x) => /^[2-9A-HJKMNP-Z]{10}$/.test(x))) return 'صيغة باركود خاطئة: ' + serials.join(',');
   /* مختلط: أرقام وأحرف معاً في كل باركود، بلا شرطة ولا بادئة */
   if (!serials.every((x) => /[2-9]/.test(x) && /[A-Z]/.test(x))) return 'باركود غير مختلط: ' + serials.join(',');

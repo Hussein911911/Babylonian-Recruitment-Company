@@ -2850,21 +2850,21 @@
      تُطبع فارغة وتوزَّع على نقاط البيع، وتُعبّأ كل واحدة عند بيعها. */
   function newBatchModal() {
     if (!Store.isAdmin()) { UI.toast('err', 'صلاحية المدير فقط', 'إصدار الدفعات من صلاحيات المدير العام.'); return; }
-    var presets = [10, 20, 30, 40, 50, 100];
+    var presets = [9, 18, 27, 36, 45, 54, 63, 72, 81, 90];
     var chips = presets.map(function (n) {
       return '<button type="button" class="btn btn-outline btn-sm b-preset" data-n="' + n + '">' + n + '</button>';
     }).join(' ');
     var body = '<form id="batch-form" class="grid grid-2" style="gap:14px">' +
       '<div class="field" style="grid-column:1/-1"><label for="b-count">عدد البطاقات بالدفعة *</label>' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
-          '<input type="number" id="b-count" min="1" max="1000" value="30" required style="width:140px">' +
+          '<input type="number" id="b-count" min="9" max="90" step="9" value="9" required style="width:140px">' +
           '<div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div></div>' +
         '<span class="tiny muted" id="b-est" style="display:block;margin-top:6px"></span></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('shield') + ' كل بطاقة تولد <b>بكود عشوائي فريد</b> من 10 خانات (حروف وأرقام بلا شرطة) لا يتشابه مع أي بطاقة أخرى ولا يعود أبداً — ' +
-        'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين مع رمزي الفرصتين بظهرها، ' +
+        'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين، ' +
         'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ من التعبئة لا من اليوم.</p></div></div>';
 
     UI.modal({
@@ -2875,11 +2875,11 @@
         var cnt = box.querySelector('#b-count');
         var est = box.querySelector('#b-est');
         function refresh() {
-          var n = Math.max(0, Math.min(1000, Number(cnt.value) || 0));
+          var n = Number(cnt.value) || 0;
           var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 9);
-          est.textContent = n
+          est.textContent = Number.isInteger(n) && n >= 9 && n <= 90 && n % 9 === 0
             ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 9 بطاقات بالورقة الواحدة')
-            : 'أدخل عدداً بين 1 و1000';
+            : 'اختر من مضاعفات ٩، من ٩ إلى ٩٠ بطاقة.';
         }
         cnt.addEventListener('input', refresh);
         box.querySelectorAll('.b-preset').forEach(function (b) {
@@ -2890,9 +2890,10 @@
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
           var count = Number(cnt.value) || 0;
+          if (!Number.isInteger(count) || count < 9 || count > 90 || count % 9 !== 0) { UI.toast('err', 'عدد غير صالح', 'اختر من مضاعفات ٩، من ٩ إلى ٩٠ بطاقة.'); return; }
           var notes = box.querySelector('#b-notes').value.trim();
           var made = Store.createCardBatch(count, notes);
-          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (1 إلى 1000)'); return; }
+          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (٩ إلى ٩٠، بمضاعفات ٩)'); return; }
           close();
           batchResultModal(made);
         });

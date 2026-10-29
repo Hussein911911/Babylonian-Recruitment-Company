@@ -202,28 +202,28 @@ await wait(200);
   const box = lastModal(dash.doc);
   check('نافذة الدفعة: عدد + ملاحظة + تحذير التزوير', !!box.querySelector('#b-count') &&
     /عشوائي فريد/.test(box.textContent) && /لا يتشابه/.test(box.textContent));
-  setVal(dash.w, box.querySelector('#b-count'), '3');
+  setVal(dash.w, box.querySelector('#b-count'), '9');
   setVal(dash.w, box.querySelector('#b-notes'), 'دفعة اختبار المسار');
   click(dash.w, box.querySelector('#b-save'));
   await wait(300);
 }
 {
   const box = lastModal(dash.doc);
-  check('صدرت الدفعة (3 بطاقات) ونتيجة الدفعة معروضة', !!box && /3 بطاقة فارغة/.test(box.textContent));
-  /* طباعة الدفعة: 3 بطاقات فارغة بوجهيها — بلا أسماء زبائن */
+  check('صدرت الدفعة (9 بطاقات) ونتيجة الدفعة معروضة', !!box && /9 بطاقة فارغة/.test(box.textContent));
+  /* طباعة الدفعة: 9 بطاقات فارغة بوجهيها — بلا أسماء زبائن */
   const printBtn = box.querySelector('#b-print');
   check('زر طباعة الدفعة ظاهر', !!printBtn);
   if (printBtn) click(dash.w, printBtn);
   await wait(450);
 }
-const BLANKS = D.listBlankCards().slice(0, 3);
+const BLANKS = D.listBlankCards().slice(0, 9);
 check('المخزون الفارغ زاد (' + stockBefore + ' → ' + D.listBlankCards().length + ')',
-  D.listBlankCards().length === stockBefore + 3);
+  D.listBlankCards().length === stockBefore + 9);
 check('البطاقات الفارغة بلا اسم وبلا تواريخ (بانتظار التعبئة)',
   BLANKS.every((b) => b.status === 'blank' && !b.fullName && !b.phone && !b.issueDate && !b.expiryDate));
 const blankSerials = BLANKS.map((b) => b.serial);
 check('الباركودات بصيغة 10 خانات (حروف وأرقام) وفريدة', blankSerials.every((x) => /^[2-9A-HJKMNP-Z]{10}$/.test(x)) &&
-  new Set(blankSerials).size === 3, blankSerials.join('،'));
+  new Set(blankSerials).size === 9, blankSerials.join('،'));
 {
   const nums = blankSerials.map((x) => Number(x.slice(7))).sort((a, b) => a - b);
   check('الباركودات عشوائية غير متسلسلة (لا تُخمَّن)', !(nums[1] - nums[0] === 1 && nums[2] - nums[1] === 1),
@@ -233,12 +233,12 @@ const blankCodes = BLANKS.flatMap((b) => D.getAttempts(b.serial).map((t) => t.co
 check('البطاقات الجديدة لا تحمل أي رمز فرصة (أُلغيت نهائياً 2026-10-25)',
   blankCodes.length === 0, 'رموز مولّدة: ' + blankCodes.join(','));
 const batchPrintHtml = dash.doc.getElementById('print-root').innerHTML;
-check('ورق الدفعة المطبوع: 3 بطاقات بوجهيها (6 أوجه) بلا أسماء زبائن',
-  (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length === 6 &&
+check('ورق الدفعة المطبوع: 9 بطاقات بوجهيها (18 وجهاً) بلا أسماء زبائن',
+  (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length === 18 &&
   blankSerials.every((x) => batchPrintHtml.includes(x)) &&
   !/مرتضى|باحث/.test(batchPrintHtml),
   'أوجه ' + (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length);
-check('ورق الدفعة يوضّح أن الصلاحية تبدأ عند التعبئة', /تبدأ من التعبئة|تُعبّأ بيانات الزبون عند البيع/.test(batchPrintHtml));
+check('ورق الدفعة يوضّح أن الصلاحية تبدأ عند التعبئة', /30 يوماً<\/b> من البيع/.test(batchPrintHtml));
 {
   const closeB = lastModal(dash.doc).querySelector('[data-close]');
   if (closeB) click(dash.w, closeB);
@@ -310,7 +310,7 @@ const RECORD = D.getApplicant(SERIAL);
 const TOKEN = D.token(SERIAL);
 /* المخزون: 2 قبل الدفعة + 3 دفعة + 1 بطاقة الزر اليدوية − 1 المبيعة = +3 */
 check('البيع نجح على نفس الباركود المطبوع (' + SERIAL + ')', !!RECORD && RECORD.status === 'active' &&
-  RECORD.serial === SERIAL && D.listBlankCards().length === stockBefore + 3);
+  RECORD.serial === SERIAL && D.listBlankCards().length === stockBefore + 9);
 check('بيع البطاقة سُجّل كاشاً مع نقطة البيع', RECORD.feePaid === true &&
   RECORD.posName === 'مكتب الاستنساخ — الحلة شارع 40');
 check('الصلاحية (30 يوماً) بدأت من لحظة التعبئة لا من إصدار الدفعة',
@@ -362,7 +362,7 @@ check('طباعة الاستمارة موثّقة بسجل التدقيق', D.li
 const printHtml = dash.doc.getElementById('print-root').innerHTML;
 const mustPrint = [
   ['الوجهان', (printHtml.match(/class="hrc-card[" ]/g) || []).length === 2],
-  ['الشركة', /شركة الهدف للتوظيف|Al-Hadaf/.test(printHtml)],
+  ['الشركة', /منصة مكسب/.test(printHtml)],
   ['الباركود QR', /<svg[\s\S]*<path/.test(printHtml)],
   ['الرقم التسلسلي', printHtml.includes(SERIAL)],
   ['رمزا الفرصتين الأصليان', printHtml.includes(CHANCES[0].code) && printHtml.includes(CHANCES[1].code)],
