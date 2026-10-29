@@ -2855,9 +2855,9 @@
       return '<button type="button" class="btn btn-outline btn-sm b-preset" data-n="' + n + '">' + n + '</button>';
     }).join(' ');
     var body = '<form id="batch-form" class="grid grid-2" style="gap:14px">' +
-      '<div class="field" style="grid-column:1/-1"><label for="b-count">عدد البطاقات بالدفعة *</label>' +
+      '<div class="field" style="grid-column:1/-1"><label for="b-count">عدد البطاقات بالدفعة * (من ١ إلى ٩٠)</label>' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
-          '<input type="number" id="b-count" min="9" max="90" step="9" value="9" required style="width:140px">' +
+          '<input type="number" id="b-count" min="1" max="90" step="1" value="9" required style="width:140px">' +
           '<div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div></div>' +
         '<span class="tiny muted" id="b-est" style="display:block;margin-top:6px"></span></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
@@ -2877,9 +2877,9 @@
         function refresh() {
           var n = Number(cnt.value) || 0;
           var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 9);
-          est.textContent = Number.isInteger(n) && n >= 9 && n <= 90 && n % 9 === 0
-            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 9 بطاقات بالورقة الواحدة')
-            : 'اختر من مضاعفات ٩، من ٩ إلى ٩٠ بطاقة.';
+          est.textContent = Number.isInteger(n) && n >= 1 && n <= 90
+            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — حتى 9 بطاقات بالورقة الواحدة')
+            : 'أدخل عدداً صحيحاً من ١ إلى ٩٠ بطاقة.';
         }
         cnt.addEventListener('input', refresh);
         box.querySelectorAll('.b-preset').forEach(function (b) {
@@ -2890,10 +2890,10 @@
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
           var count = Number(cnt.value) || 0;
-          if (!Number.isInteger(count) || count < 9 || count > 90 || count % 9 !== 0) { UI.toast('err', 'عدد غير صالح', 'اختر من مضاعفات ٩، من ٩ إلى ٩٠ بطاقة.'); return; }
+          if (!Number.isInteger(count) || count < 1 || count > 90) { UI.toast('err', 'عدد غير صالح', 'أدخل عدداً صحيحاً من ١ إلى ٩٠ بطاقة.'); return; }
           var notes = box.querySelector('#b-notes').value.trim();
           var made = Store.createCardBatch(count, notes);
-          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (٩ إلى ٩٠، بمضاعفات ٩)'); return; }
+          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (١ إلى ٩٠)'); return; }
           close();
           batchResultModal(made);
         });
@@ -2911,7 +2911,7 @@
       subtitle: 'أكواد عشوائية فريدة — تُطبع الآن على A4 وتوزَّع على نقاط البيع',
       wide: true,
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
-          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>9 بطاقات بكل صفحة</b> بمقاسها الفعلي 86×54مم، ' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>حتى 9 بطاقات بكل صفحة</b> بمقاسها الفعلي 86×54مم، ' +
           'والباقي على الصفحات التالية. للطباعة على الوجهين اختر «قلب على الحافة الطويلة» وخيار «الحجم الفعلي» (100%)، ثم قصّ البطاقات وغلّفها حرارياً بمكتب الاستنساخ.</p></div></div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px;direction:ltr;justify-content:flex-end">' + chips + '</div>',
       footer: '<button class="btn btn-outline" data-close>لاحقاً</button>' +

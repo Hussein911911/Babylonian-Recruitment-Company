@@ -628,7 +628,7 @@ check('تصميم البطاقة يعرض رمز تحقق واحداً مستق�
     if (!svg || svg.getAttribute('viewBox') !== '0 0 ' + (modules + 8) + ' ' + (modules + 8)) return 'الهامش الأبيض للباركود غير كافٍ';
   }
   const style = site.doc.getElementById('hrc-card-style').textContent;
-  return (/box-sizing:border-box;width:54mm;height:86mm/.test(style) && /size:A4 landscape/.test(style) && /zoom:1/.test(style)) || 'مقاس البطاقة أو تكبيرها للطباعة على A4 غير مضبوط';
+  return (/box-sizing:border-box;width:54mm;height:86mm/.test(style) && /size:A4 portrait/.test(style) && /zoom:1/.test(style)) || 'مقاس البطاقة أو تكبيرها للطباعة على A4 غير مضبوط';
 });
 check('البطاقة الأصلية تُطبع بلا أي رمز فرصة مع حفظ الشروط', () => {
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
@@ -1010,9 +1010,9 @@ check('إصدار دفعة بطاقات فارغة: باركودات عشوائ�
   const box = lastModal(dash.doc);
   if (!box) return 'لم تُفتح نافذة الدفعة';
   const cnt = box.querySelector('#b-count');
-  if (cnt.value !== '9' || cnt.min !== '9' || cnt.max !== '90' || cnt.step !== '9') return 'قيود عدد الدفعة غير صحيحة';
-  for (const n of [0, 8, 10, 91]) { cnt.value = String(n); if (cnt.checkValidity()) return 'قُبل عدد غير صالح: ' + n; }
-  for (let n = 9; n <= 90; n += 9) { cnt.value = String(n); if (!cnt.checkValidity()) return 'رُفض عدد صالح: ' + n; }
+  if (cnt.value !== '9' || cnt.min !== '1' || cnt.max !== '90' || cnt.step !== '1') return 'قيود عدد الدفعة غير صحيحة';
+  for (const n of [0, 1.5, 91]) { cnt.value = String(n); if (cnt.checkValidity()) return 'قُبل عدد غير صالح: ' + n; }
+  for (let n = 1; n <= 90; n++) { cnt.value = String(n); if (!cnt.checkValidity()) return 'رُفض عدد صالح: ' + n; }
   cnt.value = '9';
   box.querySelector('#b-notes').value = 'دفعة اختبار';
   box.querySelector('#b-save').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
