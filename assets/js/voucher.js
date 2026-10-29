@@ -32,7 +32,7 @@
 .mk-hole{position:absolute;top:1.5%;left:35.5%;width:29%;height:5%;z-index:1}
 .mk-brand{position:absolute;top:9%;left:9%;width:83%;height:11%;display:flex;direction:ltr;align-items:center;justify-content:center;gap:1.5mm;color:#fff;z-index:1}
 .mk-logo{position:relative;display:flex;direction:rtl;align-items:center;white-space:nowrap;font-size:23pt;line-height:1;font-weight:900;letter-spacing:-.45mm}
-.mk-arrow{width:8mm;height:9mm;flex:none;margin-right:-1mm}
+.mk-brand-icon{width:10mm;height:10mm;flex:none;margin-right:-.7mm}
 .mk-brand-label{direction:rtl;border-left:.2mm solid #c6d0d9;padding-left:1.5mm;font-size:6.2pt;font-weight:900;line-height:1.35;text-align:center;white-space:nowrap}
 .mk-slogan{position:absolute;top:22%;left:2%;width:96%;color:#d2ad60;font-weight:900;font-size:13.5pt;line-height:1.15;z-index:1;white-space:nowrap}
 .mk-slogan:after{content:'';display:block;margin:.5mm auto 0;width:23%;height:.5mm;border-top:.35mm solid #c9a75d;border-radius:50%;transform:rotate(-3deg)}
@@ -60,8 +60,8 @@
 .mb-code{position:absolute;top:60.5%;left:7%;width:86%;height:5.5%;display:flex;align-items:center;justify-content:center;gap:1mm;text-align:center;border:.2mm solid #d0b16b;border-radius:1mm;background:#fffaf0;font-size:3.5pt;line-height:1.1;font-weight:800}.mb-code .code{direction:ltr;font:900 5.4pt 'Courier New',monospace;white-space:nowrap}
 .mb-notice{position:absolute;top:67.5%;left:5%;width:90%;height:8%;background:#c6dbea;border-radius:2mm;display:flex;align-items:center;gap:1.5mm;padding:1mm 2mm;color:#0b3154;font-size:4.7pt;line-height:1.35}.mb-notice b{font-size:6pt}.mb-notice svg{width:4.5mm;height:5mm;flex:none;fill:#0a3154;stroke:#fff;stroke-width:1}
 .mb-phone{position:absolute;top:77%;left:5%;width:90%;height:8%;background:#062d50;border-radius:2mm;color:#fff;display:flex;align-items:center;justify-content:center;gap:2mm;font-size:5pt;font-weight:800}.mb-phone b{font:900 8pt Arial,sans-serif;direction:ltr}.mb-phone svg{width:4mm;height:4mm;fill:#fff}
-.mb-bottom-slogan{position:absolute;top:86.5%;left:25%;font-size:6pt;font-weight:800;transform:rotate(-5deg);color:#12385a}.mb-bottom-slogan:after{content:'';display:block;border-top:.3mm solid #c8a34e;width:80%;margin:auto}
-.mb-logo{position:absolute;bottom:3%;right:6%;font-size:13pt;line-height:1;font-weight:900;color:#092e50}.mb-logo span{font-size:7pt;color:#d0a94a}.mb-logo small{display:block;font-size:4pt;margin-top:.7mm}
+.mb-bottom-slogan{position:absolute;top:86.5%;left:6%;font-size:6pt;font-weight:800;transform:rotate(-5deg);color:#12385a}.mb-bottom-slogan:after{content:'';display:block;border-top:.3mm solid #c8a34e;width:80%;margin:auto}
+.mb-logo{position:absolute;bottom:3%;right:6%;display:flex;align-items:center;gap:.5mm;padding:.5mm 1mm;border-radius:1.2mm;background:#f5f1e6;font-size:12pt;line-height:1;font-weight:900;color:#092e50}.mb-logo svg{width:7mm;height:7mm;flex:none}.mb-logo small{display:block;font-size:4pt;margin-top:.7mm;white-space:nowrap}
 @media print{@page{size:A4 portrait;margin:0}html,body{background:#fff!important;margin:0!important;padding:0!important}body>*{display:none!important}#print-root{display:block!important;position:static!important;width:auto!important}#print-root .hrc-card{width:54mm;height:86mm;zoom:1.1;margin:6.8mm auto 0!important;box-shadow:none!important;page-break-after:always;break-after:page}#print-root .hrc-card:last-child{page-break-after:auto;break-after:auto}#print-root .hrc-card-sheet{display:block!important;padding:0!important}}
 `;
     document.head.appendChild(st);
@@ -79,6 +79,13 @@
 
   function esc(v) { return UI ? UI.esc(String(v == null ? '' : v)) : String(v == null ? '' : v); }
 
+  /* نفس مسارات الشعار المعتمد، مرسومة داخل البطاقة لتعمل الطباعة بلا روابط خارجية. */
+  var MKSEB_GLYPHS = "<path d=\"M80.6 331.4C79.2 330.0 79.0 328.6 79.4 324.1C79.8 321.0 80.9 306.6 82.0 292.0C85.6 244.4 86.6 235.0 89.1 228.6C95.3 212.7 114.9 201.0 135.4 201.0C145.9 201.0 145.6 196.2 139.9 263.8C138.3 282.7 134.8 281.0 174.9 280.9C192.8 280.8 222.1 280.5 240.0 280.1C272.5 279.5 272.5 279.5 279.1 276.4C291.0 270.7 297.2 258.1 292.5 249.0C286.5 237.5 270.7 243.2 260.9 260.4C257.6 266.4 256.7 266.9 249.8 266.9C247.3 266.8 244.3 267.3 243.2 267.9C240.2 269.5 228.5 269.2 224.3 267.5C220.8 266.0 220.8 265.9 221.2 261.2C221.8 255.3 227.1 242.6 232.1 235.1C237.6 226.8 255.3 209.3 264.0 203.5C275.2 196.1 283.3 194.6 295.9 197.5C330.3 205.6 347.1 240.8 333.9 276.7C323.5 304.7 297.9 323.3 259.5 330.7C252.8 332.0 237.8 332.3 166.9 332.7C87.8 333.1 82.2 333.0 80.6 331.4Z\" fill=\"#fff\"/>\n<path d=\"M172.0 256.2C169.5 255.4 169.0 253.8 169.5 248.5C170.8 235.2 174.2 205.3 174.6 203.8C174.9 202.9 190.7 186.9 209.8 168.4C228.9 149.9 247.0 132.3 250.0 129.3C256.6 122.9 256.4 122.0 246.5 117.0C239.3 113.4 236.4 109.6 238.5 106.5C242.2 101.3 255.4 85.8 256.8 85.1C257.7 84.6 273.6 83.9 292.1 83.5C324.5 82.8 325.8 82.8 326.8 84.6C327.4 85.9 327.3 95.9 326.4 114.5C325.7 129.9 325.1 144.8 325.0 147.7C325.0 151.7 324.4 153.5 322.4 155.9C319.5 159.4 300.6 173.0 298.6 173.0C296.6 173.0 294.6 170.1 291.6 163.0C288.4 155.3 286.3 152.0 284.9 152.0C283.8 152.0 249.2 185.0 194.0 238.6C177.0 255.1 174.6 257.1 172.0 256.2Z\" fill=\"#FABE04\"/>";
+  function mksebLogo(dark, cls) {
+    return '<svg class="' + (cls || '') + '" viewBox="0 0 415 418" role="img" aria-label="شعار منصة مكسب">' +
+      (dark ? MKSEB_GLYPHS.replace('fill="#fff"', 'fill="#012F3E"') : MKSEB_GLYPHS) + '</svg>';
+  }
+
 
   /* الوجه الأمامي بلا بيانات شخصية؛ الصلاحية تبدأ عند أول تقديم. */
   function isBlank(app) {
@@ -93,7 +100,7 @@
     return '<div class="hrc-card" aria-label="الوجه الأمامي لبطاقة التوظيف">' +
       '<svg class="mk-art" viewBox="0 0 540 860" preserveAspectRatio="none" aria-hidden="true"><rect width="540" height="860" fill="#f3f0e7"/><path d="M0 0H540V372C408 449 131 459 0 379Z" fill="#052a4b"/><path d="M0 379C131 459 408 449 540 372" fill="none" stroke="#c7a255" stroke-width="6"/><path d="M0 766C151 813 383 803 540 756V860H0Z" fill="#052a4b"/><path d="M0 766C151 813 383 803 540 756" fill="none" stroke="#c7a255" stroke-width="5"/></svg>' +
       '<svg class="mk-hole" viewBox="0 0 150 42" aria-hidden="true"><path d="M17 11h33C58 11 58 2 75 2s17 9 25 9h33c22 0 22 29 0 29H17C-5 40-5 11 17 11Z" fill="#f8f8f6"/></svg>' +
-      '<div class="mk-brand"><div class="mk-logo"><span>مكسب</span><svg class="mk-arrow" viewBox="0 0 80 90" aria-hidden="true"><path d="M4 71L49 26 36 17 77 8 69 49 60 37 16 82Z" fill="#e4b54a" stroke="#17263a" stroke-width="2"/></svg></div><div class="mk-brand-label">منصة مكسب<br>للتوظيف</div></div>' +
+      '<div class="mk-brand"><div class="mk-logo"><span>مكسب</span>' + mksebLogo(false, 'mk-brand-icon') + '</div><div class="mk-brand-label">منصة مكسب<br>للتوظيف</div></div>' +
       '<div class="mk-slogan">فرصتك تبدأ من هنا</div>' +
       '<div class="mk-qr hrc-qr-slot">' + qrSvg(Store.cardUrl(app.serial), 200) + '</div>' +
       '<div class="mk-caption"><span>امسح الباركود للوصول إلى<br><b>منصة مكسب</b></span><svg viewBox="0 0 24 32" fill="none" aria-hidden="true"><rect x="3" y="1" width="18" height="30" rx="3" stroke="currentColor" stroke-width="2"/><path d="M9 4h6M11 27h2" stroke="currentColor" stroke-width="2"/></svg></div>' +
@@ -120,7 +127,7 @@
       (printed ? '<div class="mb-code"><span>رمز إعادة الطباعة<br>احتفظ به ولا تشاركه</span><span class="code">' + esc(printed) + '</span></div>' : '') +
       '<div class="mb-notice"><svg viewBox="0 0 24 28" aria-hidden="true"><path d="M12 1L23 5v8c0 7-4 11-11 14C5 24 1 20 1 13V5z"/><path d="M7 14l3 3 6-7" fill="none"/></svg><span><b>ملاحظة نهائية:</b><br>هذه البطاقة غير قابلة للاسترجاع.</span></div>' +
       '<div class="mb-phone"><span>خدمة العملاء</span><b>' + esc(CFG.company.phones[0] || '') + '</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2l4 5-2 3c1 3 3 5 6 6l3-2 5 4-2 4C11 22 2 13 2 4z"/></svg></div>' +
-      '<div class="mb-bottom-slogan">خطوتك نحو غد أفضل</div><div class="mb-logo">مكسب <span>↗</span><small>منصة مكسب للتوظيف</small></div></div>';
+      '<div class="mb-bottom-slogan">خطوتك نحو غد أفضل</div><div class="mb-logo">' + mksebLogo(true, 'mb-brand-icon') + '<div>مكسب<small>منصة مكسب للتوظيف</small></div></div></div>';
   }
 
   /* ==========================================================================
@@ -280,7 +287,7 @@
       + '<div class="hrc-form">'
       +   '<div class="ff-head">'
       +     '<div class="ff-brand">'
-      +       '<svg viewBox="0 0 120 120"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>'
+      +       mksebLogo(true, 'ff-brand-icon')
       +       '<div><div class="ar">' + esc(CFG.company.nameAr) + '</div>'
       +       '<div class="en">' + esc(CFG.company.nameEn) + '</div></div>'
       +     '</div>'
