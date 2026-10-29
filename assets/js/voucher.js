@@ -26,22 +26,17 @@
 .hrc-card,.hrc-card *{box-sizing:border-box}
 .hrc-card{box-sizing:border-box;width:54mm;height:86mm;flex:0 0 auto;position:relative;overflow:hidden;border-radius:3mm;padding:2.6mm;background:#f5f1e5;color:#112f4d;display:flex;flex-direction:column;font-family:Cairo,'Segoe UI',Tahoma,sans-serif;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact;box-shadow:0 10px 24px #06172a35}
 .hrc-card .frame{position:absolute;inset:1mm;border:.3mm solid #d5aa32;border-radius:2.4mm;pointer-events:none;z-index:5}
-/* Vertical front, inspired by the approved hanging-card design. */
-.hrc-card[aria-label*=الأمامي]{padding:0;background:#f6f2e7;color:#092846;text-align:center}
-.hrc-card[aria-label*=الأمامي]:before{content:'';position:absolute;top:0;left:-10%;width:120%;height:54%;background:#062d50;border-bottom:1mm solid #d5ae55;border-radius:0 0 50% 50% / 0 0 13% 13%}
-.mk-hole,.mk-brand,.mk-slogan,.mk-qr,.mk-caption,.mk-steps,.mk-ribbon,.mk-contact,.mk-footer{position:relative;z-index:1}
-.mk-hole{width:15mm;height:3mm;border-radius:3mm;background:#f6f2e7;margin:2.5mm auto 3mm}
-.mk-brand{display:flex;align-items:center;justify-content:center;gap:1.5mm;color:white;height:10mm}
-.mk-logo{font-size:24pt;line-height:1;font-weight:900;letter-spacing:-.5mm}.mk-logo:after{content:'↗';color:#e6b849;font-size:12pt;vertical-align:top}
-.mk-brand-label{font-size:6pt;font-weight:800;line-height:1.25;text-align:right;border-inline-start:.2mm solid #fff;padding-inline-start:1.5mm}
-.mk-slogan{font-size:13pt;font-weight:900;color:#dfb456;line-height:1.3;margin:1mm 0 2mm}
-.mk-qr{width:22mm;height:22mm;margin:0 auto;background:white;border:.7mm solid #cba456;border-radius:2mm;padding:.5mm}
+/* The supplied artwork is the card face; live values cover its sample data. */
+.hrc-card[aria-label*=الأمامي]{padding:0;background:#062d50 url(/assets/img/maksab-card-design.jpg) center/100% 100% no-repeat;color:#092846;text-align:center}
+.mk-qr{position:absolute;left:31.8%;top:32.8%;width:36.4%;aspect-ratio:1;background:#fff;padding:0;z-index:1}
 .hrc-qr-slot svg{display:block;width:100%;height:100%}
-.mk-caption{background:#062d50;color:white;border-radius:2mm;margin:1mm 6mm 1mm;padding:.7mm;font-size:6pt;font-weight:800;line-height:1.2}.mk-caption b{color:#e6ba59}
-.mk-steps{display:flex;direction:ltr;align-items:center;justify-content:space-around;margin:0 5mm;color:#092846;font-size:5.5pt;font-weight:900}.mk-steps span{direction:rtl}.mk-steps i{font-style:normal;color:#cba456;font-size:10pt}.mk-steps strong{display:block;font-size:11pt;line-height:1}
-.mk-ribbon{background:#dfb456;margin:1mm 6mm;padding:.7mm;border-radius:1mm;font-size:6pt;font-weight:900}
-.mk-contact{display:flex;direction:ltr;justify-content:center;align-items:center;margin:1mm 3mm;gap:2mm;font-size:5pt;font-weight:800;line-height:1.3}.mk-contact div{direction:rtl}.mk-contact div+div{border-left:.2mm solid #cba456;padding-left:2mm}.mk-contact b{display:block;direction:ltr;font-size:5.5pt}
-.mk-footer{margin-top:auto;background:#062d50;color:white;display:flex;align-items:center;justify-content:center;gap:3mm;padding:1.2mm 2mm 1.8mm;font-size:5pt}.mk-footer b{display:block;direction:ltr;font-size:6pt}.mk-footer div+div{border-right:.2mm solid #dbc483;padding-right:3mm}
+.mk-value{position:absolute;z-index:1;direction:ltr;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;font-family:Arial,sans-serif;font-weight:700;line-height:1}
+.mk-phone{left:15%;top:87%;width:29%;height:3%;background:#f0ede4;color:#0a2441;font-size:5.8pt}
+.mk-site{left:56%;top:84.3%;width:27%;height:2.8%;background:#efede5;color:#0a2441;font-size:4.4pt}
+.mk-serial{left:41%;top:95.1%;width:26%;height:2.4%;background:#082d4b;color:#fff;font-size:4.9pt;letter-spacing:.02em}
+.mk-date{left:79%;top:96%;width:13%;height:2.2%;background:#082d4b;color:#fff;font-size:4.6pt}
+.mk-count{position:absolute;left:24%;top:78.6%;width:54%;height:2.6%;background:#d8a947;color:#0a2441;font-size:5pt;font-weight:900;line-height:1.4;white-space:nowrap}
+.mk-accessible{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 .card-back-top,.card-back-content,.card-back-bottom{position:relative;z-index:1}
 .hrc-card[aria-label*=الخلفي]{background:#f5f1e5;padding:2.8mm 3.2mm;color:#123553}
 .card-back-top{display:flex;align-items:center;justify-content:space-between;gap:2mm;border-bottom:.3mm solid #173b5d;padding:0 0 1mm;margin-bottom:1mm}
@@ -58,7 +53,7 @@
 .card-back-bottom{display:flex;align-items:center;justify-content:space-between;gap:2mm;background:#0a3558;color:#fff;border-radius:1.7mm;padding:1mm 2mm;margin-top:.7mm}
 .hc-contact{display:flex;flex-direction:column;align-items:center;gap:.3mm;white-space:nowrap}.hc-contact .phones{font:900 6pt 'Courier New',monospace;direction:ltr;color:#fff}.hc-contact .addr{font-size:3.7pt;color:#f5f1e5}
 .hc-bot2 .disc{font-size:3.3pt;line-height:1.3;color:#fff;max-width:61%;text-align:right}
-@media print{@page{size:A4 landscape;margin:0}html,body{background:#fff!important;margin:0!important;padding:0!important}body>*{display:none!important}#print-root{display:block!important;position:static!important;width:auto!important}#print-root .hrc-card{width:54mm;height:86mm;zoom:2.35;margin:6.8mm auto 0!important;box-shadow:none!important;border-radius:0!important;page-break-after:always;break-after:page}#print-root .hrc-card:last-child{page-break-after:auto;break-after:auto}#print-root .hrc-card-sheet{display:block!important;padding:0!important}}
+@media print{@page{size:A4 landscape;margin:0}html,body{background:#fff!important;margin:0!important;padding:0!important}body>*{display:none!important}#print-root{display:block!important;position:static!important;width:auto!important}#print-root .hrc-card{width:54mm;height:86mm;zoom:2.35;margin:6.8mm auto 0!important;box-shadow:none!important;page-break-after:always;break-after:page}#print-root .hrc-card:last-child{page-break-after:auto;break-after:auto}#print-root .hrc-card-sheet{display:block!important;padding:0!important}}
 `;
     document.head.appendChild(st);
   }
@@ -87,16 +82,13 @@
     var blank = isBlank(app);
     var count = attempts.length === 2 ? 'بطاقة واحدة .. فرصتان للتقديم' : 'بطاقة واحدة .. ' + attempts.length + ' فرص للتقديم';
     return '<div class="hrc-card" aria-label="الوجه الأمامي لبطاقة التوظيف">' +
-      '<div class="mk-hole" aria-hidden="true"></div>' +
-      '<div class="mk-brand"><div class="mk-brand-label">منصة مكسب<br>للتوظيف</div><div class="mk-logo">مكسب</div></div>' +
-      '<div class="mk-slogan">فرصتك تبدأ من هنا</div>' +
+      '<span class="mk-accessible">منصة مكسب للتوظيف — فرصتك تبدأ من هنا — امسح الباركود للوصول إلى منصة مكسب — امسح، سجّل، اختر وظيفتك — ' + esc(count) + ' — رقم البطاقة — إصدار البطاقة</span>' +
       '<div class="mk-qr hrc-qr-slot">' + qrSvg(Store.cardUrl(app.serial), 200) + '</div>' +
-      '<div class="mk-caption">امسح الباركود للوصول إلى<br><b>منصة مكسب</b></div>' +
-      '<div class="mk-steps"><span><strong>▯</strong>امسح</span><i>›</i><span><strong>●</strong>سجّل</span><i>›</i><span><strong>▣</strong>اختر وظيفتك</span></div>' +
-      '<div class="mk-ribbon">' + esc(count) + '</div>' +
-      '<div class="mk-contact"><div>خدمة العملاء<b>' + esc(CFG.company.phones[0] || '') + '</b></div><div>الموقع الإلكتروني<b>' + esc((function(){ try { return new URL(Store.cardUrl(app.serial)).host; } catch(e) { return ''; } })()) + '</b></div></div>' +
-      '<div class="mk-footer"><div>إصدار البطاقة<b>' + (blank ? 'عند البيع' : esc(Store.fmtDate(app.issueDate))) + '</b></div>' +
-      '<div>رقم البطاقة<b>' + esc(app.serial) + '</b></div></div></div>';
+      (attempts.length === 2 ? '' : '<div class="mk-count">' + esc(count) + '</div>') +
+      '<div class="mk-value mk-phone">' + esc(CFG.company.phones[0] || '') + '</div>' +
+      '<div class="mk-value mk-site">' + esc((function(){ try { return new URL(Store.cardUrl(app.serial)).host; } catch(e) { return ''; } })()) + '</div>' +
+      '<div class="mk-value mk-serial">' + esc(app.serial) + '</div>' +
+      '<div class="mk-value mk-date">' + (blank ? 'عند البيع' : esc(Store.fmtDate(app.issueDate))) + '</div></div>';
   }
 
   function independentBackHtml(app, attempts) {
@@ -383,9 +375,11 @@
      الخاص بالطباعة القديمة قد ينفجر بين إعداد محتوى الجديدة ونداء الطباعة
      فيمسح ورقتها بيضاء. التنظيف الآن لا يعمل إلا لآخر طباعة فقط. */
   var printSeq = 0, printFonts;
+  var cardArtwork = new Image();
+  cardArtwork.src = '/assets/img/maksab-card-design.jpg';
   function readyPrint(seq, after, delay) {
     if (!printFonts) printFonts = document.fonts && document.fonts.load ? Promise.all([400,600,700,900].map(function (w) { return document.fonts.load(w+' 12px Cairo','العراق ABC 123'); })).catch(function () { printFonts = null; }) : Promise.resolve();
-    printFonts.then(function () { if (printSeq === seq) { window.print(); setTimeout(after, delay); } });
+    Promise.all([printFonts, cardArtwork.decode ? cardArtwork.decode().catch(function () {}) : Promise.resolve()]).then(function () { if (printSeq === seq) { window.print(); setTimeout(after, delay); } });
   }
 
   function print(app, opts) {

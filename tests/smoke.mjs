@@ -621,7 +621,7 @@ check('تصميم البطاقة يعرض رمز تحقق واحداً مستق�
     if (fragment.querySelectorAll('.hrc-card').length !== 2 || fragment.querySelectorAll('.code').length !== 1) return 'رموز ناقصة للعدد ' + count;
     if (attempts.some((t) => fragment.textContent.includes(t.code)) || !fragment.textContent.includes('7A2C-9E4B-1D8F-6C03')) return 'تسرّب رمز فرصة أو تغيّر رمز التحقق';
     if (/اسم لا يُطبع|07700000099/.test(fragment.textContent)) return 'تسربت بيانات الزبون للبطاقة';
-    if (!fragment.querySelector('.mk-footer') || !fragment.textContent.includes('إصدار البطاقة')) return 'تسلسل الهوية والتواريخ ناقص';
+    if (!fragment.querySelector('.mk-serial') || !fragment.textContent.includes('إصدار البطاقة')) return 'تسلسل الهوية والتواريخ ناقص';
     const model = site.window.HRCQR.encode(site.window.HRCStore.cardUrl(app.serial), 'M');
     const svg = fragment.querySelector('.hrc-qr-slot svg');
     const modules = model.size || model.moduleCount || model.matrix.length;
