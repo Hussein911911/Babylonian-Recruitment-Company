@@ -3260,6 +3260,12 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 .cp-field input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(200, 162, 74, .13); }
 .cp-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .cp-actions .btn { flex: 1 1 160px; justify-content: center; min-height: 46px; }
+.cp-choice { display: grid; gap: 6px; margin-top: 8px; padding: 16px; border: 1px solid #e5d4a7; border-radius: 14px; background: #fffbf1; color: var(--lapis-2); }
+.cp-choice[hidden] { display: none; }
+.cp-choice > b { font-size: .9rem; }
+.cp-choice > span { font-size: .8rem; color: var(--muted); }
+.cp-choice-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.cp-choice-actions .btn { flex: 1 1 160px; justify-content: center; min-height: 46px; }
 .cp-err { margin: 2px 0 0; min-height: 18px; font-size: .76rem; font-weight: 700; color: var(--muted); }
 .cp-err.is-error { color: #b03a2e; }
 .cp-note {
@@ -4506,6 +4512,14 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
             <button type="button" class="btn btn-outline btn-lg" id="cp-scan">
               <svg class="ic"><use href="#i-scan" xlink:href="#i-scan"/></svg> مسح الباركود
             </button>
+          </div>
+          <div class="cp-choice" id="cp-choice" hidden aria-live="polite">
+            <b>تمت قراءة البطاقة بنجاح</b>
+            <span>شنو تحب تسوي؟</span>
+            <div class="cp-choice-actions">
+              <button type="button" class="btn btn-outline" id="cp-choice-details">عرض التفاصيل</button>
+              <a class="btn btn-gold" id="cp-choice-apply" href="apply.html">التقديم على وظيفة</a>
+            </div>
           </div>
           <p class="cp-err" id="cp-err" role="alert"></p>
         </form>
@@ -22479,6 +22493,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var host = document.getElementById('cp-result');
     if (host) { host.hidden = true; host.innerHTML = ''; }
     if (entry) entry.hidden = false;
+    var choice = document.getElementById('cp-choice');
+    if (choice) choice.hidden = true;
     cpSay('');
     var inp = document.getElementById('cp-serial');
     if (inp) { inp.value = ''; try { inp.focus(); } catch (e) { } }
@@ -22516,6 +22532,19 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       var inp = document.getElementById('cp-serial');
       cpLookup(inp ? inp.value : '');
     });
+    var choice = document.getElementById('cp-choice');
+    var choiceDetails = document.getElementById('cp-choice-details');
+    var choiceApply = document.getElementById('cp-choice-apply');
+    var serialInput = document.getElementById('cp-serial');
+    if (serialInput) serialInput.addEventListener('input', function () { if (choice) choice.hidden = true; });
+    if (choiceDetails) choiceDetails.addEventListener('click', function () { cpLookup(serialInput ? serialInput.value : ''); });
+    if (choiceApply) choiceApply.addEventListener('click', function (e) {
+      // The standalone file has no separate application page.
+      if (!root.HRCBooking || !root.HRCBooking.canApply || !root.HRCBooking.canApply()) {
+        e.preventDefault();
+        cpSay('صفحة التقديم غير متاحة في النسخة المستقلة. افتح الموقع الإلكتروني للتقديم.', true);
+      }
+    });
     var scan = document.getElementById('cp-scan');
     if (scan) scan.addEventListener('click', function () {
       var Q = root.HRCQRScan;
@@ -22531,7 +22560,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           var inp = document.getElementById('cp-serial');
           var v = cpSerialFromText(text);
           if (inp) inp.value = v;
-          cpLookup(v);
+          cpSay('');
+          if (choiceApply) choiceApply.href = 'apply.html?form=' + encodeURIComponent(v);
+          if (choice) { choice.hidden = false; if (choiceDetails) choiceDetails.focus(); }
+
         }
       });
       if (!opened) cpSay('المسح غير متاح في هذا المتصفح — اكتب الرقم يدوياً.', true);

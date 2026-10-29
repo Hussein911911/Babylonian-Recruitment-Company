@@ -647,6 +647,8 @@
     var host = document.getElementById('cp-result');
     if (host) { host.hidden = true; host.innerHTML = ''; }
     if (entry) entry.hidden = false;
+    var choice = document.getElementById('cp-choice');
+    if (choice) choice.hidden = true;
     cpSay('');
     var inp = document.getElementById('cp-serial');
     if (inp) { inp.value = ''; try { inp.focus(); } catch (e) { } }
@@ -684,6 +686,19 @@
       var inp = document.getElementById('cp-serial');
       cpLookup(inp ? inp.value : '');
     });
+    var choice = document.getElementById('cp-choice');
+    var choiceDetails = document.getElementById('cp-choice-details');
+    var choiceApply = document.getElementById('cp-choice-apply');
+    var serialInput = document.getElementById('cp-serial');
+    if (serialInput) serialInput.addEventListener('input', function () { if (choice) choice.hidden = true; });
+    if (choiceDetails) choiceDetails.addEventListener('click', function () { cpLookup(serialInput ? serialInput.value : ''); });
+    if (choiceApply) choiceApply.addEventListener('click', function (e) {
+      // The standalone file has no separate application page.
+      if (!root.HRCBooking || !root.HRCBooking.canApply || !root.HRCBooking.canApply()) {
+        e.preventDefault();
+        cpSay('صفحة التقديم غير متاحة في النسخة المستقلة. افتح الموقع الإلكتروني للتقديم.', true);
+      }
+    });
     var scan = document.getElementById('cp-scan');
     if (scan) scan.addEventListener('click', function () {
       var Q = root.HRCQRScan;
@@ -699,7 +714,10 @@
           var inp = document.getElementById('cp-serial');
           var v = cpSerialFromText(text);
           if (inp) inp.value = v;
-          cpLookup(v);
+          cpSay('');
+          if (choiceApply) choiceApply.href = 'apply.html?form=' + encodeURIComponent(v);
+          if (choice) { choice.hidden = false; if (choiceDetails) choiceDetails.focus(); }
+
         }
       });
       if (!opened) cpSay('المسح غير متاح في هذا المتصفح — اكتب الرقم يدوياً.', true);

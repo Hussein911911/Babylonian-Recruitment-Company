@@ -279,7 +279,7 @@ check('فلتر المحافظة يطابق الأسماء البديلة (ال�
 });
 
 await (async () => {
-  const name = 'صفحة بطاقتي: تقبل رابط QR المطبوع وتبحث برقم البطاقة فقط';
+  const name = 'صفحة بطاقتي: بعد المسح تعرض خيار التفاصيل أو التقديم';
   const w = site.window, originalScan = w.HRCQRScan, originalLookup = w.HRCStore.cardLookup;
   let options, lookedUp = '';
   w.HRCQRScan = Object.assign({}, originalScan, { open: (opts) => { options = opts; return true; } });
@@ -289,8 +289,16 @@ await (async () => {
     const text = 'https://example.com/apply.html?form=HRC-BC-000117';
     if (!options || !options.validate(text) || options.validate('https://example.com/not-a-card')) return bad(name, 'تحقق رمز QR غير صحيح');
     options.onResult(text);
+    const choice = site.doc.getElementById('cp-choice');
+    const apply = site.doc.getElementById('cp-choice-apply');
+    if (choice.hidden || lookedUp || site.doc.getElementById('cp-serial').value !== 'HRC-BC-000117') return bad(name, 'لم تظهر الخيارات بعد قراءة الرقم');
+    if (!apply.getAttribute('href').endsWith('apply.html?form=HRC-BC-000117')) return bad(name, 'رابط التقديم لا يحمل رقم البطاقة');
+    site.doc.getElementById('cp-choice-details').click();
     await new Promise((resolve) => setTimeout(resolve, 20));
-    if (lookedUp !== 'HRC-BC-000117' || site.doc.getElementById('cp-serial').value !== lookedUp) return bad(name, 'لم يُستخرج رقم البطاقة: ' + lookedUp);
+    if (lookedUp !== 'HRC-BC-000117') return bad(name, 'لم يُبحث عن البطاقة عند اختيار التفاصيل');
+    const input = site.doc.getElementById('cp-serial');
+    input.value = '9TRX2KQ4M7'; input.dispatchEvent(new w.Event('input', { bubbles: true }));
+    if (!choice.hidden) return bad(name, 'بقيت خيارات البطاقة القديمة بعد تغيير الرقم');
     return ok(name);
   } finally { w.HRCQRScan = originalScan; w.HRCStore.cardLookup = originalLookup; }
 })();

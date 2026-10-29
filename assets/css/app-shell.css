@@ -226,6 +226,12 @@
 .cp-field input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(200, 162, 74, .13); }
 .cp-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .cp-actions .btn { flex: 1 1 160px; justify-content: center; min-height: 46px; }
+.cp-choice { display: grid; gap: 6px; margin-top: 8px; padding: 16px; border: 1px solid #e5d4a7; border-radius: 14px; background: #fffbf1; color: var(--lapis-2); }
+.cp-choice[hidden] { display: none; }
+.cp-choice > b { font-size: .9rem; }
+.cp-choice > span { font-size: .8rem; color: var(--muted); }
+.cp-choice-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.cp-choice-actions .btn { flex: 1 1 160px; justify-content: center; min-height: 46px; }
 .cp-err { margin: 2px 0 0; min-height: 18px; font-size: .76rem; font-weight: 700; color: var(--muted); }
 .cp-err.is-error { color: #b03a2e; }
 .cp-note {
