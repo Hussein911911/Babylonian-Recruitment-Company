@@ -2868,7 +2868,7 @@
         'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ من التعبئة لا من اليوم.</p></div></div>';
 
     UI.modal({
-      title: 'إصدار دفعة بطاقات فارغة', subtitle: 'أكواد عشوائية فريدة — تُطبع على ورق A4 (4 بطاقات بالصفحة) وتوزَّع على نقاط البيع', wide: true, body: body,
+      title: 'إصدار دفعة بطاقات فارغة', subtitle: 'أكواد عشوائية فريدة — تُطبع على ورق A4 (9 بطاقات بالصفحة) وتوزَّع على نقاط البيع', wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="b-save">' + UI.ic('card') + ' إصدار الدفعة</button>',
       onMount: function (box, close) {
@@ -2876,9 +2876,9 @@
         var est = box.querySelector('#b-est');
         function refresh() {
           var n = Math.max(0, Math.min(1000, Number(cnt.value) || 0));
-          var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 4);
+          var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 9);
           est.textContent = n
-            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 4 بطاقات بالورقة الواحدة')
+            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 9 بطاقات بالورقة الواحدة')
             : 'أدخل عدداً بين 1 و1000';
         }
         cnt.addEventListener('input', refresh);
@@ -2910,7 +2910,7 @@
       subtitle: 'أكواد عشوائية فريدة — تُطبع الآن على A4 وتوزَّع على نقاط البيع',
       wide: true,
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
-          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>4 بطاقات بكل صفحة</b> بمقاسها الفعلي 86×54مم، ' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>9 بطاقات بكل صفحة</b> بمقاسها الفعلي 86×54مم، ' +
           'والباقي على الصفحات التالية. للطباعة على الوجهين اختر «قلب على الحافة الطويلة» وخيار «الحجم الفعلي» (100%)، ثم قصّ البطاقات وغلّفها حرارياً بمكتب الاستنساخ.</p></div></div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px;direction:ltr;justify-content:flex-end">' + chips + '</div>',
       footer: '<button class="btn btn-outline" data-close>لاحقاً</button>' +

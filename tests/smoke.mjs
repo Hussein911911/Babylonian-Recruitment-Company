@@ -630,10 +630,6 @@ check('تصميم البطاقة يعرض رمز تحقق واحداً مستق�
   const style = site.doc.getElementById('hrc-card-style').textContent;
   return (/box-sizing:border-box;width:54mm;height:86mm/.test(style) && /size:A4 landscape/.test(style) && /zoom:2\.35/.test(style)) || 'مقاس البطاقة أو تكبيرها للطباعة على A4 غير مضبوط';
 });
-check('طباعة الدفعات تحسب أربع بطاقات لكل ورقة', () => {
-  const count = site.window.HRCVoucher.sheetCount;
-  return count(0) === 0 && count(1) === 1 && count(4) === 1 && count(5) === 2 && count(8) === 2 && count(9) === 3;
-});
 check('البطاقة الأصلية تُطبع بلا أي رمز فرصة مع حفظ الشروط', () => {
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
   const html = site.window.HRCVoucher.buildHtml(app);

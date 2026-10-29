@@ -427,17 +427,17 @@
   }
 
   /* ======================= طباعة الدفعات على ورق A4 ======================= */
-  /* 4 بطاقات بالصفحة (عمودان × صفان) بمقاسها الفعلي 54×86مم، والباقي على
-     الصفحات التالية. كل 4 بطاقات = صفحة أمامية ثم صفحة خلفية، والخلفية
-     مُبدَّلة أفقياً (العمود 1↔2) لتتطابق مع الأمامية عند الطباعة على الوجهين
+  /* 9 بطاقات بالصفحة (3 أعمدة × 3 صفوف) بمقاسها الفعلي 54×86مم، والباقي على
+     الصفحات التالية. كل 9 بطاقات = صفحة أمامية ثم صفحة خلفية، والخلفية
+     مُبدَّلة أفقياً (العمود 1↔3) لتتطابق مع الأمامية عند الطباعة على الوجهين
      بخيار «قلب على الحافة الطويلة» — وإن طُبعت وجهاً واحداً فكل صفحة مستقلة. */
-  var SHEET_COLS = 2, SHEET_ROWS = 2, SHEET_PER = SHEET_COLS * SHEET_ROWS;
+  var SHEET_COLS = 3, SHEET_ROWS = 3, SHEET_PER = SHEET_COLS * SHEET_ROWS;
   var SHEET_CSS = '@media print{'
     + '@page{size:A4;margin:0;}'
     + '#print-root{display:block !important;}'
-    + '#print-root .hrc-sheet-page{width:210mm;height:297mm;box-sizing:border-box;padding:0;'
-    +   'display:grid;grid-template-columns:repeat(2,54mm);grid-auto-rows:86mm;column-gap:6mm;row-gap:6mm;'
-    +   'align-content:center;justify-content:center;overflow:hidden;background:#fff;'
+    + '#print-root .hrc-sheet-page{width:210mm;height:297mm;box-sizing:border-box;padding:16.5mm 18mm;'
+    +   'display:grid;grid-template-columns:repeat(3,54mm);grid-auto-rows:86mm;column-gap:3mm;row-gap:3mm;'
+    +   'align-content:start;justify-content:start;overflow:hidden;background:#fff;'
     +   'page-break-after:always;break-after:page;}'
     + '#print-root .hrc-sheet-page:last-child{page-break-after:auto;break-after:auto;}'
     + '#print-root .hrc-cell{width:54mm;height:86mm;overflow:hidden;}'
