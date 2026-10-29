@@ -226,12 +226,24 @@
 .cp-field input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(200, 162, 74, .13); }
 .cp-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .cp-actions .btn { flex: 1 1 160px; justify-content: center; min-height: 46px; }
-.cp-choice { display: grid; gap: 6px; margin-top: 8px; padding: 16px; border: 1px solid #e5d4a7; border-radius: 14px; background: #fffbf1; color: var(--lapis-2); }
-.cp-choice[hidden] { display: none; }
-.cp-choice > b { font-size: .9rem; }
-.cp-choice > span { font-size: .8rem; color: var(--muted); }
-.cp-choice-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-.cp-choice-actions .btn { flex: 1 1 160px; justify-content: center; min-height: 46px; }
+/* نافذة الاختيار بعد مسح البطاقة */
+.modal.cp-choice-modal { width: min(440px, calc(100vw - 28px)); border-radius: 22px; overflow: hidden; }
+.cp-choice-modal .modal-head { border-bottom: 1px solid #e9edf5; }
+.cp-choice-modal .modal-head h3 { color: #102b50; font-weight: 900; }
+.cp-choice-modal .modal-body { padding: 24px; }
+.cp-choice { display: grid; justify-items: center; gap: 8px; text-align: center; color: #102b50; }
+.cp-choice-icon { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 18px; color: white; background: #102e52; box-shadow: 0 8px 18px #102e5226; }
+.cp-choice-icon .ic { width: 28px; height: 28px; }
+.cp-choice h4 { margin: 7px 0 0; font-size: 1.06rem; font-weight: 900; }
+.cp-choice p { margin: 0; color: #64748b; font-size: .84rem; line-height: 1.7; }
+.cp-choice-serial { direction: ltr; padding: 5px 12px; border-radius: 8px; background: #f1f5fa; color: #24425f; font-size: .78rem; font-weight: 800; letter-spacing: .04em; }
+.cp-choice-actions { display: grid; gap: 10px; width: 100%; margin-top: 14px; }
+.cp-choice-actions .btn { width: 100%; min-height: 50px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; font-weight: 900; }
+.cp-choice-actions .cp-choice-primary { background: #102e52; border: 1px solid #102e52; color: #fff; }
+.cp-choice-actions .cp-choice-primary:hover { background: #1a426a; border-color: #1a426a; }
+.cp-choice-actions .cp-choice-secondary { background: #fff; color: #102e52; border: 1.5px solid #b8c7d8; }
+.cp-choice-actions .cp-choice-secondary:hover { background: #f1f5fa; }
+.cp-choice-error { color: #a52c2c !important; font-size: .78rem !important; }
 .cp-err { margin: 2px 0 0; min-height: 18px; font-size: .76rem; font-weight: 700; color: var(--muted); }
 .cp-err.is-error { color: #b03a2e; }
 .cp-note {

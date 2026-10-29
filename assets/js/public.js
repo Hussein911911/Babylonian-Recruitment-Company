@@ -647,8 +647,6 @@
     var host = document.getElementById('cp-result');
     if (host) { host.hidden = true; host.innerHTML = ''; }
     if (entry) entry.hidden = false;
-    var choice = document.getElementById('cp-choice');
-    if (choice) choice.hidden = true;
     cpSay('');
     var inp = document.getElementById('cp-serial');
     if (inp) { inp.value = ''; try { inp.focus(); } catch (e) { } }
@@ -679,25 +677,46 @@
     });
   }
 
+  // بعد المسح يختار الزبون الإجراء قبل البحث أو الانتقال لصفحة التقديم.
+  function cpChooseAction(serial) {
+    var modal = UI.modal({
+      title: 'بطاقتي',
+      body: '<div class="cp-choice">' +
+        '<span class="cp-choice-icon" aria-hidden="true">' + UI.ic('card') + '</span>' +
+        '<h4>تمت قراءة البطاقة بنجاح</h4>' +
+        '<p>اختر شنو تحب تسوي ببطاقتك</p>' +
+        '<span class="cp-choice-serial">' + UI.esc(serial) + '</span>' +
+        '<div class="cp-choice-actions">' +
+          '<a class="btn cp-choice-primary" id="cp-choice-apply" href="apply.html?form=' + encodeURIComponent(serial) + '">' + UI.ic('arrow-right') + ' تقديم الآن</a>' +
+          '<button type="button" class="btn cp-choice-secondary" id="cp-choice-details">' + UI.ic('card') + ' عرض تفاصيل البطاقة</button>' +
+        '</div><p class="cp-choice-error" id="cp-choice-error" role="alert" hidden></p></div>',
+      onMount: function (box, close) {
+        box.classList.add('cp-choice-modal');
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-modal', 'true');
+        box.setAttribute('aria-label', 'اختيار إجراء البطاقة');
+        var apply = box.querySelector('#cp-choice-apply');
+        apply.addEventListener('click', function (e) {
+          if (!root.HRCBooking || !root.HRCBooking.canApply || !root.HRCBooking.canApply()) {
+            e.preventDefault();
+            var error = box.querySelector('#cp-choice-error');
+            error.hidden = false;
+            error.textContent = 'صفحة التقديم غير متاحة في النسخة المستقلة. افتح الموقع الإلكتروني للتقديم.';
+          }
+        });
+        box.querySelector('#cp-choice-details').addEventListener('click', function () { close(); cpLookup(serial); });
+        setTimeout(function () { if (document.contains(apply)) apply.focus(); }, 80);
+      }
+    });
+    if (!modal) cpSay('تعذّر عرض الخيارات — يمكنك عرض تفاصيل البطاقة من الزر أدناه.', true);
+  }
+
   function bindCardPage() {
     var form = document.getElementById('cp-form');
     if (form) form.addEventListener('submit', function (e) {
       e.preventDefault();
       var inp = document.getElementById('cp-serial');
       cpLookup(inp ? inp.value : '');
-    });
-    var choice = document.getElementById('cp-choice');
-    var choiceDetails = document.getElementById('cp-choice-details');
-    var choiceApply = document.getElementById('cp-choice-apply');
-    var serialInput = document.getElementById('cp-serial');
-    if (serialInput) serialInput.addEventListener('input', function () { if (choice) choice.hidden = true; });
-    if (choiceDetails) choiceDetails.addEventListener('click', function () { cpLookup(serialInput ? serialInput.value : ''); });
-    if (choiceApply) choiceApply.addEventListener('click', function (e) {
-      // The standalone file has no separate application page.
-      if (!root.HRCBooking || !root.HRCBooking.canApply || !root.HRCBooking.canApply()) {
-        e.preventDefault();
-        cpSay('صفحة التقديم غير متاحة في النسخة المستقلة. افتح الموقع الإلكتروني للتقديم.', true);
-      }
     });
     var scan = document.getElementById('cp-scan');
     if (scan) scan.addEventListener('click', function () {
@@ -715,8 +734,7 @@
           var v = cpSerialFromText(text);
           if (inp) inp.value = v;
           cpSay('');
-          if (choiceApply) choiceApply.href = 'apply.html?form=' + encodeURIComponent(v);
-          if (choice) { choice.hidden = false; if (choiceDetails) choiceDetails.focus(); }
+          cpChooseAction(v);
 
         }
       });

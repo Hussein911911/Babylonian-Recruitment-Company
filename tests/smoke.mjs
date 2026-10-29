@@ -289,16 +289,18 @@ await (async () => {
     const text = 'https://example.com/apply.html?form=HRC-BC-000117';
     if (!options || !options.validate(text) || options.validate('https://example.com/not-a-card')) return bad(name, 'تحقق رمز QR غير صحيح');
     options.onResult(text);
-    const choice = site.doc.getElementById('cp-choice');
-    const apply = site.doc.getElementById('cp-choice-apply');
-    if (choice.hidden || lookedUp || site.doc.getElementById('cp-serial').value !== 'HRC-BC-000117') return bad(name, 'لم تظهر الخيارات بعد قراءة الرقم');
+    const choice = lastModal(site.doc);
+    const apply = choice && choice.querySelector('#cp-choice-apply');
+    const details = choice && choice.querySelector('#cp-choice-details');
+    if (!choice || !apply || !details || lookedUp || site.doc.getElementById('cp-serial').value !== 'HRC-BC-000117') return bad(name, 'لم تظهر الخيارات المنبثقة بعد قراءة الرقم');
+    if (choice.getAttribute('role') !== 'dialog' || !(apply.compareDocumentPosition(details) & w.Node.DOCUMENT_POSITION_FOLLOWING)) return bad(name, 'الترتيب أو نافذة الحوار غير صحيحة');
     if (!apply.getAttribute('href').endsWith('apply.html?form=HRC-BC-000117')) return bad(name, 'رابط التقديم لا يحمل رقم البطاقة');
-    site.doc.getElementById('cp-choice-details').click();
+    // On file://, application is blocked and the message stays in the dialog.
+    apply.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
+    if (choice.querySelector('#cp-choice-error').hidden) return bad(name, 'لا يوجد تنبيه في النسخة المستقلة');
+    details.click();
     await new Promise((resolve) => setTimeout(resolve, 20));
-    if (lookedUp !== 'HRC-BC-000117') return bad(name, 'لم يُبحث عن البطاقة عند اختيار التفاصيل');
-    const input = site.doc.getElementById('cp-serial');
-    input.value = '9TRX2KQ4M7'; input.dispatchEvent(new w.Event('input', { bubbles: true }));
-    if (!choice.hidden) return bad(name, 'بقيت خيارات البطاقة القديمة بعد تغيير الرقم');
+    if (lookedUp !== 'HRC-BC-000117' || site.doc.contains(choice)) return bad(name, 'لم تُغلق النافذة أو لم يُبحث عن البطاقة');
     return ok(name);
   } finally { w.HRCQRScan = originalScan; w.HRCStore.cardLookup = originalLookup; }
 })();
