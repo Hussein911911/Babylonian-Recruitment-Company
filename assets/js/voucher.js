@@ -24,33 +24,25 @@
     st.id = STYLE_ID;
     st.textContent = `
 .hrc-card,.hrc-card *{box-sizing:border-box}
-.hrc-card{box-sizing:border-box;width:86mm;height:54mm;flex:0 0 auto;position:relative;overflow:hidden;border-radius:3mm;padding:2.6mm;background:#f5f1e5;color:#112f4d;display:flex;flex-direction:column;font-family:Cairo,'Segoe UI',Tahoma,sans-serif;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact;box-shadow:0 10px 24px #06172a35}
+.hrc-card{box-sizing:border-box;width:54mm;height:86mm;flex:0 0 auto;position:relative;overflow:hidden;border-radius:3mm;padding:2.6mm;background:#f5f1e5;color:#112f4d;display:flex;flex-direction:column;font-family:Cairo,'Segoe UI',Tahoma,sans-serif;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact;box-shadow:0 10px 24px #06172a35}
 .hrc-card .frame{position:absolute;inset:1mm;border:.3mm solid #d5aa32;border-radius:2.4mm;pointer-events:none;z-index:5}
-.hrc-card[aria-label*=الأمامي]{background:linear-gradient(180deg,#062e51 0%,#073b60 72%,#f5f1e5 72%,#f5f1e5 100%);}
-.hrc-card[aria-label*=الأمامي]:before{content:'';position:absolute;z-index:0;left:-7%;top:61%;width:114%;height:15%;background:#f5f1e5;border-top:.9mm solid #e2b433;border-radius:0 0 50% 50%;}
-.card-front-top,.card-front-main,.card-front-bottom,.card-back-top,.card-back-content,.card-back-bottom{position:relative;z-index:1}
-.card-front-top{height:10mm;display:flex;align-items:center;justify-content:space-between;padding:0 1mm}
-.card-brand{display:flex;align-items:center;gap:1.5mm;min-width:0}.card-brand .embl{width:8mm;height:8mm;color:#f3c331;flex:none}
-.card-brand .ar{font-size:8pt;line-height:1.25;font-weight:900;color:#fff}.card-brand .en{font-size:3.6pt;line-height:1.2;color:#e7edf2;direction:ltr}
-.card-type{font-size:5pt;font-weight:900;color:#fff;text-align:left;white-space:nowrap}
-.card-front-main{display:grid;grid-template-columns:minmax(0,1fr) 25mm;gap:2mm;align-items:center;flex:1;min-height:0;padding:0 1mm 1mm}
-.card-front-copy{min-width:0;color:#fff;text-align:center}
-.card-slogan{font-size:12pt;line-height:1.15;font-weight:900;color:#f3c331;margin:0 0 1mm;white-space:nowrap}
-.card-front-copy .serial-label{font-size:4.4pt;color:#e6edf2}
-.card-front-copy .hc-serial{display:block;direction:ltr;text-align:center;white-space:nowrap;font:900 8pt 'Courier New',monospace;letter-spacing:.03em;color:#fff;margin:.6mm 0}
-.card-front-copy .hc-count{font-size:5.5pt;font-weight:800;color:#fff}
-.card-front-copy .hint{font-size:4pt;line-height:1.35;color:#e5edf1;margin:.6mm 0 0}
-.hc-qr{display:flex;flex-direction:column;align-items:center;gap:.5mm}
-.hc-qr .box{width:22mm;height:22mm;padding:.6mm;background:#fff;border:.8mm solid #d9ad30;border-radius:2mm;box-shadow:0 1mm 2mm #06172a35}
+/* Vertical front, inspired by the approved hanging-card design. */
+.hrc-card[aria-label*=الأمامي]{padding:0;background:#f6f2e7;color:#092846;text-align:center}
+.hrc-card[aria-label*=الأمامي]:before{content:'';position:absolute;top:0;left:-10%;width:120%;height:54%;background:#062d50;border-bottom:1mm solid #d5ae55;border-radius:0 0 50% 50% / 0 0 13% 13%}
+.mk-hole,.mk-brand,.mk-slogan,.mk-qr,.mk-caption,.mk-steps,.mk-ribbon,.mk-contact,.mk-footer{position:relative;z-index:1}
+.mk-hole{width:15mm;height:3mm;border-radius:3mm;background:#f6f2e7;margin:2.5mm auto 3mm}
+.mk-brand{display:flex;align-items:center;justify-content:center;gap:1.5mm;color:white;height:10mm}
+.mk-logo{font-size:24pt;line-height:1;font-weight:900;letter-spacing:-.5mm}.mk-logo:after{content:'↗';color:#e6b849;font-size:12pt;vertical-align:top}
+.mk-brand-label{font-size:6pt;font-weight:800;line-height:1.25;text-align:right;border-inline-start:.2mm solid #fff;padding-inline-start:1.5mm}
+.mk-slogan{font-size:13pt;font-weight:900;color:#dfb456;line-height:1.3;margin:1mm 0 2mm}
+.mk-qr{width:22mm;height:22mm;margin:0 auto;background:white;border:.7mm solid #cba456;border-radius:2mm;padding:.5mm}
 .hrc-qr-slot svg{display:block;width:100%;height:100%}
-.hc-qr .caption{font-size:4pt;line-height:1.2;font-weight:900;text-align:center;background:#073858;color:#fff;padding:.5mm 1mm;border-radius:1mm;width:100%}
-.card-front-bottom{height:11mm;display:grid;grid-template-columns:1.05fr .9fr 1fr;align-items:center;gap:1mm;padding:.5mm 1.5mm 0;color:#153654}
-.card-steps{display:flex;align-items:center;justify-content:center;gap:.7mm;font-size:3.8pt;font-weight:900;white-space:nowrap}
-.card-steps i{font-style:normal;color:#d1a52c;font-size:7pt}
-.card-contact{display:flex;flex-direction:column;align-items:center;line-height:1.2;border-inline-start:.25mm solid #cfa72e}
-.card-contact span{font-size:3.5pt}.card-contact b{font:900 5pt 'Courier New',monospace;direction:ltr}
-.hc-dates{display:grid;grid-template-columns:1fr;gap:.5mm;border-inline-start:.25mm solid #cfa72e;padding-inline-start:1mm}
-.hc-date{display:flex;justify-content:space-between;gap:.5mm;font-size:3.2pt;line-height:1.2;white-space:nowrap}.hc-date b{font-size:3.2pt;color:#153654}
+.mk-caption{background:#062d50;color:white;border-radius:2mm;margin:1mm 6mm 1mm;padding:.7mm;font-size:6pt;font-weight:800;line-height:1.2}.mk-caption b{color:#e6ba59}
+.mk-steps{display:flex;direction:ltr;align-items:center;justify-content:space-around;margin:0 5mm;color:#092846;font-size:5.5pt;font-weight:900}.mk-steps span{direction:rtl}.mk-steps i{font-style:normal;color:#cba456;font-size:10pt}.mk-steps strong{display:block;font-size:11pt;line-height:1}
+.mk-ribbon{background:#dfb456;margin:1mm 6mm;padding:.7mm;border-radius:1mm;font-size:6pt;font-weight:900}
+.mk-contact{display:flex;direction:ltr;justify-content:center;align-items:center;margin:1mm 3mm;gap:2mm;font-size:5pt;font-weight:800;line-height:1.3}.mk-contact div{direction:rtl}.mk-contact div+div{border-left:.2mm solid #cba456;padding-left:2mm}.mk-contact b{display:block;direction:ltr;font-size:5.5pt}
+.mk-footer{margin-top:auto;background:#062d50;color:white;display:flex;align-items:center;justify-content:center;gap:3mm;padding:1.2mm 2mm 1.8mm;font-size:5pt}.mk-footer b{display:block;direction:ltr;font-size:6pt}.mk-footer div+div{border-right:.2mm solid #dbc483;padding-right:3mm}
+.card-back-top,.card-back-content,.card-back-bottom{position:relative;z-index:1}
 .hrc-card[aria-label*=الخلفي]{background:#f5f1e5;padding:2.8mm 3.2mm;color:#123553}
 .card-back-top{display:flex;align-items:center;justify-content:space-between;gap:2mm;border-bottom:.3mm solid #173b5d;padding:0 0 1mm;margin-bottom:1mm}
 .card-back-title{font-size:8pt;font-weight:900;color:#143758;white-space:nowrap}
@@ -66,7 +58,7 @@
 .card-back-bottom{display:flex;align-items:center;justify-content:space-between;gap:2mm;background:#0a3558;color:#fff;border-radius:1.7mm;padding:1mm 2mm;margin-top:.7mm}
 .hc-contact{display:flex;flex-direction:column;align-items:center;gap:.3mm;white-space:nowrap}.hc-contact .phones{font:900 6pt 'Courier New',monospace;direction:ltr;color:#fff}.hc-contact .addr{font-size:3.7pt;color:#f5f1e5}
 .hc-bot2 .disc{font-size:3.3pt;line-height:1.3;color:#fff;max-width:61%;text-align:right}
-@media print{@page{size:A4 landscape;margin:0}html,body{background:#fff!important;margin:0!important;padding:0!important}body>*{display:none!important}#print-root{display:block!important;position:static!important;width:auto!important}#print-root .hrc-card{width:86mm;height:54mm;zoom:3.1;margin:6.8mm auto 0!important;box-shadow:none!important;border-radius:0!important;page-break-after:always;break-after:page}#print-root .hrc-card:last-child{page-break-after:auto;break-after:auto}#print-root .hrc-card-sheet{display:block!important;padding:0!important}}
+@media print{@page{size:A4 landscape;margin:0}html,body{background:#fff!important;margin:0!important;padding:0!important}body>*{display:none!important}#print-root{display:block!important;position:static!important;width:auto!important}#print-root .hrc-card{width:54mm;height:86mm;zoom:2.35;margin:6.8mm auto 0!important;box-shadow:none!important;border-radius:0!important;page-break-after:always;break-after:page}#print-root .hrc-card:last-child{page-break-after:auto;break-after:auto}#print-root .hrc-card-sheet{display:block!important;padding:0!important}}
 `;
     document.head.appendChild(st);
   }
@@ -93,23 +85,18 @@
 
   function frontHtml(app, attempts) {
     var blank = isBlank(app);
-    var count = attempts.length === 2 ? 'فرصتان مستقلتان' : attempts.length + ' فرص مستقلة';
+    var count = attempts.length === 2 ? 'بطاقة واحدة .. فرصتان للتقديم' : 'بطاقة واحدة .. ' + attempts.length + ' فرص للتقديم';
     return '<div class="hrc-card" aria-label="الوجه الأمامي لبطاقة التوظيف">' +
-      '<div class="frame"></div>' +
-      '<div class="card-front-top"><div class="card-brand">' +
-      '<svg class="embl" viewBox="0 0 120 120"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>' +
-      '<div><div class="ar">' + esc(CFG.company.nameAr) + '</div><div class="en">' + esc(CFG.company.nameEn) + '</div></div></div>' +
-      '<div class="card-type">منصة توظيف<br>بطاقة فرص</div></div>' +
-      '<div class="card-front-main"><div class="card-front-copy"><div class="card-slogan">فرصتك تبدأ من هنا</div>' +
-      '<div class="serial-label">بطاقة الزبون — هوية الباركود</div><b class="hc-serial">' + esc(app.serial) + '</b>' +
-      '<div class="hc-count">' + esc(count) + '</div><p class="hint">' +
-      (blank ? 'تُفعّل عند البيع؛ الصلاحية 30 يوماً.' : 'بيانات الزبون على الاستمارة بنفس الباركود.') + '</p></div>' +
-      '<div class="hc-qr"><div class="box hrc-qr-slot">' + qrSvg(Store.cardUrl(app.serial), 200) + '</div>' +
-      '<span class="caption">امسح للوصول إلى «بطاقتي»</span></div></div>' +
-      '<div class="card-front-bottom"><div class="card-steps"><span>امسح</span><i>›</i><span>سجّل</span><i>›</i><span>اختر وظيفتك</span></div>' +
-      '<div class="hc-dates"><div class="hc-date"><span>الإصدار</span><b>' + (blank ? 'عند البيع' : esc(Store.fmtDate(app.issueDate))) + '</b></div>' +
-      '<div class="hc-date"><span>الصلاحية</span><b>' + (blank ? '30 يوماً من البيع' : esc(Store.fmtDate(app.expiryDate))) + '</b></div></div>' +
-      '<div class="card-contact"><span>خدمة العملاء</span><b>' + esc(CFG.company.phones[0] || '') + '</b></div></div></div>';
+      '<div class="mk-hole" aria-hidden="true"></div>' +
+      '<div class="mk-brand"><div class="mk-brand-label">منصة مكسب<br>للتوظيف</div><div class="mk-logo">مكسب</div></div>' +
+      '<div class="mk-slogan">فرصتك تبدأ من هنا</div>' +
+      '<div class="mk-qr hrc-qr-slot">' + qrSvg(Store.cardUrl(app.serial), 200) + '</div>' +
+      '<div class="mk-caption">امسح الباركود للوصول إلى<br><b>منصة مكسب</b></div>' +
+      '<div class="mk-steps"><span><strong>▯</strong>امسح</span><i>›</i><span><strong>●</strong>سجّل</span><i>›</i><span><strong>▣</strong>اختر وظيفتك</span></div>' +
+      '<div class="mk-ribbon">' + esc(count) + '</div>' +
+      '<div class="mk-contact"><div>خدمة العملاء<b>' + esc(CFG.company.phones[0] || '') + '</b></div><div>الموقع الإلكتروني<b>' + esc((function(){ try { return new URL(Store.cardUrl(app.serial)).host; } catch(e) { return ''; } })()) + '</b></div></div>' +
+      '<div class="mk-footer"><div>إصدار البطاقة<b>' + (blank ? 'عند البيع' : esc(Store.fmtDate(app.issueDate))) + '</b></div>' +
+      '<div>رقم البطاقة<b>' + esc(app.serial) + '</b></div></div></div>';
   }
 
   function independentBackHtml(app, attempts) {
@@ -436,22 +423,22 @@
   }
 
   /* ======================= طباعة الدفعات على ورق A4 ======================= */
-  /* 10 بطاقات بالصفحة (عمودان × 5 صفوف) بمقاسها الفعلي 86×54مم، والباقي على
-     الصفحات التالية. كل 10 بطاقات = صفحة أمامية ثم صفحة خلفية، والخلفية
-     مُبدَّلة أفقياً (العمود 1↔2) لتتطابق مع الأمامية عند الطباعة على الوجهين
+  /* 9 بطاقات بالصفحة (3 أعمدة × 3 صفوف) بمقاسها الفعلي 54×86مم، والباقي على
+     الصفحات التالية. كل 9 بطاقات = صفحة أمامية ثم صفحة خلفية، والخلفية
+     مُبدَّلة أفقياً (العمود 1↔3) لتتطابق مع الأمامية عند الطباعة على الوجهين
      بخيار «قلب على الحافة الطويلة» — وإن طُبعت وجهاً واحداً فكل صفحة مستقلة. */
-  var SHEET_COLS = 2, SHEET_ROWS = 5, SHEET_PER = SHEET_COLS * SHEET_ROWS;
+  var SHEET_COLS = 3, SHEET_ROWS = 3, SHEET_PER = SHEET_COLS * SHEET_ROWS;
   var SHEET_CSS = '@media print{'
     + '@page{size:A4;margin:0;}'
     + '#print-root{display:block !important;}'
-    + '#print-root .hrc-sheet-page{width:210mm;height:297mm;box-sizing:border-box;padding:7.5mm 16mm;'
-    +   'display:grid;grid-template-columns:86mm 86mm;grid-auto-rows:54mm;column-gap:6mm;row-gap:3mm;'
+    + '#print-root .hrc-sheet-page{width:210mm;height:297mm;box-sizing:border-box;padding:16.5mm 18mm;'
+    +   'display:grid;grid-template-columns:repeat(3,54mm);grid-auto-rows:86mm;column-gap:3mm;row-gap:3mm;'
     +   'align-content:start;justify-content:start;overflow:hidden;background:#fff;'
     +   'page-break-after:always;break-after:page;}'
     + '#print-root .hrc-sheet-page:last-child{page-break-after:auto;break-after:auto;}'
-    + '#print-root .hrc-cell{width:86mm;height:54mm;overflow:hidden;}'
+    + '#print-root .hrc-cell{width:54mm;height:86mm;overflow:hidden;}'
     + '#print-root .hrc-cell .hrc-card{margin:0 !important;box-shadow:none !important;'
-    +   'page-break-after:auto !important;break-after:auto !important;}'
+    +   'zoom:1 !important;page-break-after:auto !important;break-after:auto !important;}'
     + '}';
   var sheetStyleEl = null;
   function setSheetCss(on) {
@@ -484,7 +471,7 @@
       chunk.forEach(function (app, i) {
         var att = Store.getAttempts(app.serial);
         front[i] = frontHtml(app, att);
-        back[i ^ 1] = backHtml(app, att);   /* تبديل العمودين للوجه الخلفي */
+        back[Math.floor(i / SHEET_COLS) * SHEET_COLS + (SHEET_COLS - 1 - i % SHEET_COLS)] = backHtml(app, att);   /* عكس الأعمدة للوجه الخلفي */
       });
       out += sheetPage(front) + sheetPage(back);
     }

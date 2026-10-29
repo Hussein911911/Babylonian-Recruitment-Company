@@ -600,10 +600,10 @@ check('قالب البطاقة يحوي الوجهين وكل بياناتها �
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
   const html = site.window.HRCVoucher.buildHtml(app);
   const needed = [
-    'شركة الهدف للتوظيف', 'Al-Hadaf Recruitment Company',
+    'منصة مكسب', 'فرصتك تبدأ من هنا',
     '07760058007',
     'HRC-BC-000120',
-    'بطاقة الزبون — هوية الباركود',
+    'رقم البطاقة',
     'hrc-card', '<svg', 'فرصتان'
   ];
   const missing = needed.filter((x) => !html.includes(x));
@@ -621,14 +621,14 @@ check('تصميم البطاقة يعرض رمز تحقق واحداً مستق�
     if (fragment.querySelectorAll('.hrc-card').length !== 2 || fragment.querySelectorAll('.code').length !== 1) return 'رموز ناقصة للعدد ' + count;
     if (attempts.some((t) => fragment.textContent.includes(t.code)) || !fragment.textContent.includes('7A2C-9E4B-1D8F-6C03')) return 'تسرّب رمز فرصة أو تغيّر رمز التحقق';
     if (/اسم لا يُطبع|07700000099/.test(fragment.textContent)) return 'تسربت بيانات الزبون للبطاقة';
-    if (!fragment.querySelector('.hc-serial') || !fragment.querySelector('.hc-dates')) return 'تسلسل الهوية والتواريخ ناقص';
+    if (!fragment.querySelector('.mk-footer') || !fragment.textContent.includes('إصدار البطاقة')) return 'تسلسل الهوية والتواريخ ناقص';
     const model = site.window.HRCQR.encode(site.window.HRCStore.cardUrl(app.serial), 'M');
     const svg = fragment.querySelector('.hrc-qr-slot svg');
     const modules = model.size || model.moduleCount || model.matrix.length;
     if (!svg || svg.getAttribute('viewBox') !== '0 0 ' + (modules + 8) + ' ' + (modules + 8)) return 'الهامش الأبيض للباركود غير كافٍ';
   }
   const style = site.doc.getElementById('hrc-card-style').textContent;
-  return (/box-sizing:border-box;width:86mm;height:54mm/.test(style) && /size:A4 landscape/.test(style) && /zoom:3\.1/.test(style)) || 'مقاس البطاقة أو تكبيرها للطباعة على A4 غير مضبوط';
+  return (/box-sizing:border-box;width:54mm;height:86mm/.test(style) && /size:A4 landscape/.test(style) && /zoom:2\.35/.test(style)) || 'مقاس البطاقة أو تكبيرها للطباعة على A4 غير مضبوط';
 });
 check('البطاقة الأصلية تُطبع بلا أي رمز فرصة مع حفظ الشروط', () => {
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
