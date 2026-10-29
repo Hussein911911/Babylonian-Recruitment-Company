@@ -26,17 +26,26 @@
 .hrc-card,.hrc-card *{box-sizing:border-box}
 .hrc-card{box-sizing:border-box;width:54mm;height:86mm;flex:0 0 auto;position:relative;overflow:hidden;border-radius:3mm;padding:2.6mm;background:#f5f1e5;color:#112f4d;display:flex;flex-direction:column;font-family:Cairo,'Segoe UI',Tahoma,sans-serif;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact;box-shadow:0 10px 24px #06172a35}
 .hrc-card .frame{position:absolute;inset:1mm;border:.3mm solid #d5aa32;border-radius:2.4mm;pointer-events:none;z-index:5}
-/* The supplied artwork is the card face; live values cover its sample data. */
-.hrc-card[aria-label*=الأمامي]{padding:0;background:#062d50 url(/assets/img/maksab-card-design.jpg) center/100% 100% no-repeat;color:#092846;text-align:center}
-.mk-qr{position:absolute;left:31.8%;top:32.8%;width:36.4%;aspect-ratio:1;background:#fff;padding:0;z-index:1}
+/* تصميم البطاقة قابل للتعديل: الأشكال والنصوص والباركود منفصلة. */
+.hrc-card[aria-label*=الأمامي]{padding:0;background:#f3f0e7;color:#071e39;text-align:center}
+.mk-art{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+.mk-hole{position:absolute;top:1.5%;left:35.5%;width:29%;height:5%;z-index:1}
+.mk-brand{position:absolute;top:9%;left:9%;width:83%;height:11%;display:flex;direction:ltr;align-items:center;justify-content:center;gap:1.5mm;color:#fff;z-index:1}
+.mk-logo{position:relative;display:flex;direction:rtl;align-items:center;white-space:nowrap;font-size:23pt;line-height:1;font-weight:900;letter-spacing:-.45mm}
+.mk-arrow{width:8mm;height:9mm;flex:none;margin-right:-1mm}
+.mk-brand-label{direction:rtl;border-left:.2mm solid #c6d0d9;padding-left:1.5mm;font-size:6.2pt;font-weight:900;line-height:1.35;text-align:center;white-space:nowrap}
+.mk-slogan{position:absolute;top:22%;left:2%;width:96%;color:#d2ad60;font-weight:900;font-size:13.5pt;line-height:1.15;z-index:1;white-space:nowrap}
+.mk-slogan:after{content:'';display:block;margin:.5mm auto 0;width:23%;height:.5mm;border-top:.35mm solid #c9a75d;border-radius:50%;transform:rotate(-3deg)}
+.mk-qr{position:absolute;left:30%;top:32.5%;width:40%;aspect-ratio:1;background:#fff;border:.65mm solid #c2a264;border-radius:1.7mm;padding:.3mm;z-index:1}
 .hrc-qr-slot svg{display:block;width:100%;height:100%}
-.mk-value{position:absolute;z-index:1;direction:ltr;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;font-family:Arial,sans-serif;font-weight:700;line-height:1}
-.mk-phone{left:15%;top:87%;width:29%;height:3%;background:#f0ede4;color:#0a2441;font-size:5.8pt}
-.mk-site{left:56%;top:84.3%;width:27%;height:2.8%;background:#efede5;color:#0a2441;font-size:4.4pt}
-.mk-serial{left:41%;top:95.1%;width:26%;height:2.4%;background:#082d4b;color:#fff;font-size:4.9pt;letter-spacing:.02em}
-.mk-date{left:79%;top:96%;width:13%;height:2.2%;background:#082d4b;color:#fff;font-size:4.6pt}
-.mk-count{position:absolute;left:24%;top:78.6%;width:54%;height:2.6%;background:#d8a947;color:#0a2441;font-size:5pt;font-weight:900;line-height:1.4;white-space:nowrap}
-.mk-accessible{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.mk-caption{position:absolute;top:57.9%;left:12%;width:76%;height:8.6%;border-radius:2mm;background:#052b4d;color:white;display:flex;align-items:center;justify-content:center;gap:2mm;z-index:1;font-size:6.4pt;line-height:1.2;font-weight:800}
+.mk-caption b{color:#d8b15e;font-size:8.5pt}.mk-caption svg{width:4mm;height:5mm;flex:none;color:#d8b15e}
+.mk-steps{position:absolute;top:68%;left:13%;width:74%;height:8%;display:flex;direction:ltr;align-items:center;justify-content:space-between;z-index:1;font-size:5.7pt;line-height:1.1;font-weight:900}
+.mk-step{direction:rtl;display:flex;flex-direction:column;align-items:center;gap:.3mm;white-space:nowrap}.mk-step svg{width:4.4mm;height:4.4mm;fill:#092744}.mk-steps i{color:#cba85e;font-size:12pt;font-style:normal}
+.mk-ribbon{position:absolute;top:77.6%;left:17%;width:66%;height:5%;display:flex;align-items:center;justify-content:center;background:#d5a943;color:#092744;clip-path:polygon(4% 0,96% 0,100% 25%,97% 50%,100% 75%,96% 100%,4% 100%,0 75%,3% 50%,0 25%);font-size:6.1pt;font-weight:900;white-space:nowrap;z-index:1}
+.mk-contact{position:absolute;top:84%;left:8%;width:84%;height:6%;display:flex;direction:ltr;align-items:center;justify-content:center;gap:1.2mm;z-index:1;color:#091f3b}
+.mk-contact svg{width:4mm;height:4mm;fill:none;stroke:currentColor;stroke-width:2;flex:none}.mk-contact-text{direction:rtl;text-align:center;line-height:1.15;font-size:4.5pt;font-weight:900;white-space:nowrap}.mk-contact-text b{display:block;direction:ltr;font-family:Arial,sans-serif;font-size:5.5pt}.mk-contact-site{border-left:.25mm solid #c8a65b;padding-left:1.2mm}.mk-contact-site b{font-size:4.2pt;max-width:20mm;white-space:normal;overflow-wrap:anywhere}
+.mk-footer{position:absolute;bottom:1.6%;left:36%;width:58%;height:7%;display:flex;align-items:center;justify-content:space-around;gap:1mm;color:#fff;z-index:1;font-size:4pt;line-height:1.3;white-space:nowrap}.mk-footer b{display:block;direction:ltr;font:700 5pt Arial,sans-serif}.mk-footer .mk-serial b{border:.2mm solid #d6c7a6;border-radius:1mm;padding:.6mm 1mm}.mk-footer .mk-date{border-right:.2mm solid #e4e7e9;padding-right:1.5mm}
 .card-back-top,.card-back-content,.card-back-bottom{position:relative;z-index:1}
 .hrc-card[aria-label*=الخلفي]{background:#f5f1e5;padding:2.8mm 3.2mm;color:#123553}
 .card-back-top{display:flex;align-items:center;justify-content:space-between;gap:2mm;border-bottom:.3mm solid #173b5d;padding:0 0 1mm;margin-bottom:1mm}
@@ -82,13 +91,16 @@
     var blank = isBlank(app);
     var count = attempts.length === 2 ? 'بطاقة واحدة .. فرصتان للتقديم' : 'بطاقة واحدة .. ' + attempts.length + ' فرص للتقديم';
     return '<div class="hrc-card" aria-label="الوجه الأمامي لبطاقة التوظيف">' +
-      '<span class="mk-accessible">منصة مكسب للتوظيف — فرصتك تبدأ من هنا — امسح الباركود للوصول إلى منصة مكسب — امسح، سجّل، اختر وظيفتك — ' + esc(count) + ' — رقم البطاقة — إصدار البطاقة</span>' +
+      '<svg class="mk-art" viewBox="0 0 540 860" preserveAspectRatio="none" aria-hidden="true"><rect width="540" height="860" fill="#f3f0e7"/><path d="M0 0H540V372C408 449 131 459 0 379Z" fill="#052a4b"/><path d="M0 379C131 459 408 449 540 372" fill="none" stroke="#c7a255" stroke-width="6"/><path d="M0 766C151 813 383 803 540 756V860H0Z" fill="#052a4b"/><path d="M0 766C151 813 383 803 540 756" fill="none" stroke="#c7a255" stroke-width="5"/></svg>' +
+      '<svg class="mk-hole" viewBox="0 0 150 42" aria-hidden="true"><path d="M17 11h33C58 11 58 2 75 2s17 9 25 9h33c22 0 22 29 0 29H17C-5 40-5 11 17 11Z" fill="#f8f8f6"/></svg>' +
+      '<div class="mk-brand"><div class="mk-logo"><span>مكسب</span><svg class="mk-arrow" viewBox="0 0 80 90" aria-hidden="true"><path d="M4 71L49 26 36 17 77 8 69 49 60 37 16 82Z" fill="#e4b54a" stroke="#17263a" stroke-width="2"/></svg></div><div class="mk-brand-label">منصة مكسب<br>للتوظيف</div></div>' +
+      '<div class="mk-slogan">فرصتك تبدأ من هنا</div>' +
       '<div class="mk-qr hrc-qr-slot">' + qrSvg(Store.cardUrl(app.serial), 200) + '</div>' +
-      (attempts.length === 2 ? '' : '<div class="mk-count">' + esc(count) + '</div>') +
-      '<div class="mk-value mk-phone">' + esc(CFG.company.phones[0] || '') + '</div>' +
-      '<div class="mk-value mk-site">' + esc((function(){ try { return new URL(Store.cardUrl(app.serial)).host; } catch(e) { return ''; } })()) + '</div>' +
-      '<div class="mk-value mk-serial">' + esc(app.serial) + '</div>' +
-      '<div class="mk-value mk-date">' + (blank ? 'عند البيع' : esc(Store.fmtDate(app.issueDate))) + '</div></div>';
+      '<div class="mk-caption"><span>امسح الباركود للوصول إلى<br><b>منصة مكسب</b></span><svg viewBox="0 0 24 32" fill="none" aria-hidden="true"><rect x="3" y="1" width="18" height="30" rx="3" stroke="currentColor" stroke-width="2"/><path d="M9 4h6M11 27h2" stroke="currentColor" stroke-width="2"/></svg></div>' +
+      '<div class="mk-steps"><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 1h10a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zm0 2v17h10V3zm4 18h2v1h-2z"/></svg>امسح</div><i>›</i><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="5"/><path d="M4 23c0-7 3-10 8-10s8 3 8 10z"/></svg>سجّل</div><i>›</i><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6a2 2 0 0 1 2 2v1h4a2 2 0 0 1 2 2v4l-9 2v-1h-4v1l-9-2V8a2 2 0 0 1 2-2h4V5a2 2 0 0 1 2-2zm0 3h6V5H9zM1 14l9 2v1h4v-1l9-2v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z"/></svg>اختر وظيفتك</div></div>' +
+      '<div class="mk-ribbon">' + esc(count) + '</div>' +
+      '<div class="mk-contact"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13v-2a9 9 0 0 1 18 0v2M3 12h3v7H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 1-2zm18 0h-3v7h2a2 2 0 0 0 2-2v-3a2 2 0 0 0-1-2zm-2 7c0 2-2 3-5 3h-2"/></svg><div class="mk-contact-text">خدمة العملاء<b>' + esc(CFG.company.phones[0] || '') + '</b></div><div class="mk-contact-text mk-contact-site">الموقع الإلكتروني<b>' + esc((function(){ try { return new URL(Store.cardUrl(app.serial)).host; } catch(e) { return ''; } })()) + '</b></div></div>' +
+      '<div class="mk-footer"><div class="mk-date">إصدار البطاقة<b>' + (blank ? 'عند البيع' : esc(Store.fmtDate(app.issueDate))) + '</b></div><div class="mk-serial">رقم البطاقة<b>' + esc(app.serial) + '</b></div></div></div>';
   }
 
   function independentBackHtml(app, attempts) {
@@ -375,11 +387,9 @@
      الخاص بالطباعة القديمة قد ينفجر بين إعداد محتوى الجديدة ونداء الطباعة
      فيمسح ورقتها بيضاء. التنظيف الآن لا يعمل إلا لآخر طباعة فقط. */
   var printSeq = 0, printFonts;
-  var cardArtwork = new Image();
-  cardArtwork.src = '/assets/img/maksab-card-design.jpg';
   function readyPrint(seq, after, delay) {
     if (!printFonts) printFonts = document.fonts && document.fonts.load ? Promise.all([400,600,700,900].map(function (w) { return document.fonts.load(w+' 12px Cairo','العراق ABC 123'); })).catch(function () { printFonts = null; }) : Promise.resolve();
-    Promise.all([printFonts, cardArtwork.decode ? cardArtwork.decode().catch(function () {}) : Promise.resolve()]).then(function () { if (printSeq === seq) { window.print(); setTimeout(after, delay); } });
+    printFonts.then(function () { if (printSeq === seq) { window.print(); setTimeout(after, delay); } });
   }
 
   function print(app, opts) {

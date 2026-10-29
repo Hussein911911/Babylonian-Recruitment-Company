@@ -261,9 +261,7 @@ function buildStandalone() {
      بالسلاسل) يجب أن تُعاد كتابتها أيضاً، وإلا بقي في الملف المستقل رابط إلى
      صفحة منفصلة (dashboard.html/index.html) فيسقط فحص الاكتفاء الذاتي ويخرج
      البناء بكود 1 — وهو ما يُفشل النشر الآلي على Cloudflare Pages. */
-  const cardArtwork = dataUri('assets/img/maksab-card-design.jpg');
-  if (!cardArtwork) throw new Error('Missing card artwork');
-  const jsBundle = JS_ORDER.map((n) => `/* ===================== ${n}.js ===================== */\n` + rewriteLinks(read(`assets/js/${n}.js`)).replaceAll('/assets/img/maksab-card-design.jpg', cardArtwork.uri)).join('\n;\n');
+  const jsBundle = JS_ORDER.map((n) => `/* ===================== ${n}.js ===================== */\n` + rewriteLinks(read(`assets/js/${n}.js`))).join('\n;\n');
   const icon = dataUri('assets/img/favicon.svg');
 
   const boot = `
