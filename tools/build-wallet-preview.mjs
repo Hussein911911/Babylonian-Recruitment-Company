@@ -26,7 +26,7 @@ ${style}
 @media print{body>*{display:none!important}#print-root{display:block!important}}
 </style></head><body>
 ${sprite}
-<main class="wallet-demo"><h1>بطاقة التوظيف</h1><p>معاينة الوجهين — الطباعة بالحجم الفعلي على ورقتين A4 بالطول، وجه واحد في كل ورقة.</p>
+<main class="wallet-demo"><h1>بطاقة التوظيف</h1><p>معاينة الوجهين — الطباعة بمقاس 59.4 × 94.6 مم على ورقتين A4 بالطول، وجه واحد في كل ورقة.</p>
 <div class="wallet-safety">الرموز والباركود <b>تجريبية للمعاينة فقط</b>، ولا تصلح للتقديم أو البيع.</div>
 ${html}
 <div class="wallet-demo-actions"><button class="btn btn-lapis" type="button" onclick="window.print()">طباعة معاينة على A4 بالطول</button><a class="btn btn-outline" href="/">العودة للموقع</a></div>

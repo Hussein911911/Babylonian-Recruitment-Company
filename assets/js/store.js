@@ -1485,7 +1485,7 @@
   function markPrinted(serial) {
     var app = getApplicant(serial); if (!app) return;
     app.printedCount = Number(app.printedCount || 0) + 1;
-    audit('طباعة بطاقة', 'applicant', serial, 'طباعة بطاقة التوظيف 86×54مم مع باركود QR — العدد الكلي ' + app.printedCount);
+    audit('طباعة بطاقة', 'applicant', serial, 'طباعة بطاقة التوظيف 59.4×94.6مم مع باركود QR — العدد الكلي ' + app.printedCount);
     save(); emit();
   }
 

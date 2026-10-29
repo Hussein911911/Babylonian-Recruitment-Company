@@ -233,6 +233,8 @@ const blankCodes = BLANKS.flatMap((b) => D.getAttempts(b.serial).map((t) => t.co
 check('البطاقات الجديدة لا تحمل أي رمز فرصة (أُلغيت نهائياً 2026-10-25)',
   blankCodes.length === 0, 'رموز مولّدة: ' + blankCodes.join(','));
 const batchPrintHtml = dash.doc.getElementById('print-root').innerHTML;
+const sheetPrintStyle = dash.doc.getElementById('hrc-sheet-style').textContent;
+check('مقاس الدفعة موحّد مع البطاقة المفردة واستغلال ورقة A4', /repeat\(3,59\.4mm\)/.test(sheetPrintStyle) && /grid-auto-rows:94\.6mm/.test(sheetPrintStyle) && /zoom:1\.1/.test(sheetPrintStyle) && /padding:3\.6mm 12\.9mm/.test(sheetPrintStyle));
 check('ورق الدفعة المطبوع: 5 بطاقات بوجهيها (10 أوجه) بلا أسماء زبائن',
   (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length === 10 &&
   blankSerials.every((x) => batchPrintHtml.includes(x)) &&

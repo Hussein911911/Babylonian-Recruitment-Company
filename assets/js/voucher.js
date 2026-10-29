@@ -1,4 +1,4 @@
-/* بطاقة توظيف 86×54 مم: وجه للهوية والباركود، وظهر برمز تحقق واحد.
+/* بطاقة توظيف 59.4×94.6 مم: وجه للهوية والباركود، وظهر برمز تحقق واحد.
    لا بيانات زبون على البطاقة؛ الاستمارة A4 منفصلة. طباعة بالحجم الفعلي. */
 (function (root) {
   'use strict';
@@ -62,7 +62,7 @@
 .mb-phone{position:absolute;top:77%;left:5%;width:90%;height:8%;background:#062d50;border-radius:2mm;color:#fff;display:flex;align-items:center;justify-content:center;gap:2mm;font-size:5pt;font-weight:800}.mb-phone b{font:900 8pt Arial,sans-serif;direction:ltr}.mb-phone svg{width:4mm;height:4mm;fill:#fff}
 .mb-bottom-slogan{position:absolute;top:86.5%;left:25%;font-size:6pt;font-weight:800;transform:rotate(-5deg);color:#12385a}.mb-bottom-slogan:after{content:'';display:block;border-top:.3mm solid #c8a34e;width:80%;margin:auto}
 .mb-logo{position:absolute;bottom:3%;right:6%;font-size:13pt;line-height:1;font-weight:900;color:#092e50}.mb-logo span{font-size:7pt;color:#d0a94a}.mb-logo small{display:block;font-size:4pt;margin-top:.7mm}
-@media print{@page{size:A4 portrait;margin:0}html,body{background:#fff!important;margin:0!important;padding:0!important}body>*{display:none!important}#print-root{display:block!important;position:static!important;width:auto!important}#print-root .hrc-card{width:54mm;height:86mm;zoom:1;margin:6.8mm auto 0!important;box-shadow:none!important;page-break-after:always;break-after:page}#print-root .hrc-card:last-child{page-break-after:auto;break-after:auto}#print-root .hrc-card-sheet{display:block!important;padding:0!important}}
+@media print{@page{size:A4 portrait;margin:0}html,body{background:#fff!important;margin:0!important;padding:0!important}body>*{display:none!important}#print-root{display:block!important;position:static!important;width:auto!important}#print-root .hrc-card{width:54mm;height:86mm;zoom:1.1;margin:6.8mm auto 0!important;box-shadow:none!important;page-break-after:always;break-after:page}#print-root .hrc-card:last-child{page-break-after:auto;break-after:auto}#print-root .hrc-card-sheet{display:block!important;padding:0!important}}
 `;
     document.head.appendChild(st);
   }
@@ -375,7 +375,7 @@
     return '<div class="hrc-card-sheet">' + frontHtml(app, attempts) + backHtml(app, attempts) + '</div>';
   }
 
-  /* الطباعة: الوجهان بصفحتين 86×54مم بالحجم الفعلي.
+  /* الطباعة: الوجهان بصفحتين 59.4×94.6مم بالحجم الفعلي.
      ⚠️ رمز تسلسلي: طبقتان متتاليتان (مثلاً بطاقتان خلف بعض) — مؤقّت التنظيف
      الخاص بالطباعة القديمة قد ينفجر بين إعداد محتوى الجديدة ونداء الطباعة
      فيمسح ورقتها بيضاء. التنظيف الآن لا يعمل إلا لآخر طباعة فقط. */
@@ -420,7 +420,7 @@
   }
 
   /* ======================= طباعة الدفعات على ورق A4 ======================= */
-  /* 9 بطاقات بالصفحة (3 أعمدة × 3 صفوف) بمقاسها الفعلي 54×86مم، والباقي على
+  /* 9 بطاقات بالصفحة (3 أعمدة × 3 صفوف) بمقاسها الفعلي 59.4×94.6مم، والباقي على
      الصفحات التالية. كل 9 بطاقات = صفحة أمامية ثم صفحة خلفية، والخلفية
      مُبدَّلة أفقياً (العمود 1↔3) لتتطابق مع الأمامية عند الطباعة على الوجهين
      بخيار «قلب على الحافة الطويلة» — وإن طُبعت وجهاً واحداً فكل صفحة مستقلة. */
@@ -428,14 +428,14 @@
   var SHEET_CSS = '@media print{'
     + '@page{size:A4;margin:0;}'
     + '#print-root{display:block !important;}'
-    + '#print-root .hrc-sheet-page{width:210mm;height:297mm;box-sizing:border-box;padding:16.5mm 21mm;'
-    +   'display:grid;grid-template-columns:repeat(3,54mm);grid-auto-rows:86mm;column-gap:3mm;row-gap:3mm;'
+    + '#print-root .hrc-sheet-page{width:210mm;height:297mm;box-sizing:border-box;padding:3.6mm 12.9mm;'
+    +   'display:grid;grid-template-columns:repeat(3,59.4mm);grid-auto-rows:94.6mm;column-gap:3mm;row-gap:3mm;'
     +   'align-content:start;justify-content:start;overflow:hidden;background:#fff;'
     +   'page-break-after:always;break-after:page;}'
     + '#print-root .hrc-sheet-page:last-child{page-break-after:auto;break-after:auto;}'
-    + '#print-root .hrc-cell{width:54mm;height:86mm;overflow:hidden;}'
+    + '#print-root .hrc-cell{width:59.4mm;height:94.6mm;overflow:hidden;}'
     + '#print-root .hrc-cell .hrc-card{margin:0 !important;box-shadow:none !important;'
-    +   'zoom:1 !important;page-break-after:auto !important;break-after:auto !important;}'
+    +   'zoom:1.1 !important;page-break-after:auto !important;break-after:auto !important;}'
     + '}';
   var sheetStyleEl = null;
   function setSheetCss(on) {
