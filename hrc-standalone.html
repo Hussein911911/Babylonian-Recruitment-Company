@@ -16930,7 +16930,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     // الباحثون عن عمل + الاستمارات
     CFG.seed.applicants.forEach(function (a, idx) {
       /* بطاقات فارغة بالمخزن (d.blank): تُصدر من الشركة دفعات وتنتظر التعبئة
-         عند البيع — لا تواريخ لها والصلاحية تبدأ عند التعبئة. */
+         عند البيع — لا تواريخ لها والصلاحية تبدأ عند أول تقديم ناجح. */
       if (a.blank) {
         d.applicants.push({
           id: uid('app'), serial: a.serial, fullName: '', phone: '', address: '',
@@ -17606,7 +17606,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
   /* إصدار دفعة بطاقات فارغة (الشركة/الإدارة): بطاقات بباركود عشوائي فريد
      ورمزي فرصتين — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
-     والصلاحية (30 يوماً) لا تبدأ إلا عند تعبئة بيانات الزبون عند البيع. */
+     والصلاحية (30 يوماً) لا تبدأ إلا عند أول تقديم ناجح. */
   function createCardBatch(count, notes) {
     if (!isAdmin()) return [];           /* إصدار الدفعات للمدير فقط */
     count = Math.max(1, Math.min(1000, Number(count) || 0));
@@ -17629,7 +17629,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     }
     if (made.length) audit('إصدار دفعة بطاقات فارغة', 'applicant', made[0].serial,
       'دفعة ' + made.length + ' بطاقة فارغة بباركودات عشوائية فريدة — تبدأ من ' + made[0].serial +
-      ' — الصلاحية تبدأ عند التعبئة عند البيع' + (notes ? ' | ' + notes : ''));
+      ' — الصلاحية تبدأ عند أول تقديم ناجح' + (notes ? ' | ' + notes : ''));
     save(); emit();
     return made;
   }
@@ -17678,7 +17678,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   }
 
   /* تعبئة بطاقة فارغة عند البيع (نقطة البيع): بيانات الزبون تُسجَّل على نفس
-     الباركود المطبوع على الورقة، والصلاحية (30 يوماً) تبدأ من هذه اللحظة. */
+     الباركود المطبوع على الورقة، والصلاحية تبدأ عند أول تقديم ناجح. */
   function activateCard(serial, data) {
     serial = String(serial || '').trim().toUpperCase();
     data = data || {};
@@ -17699,15 +17699,14 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       if (!preJob) return { ok: false, error: 'الوظيفة المختارة غير موجودة' };
       if (preJob.status !== 'available') return { ok: false, error: 'الوظيفة ' + preJob.code + ' غير متاحة حالياً — اختر وظيفة أخرى' };
     }
-    var issue = new Date();
     app.fullName = String(data.fullName).trim();
     app.phone = String(data.phone).trim();
     app.address = data.address || '';
     app.dob = data.dob || '';
     app.gender = data.gender || 'ذكر';
     app.status = 'active';
-    app.issueDate = issue.toISOString();
-    app.expiryDate = addDays(issue, Number(db.settings.validityDays || 30)).toISOString();
+    app.issueDate = null;
+    app.expiryDate = null;
     app.posName = data.posName || '';
     app.fee = Number(data.fee != null ? data.fee : app.fee);
     app.feePaid = data.feePaid != null ? !!data.feePaid : true;   /* بيع كاش */
@@ -17716,7 +17715,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     audit('بيع وتعبئة بطاقة فارغة', 'applicant', app.serial,
       'بيع البطاقة ' + app.serial + ' للزبون ' + app.fullName +
       (app.posName ? ' — نقطة البيع: ' + app.posName : '') +
-      ' — سعر ' + money(app.fee) + ' (كاش) — بدأت صلاحية 30 يوماً من الآن' +
+      ' — سعر ' + money(app.fee) + ' (كاش) — تبدأ الصلاحية عند أول تقديم ناجح' +
       (preJob ? ' | الوظيفة المختارة: ' + preJob.code + ' — ' + preJob.title
               : ' | بلا اختيار وظيفة — الفرصتان بانتظار اختيار الزبون بنفسه'));
     var applied = null;
@@ -17845,7 +17844,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (app.status === 'blank') return 'blank';
     if (app.status === 'pending') return 'pending';
     if (app.status === 'rejected') return 'rejected';
-    if (new Date(app.expiryDate).getTime() < Date.now()) return 'expired';
+    if (app.status === 'expired') return 'expired';
+    if (app.expiryDate && new Date(app.expiryDate).getTime() < Date.now()) return 'expired';
     /* «سارية» ما دامت فرصة قيد اللعب (حجز جارٍ أو حالة حرجة بانتظار قرار) —
        أما «استُهلكت الفرصتان» فتعني انتهاء كل الفرص بنتيجة نهائية. */
     var inPlay = getAttempts(app.serial).some(function (t) {
@@ -17902,6 +17902,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     slot.location = job.governorate || ''; slot.employerName = job.employer.name; slot.employerPhone = job.employer.phone;
     slot.slotStatus = 'reserved';
     slot.selectedAt = nowISO();
+    if (!app.issueDate && !app.expiryDate) {
+      app.issueDate = slot.selectedAt;
+      app.expiryDate = addDays(new Date(slot.selectedAt), Number(db.settings.validityDays || 30)).toISOString();
+    }
     slot.holdExpiresAt = addHours(new Date(), hours).toISOString();
     slot.staff = currentUser() ? currentUser().username : 'system';
 
@@ -18114,7 +18118,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
     // 2) انتهاء صلاحية البطاقات (30 يوماً)
     db.applicants.forEach(function (app) {
-      if (app.status === 'active' && new Date(app.expiryDate).getTime() < now.getTime()) {
+      if (app.status === 'active' && app.expiryDate && new Date(app.expiryDate).getTime() < now.getTime()) {
         app.status = 'expired';
         db.audit.unshift({
           id: uid('log'), ts: now.toISOString(), user: 'system', role: 'system', name: 'النظام (تلقائي)',
@@ -20029,7 +20033,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     'الشركة غير مسؤولة قانونياً وعشائرياً عن الشخص المرسل وصاحب العمل.';
 
   var TERMS = [
-    'بطاقة <b>شخصية</b> بـ<b>فرصتين مستقلتين</b>؛ صالحة <b>30 يوماً</b> من البيع.',
+    'بطاقة <b>شخصية</b> بـ<b>فرصتين مستقلتين</b>؛ صالحة <b>30 يوماً</b> من أول تقديم.',
     'الحجز <b>24 ساعة</b>؛ بعدها تصبح الوظيفة حرجة وتقرر الشركة: توظيف أو إرجاع أو حذف.',
     'تُستهلك الفرصة بالتقديم <b>ولا تعود</b>؛ بعد استهلاك فرص البطاقة تُشترى بطاقة جديدة.',
     'المتابعة وإعادة الطباعة من «بطاقتي» أو <b>أي مكتب استنساخ</b>.'
@@ -20099,7 +20103,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   function esc(v) { return UI ? UI.esc(String(v == null ? '' : v)) : String(v == null ? '' : v); }
 
 
-  /* الوجه الأمامي بلا بيانات شخصية؛ الصلاحية تبدأ عند البيع. */
+  /* الوجه الأمامي بلا بيانات شخصية؛ الصلاحية تبدأ عند أول تقديم. */
   function isBlank(app) {
     /* البطاقة لا تحمل بيانات زبون أبداً (قرار 2026-10-01): «فارغة» تعني
        لم تُبع ولم تُفعّل بعد — البيانات تعيش على استمارة A4 بنفس الباركود. */
@@ -20119,7 +20123,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       '<div class="mk-steps"><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 1h10a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zm0 2v17h10V3zm4 18h2v1h-2z"/></svg>امسح</div><i>›</i><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="5"/><path d="M4 23c0-7 3-10 8-10s8 3 8 10z"/></svg>سجّل</div><i>›</i><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6a2 2 0 0 1 2 2v1h4a2 2 0 0 1 2 2v4l-9 2v-1h-4v1l-9-2V8a2 2 0 0 1 2-2h4V5a2 2 0 0 1 2-2zm0 3h6V5H9zM1 14l9 2v1h4v-1l9-2v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z"/></svg>اختر وظيفتك</div></div>' +
       '<div class="mk-ribbon">' + esc(count) + '</div>' +
       '<div class="mk-contact"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13v-2a9 9 0 0 1 18 0v2M3 12h3v7H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 1-2zm18 0h-3v7h2a2 2 0 0 0 2-2v-3a2 2 0 0 0-1-2zm-2 7c0 2-2 3-5 3h-2"/></svg><div class="mk-contact-text">خدمة العملاء<b>' + esc(CFG.company.phones[0] || '') + '</b></div><div class="mk-contact-text mk-contact-site">الموقع الإلكتروني<b>' + esc((function(){ try { return new URL(Store.cardUrl(app.serial)).host; } catch(e) { return ''; } })()) + '</b></div></div>' +
-      '<div class="mk-footer"><div class="mk-date">إصدار البطاقة<b>' + (blank ? 'عند البيع' : esc(Store.fmtDate(app.issueDate))) + '</b></div><div class="mk-serial">رقم البطاقة<b>' + esc(app.serial) + '</b></div></div></div>';
+      '<div class="mk-footer"><div class="mk-date">إصدار البطاقة<b>' + (!app.issueDate ? 'أول تقديم' : esc(Store.fmtDate(app.issueDate))) + '</b></div><div class="mk-serial">رقم البطاقة<b>' + esc(app.serial) + '</b></div></div></div>';
   }
 
   function backHtml(app, attempts) {
@@ -21572,7 +21576,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         (card.succeeded ? '<span class="chip chip-ok tiny">' + UI.ic('check') + ' تم توظيف بإحدى الفرصتين</span>' : '') +
       '</div>' +
       '<div class="tiny muted">الاسم: <b>' + esc(card.fullName) + '</b> · الهاتف: <b dir="ltr">' + esc(card.phone) + '</b></div>' +
-      '<div class="tiny muted">تنتهي الصلاحية: <b>' + esc(Store.fmtDate(card.expiryDate)) + '</b>' +
+      '<div class="tiny muted">تنتهي الصلاحية: <b>' + esc(card.expiryDate ? Store.fmtDate(card.expiryDate) : 'تبدأ عند أول تقديم ناجح') + '</b>' +
         ' · الفرص المتاحة: <b>' + esc(card.chancesLeft) + '</b></div>' +
       (card.chances || []).map(function (c, i) { return chanceRow(c, i + 1); }).join('') +
       '<div class="bk-info" style="margin-top:12px">' + UI.ic('clock') +
@@ -22419,10 +22423,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       pending: { cls: 'warn', t: 'قيد المراجعة' }
     }[st] || { cls: 'warn', t: st };
 
-    var issued = card.issueDate ? Store.fmtDate(card.issueDate) : '—';
-    var expires = card.expiryDate ? Store.fmtDate(card.expiryDate) : '—';
+    var issued = card.issueDate ? Store.fmtDate(card.issueDate) : 'تبدأ عند أول تقديم';
+    var expires = card.expiryDate ? Store.fmtDate(card.expiryDate) : 'لم تبدأ بعد';
     var leftDays = card.expiryDate ? Math.ceil((new Date(card.expiryDate).getTime() - Date.now()) / 86400000) : null;
-    var leftTxt = leftDays === null ? '—' : (leftDays > 0 ? leftDays + ' يوماً' : 'انتهت');
+    var leftTxt = leftDays === null ? 'لم تبدأ بعد' : (leftDays > 0 ? leftDays + ' يوماً' : 'انتهت');
 
     var SLOT = {
       empty: { t: 'فرصة متاحة', cls: 'ok' },
@@ -23219,9 +23223,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
     /* سطر الصلاحية حسب الحالة */
     var daysLine;
-    if (r.status === 'blank') daysLine = 'بطاقة مخزون — الصلاحية تبدأ عند تعبئتها عند البيع';
+    if (r.status === 'blank') daysLine = 'بطاقة مخزون — الصلاحية تبدأ عند أول تقديم ناجح';
     else if (r.status === 'pending') daysLine = 'بانتظار مراجعة الموظفين';
     else if (r.status === 'rejected') daysLine = 'رُفض الطلب — راجع المكتب للاستفسار';
+    else if (r.status === 'active' && !r.expiryDate) daysLine = 'الصلاحية تبدأ عند أول تقديم ناجح';
     else if (r.daysLeft != null && r.daysLeft >= 0) daysLine = 'المتبقي من الصلاحية: ' + r.daysLeft + ' يوم';
     else if (r.daysLeft != null) daysLine = 'انتهت قبل ' + Math.abs(r.daysLeft) + ' يوم';
     else daysLine = '—';
@@ -24900,10 +24905,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         ? '<td class="tiny muted">—</td><td class="tiny muted">—</td><td class="tiny muted">—</td>'
         : '<td class="tiny" dir="ltr">' + Store.fmtDate(a.issueDate) + '</td>' +
           '<td class="tiny" dir="ltr">' + Store.fmtDate(a.expiryDate) + '</td>' +
-          '<td class="tiny">' + (a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>';
+          '<td class="tiny">' + (a.daysLeft == null ? 'تبدأ عند أول تقديم' : a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>';
 
       var attemptsCell = isBlank
-        ? '<td class="tiny muted">فرصتان جاهزتان — الصلاحية تبدأ عند التعبئة</td>'
+        ? '<td class="tiny muted">فرصتان جاهزتان — الصلاحية تبدأ عند أول تقديم</td>'
         : (isPending || isRejected
         ? '<td class="tiny muted">—</td>'
         : '<td>' + a.attemptsUsed + ' / ' + a.attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>');
@@ -26073,7 +26078,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('card') + ' البطاقة تبقى <b>فارغة الوجه</b> (باركود + رمزا الفرصتين) — وتبدأ صلاحية <b>' +
-        Store.settings().validityDays + ' يوماً</b> وفرصتان مستقلتان <b>من لحظة البيع</b>. بعد التعبئة تُطبع <b>استمارة التوظيف A4</b> بنفس الباركود ' +
+        Store.settings().validityDays + ' يوماً</b> وفرصتان مستقلتان <b>من أول تقديم ناجح</b>. بعد التعبئة تُطبع <b>استمارة التوظيف A4</b> بنفس الباركود ' +
         'تحمل بيانات الزبون والوظيفة وبيانات صاحب العمل — تُسلَّم للزبون ليقدمها لصاحب العمل. البيع <b>كاش فقط</b>.</p></div></div>';
 
     UI.modal({
@@ -26129,7 +26134,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرصتين ورمزين، وتُطبع بوجهيها بمقاس 59.4×94.6مم — ' +
-        'وصلاحية 30 يوماً تبدأ عند تعبئتها عند البيع لا من الآن. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
+        'وصلاحية 30 يوماً تبدأ عند أول تقديم ناجح على وظيفة. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
 
     UI.modal({
       title: 'إضافة بطاقة بكودها', subtitle: 'بطاقة واحدة فارغة تُسجَّل فوراً بالمخزون — بلا دفعة كاملة',
@@ -26201,7 +26206,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('shield') + ' كل بطاقة تولد <b>بكود عشوائي فريد</b> من 10 خانات (حروف وأرقام بلا شرطة) لا يتشابه مع أي بطاقة أخرى ولا يعود أبداً — ' +
         'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين، ' +
-        'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ من التعبئة لا من اليوم.</p></div></div>';
+        'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ عند أول تقديم ناجح على وظيفة.</p></div></div>';
 
     UI.modal({
       title: 'إصدار دفعة بطاقات فارغة', subtitle: 'أكواد عشوائية فريدة — تُطبع على ورق A4 (9 بطاقات بالصفحة) وتوزَّع على نقاط البيع', wide: true, body: body,

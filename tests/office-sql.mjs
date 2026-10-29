@@ -29,9 +29,9 @@ try{
  await db.exec(vacancyMigration.slice(0,vacancyMigration.indexOf('create or replace function brc.employer_pin_action')));
  await db.exec(`alter table brc.job_attempts alter chance_code set default brc.chance_code();
  insert into brc.jobs(code) select 'J-'||n from generate_series(1,12)n;
- insert into brc.applicants(serial,status,expiry_date) values('CARD','active',now()+interval '1 day'),('BLANK','blank',null),('EXPIRED','active',now()-interval '1 day');
+ insert into brc.applicants(serial,status,expiry_date) values('CARD','active',now()+interval '1 day'),('BLANK','blank',null),('EXPIRED','active',now()-interval '1 day'),('WAIT','active',null);
  insert into brc.job_attempts(serial,attempt_no) select serial,n from brc.applicants cross join generate_series(1,2)n;`);
- const migration=read('supabase/migrations/20261018232753_office_idempotent_operations.sql');await db.exec(migration);await db.exec(migration);check('migration repeatable',true);
+ const migration=read('supabase/migrations/20261018232753_office_idempotent_operations.sql');await db.exec(migration);await db.exec(migration);await db.exec(read('supabase/migrations/20261029100000_validity_from_first_application.sql'));check('migration repeatable',true);
  const op=await request('J-1');
  check('no Auth context cannot replay',!(await call(op)).ok);
  await db.exec("set role anon");let denied=false;try{await call(op);}catch(e){denied=e.code==='42501';}await db.exec('reset role');check('anonymous execute denied',denied);
@@ -45,6 +45,7 @@ try{
  check('another offline request cannot consume a different chance silently',!(await call(await request('J-2'))).ok&&await empty('CARD')===1);
  const second=await request('J-2','CARD',2);check('explicit second untouched chance can be used',(await call(second)).ok&&await empty('CARD')===0);
  check('exhausted card never replenished',!(await call(await request('J-3','CARD',3))).ok&&await empty('CARD')===0);
+ const waiting=await call(await request('J-10','WAIT'));check('office can reserve an active card awaiting first application',waiting.ok && !!(await db.query("select expiry_date from brc.applicants where serial='WAIT'")).rows[0].expiry_date);
  check('expired card denied',!(await call(await request('J-3','EXPIRED'))).ok&&await empty('EXPIRED')===2);
  const stale=await request('J-4','BLANK');await db.exec("update brc.jobs set updated_at=now(),notes='عمل موظف آخر' where code='J-4'");
  check('stale job version blocks update',!(await call({...stale,kind:'job_note',data:{jobCode:'J-4',note:'قديم'}})).ok&&(await db.query("select notes from brc.jobs where code='J-4'")).rows[0].notes==='عمل موظف آخر');

@@ -240,7 +240,7 @@ check('ورق الدفعة المطبوع: 5 بطاقات بوجهيها (10 أ�
   blankSerials.every((x) => batchPrintHtml.includes(x)) &&
   !/مرتضى|باحث/.test(batchPrintHtml),
   'أوجه ' + (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length);
-check('ورق الدفعة يوضّح أن الصلاحية تبدأ عند التعبئة', /30 يوماً<\/b> من البيع/.test(batchPrintHtml));
+check('ورق الدفعة يوضّح أن الصلاحية تبدأ عند أول تقديم', /30 يوماً<\/b> من أول تقديم/.test(batchPrintHtml));
 {
   const closeB = lastModal(dash.doc).querySelector('[data-close]');
   if (closeB) click(dash.w, closeB);

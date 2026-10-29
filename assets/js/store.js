@@ -105,7 +105,7 @@
     // الباحثون عن عمل + الاستمارات
     CFG.seed.applicants.forEach(function (a, idx) {
       /* بطاقات فارغة بالمخزن (d.blank): تُصدر من الشركة دفعات وتنتظر التعبئة
-         عند البيع — لا تواريخ لها والصلاحية تبدأ عند التعبئة. */
+         عند البيع — لا تواريخ لها والصلاحية تبدأ عند أول تقديم ناجح. */
       if (a.blank) {
         d.applicants.push({
           id: uid('app'), serial: a.serial, fullName: '', phone: '', address: '',
@@ -781,7 +781,7 @@
 
   /* إصدار دفعة بطاقات فارغة (الشركة/الإدارة): بطاقات بباركود عشوائي فريد
      ورمزي فرصتين — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
-     والصلاحية (30 يوماً) لا تبدأ إلا عند تعبئة بيانات الزبون عند البيع. */
+     والصلاحية (30 يوماً) لا تبدأ إلا عند أول تقديم ناجح. */
   function createCardBatch(count, notes) {
     if (!isAdmin()) return [];           /* إصدار الدفعات للمدير فقط */
     count = Math.max(1, Math.min(1000, Number(count) || 0));
@@ -804,7 +804,7 @@
     }
     if (made.length) audit('إصدار دفعة بطاقات فارغة', 'applicant', made[0].serial,
       'دفعة ' + made.length + ' بطاقة فارغة بباركودات عشوائية فريدة — تبدأ من ' + made[0].serial +
-      ' — الصلاحية تبدأ عند التعبئة عند البيع' + (notes ? ' | ' + notes : ''));
+      ' — الصلاحية تبدأ عند أول تقديم ناجح' + (notes ? ' | ' + notes : ''));
     save(); emit();
     return made;
   }
@@ -853,7 +853,7 @@
   }
 
   /* تعبئة بطاقة فارغة عند البيع (نقطة البيع): بيانات الزبون تُسجَّل على نفس
-     الباركود المطبوع على الورقة، والصلاحية (30 يوماً) تبدأ من هذه اللحظة. */
+     الباركود المطبوع على الورقة، والصلاحية تبدأ عند أول تقديم ناجح. */
   function activateCard(serial, data) {
     serial = String(serial || '').trim().toUpperCase();
     data = data || {};
@@ -874,15 +874,14 @@
       if (!preJob) return { ok: false, error: 'الوظيفة المختارة غير موجودة' };
       if (preJob.status !== 'available') return { ok: false, error: 'الوظيفة ' + preJob.code + ' غير متاحة حالياً — اختر وظيفة أخرى' };
     }
-    var issue = new Date();
     app.fullName = String(data.fullName).trim();
     app.phone = String(data.phone).trim();
     app.address = data.address || '';
     app.dob = data.dob || '';
     app.gender = data.gender || 'ذكر';
     app.status = 'active';
-    app.issueDate = issue.toISOString();
-    app.expiryDate = addDays(issue, Number(db.settings.validityDays || 30)).toISOString();
+    app.issueDate = null;
+    app.expiryDate = null;
     app.posName = data.posName || '';
     app.fee = Number(data.fee != null ? data.fee : app.fee);
     app.feePaid = data.feePaid != null ? !!data.feePaid : true;   /* بيع كاش */
@@ -891,7 +890,7 @@
     audit('بيع وتعبئة بطاقة فارغة', 'applicant', app.serial,
       'بيع البطاقة ' + app.serial + ' للزبون ' + app.fullName +
       (app.posName ? ' — نقطة البيع: ' + app.posName : '') +
-      ' — سعر ' + money(app.fee) + ' (كاش) — بدأت صلاحية 30 يوماً من الآن' +
+      ' — سعر ' + money(app.fee) + ' (كاش) — تبدأ الصلاحية عند أول تقديم ناجح' +
       (preJob ? ' | الوظيفة المختارة: ' + preJob.code + ' — ' + preJob.title
               : ' | بلا اختيار وظيفة — الفرصتان بانتظار اختيار الزبون بنفسه'));
     var applied = null;
@@ -1020,7 +1019,8 @@
     if (app.status === 'blank') return 'blank';
     if (app.status === 'pending') return 'pending';
     if (app.status === 'rejected') return 'rejected';
-    if (new Date(app.expiryDate).getTime() < Date.now()) return 'expired';
+    if (app.status === 'expired') return 'expired';
+    if (app.expiryDate && new Date(app.expiryDate).getTime() < Date.now()) return 'expired';
     /* «سارية» ما دامت فرصة قيد اللعب (حجز جارٍ أو حالة حرجة بانتظار قرار) —
        أما «استُهلكت الفرصتان» فتعني انتهاء كل الفرص بنتيجة نهائية. */
     var inPlay = getAttempts(app.serial).some(function (t) {
@@ -1077,6 +1077,10 @@
     slot.location = job.governorate || ''; slot.employerName = job.employer.name; slot.employerPhone = job.employer.phone;
     slot.slotStatus = 'reserved';
     slot.selectedAt = nowISO();
+    if (!app.issueDate && !app.expiryDate) {
+      app.issueDate = slot.selectedAt;
+      app.expiryDate = addDays(new Date(slot.selectedAt), Number(db.settings.validityDays || 30)).toISOString();
+    }
     slot.holdExpiresAt = addHours(new Date(), hours).toISOString();
     slot.staff = currentUser() ? currentUser().username : 'system';
 
@@ -1289,7 +1293,7 @@
 
     // 2) انتهاء صلاحية البطاقات (30 يوماً)
     db.applicants.forEach(function (app) {
-      if (app.status === 'active' && new Date(app.expiryDate).getTime() < now.getTime()) {
+      if (app.status === 'active' && app.expiryDate && new Date(app.expiryDate).getTime() < now.getTime()) {
         app.status = 'expired';
         db.audit.unshift({
           id: uid('log'), ts: now.toISOString(), user: 'system', role: 'system', name: 'النظام (تلقائي)',

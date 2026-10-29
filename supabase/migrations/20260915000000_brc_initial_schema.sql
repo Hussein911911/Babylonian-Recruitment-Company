@@ -152,7 +152,7 @@ create table if not exists brc.applicants (
   dob           date,
   gender        text default 'ذكر',
   nationality   text default 'عراقي',
-  issue_date    timestamptz,                                   -- فارغة عند إصدار الدفعة — تُملأ عند البيع
+  issue_date    timestamptz,                                   -- تُملأ عند نجاح أول تقديم
   expiry_date   timestamptz,                                   -- تبدأ 30 يوماً من التعبئة لا من إصدار الدفعة
   attempt_limit smallint not null default 2 check (attempt_limit between 1 and 10),   -- مقفلة: فرصتان
   status        brc.form_status not null default 'active',
@@ -391,7 +391,7 @@ begin
     if new.fee_amount is null or new.fee_amount = 10000 then
       new.fee_amount := coalesce((rules->>'form_fee')::integer, 10000);
     end if;
-    /* الصلاحية تبدأ عند البيع (التعبئة) لا عند إصدار الدفعة الفارغة:
+    /* الصلاحية تبدأ عند نجاح أول تقديم لا عند إصدار الدفعة أو بيعها فارغة:
        البطاقة الفارغة (blank) بلا issue_date وتبقى expiry_date فارغة. */
     if new.expiry_date is null and new.issue_date is not null then
       new.expiry_date := new.issue_date + make_interval(days => coalesce((rules->>'validity_days')::int, 30));
@@ -459,6 +459,9 @@ begin
       raise exception 'الوظيفة % غير متاحة حالياً (%)', job_row.code, job_row.status using errcode = 'P0001';
     end if;
 
+    if form_row.issue_date is null and form_row.expiry_date is null then
+      update brc.applicants set issue_date=now(), expiry_date=now()+make_interval(days=>coalesce((rules->>'validity_days')::int,30)) where serial=new.serial;
+    end if;
     new.selected_at     := coalesce(new.selected_at, now());
     new.hold_expires_at := coalesce(new.hold_expires_at, now() + make_interval(hours => hold_hours));
     new.job_code        := coalesce(new.job_code, job_row.code);
@@ -1117,8 +1120,8 @@ begin
       dob         = nullif(p_data->>'dob', '')::date,
       gender      = coalesce(nullif(p_data->>'gender', ''), 'ذكر'),
       status      = 'active',
-      issue_date  = now(),
-      expiry_date = now() + make_interval(days => coalesce((rules->>'validity_days')::int, 30)),
+      issue_date  = case when v_job <> '' then now() else null end,
+      expiry_date = case when v_job <> '' then now() + make_interval(days => coalesce((rules->>'validity_days')::int, 30)) else null end,
       pos_name    = v_pos,
       fee_amount  = coalesce(nullif(p_data->>'fee', '')::int, f.fee_amount),
       fee_paid    = coalesce((p_data->>'feePaid')::boolean, true),
@@ -1151,7 +1154,7 @@ begin
           'بيع البطاقة ' || f.serial || ' للزبون ' || f.full_name ||
           ' — نقطة البيع: ' || v_pos ||
           ' — سعر ' || to_char(f.fee_amount, 'FM999,999,999') || ' د.ع (كاش)' ||
-          ' — بدأت صلاحية ' || coalesce((rules->>'validity_days')::int, 30) || ' يوماً من الآن' ||
+          ' — الصلاحية تبدأ عند أول تقديم ناجح' ||
           case when v_job <> '' then ' | الوظيفة المختارة: ' || j.code || ' — ' || j.title
                else ' | بلا اختيار وظيفة — الفرصتان بانتظار اختيار الزبون بنفسه' end);
 
@@ -1350,7 +1353,7 @@ begin
       from brc.job_attempts
      where serial=f.serial and slot_status='empty'
      order by attempt_no limit 1;
-    if v_code is null then
+    if not found then
       return jsonb_build_object('ok', false, 'error', 'لا توجد فرص متبقية في هذه البطاقة');
     end if;
     v_result := brc.use_chance(f.serial, v_code, upper(btrim(coalesce(p_job_code, ''))));
@@ -1903,7 +1906,7 @@ begin
     if f.status<>'blank' or p_expected->>'app_updated_at' is null or f.updated_at is distinct from (p_expected->>'app_updated_at')::timestamptz then raise exception 'card_conflict';end if;
     result:=brc.activate_card(f.serial,p_data);
    else
-    if f.status<>'active' or f.expiry_date is null or f.expiry_date<=now() then raise exception 'card_unavailable';end if;
+    if f.status<>'active' or (f.expiry_date is not null and f.expiry_date<=now()) then raise exception 'card_unavailable';end if;
     select * into slot from brc.job_attempts where serial=f.serial and slot_status='empty' order by attempt_no limit 1 for update;
     if not found or slot.attempt_no is distinct from (p_expected->>'attempt_no')::smallint then raise exception 'chance_conflict';end if;
     result:=brc.select_attempt(f.serial,j.code);
@@ -2369,6 +2372,10 @@ begin
   if j.id is null or j.manual_closed then raise exception 'الوظيفة غير متاحة';end if;
   select n into seat from generate_series(1,j.vacancies) n where not(n=any(j.filled_vacancy_numbers)) and not exists(select 1 from brc.job_attempts a where a.job_id=j.id and a.vacancy_no=n and a.slot_status in('reserved','critical','hiring','succeeded') and a.id<>new.id) order by n limit 1;
   if seat is null then raise exception 'لا يوجد شاغر متاح';end if;
+  -- Start validity atomically only on the first successful reservation.
+  if f.issue_date is null and f.expiry_date is null then
+   update brc.applicants set issue_date=now(), expiry_date=now()+make_interval(days=>coalesce((select (value->>'validity_days')::int from brc.settings where key='rules'),30)) where serial=f.serial;
+  end if;
   select coalesce((value->>'hold_hours')::int,24) into hours from brc.settings where key='rules';
   new.vacancy_no:=seat;new.job_code:=j.code;new.selected_at:=coalesce(new.selected_at,now());new.hold_expires_at:=coalesce(new.hold_expires_at,now()+make_interval(hours=>coalesce(hours,24)));new.closed_at:=null;
  elsif tg_op='UPDATE' and old.vacancy_no is not null and (new.vacancy_no is distinct from old.vacancy_no or (new.job_id is distinct from old.job_id and new.job_id is not null)) then raise exception 'لا يمكن نقل شاغر فرصة مستخدمة';
@@ -2555,7 +2562,7 @@ begin
  ), cards as materialized (
  select a.*,coalesce(t.hires,0) hires,coalesce(t.holds,0) holds,
  case when a.status in('blank','pending','rejected') then a.status::text
- when a.expiry_date is null or a.expiry_date<now() then 'expired'
+ when a.expiry_date is not null and a.expiry_date<now() then 'expired'
  when coalesce(t.empty_count,0)=0 and coalesce(t.in_play,0)=0 then 'exhausted' else 'active' end effective_status,
  coalesce((to_jsonb(a)->>'paid_amount')::numeric,0) paid_amount
  from brc.applicants a left join attempts t on t.serial=a.serial

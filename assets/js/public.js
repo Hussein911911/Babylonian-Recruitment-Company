@@ -569,10 +569,10 @@
       pending: { cls: 'warn', t: 'قيد المراجعة' }
     }[st] || { cls: 'warn', t: st };
 
-    var issued = card.issueDate ? Store.fmtDate(card.issueDate) : '—';
-    var expires = card.expiryDate ? Store.fmtDate(card.expiryDate) : '—';
+    var issued = card.issueDate ? Store.fmtDate(card.issueDate) : 'تبدأ عند أول تقديم';
+    var expires = card.expiryDate ? Store.fmtDate(card.expiryDate) : 'لم تبدأ بعد';
     var leftDays = card.expiryDate ? Math.ceil((new Date(card.expiryDate).getTime() - Date.now()) / 86400000) : null;
-    var leftTxt = leftDays === null ? '—' : (leftDays > 0 ? leftDays + ' يوماً' : 'انتهت');
+    var leftTxt = leftDays === null ? 'لم تبدأ بعد' : (leftDays > 0 ? leftDays + ' يوماً' : 'انتهت');
 
     var SLOT = {
       empty: { t: 'فرصة متاحة', cls: 'ok' },

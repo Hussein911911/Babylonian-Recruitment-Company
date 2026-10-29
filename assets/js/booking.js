@@ -1043,7 +1043,7 @@
         (card.succeeded ? '<span class="chip chip-ok tiny">' + UI.ic('check') + ' تم توظيف بإحدى الفرصتين</span>' : '') +
       '</div>' +
       '<div class="tiny muted">الاسم: <b>' + esc(card.fullName) + '</b> · الهاتف: <b dir="ltr">' + esc(card.phone) + '</b></div>' +
-      '<div class="tiny muted">تنتهي الصلاحية: <b>' + esc(Store.fmtDate(card.expiryDate)) + '</b>' +
+      '<div class="tiny muted">تنتهي الصلاحية: <b>' + esc(card.expiryDate ? Store.fmtDate(card.expiryDate) : 'تبدأ عند أول تقديم ناجح') + '</b>' +
         ' · الفرص المتاحة: <b>' + esc(card.chancesLeft) + '</b></div>' +
       (card.chances || []).map(function (c, i) { return chanceRow(c, i + 1); }).join('') +
       '<div class="bk-info" style="margin-top:12px">' + UI.ic('clock') +

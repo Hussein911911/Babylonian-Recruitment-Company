@@ -1564,10 +1564,10 @@
         ? '<td class="tiny muted">—</td><td class="tiny muted">—</td><td class="tiny muted">—</td>'
         : '<td class="tiny" dir="ltr">' + Store.fmtDate(a.issueDate) + '</td>' +
           '<td class="tiny" dir="ltr">' + Store.fmtDate(a.expiryDate) + '</td>' +
-          '<td class="tiny">' + (a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>';
+          '<td class="tiny">' + (a.daysLeft == null ? 'تبدأ عند أول تقديم' : a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>';
 
       var attemptsCell = isBlank
-        ? '<td class="tiny muted">فرصتان جاهزتان — الصلاحية تبدأ عند التعبئة</td>'
+        ? '<td class="tiny muted">فرصتان جاهزتان — الصلاحية تبدأ عند أول تقديم</td>'
         : (isPending || isRejected
         ? '<td class="tiny muted">—</td>'
         : '<td>' + a.attemptsUsed + ' / ' + a.attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>');
@@ -2737,7 +2737,7 @@
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('card') + ' البطاقة تبقى <b>فارغة الوجه</b> (باركود + رمزا الفرصتين) — وتبدأ صلاحية <b>' +
-        Store.settings().validityDays + ' يوماً</b> وفرصتان مستقلتان <b>من لحظة البيع</b>. بعد التعبئة تُطبع <b>استمارة التوظيف A4</b> بنفس الباركود ' +
+        Store.settings().validityDays + ' يوماً</b> وفرصتان مستقلتان <b>من أول تقديم ناجح</b>. بعد التعبئة تُطبع <b>استمارة التوظيف A4</b> بنفس الباركود ' +
         'تحمل بيانات الزبون والوظيفة وبيانات صاحب العمل — تُسلَّم للزبون ليقدمها لصاحب العمل. البيع <b>كاش فقط</b>.</p></div></div>';
 
     UI.modal({
@@ -2793,7 +2793,7 @@
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرصتين ورمزين، وتُطبع بوجهيها بمقاس 59.4×94.6مم — ' +
-        'وصلاحية 30 يوماً تبدأ عند تعبئتها عند البيع لا من الآن. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
+        'وصلاحية 30 يوماً تبدأ عند أول تقديم ناجح على وظيفة. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
 
     UI.modal({
       title: 'إضافة بطاقة بكودها', subtitle: 'بطاقة واحدة فارغة تُسجَّل فوراً بالمخزون — بلا دفعة كاملة',
@@ -2865,7 +2865,7 @@
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('shield') + ' كل بطاقة تولد <b>بكود عشوائي فريد</b> من 10 خانات (حروف وأرقام بلا شرطة) لا يتشابه مع أي بطاقة أخرى ولا يعود أبداً — ' +
         'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين، ' +
-        'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ من التعبئة لا من اليوم.</p></div></div>';
+        'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ عند أول تقديم ناجح على وظيفة.</p></div></div>';
 
     UI.modal({
       title: 'إصدار دفعة بطاقات فارغة', subtitle: 'أكواد عشوائية فريدة — تُطبع على ورق A4 (9 بطاقات بالصفحة) وتوزَّع على نقاط البيع', wide: true, body: body,

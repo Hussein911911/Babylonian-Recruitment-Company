@@ -233,9 +233,10 @@
 
     /* سطر الصلاحية حسب الحالة */
     var daysLine;
-    if (r.status === 'blank') daysLine = 'بطاقة مخزون — الصلاحية تبدأ عند تعبئتها عند البيع';
+    if (r.status === 'blank') daysLine = 'بطاقة مخزون — الصلاحية تبدأ عند أول تقديم ناجح';
     else if (r.status === 'pending') daysLine = 'بانتظار مراجعة الموظفين';
     else if (r.status === 'rejected') daysLine = 'رُفض الطلب — راجع المكتب للاستفسار';
+    else if (r.status === 'active' && !r.expiryDate) daysLine = 'الصلاحية تبدأ عند أول تقديم ناجح';
     else if (r.daysLeft != null && r.daysLeft >= 0) daysLine = 'المتبقي من الصلاحية: ' + r.daysLeft + ' يوم';
     else if (r.daysLeft != null) daysLine = 'انتهت قبل ' + Math.abs(r.daysLeft) + ' يوم';
     else daysLine = '—';
