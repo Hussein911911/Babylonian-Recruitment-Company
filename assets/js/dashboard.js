@@ -2371,7 +2371,7 @@
 
     var max = rows.reduce(function (m, r) { return Math.max(m, r.expected); }, 1);
     document.getElementById('fin-bars').innerHTML = rows.length ? rows.map(function (r) {
-      return '<div class="bar-row"><div>' + UI.esc(r.name) + '<div class="tiny muted mono">' + UI.esc(r.user) + '</div></div>' +
+      return '<div class="bar-row"><div>' + UI.esc(r.name) + '<div class="tiny muted mono" tabindex="0" aria-label="اسم المستخدم، قابل للتمرير أفقياً">' + UI.esc(r.user) + '</div></div>' +
         '<div class="bar-track"><div class="bar-fill" style="width:' + Math.round(r.expected / max * 100) + '%"></div></div>' +
         '<div class="val">' + Store.money(r.expected) + '</div></div>';
     }).join('') : '<div class="table-empty">لا بيانات في هذه الفترة</div>';

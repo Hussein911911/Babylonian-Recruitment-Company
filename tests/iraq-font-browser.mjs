@@ -54,7 +54,7 @@ try{
   await page.emulateMedia({media:'print'});
   const card=page.locator('#print-root .hrc-card').first();
   check('printed card retains Cairo: '+zone,(await card.evaluate(e=>getComputedStyle(e).fontFamily)).startsWith('Cairo'));
-  check('original 86x54mm card dimensions unchanged: '+zone,await card.evaluate(e=>{const r=e.getBoundingClientRect();return Math.abs(r.width-86*96/25.4)<1&&Math.abs(r.height-54*96/25.4)<1;}));
+  check('printed card dimensions are 59.4x94.6mm: '+zone,await card.evaluate(e=>{const r=e.getBoundingClientRect();return Math.abs(r.width-59.4*96/25.4)<1&&Math.abs(r.height-94.6*96/25.4)<1;}));
   await page.emulateMedia({media:'screen'});
   await page.goto(base+'apply.html');await page.waitForFunction(()=>typeof window.G?.printApplication==='function');
   check('independent application page uses local IBM Plex Sans Arabic: '+zone,(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)).split(',')[0].replace(/["']/g,'').trim()==='IBM Plex Sans Arabic' );

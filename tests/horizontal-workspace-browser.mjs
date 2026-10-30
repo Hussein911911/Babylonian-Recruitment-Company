@@ -15,25 +15,40 @@ let checks=0,scenes=0,wordCount=0;const failures=[],coverage=[];
 function check(label,v,details=''){checks++;if(!v)failures.push(label+': '+details);}
 async function review(page,label){
  const r=await page.evaluate(()=>{
-  const bad=[],orientation=[],segmenter=new Intl.Segmenter('ar',{granularity:'word'}),walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let t,words=0;
+  const bad=[],orientation=[],fragments=[],overlaps=[],activeModal=document.querySelector('.modal-backdrop:last-child .modal'),segmenter=new Intl.Segmenter('ar',{granularity:'word'}),walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let t,words=0;
   while(t=walker.nextNode()){
    const e=t.parentElement;if(!e||e.closest('script,style,svg,#print-root,.hrc-card,.hrc-form,.form-sheet'))continue;
-   if(!/[\u0600-\u06ff]/.test(t.data))continue;
+   if(!/[\u0600-\u06ffA-Za-z0-9]/.test(t.data))continue;
    const range=document.createRange();range.selectNodeContents(t);if(![...range.getClientRects()].some(r=>r.width>1&&r.height>1))continue;
    if(getComputedStyle(e).writingMode!=='horizontal-tb')orientation.push(e.className);
    for(const s of segmenter.segment(t.data)){
-    if(!s.isWordLike||s.segment.length<4||!/[\u0621-\u064a]/.test(s.segment))continue;words++;
+    if(!s.isWordLike||s.segment.length<4||!/[\u0621-\u064aA-Za-z0-9]/.test(s.segment))continue;words++;
     range.setStart(t,s.index);range.setEnd(t,s.index+s.segment.length);
-    const tops=[];for(const r of range.getClientRects())if(r.width>1&&r.height>1&&!tops.some(y=>Math.abs(y-r.top)<2))tops.push(r.top);
+    const tops=[];for(const r of range.getClientRects())if(r.width>1&&r.height>1){
+     if(!tops.some(y=>Math.abs(y-r.top)<2))tops.push(r.top);
+     if(activeModal&&!activeModal.contains(e))continue;
+     // Clamp each word to viewport and its clipping/scrolling ancestors.
+     let l=Math.max(0,r.left),rr=Math.min(innerWidth,r.right),top=Math.max(0,r.top),bottom=Math.min(innerHeight,r.bottom);
+     for(let p=e;p&&p!==document.body;p=p.parentElement){const st=getComputedStyle(p),b=p.getBoundingClientRect();if(/hidden|clip|auto|scroll/.test(st.overflowX)){l=Math.max(l,b.left);rr=Math.min(rr,b.right);}if(/hidden|clip|auto|scroll/.test(st.overflowY)){top=Math.max(top,b.top);bottom=Math.min(bottom,b.bottom);}}
+     if(rr-l>3&&bottom-top>4)fragments.push({l,r:rr,top,bottom,word:s.segment,el:e});
+    }
     if(tops.length>1)bad.push({word:s.segment,lines:tops.length,parent:e.className||e.tagName,width:Math.round(e.getBoundingClientRect().width)});
    }
   }
-  const m=document.querySelector('.modal-backdrop:last-child .modal'),mr=m?.getBoundingClientRect();let foot=m?.querySelector('.modal-foot')?.getBoundingClientRect();
+  fragments.sort((a,b)=>a.top-b.top);
+  for(let i=0;i<fragments.length;i++)for(let j=i+1;j<fragments.length&&fragments[j].top<fragments[i].bottom-3;j++){
+   const a=fragments[i],b=fragments[j];
+   if(a.el===b.el||a.el.contains(b.el)||b.el.contains(a.el))continue;
+   // The opaque fixed bottom bar intentionally covers scrolling page content.
+   if(Boolean(a.el.closest('.tabbar'))!==Boolean(b.el.closest('.tabbar')))continue;
+   if(Math.min(a.r,b.r)-Math.max(a.l,b.l)>3&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>4)overlaps.push({a:a.word,b:b.word,parents:[String(a.el.className),String(b.el.className)]});
+  }
+  const m=activeModal,mr=m?.getBoundingClientRect();let foot=m?.querySelector('.modal-foot')?.getBoundingClientRect();
   if(foot&&(foot.top<0||foot.bottom>innerHeight+1)&&m.scrollHeight>m.clientHeight){const saved=m.scrollTop;m.scrollTop=m.scrollHeight;foot=m.querySelector('.modal-foot').getBoundingClientRect();m.scrollTop=saved;}
-  return {words,bad:bad.slice(0,16),orientation,overflow:document.documentElement.scrollWidth>innerWidth+1,modalRect:mr?.toJSON(),modalSideOverflow:!!m&&m.querySelector('.modal-body').scrollWidth>m.querySelector('.modal-body').clientWidth+1,modalFits:!mr||(mr.left>=-1&&mr.right<=innerWidth+1&&mr.top>=-1&&mr.bottom<=innerHeight+1),footerFits:!foot||(foot.top>=0&&foot.bottom<=innerHeight+1)};
+  return {words,bad:bad.slice(0,16),overlaps:overlaps.slice(0,12),orientation,overflow:document.documentElement.scrollWidth>innerWidth+1,modalRect:mr?.toJSON(),modalSideOverflow:!!m&&m.querySelector('.modal-body').scrollWidth>m.querySelector('.modal-body').clientWidth+1,modalFits:!mr||(mr.left>=-1&&mr.right<=innerWidth+1&&mr.top>=-1&&mr.bottom<=innerHeight+1),footerFits:!foot||(foot.top>=0&&foot.bottom<=innerHeight+1)};
  });
  scenes++;wordCount+=r.words;coverage.push(label);
- check(label+' word integrity',r.bad.length===0,JSON.stringify(r.bad));check(label+' horizontal writing',r.orientation.length===0);check(label+' page width',!r.overflow);check(label+' dialog bounds',r.modalFits,JSON.stringify(r.modalRect));check(label+' dialog body width',!r.modalSideOverflow);check(label+' dialog footer reachable',r.footerFits);
+ check(label+' word integrity',r.bad.length===0,JSON.stringify(r.bad));check(label+' visible text overlap',r.overlaps.length===0,JSON.stringify(r.overlaps));check(label+' horizontal writing',r.orientation.length===0);check(label+' page width',!r.overflow);check(label+' dialog bounds',r.modalFits,JSON.stringify(r.modalRect));check(label+' dialog body width',!r.modalSideOverflow);check(label+' dialog footer reachable',r.footerFits);
 }
 async function nested(page,serial,action,label){
  await page.locator('[data-app-attempts="'+serial+'"]').evaluate(b=>b.click());
@@ -71,13 +86,13 @@ try{
     for(const [selector,name]of [['#btn-new-job','new-job'],['[data-job-edit]','edit-job'],['[data-job-assign]','nominate']])await open(page,selector,key+'-'+name);
     await page.locator('#quick-code').fill('HRC-1042');await page.locator('#quick-code-form').evaluate(f=>f.requestSubmit());const q=page.locator('.modal-backdrop').last();await q.waitFor();await review(page,key+'-quick-job');await q.locator('[data-close]').first().click();
    }
-   if(view==='applicants'){for(const [selector,name]of [['#btn-new-card','new-card'],['#btn-new-batch','new-batch'],['#btn-new-app','sell-fill'],['[data-app-attempts]','attempts'],['[data-app-verify]','verify-card'],['[data-app-fee]','payment']])await open(page,selector,key+'-'+name);
+   if(view==='applicants'){check(key+' phone numbers stay on one line',await page.locator('#apps-table-body td.mono.tiny').first().evaluate(e=>getComputedStyle(e).whiteSpace==='nowrap' && e.scrollHeight<=e.clientHeight+1));for(const [selector,name]of [['#btn-new-card','new-card'],['#btn-new-batch','new-batch'],['#btn-new-app','sell-fill'],['[data-app-attempts]','attempts'],['[data-app-verify]','verify-card'],['[data-app-fee]','payment']])await open(page,selector,key+'-'+name);
     for(const [serial,action,name]of [['HRC-BC-000120','[data-assign]','job-picker'],['HRC-BC-000119','[data-reject]','reject-reason'],['HRC-BC-000119','[data-win]','hire-confirm'],['HRC-BC-000119','[data-release]','release-confirm']])await nested(page,serial,action,key+'-'+name);
    }
    if(view==='holds'){
     await open(page,'[data-hold-manage]',key+'-hold-decision');await open(page,'[data-hold-app]',key+'-held-card-attempts');await open(page,'[data-hold-manage="HRC-1047"]',key+'-critical-decision');
    }
-   if(view==='settings')await open(page,'#btn-add-user',key+'-new-user');
+   if(view==='settings'){check(key+' verification URL scrolls horizontally',await page.locator('#set-verify-base').evaluate(e=>getComputedStyle(e).whiteSpace==='nowrap'&&e.tabIndex===0));await open(page,'#btn-add-user',key+'-new-user');}
   }
   if(role==='staff')check(key+' admin navigation stays hidden',await page.locator('#side-nav [data-view="settings"]').isHidden());
   check(key+' opening/canceling does not change business records',before===await page.evaluate(()=>JSON.stringify([HRCStore.db().jobs,HRCStore.db().applicants,HRCStore.db().attempts])));
@@ -106,6 +121,6 @@ try{
  }
  writeFileSync(new URL('review.json',out),JSON.stringify({checks,scenes,wordCount,coverage,failures},null,2));
  if(failures.length)console.error(failures.join('\n'));
- console.log(`${checks} checks / ${scenes} scenes / ${wordCount} Arabic word observations / ${failures.length} failures`);
+ console.log(`${checks} checks / ${scenes} scenes / ${wordCount} Arabic/Latin word and number observations / ${failures.length} failures`);
  assert.equal(failures.length,0,'Horizontal readability failures; see tests/.tmp/horizontal/review.json');
 }finally{await browser.close();}
