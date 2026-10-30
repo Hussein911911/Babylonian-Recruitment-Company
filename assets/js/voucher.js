@@ -270,18 +270,18 @@
     var jobDetails = section('job', '02', 'تفاصيل الوظيفة', attempt ? '<div class="ff-grid">' +
       field('الوظيفة المطلوبة', attempt.jobTitle || (job && job.title), 'ff-wide') + field('كود الوظيفة', attempt.jobCode, 'ff-ltr') +
       field('المحافظة', (job && job.governorate) || attempt.governorate || '—') +
-      field('الأجر الشهري', job ? Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) : '') +
-      field('الدوام', job && job.shift) + field('حالة التقديم', slotText(attempt)) +
+      field('الأجر الشهري', attempt.salaryMin != null ? Store.money(attempt.salaryMin) + ' – ' + Store.money(attempt.salaryMax) : job ? Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) : '') +
+      field('الدوام', attempt.shift || (job && job.shift)) + field('حالة التقديم', slotText(attempt)) +
       field('تاريخ التقديم', attempt.selectedAt ? Store.fmtDateTime(attempt.selectedAt) : '', 'ff-wide') + '</div>' :
       '<div class="ff-empty">لم يُقدَّم على وظيفة بعد — فرص البطاقة متاحة من «بطاقتي» على الموقع أو عند أي نقطة بيع.</div>');
     var employerDetails = section('employer', '03', 'بيانات صاحب العمل', attempt ? '<div class="ff-grid ff-grid-two">' +
       field('اسم جهة العمل', attempt.employerName || employer.name) +
       field('هاتف جهة العمل', attempt.employerPhone || employer.phone, 'ff-ltr') +
-      field('عنوان جهة العمل', employer.address) + field('مكان المقابلة', job && job.interviewLocation) + '</div>' :
+      field('عنوان جهة العمل', attempt.employerAddress || employer.address) + field('مكان المقابلة', attempt.interviewLocation || (job && job.interviewLocation)) + '</div>' :
       '<div class="ff-empty">تظهر بيانات جهة العمل بعد التقديم على وظيفة.</div>');
     var holdNote = attempt && attempt.holdExpiresAt && attempt.slotStatus === 'reserved'
       ? '<div class="ff-note">الحجز مؤقت <b>24 ساعة</b> من وقت التقديم (' + esc(Store.fmtDateTime(attempt.selectedAt)) +
-        ') — يسجّل صاحب العمل قراره بمسح الباركود؛ وبعد المهلة تصبح الوظيفة حرجة وتقرر الشركة.</div>' : '';
+        ') — تبلّغ الشركة بنتيجة المقابلة؛ وبعد المهلة تصبح الوظيفة حرجة وتقرر الشركة.</div>' : '';
 
     return ''
       + '<div class="hrc-form">'
@@ -311,9 +311,9 @@
       +   '<div class="ff-employer-box">'
       +     '<h4>✦ لصاحب العمل — كيف تُكمل التوظيف؟</h4>'
       +     '<ol>'
-      +       '<li>امسح الباركود أعلاه بكاميرة أي موبايل — يفتح موقع الشركة ويظهر لك تعريف المتقدم وتفاصيله.</li>'
+      +       '<li>تأكد من تفاصيل المتقدم والوظيفة في الاستمارة.</li>'
       +       '<li>اطلع على بيانات المتقدم وأجرِ المقابلة في المكان المحدد أعلاه.</li>'
-      +       '<li>اضغط زر «تم التوظيف» أو «لم يتم التوظيف» من نفس الصفحة — يُسجَّل طلبك لدى الشركة وتبقى الوظيفة «جاري التوظيف» حتى يثبّت موظفو الشركة القرار أو يلغوه.</li>'
+      +       '<li>بلّغ الشركة بنتيجة المقابلة لتثبيت القرار في ملف المتقدم.</li>'
       +       '<li>إن لم يُسجَّل طلب خلال <b>24 ساعة</b> من التقديم، تنتقل الوظيفة لحالة حرجة وتقرر الشركة.</li>'
       +     '</ol>'
       +   '</div>'
@@ -330,6 +330,7 @@
   }
 
   function formStatusOf(app) {
+    if (app && app.__customerApplication) return app.status || 'active';
     try { return Store.formStatus(app); } catch (e) { return 'active'; }
   }
 

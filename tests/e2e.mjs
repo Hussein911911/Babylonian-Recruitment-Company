@@ -27,7 +27,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Cover the current customer application and security-definer SQL paths rather
 // than reviving the removed POS wizard. Fail the suite if any subprocess fails.
-for (const file of ['apply-flow.mjs', 'card-validity.mjs', 'card-identity.mjs', 'office-sql.mjs']) {
+for (const file of ['apply-flow.mjs', 'card-validity.mjs', 'card-identity.mjs', 'customer-application-sql.mjs', 'office-sql.mjs']) {
   console.log('\n▌ فحص المسار الحالي: ' + file);
   const run = spawnSync(process.execPath, [join(ROOT, 'tests', file)], { stdio: 'inherit' });
   if (run.error || run.status !== 0) {
@@ -668,7 +668,7 @@ await wait(150);
 {
   const box = lastModal(pubCard.doc);
   const rp = box.querySelector('#bk-reprint');
-  check('زر «إعادة طباعة البطاقة» ظاهر حتى بعد استنفاد الفرصتين', !!rp);
+  check('زر إعادة طباعة الاستمارة ظاهر حتى بعد استنفاد الفرصتين', !!rp);
   if (rp) { click(pubCard.w, rp); await wait(250); }
 }
 {
@@ -676,16 +676,9 @@ await wait(150);
   /* بعد إلغاء رموز الفرص: البطاقة بلا رمز تحقق → الطباعة بالباركود مباشرة */
   check('بطاقة بلا رمز تحقق: لا تطلب شاشة إعادة الطباعة أي رمز',
     !box.querySelector('#bk-rcode') && /لا حاجة لأي رمز/.test(box.textContent));
-  click(pubCard.w, box.querySelector('#bk-print'));
-  await wait(450);
+  check('لا يوجد زر طباعة البطاقة للزبون', !box.querySelector('#bk-print'));
 }
-const reprintHtml = pubCard.doc.getElementById('print-root').innerHTML;
-check('إعادة طباعة البطاقة القديمة نجحت: وجهان وباركود بلا أي رموز — وبلا اسم زبون',
-  (reprintHtml.match(/class="hrc-card[" ]/g) || []).length === 2 && reprintHtml.includes(SERIAL) &&
-  !/رمز الفرصة/.test(reprintHtml) && !reprintHtml.includes('مرتضى كريم جبر'));
-check('نافذة الطباعة استُدعيت لإعادة الطباعة', pubCard.w.__printed > 0, 'عدد الاستدعاءات ' + pubCard.w.__printed);
-check('عدّاد طباعة البطاقة زاد (' + printedBefore + ' → ' + P3C.getApplicant(SERIAL).printedCount + ')',
-  P3C.getApplicant(SERIAL).printedCount > printedBefore);
+check('عداد طباعة البطاقة لم يتغير', P3C.getApplicant(SERIAL).printedCount === printedBefore);
 
 /* إعادة طباعة استمارة التوظيف A4 بنفس إثبات الحيازة (رمز الفرصة) */
 {

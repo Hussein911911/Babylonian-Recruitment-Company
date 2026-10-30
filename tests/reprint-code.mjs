@@ -137,13 +137,12 @@ try {
   w.document.querySelector('#bk-reprint').click(); await pause();
   const input = w.document.querySelector('#bk-rcode');
   input.value = attempts[0].code;
-  w.document.querySelector('#bk-print').click(); await pause();
+  w.document.querySelector('#bk-print-form').click(); await pause();
   check('public reprint dialog rejects opportunity codes on new cards', printed === 0 && /رمز التحقق غير صحيح/.test(w.document.querySelector('[data-bk-err="rcode"]').textContent));
+  check('public customer dialog has no wallet-print button', !w.document.querySelector('#bk-print'));
   input.value = app.cardPrintCode.match(/.{4}/g).join('-');
-  w.document.querySelector('#bk-print').click(); await waitForPrint(1);
-  check('public dialog prints the wallet with its one independent code', printed === 1 && w.document.querySelector('#print-root').innerHTML.includes(input.value));
-  w.document.querySelector('#bk-print-form').click(); await waitForPrint(2);
-  check('the same independent code protects A4 data as well', printed === 2 && w.document.querySelector('#print-root').innerHTML.includes(app.fullName));
+  w.document.querySelector('#bk-print-form').click(); await waitForPrint(1);
+  check('the independent code protects A4 data and prints only the form', printed === 1 && w.document.querySelector('#print-root').innerHTML.includes(app.fullName) && !w.document.querySelector('#print-root .hrc-card'));
   // RPC-only visitors have no private attempt cache. Use the verified attempts.
   const a4 = w.HRCVoucher.formHtml(other, null, [{ no: 1, slotStatus: 'reserved', jobCode: 'TEST-JOB', jobTitle: 'وظيفة من الخادم', location: 'بغداد' }]);
   const fragment = JSDOM.fragment(a4);

@@ -1,5 +1,5 @@
 /* بطاقتي: عرض مقنّع بالباركود، وتقديم عبر apply.html للبطاقات الجديدة.
-   إعادة طباعة البطاقة وA4 تتطلب رمز تحقق مستقل؛ القديمة تقبل رمز فرصة سابقاً. */
+   إعادة طباعة الاستمارة تتطلب رمز التحقق عند الحاجة؛ طباعة البطاقة للموظفين فقط. */
 (function (root) {
   'use strict';
   var CFG = root.HRC_CONFIG, UI = root.HRCUI, Store = root.HRCStore;
@@ -1051,7 +1051,7 @@
       btnRow(
         (canUse && applyPageAvailable() ? '<button class="btn btn-gold" id="bk-apply-page">' + UI.ic('arrow-right') + ' ابدأ التقديم على وظيفة</button>' : '') +
         (canUse ? '<button class="btn ' + (applyPageAvailable() ? 'btn-outline' : 'btn-gold') + '" id="bk-use">' + UI.ic('briefcase') + ' استخدم فرصة على وظيفة</button>' : '') +
-        '<button class="btn btn-lapis" id="bk-reprint">' + UI.ic('print') + ' إعادة الطباعة (البطاقة أو الاستمارة)</button>' +
+        '<button class="btn btn-lapis" id="bk-reprint">' + UI.ic('print') + ' إعادة طباعة استمارة التوظيف</button>' +
         '<button class="btn btn-ghost" id="bk-back">' + UI.ic('arrow-right') + ' بطاقة أخرى</button>');
     var b;
     if ((b = document.getElementById('bk-apply-page'))) b.addEventListener('click', function () { goApply(serial); });
@@ -1129,19 +1129,17 @@
   /* ======================= 4) إعادة الطباعة ======================= */
   function renderReprint(host) {
     var needsCode = !card || card.usesCardPrintCode !== false;
-    host.innerHTML = stepHead('إعادة طباعة البطاقة',
-        needsCode ? 'أدخل رمز التحقق من ظهر البطاقة لإعادة الطباعة.'
-                  : 'بطاقتك لا تحمل أي رمز — الباركود نفسه يكفي لإعادة الطباعة.', 'print') +
+    host.innerHTML = stepHead('إعادة طباعة استمارة التوظيف',
+        needsCode ? 'أدخل رمز التحقق من ظهر البطاقة لطباعة الاستمارة.'
+                  : 'بطاقتك لا تحمل أي رمز — الباركود نفسه يكفي لطباعة الاستمارة.', 'print') +
       (needsCode
         ? fieldHtml('rcode', 'رمز التحقق (من ظهر البطاقة)',
             inputHtml('rcode', 'text', 'مثال: 7A2C-9E4B-1D8F-6C03', '', 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.08em" inputmode="latin"'),
             'الرمز المطبوع على ظهر بطاقتك. إن لم يكن لبطاقتك رمز فاتركه فارغاً.')
-        : '<div class="bk-info">' + UI.ic('check-circle') + ' لا حاجة لأي رمز — اضغط «اطبع البطاقة».</div>') +
+        : '<div class="bk-info">' + UI.ic('check-circle') + ' لا حاجة لأي رمز — اضغط «اطبع الاستمارة».</div>') +
       '<div class="bk-info">' + UI.ic('alert') +
-        ' <b>البطاقة:</b> صفحتان بمقاس 59.4×94.6مم — ورق مقوى 300–350غم + تغليف حراري وخيار «الحجم الفعلي» دون تحجيم.<br>' +
         UI.ic('file') + ' <b>استمارة التوظيف A4:</b> تحمل بياناتك وبيانات الوظيفة وصاحب العمل — تُسلَّم لصاحب العمل عند المقابلة.</div>' +
       btnRow(
-        '<button class="btn btn-gold" id="bk-print">' + UI.ic('print') + ' تحقق واطبع البطاقة</button>' +
         '<button class="btn btn-lapis" id="bk-print-form">' + UI.ic('file') + ' تحقق واطبع استمارة A4</button>' +
         '<button class="btn btn-ghost" id="bk-cancel">' + UI.ic('arrow-right') + ' رجوع</button>');
     var b;
@@ -1151,7 +1149,6 @@
       inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') doReprint(); });
       setTimeout(function () { try { inp.focus(); } catch (e) { } }, 60);
     }
-    if ((b = document.getElementById('bk-print'))) b.addEventListener('click', function () { doReprint('card'); });
     if ((b = document.getElementById('bk-print-form'))) b.addEventListener('click', function () { doReprint('form'); });
     if ((b = document.getElementById('bk-cancel'))) b.addEventListener('click', function () { view = 'status'; render(); });
   }
@@ -1167,7 +1164,7 @@
     }
     if (busy) return;
     busy = true;
-    var btn = document.getElementById('bk-print');
+    var btn = document.getElementById('bk-print-form');
     if (btn) { btn.disabled = true; btn.textContent = 'جارٍ التحقق…'; }
     Promise.resolve(Store.cardVerify(serial, code)).then(function (r) {
       busy = false;
@@ -1177,16 +1174,9 @@
         return;
       }
       var V = root.HRCVoucher;
-      if (mode === 'form') {
-        if (!V || !V.printForm) { setErr('rcode', 'قالب طباعة الاستمارة غير متوفر بهذه الصفحة.'); return; }
-        try { V.printForm(r.app, null, r.attempts); } catch (e) {
-          setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
-        }
-      } else {
-        if (!V || !V.print) { setErr('rcode', 'قالب الطباعة غير متوفر بهذه الصفحة.'); return; }
-        try { V.print(r.app, { attempts: r.attempts, verifiedReprint: true }); } catch (e) {
-          setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
-        }
+      if (!V || !V.printForm) { setErr('rcode', 'قالب طباعة الاستمارة غير متوفر بهذه الصفحة.'); return; }
+      try { V.printForm(r.app, null, r.attempts); } catch (e) {
+        setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
       }
     }).catch(function (e) {
       busy = false;
@@ -1212,7 +1202,7 @@
           ' تذكير: الفرصة تُستهلك بالتقديم ولا تعود بأي نتيجة — وبعد الفرصتين تُشترى بطاقة جديدة من نقاط البيع.</div>' +
       '</div>' +
       btnRow(
-        '<button class="btn btn-lapis" id="bk-reprint2">' + UI.ic('print') + ' اطبع بطاقتك المحدّثة</button>' +
+        '<button class="btn btn-lapis" id="bk-reprint2">' + UI.ic('print') + ' اطبع استمارة التوظيف</button>' +
         '<button class="btn btn-gold" id="bk-done">' + UI.ic('check') + ' تم — إغلاق</button>');
     var b;
     if ((b = document.getElementById('bk-reprint2'))) b.addEventListener('click', function () { view = 'reprint'; render(); });

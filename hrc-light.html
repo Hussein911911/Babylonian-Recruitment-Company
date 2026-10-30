@@ -3337,6 +3337,11 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
   background: #fff; border: 1px dashed #e2e8f2; border-radius: 14px; padding: 14px;
 }
 .cp-empty-chance .ic { width: 16px; height: 16px; color: var(--gold-3); }
+.cp-employer { margin-top: 12px; padding: 14px; border: 1px solid #dce4f2; border-radius: 14px; background: #f7f9fd; }
+.cp-employer h4 { margin: 0 0 8px; color: var(--lapis-2); font-size: .88rem; }
+.cp-employer-row { display: grid; grid-template-columns: minmax(65px, auto) minmax(0, 1fr); gap: 8px; padding: 4px 0; font-size: .79rem; }
+.cp-employer-row span { overflow-wrap: anywhere; }
+.cp-print-form { margin-top: 10px; min-height: 44px; width: 100%; justify-content: center; }
 .cp-foot { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
 .cp-foot .btn { flex: 1 1 200px; justify-content: center; min-height: 46px; }
 @media (max-width: 760px) {
@@ -4660,7 +4665,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           <p class="cp-err" id="cp-err" role="alert"></p>
         </form>
         <p class="cp-note"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
-          بياناتك تُعرض مختصرة (اسم وهاتف مقنّعان) — التفاصيل الكاملة على استمارتك المطبوعة.</p>
+          رقم البطاقة يتيح عرض تفاصيل التقديم وطباعة الاستمارة، فاحتفظ به ولا تشاركه مع الآخرين.</p>
       </div>
     </div>
 
@@ -4790,7 +4795,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           <div class="contact-card" style="text-align:right">
             <div class="ic"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg></div>
             <h3>بطاقة التوظيف</h3>
-            <p>افتح <b>«بطاقتي»</b> بالباركود لمتابعة فرصك والتقديم وإعادة طباعة البطاقة أو <b>استمارة A4</b>.</p>
+            <p>افتح <b>«بطاقتي»</b> بالباركود لمتابعة فرصك والتقديم وإعادة طباعة <b>استمارة التوظيف A4</b>.</p>
           </div>
           <div class="contact-card" style="text-align:right">
             <div class="ic"><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg></div>
@@ -18147,6 +18152,25 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     return Promise.resolve(lookupCard(serial));
   }
 
+  function customerApplication(serial, no) {
+    var st = cloudStatus();
+    if (st.configured) {
+      if (st.state === 'on' && cloud.client && root.HRCCloud && root.HRCCloud.customerApplication)
+        return root.HRCCloud.customerApplication(cloud.client, serial, no);
+      return Promise.resolve({ok:false, error:'تعذّر الاتصال لتحميل تفاصيل التقديم'});
+    }
+    var app = getApplicant(String(serial || '').trim().toUpperCase());
+    var t = app && getAttempts(app.serial).filter(function (a) { return Number(a.no) === Number(no) && a.slotStatus !== 'empty' && a.selectedAt && a.jobId; })[0];
+    var j = t && getJob(t.jobCode);
+    if (!app || ['blank','pending','rejected'].indexOf(app.status) >= 0 || !t || !j || j.id !== t.jobId)
+      return Promise.resolve({ok:false,error:'تفاصيل هذا التقديم غير متاحة، تواصل مع الشركة'});
+    return Promise.resolve({ok:true, app:app, attempt:Object.assign({}, t, {
+      employerName:(j.employer || {}).name, employerPhone:(j.employer || {}).phone,
+      employerAddress:(j.employer || {}).address, interviewLocation:j.interviewLocation,
+      shift:j.shift, salaryMin:j.salaryMin, salaryMax:j.salaryMax
+    })});
+  }
+
   function cardUseChance(serial, code, jobCode) {
     if (jobCode === undefined && code) { jobCode = code; code = ''; }
     var st = cloudStatus();
@@ -19611,7 +19635,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     maskName: maskName, maskPhone: maskPhone,
     // بطاقتي (الزبون)
     lookupCard: lookupCard, useChance: useChance,
-    cardLookup: cardLookup, cardActivate: cardActivate, cardUseChance: cardUseChance,
+    cardLookup: cardLookup, customerApplication: customerApplication, cardActivate: cardActivate, cardUseChance: cardUseChance,
     cardVerify: cardVerify, cardVerifyCode: cardVerifyCode, listPosNames: listPosNames,
     // مالية
     stats: stats, financials: financials, financialTotals: financialTotals,
@@ -20482,18 +20506,18 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var jobDetails = section('job', '02', 'تفاصيل الوظيفة', attempt ? '<div class="ff-grid">' +
       field('الوظيفة المطلوبة', attempt.jobTitle || (job && job.title), 'ff-wide') + field('كود الوظيفة', attempt.jobCode, 'ff-ltr') +
       field('المحافظة', (job && job.governorate) || attempt.governorate || '—') +
-      field('الأجر الشهري', job ? Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) : '') +
-      field('الدوام', job && job.shift) + field('حالة التقديم', slotText(attempt)) +
+      field('الأجر الشهري', attempt.salaryMin != null ? Store.money(attempt.salaryMin) + ' – ' + Store.money(attempt.salaryMax) : job ? Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) : '') +
+      field('الدوام', attempt.shift || (job && job.shift)) + field('حالة التقديم', slotText(attempt)) +
       field('تاريخ التقديم', attempt.selectedAt ? Store.fmtDateTime(attempt.selectedAt) : '', 'ff-wide') + '</div>' :
       '<div class="ff-empty">لم يُقدَّم على وظيفة بعد — فرص البطاقة متاحة من «بطاقتي» على الموقع أو عند أي نقطة بيع.</div>');
     var employerDetails = section('employer', '03', 'بيانات صاحب العمل', attempt ? '<div class="ff-grid ff-grid-two">' +
       field('اسم جهة العمل', attempt.employerName || employer.name) +
       field('هاتف جهة العمل', attempt.employerPhone || employer.phone, 'ff-ltr') +
-      field('عنوان جهة العمل', employer.address) + field('مكان المقابلة', job && job.interviewLocation) + '</div>' :
+      field('عنوان جهة العمل', attempt.employerAddress || employer.address) + field('مكان المقابلة', attempt.interviewLocation || (job && job.interviewLocation)) + '</div>' :
       '<div class="ff-empty">تظهر بيانات جهة العمل بعد التقديم على وظيفة.</div>');
     var holdNote = attempt && attempt.holdExpiresAt && attempt.slotStatus === 'reserved'
       ? '<div class="ff-note">الحجز مؤقت <b>24 ساعة</b> من وقت التقديم (' + esc(Store.fmtDateTime(attempt.selectedAt)) +
-        ') — يسجّل صاحب العمل قراره بمسح الباركود؛ وبعد المهلة تصبح الوظيفة حرجة وتقرر الشركة.</div>' : '';
+        ') — تبلّغ الشركة بنتيجة المقابلة؛ وبعد المهلة تصبح الوظيفة حرجة وتقرر الشركة.</div>' : '';
 
     return ''
       + '<div class="hrc-form">'
@@ -20523,9 +20547,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       +   '<div class="ff-employer-box">'
       +     '<h4>✦ لصاحب العمل — كيف تُكمل التوظيف؟</h4>'
       +     '<ol>'
-      +       '<li>امسح الباركود أعلاه بكاميرة أي موبايل — يفتح موقع الشركة ويظهر لك تعريف المتقدم وتفاصيله.</li>'
+      +       '<li>تأكد من تفاصيل المتقدم والوظيفة في الاستمارة.</li>'
       +       '<li>اطلع على بيانات المتقدم وأجرِ المقابلة في المكان المحدد أعلاه.</li>'
-      +       '<li>اضغط زر «تم التوظيف» أو «لم يتم التوظيف» من نفس الصفحة — يُسجَّل طلبك لدى الشركة وتبقى الوظيفة «جاري التوظيف» حتى يثبّت موظفو الشركة القرار أو يلغوه.</li>'
+      +       '<li>بلّغ الشركة بنتيجة المقابلة لتثبيت القرار في ملف المتقدم.</li>'
       +       '<li>إن لم يُسجَّل طلب خلال <b>24 ساعة</b> من التقديم، تنتقل الوظيفة لحالة حرجة وتقرر الشركة.</li>'
       +     '</ol>'
       +   '</div>'
@@ -20542,6 +20566,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   }
 
   function formStatusOf(app) {
+    if (app && app.__customerApplication) return app.status || 'active';
     try { return Store.formStatus(app); } catch (e) { return 'active'; }
   }
 
@@ -20728,7 +20753,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 ;
 /* ===================== booking.js ===================== */
 /* بطاقتي: عرض مقنّع بالباركود، وتقديم عبر apply.html للبطاقات الجديدة.
-   إعادة طباعة البطاقة وA4 تتطلب رمز تحقق مستقل؛ القديمة تقبل رمز فرصة سابقاً. */
+   إعادة طباعة الاستمارة تتطلب رمز التحقق عند الحاجة؛ طباعة البطاقة للموظفين فقط. */
 (function (root) {
   'use strict';
   var CFG = root.HRC_CONFIG, UI = root.HRCUI, Store = root.HRCStore;
@@ -21780,7 +21805,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       btnRow(
         (canUse && applyPageAvailable() ? '<button class="btn btn-gold" id="bk-apply-page">' + UI.ic('arrow-right') + ' ابدأ التقديم على وظيفة</button>' : '') +
         (canUse ? '<button class="btn ' + (applyPageAvailable() ? 'btn-outline' : 'btn-gold') + '" id="bk-use">' + UI.ic('briefcase') + ' استخدم فرصة على وظيفة</button>' : '') +
-        '<button class="btn btn-lapis" id="bk-reprint">' + UI.ic('print') + ' إعادة الطباعة (البطاقة أو الاستمارة)</button>' +
+        '<button class="btn btn-lapis" id="bk-reprint">' + UI.ic('print') + ' إعادة طباعة استمارة التوظيف</button>' +
         '<button class="btn btn-ghost" id="bk-back">' + UI.ic('arrow-right') + ' بطاقة أخرى</button>');
     var b;
     if ((b = document.getElementById('bk-apply-page'))) b.addEventListener('click', function () { goApply(serial); });
@@ -21858,19 +21883,17 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   /* ======================= 4) إعادة الطباعة ======================= */
   function renderReprint(host) {
     var needsCode = !card || card.usesCardPrintCode !== false;
-    host.innerHTML = stepHead('إعادة طباعة البطاقة',
-        needsCode ? 'أدخل رمز التحقق من ظهر البطاقة لإعادة الطباعة.'
-                  : 'بطاقتك لا تحمل أي رمز — الباركود نفسه يكفي لإعادة الطباعة.', 'print') +
+    host.innerHTML = stepHead('إعادة طباعة استمارة التوظيف',
+        needsCode ? 'أدخل رمز التحقق من ظهر البطاقة لطباعة الاستمارة.'
+                  : 'بطاقتك لا تحمل أي رمز — الباركود نفسه يكفي لطباعة الاستمارة.', 'print') +
       (needsCode
         ? fieldHtml('rcode', 'رمز التحقق (من ظهر البطاقة)',
             inputHtml('rcode', 'text', 'مثال: 7A2C-9E4B-1D8F-6C03', '', 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.08em" inputmode="latin"'),
             'الرمز المطبوع على ظهر بطاقتك. إن لم يكن لبطاقتك رمز فاتركه فارغاً.')
-        : '<div class="bk-info">' + UI.ic('check-circle') + ' لا حاجة لأي رمز — اضغط «اطبع البطاقة».</div>') +
+        : '<div class="bk-info">' + UI.ic('check-circle') + ' لا حاجة لأي رمز — اضغط «اطبع الاستمارة».</div>') +
       '<div class="bk-info">' + UI.ic('alert') +
-        ' <b>البطاقة:</b> صفحتان بمقاس 59.4×94.6مم — ورق مقوى 300–350غم + تغليف حراري وخيار «الحجم الفعلي» دون تحجيم.<br>' +
         UI.ic('file') + ' <b>استمارة التوظيف A4:</b> تحمل بياناتك وبيانات الوظيفة وصاحب العمل — تُسلَّم لصاحب العمل عند المقابلة.</div>' +
       btnRow(
-        '<button class="btn btn-gold" id="bk-print">' + UI.ic('print') + ' تحقق واطبع البطاقة</button>' +
         '<button class="btn btn-lapis" id="bk-print-form">' + UI.ic('file') + ' تحقق واطبع استمارة A4</button>' +
         '<button class="btn btn-ghost" id="bk-cancel">' + UI.ic('arrow-right') + ' رجوع</button>');
     var b;
@@ -21880,7 +21903,6 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') doReprint(); });
       setTimeout(function () { try { inp.focus(); } catch (e) { } }, 60);
     }
-    if ((b = document.getElementById('bk-print'))) b.addEventListener('click', function () { doReprint('card'); });
     if ((b = document.getElementById('bk-print-form'))) b.addEventListener('click', function () { doReprint('form'); });
     if ((b = document.getElementById('bk-cancel'))) b.addEventListener('click', function () { view = 'status'; render(); });
   }
@@ -21896,7 +21918,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     }
     if (busy) return;
     busy = true;
-    var btn = document.getElementById('bk-print');
+    var btn = document.getElementById('bk-print-form');
     if (btn) { btn.disabled = true; btn.textContent = 'جارٍ التحقق…'; }
     Promise.resolve(Store.cardVerify(serial, code)).then(function (r) {
       busy = false;
@@ -21906,16 +21928,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         return;
       }
       var V = root.HRCVoucher;
-      if (mode === 'form') {
-        if (!V || !V.printForm) { setErr('rcode', 'قالب طباعة الاستمارة غير متوفر بهذه الصفحة.'); return; }
-        try { V.printForm(r.app, null, r.attempts); } catch (e) {
-          setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
-        }
-      } else {
-        if (!V || !V.print) { setErr('rcode', 'قالب الطباعة غير متوفر بهذه الصفحة.'); return; }
-        try { V.print(r.app, { attempts: r.attempts, verifiedReprint: true }); } catch (e) {
-          setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
-        }
+      if (!V || !V.printForm) { setErr('rcode', 'قالب طباعة الاستمارة غير متوفر بهذه الصفحة.'); return; }
+      try { V.printForm(r.app, null, r.attempts); } catch (e) {
+        setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
       }
     }).catch(function (e) {
       busy = false;
@@ -21941,7 +21956,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           ' تذكير: الفرصة تُستهلك بالتقديم ولا تعود بأي نتيجة — وبعد الفرصتين تُشترى بطاقة جديدة من نقاط البيع.</div>' +
       '</div>' +
       btnRow(
-        '<button class="btn btn-lapis" id="bk-reprint2">' + UI.ic('print') + ' اطبع بطاقتك المحدّثة</button>' +
+        '<button class="btn btn-lapis" id="bk-reprint2">' + UI.ic('print') + ' اطبع استمارة التوظيف</button>' +
         '<button class="btn btn-gold" id="bk-done">' + UI.ic('check') + ' تم — إغلاق</button>');
     var b;
     if ((b = document.getElementById('bk-reprint2'))) b.addEventListener('click', function () { view = 'reprint'; render(); });
@@ -22578,6 +22593,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
    * لا نعرض أي شكل/صورة للبطاقة (طلب المالك: لا معنى لعرضها للزبون بلا بيانات).
    * الصفحة: إدخال رقم البطاقة أو مسح الباركود ← تفاصيل حقيقية من القاعدة:
    * الحالة · بداية الصلاحية · الانتهاء · المتبقي · الفرص ووظائفها وتواريخها. */
+  var cpLookupGeneration = 0;
   var CP_KEY = 'hrc_last_card_v1';        /* آخر رقم بطاقة فتحه الزبون على جهازه */
 
   function cpSay(msg, isErr) {
@@ -22653,6 +22669,14 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
             (job && job.salaryMin ? '<div class="cp-meta"><span>' + UI.ic('money') + ' ' +
               Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) + '</span>' +
               (job.shift ? '<span>' + UI.ic('clock') + ' ' + UI.esc(job.shift) + '</span>' : '') + '</div>' : '') +
+            (c.application && c.application.ok ? (function () {
+              var a = c.application.attempt;
+              function item(label, value) { return '<div class="cp-employer-row"><b>' + label + '</b><span>' + UI.esc(value || 'غير متوفر — تواصل مع الشركة') + '</span></div>'; }
+              return '<div class="cp-employer"><h4>معلومات جهة العمل والمقابلة</h4>' +
+                item('الاسم', a.employerName) + item('الهاتف', a.employerPhone) +
+                item('العنوان', a.employerAddress) + item('مكان المقابلة', a.interviewLocation) +
+                '<button type="button" class="btn btn-lapis cp-print-form" data-cp-print="' + UI.esc(String(c.no)) + '">' + UI.ic('print') + ' طباعة استمارة الفرصة</button></div>';
+            })() : c.selectedAt ? '<p class="cp-note-in">تفاصيل جهة العمل غير متاحة حالياً — أعد المحاولة أو تواصل مع الشركة.</p>' : '') +
             (c.note ? '<p class="cp-note-in">' + UI.esc(c.note) + '</p>' : '')
           : '<div class="cp-empty-chance">' + UI.ic('hourglass') + ' لم تُستخدم بعد — اختر لها وظيفة من الموقع أو استمارتك.</div>') +
       '</article>';
@@ -22677,7 +22701,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       '<div class="cp-chances">' + (chances || '<div class="cp-empty-chance">لا توجد فرص مسجّلة على هذه البطاقة بعد.</div>') + '</div>' +
       '<div class="cp-foot">' +
         '<button type="button" class="btn btn-gold" id="cp-full">' +
-          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (تقديم · طباعة)</button>' +
+          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (متابعة · تقديم)</button>' +
         '<button type="button" class="btn btn-outline" id="cp-again">' +
           '<svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> بطاقة أخرى</button>' +
       '</div>';
@@ -22686,12 +22710,23 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     host.hidden = false;
     var full = document.getElementById('cp-full');
     if (full) full.addEventListener('click', function () { cpOpenBook(card.serial); });
+    host.querySelectorAll('[data-cp-print]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var no = Number(button.getAttribute('data-cp-print'));
+        var chance = (card.chances || []).filter(function (c) { return Number(c.no) === no; })[0];
+        var data = chance && chance.application;
+        if (!data || !data.ok || !data.attempt || !root.HRCVoucher || !root.HRCVoucher.printForm) return;
+        try { root.HRCVoucher.printForm(Object.assign({}, data.app, {status: card.status, __customerApplication: true}), data.attempt, card.chances || []); }
+        catch (e) { UI.toast('err', 'تعذّرت الطباعة', 'أعد المحاولة أو تواصل مع الشركة.'); }
+      });
+    });
     var again = document.getElementById('cp-again');
     if (again) again.addEventListener('click', cpReset);
     try { localStorage.setItem(CP_KEY, card.serial); } catch (e) { }
   }
 
   function cpReset() {
+    cpLookupGeneration++;
     var entry = document.getElementById('cp-entry');
     var host = document.getElementById('cp-result');
     if (host) { host.hidden = true; host.innerHTML = ''; }
@@ -22710,17 +22745,28 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       cpSay('الرقم لا يبدو باركود بطاقة — راجع الرقم المطبوع على وجه البطاقة.', true);
       return;
     }
+    var generation = ++cpLookupGeneration;
     var btn = document.getElementById('cp-go');
     if (btn) { btn.disabled = true; btn.textContent = 'جارٍ البحث…'; }
     cpSay('');
     Promise.resolve(Store.cardLookup(serial)).then(function (r) {
-      if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
+      if (generation !== cpLookupGeneration) return;
       if (!r || !r.ok) {
+        if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
         cpSay((r && r.error) || 'تعذّر العثور على البطاقة — تأكد من الرقم.', true);
         return;
       }
-      cpRenderDetails(r.card);
+      var card = r.card;
+      return Promise.all((card.chances || []).map(function (c) {
+        if (!c.jobCode || !c.selectedAt || c.slotStatus === 'empty') return Promise.resolve();
+        return Promise.resolve(Store.customerApplication(card.serial, c.no)).then(function (detail) { c.application = detail; }, function () { c.application = {ok:false}; });
+      })).then(function () {
+        if (generation !== cpLookupGeneration) return;
+        if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
+        cpRenderDetails(card);
+      });
     }).catch(function () {
+      if (generation !== cpLookupGeneration) return;
       if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
       cpSay('تعذّر الاتصال بقاعدة الشركة — تحقّق من الإنترنت وأعد المحاولة.', true);
     });

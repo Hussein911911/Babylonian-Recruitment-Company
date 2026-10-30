@@ -1177,6 +1177,25 @@
     return Promise.resolve(lookupCard(serial));
   }
 
+  function customerApplication(serial, no) {
+    var st = cloudStatus();
+    if (st.configured) {
+      if (st.state === 'on' && cloud.client && root.HRCCloud && root.HRCCloud.customerApplication)
+        return root.HRCCloud.customerApplication(cloud.client, serial, no);
+      return Promise.resolve({ok:false, error:'تعذّر الاتصال لتحميل تفاصيل التقديم'});
+    }
+    var app = getApplicant(String(serial || '').trim().toUpperCase());
+    var t = app && getAttempts(app.serial).filter(function (a) { return Number(a.no) === Number(no) && a.slotStatus !== 'empty' && a.selectedAt && a.jobId; })[0];
+    var j = t && getJob(t.jobCode);
+    if (!app || ['blank','pending','rejected'].indexOf(app.status) >= 0 || !t || !j || j.id !== t.jobId)
+      return Promise.resolve({ok:false,error:'تفاصيل هذا التقديم غير متاحة، تواصل مع الشركة'});
+    return Promise.resolve({ok:true, app:app, attempt:Object.assign({}, t, {
+      employerName:(j.employer || {}).name, employerPhone:(j.employer || {}).phone,
+      employerAddress:(j.employer || {}).address, interviewLocation:j.interviewLocation,
+      shift:j.shift, salaryMin:j.salaryMin, salaryMax:j.salaryMax
+    })});
+  }
+
   function cardUseChance(serial, code, jobCode) {
     if (jobCode === undefined && code) { jobCode = code; code = ''; }
     var st = cloudStatus();
@@ -2641,7 +2660,7 @@
     maskName: maskName, maskPhone: maskPhone,
     // بطاقتي (الزبون)
     lookupCard: lookupCard, useChance: useChance,
-    cardLookup: cardLookup, cardActivate: cardActivate, cardUseChance: cardUseChance,
+    cardLookup: cardLookup, customerApplication: customerApplication, cardActivate: cardActivate, cardUseChance: cardUseChance,
     cardVerify: cardVerify, cardVerifyCode: cardVerifyCode, listPosNames: listPosNames,
     // مالية
     stats: stats, financials: financials, financialTotals: financialTotals,

@@ -574,7 +574,7 @@ await (async () => {
     rc.value = real;
     rc.dispatchEvent(new site.window.Event('input', { bubbles: true }));
     const printsBefore = site.window.__printed;
-    lastModal(site.doc).querySelector('#bk-print').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
+    lastModal(site.doc).querySelector('#bk-print-form').dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 400));
     if (site.window.__printed <= printsBefore) return bad(name, 'لم تُستدعَ الطباعة برمز صحيح');
     const html = site.doc.getElementById('print-root').innerHTML;

@@ -856,6 +856,13 @@
       });
   }
 
+  // Only the specified card's already-used opportunity is returned by SQL.
+  function customerApplicationRpc(client, serial, no) {
+    return rpcCall(client, 'customer_application_details', {p_serial: String(serial || '').trim(), p_attempt_no: Number(no)})
+      .then(function (r) { return r && r.data && !r.error ? r.data : {ok:false, error:(r && r.error && r.error.message) || 'تعذّر تحميل تفاصيل التقديم'}; })
+      .catch(function () { return {ok:false, error:'تعذّر الاتصال لتحميل تفاصيل التقديم'}; });
+  }
+
   /* التقديم الذاتي: الباركود + الوظيفة (رموز الفرص أُلغيت 2026-10-25) */
   /* استخدام فرصة: الباركود وحده كافٍ — أُلغيت رموز الفرص (2026-10-25).
      يُمرَّر p_code فارغاً فتُستهلك أول فرصة فارغة بالترتيب. */
@@ -956,7 +963,7 @@
     chanceUsed:chanceUsed,rememberChance:rememberChance,clearChanceRegistry:clearChanceRegistry, rpcCall:rpcCall, buildDb: buildDb, fetchAll: fetchAll, loadWorkspaceReports: loadWorkspaceReports, loadAuditLog: loadAuditLog, TABLES: TABLES,
 
     fetchPublicJobs: fetchPublicJobs, readPublicCache: readPublicCache, clearPublicCache: clearPublicCache, verifyForm: verifyForm,
-    lookupCard: lookupCardRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,
+    lookupCard: lookupCardRpc, customerApplication: customerApplicationRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,
     activateCard: activateCardRpc,
     requestForm: requestForm,
     applyChange: applyChange, subscribeAll: subscribeAll,

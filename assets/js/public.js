@@ -536,6 +536,7 @@
    * لا نعرض أي شكل/صورة للبطاقة (طلب المالك: لا معنى لعرضها للزبون بلا بيانات).
    * الصفحة: إدخال رقم البطاقة أو مسح الباركود ← تفاصيل حقيقية من القاعدة:
    * الحالة · بداية الصلاحية · الانتهاء · المتبقي · الفرص ووظائفها وتواريخها. */
+  var cpLookupGeneration = 0;
   var CP_KEY = 'hrc_last_card_v1';        /* آخر رقم بطاقة فتحه الزبون على جهازه */
 
   function cpSay(msg, isErr) {
@@ -611,6 +612,14 @@
             (job && job.salaryMin ? '<div class="cp-meta"><span>' + UI.ic('money') + ' ' +
               Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) + '</span>' +
               (job.shift ? '<span>' + UI.ic('clock') + ' ' + UI.esc(job.shift) + '</span>' : '') + '</div>' : '') +
+            (c.application && c.application.ok ? (function () {
+              var a = c.application.attempt;
+              function item(label, value) { return '<div class="cp-employer-row"><b>' + label + '</b><span>' + UI.esc(value || 'غير متوفر — تواصل مع الشركة') + '</span></div>'; }
+              return '<div class="cp-employer"><h4>معلومات جهة العمل والمقابلة</h4>' +
+                item('الاسم', a.employerName) + item('الهاتف', a.employerPhone) +
+                item('العنوان', a.employerAddress) + item('مكان المقابلة', a.interviewLocation) +
+                '<button type="button" class="btn btn-lapis cp-print-form" data-cp-print="' + UI.esc(String(c.no)) + '">' + UI.ic('print') + ' طباعة استمارة الفرصة</button></div>';
+            })() : c.selectedAt ? '<p class="cp-note-in">تفاصيل جهة العمل غير متاحة حالياً — أعد المحاولة أو تواصل مع الشركة.</p>' : '') +
             (c.note ? '<p class="cp-note-in">' + UI.esc(c.note) + '</p>' : '')
           : '<div class="cp-empty-chance">' + UI.ic('hourglass') + ' لم تُستخدم بعد — اختر لها وظيفة من الموقع أو استمارتك.</div>') +
       '</article>';
@@ -635,7 +644,7 @@
       '<div class="cp-chances">' + (chances || '<div class="cp-empty-chance">لا توجد فرص مسجّلة على هذه البطاقة بعد.</div>') + '</div>' +
       '<div class="cp-foot">' +
         '<button type="button" class="btn btn-gold" id="cp-full">' +
-          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (تقديم · طباعة)</button>' +
+          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (متابعة · تقديم)</button>' +
         '<button type="button" class="btn btn-outline" id="cp-again">' +
           '<svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> بطاقة أخرى</button>' +
       '</div>';
@@ -644,12 +653,23 @@
     host.hidden = false;
     var full = document.getElementById('cp-full');
     if (full) full.addEventListener('click', function () { cpOpenBook(card.serial); });
+    host.querySelectorAll('[data-cp-print]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var no = Number(button.getAttribute('data-cp-print'));
+        var chance = (card.chances || []).filter(function (c) { return Number(c.no) === no; })[0];
+        var data = chance && chance.application;
+        if (!data || !data.ok || !data.attempt || !root.HRCVoucher || !root.HRCVoucher.printForm) return;
+        try { root.HRCVoucher.printForm(Object.assign({}, data.app, {status: card.status, __customerApplication: true}), data.attempt, card.chances || []); }
+        catch (e) { UI.toast('err', 'تعذّرت الطباعة', 'أعد المحاولة أو تواصل مع الشركة.'); }
+      });
+    });
     var again = document.getElementById('cp-again');
     if (again) again.addEventListener('click', cpReset);
     try { localStorage.setItem(CP_KEY, card.serial); } catch (e) { }
   }
 
   function cpReset() {
+    cpLookupGeneration++;
     var entry = document.getElementById('cp-entry');
     var host = document.getElementById('cp-result');
     if (host) { host.hidden = true; host.innerHTML = ''; }
@@ -668,17 +688,28 @@
       cpSay('الرقم لا يبدو باركود بطاقة — راجع الرقم المطبوع على وجه البطاقة.', true);
       return;
     }
+    var generation = ++cpLookupGeneration;
     var btn = document.getElementById('cp-go');
     if (btn) { btn.disabled = true; btn.textContent = 'جارٍ البحث…'; }
     cpSay('');
     Promise.resolve(Store.cardLookup(serial)).then(function (r) {
-      if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
+      if (generation !== cpLookupGeneration) return;
       if (!r || !r.ok) {
+        if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
         cpSay((r && r.error) || 'تعذّر العثور على البطاقة — تأكد من الرقم.', true);
         return;
       }
-      cpRenderDetails(r.card);
+      var card = r.card;
+      return Promise.all((card.chances || []).map(function (c) {
+        if (!c.jobCode || !c.selectedAt || c.slotStatus === 'empty') return Promise.resolve();
+        return Promise.resolve(Store.customerApplication(card.serial, c.no)).then(function (detail) { c.application = detail; }, function () { c.application = {ok:false}; });
+      })).then(function () {
+        if (generation !== cpLookupGeneration) return;
+        if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
+        cpRenderDetails(card);
+      });
     }).catch(function () {
+      if (generation !== cpLookupGeneration) return;
       if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
       cpSay('تعذّر الاتصال بقاعدة الشركة — تحقّق من الإنترنت وأعد المحاولة.', true);
     });

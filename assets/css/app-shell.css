@@ -308,6 +308,11 @@
   background: #fff; border: 1px dashed #e2e8f2; border-radius: 14px; padding: 14px;
 }
 .cp-empty-chance .ic { width: 16px; height: 16px; color: var(--gold-3); }
+.cp-employer { margin-top: 12px; padding: 14px; border: 1px solid #dce4f2; border-radius: 14px; background: #f7f9fd; }
+.cp-employer h4 { margin: 0 0 8px; color: var(--lapis-2); font-size: .88rem; }
+.cp-employer-row { display: grid; grid-template-columns: minmax(65px, auto) minmax(0, 1fr); gap: 8px; padding: 4px 0; font-size: .79rem; }
+.cp-employer-row span { overflow-wrap: anywhere; }
+.cp-print-form { margin-top: 10px; min-height: 44px; width: 100%; justify-content: center; }
 .cp-foot { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
 .cp-foot .btn { flex: 1 1 200px; justify-content: center; min-height: 46px; }
 @media (max-width: 760px) {
