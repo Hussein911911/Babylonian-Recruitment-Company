@@ -70,7 +70,7 @@
     if (!client || !client.auth) throw new Error('HRCCloudAuth: عميل سوبابيس مطلوب');
 
     /* ------------------------------ الدخول ------------------------------ */
-    function login(usernameOrEmail, password) {
+    function login(usernameOrEmail, password, onAuthenticated) {
       if (!looksUsable(usernameOrEmail)) {
         return Promise.resolve({ ok: false, code: 'bad_input', error: 'اسم المستخدم غير صالح' });
       }
@@ -95,6 +95,12 @@
           }
           if (!res || !res.data || !res.data.user) {
             return { ok: false, code: 'no_user', error: 'لم يُرجِع الخادم بيانات مستخدم' };
+          }
+          // The password is verified, so permitted read-only queries can start in
+          // parallel with staff-profile verification. Never expose them to the UI
+          // until that verification has also succeeded.
+          if (typeof onAuthenticated === 'function') {
+            try { onAuthenticated(res.data.user); } catch (_) { /* profile check remains authoritative */ }
           }
           return loadProfile(client, res.data.user).then(function (prof) {
             if (!prof) {

@@ -644,7 +644,7 @@
       }
       function showLoginErr(msg) {
         var el = document.getElementById('login-error');
-        if (el) { el.className = 'login-error'; el.innerHTML = '<svg class="ic"><use href="#i-alert"/></svg><span>' + msg + '</span>'; }
+        if (el) { el.className = 'login-error'; el.innerHTML = '<svg class="ic"><use href="#i-alert"/></svg><span>' + UI.esc(msg) + '</span>'; }
         UI.toast('err', 'فشل الدخول', msg);
       }
       function clearLoginErr() {
@@ -669,17 +669,14 @@
       }
 
       var cs = Store.cloudStatus ? Store.cloudStatus() : null;
-      /* متى كانت السحابة مُعدَّة فالدخول يمرّ بها حصراً (Supabase Auth + brc.staff).
-         المسار المحلي يبقى للتشغيل بلا إنترنت فقط، ولا يُسمح به متى كانت السحابة
-         متاحة (store.login يرفضه بنفسه أيضاً — حماية مزدوجة مقصودة).
-         ⚠️ إن كنا نعلم مسبقاً أن الاتصال ساقط (degraded) فلا معنى لانتظار طلب
-         شبكي محكوم عليه بالفشل: نُدخل الموظف محلياً فوراً مع بقاء التنبيه ظاهراً. */
-      if (cs && cs.configured && cs.state === 'on' && Store.signIn) { cloudLogin(); return; }
+      /* الإنتاج: Auth وملف الموظف إلزاميان، حتى عند تأخر الاتصال أو فشله.
+         الوضع المحلي الانتقالي يبقى محصوراً بما يسمح به إعداد enforceAuth. */
+      if (cs && cs.configured && Store.signIn && (cs.state === 'on' || (cs.enforceAuth && cs.willBoot))) { cloudLogin(); return; }
       localLogin();
 
       function cloudLogin() {
         busy(true, 'جارٍ التحقق…');
-        /* signInFast: يتحقّق من الحساب ويُظهر اللوحة فوراً، والبيانات تُجلب بعدها */
+        /* يتحقق من الحساب ويجلب بيانات الموظف بالتوازي، ولا يفتح بيانات قديمة. */
         (Store.signInFast || Store.signIn)(u, p).then(function (r) {
           busy(false, '');
           /* ✅ نجح الدخول السحابي */
@@ -702,7 +699,7 @@
           }
           /* ❌ لا سحابي ولا محلي — خطأ */
           showLoginErr((r && r.error) || 'اسم المستخدم أو كلمة المرور غير صحيحة.');
-        });
+        }).catch(function () { busy(false, ''); showLoginErr('تعذّر الاتصال بقاعدة الشركة. تحقق من الإنترنت وأعد المحاولة.'); });
       }
     });
     var logout = document.getElementById('btn-logout');
@@ -808,7 +805,10 @@
       el.style.cssText += ';background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d';
       el.innerHTML = '<b>لم يتم الاتصال بقاعدة الشركة.</b><br>' + UI.esc(st.error || '') +
         (st.detail ? '<br>' + UI.esc(st.detail) : '') +
-        '<br>سيعمل الدخول محلياً (وضع مؤقّت) — <a href="supabase-check.html" style="text-decoration:underline">افتح صفحة فحص الاتصال</a>.';
+        (st.enforceAuth ? '<br>الدخول يتطلب اتصالاً بحساب الشركة.' : '<br>يمكن تجربة الوضع المحلي المؤقت.') + ' — <a href="supabase-check.html" style="text-decoration:underline">افتح صفحة فحص الاتصال</a>.';
+    } else if (st.state === 'ready') {
+      el.style.cssText += ';background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a';
+      el.textContent = 'أدخل حساب الموظف؛ سيتم التحقق من الاتصال والبيانات عند الدخول.';
     } else if (st.state === 'on') {
       el.style.cssText += ';background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d';
       el.innerHTML = (st.role === 'staff'

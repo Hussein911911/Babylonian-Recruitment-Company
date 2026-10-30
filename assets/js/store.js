@@ -1789,7 +1789,7 @@
 
   var cloud = {
     client: null, sync: null, auth: null,
-    state: 'off',          // off | connecting | on | degraded
+    state: 'off',          // off | ready | connecting | on | degraded
     role: 'guest',         // staff | public | guest
     error: null, detail: null, failedTables: [],
     readOnly: false, applying: false, needsReload: false,
@@ -1972,8 +1972,15 @@
     if (!cloud.auth || !cloud.auth.sessionOnly) return loadFromCloud();
     return cloud.auth.sessionOnly().then(function (sess) {
       if (!sess || !sess.ok) {
-        /* بلا جلسة موظف: لا معنى لمحاولة قراءة brc.jobs/applicants — anon ممنوع
-           منها فتُرفض كلها. نبدأ من الواجهة العامة مباشرةً. */
+        /* بلا جلسة موظف لا نقرأ جداول الموظفين. في اللوحة لا حاجة أيضاً
+           لانتظار الوظائف العامة قبل السماح بالدخول. */
+        // The staff login screen does not need the public jobs feed before it
+        // can accept credentials. This is readiness, not proof of connectivity.
+        if (enforceAuth() && typeof document !== 'undefined' && document.getElementById('app-shell')) {
+          cloud.state = 'ready'; cloud.role = 'guest'; cloud.readOnly = true;
+          cloud.error = null; cloud.detail = null;
+          return cloudStatus();
+        }
         return publicBoot(null);
       }
       var pProfile = Promise.resolve(cloud.auth.profileFor(sess.session)).then(function (r) {
@@ -2029,11 +2036,11 @@
     return cloud.auditPromise;
   }
 
-  function loadFromCloud() {
+  function loadFromCloud(prefetched) {
     /* الجداول أولاً (سريعة)، ثم التقارير الثقيلة في الخلفية — لا في مسار الإقلاع */
     /* ⚡ سجل التدقيق (حتى ٢٠٠٠ صف بأحجام كبيرة) لا يدخل مسار الإقلاع: يُقرأ
        عند فتح «سجل التدقيق» أول مرة، وتبقى اللوحة تعمل بلا انتظاره. */
-    return root.HRCCloud.fetchAll(cloud.client,{workspace:true, deferReports:true, deferAudit:true}).then(function (cdb) {
+    return (prefetched || root.HRCCloud.fetchAll(cloud.client,{workspace:true, deferReports:true, deferAudit:true})).then(function (cdb) {
       var failed = (cdb.meta && cdb.meta.failedTables) || [];
       cloud.failedTables = failed;
       var coreFailed = failed.filter(function (t) { return CORE_TABLES.indexOf(t) >= 0; });
@@ -2419,27 +2426,54 @@
     });
   }
 
-  /* ⚡ دخول سريع (للّوحة): يتحقّق من الحساب ويُدخل الموظف **فوراً**، والبيانات
-     تُجلب بعد ذلك وتُحدَّث الواجهة تلقائياً عبر emit — بلا شاشة انتظار طويلة.
-     signIn الكامل بقي كما هو لمن يريد انتظار البيانات (والاختبارات). */
+  /* تسجيل الموظف: نتحقق من الملف ونقرأ مساحة العمل بالتوازي بعد Auth؛
+     لا تُعرض بيانات أو تُمنح جلسة قبل نجاح الأمرين. */
   function signInFast(username, password) {
     if (!cloudConfigured() || !canReadStaffTables() || !cloudWillBoot()) return signIn(username, password);
+    if (cloud.state === 'connecting' && cloud.bootPromise) {
+      return cloud.bootPromise.then(function () { return signInFast(username, password); });
+    }
     if (!cloud.client || !root.HRCCloudAuth) return signIn(username, password);
     var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
-    return auth.login(username, password).then(function (r) {
-      if (!r || !r.ok) return r || { ok: false, code: 'auth_failed', error: 'فشل الدخول' };
-      applyStaffSession(r.profile);
-      cloud.knownProfile = r.profile;
-      saveLocal();
-      emit();
-      cloud.bootPromise = null;
-      /* الجلب في الخلفية — لا يُعطّل ظهور اللوحة */
-      bootCloud().then(function () {
+    var prefetch = null;
+    return auth.login(username, password, function () {
+      // Auth is valid; staff verification and RLS-protected reads overlap.
+      // Do not adopt data or create an application session until both succeed.
+      prefetch = Promise.resolve().then(function () {
+        return root.HRCCloud.fetchAll(cloud.client, {workspace:true, deferReports:true, deferAudit:true});
+      });
+      prefetch.catch(function () {});
+    }).then(function (r) {
+      if (!r || !r.ok) {
+        // Auth can succeed while the staff row is inactive/missing: clear it.
+        if (prefetch && auth.logout) return auth.logout().catch(function () {}).then(function () { return r; });
+        return r || { ok: false, code: 'auth_failed', error: 'فشل الدخول' };
+      }
+      cloud.state = 'connecting'; cloud.role = 'guest'; cloud.readOnly = true;
+      notifyCloudStatus();
+      var work = loadFromCloud(prefetch).then(function (st) {
+        if (!st || st.state !== 'on' || st.role !== 'staff') {
+          return auth.logout().catch(function () {}).then(function () {
+            cloud.state = 'ready'; cloud.role = 'guest'; cloud.readOnly = true; notifyCloudStatus();
+            return { ok: false, code: 'data_unavailable', error: 'تم التحقق من الحساب، لكن تعذّر تحميل بيانات الشركة. تحقق من الاتصال وأعد المحاولة.' };
+          });
+        }
+        applyStaffSession(r.profile);
+        cloud.knownProfile = r.profile;
         audit('تسجيل دخول', 'auth', r.profile.username,
           'دخول عبر Supabase Auth (' + (r.profile.role === 'admin' ? 'مدير عام' : 'موظف') + ')');
         save(); emit();
-      }).catch(function () { });
-      return { ok: true, session: currentUser(), profile: r.profile, pending: true };
+        return { ok: true, session: currentUser(), profile: r.profile };
+      }).catch(function () {
+        return auth.logout().catch(function () {}).then(function () {
+          cloud.state = 'ready'; cloud.role = 'guest'; cloud.readOnly = true; notifyCloudStatus();
+          return { ok: false, code: 'data_unavailable', error: 'تعذّر تحميل بيانات الشركة. تحقق من الاتصال وأعد المحاولة.' };
+        });
+      });
+      cloud.bootPromise = work.then(function (result) {
+        cloud.bootPromise = null; notifyCloudStatus(); return result;
+      });
+      return cloud.bootPromise;
     });
   }
 

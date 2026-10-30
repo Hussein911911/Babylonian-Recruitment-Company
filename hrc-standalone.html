@@ -18680,7 +18680,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
   var cloud = {
     client: null, sync: null, auth: null,
-    state: 'off',          // off | connecting | on | degraded
+    state: 'off',          // off | ready | connecting | on | degraded
     role: 'guest',         // staff | public | guest
     error: null, detail: null, failedTables: [],
     readOnly: false, applying: false, needsReload: false,
@@ -18863,8 +18863,15 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (!cloud.auth || !cloud.auth.sessionOnly) return loadFromCloud();
     return cloud.auth.sessionOnly().then(function (sess) {
       if (!sess || !sess.ok) {
-        /* بلا جلسة موظف: لا معنى لمحاولة قراءة brc.jobs/applicants — anon ممنوع
-           منها فتُرفض كلها. نبدأ من الواجهة العامة مباشرةً. */
+        /* بلا جلسة موظف لا نقرأ جداول الموظفين. في اللوحة لا حاجة أيضاً
+           لانتظار الوظائف العامة قبل السماح بالدخول. */
+        // The staff login screen does not need the public jobs feed before it
+        // can accept credentials. This is readiness, not proof of connectivity.
+        if (enforceAuth() && typeof document !== 'undefined' && document.getElementById('app-shell')) {
+          cloud.state = 'ready'; cloud.role = 'guest'; cloud.readOnly = true;
+          cloud.error = null; cloud.detail = null;
+          return cloudStatus();
+        }
         return publicBoot(null);
       }
       var pProfile = Promise.resolve(cloud.auth.profileFor(sess.session)).then(function (r) {
@@ -18920,11 +18927,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     return cloud.auditPromise;
   }
 
-  function loadFromCloud() {
+  function loadFromCloud(prefetched) {
     /* الجداول أولاً (سريعة)، ثم التقارير الثقيلة في الخلفية — لا في مسار الإقلاع */
     /* ⚡ سجل التدقيق (حتى ٢٠٠٠ صف بأحجام كبيرة) لا يدخل مسار الإقلاع: يُقرأ
        عند فتح «سجل التدقيق» أول مرة، وتبقى اللوحة تعمل بلا انتظاره. */
-    return root.HRCCloud.fetchAll(cloud.client,{workspace:true, deferReports:true, deferAudit:true}).then(function (cdb) {
+    return (prefetched || root.HRCCloud.fetchAll(cloud.client,{workspace:true, deferReports:true, deferAudit:true})).then(function (cdb) {
       var failed = (cdb.meta && cdb.meta.failedTables) || [];
       cloud.failedTables = failed;
       var coreFailed = failed.filter(function (t) { return CORE_TABLES.indexOf(t) >= 0; });
@@ -19310,27 +19317,54 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     });
   }
 
-  /* ⚡ دخول سريع (للّوحة): يتحقّق من الحساب ويُدخل الموظف **فوراً**، والبيانات
-     تُجلب بعد ذلك وتُحدَّث الواجهة تلقائياً عبر emit — بلا شاشة انتظار طويلة.
-     signIn الكامل بقي كما هو لمن يريد انتظار البيانات (والاختبارات). */
+  /* تسجيل الموظف: نتحقق من الملف ونقرأ مساحة العمل بالتوازي بعد Auth؛
+     لا تُعرض بيانات أو تُمنح جلسة قبل نجاح الأمرين. */
   function signInFast(username, password) {
     if (!cloudConfigured() || !canReadStaffTables() || !cloudWillBoot()) return signIn(username, password);
+    if (cloud.state === 'connecting' && cloud.bootPromise) {
+      return cloud.bootPromise.then(function () { return signInFast(username, password); });
+    }
     if (!cloud.client || !root.HRCCloudAuth) return signIn(username, password);
     var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
-    return auth.login(username, password).then(function (r) {
-      if (!r || !r.ok) return r || { ok: false, code: 'auth_failed', error: 'فشل الدخول' };
-      applyStaffSession(r.profile);
-      cloud.knownProfile = r.profile;
-      saveLocal();
-      emit();
-      cloud.bootPromise = null;
-      /* الجلب في الخلفية — لا يُعطّل ظهور اللوحة */
-      bootCloud().then(function () {
+    var prefetch = null;
+    return auth.login(username, password, function () {
+      // Auth is valid; staff verification and RLS-protected reads overlap.
+      // Do not adopt data or create an application session until both succeed.
+      prefetch = Promise.resolve().then(function () {
+        return root.HRCCloud.fetchAll(cloud.client, {workspace:true, deferReports:true, deferAudit:true});
+      });
+      prefetch.catch(function () {});
+    }).then(function (r) {
+      if (!r || !r.ok) {
+        // Auth can succeed while the staff row is inactive/missing: clear it.
+        if (prefetch && auth.logout) return auth.logout().catch(function () {}).then(function () { return r; });
+        return r || { ok: false, code: 'auth_failed', error: 'فشل الدخول' };
+      }
+      cloud.state = 'connecting'; cloud.role = 'guest'; cloud.readOnly = true;
+      notifyCloudStatus();
+      var work = loadFromCloud(prefetch).then(function (st) {
+        if (!st || st.state !== 'on' || st.role !== 'staff') {
+          return auth.logout().catch(function () {}).then(function () {
+            cloud.state = 'ready'; cloud.role = 'guest'; cloud.readOnly = true; notifyCloudStatus();
+            return { ok: false, code: 'data_unavailable', error: 'تم التحقق من الحساب، لكن تعذّر تحميل بيانات الشركة. تحقق من الاتصال وأعد المحاولة.' };
+          });
+        }
+        applyStaffSession(r.profile);
+        cloud.knownProfile = r.profile;
         audit('تسجيل دخول', 'auth', r.profile.username,
           'دخول عبر Supabase Auth (' + (r.profile.role === 'admin' ? 'مدير عام' : 'موظف') + ')');
         save(); emit();
-      }).catch(function () { });
-      return { ok: true, session: currentUser(), profile: r.profile, pending: true };
+        return { ok: true, session: currentUser(), profile: r.profile };
+      }).catch(function () {
+        return auth.logout().catch(function () {}).then(function () {
+          cloud.state = 'ready'; cloud.role = 'guest'; cloud.readOnly = true; notifyCloudStatus();
+          return { ok: false, code: 'data_unavailable', error: 'تعذّر تحميل بيانات الشركة. تحقق من الاتصال وأعد المحاولة.' };
+        });
+      });
+      cloud.bootPromise = work.then(function (result) {
+        cloud.bootPromise = null; notifyCloudStatus(); return result;
+      });
+      return cloud.bootPromise;
     });
   }
 
@@ -24019,7 +24053,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       }
       function showLoginErr(msg) {
         var el = document.getElementById('login-error');
-        if (el) { el.className = 'login-error'; el.innerHTML = '<svg class="ic"><use href="#i-alert"/></svg><span>' + msg + '</span>'; }
+        if (el) { el.className = 'login-error'; el.innerHTML = '<svg class="ic"><use href="#i-alert"/></svg><span>' + UI.esc(msg) + '</span>'; }
         UI.toast('err', 'فشل الدخول', msg);
       }
       function clearLoginErr() {
@@ -24044,17 +24078,14 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       }
 
       var cs = Store.cloudStatus ? Store.cloudStatus() : null;
-      /* متى كانت السحابة مُعدَّة فالدخول يمرّ بها حصراً (Supabase Auth + brc.staff).
-         المسار المحلي يبقى للتشغيل بلا إنترنت فقط، ولا يُسمح به متى كانت السحابة
-         متاحة (store.login يرفضه بنفسه أيضاً — حماية مزدوجة مقصودة).
-         ⚠️ إن كنا نعلم مسبقاً أن الاتصال ساقط (degraded) فلا معنى لانتظار طلب
-         شبكي محكوم عليه بالفشل: نُدخل الموظف محلياً فوراً مع بقاء التنبيه ظاهراً. */
-      if (cs && cs.configured && cs.state === 'on' && Store.signIn) { cloudLogin(); return; }
+      /* الإنتاج: Auth وملف الموظف إلزاميان، حتى عند تأخر الاتصال أو فشله.
+         الوضع المحلي الانتقالي يبقى محصوراً بما يسمح به إعداد enforceAuth. */
+      if (cs && cs.configured && Store.signIn && (cs.state === 'on' || (cs.enforceAuth && cs.willBoot))) { cloudLogin(); return; }
       localLogin();
 
       function cloudLogin() {
         busy(true, 'جارٍ التحقق…');
-        /* signInFast: يتحقّق من الحساب ويُظهر اللوحة فوراً، والبيانات تُجلب بعدها */
+        /* يتحقق من الحساب ويجلب بيانات الموظف بالتوازي، ولا يفتح بيانات قديمة. */
         (Store.signInFast || Store.signIn)(u, p).then(function (r) {
           busy(false, '');
           /* ✅ نجح الدخول السحابي */
@@ -24077,7 +24108,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           }
           /* ❌ لا سحابي ولا محلي — خطأ */
           showLoginErr((r && r.error) || 'اسم المستخدم أو كلمة المرور غير صحيحة.');
-        });
+        }).catch(function () { busy(false, ''); showLoginErr('تعذّر الاتصال بقاعدة الشركة. تحقق من الإنترنت وأعد المحاولة.'); });
       }
     });
     var logout = document.getElementById('btn-logout');
@@ -24183,7 +24214,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       el.style.cssText += ';background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d';
       el.innerHTML = '<b>لم يتم الاتصال بقاعدة الشركة.</b><br>' + UI.esc(st.error || '') +
         (st.detail ? '<br>' + UI.esc(st.detail) : '') +
-        '<br>سيعمل الدخول محلياً (وضع مؤقّت) — <a href="supabase-check.html" style="text-decoration:underline">افتح صفحة فحص الاتصال</a>.';
+        (st.enforceAuth ? '<br>الدخول يتطلب اتصالاً بحساب الشركة.' : '<br>يمكن تجربة الوضع المحلي المؤقت.') + ' — <a href="supabase-check.html" style="text-decoration:underline">افتح صفحة فحص الاتصال</a>.';
+    } else if (st.state === 'ready') {
+      el.style.cssText += ';background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a';
+      el.textContent = 'أدخل حساب الموظف؛ سيتم التحقق من الاتصال والبيانات عند الدخول.';
     } else if (st.state === 'on') {
       el.style.cssText += ';background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d';
       el.innerHTML = (st.role === 'staff'
