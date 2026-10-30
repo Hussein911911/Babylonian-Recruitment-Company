@@ -3886,6 +3886,31 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
 /* Short/landscape windows keep every control reachable via drawer scrolling. */
 @media screen and (max-height:560px){.notification-drawer{display:block;overflow-y:auto;overscroll-behavior:contain}.notification-list{overflow:visible;max-height:none}.notification-header{padding-block:12px}.notification-tools{padding-block:10px}.notification-footer{padding-block:10px}}
 
+/* Compact, tappable notification rows; full details/actions live in the case dialog. */
+#notification-center .notification-list{background:#fff;padding:2px 18px 14px}
+#notification-center .notice-group{padding:15px 0 7px;margin:0}
+#notification-center .notice-group:not(:first-child){margin-top:8px;padding-top:16px}
+#notification-center .notice-group p{display:none}
+#notification-center .notice-item[data-section],#notification-center .notice-item[data-section].notice-unread{
+ display:block;margin:0;padding:0;border:0;border-bottom:1px solid #e8edf3;border-radius:0;
+ background:transparent;box-shadow:none;color:#18334a
+}
+#notification-center .notice-row{width:100%;min-width:0;display:grid;grid-template-columns:36px minmax(0,1fr) 10px;align-items:center;gap:11px;
+ border:0;background:transparent;border-radius:8px;padding:12px 2px;color:#18334a;text-align:start;font:inherit;cursor:pointer}
+#notification-center .notice-row:hover{background:#f3f6fa}
+#notification-center .notice-row:focus-visible{outline:3px solid #a67d22;outline-offset:-3px}
+#notification-center .notice-row .notice-icon{width:36px;height:36px;border-radius:50%;background:var(--notice-chip);color:var(--notice-ink)}
+#notification-center .notice-row .notice-content{display:block;min-width:0}
+#notification-center .notice-row .notice-heading{display:flex;align-items:baseline;gap:8px;min-width:0}
+#notification-center .notice-title{display:block;min-width:0;flex:1;font-size:13px;line-height:1.55;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#18334a}
+#notification-center .notice-unread .notice-title{font-weight:900}
+#notification-center .notice-row time{display:block;flex:none;max-width:42%;font-size:10px;line-height:1.4;color:#718198;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#notification-center .notice-summary{display:block;margin-top:2px;font-size:11px;line-height:1.6;color:#65768c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#notification-center .notice-row .notice-dot{width:8px;height:8px;background:var(--notice-accent)}
+#notification-center .notice-chevron{font-size:20px;color:#a1aebe;line-height:1}
+@media screen and (max-width:600px){#notification-center .notification-list{padding-inline:12px}#notification-center .notice-row{gap:8px}#notification-center .notice-row time{max-width:38%}}
+@media (forced-colors:active){#notification-center .notice-item[data-section]{border-bottom:1px solid CanvasText}#notification-center .notice-row:focus-visible{outline:3px solid Highlight}}
+
 /* ===========================================================================
  *  HRC — محرّر صورة الوظيفة (نموذج إضافة/تعديل وظيفة في لوحة الموظفين)
  *  ---------------------------------------------------------------------------
@@ -23399,12 +23424,21 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     document.addEventListener('hrc:notification-open', function (e) {
       if (!Store.currentUser()) return;
       var n = e.detail || {};
+      // افتح القرار نفسه المستخدم في قسم الحجوزات، للشاغر والفرصة المحددين.
+      // حالة الإعلان العامة قد تكون متاحة أو مغلقة مع بقاء شواغر بانتظار القرار.
+      if (n.view === 'holds' && n.jobCode && n.serial && n.attemptNo) {
+        var target = Store.getAttempts(n.serial).find(function (t) {
+          return Number(t.no) === Number(n.attemptNo) && t.jobCode === n.jobCode &&
+            ['reserved', 'critical', 'hiring'].indexOf(t.slotStatus) >= 0;
+        });
+        if (!target || !Store.getJob(n.jobCode)) {
+          UI.toast('info', 'تحدثت الحالة', 'هذا الحجز لم يعد متاحاً لاتخاذ إجراء.'); return;
+        }
+        setView('holds'); openHoldsModal(n.jobCode, n.serial, n.attemptNo); return;
+      }
       if(n.serial && Store.getApplicant(n.serial)){ attemptsModal(n.serial); return; }
       if (n.jobCode) {
         var job = Store.getJob(n.jobCode);
-        if (n.view === 'holds' && job && ['reserved', 'hiring'].indexOf(job.status) >= 0) {
-          setView('holds'); openHoldsModal(n.jobCode); return;
-        }
         state.j = { q: n.jobCode, status: 'all', governorate: 'all', shift: 'all' };
         document.getElementById('jq').value = n.jobCode;
         ['j-status', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });
@@ -26423,13 +26457,16 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           heading = '<li role="presentation" class="notice-group" data-section="' + n.section + '"><h3>' + UI.esc(section.label) + '<span>' + count + '</span></h3><p>' + UI.esc(section.hint) + '</p></li>';
         }
         var icon = n.section === 'alert' ? 'alert' : n.kind === 'booking' ? 'hourglass' : n.kind === 'decision' ? 'briefcase' : 'refresh';
-        return heading + '<li data-section="' + n.section + '" class="notice-item ' + (read[hashes[n.id]] ? '' : 'notice-unread') + '"><div class="notice-icon">' + UI.ic(icon) + '</div><div class="notice-content">' +
-          '<div class="notice-tags"><span class="notice-priority">' + UI.esc(section.label) + '</span></div><div class="notice-heading"><h3>' + UI.esc(n.title) + '</h3>' + ('<span class="notice-state">' + (read[hashes[n.id]] ? 'مقروء' : '<span class="notice-dot" aria-hidden="true"></span>غير مقروء') + '</span>') + '</div>' +
-          (n.jobCode ? '<p class="notice-job"><bdi>' + UI.esc(n.jobCode) + '</bdi> · ' + UI.esc(n.jobTitle) + '</p>' : '') +
-          '<p>' + UI.esc(n.body) + '</p>' + (n.reason ? '<p class="notice-reason"><strong>السبب:</strong> ' + UI.esc(n.reason) + '</p>' : '') +
-          '<time datetime="' + UI.esc(n.at) + '">' + UI.esc(Store.fmtDateTime(n.at)) + '</time><div class="notice-actions">' +
-          '<button type="button" class="btn btn-outline btn-sm" data-notice-open="' + UI.esc(n.id) + '">عرض التفاصيل</button>' +
-          (!read[hashes[n.id]] ? '<button type="button" class="btn btn-ghost btn-sm" data-notice-read="' + UI.esc(n.id) + '">تحديد كمقروء</button>' : '') + '</div></div></li>';
+        var unreadItem = !read[hashes[n.id]];
+        var summaryText = n.jobCode ? (n.jobTitle || n.jobCode) + ' · ' + (n.kind === 'decision' ? 'قرار صاحب العمل بانتظار مراجعتك' : n.kind === 'alert' ? 'انتهت المهلة ويحتاج الحجز قراراً' : 'حجز بانتظار نتيجة المقابلة') : n.body;
+        return heading + '<li data-section="' + n.section + '" class="notice-item ' + (unreadItem ? 'notice-unread' : '') + '">' +
+          '<button type="button" class="notice-row" data-notice-open="' + UI.esc(n.id) + '">' +
+          '<span class="notice-icon">' + UI.ic(icon) + '</span><span class="notice-content">' +
+          '<span class="notice-heading"><span class="notice-title">' + UI.esc(n.title) + '</span>' +
+          '<time datetime="' + UI.esc(n.at) + '">' + UI.esc(Store.fmtDate(n.at)) + '</time></span>' +
+          '<span class="notice-summary">' + UI.esc(summaryText) + '</span>' +
+          '<span class="sr-only">' + UI.esc(section.label) + '، ' + (unreadItem ? 'غير مقروء' : 'مقروء') + '، اضغط لعرض التفاصيل والإجراءات</span></span>' +
+          (unreadItem ? '<span class="notice-dot" aria-hidden="true"></span>' : '<span class="notice-chevron" aria-hidden="true">‹</span>') + '</button></li>';
       }).join('') : '<li class="notice-empty">' + UI.ic('check') + '<h3>كل شيء مرتب</h3><p>ماكو إشعارات بهذا التصنيف حالياً.</p></li>';
       return true;
     }

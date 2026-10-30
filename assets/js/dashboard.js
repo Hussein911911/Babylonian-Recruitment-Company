@@ -51,12 +51,21 @@
     document.addEventListener('hrc:notification-open', function (e) {
       if (!Store.currentUser()) return;
       var n = e.detail || {};
+      // افتح القرار نفسه المستخدم في قسم الحجوزات، للشاغر والفرصة المحددين.
+      // حالة الإعلان العامة قد تكون متاحة أو مغلقة مع بقاء شواغر بانتظار القرار.
+      if (n.view === 'holds' && n.jobCode && n.serial && n.attemptNo) {
+        var target = Store.getAttempts(n.serial).find(function (t) {
+          return Number(t.no) === Number(n.attemptNo) && t.jobCode === n.jobCode &&
+            ['reserved', 'critical', 'hiring'].indexOf(t.slotStatus) >= 0;
+        });
+        if (!target || !Store.getJob(n.jobCode)) {
+          UI.toast('info', 'تحدثت الحالة', 'هذا الحجز لم يعد متاحاً لاتخاذ إجراء.'); return;
+        }
+        setView('holds'); openHoldsModal(n.jobCode, n.serial, n.attemptNo); return;
+      }
       if(n.serial && Store.getApplicant(n.serial)){ attemptsModal(n.serial); return; }
       if (n.jobCode) {
         var job = Store.getJob(n.jobCode);
-        if (n.view === 'holds' && job && ['reserved', 'hiring'].indexOf(job.status) >= 0) {
-          setView('holds'); openHoldsModal(n.jobCode); return;
-        }
         state.j = { q: n.jobCode, status: 'all', governorate: 'all', shift: 'all' };
         document.getElementById('jq').value = n.jobCode;
         ['j-status', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });

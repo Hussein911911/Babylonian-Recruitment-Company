@@ -137,13 +137,16 @@
           heading = '<li role="presentation" class="notice-group" data-section="' + n.section + '"><h3>' + UI.esc(section.label) + '<span>' + count + '</span></h3><p>' + UI.esc(section.hint) + '</p></li>';
         }
         var icon = n.section === 'alert' ? 'alert' : n.kind === 'booking' ? 'hourglass' : n.kind === 'decision' ? 'briefcase' : 'refresh';
-        return heading + '<li data-section="' + n.section + '" class="notice-item ' + (read[hashes[n.id]] ? '' : 'notice-unread') + '"><div class="notice-icon">' + UI.ic(icon) + '</div><div class="notice-content">' +
-          '<div class="notice-tags"><span class="notice-priority">' + UI.esc(section.label) + '</span></div><div class="notice-heading"><h3>' + UI.esc(n.title) + '</h3>' + ('<span class="notice-state">' + (read[hashes[n.id]] ? 'مقروء' : '<span class="notice-dot" aria-hidden="true"></span>غير مقروء') + '</span>') + '</div>' +
-          (n.jobCode ? '<p class="notice-job"><bdi>' + UI.esc(n.jobCode) + '</bdi> · ' + UI.esc(n.jobTitle) + '</p>' : '') +
-          '<p>' + UI.esc(n.body) + '</p>' + (n.reason ? '<p class="notice-reason"><strong>السبب:</strong> ' + UI.esc(n.reason) + '</p>' : '') +
-          '<time datetime="' + UI.esc(n.at) + '">' + UI.esc(Store.fmtDateTime(n.at)) + '</time><div class="notice-actions">' +
-          '<button type="button" class="btn btn-outline btn-sm" data-notice-open="' + UI.esc(n.id) + '">عرض التفاصيل</button>' +
-          (!read[hashes[n.id]] ? '<button type="button" class="btn btn-ghost btn-sm" data-notice-read="' + UI.esc(n.id) + '">تحديد كمقروء</button>' : '') + '</div></div></li>';
+        var unreadItem = !read[hashes[n.id]];
+        var summaryText = n.jobCode ? (n.jobTitle || n.jobCode) + ' · ' + (n.kind === 'decision' ? 'قرار صاحب العمل بانتظار مراجعتك' : n.kind === 'alert' ? 'انتهت المهلة ويحتاج الحجز قراراً' : 'حجز بانتظار نتيجة المقابلة') : n.body;
+        return heading + '<li data-section="' + n.section + '" class="notice-item ' + (unreadItem ? 'notice-unread' : '') + '">' +
+          '<button type="button" class="notice-row" data-notice-open="' + UI.esc(n.id) + '">' +
+          '<span class="notice-icon">' + UI.ic(icon) + '</span><span class="notice-content">' +
+          '<span class="notice-heading"><span class="notice-title">' + UI.esc(n.title) + '</span>' +
+          '<time datetime="' + UI.esc(n.at) + '">' + UI.esc(Store.fmtDate(n.at)) + '</time></span>' +
+          '<span class="notice-summary">' + UI.esc(summaryText) + '</span>' +
+          '<span class="sr-only">' + UI.esc(section.label) + '، ' + (unreadItem ? 'غير مقروء' : 'مقروء') + '، اضغط لعرض التفاصيل والإجراءات</span></span>' +
+          (unreadItem ? '<span class="notice-dot" aria-hidden="true"></span>' : '<span class="notice-chevron" aria-hidden="true">‹</span>') + '</button></li>';
       }).join('') : '<li class="notice-empty">' + UI.ic('check') + '<h3>كل شيء مرتب</h3><p>ماكو إشعارات بهذا التصنيف حالياً.</p></li>';
       return true;
     }
