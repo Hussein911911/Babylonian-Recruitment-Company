@@ -3,6 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script data-phone-viewport>
+/* Some phone browsers request a desktop-width viewport. Keep the application
+   readable on a small touch screen, without disabling the user's zoom. */
+(function () {
+  var meta = document.querySelector('meta[name="viewport"]');
+  var phone = (navigator.maxTouchPoints > 0 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches));
+  var sw = window.screen && window.screen.width;
+  if (!meta || !phone || !sw || sw > 600 || window.innerWidth < sw * 1.35) return;
+  document.documentElement.classList.add('phone-wide-viewport');
+  function fitPhone() {
+    var width = window.screen && window.screen.width;
+    if (!width || width > 900) return;
+    meta.setAttribute('content', 'width=' + width + ', initial-scale=1');
+    // Some browsers ignore viewport metadata in desktop mode. In that case
+    // enlarge the application itself to restore a phone-sized layout.
+    setTimeout(function () {
+      var ratio = window.innerWidth / width;
+      document.documentElement.classList.toggle('phone-viewport-fallback', ratio > 1.35);
+      document.documentElement.style.setProperty('--phone-fit', String(Math.min(3, Math.max(1, ratio))));
+    }, 200);
+  }
+  fitPhone();
+  window.addEventListener('orientationchange', function () { setTimeout(fitPhone, 150); });
+})();
+</script>
 <title>تقديم على وظيفة | منصة مكسب للتوظيف</title>
 <meta name="theme-color" content="#0d2247">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon-mkseb.svg">
@@ -1824,6 +1849,12 @@ body{
       box-shadow:0 34px 90px rgba(13,34,71,.24);
     }
   }
+
+  /* If the browser keeps its desktop viewport despite the meta setting, the
+     landing page should at least use the available width and avoid four tiny columns. */
+  html.phone-viewport-fallback .app{zoom:var(--phone-fit,1)}
+  html.phone-wide-viewport .mk-screen{max-width:none;border:0;border-radius:0;box-shadow:none}
+  html.phone-wide-viewport .mk-feats{grid-template-columns:repeat(2,minmax(0,1fr))}
 
   /* شريط علوي كحلي: هوية المنصة */
   .mk-top{
