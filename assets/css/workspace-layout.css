@@ -76,3 +76,21 @@
  .bar-row .bar-track { grid-column:1/-1;grid-row:2; }
  .bar-row .val { grid-column:2;grid-row:1;white-space:nowrap; }
 }
+
+/* Internal jobs: preserve whole words and numbers in horizontal rows. Long
+   content scrolls within its own region instead of widening the page. */
+@media screen {
+ .jobs-scroll-hint { margin:0 0 10px;color:#53657a;font-size:.78rem;line-height:1.7; }
+ .jobs-table-scroll,.job-details-scroll { max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch; }
+ .jobs-table-scroll:focus-visible,.job-details-scroll:focus-visible,.job-details-modal .modal-head h3:focus-visible { outline:2px solid #326cae;outline-offset:-2px; }
+ table.data.jobs-workspace-table { width:max-content;min-width:100%;table-layout:auto; }
+ table.data.jobs-workspace-table :is(th,td) { white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb; }
+ table.data.jobs-workspace-table :is(.mono,.badge) { white-space:nowrap;word-break:normal;overflow-wrap:normal; }
+ table.data.jobs-workspace-table .cell-actions { min-width:max-content;flex-wrap:nowrap; }
+ table.data.jobs-workspace-table .hold-timer { flex-wrap:nowrap; }
+ .job-details-scroll .job-details-grid { display:grid;grid-template-columns:minmax(max-content,1fr);width:max-content;min-width:100%; }
+ .job-details-grid .data-item { display:grid;grid-template-columns:160px max-content;align-items:baseline;gap:10px 16px; }
+ .job-details-grid .data-item :is(.k,.v) { min-width:0;max-width:none;white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb; }
+ .job-details-modal .modal-head h3 { max-width:100%;white-space:nowrap;overflow-x:auto;overflow-wrap:normal;word-break:normal; }
+ #job-form :is(label,input,select,textarea) { writing-mode:horizontal-tb;word-break:normal;overflow-wrap:normal; }
+}

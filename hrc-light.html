@@ -4115,6 +4115,24 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
  .bar-row .val { grid-column:2;grid-row:1;white-space:nowrap; }
 }
 
+/* Internal jobs: preserve whole words and numbers in horizontal rows. Long
+   content scrolls within its own region instead of widening the page. */
+@media screen {
+ .jobs-scroll-hint { margin:0 0 10px;color:#53657a;font-size:.78rem;line-height:1.7; }
+ .jobs-table-scroll,.job-details-scroll { max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch; }
+ .jobs-table-scroll:focus-visible,.job-details-scroll:focus-visible,.job-details-modal .modal-head h3:focus-visible { outline:2px solid #326cae;outline-offset:-2px; }
+ table.data.jobs-workspace-table { width:max-content;min-width:100%;table-layout:auto; }
+ table.data.jobs-workspace-table :is(th,td) { white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb; }
+ table.data.jobs-workspace-table :is(.mono,.badge) { white-space:nowrap;word-break:normal;overflow-wrap:normal; }
+ table.data.jobs-workspace-table .cell-actions { min-width:max-content;flex-wrap:nowrap; }
+ table.data.jobs-workspace-table .hold-timer { flex-wrap:nowrap; }
+ .job-details-scroll .job-details-grid { display:grid;grid-template-columns:minmax(max-content,1fr);width:max-content;min-width:100%; }
+ .job-details-grid .data-item { display:grid;grid-template-columns:160px max-content;align-items:baseline;gap:10px 16px; }
+ .job-details-grid .data-item :is(.k,.v) { min-width:0;max-width:none;white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb; }
+ .job-details-modal .modal-head h3 { max-width:100%;white-space:nowrap;overflow-x:auto;overflow-wrap:normal;word-break:normal; }
+ #job-form :is(label,input,select,textarea) { writing-mode:horizontal-tb;word-break:normal;overflow-wrap:normal; }
+}
+
 </style>
 </head>
 <body>
@@ -5103,9 +5121,10 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           </div>
 
           <!-- الجدول -->
+          <p class="jobs-scroll-hint">اسحب الجدول أفقياً لعرض جميع تفاصيل الوظيفة والإجراءات.</p>
           <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
-              <table class="data" style="margin:0">
+            <div class="table-scroll jobs-table-scroll" tabindex="0" role="region" aria-label="جدول الوظائف — مرّر أفقياً لعرض جميع التفاصيل">
+              <table class="data jobs-workspace-table" style="margin:0">
                 <thead>
                   <tr>
                     <th>صورة</th><th>الكود</th><th>الوظيفة</th><th>المحافظة</th><th>الأجر الشهري</th>
@@ -24525,32 +24544,32 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       var v=Store.vacancySummary(j);
       var holdCell = '—';
       if (j.status === 'hiring') {
-        holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div><span class="badge info">جاري التوظيف — قرار الشركة</span>';
+        holdCell = '<span class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b> · </span><span class="badge info">جاري التوظيف — قرار الشركة</span>';
       } else if (j.status === 'reserved' && j.critical) {
         var rejT = Store.getAttempts(j.reservedBy).filter(function (x) {
           return x.jobId === j.id && x.slotStatus === 'critical';
         })[0];
-        holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div>' +
+        holdCell = '<span class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b> · </span>' +
           (rejT && rejT.employerDecision === 'reject'
-            ? '<span class="badge danger">رفض صاحب العمل — معلّقة</span><div class="tiny muted">السبب: ' + UI.esc(rejT.reason || '—') + '</div>'
+            ? '<span class="badge danger">رفض صاحب العمل — معلّقة</span><span class="tiny muted"> · السبب: ' + UI.esc(rejT.reason || '—') + '</span>'
             : '<span class="badge danger">حرجة — قرار مطلوب</span>');
       } else if (j.status === 'reserved' && j.holdExpiresAt) {
-        holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div>' + UI.holdHtml(j.holdExpiresAt, { withDate: false });
+        holdCell = '<span class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b> · </span>' + UI.holdHtml(j.holdExpiresAt, { withDate: false });
       }
-      if(Number(j.vacancies||1)>1)holdCell='<div class="tiny">'+v.available+' متاح · '+v.held+' محجوز · '+v.filled+' ممتلئ<br>المجموع '+v.total+'</div>';
+      if(Number(j.vacancies||1)>1)holdCell='<div class="tiny">'+v.available+' متاح · '+v.held+' محجوز · '+v.filled+' ممتلئ · المجموع '+v.total+'</div>';
       var imageCell = j.imageUrl
         ? '<span class="job-cell-photo" style="--img:url(&quot;' + UI.esc(j.imageUrl) + '&quot;)"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '"></span>'
         : '<span class="job-cell-photo is-empty"><svg class="ic" style="width:18px;height:18px;color:#8fa0c4"><use href="#i-briefcase"/></svg></span>';
       return '<tr>' +
         '<td>' + imageCell + '</td>' +
         '<td><span class="chip chip-code mono" style="font-size:.8rem">' + UI.esc(j.code) + '</span></td>' +
-        '<td><b style="color:var(--lapis-2)">' + UI.esc(j.title) + '</b><div class="tiny muted" style="margin-top:2px">' + UI.esc(j.category) + '</div></td>' +
+        '<td><b style="color:var(--lapis-2)">' + UI.esc(j.title) + '</b> <span class="tiny muted"> · ' + UI.esc(j.category) + '</span></td>' +
         '<td><span style="font-weight:600">' + UI.esc(j.governorate || '—') + '</span></td>' +
-        '<td class="nowrap tiny"><b>' + Store.money(j.salaryMin) + '</b><br><span class="muted">إلى ' + Store.money(j.salaryMax) + '</span></td>' +
+        '<td class="nowrap tiny"><b>' + Store.money(j.salaryMin) + '</b> <span class="muted">إلى ' + Store.money(j.salaryMax) + '</span></td>' +
         '<td class="tiny"><span style="background:#eef1f7;padding:3px 8px;border-radius:6px;font-weight:600">' + UI.esc(j.shift) + '</span></td>' +
         '<td>' + UI.jobBadge(j.status) + '</td>' +
         '<td>' + holdCell + '</td>' +
-        '<td class="tiny"><b>' + UI.esc(j.employer.name) + '</b><br><span class="mono" dir="ltr">' + UI.esc(j.employer.phone) + '</span></td>' +
+        '<td class="tiny"><b>' + UI.esc(j.employer.name) + '</b> <span class="mono" dir="ltr">' + UI.esc(j.employer.phone) + '</span></td>' +
         '<td><div class="cell-actions">' +
           '<button class="btn btn-outline btn-sm" data-job-edit="' + UI.esc(j.code) + '">' + UI.ic('edit') + ' تعديل</button>' +
           (Number(j.vacancies||1)>1&&v.held
@@ -25989,17 +26008,16 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var j = Store.getJob(code);
     if (!j) return;
     var attempts = Store.db().attempts.filter(function (t) { return t.jobCode === code; });
-    var body = '<div class="data-grid mb-3">' +
+    var body = '<p class="jobs-scroll-hint">اسحب التفاصيل أفقياً لقراءة النص الكامل عند الحاجة.</p><div class="job-details-scroll" tabindex="0" role="region" aria-label="تفاصيل الوظيفة — مرّر أفقياً لعرض النص الكامل"><div class="data-grid job-details-grid mb-3">' +
       '<div class="data-item"><div class="k">الحالة</div><div class="v">' + CFG.jobStatus[j.status].ar + '</div></div>' +
       '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || '—') + '</div></div>' +
-      '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || 'بابل') + '</div></div>' +
       '<div class="data-item"><div class="k">الأجر</div><div class="v">' + Store.money(j.salaryMin) + ' - ' + Store.money(j.salaryMax) + '</div></div>' +
       '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
       '<div class="data-item"><div class="k">صاحب العمل (داخلي)</div><div class="v">' + UI.esc(j.employer.name) + '</div></div>' +
       '<div class="data-item"><div class="k">هاتفه (داخلي)</div><div class="v mono" dir="ltr">' + UI.esc(j.employer.phone) + '</div></div>' +
       '<div class="data-item" style="grid-column:1/-1"><div class="k">العنوان (داخلي)</div><div class="v">' + UI.esc(j.employer.address) + '</div></div>' +
       '<div class="data-item" style="grid-column:1/-1"><div class="k">مكان المقابلة</div><div class="v">' + UI.esc(j.interviewLocation) + '</div></div>' +
-      '</div>' +
+      '</div></div>' +
       (j.status === 'reserved' && j.holdExpiresAt
         ? '<div class="panel" style="background:#fdf1d8;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
           '<p class="mb-0 small">' + UI.ic('hourglass') + ' محجوزة للبطاقة <b class="mono">' + UI.esc(j.reservedBy) + '</b> — ' + UI.holdHtml(j.holdExpiresAt) + '</p></div></div>' : '') +
@@ -26019,6 +26037,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           (j.status === 'available' ? '<button class="btn btn-gold" id="q-assign">' + UI.ic('user-plus') + ' ترشيح</button>'
             : '<button class="btn btn-ok" id="q-reopen">إعادة تفعيل</button>')),
       onMount: function (box, close) {
+        box.classList.add('job-details-modal');
+        var heading = box.querySelector('.modal-head h3');
+        if (heading) heading.tabIndex = 0;
         box.querySelector('#q-edit').addEventListener('click', function () { close(); jobModal(code); });
         var a = box.querySelector('#q-assign'); if (a) a.addEventListener('click', function () { close(); pickApplicantModal(code); });
         var h = box.querySelector('#q-hold'); if (h) h.addEventListener('click', function () { close(); openHoldsModal(code); });
