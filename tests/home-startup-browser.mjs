@@ -49,4 +49,14 @@ try {
    await ctx.close();console.log(`PASS ${path} JS ${javascriptEnabled?'on':'off'}`);
   }
  }
+ // Old printed QR links, including retired roles, must open the current application.
+ for (const role of ['', 'pos', 'employer']) {
+  const ctx=await browser.newContext({viewport:{width:375,height:812},serviceWorkers:'block'}),page=await ctx.newPage();
+  await page.route('**/*',r=>r.request().url().startsWith(base)?r.continue():r.abort());
+  const serial='HRC-BC-000120';
+  await page.goto(base+'index.html'+(role?'?role='+role:'')+'#card='+serial,{waitUntil:'domcontentloaded'}).catch(()=>{});
+  await page.waitForURL(url=>url.pathname.endsWith('/apply.html')&&url.searchParams.get('form')===serial);
+  assert.equal(new URL(page.url()).searchParams.get('form'),serial);
+  await ctx.close();console.log('PASS old QR link redirects to apply:',role||'no role');
+ }
 } finally {await browser.close();}
