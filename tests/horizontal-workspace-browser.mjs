@@ -60,6 +60,15 @@ async function open(page,selector,label){
  const trigger=page.locator(selector).first();assert.ok(await trigger.count(),'Missing fixture trigger '+label);
  await trigger.evaluate(b=>b.click());const modal=page.locator('.modal-backdrop').last();await modal.waitFor();await review(page,label);
  if(label.includes('verify')){const link=modal.locator('.card-link-row .v');check(label+' URL has one horizontal line',await link.evaluate(e=>getComputedStyle(e).whiteSpace==='nowrap'&&e.tabIndex===0));}
+ if(label.includes('verify'))check(label+' verification values stay horizontal and focusable',await modal.locator('.card-verification .data-item:not(.card-link-row) .v').evaluateAll(xs=>xs.length===3&&xs.every(x=>x.tabIndex===0&&getComputedStyle(x).whiteSpace==='nowrap')));
+ const details=modal.locator('.staff-details-scroll');
+ for(const area of await details.all()){
+  const data=await area.evaluate(e=>({tab:e.tabIndex,scroll:e.scrollWidth>e.clientWidth,rows:[...e.querySelectorAll('.data-item')].map(row=>{const k=row.querySelector('.k'),v=row.querySelector('.v');return {label:k.textContent,value:v.textContent,horizontal:getComputedStyle(k).whiteSpace==='nowrap'&&getComputedStyle(v).whiteSpace==='nowrap'&&Math.abs(k.getBoundingClientRect().top-v.getBoundingClientRect().top)<7}})}));
+  check(label+' details in horizontal label/value rows',data.tab===0&&data.rows.length>0&&data.rows.every(x=>x.horizontal),JSON.stringify(data));
+  if(data.scroll)check(label+' details scroll to far end',await area.evaluate(e=>{e.scrollLeft=-e.scrollWidth;const moved=Math.abs(e.scrollLeft)>1;e.scrollLeft=0;return moved}));
+ }
+ if(label.includes('attempts')){const area=modal.locator('.attempts-stack');const info=await area.evaluate(e=>({tab:e.tabIndex,scroll:e.scrollWidth>e.clientWidth,slots:[...e.querySelectorAll('.attempt-slot')].every(x=>getComputedStyle(x).gridTemplateColumns.split(' ').length===4&&getComputedStyle(x.querySelector('.job')).whiteSpace==='nowrap')}));check(label+' opportunities in horizontal rows',info.tab===0&&info.slots,JSON.stringify(info));if(info.scroll)check(label+' opportunities scroll to actions',await area.evaluate(e=>{e.scrollLeft=-e.scrollWidth;let moved=Math.abs(e.scrollLeft)>1;e.scrollLeft=0;return moved}));}
+
  if(label.includes('verify')||label.includes('attempts'))await modal.screenshot({path:new URL(label.replace(/[^\w-]/g,'_')+'.png',out).pathname});
  await modal.locator('[data-close]').first().click();await modal.waitFor({state:'detached'});
 }
@@ -76,11 +85,24 @@ try{
    critical.status='reserved';critical.reservedBy=slot.serial;critical.critical=true;critical.holdExpiresAt=null;
    Object.assign(slot,{slotStatus:'critical',jobCode:critical.code,jobId:critical.id,jobTitle:critical.title,employerDecision:'reject',reason:'سبب رفض طويل لاختبار وضوح النص وقراءة الموظف لكامل التفاصيل بدون تقطيع الحروف'});
    for(const t of s.db().attempts)if(t.jobCode)t.jobTitle+=' ومتابعة معاملات الموظفين وتنظيم المراجعات';
+   const sample=s.db().applicants.find(a=>a.fullName);if(sample)s.db().applicants.push({...sample,serial:'HRC-BC-987654',status:'pending',requestedCode:'HRC-1042',fullName:'باحث اختبار اسم طويل بدون حفظ',address:'عنوان طويل جداً لطلب اختبار القراءة الأفقية'});
    HRCRefresh();});
   const before=await page.evaluate(()=>JSON.stringify([HRCStore.db().jobs,HRCStore.db().applicants,HRCStore.db().attempts]));
   const key=role+'-'+width+'x'+height;
   for(const view of role==='admin'?['overview','jobs','applicants','holds','audit','finance','settings']:['overview','jobs','holds']){
    await page.locator('#side-nav [data-view="'+view+'"]').evaluate(b=>b.click());await review(page,key+'-'+view);
+   for(const scroller of await page.locator('#view-'+view+' .table-scroll').all()){
+    const info=await scroller.evaluate(e=>{const t=e.querySelector('table.data');return {tab:e.tabIndex,scroll:e.scrollWidth>e.clientWidth,cells:!!t&&[...t.querySelectorAll('th,td')].every(c=>getComputedStyle(c).whiteSpace==='nowrap'&&getComputedStyle(c).writingMode==='horizontal-tb'),actions:!!t&&[...t.querySelectorAll('.cell-actions')].every(a=>getComputedStyle(a).flexWrap==='nowrap')}});
+    check(key+'-'+view+' table cells remain horizontal',info.tab===0&&info.cells&&info.actions,JSON.stringify(info));
+    if(info.scroll)check(key+'-'+view+' table scrolls to far columns',await scroller.evaluate(e=>{e.scrollLeft=-e.scrollWidth;let moved=Math.abs(e.scrollLeft)>1;e.scrollLeft=0;return moved}));
+   }
+   if(view==='holds'){
+    const holds=page.locator('#holds-list'),info=await holds.evaluate(e=>({tab:e.tabIndex,scroll:e.scrollWidth>e.clientWidth,rows:[...e.querySelectorAll('.attempt-slot')].every(r=>getComputedStyle(r).gridTemplateColumns.split(' ').length===3&&getComputedStyle(r.querySelector('.job')).whiteSpace==='nowrap')}));
+    check(key+' holds remain in horizontal rows',info.tab===0&&info.rows,JSON.stringify(info));
+    if(info.scroll)check(key+' holds scroll to decisions',await holds.evaluate(e=>{e.scrollLeft=-e.scrollWidth;let moved=Math.abs(e.scrollLeft)>1;e.scrollLeft=0;return moved}));
+   }
+   if(view==='overview')for(const id of ['ov-actions','ov-holds','ov-recent'])check(key+' '+id+' is keyboard scrollable',await page.locator('#'+id).getAttribute('tabindex')==='0');
+
    if(view==='jobs'){
     const table=page.locator('#view-jobs .table-scroll').first();check(key+' keyboard-accessible table',await table.getAttribute('tabindex')==='0');
     const tableInfo=await table.evaluate(e=>{const t=e.querySelector('table');return {scroll:e.scrollWidth>e.clientWidth,cells:[...t.querySelectorAll('tbody td')].every(c=>getComputedStyle(c).whiteSpace==='nowrap'&&getComputedStyle(c).writingMode==='horizontal-tb'),breaks:t.querySelectorAll('tbody td br').length,actions:[...t.querySelectorAll('.cell-actions')].every(a=>getComputedStyle(a).flexWrap==='nowrap')}});
@@ -96,7 +118,7 @@ try{
     check(key+' title scroll keeps full accessible text',await q.locator('.modal-head h3').evaluate(e=>e.tabIndex===0&&getComputedStyle(e).whiteSpace==='nowrap'&&e.textContent.includes('HRC-1042')));
     await q.locator('[data-close]').first().click();
    }
-   if(view==='applicants'){check(key+' phone numbers stay on one line',await page.locator('#apps-table-body td.mono.tiny').first().evaluate(e=>getComputedStyle(e).whiteSpace==='nowrap' && e.scrollHeight<=e.clientHeight+1));for(const [selector,name]of [['#btn-new-card','new-card'],['#btn-new-batch','new-batch'],['#btn-new-app','sell-fill'],['[data-app-attempts]','attempts'],['[data-app-verify]','verify-card'],['[data-app-fee]','payment']])await open(page,selector,key+'-'+name);
+   if(view==='applicants'){check(key+' phone numbers stay on one line',await page.locator('#apps-table-body td.mono.tiny').first().evaluate(e=>getComputedStyle(e).whiteSpace==='nowrap' && e.scrollHeight<=e.clientHeight+1));for(const [selector,name]of [['#btn-new-card','new-card'],['#btn-new-batch','new-batch'],['#btn-new-app','sell-fill'],['[data-app-attempts]','attempts'],['[data-app-verify]','verify-card'],['[data-app-fee]','payment'],['[data-app-reject="HRC-BC-987654"]','pending-review']])await open(page,selector,key+'-'+name);
     for(const [serial,action,name]of [['HRC-BC-000120','[data-assign]','job-picker'],['HRC-BC-000119','[data-reject]','reject-reason'],['HRC-BC-000119','[data-win]','hire-confirm'],['HRC-BC-000119','[data-release]','release-confirm']])await nested(page,serial,action,key+'-'+name);
    }
    if(view==='holds'){

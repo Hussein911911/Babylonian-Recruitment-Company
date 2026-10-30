@@ -1665,11 +1665,11 @@
         var url = Store.verifyUrl(serial);
         UI.modal({
           title: 'التحقق من البطاقة', subtitle: serial, body:
-            '<div class="grid card-verification">' +
+            '<p class="jobs-scroll-hint">اسحب النص أو الرابط أفقياً إذا لم يظهر كاملاً.</p><div class="grid card-verification">' +
             '<div><div class="data-grid">' +
-            '<div class="data-item"><div class="k">الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
-            '<div class="data-item"><div class="k">حالة البطاقة</div><div class="v">' + CFG.formStatus[Store.formStatus(app)].ar + '</div></div>' +
-            '<div class="data-item"><div class="k">المتبقي</div><div class="v">' + Store.attemptsLeft(serial) + ' فرصة</div></div>' +
+            '<div class="data-item"><div class="k">الباحث</div><div class="v" tabindex="0">' + UI.esc(app.fullName) + '</div></div>' +
+            '<div class="data-item"><div class="k">حالة البطاقة</div><div class="v" tabindex="0">' + CFG.formStatus[Store.formStatus(app)].ar + '</div></div>' +
+            '<div class="data-item"><div class="k">المتبقي</div><div class="v" tabindex="0">' + Store.attemptsLeft(serial) + ' فرصة</div></div>' +
             '<div class="data-item card-link-row" style="grid-column:1/-1"><div class="k">رابط التحقق (المطبوع في الكيو آر كود)</div><div class="v mono tiny" dir="ltr" tabindex="0" aria-label="رابط التحقق — تمرير أفقي">' + UI.esc(url) + '</div></div>' +
             '</div><div class="flex mt-2"><button class="btn btn-lapis btn-sm" id="go-verify">' + UI.ic('eye') + ' فتح صفحة التحقق</button>' +
             '<button class="btn btn-outline btn-sm" id="copy-url">' + UI.ic('share') + ' نسخ الرابط</button></div></div>' +
@@ -1774,7 +1774,7 @@
     if (!app || Store.formStatus(app) !== 'pending') return;
     var job = app.requestedCode ? Store.getJob(app.requestedCode) : null;
     var body =
-      '<div class="data-grid mb-3">' +
+      '<p class="jobs-scroll-hint">اسحب التفاصيل أفقياً لقراءة النص الكامل.</p><div class="staff-details-scroll" tabindex="0" role="region" aria-label="تفاصيل طلب البطاقة — مرّر أفقياً"><div class="data-grid staff-details-grid mb-3">' +
         '<div class="data-item"><div class="k">رقم الطلب</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
         '<div class="data-item"><div class="k">الاسم الكامل</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
         '<div class="data-item"><div class="k">الهاتف</div><div class="v mono" dir="ltr">' + UI.esc(app.phone) + '</div></div>' +
@@ -1784,7 +1784,7 @@
         '<div class="data-item" style="grid-column:1/-1"><div class="k">الوظيفة المطلوبة</div><div class="v">' +
           (job ? '<span class="chip chip-code mono">' + UI.esc(job.code) + '</span> ' + UI.esc(job.title) + ' — ' + UI.esc(job.governorate) : (UI.esc(app.requestedCode || '—') + ' <span class="tiny muted">(كود غير معروف)</span>')) +
         '</div></div>' +
-      '</div>' +
+      '</div></div>' +
       (rejectMode
         ? '<div class="field"><label for="rr-reason">سبب الرفض</label><input type="text" id="rr-reason" placeholder="مثال: بيانات ناقصة / لا يطابق الشروط"></div>'
         : '<div class="panel" style="background:#fdf6e3;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
@@ -1897,17 +1897,17 @@
           '<div class="mt-2"><b>' + UI.esc(app.fullName) + '</b> · <span class="mono" dir="ltr">' + UI.esc(app.phone) + '</span>' +
           '<div class="tiny muted">' + UI.esc(app.address || '') + '</div></div>' +
         '</div>' +
-        '<div class="data-grid" style="gap:10px">' +
+        '<div class="staff-details-scroll" tabindex="0" role="region" aria-label="بيانات البطاقة — مرّر أفقياً"><div class="data-grid staff-details-grid" style="gap:10px">' +
           '<div class="data-item"><div class="k">الإصدار</div><div class="v" dir="ltr">' + Store.fmtDate(app.issueDate) + '</div></div>' +
           '<div class="data-item"><div class="k">الانتهاء</div><div class="v" dir="ltr">' + Store.fmtDate(app.expiryDate) + '</div></div>' +
           '<div class="data-item"><div class="k">الفرص المستخدمة</div><div class="v">' + attempts.filter(function (t) { return t.slotStatus !== 'empty'; }).length + ' / ' + limit + '</div></div>' +
-        '</div>' +
+        '</div></div>' +
       '</div>' +
       (st !== 'active' ? '<div class="panel mb-3" style="background:#fdf1d8;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('alert') + ' البطاقة ' + CFG.formStatus[st].ar +
         (st === 'expired' ? ' — انتهت مدة الثلاثين يوماً، لا يمكن استخدام الفرص.' : ' — الفرصتان مستهلكتان.') + '</p></div></div>' : '') +
       '<h3 class="mb-2">فرص البطاقة (فرصتان مستقلتان)</h3>' +
-      '<div class="attempts-stack">' + slots + '</div>';
+      '<p class="jobs-scroll-hint">اسحب الفرص أفقياً لعرض تفاصيلها والأزرار كاملة.</p><div class="attempts-stack" tabindex="0" role="region" aria-label="فرص البطاقة — مرّر أفقياً">' + slots + '</div>';
 
     UI.modal({
       title: 'بطاقة التوظيف — الفرصتان', subtitle: app.fullName + ' — ' + app.serial, wide: true, body: body,
@@ -2067,7 +2067,7 @@
     UI.modal({
       title: (hiring ? '🔵 قرار توظيف صاحب العمل — ' : empReject ? '🔴 رفض صاحب العمل — قرارك بالوظيفة — ' : critical ? '🔴 قرار حالة حرجة — ' : 'إدارة الحجز المؤقت — ') + job.code,
       subtitle: job.title + ' · ' + job.governorate + ' · الشاغر ' + Number(t.vacancyNo||1) + ' من ' + Number(job.vacancies||1),
-      body: '<div class="data-grid mb-3">' +
+      body: '<p class="jobs-scroll-hint">اسحب التفاصيل أفقياً لقراءة النص الكامل.</p><div class="staff-details-scroll" tabindex="0" role="region" aria-label="تفاصيل الحجز — مرّر أفقياً"><div class="data-grid staff-details-grid mb-3">' +
         '<div class="data-item"><div class="k">البطاقة المحجوزة</div><div class="v mono">' + UI.esc(serial) + '</div></div>' +
         '<div class="data-item"><div class="k">الفرصة</div><div class="v">#' + (t ? t.no : '—') + '</div></div>' +
         '<div class="data-item"><div class="k">' + (hiring ? 'طلب صاحب العمل' : empReject ? 'قرار صاحب العمل' : critical ? 'انتهى الحجز' : 'ينتهي الحجز') + '</div><div class="v"' + (hiring || empReject ? ' dir="ltr"' : '') + '>' +
@@ -2086,7 +2086,7 @@
         '<div class="data-item"><div class="k">صاحب العمل</div><div class="v">' + UI.esc(job.employer.name) + '</div></div>' +
         '<div class="data-item"><div class="k">هاتفه</div><div class="v mono" dir="ltr">' + UI.esc(job.employer.phone) + '</div></div>' +
         '<div class="data-item" style="grid-column:1/-1"><div class="k">مكان المقابلة</div><div class="v">' + UI.esc(job.interviewLocation) + '</div></div>' +
-        '</div>' +
+        '</div></div>' +
         '<p class="tiny muted mb-0">' + UI.ic('hourglass') + (hiring
           ? ' طلب صاحب العمل بانتظار قرارك: «تم التوظيف» يثبّته ويغلق الوظيفة، و«رفض» أو «إرجاع» يعيد الشاغر المعني متاحاً — والفرصة مستهلكة بأي نتيجة (قرار معتمد).'
           : empReject

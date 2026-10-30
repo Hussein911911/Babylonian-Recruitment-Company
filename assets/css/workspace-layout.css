@@ -94,3 +94,56 @@
  .job-details-modal .modal-head h3 { max-width:100%;white-space:nowrap;overflow-x:auto;overflow-wrap:normal;word-break:normal; }
  #job-form :is(label,input,select,textarea) { writing-mode:horizontal-tb;word-break:normal;overflow-wrap:normal; }
 }
+
+/* Internal sections share the same horizontal, independently scrollable rows
+   as jobs. Public pages and printed cards are deliberately excluded. */
+@media screen {
+ .workspace-scroll-hint { padding:10px 16px 0; }
+ .app-shell .table-scroll,.workspace-modal .table-scroll,
+ .staff-details-scroll,#holds-list,.workspace-modal .attempts-stack,
+ #ov-actions,#ov-holds,#ov-recent { max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch; }
+ .staff-details-scroll:focus-visible,#holds-list:focus-visible,.workspace-modal .attempts-stack:focus-visible,
+ #ov-actions:focus-visible,#ov-holds:focus-visible,#ov-recent:focus-visible,.workspace-modal .modal-head h3:focus-visible {
+  outline:2px solid #326cae;outline-offset:-2px;
+ }
+ :is(.app-shell,.workspace-modal) table.data { width:max-content;min-width:100%;table-layout:auto; }
+ :is(.app-shell,.workspace-modal) table.data :is(th,td) { white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb; }
+ :is(.app-shell,.workspace-modal) table.data :is(.mono,.badge) { white-space:nowrap;word-break:normal;overflow-wrap:normal; }
+ :is(.app-shell,.workspace-modal) table.data td>div:not(.cell-actions) { display:inline; }
+ :is(.app-shell,.workspace-modal) table.data td>div:not(.cell-actions):not(:first-child)::before { content:' · '; }
+ :is(.app-shell,.workspace-modal) table.data .cell-actions { min-width:max-content;flex-wrap:nowrap; }
+ .workspace-modal .modal-head h3 { max-width:100%;white-space:nowrap;overflow-x:auto;overflow-wrap:normal;word-break:normal; }
+ .workspace-modal .staff-details-scroll { flex:1 1 100%;min-width:0; }
+ .staff-details-scroll .staff-details-grid { display:grid;grid-template-columns:minmax(max-content,1fr);width:max-content;min-width:100%; }
+ .staff-details-grid .data-item { display:grid;grid-template-columns:minmax(160px,max-content) max-content;align-items:baseline;gap:10px 16px; }
+ .staff-details-grid .data-item :is(.k,.v,.badge) { min-width:0;max-width:none;white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb; }
+ .staff-details-grid .hold-timer { flex-wrap:nowrap; }
+ .workspace-modal .card-verification .data-item:not(.card-link-row) { flex-wrap:nowrap; }
+ .workspace-modal .card-verification .data-item:not(.card-link-row) .k { flex:0 0 auto;white-space:nowrap; }
+ .workspace-modal .card-verification .data-item:not(.card-link-row) .v { flex:1 1 auto;min-width:0;white-space:nowrap;overflow-x:auto;overflow-wrap:normal; }
+ #holds-list .attempt-slot,.workspace-modal .attempts-stack .attempt-slot { width:max-content;min-width:100%;align-items:center; }
+ #holds-list .attempt-slot { grid-template-columns:max-content max-content max-content!important; }
+ .workspace-modal .attempts-stack .attempt-slot { grid-template-columns:40px max-content max-content max-content!important; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot :is(.job,.job small,.tiny,.mono,.badge,.hold-timer) { white-space:nowrap;word-break:normal;overflow-wrap:normal; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot .job small { display:inline; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot .job small::before { content:' · '; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot>div:last-child,
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot>div:last-child .flex { display:flex;flex-wrap:nowrap!important;gap:8px; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot>div:nth-last-child(2)>div { display:inline; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot>div:nth-last-child(2)>div:not(:first-child)::before { content:' · '; }
+ #ov-actions .ov-action-card,#ov-holds .ov-hold-card,#ov-recent .ov-log-row { width:max-content;min-width:100%;flex-wrap:nowrap; }
+ #ov-actions :is(.ov-ac-title,.ov-ac-sub),#ov-holds :is(.ov-hc-title,.ov-hc-sub),#ov-recent .ov-log-row>* { white-space:nowrap;word-break:normal;overflow-wrap:normal; }
+ #ov-actions :is(.ov-ac-title,.ov-ac-sub),#ov-holds :is(.ov-hc-title,.ov-hc-sub) { display:inline; }
+ #ov-actions .ov-ac-sub::before,#ov-holds .ov-hc-sub::before { content:' · '; }
+}
+@media screen {
+ :is(.app-shell,.workspace-modal) table.data.audit-table :is(th,td) { white-space:nowrap;word-break:normal;overflow-wrap:normal; }
+}
+
+@media screen {
+ :is(.app-shell,.workspace-modal) table.data td>.serial-cell { display:inline-flex;align-items:center;flex-wrap:nowrap;gap:6px; }
+ :is(.app-shell,.workspace-modal) table.data .serial-cell>div { display:inline; }
+ #ov-actions .ov-ac-body,#ov-holds .ov-hc-body,#ov-recent .ov-log-action { flex:0 0 auto;min-width:max-content;overflow:visible;text-overflow:clip; }
+ .workspace-modal .modal-head .tiny.muted { max-width:100%;white-space:nowrap;overflow-x:auto;overflow-wrap:normal;word-break:normal; }
+ .workspace-modal .modal-head .tiny.muted:focus-visible { outline:2px solid #326cae;outline-offset:-2px; }
+}

@@ -58,6 +58,10 @@
     if (!host) return null;
     var backdrop = el('<div class="modal-backdrop"></div>');
     var box = el('<div class="modal' + (opts.wide ? ' modal-wide' : '') + '"></div>');
+    // Keep internal dialogs separate from public and print layouts.
+    var staffShell = document.getElementById('app-shell');
+    var staffDialog = staffShell && !staffShell.classList.contains('hidden');
+    if (staffDialog) box.classList.add('workspace-modal');
     box.innerHTML =
       '<div class="modal-head">' +
         '<div><h3>' + esc(opts.title || '') + '</h3>' +
@@ -66,6 +70,12 @@
       '</div>' +
       '<div class="modal-body">' + (opts.body || '') + '</div>' +
       (opts.footer ? '<div class="modal-foot">' + opts.footer + '</div>' : '');
+    if (staffDialog) {
+      var title = box.querySelector('.modal-head h3');
+      if (title) title.tabIndex = 0;
+      var subtitle = box.querySelector('.modal-head .tiny.muted');
+      if (subtitle) subtitle.tabIndex = 0;
+    }
     backdrop.appendChild(box);
     host.appendChild(backdrop);
     /* ⚠ طبقات: شريط التنقل السفلي (fixed, z-index 240) كان يغطّي أزرار أسفل

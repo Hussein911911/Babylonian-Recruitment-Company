@@ -4133,6 +4133,59 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
  #job-form :is(label,input,select,textarea) { writing-mode:horizontal-tb;word-break:normal;overflow-wrap:normal; }
 }
 
+/* Internal sections share the same horizontal, independently scrollable rows
+   as jobs. Public pages and printed cards are deliberately excluded. */
+@media screen {
+ .workspace-scroll-hint { padding:10px 16px 0; }
+ .app-shell .table-scroll,.workspace-modal .table-scroll,
+ .staff-details-scroll,#holds-list,.workspace-modal .attempts-stack,
+ #ov-actions,#ov-holds,#ov-recent { max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch; }
+ .staff-details-scroll:focus-visible,#holds-list:focus-visible,.workspace-modal .attempts-stack:focus-visible,
+ #ov-actions:focus-visible,#ov-holds:focus-visible,#ov-recent:focus-visible,.workspace-modal .modal-head h3:focus-visible {
+  outline:2px solid #326cae;outline-offset:-2px;
+ }
+ :is(.app-shell,.workspace-modal) table.data { width:max-content;min-width:100%;table-layout:auto; }
+ :is(.app-shell,.workspace-modal) table.data :is(th,td) { white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb; }
+ :is(.app-shell,.workspace-modal) table.data :is(.mono,.badge) { white-space:nowrap;word-break:normal;overflow-wrap:normal; }
+ :is(.app-shell,.workspace-modal) table.data td>div:not(.cell-actions) { display:inline; }
+ :is(.app-shell,.workspace-modal) table.data td>div:not(.cell-actions):not(:first-child)::before { content:' · '; }
+ :is(.app-shell,.workspace-modal) table.data .cell-actions { min-width:max-content;flex-wrap:nowrap; }
+ .workspace-modal .modal-head h3 { max-width:100%;white-space:nowrap;overflow-x:auto;overflow-wrap:normal;word-break:normal; }
+ .workspace-modal .staff-details-scroll { flex:1 1 100%;min-width:0; }
+ .staff-details-scroll .staff-details-grid { display:grid;grid-template-columns:minmax(max-content,1fr);width:max-content;min-width:100%; }
+ .staff-details-grid .data-item { display:grid;grid-template-columns:minmax(160px,max-content) max-content;align-items:baseline;gap:10px 16px; }
+ .staff-details-grid .data-item :is(.k,.v,.badge) { min-width:0;max-width:none;white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb; }
+ .staff-details-grid .hold-timer { flex-wrap:nowrap; }
+ .workspace-modal .card-verification .data-item:not(.card-link-row) { flex-wrap:nowrap; }
+ .workspace-modal .card-verification .data-item:not(.card-link-row) .k { flex:0 0 auto;white-space:nowrap; }
+ .workspace-modal .card-verification .data-item:not(.card-link-row) .v { flex:1 1 auto;min-width:0;white-space:nowrap;overflow-x:auto;overflow-wrap:normal; }
+ #holds-list .attempt-slot,.workspace-modal .attempts-stack .attempt-slot { width:max-content;min-width:100%;align-items:center; }
+ #holds-list .attempt-slot { grid-template-columns:max-content max-content max-content!important; }
+ .workspace-modal .attempts-stack .attempt-slot { grid-template-columns:40px max-content max-content max-content!important; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot :is(.job,.job small,.tiny,.mono,.badge,.hold-timer) { white-space:nowrap;word-break:normal;overflow-wrap:normal; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot .job small { display:inline; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot .job small::before { content:' · '; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot>div:last-child,
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot>div:last-child .flex { display:flex;flex-wrap:nowrap!important;gap:8px; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot>div:nth-last-child(2)>div { display:inline; }
+ :is(#holds-list,.workspace-modal .attempts-stack) .attempt-slot>div:nth-last-child(2)>div:not(:first-child)::before { content:' · '; }
+ #ov-actions .ov-action-card,#ov-holds .ov-hold-card,#ov-recent .ov-log-row { width:max-content;min-width:100%;flex-wrap:nowrap; }
+ #ov-actions :is(.ov-ac-title,.ov-ac-sub),#ov-holds :is(.ov-hc-title,.ov-hc-sub),#ov-recent .ov-log-row>* { white-space:nowrap;word-break:normal;overflow-wrap:normal; }
+ #ov-actions :is(.ov-ac-title,.ov-ac-sub),#ov-holds :is(.ov-hc-title,.ov-hc-sub) { display:inline; }
+ #ov-actions .ov-ac-sub::before,#ov-holds .ov-hc-sub::before { content:' · '; }
+}
+@media screen {
+ :is(.app-shell,.workspace-modal) table.data.audit-table :is(th,td) { white-space:nowrap;word-break:normal;overflow-wrap:normal; }
+}
+
+@media screen {
+ :is(.app-shell,.workspace-modal) table.data td>.serial-cell { display:inline-flex;align-items:center;flex-wrap:nowrap;gap:6px; }
+ :is(.app-shell,.workspace-modal) table.data .serial-cell>div { display:inline; }
+ #ov-actions .ov-ac-body,#ov-holds .ov-hc-body,#ov-recent .ov-log-action { flex:0 0 auto;min-width:max-content;overflow:visible;text-overflow:clip; }
+ .workspace-modal .modal-head .tiny.muted { max-width:100%;white-space:nowrap;overflow-x:auto;overflow-wrap:normal;word-break:normal; }
+ .workspace-modal .modal-head .tiny.muted:focus-visible { outline:2px solid #326cae;outline-offset:-2px; }
+}
+
 </style>
 </head>
 <body>
@@ -5059,7 +5112,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
             <h3><svg class="ic" style="color:#d44"><use href="#i-alert" xlink:href="#i-alert"/></svg> إجراءات مطلوبة الآن</h3>
             <span class="badge warn" id="ov-actions-count">0</span>
           </div>
-          <div id="ov-actions" style="max-height:340px;overflow-y:auto"></div>
+          <div id="ov-actions" tabindex="0" role="region" aria-label="الإجراءات المطلوبة — مرّر أفقياً عند الحاجة" style="max-height:340px;overflow-y:auto"></div>
         </div>
         <!-- حجوزات جارية -->
         <div class="panel">
@@ -5067,7 +5120,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
             <h3><svg class="ic" style="color:#c8a24a"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> حجوزات 24 ساعة الجارية</h3>
             <button class="btn btn-outline btn-sm" data-goto="holds">عرض الكل</button>
           </div>
-          <div id="ov-holds" style="max-height:340px;overflow-y:auto"></div>
+          <div id="ov-holds" tabindex="0" role="region" aria-label="الحجوزات الجارية — مرّر أفقياً عند الحاجة" style="max-height:340px;overflow-y:auto"></div>
         </div>
       </div>
 
@@ -5077,7 +5130,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           <h3><svg class="ic" style="color:#5b2ea8"><use href="#i-list" xlink:href="#i-list"/></svg> آخر العمليات في السجل</h3>
           <button class="btn btn-outline btn-sm" data-goto="audit">سجل التدقيق الكامل</button>
         </div>
-        <div id="ov-recent"></div>
+        <div id="ov-recent" tabindex="0" role="region" aria-label="آخر العمليات — مرّر أفقياً عند الحاجة"></div>
       </div>
     </section>
 
@@ -5184,8 +5237,9 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           </div>
 
           <!-- الجدول -->
+          <p class="jobs-scroll-hint workspace-scroll-hint">اسحب الجدول أفقياً لعرض بيانات البطاقة والإجراءات.</p>
           <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البطاقات — مرّر أفقياً لعرض التفاصيل">
               <table class="data" style="margin:0">
                 <thead>
                   <tr>
@@ -5223,10 +5277,12 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           <h3><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> متابعة الحجوزات المؤقتة (24 ساعة)</h3>
           <span class="badge warn" id="holds-count-label">0 حجز جارٍ</span>
         </div>
-        <div class="panel-body" id="holds-list"></div>
+        <p class="jobs-scroll-hint workspace-scroll-hint">اسحب أفقياً لعرض تفاصيل الحجوزات والأزرار كاملة.</p>
+        <div class="panel-body" id="holds-list" tabindex="0" role="region" aria-label="الحجوزات — مرّر أفقياً لعرض التفاصيل"></div>
       </div>
       <div class="panel">
         <div class="panel-head"><h3><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> حالات حرجة بانتظار قرار (توظيف / إرجاع / حذف)</h3></div>
+        <p class="jobs-scroll-hint workspace-scroll-hint">اسحب الجدول أفقياً لعرض جميع البيانات والإجراءات.</p>
         <div class="table-wrap" style="border:none;box-shadow:none">
           <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:700px">
             <thead><tr><th>البطاقة</th><th>الباحث</th><th>الفرصة</th><th>كود الوظيفة</th><th>انتهت في</th><th>ملاحظة</th><th>إجراء</th></tr></thead>
@@ -5298,6 +5354,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           <p class="tiny hidden" id="log-date-error" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.</p>
         </div>
         <div class="table-wrap" style="border:none;box-shadow:none">
+          <p class="jobs-scroll-hint workspace-scroll-hint">اسحب السجل أفقياً لعرض جميع التفاصيل.</p>
           <!-- سجل بصيغة جدول مرتّب: أعمدة واضحة بعرض كافٍ فلا ينزل النص عمودياً -->
           <div class="table-scroll audit-scroll" tabindex="0" role="region" aria-label="سجل التدقيق">
             <table class="data audit-table">
@@ -5340,8 +5397,9 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           </div>
         </div>
         <div class="panel-body"><div class="bars" id="fin-bars"></div></div>
+        <p class="jobs-scroll-hint workspace-scroll-hint">اسحب الجدول أفقياً لعرض جميع البيانات المالية.</p>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="البيانات المالية — تمرير أفقي عند الحاجة">
             <table class="data" style="min-width:680px">
               <thead><tr><th>الموظف</th><th>البطاقات الصادرة</th><th>مرات الطباعة</th><th>سعر البطاقة</th><th>المتوقع تحصيله</th><th>المستلَم (كاش)</th><th>حالة البيع</th><th>توظيف ناجح</th><th>حجوزات جارية</th></tr></thead>
               <tbody id="fin-table-body"></tbody>
@@ -5370,8 +5428,9 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
 <button class="btn btn-gold btn-sm" id="btn-add-user"><svg class="ic"><use href="#i-plus"></use></svg> إضافة موظف</button>
 </div>
 <div class="panel-body" style="padding:0">
+<p class="jobs-scroll-hint workspace-scroll-hint">اسحب الجدول أفقياً لعرض بيانات الموظفين والإجراءات.</p>
 <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-<div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة" tabindex="0" role="region" aria-label="جدول الموظفين — مرّر أفقياً لعرض بقية الأعمدة"><table class="data" style="min-width:520px;margin:0">
+<div class="table-scroll" tabindex="0" role="region" aria-label="جدول الموظفين — مرّر أفقياً لعرض بقية الأعمدة"><table class="data" style="min-width:520px;margin:0">
 <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
 <tbody id="users-table-body"></tbody>
 </table></div>
@@ -19644,6 +19703,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (!host) return null;
     var backdrop = el('<div class="modal-backdrop"></div>');
     var box = el('<div class="modal' + (opts.wide ? ' modal-wide' : '') + '"></div>');
+    // Keep internal dialogs separate from public and print layouts.
+    var staffShell = document.getElementById('app-shell');
+    var staffDialog = staffShell && !staffShell.classList.contains('hidden');
+    if (staffDialog) box.classList.add('workspace-modal');
     box.innerHTML =
       '<div class="modal-head">' +
         '<div><h3>' + esc(opts.title || '') + '</h3>' +
@@ -19652,6 +19715,12 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       '</div>' +
       '<div class="modal-body">' + (opts.body || '') + '</div>' +
       (opts.footer ? '<div class="modal-foot">' + opts.footer + '</div>' : '');
+    if (staffDialog) {
+      var title = box.querySelector('.modal-head h3');
+      if (title) title.tabIndex = 0;
+      var subtitle = box.querySelector('.modal-head .tiny.muted');
+      if (subtitle) subtitle.tabIndex = 0;
+    }
     backdrop.appendChild(box);
     host.appendChild(backdrop);
     /* ⚠ طبقات: شريط التنقل السفلي (fixed, z-index 240) كان يغطّي أزرار أسفل
@@ -25093,11 +25162,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         var url = Store.verifyUrl(serial);
         UI.modal({
           title: 'التحقق من البطاقة', subtitle: serial, body:
-            '<div class="grid card-verification">' +
+            '<p class="jobs-scroll-hint">اسحب النص أو الرابط أفقياً إذا لم يظهر كاملاً.</p><div class="grid card-verification">' +
             '<div><div class="data-grid">' +
-            '<div class="data-item"><div class="k">الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
-            '<div class="data-item"><div class="k">حالة البطاقة</div><div class="v">' + CFG.formStatus[Store.formStatus(app)].ar + '</div></div>' +
-            '<div class="data-item"><div class="k">المتبقي</div><div class="v">' + Store.attemptsLeft(serial) + ' فرصة</div></div>' +
+            '<div class="data-item"><div class="k">الباحث</div><div class="v" tabindex="0">' + UI.esc(app.fullName) + '</div></div>' +
+            '<div class="data-item"><div class="k">حالة البطاقة</div><div class="v" tabindex="0">' + CFG.formStatus[Store.formStatus(app)].ar + '</div></div>' +
+            '<div class="data-item"><div class="k">المتبقي</div><div class="v" tabindex="0">' + Store.attemptsLeft(serial) + ' فرصة</div></div>' +
             '<div class="data-item card-link-row" style="grid-column:1/-1"><div class="k">رابط التحقق (المطبوع في الكيو آر كود)</div><div class="v mono tiny" dir="ltr" tabindex="0" aria-label="رابط التحقق — تمرير أفقي">' + UI.esc(url) + '</div></div>' +
             '</div><div class="flex mt-2"><button class="btn btn-lapis btn-sm" id="go-verify">' + UI.ic('eye') + ' فتح صفحة التحقق</button>' +
             '<button class="btn btn-outline btn-sm" id="copy-url">' + UI.ic('share') + ' نسخ الرابط</button></div></div>' +
@@ -25202,7 +25271,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (!app || Store.formStatus(app) !== 'pending') return;
     var job = app.requestedCode ? Store.getJob(app.requestedCode) : null;
     var body =
-      '<div class="data-grid mb-3">' +
+      '<p class="jobs-scroll-hint">اسحب التفاصيل أفقياً لقراءة النص الكامل.</p><div class="staff-details-scroll" tabindex="0" role="region" aria-label="تفاصيل طلب البطاقة — مرّر أفقياً"><div class="data-grid staff-details-grid mb-3">' +
         '<div class="data-item"><div class="k">رقم الطلب</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
         '<div class="data-item"><div class="k">الاسم الكامل</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
         '<div class="data-item"><div class="k">الهاتف</div><div class="v mono" dir="ltr">' + UI.esc(app.phone) + '</div></div>' +
@@ -25212,7 +25281,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         '<div class="data-item" style="grid-column:1/-1"><div class="k">الوظيفة المطلوبة</div><div class="v">' +
           (job ? '<span class="chip chip-code mono">' + UI.esc(job.code) + '</span> ' + UI.esc(job.title) + ' — ' + UI.esc(job.governorate) : (UI.esc(app.requestedCode || '—') + ' <span class="tiny muted">(كود غير معروف)</span>')) +
         '</div></div>' +
-      '</div>' +
+      '</div></div>' +
       (rejectMode
         ? '<div class="field"><label for="rr-reason">سبب الرفض</label><input type="text" id="rr-reason" placeholder="مثال: بيانات ناقصة / لا يطابق الشروط"></div>'
         : '<div class="panel" style="background:#fdf6e3;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
@@ -25325,17 +25394,17 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           '<div class="mt-2"><b>' + UI.esc(app.fullName) + '</b> · <span class="mono" dir="ltr">' + UI.esc(app.phone) + '</span>' +
           '<div class="tiny muted">' + UI.esc(app.address || '') + '</div></div>' +
         '</div>' +
-        '<div class="data-grid" style="gap:10px">' +
+        '<div class="staff-details-scroll" tabindex="0" role="region" aria-label="بيانات البطاقة — مرّر أفقياً"><div class="data-grid staff-details-grid" style="gap:10px">' +
           '<div class="data-item"><div class="k">الإصدار</div><div class="v" dir="ltr">' + Store.fmtDate(app.issueDate) + '</div></div>' +
           '<div class="data-item"><div class="k">الانتهاء</div><div class="v" dir="ltr">' + Store.fmtDate(app.expiryDate) + '</div></div>' +
           '<div class="data-item"><div class="k">الفرص المستخدمة</div><div class="v">' + attempts.filter(function (t) { return t.slotStatus !== 'empty'; }).length + ' / ' + limit + '</div></div>' +
-        '</div>' +
+        '</div></div>' +
       '</div>' +
       (st !== 'active' ? '<div class="panel mb-3" style="background:#fdf1d8;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('alert') + ' البطاقة ' + CFG.formStatus[st].ar +
         (st === 'expired' ? ' — انتهت مدة الثلاثين يوماً، لا يمكن استخدام الفرص.' : ' — الفرصتان مستهلكتان.') + '</p></div></div>' : '') +
       '<h3 class="mb-2">فرص البطاقة (فرصتان مستقلتان)</h3>' +
-      '<div class="attempts-stack">' + slots + '</div>';
+      '<p class="jobs-scroll-hint">اسحب الفرص أفقياً لعرض تفاصيلها والأزرار كاملة.</p><div class="attempts-stack" tabindex="0" role="region" aria-label="فرص البطاقة — مرّر أفقياً">' + slots + '</div>';
 
     UI.modal({
       title: 'بطاقة التوظيف — الفرصتان', subtitle: app.fullName + ' — ' + app.serial, wide: true, body: body,
@@ -25495,7 +25564,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     UI.modal({
       title: (hiring ? '🔵 قرار توظيف صاحب العمل — ' : empReject ? '🔴 رفض صاحب العمل — قرارك بالوظيفة — ' : critical ? '🔴 قرار حالة حرجة — ' : 'إدارة الحجز المؤقت — ') + job.code,
       subtitle: job.title + ' · ' + job.governorate + ' · الشاغر ' + Number(t.vacancyNo||1) + ' من ' + Number(job.vacancies||1),
-      body: '<div class="data-grid mb-3">' +
+      body: '<p class="jobs-scroll-hint">اسحب التفاصيل أفقياً لقراءة النص الكامل.</p><div class="staff-details-scroll" tabindex="0" role="region" aria-label="تفاصيل الحجز — مرّر أفقياً"><div class="data-grid staff-details-grid mb-3">' +
         '<div class="data-item"><div class="k">البطاقة المحجوزة</div><div class="v mono">' + UI.esc(serial) + '</div></div>' +
         '<div class="data-item"><div class="k">الفرصة</div><div class="v">#' + (t ? t.no : '—') + '</div></div>' +
         '<div class="data-item"><div class="k">' + (hiring ? 'طلب صاحب العمل' : empReject ? 'قرار صاحب العمل' : critical ? 'انتهى الحجز' : 'ينتهي الحجز') + '</div><div class="v"' + (hiring || empReject ? ' dir="ltr"' : '') + '>' +
@@ -25514,7 +25583,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         '<div class="data-item"><div class="k">صاحب العمل</div><div class="v">' + UI.esc(job.employer.name) + '</div></div>' +
         '<div class="data-item"><div class="k">هاتفه</div><div class="v mono" dir="ltr">' + UI.esc(job.employer.phone) + '</div></div>' +
         '<div class="data-item" style="grid-column:1/-1"><div class="k">مكان المقابلة</div><div class="v">' + UI.esc(job.interviewLocation) + '</div></div>' +
-        '</div>' +
+        '</div></div>' +
         '<p class="tiny muted mb-0">' + UI.ic('hourglass') + (hiring
           ? ' طلب صاحب العمل بانتظار قرارك: «تم التوظيف» يثبّته ويغلق الوظيفة، و«رفض» أو «إرجاع» يعيد الشاغر المعني متاحاً — والفرصة مستهلكة بأي نتيجة (قرار معتمد).'
           : empReject
