@@ -12,6 +12,7 @@
     "test:job-image-cache-browser": "node tests/job-image-cache-browser.mjs",
     "test:job-image-ui-browser": "node tests/job-image-ui-browser.mjs",
     "test:jobs-skeleton-browser": "node tests/jobs-skeleton-browser.mjs",
+    "test:home-startup-browser": "node tests/home-startup-browser.mjs",
     "test:apply-mobile-browser": "node tests/apply-mobile-browser.mjs",
     "test:card-scanner": "node tests/card-scanner.mjs",
     "test:brand": "node tests/brand-consistency.mjs",

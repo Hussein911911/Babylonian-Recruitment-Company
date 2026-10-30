@@ -411,6 +411,9 @@
     opts = opts || {};
     var isHome = page === 'home' || !APP_PAGES[page];
     currentPage = isHome ? 'home' : page;
+    // Prevent the card page from appearing during startup or on the home page.
+    var cardPage = document.getElementById('card');
+    if (cardPage) cardPage.hidden = currentPage !== 'card';
     var meta = APP_PAGES[currentPage] || {};
     document.body.classList.toggle('app-focus', !isHome);
     document.body.setAttribute('data-app-page', currentPage);

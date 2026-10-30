@@ -196,6 +196,9 @@
   display: grid; place-items: center; font-size: .8rem;
 }
 
+/* تبقى صفحة البطاقة مخفية حتى يطلبها الزائر، حتى قبل بدء JavaScript. */
+.card-page[hidden] { display: none !important; }
+
 /* ── 5) صفحة «بطاقتي» — إدخال الرقم ثم التفاصيل (لا شكل بطاقة) ── */
 .card-page { padding-block: clamp(18px, 3vw, 34px) 40px; }
 .cp-entry { display: grid; place-items: center; }
