@@ -1728,7 +1728,8 @@ grant execute on function brc.lookup_card(text)                to anon, authenti
 grant execute on function brc.use_chance(text, text, text)      to anon, authenticated;
 grant execute on function brc.verify_card_code(text, text)      to anon, authenticated;
 /* موديل 2026-10-01: مسح نقطة البيع وصاحب العمل من الموقع العام — بلا جلسة */
-grant execute on function brc.activate_card(text, jsonb)        to anon, authenticated;
+-- Internal helper only: self-service and office security-definer functions call it.
+revoke all on function brc.activate_card(text, jsonb) from public, anon, authenticated;
 /* موديل 2026-10-06: التقديم الذاتي من باركود البطاقة (apply.html) — مسار عام
    بلا جلسة: الباركود بيان الحيازة، والدالتان لا تكشفان اسماً ولا هاتفاً ولا
    رموز فرص. تُنزعان من PUBLIC أولاً (PostgreSQL يمنح EXECUTE لـ PUBLIC تلقائياً

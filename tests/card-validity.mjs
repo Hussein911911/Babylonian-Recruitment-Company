@@ -24,6 +24,12 @@ try {
   const old = await row('OLD');
   const migration = read('supabase/migrations/20261029100000_validity_from_first_application.sql');
   await db.exec(migration); await db.exec(migration);
+  // Direct sale is no longer public; callers use the validated self-service RPC.
+  await db.exec('grant usage on schema brc to anon, authenticated');
+  const removeSale = read('supabase/migrations/20261030100000_remove_direct_card_sale.sql');
+  await db.exec(removeSale); await db.exec(removeSale);
+  assert.equal((await db.query("select has_function_privilege('anon', 'brc.activate_card(text,jsonb)', 'execute') as allowed")).rows[0].allowed, false);
+  assert.equal((await db.query("select has_function_privilege('authenticated', 'brc.activate_card(text,jsonb)', 'execute') as allowed")).rows[0].allowed, false);
   assert.equal(String((await row('OLD')).expiry_date), String(old.expiry_date));
   await db.exec(`create trigger reserve_job before insert or update on brc.job_attempts for each row execute function brc.trg_attempt_hold();
     insert into brc.jobs(code) values('JOB-1'),('JOB-2'),('JOB-3'),('JOB-4');
@@ -46,7 +52,10 @@ try {
   const second = await rpc('apply_with_card', ['SOLD', 'JOB-2', JSON.stringify(data)]);
   assert.equal(second.ok, true, JSON.stringify(second));
   assert.equal(String((await row('SOLD')).expiry_date), String(started.expiry_date));
+  await db.exec('set role anon');
+  await assert.rejects(() => rpc('activate_card', ['SELF', JSON.stringify({...data, posName:'تجربة'})]), /permission denied/);
   const self = await rpc('apply_with_card', ['SELF', 'JOB-3', JSON.stringify(data)]);
+  await db.exec('reset role');
   assert.equal(self.ok, true, JSON.stringify(self)); assert.ok((await row('SELF')).expiry_date);
   await db.exec("update brc.settings set value=jsonb_set(value, '{validity_days}', '17') where key='rules'");
   const onSale = await rpc('activate_card', ['ONSALE', JSON.stringify({ ...data, posName:'نقطة بيع', jobCode:'JOB-4' })]);

@@ -154,8 +154,8 @@ check('الزائر يستطيع قراءة brc.public_jobs فقط', /public_job
    الفحص هنا يقرأ سطور GRANT (لا REVOKE) فلا يُخدع بإبطال لاحق. */
 check('الزائر لا يستطيع نداء brc.verify_form (التحقق للموظفين والإدارة)', !/verify_form/i.test(anonTargets), anonTargets.slice(0, 160));
 check('الزائر لا يستطيع نداء brc.request_form (لا تقديم استمارة من الموقع)', !/request_form/i.test(anonTargets), anonTargets.slice(0, 160));
-/* نقطة البيع عامة؛ صلاحيات صاحب العمل القديمة مغلقة بعد إضافة تحقق واتساب. */
-check('الزائر يستطيع نداء brc.activate_card (بيع نقطة البيع عبر الموقع)', /activate_card/i.test(anonTargets));
+/* التفعيل المباشر ليس واجهة عامة؛ التقديم الذاتي يستخدم الدالة كمساعد داخلي. */
+check('الزائر لا يستطيع نداء brc.activate_card مباشرة', !/activate_card/i.test(anonTargets) && /revoke all on function brc\.activate_card\(text,\s*jsonb\) from public,\s*anon,\s*authenticated/i.test(stripped(RAW)));
 check('الزائر لا يستطيع تجاوز OTP عبر employer_view القديم', !/employer_view/i.test(anonTargets));
 check('الزائر لا يستطيع تجاوز OTP عبر employer_decide القديم', !/employer_decide/i.test(anonTargets));
 /* موديل 2026-10-06: مسار باركود البطاقة (apply.html) — بلا جلسة، ومن دونه يصير

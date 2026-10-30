@@ -1276,14 +1276,6 @@
     if (!mt) return;
     var s = decodeURIComponent(mt[1]).trim().toUpperCase();
     if (!serialPattern(s)) return;
-    var role = new URLSearchParams(location.search).get('role');
-    /* روابط قديمة (?role=employer أو role=pos): صاحب العمل حُذف نهائياً،
-       فنفتح بطاقة الزبون بدل تحويل ميت. */
-    if (role === 'pos' || role === 'employer') {
-      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
-      open({ serial: s, fromHash: true });
-      return;
-    }
     location.replace('apply.html?form=' + encodeURIComponent(s));
   }
 

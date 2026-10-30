@@ -122,7 +122,7 @@ check('الاختصار يحافظ على شروط الحجز وحقوق الب�
     /30 يوماً/.test(home || cardPage) &&
     /الفرصة المستهلكة لا تعود/.test(home + cardPage) &&
     /الدفع كاش/.test(home || cardPage) && /الفرص المتبقية/.test(cardPage) &&
-    /الشركة غير مسؤولة قانونياً وعشائرياً/.test(footer) && /للموظفين والإدارة فقط/.test(verifyCopy);
+    /الناحية الفنية والتخصصية فقط وليس الأمنية/.test(footer) && /للموظفين والإدارة فقط/.test(verifyCopy);
 });
 
 /* ======================= 1) الموقع العام ======================= */
@@ -179,7 +179,7 @@ check('نافذة تفاصيل الوظيفة تُفتح وتعرض تحذير �
   const btn = site.doc.querySelector('[data-action="job-details"]');
   btn.dispatchEvent(new site.window.MouseEvent('click', { bubbles: true }));
   const modal = lastModal(site.doc);
-  return (modal && modal.textContent.includes('خصوصية صاحب العمل')) || 'لم تُفتح النافذة أو لا تحذير خصوصية';
+  return (modal && modal.textContent.includes('خصوصية البيانات')) || 'لم تُفتح النافذة أو لا تحذير خصوصية';
 });
 check('إغلاق النافذة يعمل', () => {
   const close = lastModal(site.doc).querySelector('[data-close]');
@@ -986,44 +986,8 @@ check('جدول البطاقات يعرض الفرص المتبقية', () => {
   const rows = dash.doc.querySelectorAll('#apps-table-body tr').length;
   return rows >= 4 || 'عدد الصفوف: ' + rows;
 });
-check('بيع وتعبئة بطاقة فارغة من المخزون (كاش + نقطة بيع + نفس الباركود)', () => {
-  closeAllModals(dash.doc);
-  const blanksBefore = dash.window.HRCStore.listBlankCards().length;
-  if (!blanksBefore) return 'لا توجد بطاقات فارغة بالمخزون للتجربة';
-  dash.doc.getElementById('btn-new-app').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
-  const box = lastModal(dash.doc);
-  if (!box) return 'لم تُفتح النافذة';
-  const cardSel = box.querySelector('#n-card');
-  if (!cardSel) return 'قائمة البطاقات الفارغة مفقودة من النافذة';
-  const serial = cardSel.value;
-  cardSel.dispatchEvent(new dash.window.Event('change', { bubbles: true }));
-  box.querySelector('#n-name').value = 'باحث من اللوحة';
-  box.querySelector('#n-phone').value = '07722222222';
-  box.querySelector('#n-address').value = 'المحاويل';
-  const pos = box.querySelector('#n-pos');
-  if (!pos) return 'حقل نقطة البيع مفقود';
-  pos.value = 'استنساكب الحلة — شارع 40';
-  /* موديل 2026-10-01: اختيار الوظيفة إلزامي — يستهلك الفرصة الأولى */
-  const jobSel = box.querySelector('#n-job');
-  if (!jobSel) return 'حقل اختيار الوظيفة مفقود من نافذة البيع';
-  const firstJob = [...jobSel.options].find((o) => o.value);
-  if (!firstJob) return 'لا توجد وظائف متاحة للاختيار';
-  jobSel.value = firstJob.value;
-  jobSel.dispatchEvent(new dash.window.Event('change', { bubbles: true }));
-  box.querySelector('#n-save').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
-  const app = dash.window.HRCStore.getApplicant(serial);
-  if (!app || app.status !== 'active') return 'لم تُفعَّل البطاقة: ' + (app && app.status);
-  const blanksAfter = dash.window.HRCStore.listBlankCards().length;
-  if (blanksAfter !== blanksBefore - 1) return 'المخزون الفارغ: قبل ' + blanksBefore + ' بعد ' + blanksAfter;
-  const valid = app.serial === serial && /^HRC-BC-\d{6}$/.test(app.serial) && app.feePaid === true &&
-    app.posName === 'استنساكب الحلة — شارع 40' &&
-    app.fee === dash.window.HRCStore.settings().formFee &&
-    app.fullName === 'باحث من اللوحة' &&
-    !!app.issueDate && !!app.expiryDate && app.status === 'active' &&
-    dash.window.HRCStore.attemptsLeft(serial) === 1 &&
-    dash.window.HRCStore.getAttempts(serial)[0].jobCode === firstJob.value;
-  return valid || 'بيانات البيع: ' + JSON.stringify({ s: app.serial, feePaid: app.feePaid, pos: app.posName, fee: app.fee, issue: app.issueDate, left: dash.window.HRCStore.attemptsLeft(serial) });
-});
+check('إزالة زر بيع وتعبئة البطاقة وإجراء التعبئة من القائمة', () =>
+  !dash.doc.getElementById('btn-new-app') && !dash.doc.querySelector('[data-app-fill]'));
 check('إصدار دفعة بطاقات فارغة: باركودات عشوائية فريدة لا تتشابه', () => {
   closeAllModals(dash.doc);
   dash.window.HRCStore.login('admin', 'admin123');   /* إصدار الدفعات للمدير فقط */
@@ -1192,21 +1156,6 @@ check('نموذج الوظيفة بلا رمز صاحب العمل وبلا من
   const hasGov = !!box.querySelector('#f-governorate');
   closeAllModals(dash.doc);
   return (gone && hasGov) || ('رموز/منطقة باقية: ' + JSON.stringify({ gone, hasGov }));
-});
-check('نموذج «بيع وتعبئة بطاقة» يطلب المحافظة لا المنطقة (قرار 2026-10-25)', () => {
-  closeAllModals(dash.doc);
-  const btn = dash.doc.getElementById('btn-new-app');
-  if (!btn) return 'زر «بيع وتعبئة بطاقة» غير موجود';
-  btn.click();
-  const box = lastModal(dash.doc);
-  const txt = box ? box.textContent : '';
-  const out = {
-    gov: !!(box && box.querySelector('#n-gov')),
-    govList: !!(box && box.querySelector('#n-gov') && box.querySelector('#n-gov').options.length >= 18),
-    noRegion: !(box && box.querySelector('#n-region')) && !/المنطقة/.test(txt)
-  };
-  closeAllModals(dash.doc);
-  return (out.gov && out.govList && out.noRegion) || JSON.stringify(out);
 });
 check('قائمة «مناطق العمل» حُذفت من الإعدادات — المحافظة وحدها', () => {
   const cfg = dash.window.HRCCONFIG || dash.window.HRC_CONFIG || dash.window.HRCConfig || dash.window.CFG;

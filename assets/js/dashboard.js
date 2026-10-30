@@ -1598,7 +1598,6 @@
       var actionsCell;
       if (isBlank) {
         actionsCell = '<td><div class="cell-actions">' +
-          '<button class="btn btn-gold btn-sm" data-app-fill="' + UI.esc(a.serial) + '">' + UI.ic('user-plus') + ' تعبئة وبيع</button>' +
           '<button class="btn btn-outline btn-sm" data-app-print="' + UI.esc(a.serial) + '">' + UI.ic('print') + ' طباعة فارغة</button>' +
           '</div></td>';
       } else if (isPending) {
@@ -1631,9 +1630,6 @@
         '</tr>';
     }).join('') || '<tr><td colspan="10" class="table-empty" style="padding:40px;text-align:center;color:var(--muted)"><svg class="ic" style="width:28px;height:28px;display:block;margin:0 auto 10px;opacity:.4"><use href="#i-card"/></svg>لا توجد بطاقات مطابقة</td></tr>';
 
-    tbody.querySelectorAll('[data-app-fill]').forEach(function (b) {
-      b.addEventListener('click', function () { newApplicantModal(b.getAttribute('data-app-fill')); });
-    });
     tbody.querySelectorAll('[data-app-approve]').forEach(function (b) {
       b.addEventListener('click', function () {
         var serial = b.getAttribute('data-app-approve');
@@ -2652,8 +2648,6 @@
     var history=document.getElementById('btn-card-history');if(history)history.onclick=function(){if(root.HRCArchive)return root.HRCArchive.open(Store,UI);history.disabled=true;var js=document.createElement('script');js.src='assets/js/card-archive.js';js.onload=function(){history.disabled=false;root.HRCArchive.open(Store,UI);};js.onerror=function(){history.disabled=false;UI.toast('err','تعذر فتح السجل','تحقق من الاتصال وأعد المحاولة');};document.head.appendChild(js);};
     var nj = document.getElementById('btn-new-job');
     if (nj) nj.addEventListener('click', function () { jobModal(null); });
-    var na = document.getElementById('btn-new-app');
-    if (na) na.addEventListener('click', function () { newApplicantModal(); });
     var nb = document.getElementById('btn-new-batch');
     if (nb) nb.addEventListener('click', newBatchModal);
     var nc = document.getElementById('btn-new-card');
@@ -2692,100 +2686,6 @@
   /* ======================= النسخ الاحتياطي والجدولة =======================
    *  تُستدعى من bindActions() عند الإقلاع ومن renderSettings() بعد كل
    *  إعادة رسم — bindOnce يضمن ألا يُربط الزر مرتين (لا نوافذ مكرّرة). */
-  /* بيع/إصدار بطاقة توظيف جديدة — كاش عند نقطة البيع (لا دفع إلكتروني) */
-  /* بيع وتعبئة بطاقة فارغة — كاش عند نقطة البيع (لا دفع إلكتروني).
-     البطاقات تُصدر من الشركة دفعات فارغة (باركود عشوائي فريد) وتوزَّع على
-     نقاط البيع؛ هنا تُقرأ باركود الورقة وتُعبّأ بيانات الزبون عليها —
-     والصلاحية (30 يوماً) تبدأ من هذه اللحظة لا من إصدار الدفعة. */
-  function newApplicantModal(prefillSerial) {
-    var blanks = Store.listBlankCards();
-    var govList = CFG.governorates.map(function (g) { return '<option>' + UI.esc(g) + '</option>'; }).join('');
-    var posList = (Store.listPosNames ? Store.listPosNames() : []).map(function (n) { return '<option>' + UI.esc(n) + '</option>'; }).join('');
-
-    if (!blanks.length) {
-      UI.modal({
-        title: 'بيع وتعبئة بطاقة', subtitle: 'لا توجد بطاقات فارغة بالمخزون', wide: true,
-        body: '<div class="bk-empty" style="padding:26px 10px;text-align:center">' + UI.ic('card') +
-          '<b>المخزون فارغ</b>' +
-          '<span class="tiny muted">البطاقة تُصدر من الشركة كدفعة فارغة (باركود عشوائي فريد) ثم تُعبّأ هنا عند البيع.<br>' +
-          'اطلب من الإدارة إصدار دفعة جديدة من زر «إصدار دفعة فارغة».</span></div>',
-        footer: '<button class="btn btn-outline" data-close>إغلاق</button>'
-      });
-      return;
-    }
-
-    var cardOptions = blanks.map(function (b) {
-      return '<option value="' + UI.esc(b.serial) + '"' + (b.serial === prefillSerial ? ' selected' : '') + '>' +
-        UI.esc(b.serial) + '</option>';
-    }).join('');
-
-    /* اختيار الوظيفة إلزامي بعملية البيع (قرار الإدارة 2026-10-01): يستهلك
-       الفرصة الأولى بحجز 24 ساعة بانتظار قرار صاحب العمل. */
-    var jobsAvail = (Store.listJobs() || []).filter(function (j) { return j.status === 'available'; });
-    var jobOptions = jobsAvail.map(function (j) {
-      return '<option value="' + UI.esc(j.code) + '">' + UI.esc(j.code + ' — ' + j.title + ' (' + (j.governorate || '—') + ')') + '</option>';
-    }).join('');
-
-    var body = '<form id="app-form" class="grid grid-2" style="gap:14px">' +
-      '<div class="field" style="grid-column:1/-1"><label for="n-card">باركود البطاقة الفارغة * <span class="tiny muted">(' + blanks.length + ' بالمخزون)</span></label>' +
-        '<select id="n-card" required>' + cardOptions + '</select>' +
-        '<span class="tiny muted">اقرأ الباركود المطبوع على الورقة بأي موبايل أو اختره من القائمة.</span></div>' +
-      '<div class="field"><label for="n-name">اسم الزبون *</label><input type="text" id="n-name" required></div>' +
-      '<div class="field"><label for="n-phone">هاتف الزبون *</label><input type="tel" id="n-phone" required dir="ltr" placeholder="07XXXXXXXXX"></div>' +
-      '<div class="field"><label for="n-dob">تاريخ الميلاد</label><input type="date" id="n-dob"></div>' +
-      '<div class="field"><label for="n-gender">الجنس</label><select id="n-gender"><option>ذكر</option><option>أنثى</option></select></div>' +
-      '<div class="field"><label for="n-gov">المحافظة</label><select id="n-gov">' + govList + '</select></div>' +
-      '<div class="field"><label for="n-fee">سعر البطاقة (د.ع — كاش)</label><input type="number" id="n-fee" value="' + Store.settings().formFee + '" step="500"></div>' +
-      '<div class="field"><label for="n-pos">نقطة البيع *</label><input type="text" id="n-pos" required list="pos-names" placeholder="مثال: مكتب استنساخ — شارع 40">' +
-        '<datalist id="pos-names">' + posList + '</datalist></div>' +
-      '<div class="field" style="grid-column:1/-1"><label for="n-address">العنوان التفصيلي</label><input type="text" id="n-address"></div>' +
-      '<div class="field" style="grid-column:1/-1"><label for="n-job">الوظيفة المقدَّم عليها * <span class="tiny muted">(إلزامي — يستهلك الفرصة الأولى)</span></label>' +
-        '<select id="n-job" required>' +
-        (jobsAvail.length
-          ? '<option value="">— اختر وظيفة من المتاحة —</option>' + jobOptions
-          : '<option value="">لا توجد وظائف متاحة — أضف وظيفة أولاً</option>') + '</select>' +
-        '<span class="tiny muted">تُطبع بيانات الوظيفة وجهة العمل على استمارة A4 المسلَّمة للزبون.</span></div>' +
-      '</form>' +
-      '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
-        '<p class="mb-0 small">' + UI.ic('card') + ' البطاقة تبقى <b>فارغة الوجه</b> (باركود + رمزا الفرصتين) — وتبدأ صلاحية <b>' +
-        Store.settings().validityDays + ' يوماً</b> وفرصتان مستقلتان <b>من أول تقديم ناجح</b>. بعد التعبئة تُطبع <b>استمارة التوظيف A4</b> بنفس الباركود ' +
-        'تحمل بيانات الزبون والوظيفة وبيانات صاحب العمل — تُسلَّم للزبون ليقدمها لصاحب العمل. البيع <b>كاش فقط</b>.</p></div></div>';
-
-    UI.modal({
-      title: 'بيع وتعبئة بطاقة فارغة', subtitle: 'HRC-BC — كاش عند نقطة البيع', wide: true, body: body,
-      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
-        '<button class="btn btn-gold" id="n-save">' + UI.ic('check') + ' بيع وتعبئة وطباعة الاستمارة</button>',
-      onMount: function (box, close) {
-        box.querySelector('#n-save').addEventListener('click', function () {
-          var f = box.querySelector('#app-form');
-          if (!f.reportValidity()) return;
-          var serial = box.querySelector('#n-card').value;
-          var jobCode = (box.querySelector('#n-job').value || '').trim();
-          if (!jobCode) { UI.toast('err', 'الوظيفة مطلوبة', 'اختيار الوظيفة إلزامي بعملية البيع — تُستهلك الفرصة الأولى'); return; }
-          var res = Store.activateCard(serial, {
-            fullName: box.querySelector('#n-name').value.trim(),
-            phone: box.querySelector('#n-phone').value.trim(),
-            dob: box.querySelector('#n-dob').value,
-            gender: box.querySelector('#n-gender').value,
-            address: box.querySelector('#n-address').value.trim() || box.querySelector('#n-gov').value,
-            fee: Number(box.querySelector('#n-fee').value),
-            feePaid: true,
-            posName: box.querySelector('#n-pos').value.trim(),
-            jobCode: jobCode,
-            notes: 'بيع وتعبئة بطاقة فارغة — كاش من نقطة بيع'
-          });
-          if (!res.ok) { UI.toast('err', 'تعذّر البيع', res.error); return; }
-          close();
-          UI.toast('ok', 'تم البيع والتعبئة', res.app.serial + ' — ' + res.app.fullName + ' — كاش: ' + Store.money(res.app.fee) +
-            ' — بدأت صلاحية 30 يوماً' + (res.attempt ? ' — الفرصة 1 على ' + res.attempt.jobCode : ''));
-          /* استمارة A4 جزء من عملية البيع: تُطبع تلقائياً وتظل متاحة من نافذة الفرص */
-          try { if (V && V.printForm) V.printForm(res.app, res.attempt); } catch (e) { }
-          attemptsModal(res.app.serial);
-        });
-      }
-    });
-  }
-
   /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
      المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة. */
   function newCardModal() {

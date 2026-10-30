@@ -118,7 +118,7 @@ try{
     check(key+' title scroll keeps full accessible text',await q.locator('.modal-head h3').evaluate(e=>e.tabIndex===0&&getComputedStyle(e).whiteSpace==='nowrap'&&e.textContent.includes('HRC-1042')));
     await q.locator('[data-close]').first().click();
    }
-   if(view==='applicants'){check(key+' phone numbers stay on one line',await page.locator('#apps-table-body td.mono.tiny').first().evaluate(e=>getComputedStyle(e).whiteSpace==='nowrap' && e.scrollHeight<=e.clientHeight+1));for(const [selector,name]of [['#btn-new-card','new-card'],['#btn-new-batch','new-batch'],['#btn-new-app','sell-fill'],['[data-app-attempts]','attempts'],['[data-app-verify]','verify-card'],['[data-app-fee]','payment'],['[data-app-reject="HRC-BC-987654"]','pending-review']])await open(page,selector,key+'-'+name);
+   if(view==='applicants'){check(key+' removed sale controls',await page.locator('#btn-new-app, [data-app-fill]').count()===0);check(key+' phone numbers stay on one line',await page.locator('#apps-table-body td.mono.tiny').first().evaluate(e=>getComputedStyle(e).whiteSpace==='nowrap' && e.scrollHeight<=e.clientHeight+1));for(const [selector,name]of [['#btn-new-card','new-card'],['#btn-new-batch','new-batch'],['[data-app-attempts]','attempts'],['[data-app-verify]','verify-card'],['[data-app-fee]','payment'],['[data-app-reject="HRC-BC-987654"]','pending-review']])await open(page,selector,key+'-'+name);
     for(const [serial,action,name]of [['HRC-BC-000120','[data-assign]','job-picker'],['HRC-BC-000119','[data-reject]','reject-reason'],['HRC-BC-000119','[data-win]','hire-confirm'],['HRC-BC-000119','[data-release]','release-confirm']])await nested(page,serial,action,key+'-'+name);
    }
    if(view==='holds'){

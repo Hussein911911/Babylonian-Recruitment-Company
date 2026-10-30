@@ -40,6 +40,7 @@ try {
    await page.goto(base+path,{waitUntil:'domcontentloaded'});
    assert.equal(await page.locator('#card').isVisible(),false,`${path}: card hidden on home`);
    assert.ok(await page.locator('.hero').isVisible(),`${path}: home remains visible`);
+   assert.doesNotMatch(await page.locator('body').innerText(), /صاحب العمل|أصحاب العمل/, `${path}: no employer copy on the home page`);
    if(javascriptEnabled){
     await page.locator('[data-page-tab=card]').click();await page.locator('#card').waitFor({state:'visible'});
     await page.locator('[data-page-tab=home]').click();assert.equal(await page.locator('#card').isVisible(),false);
