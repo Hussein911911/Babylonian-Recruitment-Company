@@ -1459,13 +1459,14 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
   await acheck('هيكل التحميل يظهر أثناء قراءة public_jobs (لا بيانات متصفح)', async () => {
     await pollUntil(() => okPage.doc.querySelectorAll('#jobs-grid .job-card.skeleton').length > 0, 4000, 'ظهور الهيكل');
     const grid = okPage.doc.getElementById('jobs-grid').textContent;
-    return (!grid.includes('HRC-1042') && okPage.doc.querySelectorAll('#hero-stats .app-stat.skeleton').length === 4) ||
+    const skeleton = okPage.doc.querySelector('#jobs-grid .app-card.skeleton');
+    return (okPage.doc.getElementById('jobs-grid').getAttribute('aria-busy') === 'true' && /تحميل/.test(okPage.doc.getElementById('jobs-loading-status').textContent) && skeleton && skeleton.querySelector('.job-image') && skeleton.querySelectorAll('.ac-row').length === 5 && skeleton.querySelector('.ac-foot .skel-button') && !grid.includes('HRC-1042') && okPage.doc.querySelectorAll('#hero-stats .app-stat.skeleton').length === 4) ||
       'ظهرت بيانات المتصفح أثناء التحميل أو الهيكل ناقص';
   });
   await acheck('بعد الرد: الوظائف المعلنة من القاعدة (لا التجريبية)', async () => {
     await pollUntil(() => okPage.doc.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length > 0, 5000, 'وصول الوظائف');
     const grid = okPage.doc.getElementById('jobs-grid').textContent;
-    return (grid.includes('HRC-9001') && grid.includes('HRC-9002') && !grid.includes('HRC-1042')) ||
+    return (okPage.doc.getElementById('jobs-grid').getAttribute('aria-busy') === 'false' && !okPage.doc.getElementById('jobs-loading-status').textContent && grid.includes('HRC-9001') && grid.includes('HRC-9002') && !grid.includes('HRC-1042')) ||
       'البطاقات ليست من القاعدة: ' + grid.slice(0, 80);
   });
   await acheck('إحصاءات الزائر من المعلن فقط (لا أعداد استمارات داخلية)', async () => {
@@ -1505,7 +1506,7 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
     const e = emptyPage.doc.getElementById('jobs-empty');
     const h = e.querySelector('h3');
     const cards = emptyPage.doc.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length;
-    return (h && h.textContent.includes('لا توجد وظائف معروضة حالياً') && cards === 0) ||
+    return (emptyPage.doc.getElementById('jobs-grid').getAttribute('aria-busy') === 'false' && h && h.textContent.includes('لا توجد وظائف معروضة حالياً') && cards === 0) ||
       ('العنوان: ' + (h && h.textContent) + ' / بطاقات: ' + cards);
   });
   await acheck('حالة الفراغ لا تعرض البيانات التجريبية إطلاقاً', async () => {
@@ -1520,7 +1521,7 @@ console.log('\n=== 7) الموقع العام في وضع قاعدة الشرك�
     await pollUntil(() => /تعذّر الاتصال بقاعدة الشركة/.test(failPage.doc.getElementById('jobs-grid').textContent), 5000, 'رسالة الفشل');
     const retry = failPage.doc.querySelector('#jobs-grid [data-action="retry-cloud"]');
     const st = failPage.window.HRCStore.cloudStatus();
-    return (!!retry && st.state === 'degraded') || JSON.stringify({ retry: !!retry, state: st.state });
+    return (failPage.doc.getElementById('jobs-grid').getAttribute('aria-busy') === 'false' && !!retry && st.state === 'degraded') || JSON.stringify({ retry: !!retry, state: st.state });
   });
   await acheck('عند الفشل لا تُعرض وظائف المتصفح التجريبية', async () => {
     const grid = failPage.doc.getElementById('jobs-grid').textContent;

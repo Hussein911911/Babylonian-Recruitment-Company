@@ -118,7 +118,8 @@
 
     <!-- مراجع صريحة لأيقونات التصنيفات التي يبنيها الكود ديناميكياً -->
     <svg width="0" height="0" aria-hidden="true" style="position:absolute;opacity:0"><use href="#i-bag" xlink:href="#i-bag"/><use href="#i-list" xlink:href="#i-list"/><use href="#i-chart" xlink:href="#i-chart"/><use href="#i-server" xlink:href="#i-server"/><use href="#i-sparkle" xlink:href="#i-sparkle"/></svg>
-    <div class="jobs-grid" id="jobs-grid"></div>
+    <p id="jobs-loading-status" class="jobs-loading-status" role="status" aria-live="polite"></p>
+    <div class="jobs-grid" id="jobs-grid" aria-busy="false"></div>
     <div class="empty-state hidden" id="jobs-empty">
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
       <h3>لا توجد وظائف مطابقة</h3>

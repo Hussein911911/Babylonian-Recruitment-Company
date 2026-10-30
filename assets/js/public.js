@@ -754,35 +754,47 @@
     renderAll();
   };
 
-  /* هيكل تحميل يظهر بدل بيانات المتصفح لحظة انتظار رد القاعدة */
+  /* حالة التحميل للوظائف: إعلان واحد لقارئات الشاشة دون إعلان كل بطاقة. */
+  function setJobsLoading(loading) {
+    var host = document.getElementById('jobs-grid');
+    var status = document.getElementById('jobs-loading-status');
+    if (!host) return;
+    var wasLoading = host.getAttribute('aria-busy') === 'true';
+    host.setAttribute('aria-busy', loading ? 'true' : 'false');
+    if (status && loading !== wasLoading) status.textContent = loading ? 'جاري تحميل الوظائف' : '';
+  }
+
+  /* نفس أجزاء بطاقة الوظيفة الفعلية: صورة، عنوان، تفاصيل وزر. */
   function skeletonCard() {
-    return '<article class="job-card skeleton" aria-hidden="true">' +
-      '<div class="skel-body">' +
-        '<div class="skel-line w60" style="height:16px"></div>' +
-        '<div class="skel-line w40"></div>' +
-        '<div class="skel-line"></div><div class="skel-line w80"></div><div class="skel-line w60"></div>' +
-      '</div>' +
-      '<div class="skel-foot"><span class="skel-line sq"></span><span class="skel-line sq" style="width:96px"></span></div>' +
-    '</article>';
+    var rows = ['w80', 'w60', 'w40', 'w60', 'w40'].map(function (w) {
+      return '<div class="ac-row"><span class="skel-line skel-icon"></span><span class="skel-line ' + w + '"></span></div>';
+    }).join('');
+    return '<article class="job-card app-card skeleton" aria-hidden="true">' +
+      '<div class="job-image skel-image"></div>' +
+      '<div class="ac-top"><span class="skel-line skel-badge"></span><span class="skel-line skel-fav"></span></div>' +
+      '<div class="ac-body"><div class="job-title skel-title"><span class="skel-line w60"></span></div>' + rows + '</div>' +
+      '<div class="ac-foot"><span class="skel-line skel-button"></span></div></article>';
   }
 
   function renderSkeleton() {
     var host = document.getElementById('jobs-grid');
-    if (host) host.innerHTML = skeletonCard().repeat(6);
+    setJobsLoading(true);
+    if (host && !host.querySelector('.job-card.skeleton')) host.innerHTML = skeletonCard().repeat(6);
     var empty = document.getElementById('jobs-empty');
     if (empty) empty.classList.add('hidden');
     var count = document.getElementById('jobs-count');
     if (count) count.textContent = '…';
     var hs = document.getElementById('hero-stats');
-    if (hs) {
+    if (hs && !hs.querySelector('.skeleton')) {
       hs.innerHTML = ['w60', 'w40', 'w60', 'w40'].map(function (w) {
-        return '<div class="app-stat skeleton"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
+        return '<div class="app-stat skeleton" aria-hidden="true"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
       }).join('');
     }
   }
 
   /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
   function renderCloudError() {
+    setJobsLoading(false);
     var host = document.getElementById('jobs-grid');
     if (host) {
       host.innerHTML =
@@ -839,66 +851,11 @@
 
   /* ── شريط التصنيفات: يُبنى من تصنيفات الوظائف المعروضة فعلاً ── */
 
-  root.HRCRefresh = function () {
-    if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }
-    renderAll();
-  };
-
-  /* هيكل تحميل يظهر بدل بيانات المتصفح لحظة انتظار رد القاعدة */
-  function skeletonCard() {
-    return '<article class="job-card skeleton" aria-hidden="true">' +
-      '<div class="skel-body">' +
-        '<div class="skel-line w60" style="height:16px"></div>' +
-        '<div class="skel-line w40"></div>' +
-        '<div class="skel-line"></div><div class="skel-line w80"></div><div class="skel-line w60"></div>' +
-      '</div>' +
-      '<div class="skel-foot"><span class="skel-line sq"></span><span class="skel-line sq" style="width:96px"></span></div>' +
-    '</article>';
-  }
-
-  function renderSkeleton() {
-    var host = document.getElementById('jobs-grid');
-    if (host) host.innerHTML = skeletonCard().repeat(6);
-    var empty = document.getElementById('jobs-empty');
-    if (empty) empty.classList.add('hidden');
-    var count = document.getElementById('jobs-count');
-    if (count) count.textContent = '…';
-    var hs = document.getElementById('hero-stats');
-    if (hs) {
-      hs.innerHTML = ['w60', 'w40', 'w60', 'w40'].map(function (w) {
-        return '<div class="app-stat skeleton"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
-      }).join('');
-    }
-  }
-
-  /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
-  function renderCloudError() {
-    var host = document.getElementById('jobs-grid');
-    if (host) {
-      host.innerHTML =
-        '<div class="empty-state" role="alert">' +
-          '<svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg>' +
-          '<h3>تعذّر الاتصال بقاعدة الشركة</h3>' +
-          '<p class="mb-2">تعذّر تحميل الوظائف المعلنة الآن — تحقّق من اتصالك بالإنترنت ثم أعد المحاولة، أو اتصل بنا على الأرقام الرسمية.</p>' +
-          '<button class="btn btn-outline btn-sm" data-action="retry-cloud">' + UI.ic('refresh') + ' إعادة المحاولة</button>' +
-        '</div>';
-    }
-    var empty = document.getElementById('jobs-empty');
-    if (empty) empty.classList.add('hidden');
-    var count = document.getElementById('jobs-count');
-    if (count) count.textContent = '—';
-    var hs = document.getElementById('hero-stats');
-    if (hs) {
-      hs.innerHTML = ['—', '—'].map(function () {
-        return '<div class="app-stat"><b>—</b><span>…</span></div>';
-      }).join('');
-    }
-  }
-
   function renderJobs() {
     var host = document.getElementById('jobs-grid');
     if (!host) return;
     if (cloudBlocked()) { if (!cloudSettled) renderSkeleton(); else renderCloudError(); return; }
+    setJobsLoading(false);
     var jobs = Store.listJobs(filters);
     if (filters.category && filters.category !== 'all') {
       jobs = jobs.filter(function (j) { return (j.category || '') === filters.category; });

@@ -791,3 +791,23 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
   .page-bar { padding: 9px 12px; }
   .pb-copy b { font-size: .9rem; }
 }
+
+/* Job-card loading mirrors the real picture, text rows and action dimensions. */
+.jobs-loading-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.job-card.app-card.skeleton{pointer-events:none}
+.job-card.app-card.skeleton::after,.job-card.app-card.skeleton .job-image::before,.job-card.app-card.skeleton .job-image::after{display:none}
+.job-card.app-card.skeleton .job-image{background:linear-gradient(90deg,var(--skel-base,#e2e8f0) 25%,var(--skel-highlight,#f5f7fa) 45%,var(--skel-base,#e2e8f0) 65%);background-size:220% 100%;animation:skelWave 1.3s ease-in-out infinite}
+.job-card.app-card.skeleton .ac-body{cursor:default}
+.job-card.app-card.skeleton .skel-line{display:block;margin:0;flex:none;height:12px}
+.job-card.app-card.skeleton .skel-title{line-height:1.7;min-height:1.615rem;display:flex;align-items:center}
+.job-card.app-card.skeleton .skel-title .skel-line{height:15px}
+.job-card.app-card.skeleton .ac-row{min-height:1.258rem}
+.job-card.app-card.skeleton .skel-icon{width:13px;height:13px;border-radius:4px}
+.job-card.app-card.skeleton .skel-badge{width:56px;height:24px;border-radius:999px}
+.job-card.app-card.skeleton .skel-fav{width:30px;height:30px;border-radius:50%}
+.job-card.app-card.skeleton .skel-button{width:100%;height:40px;border-radius:12px}
+.app-stat.skeleton .skel-line{max-width:80%;margin:4px 0}
+/* Dark-ready tokens are used only when the app explicitly enables a dark theme. */
+[data-theme="dark"] .skeleton,.theme-dark .skeleton{--skel-base:#303741;--skel-highlight:#4c5663}
+[data-theme="dark"] .job-card.app-card.skeleton,.theme-dark .job-card.app-card.skeleton{background:#1c222a;border-color:#3c4550}
+@media(prefers-reduced-motion:reduce){.skeleton .skel-line,.job-card.app-card.skeleton .job-image{animation:none!important;background-position:50% 0}}

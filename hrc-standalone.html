@@ -438,21 +438,11 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 .job-card.skeleton::before { display: none; }
 .skel-line {
   height: 12px; border-radius: 7px; margin: 8px 0;
-  background: linear-gradient(90deg, #fff 25%, #fff 45%, #fff 65%);
+  background: linear-gradient(90deg, var(--skel-base, #e2e8f0) 25%, var(--skel-highlight, #f5f7fa) 45%, var(--skel-base, #e2e8f0) 65%);
   background-size: 220% 100%;
   animation: skelWave 1.3s ease-in-out infinite;
 }
 .skel-line.w60 { width: 60%; } .skel-line.w40 { width: 40%; } .skel-line.w80 { width: 80%; }
-.skel-line.sq {
-  width: 74px; height: 24px; border-radius: 9px; margin: 0;
-  display: inline-block; background: linear-gradient(90deg, #fff 25%, #fff 45%, #fff 65%);
-  background-size: 220% 100%; animation: skelWave 1.3s ease-in-out infinite;
-}
-.job-card.skeleton .skel-body { padding: 18px; display: flex; flex-direction: column; }
-.job-card.skeleton .skel-foot {
-  margin-top: auto; padding: 14px 18px; border-top: 1px dashed var(--line-soft);
-  display: flex; justify-content: space-between; align-items: center; gap: 10px;
-}
 .hero-stat.skeleton { min-height: 74px; }
 @keyframes skelWave {
   0% { background-position: 130% 0; }
@@ -3826,6 +3816,26 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
   .pb-copy b { font-size: .9rem; }
 }
 
+/* Job-card loading mirrors the real picture, text rows and action dimensions. */
+.jobs-loading-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.job-card.app-card.skeleton{pointer-events:none}
+.job-card.app-card.skeleton::after,.job-card.app-card.skeleton .job-image::before,.job-card.app-card.skeleton .job-image::after{display:none}
+.job-card.app-card.skeleton .job-image{background:linear-gradient(90deg,var(--skel-base,#e2e8f0) 25%,var(--skel-highlight,#f5f7fa) 45%,var(--skel-base,#e2e8f0) 65%);background-size:220% 100%;animation:skelWave 1.3s ease-in-out infinite}
+.job-card.app-card.skeleton .ac-body{cursor:default}
+.job-card.app-card.skeleton .skel-line{display:block;margin:0;flex:none;height:12px}
+.job-card.app-card.skeleton .skel-title{line-height:1.7;min-height:1.615rem;display:flex;align-items:center}
+.job-card.app-card.skeleton .skel-title .skel-line{height:15px}
+.job-card.app-card.skeleton .ac-row{min-height:1.258rem}
+.job-card.app-card.skeleton .skel-icon{width:13px;height:13px;border-radius:4px}
+.job-card.app-card.skeleton .skel-badge{width:56px;height:24px;border-radius:999px}
+.job-card.app-card.skeleton .skel-fav{width:30px;height:30px;border-radius:50%}
+.job-card.app-card.skeleton .skel-button{width:100%;height:40px;border-radius:12px}
+.app-stat.skeleton .skel-line{max-width:80%;margin:4px 0}
+/* Dark-ready tokens are used only when the app explicitly enables a dark theme. */
+[data-theme="dark"] .skeleton,.theme-dark .skeleton{--skel-base:#303741;--skel-highlight:#4c5663}
+[data-theme="dark"] .job-card.app-card.skeleton,.theme-dark .job-card.app-card.skeleton{background:#1c222a;border-color:#3c4550}
+@media(prefers-reduced-motion:reduce){.skeleton .skel-line,.job-card.app-card.skeleton .job-image{animation:none!important;background-position:50% 0}}
+
 /* Staff activity drawer — no public payload and no printed UI. */
 .notification-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:44px;min-width:44px;border:1px solid #c8a24a66;background:linear-gradient(135deg,#fffdf7,#f7eedb);color:#17335a;border-radius:13px;padding:8px 12px;font:inherit;font-size:13px;font-weight:700;line-height:1.5;cursor:pointer}
 .notification-toggle>svg{width:21px;height:21px;flex:none}.notification-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 6px;background:#193e6d;color:#fff;border-radius:9px;font-size:12px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -4511,7 +4521,8 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
 
     <!-- مراجع صريحة لأيقونات التصنيفات التي يبنيها الكود ديناميكياً -->
     <svg width="0" height="0" aria-hidden="true" style="position:absolute;opacity:0"><use href="#i-bag" xlink:href="#i-bag"/><use href="#i-list" xlink:href="#i-list"/><use href="#i-chart" xlink:href="#i-chart"/><use href="#i-server" xlink:href="#i-server"/><use href="#i-sparkle" xlink:href="#i-sparkle"/></svg>
-    <div class="jobs-grid" id="jobs-grid"></div>
+    <p id="jobs-loading-status" class="jobs-loading-status" role="status" aria-live="polite"></p>
+    <div class="jobs-grid" id="jobs-grid" aria-busy="false"></div>
     <div class="empty-state hidden" id="jobs-empty">
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
       <h3>لا توجد وظائف مطابقة</h3>
@@ -22652,35 +22663,47 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     renderAll();
   };
 
-  /* هيكل تحميل يظهر بدل بيانات المتصفح لحظة انتظار رد القاعدة */
+  /* حالة التحميل للوظائف: إعلان واحد لقارئات الشاشة دون إعلان كل بطاقة. */
+  function setJobsLoading(loading) {
+    var host = document.getElementById('jobs-grid');
+    var status = document.getElementById('jobs-loading-status');
+    if (!host) return;
+    var wasLoading = host.getAttribute('aria-busy') === 'true';
+    host.setAttribute('aria-busy', loading ? 'true' : 'false');
+    if (status && loading !== wasLoading) status.textContent = loading ? 'جاري تحميل الوظائف' : '';
+  }
+
+  /* نفس أجزاء بطاقة الوظيفة الفعلية: صورة، عنوان، تفاصيل وزر. */
   function skeletonCard() {
-    return '<article class="job-card skeleton" aria-hidden="true">' +
-      '<div class="skel-body">' +
-        '<div class="skel-line w60" style="height:16px"></div>' +
-        '<div class="skel-line w40"></div>' +
-        '<div class="skel-line"></div><div class="skel-line w80"></div><div class="skel-line w60"></div>' +
-      '</div>' +
-      '<div class="skel-foot"><span class="skel-line sq"></span><span class="skel-line sq" style="width:96px"></span></div>' +
-    '</article>';
+    var rows = ['w80', 'w60', 'w40', 'w60', 'w40'].map(function (w) {
+      return '<div class="ac-row"><span class="skel-line skel-icon"></span><span class="skel-line ' + w + '"></span></div>';
+    }).join('');
+    return '<article class="job-card app-card skeleton" aria-hidden="true">' +
+      '<div class="job-image skel-image"></div>' +
+      '<div class="ac-top"><span class="skel-line skel-badge"></span><span class="skel-line skel-fav"></span></div>' +
+      '<div class="ac-body"><div class="job-title skel-title"><span class="skel-line w60"></span></div>' + rows + '</div>' +
+      '<div class="ac-foot"><span class="skel-line skel-button"></span></div></article>';
   }
 
   function renderSkeleton() {
     var host = document.getElementById('jobs-grid');
-    if (host) host.innerHTML = skeletonCard().repeat(6);
+    setJobsLoading(true);
+    if (host && !host.querySelector('.job-card.skeleton')) host.innerHTML = skeletonCard().repeat(6);
     var empty = document.getElementById('jobs-empty');
     if (empty) empty.classList.add('hidden');
     var count = document.getElementById('jobs-count');
     if (count) count.textContent = '…';
     var hs = document.getElementById('hero-stats');
-    if (hs) {
+    if (hs && !hs.querySelector('.skeleton')) {
       hs.innerHTML = ['w60', 'w40', 'w60', 'w40'].map(function (w) {
-        return '<div class="app-stat skeleton"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
+        return '<div class="app-stat skeleton" aria-hidden="true"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
       }).join('');
     }
   }
 
   /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
   function renderCloudError() {
+    setJobsLoading(false);
     var host = document.getElementById('jobs-grid');
     if (host) {
       host.innerHTML =
@@ -22737,66 +22760,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
   /* ── شريط التصنيفات: يُبنى من تصنيفات الوظائف المعروضة فعلاً ── */
 
-  root.HRCRefresh = function () {
-    if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }
-    renderAll();
-  };
-
-  /* هيكل تحميل يظهر بدل بيانات المتصفح لحظة انتظار رد القاعدة */
-  function skeletonCard() {
-    return '<article class="job-card skeleton" aria-hidden="true">' +
-      '<div class="skel-body">' +
-        '<div class="skel-line w60" style="height:16px"></div>' +
-        '<div class="skel-line w40"></div>' +
-        '<div class="skel-line"></div><div class="skel-line w80"></div><div class="skel-line w60"></div>' +
-      '</div>' +
-      '<div class="skel-foot"><span class="skel-line sq"></span><span class="skel-line sq" style="width:96px"></span></div>' +
-    '</article>';
-  }
-
-  function renderSkeleton() {
-    var host = document.getElementById('jobs-grid');
-    if (host) host.innerHTML = skeletonCard().repeat(6);
-    var empty = document.getElementById('jobs-empty');
-    if (empty) empty.classList.add('hidden');
-    var count = document.getElementById('jobs-count');
-    if (count) count.textContent = '…';
-    var hs = document.getElementById('hero-stats');
-    if (hs) {
-      hs.innerHTML = ['w60', 'w40', 'w60', 'w40'].map(function (w) {
-        return '<div class="app-stat skeleton"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
-      }).join('');
-    }
-  }
-
-  /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
-  function renderCloudError() {
-    var host = document.getElementById('jobs-grid');
-    if (host) {
-      host.innerHTML =
-        '<div class="empty-state" role="alert">' +
-          '<svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg>' +
-          '<h3>تعذّر الاتصال بقاعدة الشركة</h3>' +
-          '<p class="mb-2">تعذّر تحميل الوظائف المعلنة الآن — تحقّق من اتصالك بالإنترنت ثم أعد المحاولة، أو اتصل بنا على الأرقام الرسمية.</p>' +
-          '<button class="btn btn-outline btn-sm" data-action="retry-cloud">' + UI.ic('refresh') + ' إعادة المحاولة</button>' +
-        '</div>';
-    }
-    var empty = document.getElementById('jobs-empty');
-    if (empty) empty.classList.add('hidden');
-    var count = document.getElementById('jobs-count');
-    if (count) count.textContent = '—';
-    var hs = document.getElementById('hero-stats');
-    if (hs) {
-      hs.innerHTML = ['—', '—'].map(function () {
-        return '<div class="app-stat"><b>—</b><span>…</span></div>';
-      }).join('');
-    }
-  }
-
   function renderJobs() {
     var host = document.getElementById('jobs-grid');
     if (!host) return;
     if (cloudBlocked()) { if (!cloudSettled) renderSkeleton(); else renderCloudError(); return; }
+    setJobsLoading(false);
     var jobs = Store.listJobs(filters);
     if (filters.category && filters.category !== 'all') {
       jobs = jobs.filter(function (j) { return (j.category || '') === filters.category; });
