@@ -811,3 +811,8 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
 [data-theme="dark"] .skeleton,.theme-dark .skeleton{--skel-base:#303741;--skel-highlight:#4c5663}
 [data-theme="dark"] .job-card.app-card.skeleton,.theme-dark .job-card.app-card.skeleton{background:#1c222a;border-color:#3c4550}
 @media(prefers-reduced-motion:reduce){.skeleton .skel-line,.job-card.app-card.skeleton .job-image{animation:none!important;background-position:50% 0}}
+
+/* The card theme also supplies an image background, so keep the loading
+   treatment more specific without touching the loaded image or skeleton card. */
+.app-card:not(.skeleton) .job-image:not(.has-img):not(.img-failed){background:linear-gradient(90deg,#142b47 25%,#29445f 45%,#142b47 65%);background-size:220% 100%;animation:skelWave 1.3s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.app-card .job-image:not(.has-img){animation:none!important}}

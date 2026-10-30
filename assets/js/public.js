@@ -50,6 +50,10 @@
 
   /* ---------------- التهيئة ---------------- */
   function init() {
+    // HTTPS pages only; standalone file:// exports must remain self-contained.
+    if (/^https?:$/.test(location.protocol) && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    }
     Store.init();
     UI.startCountdowns();
     fillSelects();
@@ -958,7 +962,7 @@
       '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
       '<img src="' + UI.esc(imgSrc) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async"' +
         (j.imageUrl ? ' referrerpolicy="no-referrer"' : '') +
-        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()">' + '</div>';
+        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.classList.add(\'img-failed\');this.parentNode.setAttribute(\'role\',\'img\');this.parentNode.setAttribute(\'aria-label\',\'تعذّر تحميل صورة الوظيفة\');this.remove()">' + '</div>';
     var b = cardBadge(j);
     var fav = favList().indexOf(j.code) >= 0;
     var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');

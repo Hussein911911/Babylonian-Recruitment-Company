@@ -489,6 +489,14 @@
     navigator.serviceWorker.register('/sw.js')
       .then(reg => {
         console.log('✓ Service Worker مسجل', reg.scope);
+        function warmStaffShell() {
+          navigator.serviceWorker.ready.then(function (ready) {
+            var worker = navigator.serviceWorker.controller || ready.active;
+            if (worker) worker.postMessage({ type: 'WARM_STAFF_SHELL' });
+          }).catch(function () {});
+        }
+        warmStaffShell();
+        navigator.serviceWorker.addEventListener('controllerchange', warmStaffShell);
       })
       .catch(err => {
         console.log('✗ فشل تسجيل Service Worker', err);

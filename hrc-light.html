@@ -479,11 +479,16 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 }
 .job-image::before {
   content: ''; position: absolute; inset: -6%; z-index: 0; pointer-events: none;
-  background-image: var(--img, none);
+  background-image: none;
   background-size: cover; background-position: center;
   filter: blur(16px) saturate(1.15) brightness(.85);
   opacity: .85;
   transform: scale(1.08);
+}
+.job-image.has-img::before { background-image: var(--img, none); }
+.job-image:not(.has-img):not(.img-failed) {
+  background: linear-gradient(90deg, #142b47 25%, #29445f 45%, #142b47 65%);
+  background-size: 220% 100%; animation: skelWave 1.3s ease-in-out infinite;
 }
 .job-image::after {
   content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
@@ -3836,6 +3841,11 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
 [data-theme="dark"] .job-card.app-card.skeleton,.theme-dark .job-card.app-card.skeleton{background:#1c222a;border-color:#3c4550}
 @media(prefers-reduced-motion:reduce){.skeleton .skel-line,.job-card.app-card.skeleton .job-image{animation:none!important;background-position:50% 0}}
 
+/* The card theme also supplies an image background, so keep the loading
+   treatment more specific without touching the loaded image or skeleton card. */
+.app-card:not(.skeleton) .job-image:not(.has-img):not(.img-failed){background:linear-gradient(90deg,#142b47 25%,#29445f 45%,#142b47 65%);background-size:220% 100%;animation:skelWave 1.3s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.app-card .job-image:not(.has-img){animation:none!important}}
+
 /* Staff activity drawer — no public payload and no printed UI. */
 .notification-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:44px;min-width:44px;border:1px solid #c8a24a66;background:linear-gradient(135deg,#fffdf7,#f7eedb);color:#17335a;border-radius:13px;padding:8px 12px;font:inherit;font-size:13px;font-weight:700;line-height:1.5;cursor:pointer}
 .notification-toggle>svg{width:21px;height:21px;flex:none}.notification-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 6px;background:#193e6d;color:#fff;border-radius:9px;font-size:12px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -5376,6 +5386,14 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
     navigator.serviceWorker.register('/sw.js')
       .then(reg => {
         console.log('✓ Service Worker مسجل', reg.scope);
+        function warmStaffShell() {
+          navigator.serviceWorker.ready.then(function (ready) {
+            var worker = navigator.serviceWorker.controller || ready.active;
+            if (worker) worker.postMessage({ type: 'WARM_STAFF_SHELL' });
+          }).catch(function () {});
+        }
+        warmStaffShell();
+        navigator.serviceWorker.addEventListener('controllerchange', warmStaffShell);
       })
       .catch(err => {
         console.log('✗ فشل تسجيل Service Worker', err);
@@ -21959,6 +21977,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
   /* ---------------- التهيئة ---------------- */
   function init() {
+    // HTTPS pages only; standalone file:// exports must remain self-contained.
+    if (/^https?:$/.test(location.protocol) && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    }
     Store.init();
     UI.startCountdowns();
     fillSelects();
@@ -22867,7 +22889,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
       '<img src="' + UI.esc(imgSrc) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async"' +
         (j.imageUrl ? ' referrerpolicy="no-referrer"' : '') +
-        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()">' + '</div>';
+        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.classList.add(\'img-failed\');this.parentNode.setAttribute(\'role\',\'img\');this.parentNode.setAttribute(\'aria-label\',\'تعذّر تحميل صورة الوظيفة\');this.remove()">' + '</div>';
     var b = cardBadge(j);
     var fav = favList().indexOf(j.code) >= 0;
     var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');

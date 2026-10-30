@@ -1,4 +1,4 @@
-// Service Worker للعمل أوفلاين — hrc-cache-v101
+// Service Worker للعمل أوفلاين — hrc-cache-v102
 // ---------------------------------------------------------------------------
 // سياسة التخزين منذ v4:
 //   • HTML و JS  → network-first: الشبكة أولاً (الزائر يرى آخر نسخة)، والكاش
@@ -28,7 +28,13 @@
    إن كان مطابقاً. إبقاء الرقم ثابتاً يُبقي الزوار القدامى على نسخة قديمة
    من index.html مهما أعدت النشر (ظهر فعلاً: زر دخول محذوف بقي على حاسبة
    زارت الموقع قبل الحذف، بينما اختفى على هاتف لم يزره من قبل). */
-const CACHE_NAME = 'hrc-cache-v101';
+const CACHE_NAME = 'hrc-cache-v102';
+// Only public job illustrations / public Supabase Storage objects; never API or private images.
+const IMAGE_CACHE = 'hrc-public-job-images-v1';
+const IMAGE_META = 'hrc-public-job-image-meta-v1';
+const IMAGE_LIMIT = 64;
+const IMAGE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+const PUBLIC_STORAGE_ORIGIN = 'https://vqsvztudvfukyuerzcgx.supabase.co';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -82,31 +88,95 @@ function isNetworkFirst(request, url) {
   return /\.html?$/i.test(url.pathname) || /\.js$/i.test(url.pathname);
 }
 
-/* التثبيت: تجهيز الكاش ثم التسلّم الفوري بلا انتظار */
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      /* addAll يسقط كاملاً لو تعذّر ملف واحد — فيبقى المتصفح على كاش الجيل
-         السابق (وهو سبب معروف لظهور صفحات قديمة/مفقودة بعد النشر). نضيف كل
-         ملف على حدة حتى لا يُسقِط غيابُ ملفٍ واحد التثبيتَ كلّه. */
-      .then(cache => Promise.all(urlsToCache.map(u => cache.add(u).catch(() => null))))
-      .then(() => self.skipWaiting())
-  );
+/* Public pages do not download the staff shell in the background. The dashboard
+   explicitly asks for it when a staff member actually visits. */
+self.addEventListener('install', event => event.waitUntil(self.skipWaiting()));
+self.addEventListener('message', event => {
+  if (!event.data || event.data.type !== 'WARM_STAFF_SHELL' || !event.source || !event.source.url) return;
+  let source;
+  try { source = new URL(event.source.url); } catch (_) { return; }
+  if (source.origin !== self.location.origin || !/^\/dashboard(?:\.html)?\/?$/.test(source.pathname)) return;
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => Promise.all(urlsToCache.map(async u => {
+    if (!await cache.match(u)) await cache.add(u).catch(() => null);
+  }))));
 });
 
 /* التنشيط: حذف كل كاشات الأجيال السابقة ثم السيطرة على العملاء فوراً */
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
+  const cacheWhitelist = [CACHE_NAME, IMAGE_CACHE, IMAGE_META];
   event.waitUntil(
     caches.keys()
       .then(cacheNames => Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) return caches.delete(cacheName);
+          if (cacheName.startsWith('hrc-cache-') && cacheWhitelist.indexOf(cacheName) === -1) return caches.delete(cacheName);
         })
       ))
       .then(() => self.clients.claim())
   );
 });
+
+/* Exact URLs only: never cache API responses, credentials, signed/query URLs or
+   arbitrary third-party images. A stale public image remains usable offline. */
+function isPublicJobImage(request, url) {
+  if (request.method !== 'GET' || request.destination !== 'image' || request.headers.has('authorization') || request.headers.has('range')) return false;
+  if (url.origin === self.location.origin && !url.search) return /^\/assets\/img\/jobs\/[a-z0-9_-]+\.(?:webp|png|jpe?g|svg)$/i.test(url.pathname);
+  return url.origin === PUBLIC_STORAGE_ORIGIN && !url.search && url.pathname.startsWith('/storage/v1/object/public/');
+}
+
+async function publicJobImage(request, url) {
+  let cache, meta, saved;
+  try {
+    cache = await caches.open(IMAGE_CACHE);
+    meta = await caches.open(IMAGE_META);
+    saved = await cache.match(request.url);
+    if (saved) {
+      const stamp = await meta.match(request.url);
+      const time = stamp ? Number(await stamp.text()) : 0;
+      if (time && Date.now() < time) return saved;
+    }
+  } catch (_) { /* Storage unavailable: continue with the network. */ }
+  try {
+    let response;
+    if (url.origin === self.location.origin) response = await fetch(request);
+    else {
+      // CORS is necessary to inspect cache policy and content type. Fall back to
+      // the original request if CORS fails; never cache an opaque response.
+      try { response = await fetch(request.url, { mode: 'cors', credentials: 'omit' }); }
+      catch (_) { response = await fetch(request); }
+    }
+    const policy = response.headers.get('cache-control') || '';
+    const contentType = response.headers.get('content-type') || '';
+    const restricted = /(?:no-store|private|no-cache|max-age\s*=\s*0(?:\D|$))/i.test(policy);
+    if (saved && cache && meta && (restricted || response.status === 404 || response.status === 410)) {
+      try { await cache.delete(request.url); await meta.delete(request.url); } catch (_) {}
+      saved = null;
+    }
+    if (cache && meta && response.ok && !response.redirected && response.type !== 'opaque' &&
+        /^image\//i.test(contentType) && !restricted &&
+        response.headers.get('vary') !== '*') {
+      try {
+        const maxAge = policy.match(/(?:^|,)\s*max-age\s*=\s*"?(\d+)/i);
+        const age = Math.max(0, Number(response.headers.get('age')) || 0);
+        const expires = Date.parse(response.headers.get('expires') || '');
+        let lifetime = IMAGE_MAX_AGE;
+        if (maxAge) lifetime = Math.min(lifetime, Math.max(0, (Number(maxAge[1]) - age) * 1000));
+        else if (Number.isFinite(expires)) lifetime = Math.min(lifetime, Math.max(0, expires - Date.now()));
+        await cache.put(request.url, response.clone());
+        await meta.put(request.url, new Response(String(Date.now() + lifetime)));
+        const keys = await cache.keys();
+        while (keys.length > IMAGE_LIMIT) {
+          const oldest = keys.shift();
+          await cache.delete(oldest);
+          await meta.delete(oldest.url);
+        }
+      } catch (_) { /* Quota or storage failure must not prevent displaying the image. */ }
+    }
+    return response.status >= 500 && saved ? saved : response;
+  } catch (error) {
+    if (saved) return saved;
+    throw error;
+  }
+}
 
 /* الجلب */
 self.addEventListener('fetch', event => {
@@ -115,7 +185,13 @@ self.addEventListener('fetch', event => {
 
   let url;
   try { url = new URL(request.url); } catch (e) { return; }
+  if (isPublicJobImage(request, url)) {
+    event.respondWith(publicJobImage(request, url));
+    return;
+  }
   if (url.origin !== self.location.origin) return;   // خارج الموقع: ليس لنا
+  // Query-bearing image URLs may name a different version or contain secrets.
+  if (request.destination === 'image' && url.pathname.startsWith('/assets/img/jobs/') && url.search) return;
 
   if (isNetworkFirst(request, url)) {
     /* شبكة أولاً، والكاش احتياط إنقطاع فقط */
@@ -127,12 +203,12 @@ self.addEventListener('fetch', event => {
         }
         return response;
       }).catch(() =>
-        caches.match(request, { ignoreSearch: true }).then(cached => {
+        caches.open(CACHE_NAME).then(cache => cache.match(request, { ignoreSearch: true })).then(cached => {
           if (cached) return cached;
           /* تصفّح بلا شبكة وبلا نسخة مخزَّنة: نُعيد الصفحة الرئيسية للتنقل،
              وصفحة 404 بهوية الشركة لما سواه — لا شاشة خطأ عارية من المتصفح. */
           const fb = request.mode === 'navigate' ? '/index.html' : '/404.html';
-          return caches.match(fb).then(page => page || caches.match('/index.html'))
+          return caches.open(CACHE_NAME).then(cache => cache.match(fb).then(page => page || cache.match('/index.html')))
             .then(page => page || Response.error());
         })
       )
@@ -144,7 +220,7 @@ self.addEventListener('fetch', event => {
      ignoreSearch: الملفات المخزَّنة مسبقاً بلا ?v= — بدونها يفشل المطابق
      أوفلاين عند أول زيارة فتظهر الصفحة بلا تنسيق. */
   event.respondWith(
-    caches.match(request, { ignoreSearch: true }).then(response => {
+    caches.open(CACHE_NAME).then(cache => cache.match(request, { ignoreSearch: true })).then(response => {
       if (response) return response;
       return fetch(request).then(response => {
         if (!response || response.status !== 200 || response.type !== 'basic') {

@@ -27,7 +27,7 @@ try{
    const u=r.request().url();
    if(u.startsWith(base+'apply.html'))return r.fulfill({contentType:'text/html',body:config.wide?source.replace('width=device-width, initial-scale=1','width=980, initial-scale=1'):source});
    if(u.includes('/rest/v1/rpc/self_service_card'))return r.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,card:{serial:'TESTCARD01',status:'blank',chancesLeft:2,profile:{},chances:[{no:1,slotStatus:'empty'},{no:2,slotStatus:'empty'}]}})});
-   if(u.includes('/rest/v1/public_jobs'))return r.fulfill({contentType:'application/json',body:JSON.stringify([{id:'job-fixture',code:'HRC-1003',title:'وظيفة تجريبية',status:'available',governorate:'بابل',vacancies:1}])});
+   if(u.includes('/rest/v1/public_jobs'))return r.fulfill({contentType:'application/json',body:JSON.stringify([{id:'job-fixture',code:'HRC-1003',title:'وظيفة تجريبية',status:'available',governorate:'بابل',vacancies:1,image_url:'https://example.invalid/missing.jpg'}])});
    return u.startsWith(base)&&r.request().method()==='GET'?r.continue():r.abort();
   });
   await page.goto(base+'apply.html?form=TESTCARD01&job=HRC-1003');
@@ -53,6 +53,8 @@ try{
   await page.evaluate(()=>G.go(6));
   await page.waitForFunction(()=>document.querySelector('#pg-jobs.active'));
   check(await page.evaluate(()=>G.pickedIndex('HRC-1003')===0),config.name+' selected job stays selected after barcode scan');
+  await page.waitForFunction(()=>{const m=document.querySelector('#jobs-list .job-media');return m&&!m.classList.contains('has-img')&&!m.querySelector('.job-thumb')});
+  check(await page.locator('#jobs-list .job-media').count()>0,config.name+' broken image falls back without hiding the job');
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),config.name+' job step fits without horizontal overflow');
   check(errors.length===0,config.name+' no JS errors: '+errors.join(','));
   await ctx.close();

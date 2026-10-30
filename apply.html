@@ -1194,9 +1194,13 @@ body{
 }
 .job-thumb::before{
   content:''; position:absolute; inset:-8%; z-index:0; pointer-events:none;
-  background-image:var(--img, none); background-size:cover; background-position:center;
+  background-image:none; background-size:cover; background-position:center;
   filter:blur(10px) saturate(1.1) brightness(.85); opacity:.85; transform:scale(1.1);
 }
+.job-thumb.has-img::before{background-image:var(--img, none)}
+.job-thumb:not(.has-img){background:linear-gradient(90deg,#142b47 25%,#29445f 45%,#142b47 65%);background-size:220% 100%;animation:jobImageLoading 1.3s ease-in-out infinite}
+@keyframes jobImageLoading{0%{background-position:130% 0}100%{background-position:-130% 0}}
+@media(prefers-reduced-motion:reduce){.job-thumb:not(.has-img){animation:none}}
 .job-thumb img{
   position:relative; z-index:1; width:100%; height:100%;
   object-fit:contain; object-position:center; display:block;
@@ -4075,6 +4079,7 @@ body.job-modal-open .app{
     width:100%!important;height:100%!important;aspect-ratio:auto!important;
     border:0!important;border-radius:0!important;box-shadow:none!important;background:#0D2247!important;
   }
+  body[data-step="6"] #jobs-list .job-thumb:not(.has-img){background:linear-gradient(90deg,#142b47 25%,#29445f 45%,#142b47 65%)!important;background-size:220% 100%!important}
   body[data-step="6"] #jobs-list .job-thumb::before{
     filter:blur(14px) saturate(1.1) brightness(.7);opacity:.9;transform:scale(1.15);
   }
@@ -5639,7 +5644,7 @@ var G={
           +(j.imageUrl
             ? '<span class="job-thumb" style="--img:url(&quot;'+esc(j.imageUrl)+'&quot;)">'
               +'<img src="'+esc(j.imageUrl)+'" alt="صورة وظيفة '+esc(j.title)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer"'
-              +' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.remove()"></span>'
+              +' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.parentNode.classList.remove(\'has-img\');this.parentNode.remove()"></span>'
             : '')
           +'<span class="job-state '+stateCls+'">'+stateTxt+'</span>'
         +'</div>'
@@ -6546,6 +6551,7 @@ function ensureClient(){
 }
 
 function startApp(){
+  if(/^https?:$/.test(location.protocol)&&'serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}
   /* الحالة الابتدائية: شاشة الترحيب (لها تركيبها الخاص بلا شريط علوي) */
   document.body.setAttribute('data-step','0');
   initProvince();initDates();
