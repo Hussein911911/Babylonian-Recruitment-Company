@@ -384,6 +384,8 @@ await wait(250);
 /* البطاقة غير المستخدمة تُعرض دون بيانات شخصية أو بدء للصلاحية. */
 {
   const blankLookup = P.lookupCard(blankSerials[1]);
+  const caseCode = blankSerials[1];
+  check('بحث البطاقات بالحروف الكبيرة والصغيرة يعيد نفس النتائج', P.listApplicants({q:caseCode.toLowerCase()}).some(a=>a.serial===caseCode) && P.listApplicants({q:caseCode.toUpperCase()}).some(a=>a.serial===caseCode));
   check('البطاقة الفارغة معروفة دون بيانات شخصية أو بدء صلاحية', blankLookup.ok === true &&
     blankLookup.card.status === 'blank' && !blankLookup.card.fullName && !blankLookup.card.issueDate, JSON.stringify(blankLookup));
 }

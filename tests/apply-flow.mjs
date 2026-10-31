@@ -278,7 +278,7 @@ const sandbox = {
   URLSearchParams, encodeURIComponent, decodeURIComponent,
   document: doc,
   navigator: { vibrate: null, clipboard: null },
-  location: { origin: 'https://hrc-test.example', pathname: '/apply.html', search: '?form=HRC-BC-000120', hash: '', protocol: 'https:', host: 'hrc-test.example', reload() { } },
+  location: { origin: 'https://hrc-test.example', pathname: '/apply.html', search: '?form=hrc-bC-000120', hash: '', protocol: 'https:', host: 'hrc-test.example', reload() { } },
   HRCHttp, HRCQR: null,
   setTimeout: (fn, ms) => setTimeout(fn, Math.min(ms || 0, 2)),
   clearTimeout: (id) => clearTimeout(id),

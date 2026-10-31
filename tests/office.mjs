@@ -29,12 +29,12 @@ try{
  const damaged=Buffer.from(readFileSync(path));damaged[damaged.length-1]^=1;assert.throws(()=>unseal(damaged,key));assert.throws(()=>unseal(readFileSync(path),randomBytes(32)));check('wrong key and tampered ciphertext rejected',true);
  online=false;
  await assert.rejects(()=>engine.login('new-user','fixture-only'));check('no first login during outage / no local password fallback',true);
- const results=await Promise.allSettled([engine.enqueue(a,{kind:'reserve',jobCode:'J-1',serial:'CARD'}),engine.enqueue(b,{kind:'reserve',jobCode:'J-1',serial:'CARD'})]);
+ const results=await Promise.allSettled([engine.enqueue(a,{kind:'reserve',jobCode:'J-1',serial:'CARD'}),engine.enqueue(b,{kind:'reserve',jobCode:'J-1',serial:'cArD'})]);
  check('two devices cannot enqueue same job twice',results.filter(r=>r.status==='fulfilled').length===1);
- const second=await engine.enqueue(b,{kind:'reserve',jobCode:'J-2',serial:'CARD'});
+ const second=await engine.enqueue(b,{kind:'reserve',jobCode:'J-2',serial:'card'});
  check('shared card queue reserves distinct existing slots',store.state.outbox.map(o=>o.expected.attempt_no).join(',')==='1,2');
  check('staff sees only own outbox; admin sees shared queue',engine.view(a).outbox.length===1&&engine.view(b).outbox.length===1&&engine.view(admin).outbox.length===2);
- await assert.rejects(()=>engine.enqueue(a,{kind:'reserve',jobCode:'J-3',serial:'CARD'}));check('local queue never invents a third chance',true);
+ await assert.rejects(()=>engine.enqueue(a,{kind:'reserve',jobCode:'J-3',serial:'cArD'}));check('local queue never invents a third chance',true);
  await engine.sync();check('failed network retains full durable payloads',store.state.outbox.every(o=>o.status==='pending'&&o.data.serial==='CARD'&&o.expected.attempt_no));
  await engine.archive(key);check('office archive labelled separately from DB backup',store.state.backup.type==='encrypted-office-state');
  const archive=join(dir,'archives',readdirSync(join(dir,'archives'))[0]);check('office archives omit all login leases and cloud tokens',Object.keys(unseal(readFileSync(archive),key).sessions).length===0&&Object.keys(store.state.sessions).length===3);
@@ -45,7 +45,8 @@ try{
  await engine.sync();check('idempotent retry consumes no extra operation',submitted===2&&store.state.outbox.every(o=>o.status==='done'));
  await assert.rejects(()=>engine.cancel(b,second.id));check('completed request cannot be cancelled',true);
  const conflict=await engine.enqueue(a,{kind:'job_note',jobCode:'J-8',note:'ملاحظة تجريبية'});await engine.sync();check('server conflict preserved for human review',store.state.outbox.find(o=>o.id===conflict.id).status==='conflict');
- const activation=await engine.enqueue(a,{kind:'activate',jobCode:'J-4',serial:'BLANK',fullName:'زبون تجريبي',phone:'07700000000',posName:'المكتب'});
+ const activation=await engine.enqueue(a,{kind:'activate',jobCode:'J-4',serial:'blank',fullName:'زبون تجريبي',phone:'07700000000',posName:'المكتب'});
+ check('lowercase activation resolves exact canonical snapshot key',store.state.outbox.find(o=>o.id===activation.id).data.serial==='BLANK');
  let unblock;pause=new Promise(r=>{unblock=r;});const sync=engine.sync();
  // Let the cloud call start, then verify the local write path remains available.
  await new Promise(r=>setTimeout(r,20));

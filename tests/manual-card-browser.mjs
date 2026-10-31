@@ -34,12 +34,18 @@ try {
   assert.match(await page.locator('#cp-result').innerText(),/لم يبدأ التقديم بعد/);
   assert.match(await page.locator('#cp-result').innerText(),/تبدأ الصلاحية عند أول تقديم ناجح/);
   assert.equal(await page.locator('#cp-result a').getAttribute('href'),'apply.html?form=K7M2XQ9T4R');
+  for (const typed of ['K7M2XQ9T4R','k7m2xq9t4r','K7m2xQ9t4R']) {
+   await page.locator('#cp-again').click();await page.locator('#cp-serial').fill(typed);await page.locator('#cp-go').click();
+   await page.locator('#cp-result').waitFor({state:'visible'});
+   assert.equal((await page.evaluate(()=>window.cardCalls)).at(-1),'K7M2XQ9T4R');
+   assert.match(await page.locator('#cp-result').innerText(),/لم يبدأ التقديم بعد/);
+  }
   await page.locator('#cp-again').click();await page.locator('#cp-serial').fill('٠٠٠١٢٠');await page.locator('#cp-go').click();
-  await page.locator('#cp-result').waitFor({state:'visible'});assert.deepEqual(await page.evaluate(()=>window.cardCalls),['K7M2XQ9T4R','HRC-BC-000120']);
+  await page.locator('#cp-result').waitFor({state:'visible'});assert.deepEqual((await page.evaluate(()=>window.cardCalls)).slice(-2),['K7M2XQ9T4R','HRC-BC-000120']);
   await page.locator('#cp-again').click();await page.locator('#cp-serial').fill('A23456789B');await page.locator('#cp-go').click();
   await page.waitForFunction(()=>document.querySelector('#cp-err').textContent.includes('لا توجد بطاقة'));
   await page.locator('#cp-serial').fill('bad');await page.locator('#cp-go').click();assert.match(await page.locator('#cp-err').innerText(),/لا يبدو/);
-  assert.equal(await page.evaluate(()=>window.cardCalls.length),3);
+  assert.equal(await page.evaluate(()=>window.cardCalls.length),6);
   await page.evaluate(()=>{window.HRCQRScan.open=options=>{const text='https://example.com/apply.html?form=K7M2XQ9T4R';if(options.validate(text)) options.onResult(text);return true;};});
   await page.locator('#cp-scan').click();await page.locator('#cp-choice-details').click();
   await page.locator('#cp-result').waitFor({state:'visible'});

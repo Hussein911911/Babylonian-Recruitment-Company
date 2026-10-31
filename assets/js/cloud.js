@@ -674,7 +674,7 @@
    * ------------------------------------------------------------------------- */
   function verifyForm(client, serial, token) {
     if (!serial) return Promise.resolve({ ok: false, code: 'bad_input', error: 'أدخل رقم الاستمارة' });
-    return rpcCall(client, 'verify_form', { p_serial: String(serial).trim(), p_token: token || null })
+    return rpcCall(client, 'verify_form', { p_serial: String(serial).trim().toUpperCase(), p_token: token || null })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر التحقق' };
@@ -824,7 +824,7 @@
   /* عرض آمن للبطاقة بالباركود: بلا رموز فرص وبلا بيانات صاحب العمل */
   function lookupCardRpc(client, serial) {
     if (!serial) return Promise.resolve({ ok: false, error: 'أدخل باركود البطاقة' });
-    return rpcCall(client, 'lookup_card', { p_serial: String(serial).trim() })
+    return rpcCall(client, 'lookup_card', { p_serial: String(serial).trim().toUpperCase() })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
@@ -858,7 +858,7 @@
 
   // Only the specified card's already-used opportunity is returned by SQL.
   function customerApplicationRpc(client, serial, no) {
-    return rpcCall(client, 'customer_application_details', {p_serial: String(serial || '').trim(), p_attempt_no: Number(no)})
+    return rpcCall(client, 'customer_application_details', {p_serial: String(serial || '').trim().toUpperCase(), p_attempt_no: Number(no)})
       .then(function (r) { return r && r.data && !r.error ? r.data : {ok:false, error:(r && r.error && r.error.message) || 'تعذّر تحميل تفاصيل التقديم'}; })
       .catch(function () { return {ok:false, error:'تعذّر الاتصال لتحميل تفاصيل التقديم'}; });
   }
@@ -871,7 +871,7 @@
     if (!serial || !jobCode)
       return Promise.resolve({ ok: false, error: 'أكمل الباركود والوظيفة' });
     return rpcCall(client, 'use_chance', {
-      p_serial: String(serial).trim(), p_code: String(code || '').trim(), p_job_code: String(jobCode).trim()
+      p_serial: String(serial).trim().toUpperCase(), p_code: String(code || '').trim(), p_job_code: String(jobCode).trim()
     })
       .then(function (res) {
         if (res && res.error) {
@@ -890,7 +890,7 @@
   /* حمولة الطباعة المحمية برمز مستقل، أو رمز فرصة للبطاقات القديمة فقط. */
   function verifyCardCodeRpc(client, serial, code) {
     if (!serial || !code) return Promise.resolve({ ok: false, error: 'أدخل الباركود ورمز التحقق' });
-    return rpcCall(client, 'verify_card_code', { p_serial: String(serial).trim(), p_code: String(code).trim() })
+    return rpcCall(client, 'verify_card_code', { p_serial: String(serial).trim().toUpperCase(), p_code: String(code).trim() })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
@@ -932,7 +932,7 @@
   function activateCardRpc(client, serial, data) {
     if (!serial) return Promise.resolve({ ok: false, error: 'أدخل باركود البطاقة' });
     return rpcCall(client, 'activate_card', {
-      p_serial: String(serial).trim(),
+      p_serial: String(serial).trim().toUpperCase(),
       p_data: data || {}
     })
       .then(function (res) {
