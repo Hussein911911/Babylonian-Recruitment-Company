@@ -4821,7 +4821,6 @@ body.job-modal-open .app{
 
     <!-- ═══ 7 — الوظائف ═══ -->
     <div class="page" id="pg-jobs">
-      <div id="profile-lock-notice" class="identity-notice" role="status" hidden></div>
       <div id="chances-bar" class="chances-bar has2"></div>
       <div class="section-title">اختر الوظيفة المناسبة لك</div>
       <section class="job-filters jf-compact" aria-label="فلترة الوظائف">
@@ -5486,7 +5485,6 @@ var G={
     document.body.classList.add('profile-locked');
     document.querySelectorAll('.step-fields input,.step-fields select').forEach(function(el){el.disabled=true;});
     var back=$('btn-jobs-back');if(back)back.hidden=true;
-    var notice=$('profile-lock-notice');if(notice){notice.hidden=false;notice.textContent='بيانات صاحب البطاقة مثبتة من التقديم الأول. هذه الفرصة لاختيار وظيفة فقط؛ تعديل البيانات يكون بمراجعة الشركة.';}
   },
 
   fillProfile:function(p){

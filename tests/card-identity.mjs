@@ -73,7 +73,7 @@ try{
   w.HRCHttp={createClient:()=>({from:()=>({select:async()=>({data:JSON.parse(JSON.stringify((await db.query("select * from brc.public_jobs where status='available'")).rows)),error:null})}),rpc:async(name,args)=>{calls.push({name,args});try{return{data:await rpc(name,name==='self_service_card'?[args.p_serial]:[args.p_serial,args.p_job_code,JSON.stringify(args.p_data)]),error:null};}catch(e){return{data:null,error:{message:e.message}};}}})};
   w.eval(inline);await tick(80);w.G.start();await tick(450);
   check('second scan goes directly to jobs', $('pg-jobs').classList.contains('active'));
-  check('job back button is removed and owner notice visible',$('btn-jobs-back').hidden&&!$('profile-lock-notice').hidden);
+  check('job back button remains removed and notice is absent',$('btn-jobs-back').hidden&&!$('profile-lock-notice'));
   check('all original profile fields disabled',Array.from(w.document.querySelectorAll('.step-fields input,.step-fields select')).every(e=>e.disabled));
   for(const n of [0,1,2,3,4,5,-1]){w.G.go(n);await tick(5);assert.ok($('pg-jobs').classList.contains('active'));}
   check('direct and relative navigation cannot reach identity pages',true);
