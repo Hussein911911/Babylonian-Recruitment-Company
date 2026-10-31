@@ -5,6 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {brotliDecompressSync} from 'node:zlib';
 import {chromium as playwright} from 'playwright-core';
 import chromium from '@sparticuz/chromium';
+import {getDocument} from 'pdfjs-dist/legacy/build/pdf.mjs';
 const libs=new URL('./.tmp/horizontal/libraries/',import.meta.url),packed=new URL('../node_modules/@sparticuz/chromium/bin/al2023.tar.br',import.meta.url);
 if(existsSync(packed)&&!existsSync(new URL('lib/',libs))){mkdirSync(libs,{recursive:true});const tar=new URL('libs.tar',libs);writeFileSync(tar,brotliDecompressSync(readFileSync(packed)));execFileSync('tar',['xf',tar.pathname,'-C',libs.pathname]);}
 const browser=await playwright.launch({executablePath:await chromium.executablePath(),args:chromium.args.filter(s=>!['--disable-web-security','--single-process','--in-process-gpu','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'].includes(s)).concat('--disable-gpu'),env:{...process.env,LD_LIBRARY_PATH:[new URL('lib/',libs).pathname,process.env.LD_LIBRARY_PATH].filter(Boolean).join(':')},headless:true});
@@ -37,9 +38,13 @@ try {
    assert.match(html,new RegExp('مكان مقابلة '+n));assert.match(html,/زبون الاختبار/);
    assert.equal(await page.locator('#print-root .hrc-card').count(),0);
    await page.waitForFunction(n=>window.printCount>=n,n);
+   await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+   assert.equal(await page.locator('#print-root .hrc-form').count(),1,'early afterprint must not erase the application');
+   if(width===375){const pdf=await page.pdf({format:'A4',printBackground:true});const doc=await getDocument({data:new Uint8Array(pdf),useSystemFonts:true}).promise;const contents=(await (await doc.getPage(1)).getTextContent()).items.map(i=>i.str).join(' ');assert.ok(contents.includes('K7M2XQ9T4R')&&contents.includes('JOB-'+n),'PDF contains this opportunity, not a blank page');}
+
   }
   assert.equal(await page.locator('#bk-print').count(),0);
-  await page.locator('#cp-again').click();
+  await page.locator('#cp-again').click();assert.equal(await page.locator('#print-root .hrc-form').count(),0,'closing card removes the hidden print copy');
   await page.evaluate(()=>{
    window.testCalls=[];
    window.HRCStore.cardLookup=async()=>({ok:true,card:{serial:'K7M2XQ9T4R',status:'active',chancesLeft:1,chances:[{no:1,slotStatus:'reserved',jobCode:'JOB-1',jobTitle:'وظيفة',selectedAt:'2026-10-30T09:00:00Z'},{no:2,slotStatus:'empty'}]}});

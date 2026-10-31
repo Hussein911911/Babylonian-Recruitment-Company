@@ -603,7 +603,7 @@ body{
 
 
 /* Welcome navigation and per-opportunity print controls. */
-.mk-platform-link{display:flex;align-items:center;justify-content:center;min-height:48px;width:min(100%,330px);margin:12px auto 0;padding:10px 16px;position:relative;z-index:2;border:1px solid #d2b46c;border-radius:13px;background:#fff;color:#16294d;text-decoration:none;font-weight:800}
+.mk-platform-link{display:flex;align-items:center;justify-content:center;min-height:48px;width:min(100%,330px);margin:12px auto 0;padding:10px 16px;position:relative;z-index:2;border:1px solid #d2b46c;border-radius:13px;background:linear-gradient(135deg,#f4d681,#d5aa47);color:#132b4a;box-shadow:0 7px 20px #081b3259;text-decoration:none;font-weight:900}
 .mk-platform-link:focus-visible,.cs-print:focus-visible{outline:3px solid #b08d3c;outline-offset:3px}
 .welcome-details-message{position:relative;z-index:2;margin:8px 0 0;color:#fff;font-weight:800;line-height:1.8}
 .cs-print{grid-column:1/-1;justify-self:start;min-height:44px;padding:8px 14px;border:1px solid #b08d3c;border-radius:10px;background:#16294d;color:#fff;font:800 13px/1.6 "IBM Plex Sans Arabic",sans-serif;cursor:pointer}
@@ -615,6 +615,7 @@ body{
  body.chance-printing #chance-print-root{display:block!important;position:static;width:100%;background:#fff}
  body.chance-printing #chance-print-root .form-sheet,body.chance-printing #chance-print-root .form-sheet *{visibility:visible!important}
  body.chance-printing #chance-print-root .form-sheet{width:100%;max-width:100%;margin:0;box-shadow:none;border-radius:0;overflow:visible}
+ body.chance-printing #chance-print-root .form-sheet + .form-sheet{break-before:page;page-break-before:always}
 }
 /* ═══ تفاصيل البطاقة: زر في شاشة الترحيب + نافذة أنيقة ═══ */
 .welcome-details{width:min(100%,600px);margin-top:12px}
@@ -5041,8 +5042,17 @@ var AICO={
   tag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 3.6H20v7.4l-9 9-7.4-7.4z"/><circle cx="16.4" cy="7.2" r="1.3"/></svg>'
 };
 function aico(name,cls){return '<span class="ico'+(cls?' '+cls:'')+'">'+(AICO[name]||AICO.info)+'</span>';}
-if(window.addEventListener)window.addEventListener('afterprint',function(){document.body.classList.remove('chance-printing');var root=$('chance-print-root');if(root)root.innerHTML='';});
-function printApplication(){var fonts=document.fonts;var ready=fonts&&fonts.load?Promise.all([400,600,700,800,900].map(function(w){return fonts.load(w+' 12px Cairo','العراق ABC 123');})).catch(function(){}):Promise.resolve();ready.then(function(){window.print();});}
+// Some mobile browsers fire afterprint before the print preview has captured
+// the document. Keep the hidden sheet intact until another explicit action.
+function clearChancePrint(){document.body.classList.remove('chance-printing');var root=$('chance-print-root');if(root)root.innerHTML='';}
+function printApplication(chance){
+  if(chance!==true){
+    clearChancePrint();
+    var container=$('result-content'),root=$('chance-print-root');
+    var sheets=container&&container.querySelectorAll?container.querySelectorAll('.form-sheet'):[];
+    if(root&&sheets.length){root.innerHTML=Array.prototype.map.call(sheets,function(sheet){return sheet.outerHTML;}).join('');document.body.classList.add('chance-printing');}
+  }
+  var fonts=document.fonts;var ready=fonts&&fonts.load?Promise.all([400,600,700,800,900].map(function(w){return fonts.load(w+' 12px Cairo','العراق ABC 123');})).catch(function(){}):Promise.resolve();ready.then(function(){window.print();});}
 function iraqYear(){return Number(new Intl.DateTimeFormat('en',{timeZone:'Asia/Baghdad',year:'numeric',calendar:'gregory'}).format(new Date()));}
 function money(n){return(n==null||isNaN(n))?'—':Number(n).toLocaleString('en-US')+' د.ع';}
 /* إظهار/إخفاء عنصر بسمة hidden — يعمل في المتصفح وفي DOM الاختبار المصغّر */
@@ -5213,12 +5223,13 @@ var G={
         try{if(window.HRCQR){el.innerHTML=window.HRCQR.renderSVG(window.HRCQR.encode(el.getAttribute('data-qr'),'M'),{margin:1,size:84,dark:'#16294d',light:'#ffffff'});return;}}catch(e){}
         el.textContent=cardSerial;
       }
-      function print(){qr();document.body.classList.add('chance-printing');printApplication();}
+      function print(){qr();document.body.classList.add('chance-printing');printApplication(true);}
       if(window.HRCQR)print();else{var script=document.createElement('script');script.src='assets/js/qr.js';script.onload=print;script.onerror=print;document.head.appendChild(script);}
     });
   },
   arabicDate:arabicDate,
   closeCardDetails:function(){
+    clearChancePrint();
     var sheet=$('card-details');
     if(!sheet)return;
     sheet.classList.remove('is-open');

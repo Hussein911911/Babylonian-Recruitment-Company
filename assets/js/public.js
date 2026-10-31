@@ -672,6 +672,7 @@
   }
 
   function cpReset() {
+    if (root.HRCVoucher && root.HRCVoucher.clearFormPrint) root.HRCVoucher.clearFormPrint();
     cpLookupGeneration++;
     var entry = document.getElementById('cp-entry');
     var host = document.getElementById('cp-result');

@@ -5,6 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {brotliDecompressSync} from 'node:zlib';
 import {chromium as playwright} from 'playwright-core';
 import chromium from '@sparticuz/chromium';
+import {getDocument} from 'pdfjs-dist/legacy/build/pdf.mjs';
 const libs=new URL('./.tmp/horizontal/libraries/',import.meta.url),packed=new URL('../node_modules/@sparticuz/chromium/bin/al2023.tar.br',import.meta.url);
 if(existsSync(packed)&&!existsSync(new URL('lib/',libs))){mkdirSync(libs,{recursive:true});const tar=new URL('libs.tar',libs);writeFileSync(tar,brotliDecompressSync(readFileSync(packed)));execFileSync('tar',['xf',tar.pathname,'-C',libs.pathname]);}
 const browser=await playwright.launch({executablePath:await chromium.executablePath(),args:chromium.args.filter(s=>!['--disable-web-security','--single-process','--in-process-gpu','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'].includes(s)).concat('--disable-gpu'),env:{...process.env,LD_LIBRARY_PATH:[new URL('lib/',libs).pathname,process.env.LD_LIBRARY_PATH].filter(Boolean).join(':')},headless:true});
@@ -27,7 +28,7 @@ try {
   await page.waitForFunction(()=>window.G && document.querySelector('#btn-card-details'));
   await page.waitForFunction(()=>document.querySelector('#btn-card-details').getAttribute('aria-label')?.includes('K7M2XQ9T4R'));
   assert.ok(await page.locator('#btn-card-details').isVisible());
-  const link=page.getByRole('link',{name:'رابط موقع المنصة'});assert.ok(await link.isVisible());assert.equal(new URL(await link.getAttribute('href'),page.url()).href,base);
+  const link=page.getByRole('link',{name:'رابط موقع المنصة'});assert.ok(await link.isVisible());assert.match(await link.evaluate(el=>getComputedStyle(el).backgroundImage),/gradient/);assert.equal(new URL(await link.getAttribute('href'),page.url()).href,base);
   assert.ok(await page.evaluate(()=>{const d=document.querySelector('#welcome-details-wrap').getBoundingClientRect(),l=document.querySelector('.mk-platform-link').getBoundingClientRect();return l.top>=d.bottom-1}));
   await page.locator('#btn-card-details').click();
   if(mode==='blank'){
@@ -44,13 +45,31 @@ try {
     assert.match(await page.locator('#cs-extra-1').innerText(),/الوظيفة الأصلية 1/);assert.doesNotMatch(await page.locator('#card-details-body').innerText(),/جهة خاطئة|وظيفة مختلفة/);
     for(const n of [1,2]){
      await page.locator('.cs-print').nth(n-1).click();await page.waitForFunction(n=>window.printCount===n,n);
+     await page.evaluate(()=>window.dispatchEvent(new Event('afterprint'))); // mobile can fire this before capturing preview
      const root=page.locator('#chance-print-root'),text=await root.textContent();
      assert.match(text,new RegExp('جهة العمل '+n));assert.doesNotMatch(text,new RegExp('جهة العمل '+(n===1?2:1)));
      assert.match(text,new RegExp('الوظيفة الأصلية '+n));assert.match(text,/عنوان أصلي/);assert.match(text,/01\/01\/2000/);assert.match(text,/مكان مقابلة/);
      assert.equal(await root.locator('.form-sheet').count(),1);assert.equal(await root.locator('.hrc-card').count(),0);assert.equal(await root.locator('[data-qr] svg').count(),1);
-     await page.emulateMedia({media:'print'});assert.equal(await root.evaluate(e=>getComputedStyle(e).display),'block');assert.equal(await root.locator('.form-sheet').evaluate(e=>getComputedStyle(e).visibility),'visible');if(width===375 && n===1){const pdf=await page.pdf({format:'A4',printBackground:true});const pages=(pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)||[]).length;assert.equal(pages,1,'one A4 page, no blank pages');}await page.emulateMedia({media:'screen'});
-     await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+     await page.emulateMedia({media:'print'});assert.equal(await root.evaluate(e=>getComputedStyle(e).display),'block');assert.equal(await root.locator('.form-sheet').evaluate(e=>getComputedStyle(e).visibility),'visible');if(width===375){const pdf=await page.pdf({format:'A4',printBackground:true});const doc=await getDocument({data:new Uint8Array(pdf),useSystemFonts:true}).promise;assert.equal(doc.numPages,1,'one A4 page');const text=(await (await doc.getPage(1)).getTextContent()).items.map(i=>i.str).join(' ');assert.ok(text.includes('K7M2XQ9T4R')&&text.includes('JOB-'+n)&&text.replace(/\s/g,'').includes('JOBAPPLICATIONFORM'),'PDF must contain the actual selected application, not a white page');}await page.emulateMedia({media:'screen'});
     }
+    await page.locator('.cs-close').click();assert.equal(await page.locator('#chance-print-root .form-sheet').count(),0);
+    if(width===375){
+     await page.evaluate(()=>{const job={code:'JOB-RESULT',title:'وظيفة النتيجة',governorate:'بابل',shift:'صباحي',salaryMin:500,salaryMax:600,employer:{name:'جهة النتيجة',phone:'07700000000',address:'عنوان'},interviewLocation:'المقابلة'};G.showResults([{job,data:{app:{fullName:'صاحب البطاقة'},attempt:{no:1,slotStatus:'reserved'}},index:0}],[]);});
+     await page.waitForFunction(()=>document.querySelector('#pg-result.active'));
+     await page.locator('#result-actions .ra-print').click();await page.waitForFunction(()=>window.printCount===3);
+     await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+     await page.emulateMedia({media:'print'});const pdf=await page.pdf({format:'A4',printBackground:true});const doc=await getDocument({data:new Uint8Array(pdf),useSystemFonts:true}).promise;const result=(await (await doc.getPage(1)).getTextContent()).items.map(i=>i.str).join(' ');
+     assert.equal(doc.numPages,1,'result form occupies one page');assert.ok(result.includes('JOB-RESULT')&&result.includes('K7M2XQ9T4R'),'result page print contains real form after printing a chance');
+     await page.emulateMedia({media:'screen'});
+     await page.evaluate(()=>{const a={code:'JOB-RESULT',title:'الوظيفة الأولى',governorate:'بابل',shift:'صباحي',salaryMin:500,salaryMax:600,employer:{name:'جهة 1',phone:'',address:''},interviewLocation:''};const b={...a,code:'JOB-SECOND',title:'الوظيفة الثانية',employer:{name:'جهة 2'}};G.showResults([a,b].map((job,i)=>({job,data:{app:{fullName:'صاحب البطاقة'},attempt:{no:i+1,slotStatus:'reserved'}},index:i})),[]);});
+     await page.locator('#result-actions .ra-print').click();await page.waitForFunction(()=>window.printCount===4);await page.emulateMedia({media:'print'});
+     const both=await getDocument({data:new Uint8Array(await page.pdf({format:'A4',printBackground:true})),useSystemFonts:true}).promise;assert.equal(both.numPages,2,'two applications print on two pages');
+     const p1=(await (await both.getPage(1)).getTextContent()).items.map(x=>x.str).join(' '),p2=(await (await both.getPage(2)).getTextContent()).items.map(x=>x.str).join(' ');
+     assert.ok(p1.includes('JOB-RESULT')&&!p1.includes('JOB-SECOND')&&p2.includes('JOB-SECOND')&&!p2.includes('JOB-RESULT'),'each page has the correct opportunity');
+     await page.emulateMedia({media:'screen'});
+
+    }
+
    }
    assert.ok(requests.every(x=>x.p_serial===serial && [1,2].includes(x.p_attempt_no)));
   }

@@ -357,13 +357,10 @@
     rootEl.innerHTML = formHtml(app, attempt, verifiedAttempts);
     try { Store.audit('طباعة استمارة توظيف', 'applicant', app.serial,
       'طباعة استمارة توظيف A4 بنفس باركود البطاقة — للزبون ' + app.fullName); } catch (e) { }
-    function after() {
-      if (printSeq !== seq) return;
-      rootEl.innerHTML = '';
-      pageStyle.textContent = '';
-    }
-    window.addEventListener('afterprint', after, { once: true });
-    setTimeout(function () { readyPrint(seq, after, 1600); }, 160);
+    // Mobile browsers can emit afterprint before capturing the preview. Keep
+    // this hidden form until it is explicitly replaced or the card is closed.
+    setSheetCss(false);
+    setTimeout(function () { readyPrint(seq, null, 0); }, 160);
   }
 
   /* معاينة الاستمارة داخل نافذة (للشاشة) — تُستدعى من شاشة نجاح البيع
@@ -390,7 +387,16 @@
   var printSeq = 0, printFonts;
   function readyPrint(seq, after, delay) {
     if (!printFonts) printFonts = document.fonts && document.fonts.load ? Promise.all([400,600,700,900].map(function (w) { return document.fonts.load(w+' 12px Cairo','العراق ABC 123'); })).catch(function () { printFonts = null; }) : Promise.resolve();
-    printFonts.then(function () { if (printSeq === seq) { window.print(); setTimeout(after, delay); } });
+    printFonts.then(function () { if (printSeq === seq) { window.print(); if (after) setTimeout(after, delay); } });
+  }
+
+  function clearFormPrint() {
+    var rootEl = document.getElementById('print-root');
+    if (!rootEl || !rootEl.querySelector('.hrc-form')) return;
+    ++printSeq;
+    rootEl.innerHTML = '';
+    var style = document.getElementById('hrc-form-page-style');
+    if (style) style.textContent = '';
   }
 
   function print(app, opts) {
@@ -399,6 +405,7 @@
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّر الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
     if (!app) return;
+    clearFormPrint();
     var attempts = opts.attempts || Store.getAttempts(app.serial);
     var seq = ++printSeq;
     setSheetCss(false);
@@ -415,6 +422,7 @@
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
     if (!apps || !apps.length) { UI.toast('err', 'تعذّرت الطباعة', 'لا توجد بطاقات بالدفعة'); return; }
+    clearFormPrint();
     var seq = ++printSeq;
     setSheetCss(false);
     rootEl.innerHTML = apps.map(function (app) {
@@ -491,6 +499,7 @@
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
     if (!apps || !apps.length) { UI.toast('err', 'تعذّرت الطباعة', 'لا توجد بطاقات للطباعة'); return; }
+    clearFormPrint();
     var seq = ++printSeq;
     setSheetCss(true);
     rootEl.innerHTML = sheetHtml(apps);
@@ -508,7 +517,7 @@
 
   root.HRCVoucher = {
     buildHtml: buildHtml, print: print, printBatch: printBatch, printSheet: printSheet, sheetCount: sheetCount, preview: preview,
-    formHtml: formHtml, printForm: printForm, previewForm: previewForm,
+    formHtml: formHtml, printForm: printForm, clearFormPrint: clearFormPrint, previewForm: previewForm,
     DISCLAIMER: DISCLAIMER, qrSvg: qrSvg, verifyUrl: function (s) { return Store.verifyUrl(s); }
   };
   if (typeof module === 'object' && module.exports) module.exports = root.HRCVoucher;
