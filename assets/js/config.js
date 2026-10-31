@@ -100,7 +100,7 @@
       pending: { ar: 'قيد المراجعة', cls: 'warn' },
       rejected: { ar: 'مرفوضة', cls: 'danger' },
       expired: { ar: 'منتهية الصلاحية', cls: 'danger' },
-      exhausted: { ar: 'استُهلكت الفرصتان', cls: 'warn' }
+      exhausted: { ar: 'استُهلكت فرص البطاقة', cls: 'warn' }
     },
 
     /* --------------------------------------------------------------

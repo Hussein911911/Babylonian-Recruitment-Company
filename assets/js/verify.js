@@ -221,7 +221,7 @@
       pending: 'طلب قيد المراجعة',
       rejected: 'طلب مرفوض',
       expired: 'بطاقة منتهية الصلاحية (30 يوماً)',
-      exhausted: 'استُهلكت الفرصتان — تُشترى بطاقة جديدة'
+      exhausted: 'استُهلكت فرص البطاقة — تُشترى بطاقة جديدة'
     })[k] || k;
   }
 
@@ -253,7 +253,7 @@
       ? (r.status === 'pending'
         ? '<div class="panel" style="background:#fdf6e3;border-color:#f0d9a3;margin:0 24px 18px"><div class="panel-body" style="padding:14px 16px">' +
           '<p class="mb-0 small">' + UI.ic('hourglass') + ' <b>طلبك قيد المراجعة:</b> استلم النظام طلبك وسيراجعه موظفونا خلال وقت قصير. ' +
-          'عند القبول تصدر البطاقة رسمياً بباركودها وتبدأ صلاحية 30 يوماً بفرصتين. يمكنك متابعة الحالة من «بطاقتي» أو الاتصال بنا.</p></div></div>'
+          'عند القبول تصدر البطاقة رسمياً بباركودها وتبدأ صلاحية 30 يوماً بفرص حسب البطاقة. يمكنك متابعة الحالة من «بطاقتي» أو الاتصال بنا.</p></div></div>'
         : '<div class="panel" style="background:#fbe6e5;border-color:#f0c3c1;margin:0 24px 18px"><div class="panel-body" style="padding:14px 16px">' +
           '<p class="mb-0 small">' + UI.ic('x-circle') + ' <b>نأسف، رُفض الطلب.</b> ' +
           (r.rejectReason ? 'السبب: ' + UI.esc(r.rejectReason) + '. ' : '') + 'يمكنك مراجعة المكتب للاستفسار أو تقديم طلب جديد.</p></div></div>')

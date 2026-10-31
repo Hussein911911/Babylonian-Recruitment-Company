@@ -83,7 +83,7 @@ try{
   check('payload ignores tampered DOM fields and gender actions',w.G.readProfile().fullName===owner.fullName&&w.G.readProfile().phone===owner.phone&&w.G.readProfile().gender===owner.gender);
   w.G.pickJob('J-7');w.G.go(7);await tick(450);
   check('review retains original owner and allows only job editing',$('review-content').textContent.includes(owner.fullName)&&!w.document.querySelector('#review-content [onclick="G.editStep(1)"]')&&!!w.document.querySelector('#review-content [onclick="G.editStep(6)"]'));
-  check('rescan review labels the actual second opportunity', $('review-content').textContent.includes('الفرصة ٢')&&$('review-content').textContent.includes('وظيفة الفرصة المتبقية'));
+  check('rescan review labels the actual second opportunity', $('review-content').textContent.includes('الفرصة ٢')&&$('review-content').textContent.includes('وظائف الفرص المتبقية'));
   $('f-name').value=attacker.fullName;w.G.finish();
   for(let i=0;i<100&&!$('pg-result').classList.contains('active');i++)await tick(20);
   check('second application completes with original identity', $('pg-result').classList.contains('active')&&$('result-content').textContent.includes(owner.fullName)&&!$('result-content').textContent.includes(attacker.fullName));

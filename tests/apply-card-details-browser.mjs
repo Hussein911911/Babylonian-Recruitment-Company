@@ -47,6 +47,7 @@ try {
      await page.locator('.cs-print').nth(n-1).click();await page.waitForFunction(n=>window.printCount===n,n);
      await page.evaluate(()=>window.dispatchEvent(new Event('afterprint'))); // mobile can fire this before capturing preview
      const root=page.locator('#chance-print-root'),text=await root.textContent();
+     assert.doesNotMatch(text,/توقيع الزبون|توقيع نقطة البيع|ختم الشركة|خدمات الشركة تنحصر/);
      assert.match(text,new RegExp('جهة العمل '+n));assert.doesNotMatch(text,new RegExp('جهة العمل '+(n===1?2:1)));
      assert.match(text,new RegExp('الوظيفة الأصلية '+n));assert.match(text,/عنوان أصلي/);assert.match(text,/01\/01\/2000/);assert.match(text,/مكان مقابلة/);
      assert.equal(await root.locator('.form-sheet').count(),1);assert.equal(await root.locator('.hrc-card').count(),0);assert.equal(await root.locator('[data-qr] svg').count(),1);
@@ -92,5 +93,35 @@ try {
   await frame.locator('#btn-card-details').click();await frame.locator('.cs-print').click();
   await inner.waitForFunction(()=>window.printCount===1);assert.match(await inner.evaluate(()=>window.printSnapshot),/JOB-1/);
   assert.equal(ctx.pages().length,1);await ctx.close();console.log('PASS embedded page requests direct printing without a popup');
+ }
+ // Per-card entitlements, including cards created under different settings.
+ for(const total of [1,3,5]){
+  const ctx=await browser.newContext({viewport:{width:393,height:850},serviceWorkers:'block',reducedMotion:'reduce'}),page=await ctx.newPage();
+  const jobs=Array.from({length:6},(_,i)=>({id:'j'+i,code:'JOB-'+(i+1),title:'وظيفة '+(i+1),status:'available',governorate:'بابل',vacancies:1,gender:'لا فرق'}));
+  let used=0;
+  await page.route('**/*',async r=>{const u=r.request().url();
+   if(u.includes('/rest/v1/rpc/self_service_card'))return r.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,card:{serial,status:'active',profileLocked:true,chancesLeft:total,profile:{fullName:'زبون اختبار',phone:'07700000000',address:'بابل'},chances:Array.from({length:total},(_,i)=>({no:i+1,slotStatus:'empty'}))}})});
+   if(u.includes('/rest/v1/rpc/apply_with_card')){const a=r.request().postDataJSON();used++;return r.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,app:a.p_data,profile:a.p_data,attempt:{no:used,slotStatus:'reserved',jobCode:a.p_job_code}})});}
+   if(u.includes('/rest/v1/public_jobs'))return r.fulfill({contentType:'application/json',body:JSON.stringify(jobs)});
+   return u.startsWith(base)&&r.request().method()==='GET'?r.continue():r.abort();
+  });
+  await page.goto(base+'apply.html?form='+serial);await page.waitForFunction(()=>document.querySelector('#btn-card-details').getAttribute('aria-label')?.includes('K7M2XQ9T4R'));
+  assert.equal(await page.evaluate(()=>G.maxPick()),total);
+  await page.locator('#btn-card-details').click();
+  const totalText=await page.locator('#card-details').innerText();const arabic=String(total).replace(/[0-9]/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]);assert.ok(totalText.includes(arabic+' من '+arabic));
+  await page.locator('.cs-close').click();await page.evaluate(()=>G.go(6));
+  for(let i=0;i<total;i++){
+   const button=page.locator('.job-card').filter({hasText:'JOB-'+(i+1)}).locator('.job-main-btn');
+   await button.click();
+   assert.equal(await page.locator('.job-card.selected').count(),i+1);
+  }
+  assert.equal(await page.locator('#jobs-list.has-focus').count(),1);
+  await page.evaluate(()=>G.renderReview());
+  const review=await page.locator('#review-content').innerText();assert.match(review,new RegExp('الفرص المتاحة للتعيين: '+String(total).replace(/[0-9]/g,d=>'٠١٢٣٤٥٦٧٨٩'[d])));
+  await page.evaluate(()=>G.finish());await page.waitForFunction(n=>document.querySelectorAll('#result-content .form-sheet').length===n,total);
+  assert.equal(used,total,'each selected job is submitted once');
+  const sheets=page.locator('#result-content .form-sheet');
+  for(let i=0;i<total;i++){const text=await sheets.nth(i).innerText();assert.ok(text.includes('JOB-'+(i+1)));assert.doesNotMatch(text,/توقيع الزبون|توقيع نقطة البيع|ختم الشركة|خدمات الشركة تنحصر/);}
+  await ctx.close();console.log('PASS selection and submission match card entitlement',total);
  }
 }finally{await browser.close()}

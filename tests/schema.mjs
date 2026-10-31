@@ -1337,11 +1337,11 @@ step(38, 'أزرار صفحة الاستمارة: مقاسات صغيرة · أ�
   check('النصوص مختصرة: «طباعة الاستمارة» · «وظيفة ثانية» · «نسخ الرابط»',
     /rar-print/.test(ap) === false &&
     /طباعة الاستمارة<\/button>/.test(ap) &&
-    /وظيفة ثانية<\/button>/.test(ap) &&
+    /وظيفة أخرى<\/button>/.test(ap) &&
     /نسخ الرابط<\/button>/.test(ap));
   check('التفاصيل الكاملة في aria-label (وصولية بلا نص طويل)',
     /aria-label="طباعة الاستمارة على ورقة A4"/.test(ap) &&
-    /aria-label="استخدام باركود البطاقة لاختيار وظيفة ثانية"/.test(ap));
+    /aria-label="استخدام باركود البطاقة لاختيار وظيفة أخرى"/.test(ap));
   check('الألوان: طباعة ذهبية · وظيفة ثانية كحلية بحدود ذهبية · نسخ أبيض',
     /\.result-actions \.ra-print\{[\s\S]{0,300}linear-gradient\(135deg,#E8D089,#C8A24A 58%,#B08D3C\)/.test(ap) &&
     /\.result-actions \.ra-second\{[\s\S]{0,220}linear-gradient\(140deg,#1E4270,#16304F 60%,#0D2247\)/.test(ap) &&
@@ -1378,7 +1378,7 @@ step(39, 'تفاصيل البطاقة: نص داكن على أبيض · تاري
     /var months=\['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران'/.test(ap) &&
     /var dob=p\.dob\?G\.arabicDate/.test(ap));
   check('كل فرصة تعرض تفاصيل وظيفتها (المحافظة · الدوام · الأجر)',
-    /cs-chance-meta/.test(ap) && /jobProvince\(jj\.governorate\)/.test(ap));
+    /cs-chance-meta/.test(ap) && /detail\.location,detail\.shift/.test(ap) && /detail\.salaryMin/.test(ap));
   check('حالات الفرص بألوان واضحة (ذهبي/أزرق/أخضر/أحمر) بنص داكن',
     /\.cs-chance\.is-open \.cs-chance-state\{[\s\S]{0,160}#FFF1CB/.test(ap) &&
     /\.cs-chance\.is-closed \.cs-chance-state\{[\s\S]{0,160}#FDECEA/.test(ap));

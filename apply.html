@@ -1413,7 +1413,7 @@ body{
 
 /* شارة صغيرة أعلى المختارة: «الوظيفة المختارة — فرصة ١» */
 #jobs-list .job-card.selected .job-head::before{
-  content:'★ مختارة لفرصة من فرصتيك';
+  content:'★ مختارة لإحدى فرصك';
   position:absolute; top:-14px; inset-inline-end:14px;
   font-size:9.5pt; font-weight:800; color:#20180a; white-space:nowrap;
   padding:4px 12px; border-radius:999px;
@@ -5008,7 +5008,7 @@ var SUPA_URL='https://vqsvztudvfukyuerzcgx.supabase.co';
 var SUPA_KEY='sb_publishable_T4tcGsQpLKJz7GoTnn8uKQ_ORLYKDCC';
 var SCHEMA='brc';
 var client=null, cardSerial=null, cardData=null, jobs=[];
-var chancesLeft=2, appliedJobs=[], selectedGender='ذكر', currentFilter='الكل';
+var chancesLeft=0, appliedJobs=[], selectedGender='ذكر', currentFilter='الكل';
 /* رجع الزبون من صفحة المراجعة ليعدّل خطوة: بعد «التالي» نرجع للمراجعة فوراً
    بدل أن نمشي به كل الخطوات من جديد — راحة واضحة وتقليل تعب. */
 var returnToReview=false;
@@ -5111,7 +5111,7 @@ var STEP_TOTAL=6;         /* خطوات الإدخال التي يعدّها ا�
 var STEP_NAMES=['الاسم الثلاثي','السكن','تاريخ الميلاد','رقم الهاتف','نوع الجنس','اختيار الوظيفة'];
 var curPage=0;
 var transitioning=false; /* منع النقرات أثناء الانتقال */
-var pickedJobs=[];       /* وظائف الزبون المعيَّنة لفرصتيه — حتى وظيفتين (قرار 2026-10-06) */
+var pickedJobs=[];       /* الوظائف المختارة حسب عدد الفرص المتاحة على البطاقة */
 
 var G={
   printApplication:printApplication,
@@ -5177,7 +5177,7 @@ var G={
         '<div class="cs-f"><span>رقم الهاتف</span><b class="mono" dir="ltr">'+(p.phone?esc(p.phone):'—')+'</b></div>'+
         '<div class="cs-f"><span>السكن</span><b>'+esc(addr)+'</b></div>'+
         '<div class="cs-f"><span>تاريخ الميلاد</span><b dir="ltr">'+dob+'</b></div>'+
-        '<div class="cs-f"><span>الفرص المتاحة</span><b>'+ar(cardData.chancesLeft||0)+' من '+ar(2)+'</b></div>'+
+        '<div class="cs-f"><span>الفرص المتاحة</span><b>'+ar(cardData.chancesLeft||0)+' من '+ar((cardData.chances||[]).length)+'</b></div>'+
         '<div class="cs-f"><span>طريقة الدفع</span><b>كاش عند نقطة البيع</b></div>'+
       '</div>'+
       '<h3 class="cs-sub">الفرص على هذه البطاقة</h3>'+
@@ -5515,11 +5515,8 @@ var G={
   /* ═══════════════════════════════════════════════════════════
      عرض الوظائف
      ═══════════════════════════════════════════════════════════ */
-  /* ═══ الفرصتان: الزبون يعيّن وظيفة لكل فرصة ═══
-     قرار الإدارة 2026-10-06: صاحب البطاقة يختار وظيفتَي فرصتيه بنفسه —
-     يمكنه تعيين وظيفتين معاً في هذه الجلسة أو وظيفة واحدة والثانية لاحقاً
-     بنفس الباركود ما دامت الصلاحية سارية. */
-  maxPick:function(){return Math.max(0,Math.min(2,chancesLeft));},
+  /* يمكن اختيار وظيفة لكل فرصة متاحة على البطاقة نفسها. */
+  maxPick:function(){return Math.max(0,chancesLeft);},
   chanceNumber:function(index){var empty=(cardData&&cardData.chances||[]).filter(function(ch){return ch.slotStatus==='empty';}).sort(function(a,b){return a.no-b.no;});return empty[index]?Number(empty[index].no):index+1;},
 
   preJobCode:'',   /* كود الوظيفة القادم من الموقع (apply.html?…&job=HRC-####) قبل تعيينه */
@@ -5533,7 +5530,7 @@ var G={
     var max=G.maxPick();
     var cls=pickedJobs.length>=2?'has2':((pickedJobs.length===1||chancesLeft===1)?'has1':'has2');
     var dots='';
-    for(var i=0;i<2;i++) dots+='<span class="chip-dot '+((i<chancesLeft||i<pickedJobs.length)?'on':'off')+'"></span>';
+    for(var i=0;i<(cardData&&cardData.chances||[]).length;i++) dots+='<span class="chip-dot '+((i<chancesLeft||i<pickedJobs.length)?'on':'off')+'"></span>';
     var label;
     if(chancesLeft<=0) label='لا توجد فرصة متاحة — انتهت فرصك';
     else if(pickedJobs.length){
@@ -5541,7 +5538,7 @@ var G={
       label='وظائفك المختارة: '+ar(pickedJobs.length)+' من '+ar(max)+
         (left>0?(' — يمكنك اختيار '+(left===1?'وظيفة أخرى':'وظيفة أخرى')):' — اضغط «التالي» للتقديم');
     }
-    else label='متبقي لك: '+ar(chancesLeft)+' '+(chancesLeft===1?'فرصة':'فرصتان')+' — اختر وظيفة لكل فرصة';
+    else label='متبقي لك: '+ar(chancesLeft)+' '+(chancesLeft===1?'فرصة':'فرص')+' — اختر وظيفة لكل فرصة';
     bar.className='chances-bar '+cls;
     bar.innerHTML=dots+'<span>'+label+'</span>'+
       (chancesLeft<=0
@@ -5762,7 +5759,7 @@ var G={
     });
     c.innerHTML=h;
     /* «البورتريه»: عند وجود وظيفة مختارة نُفعّل طبقة البروز والتغبيش */
-    c.classList.toggle('has-focus', pickedJobs.length>0);
+    c.classList.toggle('has-focus', pickedJobs.length>0 && pickedJobs.length>=G.maxPick());
     G.syncJobsFooter();
   },
 
@@ -5826,7 +5823,7 @@ var G={
     body+='<div class="jm-hint">'
       +(done?'قدّمت على هذه الوظيفة سابقاً بهذه البطاقة — لا تُستهلك فرصة أخرى.'
         :(chancesLeft<=0?'لا توجد فرص متبقية في بطاقتك — راجع مكتب الشركة لتجديدها.'
-          :'بالضغط على «اختيار الوظيفة» تُعيَّن لفرصة من فرصتيك (لكل فرصة وظيفة واحدة).'))
+          :'بالضغط على «اختيار الوظيفة» تُعيَّن لفرصة من فرصك (لكل فرصة وظيفة واحدة).'))
       +'</div>';
 
     /* شريط التخصص + الفرص المتاحة إن وُجدت */
@@ -5892,7 +5889,7 @@ var G={
     if(!job)return;
     var max=G.maxPick();
     if(pickedJobs.length>=max){
-      G.jobsWarn('أكملت اختيار وظيفتَي فرصتيك ('+ar(max)+') — اضغط «↺ إلغاء» على وظيفة مختارة لتغييرها.');
+      G.jobsWarn('أكملت اختيار وظائفك المتاحة ('+ar(max)+') — اضغط «↺ إلغاء» على وظيفة مختارة لتغييرها.');
       return;
     }
     pickedJobs.push(job);
@@ -5914,13 +5911,13 @@ var G={
     }else if(okSel){
       h.className='jobs-hint picked';
       h.innerHTML='وظائفك المختارة (<b>'+ar(pickedJobs.length)+'</b> من <b>'+ar(max)+'</b>): '+
-        pickedJobs.map(function(j,i){return '<b>'+esc(j.title)+'</b> <span class="mono" dir="ltr">('+esc(j.code)+')</span> — فرصة '+ar(i+1)+'<button type="button" class="job-remove" onclick="G.removePickedJob('+i+')">إلغاء اختيار '+ar(i+1)+'</button>';}).join(' · ')+
+        pickedJobs.map(function(j,i){return '<b>'+esc(j.title)+'</b> <span class="mono" dir="ltr">('+esc(j.code)+')</span> — فرصة '+ar(G.chanceNumber(i))+'<button type="button" class="job-remove" onclick="G.removePickedJob('+i+')">إلغاء اختيار '+ar(i+1)+'</button>';}).join(' · ')+
         (pickedJobs.length<max
-          ? ' — يمكنك تعيين وظيفة أخرى لفرصتك الثانية قبل «التالي»'
+          ? ' — يمكنك تعيين وظيفة أخرى لإحدى فرصك المتبقية قبل «التالي»'
           : ' — اضغط «التالي» لمراجعة الطلب');
     }else{
       h.className='jobs-hint';
-      h.innerHTML='اضغط على أي وظيفة لتعيينها لأول فرصة (يمكنك تعيين وظيفتين) ثم «التالي»';
+      h.innerHTML='اضغط على أي وظيفة لتعيينها لفرصة متاحة، ويمكنك اختيار وظائف أخرى حسب الفرص المتبقية، ثم «التالي»';
     }
   },
 
@@ -5978,7 +5975,7 @@ var G={
       +row('السكن',p.address||((place||'')+(p.landmark?' — '+p.landmark:'')),2);
 
     /* الوظائف المختارة — وظيفة لكل فرصة */
-    h+='<div class="rv-head">'+(lockedProfile?'وظيفة الفرصة المتبقية':'وظائفك المختارة (الفرصتان)')+'</div>';
+    h+='<div class="rv-head">'+(lockedProfile?'وظائف الفرص المتبقية':'وظائفك المختارة')+'</div>';
     h+='<div class="rv-jobs">';
     if(pickedJobs.length){
       pickedJobs.forEach(function(j,i){
@@ -6073,7 +6070,7 @@ var G={
           /* تحديث حالة البطاقة في الواجهة فوراً */
           cardData.profile=d.profile||d.app||profile;
           G.lockProfile(cardData.profile);
-          chancesLeft=Math.max(0,chancesLeft-1);
+          chancesLeft=Math.max(0,chancesLeft-1);cardData.chancesLeft=chancesLeft;
           appliedJobs.push({jobCode:job.code,jobTitle:job.title});
           var empty=null;
           (cardData.chances||[]).forEach(function(ch){if(!empty&&ch.slotStatus==='empty')empty=ch;});
@@ -6121,7 +6118,7 @@ var G={
     host.innerHTML='<div class="form-sheet"><div class="rv-card" style="text-align:center">'
       +'<div class="ok-ico">'+AICO.check+'</div>'
       +'<div class="rv-t" style="margin-top:6px">تم تسجيل طلبك</div>'
-      +'<div class="rv-s" style="margin-top:4px">وصلنا '+(list.length===1?'طلبك على وظيفتك':'طلباتك على وظيفتَي فرصتيك')+' — لكن تعذّر عرض الاستمارة الكاملة على هذه الشاشة.</div>'
+      +'<div class="rv-s" style="margin-top:4px">وصلنا '+(list.length===1?'طلبك على وظيفتك':'طلباتك على الوظائف المختارة')+' — لكن تعذّر عرض الاستمارة الكاملة على هذه الشاشة.</div>'
       +'<div class="rv-row" style="text-align:right"><div class="rv-k">رقم البطاقة</div><div class="rv-v mono" dir="ltr">'+esc(cardSerial)+'</div></div>'
       +rows
       +'<div class="rv-note">هذا ملخص للتقديم وليس الاستمارة الكاملة. راجع المكتب للحصول على الاستمارة. لا تُعِد التقديم؛ الفرصة تُستهلك مرة واحدة.</div>'
@@ -6129,7 +6126,7 @@ var G={
     var acts=$('result-actions');
     if(acts){
       var a='<button type="button" class="btn btn-primary ra-print" onclick="G.printApplication()" aria-label="طباعة الاستمارة">'+AICO.print+'طباعة الاستمارة</button>';
-      if(chancesLeft>0)a+='<button type="button" class="btn ra-second" onclick="G.go(6)" aria-label="اختيار وظيفة ثانية بالباركود">'+AICO.camera+'وظيفة ثانية</button>';
+      if(chancesLeft>0)a+='<button type="button" class="btn ra-second" onclick="G.go(6)" aria-label="اختيار وظيفة أخرى بالباركود">'+AICO.camera+'وظيفة أخرى</button>';
       a+='<button type="button" class="btn btn-outline ra-copy" onclick="G.copyLink()" aria-label="نسخ رابط الاستمارة">'+AICO.link+'نسخ الرابط</button>';
       acts.innerHTML=a;
     }
@@ -6186,11 +6183,11 @@ var G={
       +'<div class="fs-fields">'
       +'<div class="fs-f"><div class="k">رقم البطاقة</div><div class="v" style="direction:ltr">'+esc(cardSerial)+'</div></div>'
       +'<div class="fs-f"><div class="k">حالة البطاقة</div><div class="v">'+esc(statusTxt)+'</div></div>'
-      +'<div class="fs-f"><div class="k">الفرصة المستخدمة</div><div class="v">'+ar(attemptNo)+' من ٢</div></div>'
+      +'<div class="fs-f"><div class="k">الفرصة المستخدمة</div><div class="v">'+ar(attemptNo)+' من '+ar((cardData&&cardData.chances||[]).length)+'</div></div>'
       +'<div class="fs-f"><div class="k">نقطة البيع</div><div class="v">تقديم ذاتي عبر الموقع</div></div>'
       +'<div class="fs-f"><div class="k">انتهاء الصلاحية</div><div class="v" style="direction:ltr">'+esc(expTxt)+'</div></div>'
       +'<div class="fs-f"><div class="k">مهلة الرد على الحجز</div><div class="v">'+esc(holdTxt)+'</div></div>'
-      +'<div class="fs-qr-note">هذا الباركود هو <b>باركود البطاقة نفسه</b> — يُستخدم للتحقق من الاستمارة ولاختيار وظيفة ثانية ما دامت فرصة متاحة.</div>'
+      +'<div class="fs-qr-note">هذا الباركود هو <b>باركود البطاقة نفسه</b> — يُستخدم للتحقق من الاستمارة ولاختيار وظيفة أخرى ما دامت فرصة متاحة.</div>'
       +'</div></div>'
 
       /* ── بيانات المتقدم ── */
@@ -6227,7 +6224,7 @@ var G={
       /* ── شروط البطاقة ── */
       +'<div class="fs-h3">شروط البطاقة<span class="en">TERMS</span></div>'
       +'<ul class="fs-terms">'
-      +'<li>بطاقة <b>شخصية</b> بفرصتين مستقلتين، صالحة <b>30 يوماً</b>.</li>'
+      +'<li>بطاقة <b>شخصية</b> بفرص مستقلة حسب عدد فرص البطاقة، صالحة <b>30 يوماً</b>.</li>'
       +'<li>حجز الوظيفة مؤقت <b>24 ساعة</b> ثم تقرر الشركة.</li>'
       +'<li>تُستهلك الفرصة بالتقديم <b>ولا تعود</b> بأي نتيجة.</li>'
       +'<li>للاستفسار: نقطة البيع أو مقر الشركة.</li>'
@@ -6238,17 +6235,6 @@ var G={
       +'<ol><li>أجرِ المقابلة في المكان المحدد أعلاه.</li>'
       +'<li>تُبلَّغ نتيجة المقابلة إلى الشركة لتثبيت القرار.</li>'
       +'<li>بلا قرار خلال <b>24 ساعة</b> تنتقل الوظيفة لحالة حرجة بقرار الشركة.</li></ol></div>'
-
-      /* ── التوقيعات ── */
-      +'<div class="fs-sign">'
-      +'<div class="s"><div class="l"></div>توقيع الزبون</div>'
-      +'<div class="s"><div class="l"></div>توقيع نقطة البيع</div>'
-      +'<div class="s"><div class="l"></div>ختم الشركة</div>'
-      +'</div>'
-
-      /* ── التذييل ── */
-      +'<div class="fs-foot">خدمات الشركة تنحصر في توفير الأيادي العاملة الفنية والتخصصية فقط وليس الأمنية — والشركة غير مسؤولة قانونياً وعشائرياً عن الشخص المرسل وصاحب العمل.<br>'
-      +'الحلة – بابل، العراق — <b dir="ltr">07760058007 / 07715993271</b></div>'
 
       +'</div>'
       +'</div>';
@@ -6270,7 +6256,7 @@ var G={
     var hero='<div class="ok-hero">'
       +'<div class="ok-check"><svg viewBox="0 0 24 24"><path d="M4.5 12.5l4.8 4.8L19.5 7"/></svg></div>'
       +'<div class="ok-title">تم التقديم بنجاح ✓</div>'
-      +'<div class="ok-sub">مُسجَّلة <b>'+ar(outcomes.length)+'</b> '+(outcomes.length===1?'فرصة':'فرصتان')+' على <b>'+titles+'</b><br>'
+      +'<div class="ok-sub">مُسجَّلة <b>'+ar(outcomes.length)+'</b> '+(outcomes.length===1?'فرصة':'فرص')+' على <b>'+titles+'</b><br>'
       +'كل وظيفة محجوزة مؤقتاً <b>24 ساعة</b> — راجع صاحب العمل بالاستمارة أدناه.</div>'
       +sparks+'</div>';
 
@@ -6286,7 +6272,7 @@ var G={
 
     var note = chancesLeft>0
       ? '<div class="alert alert-info" style="margin-top:10px">'+aico('camera')+'<span class="msg">متبقي لك <b>'+ar(chancesLeft)+'</b> '+(chancesLeft===1?'فرصة':'فرص')+' — استخدم <b>نفس باركود البطاقة</b> لاختيار وظيفة أخرى خلال مدة الصلاحية</span></div>'
-      : '<div class="alert alert-error" style="margin-top:10px">'+aico('alert')+'<span class="msg">استُهلكت فرصتا البطاقة — تُشترى بطاقة جديدة من نقاط البيع</span></div>';
+      : '<div class="alert alert-error" style="margin-top:10px">'+aico('alert')+'<span class="msg">استُهلكت فرص البطاقة — تُشترى بطاقة جديدة من نقاط البيع</span></div>';
 
     host.innerHTML=hero+sheets+failNote+note;
     $('steps-bar').style.display='none';
@@ -6298,7 +6284,7 @@ var G={
       +' aria-label="طباعة الاستمارة على ورقة A4">'+AICO.print+'طباعة الاستمارة</button>';
     if(chancesLeft>0){
       acts+='<button type="button" class="btn ra-second" onclick="G.go(6)"'
-        +' aria-label="استخدام باركود البطاقة لاختيار وظيفة ثانية">'+AICO.camera+'وظيفة ثانية</button>';
+        +' aria-label="استخدام باركود البطاقة لاختيار وظيفة أخرى">'+AICO.camera+'وظيفة أخرى</button>';
     }
     acts+='<button type="button" class="btn btn-outline ra-copy" onclick="G.copyLink()"'
       +' aria-label="نسخ رابط الاستمارة الذي يفتحه الباركود">'+AICO.link+'نسخ الرابط</button>';
@@ -6529,7 +6515,7 @@ function loadData(){
     }
     var c=cd.card||cd;
     cardData={serial:c.serial,status:c.status,profile:c.profile||{},
-      chancesLeft:c.chancesLeft!=null?Number(c.chancesLeft):2,
+      chancesLeft:c.chancesLeft!=null?Number(c.chancesLeft):(c.chances||[]).filter(function(ch){return ch.slotStatus==='empty';}).length,
       chances:(c.chances||[]).map(function(ch){return{no:ch.no,slotStatus:ch.slotStatus,code:'',jobCode:ch.jobCode||'',jobTitle:ch.jobTitle||''};})
     };
     chancesLeft=cardData.chancesLeft;

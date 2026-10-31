@@ -841,7 +841,7 @@
     createAttempts(serial);
     db.usedSerials.push(serial);
     audit('إضافة بطاقة بكودها', 'applicant', serial,
-      'بطاقة فارغة واحدة بكود يدوي مختار — فرصتان برمزين — تُطبع الآن وتُعبّأ عند البيع' +
+      'بطاقة فارغة واحدة بكود يدوي مختار — فرص حسب إعداد البطاقة — تُطبع الآن وتُعبّأ عند البيع' +
       (notes ? ' | ' + notes : ''));
     save(); emit();
     return { ok: true, card: card };
@@ -900,7 +900,7 @@
       (app.posName ? ' — نقطة البيع: ' + app.posName : '') +
       ' — سعر ' + money(app.fee) + ' (كاش) — تبدأ الصلاحية عند أول تقديم ناجح' +
       (preJob ? ' | الوظيفة المختارة: ' + preJob.code + ' — ' + preJob.title
-              : ' | بلا اختيار وظيفة — الفرصتان بانتظار اختيار الزبون بنفسه'));
+              : ' | بلا اختيار وظيفة — الفرص بانتظار اختيار الزبون بنفسه'));
     var applied = null;
     if (preJob) {
       applied = selectAttempt(serial, preJob.code, { byPos: true });

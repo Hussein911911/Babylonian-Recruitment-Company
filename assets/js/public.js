@@ -573,7 +573,7 @@
       blank: { cls: 'warn', t: 'لم يبدأ التقديم بعد' },
       active: { cls: 'ok', t: 'سارية ونشطة' },
       expired: { cls: 'danger', t: 'منتهية الصلاحية' },
-      exhausted: { cls: 'warn', t: 'استُهلكت الفرصتان' },
+      exhausted: { cls: 'warn', t: 'استُهلكت فرص البطاقة' },
       rejected: { cls: 'danger', t: 'مرفوضة' },
       pending: { cls: 'warn', t: 'قيد المراجعة' }
     }[st] || { cls: 'warn', t: st };
@@ -639,7 +639,7 @@
         '<div class="cp-kv"><span>بداية الصلاحية</span><b>' + UI.esc(issued) + '</b></div>' +
         '<div class="cp-kv"><span>تنتهي في</span><b>' + UI.esc(expires) + '</b></div>' +
         '<div class="cp-kv"><span>المتبقي</span><b>' + UI.esc(leftTxt) + '</b></div>' +
-        '<div class="cp-kv"><span>الفرص المتبقية</span><b>' + UI.esc(String(card.chancesLeft != null ? card.chancesLeft : '—')) + ' من 2</b></div>' +
+        '<div class="cp-kv"><span>الفرص المتبقية</span><b>' + UI.esc(String(card.chancesLeft != null ? card.chancesLeft : '—')) + ' من ' + UI.esc(String((card.chances || []).length)) + '</b></div>' +
       '</div>' +
       '<h3 class="cp-h"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الفرص وتفاصيلها</h3>' +
       '<div class="cp-chances">' + (chances || '<div class="cp-empty-chance">لا توجد فرص مسجّلة على هذه البطاقة بعد.</div>') + '</div>' +
@@ -873,7 +873,7 @@
       var jobsAll = Store.listJobs({});
       items = [
         { ic: 'briefcase', v: jobsAll.filter(function (j) { return j.status === 'available'; }).length, l: 'وظيفة متاحة الآن' },
-        { ic: 'card', v: '2', l: 'فرصتان بكل بطاقة' },
+        { ic: 'card', v: 'عدة', l: 'فرص حسب البطاقة' },
         { ic: 'calendar', v: '30', l: 'يوماً صلاحية البطاقة' },
         { ic: 'clock', v: '24', l: 'ساعة حجز عادل' }
       ];

@@ -631,7 +631,7 @@ check('قالب البطاقة يحوي الوجهين وكل بياناتها �
     '07760058007',
     'HRC-BC-000120',
     'رقم البطاقة',
-    'hrc-card', '<svg', 'فرصتان'
+    'hrc-card', '<svg', 'فرص للتقديم'
   ];
   const missing = needed.filter((x) => !html.includes(x));
   if (missing.length) return 'ناقص: ' + missing.join(' , ');
@@ -662,7 +662,7 @@ check('البطاقة الأصلية تُطبع بلا أي رمز فرصة مع
   const html = site.window.HRCVoucher.buildHtml(app);
   if (/رمز الفرصة/.test(html)) return 'ما زال الظهر يطبع «رمز الفرصة»';
   if (/\b\d{4}-[A-HJ-NP-Z]{2}\b/.test(html)) return 'ظهر البطاقة يحمل رمزاً بصيغة رمز الفرصة';
-  const rules = ['فرصتين مستقلتين', '24 ساعة', 'ولا تعود', 'مكتب استنساخ'];
+  const rules = ['فرص مستقلة حسب البطاقة', '24 ساعة', 'ولا تعود', 'مكتب استنساخ'];
   const miss = rules.filter((r) => !html.includes(r));
   return miss.length === 0 || 'تعليمات ناقصة بالظهر: ' + miss.join(' , ');
 });
@@ -716,7 +716,7 @@ check('لا توجد نافذة تأكيد قديمة — الإتمام من ص
 check('الاستمارة تُطبع بباركود البطاقة نفسه وتذكر إمكانية وظيفة ثانية', () => {
   const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
   return (page.includes('fs-qr-note') && page.includes('باركود البطاقة نفسه') &&
-    page.includes('اختيار وظيفة ثانية') && page.includes('قابل للطباعة'.slice(0, 0) + 'window.print()')) ||
+    page.includes('اختيار وظيفة أخرى') && page.includes('قابل للطباعة'.slice(0, 0) + 'window.print()')) ||
     'ملاحظة الباركود في الاستمارة ناقصة';
 });
 check('الطباعة تُخرج ورقة الاستمارة وحدها (بلا هيرو النجاح وبلا أزرار)', () => {
