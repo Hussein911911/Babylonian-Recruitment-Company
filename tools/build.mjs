@@ -111,7 +111,7 @@ const DEMO_SEED_JSON = (() => {
   });
 })();
 
-const JS_ORDER = ['config', 'qr', 'vendor/jsqr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard', 'notifications', 'legacy-backup', 'card-archive'];
+const JS_ORDER = ['config', 'qr', 'vendor/jsqr', 'qr-scan', 'store', 'ui', 'nav', 'form-print', 'voucher', 'booking', 'public', 'verify', 'dashboard', 'notifications', 'legacy-backup', 'card-archive'];
 
 /* ---------------------------------------------------------------------------
  *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
@@ -126,9 +126,9 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
    ولا اتصالاً لحظياً. قياس الحجم أظهر أن المكتبة الكاملة كانت ثلث ما ينزّله.
    اللوحة تبقى على المكتبة الكاملة لأنها تحتاج Auth و Realtime فعلاً. */
 const SCRIPTS = {
-  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'vendor/jsqr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
-  verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
-  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard', 'notifications']
+  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'vendor/jsqr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'form-print', 'voucher', 'booking', 'public'],
+  verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'form-print', 'voucher', 'verify'],
+  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'form-print', 'voucher', 'dashboard', 'notifications']
 };
 
 /* مسار الأصل من الاسم: 'vendor/x' → assets/vendor/x.js وإلا assets/js/x.js */

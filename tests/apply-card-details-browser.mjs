@@ -39,35 +39,33 @@ try {
    assert.equal(await page.locator('.cs-print').count(),2);
    if(mode==='failed'){
     await page.waitForFunction(()=>document.querySelector('#cs-extra-1').textContent.includes('تعذّر تحميل'));
-    await page.locator('.cs-print').first().click();await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>window.printCount),0);
+    const [preview]=await Promise.all([page.waitForEvent('popup'),page.locator('.cs-print').first().click()]);await preview.waitForFunction(()=>document.querySelector('#preview-note').textContent.includes('تعذّر'));assert.equal(await preview.locator('#preview-controls button').first().isDisabled(),true);await preview.close();
    }else{
     await page.waitForFunction(()=>document.querySelector('#cs-extra-1').textContent.includes('جهة العمل 1'));
     assert.match(await page.locator('#cs-extra-1').innerText(),/الوظيفة الأصلية 1/);assert.doesNotMatch(await page.locator('#card-details-body').innerText(),/جهة خاطئة|وظيفة مختلفة/);
     for(const n of [1,2]){
-     await page.locator('.cs-print').nth(n-1).click();await page.waitForFunction(n=>window.printCount===n,n);
-     await page.evaluate(()=>window.dispatchEvent(new Event('afterprint'))); // mobile can fire this before capturing preview
-     const root=page.locator('#chance-print-root'),text=await root.textContent();
+     const [preview]=await Promise.all([page.waitForEvent('popup'),page.locator('.cs-print').nth(n-1).click()]);
+     await preview.locator('#preview-controls button').first().waitFor({state:'visible'});
+     await preview.waitForFunction(()=>!document.querySelector('#preview-controls button').disabled);
+     const root=preview.locator('#print-root'),text=await root.innerText();
      assert.match(text,new RegExp('جهة العمل '+n));assert.doesNotMatch(text,new RegExp('جهة العمل '+(n===1?2:1)));
-     assert.match(text,new RegExp('الوظيفة الأصلية '+n));assert.match(text,/عنوان أصلي/);assert.match(text,/01\/01\/2000/);assert.match(text,/مكان مقابلة/);
+     assert.match(text,new RegExp('الوظيفة الأصلية '+n));assert.match(text,/عنوان أصلي/);assert.match(text,/01\/01\/2000/);
      assert.equal(await root.locator('.form-sheet').count(),1);assert.equal(await root.locator('.hrc-card').count(),0);assert.equal(await root.locator('[data-qr] svg').count(),1);
-     await page.emulateMedia({media:'print'});assert.equal(await root.evaluate(e=>getComputedStyle(e).display),'block');assert.equal(await root.locator('.form-sheet').evaluate(e=>getComputedStyle(e).visibility),'visible');if(width===375){const pdf=await page.pdf({format:'A4',printBackground:true});const doc=await getDocument({data:new Uint8Array(pdf),useSystemFonts:true}).promise;assert.equal(doc.numPages,1,'one A4 page');const text=(await (await doc.getPage(1)).getTextContent()).items.map(i=>i.str).join(' ');assert.ok(text.includes('K7M2XQ9T4R')&&text.includes('JOB-'+n)&&text.replace(/\s/g,'').includes('JOBAPPLICATIONFORM'),'PDF must contain the actual selected application, not a white page');}await page.emulateMedia({media:'screen'});
+     if(width===375){const pdf=await preview.pdf({format:'A4',printBackground:true});const doc=await getDocument({data:new Uint8Array(pdf),useSystemFonts:true}).promise;assert.equal(doc.numPages,1,'one A4 page');const txt=(await (await doc.getPage(1)).getTextContent()).items.map(i=>i.str).join(' ');assert.ok(txt.includes('K7M2XQ9T4R')&&txt.includes('JOB-'+n),'PDF contains correct application');}
+     await preview.evaluate(()=>{window.printCount=0;window.print=()=>window.printCount++;});await preview.getByRole('button',{name:'طباعة أو حفظ PDF'}).click();await preview.waitForFunction(()=>window.printCount===1);
+     await preview.close();
     }
-    await page.locator('.cs-close').click();assert.equal(await page.locator('#chance-print-root .form-sheet').count(),0);
+    if(width===320){await page.evaluate(()=>{window.open=()=>null});await page.locator('.cs-print').first().click();assert.match(await page.locator('#cs-extra-1').innerText(),/تعذّر فتح معاينة الطباعة/);}
+    await page.locator('.cs-close').click();
     if(width===375){
-     await page.evaluate(()=>{const job={code:'JOB-RESULT',title:'وظيفة النتيجة',governorate:'بابل',shift:'صباحي',salaryMin:500,salaryMax:600,employer:{name:'جهة النتيجة',phone:'07700000000',address:'عنوان'},interviewLocation:'المقابلة'};G.showResults([{job,data:{app:{fullName:'صاحب البطاقة'},attempt:{no:1,slotStatus:'reserved'}},index:0}],[]);});
-     await page.waitForFunction(()=>document.querySelector('#pg-result.active'));
-     await page.locator('#result-actions .ra-print').click();await page.waitForFunction(()=>window.printCount===3);
-     await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
-     await page.emulateMedia({media:'print'});const pdf=await page.pdf({format:'A4',printBackground:true});const doc=await getDocument({data:new Uint8Array(pdf),useSystemFonts:true}).promise;const result=(await (await doc.getPage(1)).getTextContent()).items.map(i=>i.str).join(' ');
-     assert.equal(doc.numPages,1,'result form occupies one page');assert.ok(result.includes('JOB-RESULT')&&result.includes('K7M2XQ9T4R'),'result page print contains real form after printing a chance');
-     await page.emulateMedia({media:'screen'});
      await page.evaluate(()=>{const a={code:'JOB-RESULT',title:'الوظيفة الأولى',governorate:'بابل',shift:'صباحي',salaryMin:500,salaryMax:600,employer:{name:'جهة 1',phone:'',address:''},interviewLocation:''};const b={...a,code:'JOB-SECOND',title:'الوظيفة الثانية',employer:{name:'جهة 2'}};G.showResults([a,b].map((job,i)=>({job,data:{app:{fullName:'صاحب البطاقة'},attempt:{no:i+1,slotStatus:'reserved'}},index:i})),[]);});
-     await page.locator('#result-actions .ra-print').click();await page.waitForFunction(()=>window.printCount===4);await page.emulateMedia({media:'print'});
-     const both=await getDocument({data:new Uint8Array(await page.pdf({format:'A4',printBackground:true})),useSystemFonts:true}).promise;assert.equal(both.numPages,2,'two applications print on two pages');
-     const p1=(await (await both.getPage(1)).getTextContent()).items.map(x=>x.str).join(' '),p2=(await (await both.getPage(2)).getTextContent()).items.map(x=>x.str).join(' ');
-     assert.ok(p1.includes('JOB-RESULT')&&!p1.includes('JOB-SECOND')&&p2.includes('JOB-SECOND')&&!p2.includes('JOB-RESULT'),'each page has the correct opportunity');
-     await page.emulateMedia({media:'screen'});
-
+     await page.waitForFunction(()=>document.querySelector('#pg-result.active'));
+     const [preview]=await Promise.all([page.waitForEvent('popup'),page.locator('#result-actions .ra-print').click()]);
+     await preview.waitForFunction(()=>!document.querySelector('#preview-controls button').disabled);
+     assert.equal(await preview.locator('#print-root .form-sheet').count(),2);
+     const doc=await getDocument({data:new Uint8Array(await preview.pdf({format:'A4',printBackground:true})),useSystemFonts:true}).promise;assert.equal(doc.numPages,2,'two applications print on two pages');
+     const p1=(await (await doc.getPage(1)).getTextContent()).items.map(x=>x.str).join(' '),p2=(await (await doc.getPage(2)).getTextContent()).items.map(x=>x.str).join(' ');
+     assert.ok(p1.includes('JOB-RESULT')&&!p1.includes('JOB-SECOND')&&p2.includes('JOB-SECOND')&&!p2.includes('JOB-RESULT'),'each page contains its own form');await preview.close();
     }
 
    }
@@ -75,5 +73,25 @@ try {
   }
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
   await ctx.close();console.log('PASS QR landing / '+mode+' / '+width+'px');
+ }
+ // Simulate an embedded preview: printing must happen in a separate top-level document.
+ {
+  const ctx=await browser.newContext({viewport:{width:375,height:850},serviceWorkers:'block'}),page=await ctx.newPage();
+  await page.route('**/*',async r=>{const u=r.request().url();
+   if(u===base+'test-frame')return r.fulfill({contentType:'text/html',body:'<iframe style="width:375px;height:850px" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" src="/apply.html?form='+serial+'"></iframe>'});
+   if(u.includes('/rest/v1/rpc/self_service_card'))return r.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,card:{serial,status:'active',profileLocked:true,chancesLeft:0,profile:{fullName:'زبون اختبار'},chances:[{no:1,slotStatus:'reserved',jobCode:'JOB-1'}]}})});
+   if(u.includes('/rest/v1/rpc/customer_application_details'))return r.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,app:{serial,fullName:'زبون اختبار'},attempt:{no:1,slotStatus:'reserved',jobCode:'JOB-1',jobTitle:'وظيفة اختبار',employerName:'جهة الاختبار'}})});
+   if(u.includes('/rest/v1/public_jobs'))return r.fulfill({contentType:'application/json',body:'[]'});
+   return u.startsWith(base)&&r.request().method()==='GET'?r.continue():r.abort();
+  });
+  await page.goto(base+'test-frame');const frame=page.frameLocator('iframe');
+  await frame.locator('#btn-card-details').click();await frame.locator('.cs-print').waitFor();
+  const [preview]=await Promise.all([page.waitForEvent('popup'),frame.locator('.cs-print').click()]);
+  await preview.waitForFunction(()=>!document.querySelector('#preview-controls button').disabled);
+  assert.equal(await preview.evaluate(()=>window===window.top),true);assert.equal(await preview.locator('.form-sheet').count(),1);
+  assert.ok(!preview.url().includes(serial),'no private card identifier in preview URL');
+  const pdf=await getDocument({data:new Uint8Array(await preview.pdf({format:'A4',printBackground:true})),useSystemFonts:true}).promise;
+  const text=(await (await pdf.getPage(1)).getTextContent()).items.map(x=>x.str).join(' ');assert.ok(text.includes('JOB-1')&&text.includes(serial),'embedded flow PDF contains the form');
+  await preview.close();await ctx.close();console.log('PASS embedded preview opens a standalone printable document');
  }
 }finally{await browser.close()}

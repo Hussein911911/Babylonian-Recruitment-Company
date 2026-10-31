@@ -716,7 +716,7 @@ check('لا توجد نافذة تأكيد قديمة — الإتمام من ص
 check('الاستمارة تُطبع بباركود البطاقة نفسه وتذكر إمكانية وظيفة ثانية', () => {
   const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
   return (page.includes('fs-qr-note') && page.includes('باركود البطاقة نفسه') &&
-    page.includes('اختيار وظيفة ثانية') && page.includes('قابل للطباعة'.slice(0, 0) + 'window.print()')) ||
+    page.includes('اختيار وظيفة ثانية') && readFileSync(resolve(ROOT, 'assets/js/form-print.js'), 'utf8').includes('win.print()')) ||
     'ملاحظة الباركود في الاستمارة ناقصة';
 });
 check('الطباعة تُخرج ورقة الاستمارة وحدها (بلا هيرو النجاح وبلا أزرار)', () => {

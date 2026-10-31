@@ -1,4 +1,4 @@
-// Service Worker للعمل أوفلاين — hrc-cache-v114
+// Service Worker للعمل أوفلاين — hrc-cache-v115
 // ---------------------------------------------------------------------------
 // سياسة التخزين منذ v4:
 //   • HTML و JS  → network-first: الشبكة أولاً (الزائر يرى آخر نسخة)، والكاش
@@ -28,7 +28,7 @@
    إن كان مطابقاً. إبقاء الرقم ثابتاً يُبقي الزوار القدامى على نسخة قديمة
    من index.html مهما أعدت النشر (ظهر فعلاً: زر دخول محذوف بقي على حاسبة
    زارت الموقع قبل الحذف، بينما اختفى على هاتف لم يزره من قبل). */
-const CACHE_NAME = 'hrc-cache-v114';
+const CACHE_NAME = 'hrc-cache-v115';
 // Only public job illustrations / public Supabase Storage objects; never API or private images.
 const IMAGE_CACHE = 'hrc-public-job-images-v1';
 const IMAGE_META = 'hrc-public-job-image-meta-v1';
@@ -72,6 +72,7 @@ const urlsToCache = [
   '/assets/css/image-editor.css',
   '/assets/js/qr-scan.js',
   '/assets/vendor/jsqr.js',
+  '/assets/js/form-print.js',
   '/assets/js/voucher.js',
   '/assets/js/cloud.js',
   '/assets/js/cloud-http.js',

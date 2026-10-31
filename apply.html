@@ -4986,6 +4986,7 @@ body.job-modal-open .app{
           الدالة موجودة في brc (نفس العطل المُصلَح سابقاً في cloud-http.js).
      عميل HRCHttp المحلي يعلن الترويستين معاً ولا يترك الصفحة رهينة طرف خارجي. ── -->
 <div id="chance-print-root" aria-hidden="true"></div>
+<script src="assets/js/form-print.js"></script>
 <script src="assets/js/cloud-http.js"></script>
 <script src="assets/js/iraq-admin.js"></script>
 <script src="assets/js/apply-navigation.js"></script>
@@ -5045,14 +5046,13 @@ function aico(name,cls){return '<span class="ico'+(cls?' '+cls:'')+'">'+(AICO[na
 // Some mobile browsers fire afterprint before the print preview has captured
 // the document. Keep the hidden sheet intact until another explicit action.
 function clearChancePrint(){document.body.classList.remove('chance-printing');var root=$('chance-print-root');if(root)root.innerHTML='';}
-function printApplication(chance){
-  if(chance!==true){
-    clearChancePrint();
-    var container=$('result-content'),root=$('chance-print-root');
-    var sheets=container&&container.querySelectorAll?container.querySelectorAll('.form-sheet'):[];
-    if(root&&sheets.length){root.innerHTML=Array.prototype.map.call(sheets,function(sheet){return sheet.outerHTML;}).join('');document.body.classList.add('chance-printing');}
-  }
-  var fonts=document.fonts;var ready=fonts&&fonts.load?Promise.all([400,600,700,800,900].map(function(w){return fonts.load(w+' 12px Cairo','العراق ABC 123');})).catch(function(){}):Promise.resolve();ready.then(function(){window.print();});}
+function printApplication(){
+  var container=$('result-content'),sheets=container&&container.querySelectorAll?container.querySelectorAll('.form-sheet'):[];
+  if(!sheets.length){return;}
+  var preview=window.HRCFormPrint&&window.HRCFormPrint.open();
+  if(!preview){var target=$('result-actions');if(target)target.insertAdjacentHTML('beforeend','<p role="alert">تعذّر فتح معاينة الطباعة. اسمح بالنوافذ المنبثقة ثم أعد المحاولة، أو افتح الموقع مباشرة في المتصفح.</p>');return;}
+  preview.render(Array.prototype.map.call(sheets,function(sheet){return sheet.outerHTML;}).join(''));
+}
 function iraqYear(){return Number(new Intl.DateTimeFormat('en',{timeZone:'Asia/Baghdad',year:'numeric',calendar:'gregory'}).format(new Date()));}
 function money(n){return(n==null||isNaN(n))?'—':Number(n).toLocaleString('en-US')+' د.ع';}
 /* إظهار/إخفاء عنصر بسمة hidden — يعمل في المتصفح وفي DOM الاختبار المصغّر */
@@ -5211,9 +5211,11 @@ var G={
   printChance:function(no){
     var ch=(cardData&&cardData.chances||[]).filter(function(c){return Number(c.no)===Number(no)&&c.slotStatus!=='empty';})[0];
     if(!ch)return;
+    var preview=window.HRCFormPrint&&window.HRCFormPrint.open();
+    if(!preview){var blocked=$('cs-extra-'+Number(no));if(blocked)blocked.textContent='تعذّر فتح معاينة الطباعة. اسمح بالنوافذ المنبثقة أو افتح الموقع مباشرة في المتصفح.';return;}
     var box=$('cs-extra-'+Number(no));if(box&&!ch._detail){box.classList.remove('cs-detail-error');box.textContent='جارٍ تحميل استمارة الفرصة…';}
     G.loadChanceDetails(ch).then(function(d){
-      if(!d)return;
+      if(!d){preview.fail('تعذّر تحميل تفاصيل الفرصة. أغلق النافذة وأعد المحاولة.');return;}
       var a=d.attempt, app=d.app;
       var job={code:a.jobCode,title:a.jobTitle||'—',governorate:a.location||'—',shift:a.shift||'—',salaryMin:a.salaryMin,salaryMax:a.salaryMax,employer:{name:'',phone:'',address:''},interviewLocation:''};
       var host=$('chance-print-root');if(!host)return;
@@ -5223,7 +5225,7 @@ var G={
         try{if(window.HRCQR){el.innerHTML=window.HRCQR.renderSVG(window.HRCQR.encode(el.getAttribute('data-qr'),'M'),{margin:1,size:84,dark:'#16294d',light:'#ffffff'});return;}}catch(e){}
         el.textContent=cardSerial;
       }
-      function print(){qr();document.body.classList.add('chance-printing');printApplication(true);}
+      function print(){qr();preview.render(host.innerHTML);}
       if(window.HRCQR)print();else{var script=document.createElement('script');script.src='assets/js/qr.js';script.onload=print;script.onerror=print;document.head.appendChild(script);}
     });
   },
@@ -6113,14 +6115,14 @@ var G={
       return '<div class="rv-row" style="text-align:right"><div class="rv-k">الوظيفة</div><div class="rv-v">'+esc(j.jobTitle||'—')+
         ' <span class="mono" dir="ltr">('+esc(j.jobCode||'—')+')</span></div></div>';
     }).join('');
-    host.innerHTML='<div class="rv-card" style="text-align:center">'
+    host.innerHTML='<div class="form-sheet"><div class="rv-card" style="text-align:center">'
       +'<div class="ok-ico">'+AICO.check+'</div>'
       +'<div class="rv-t" style="margin-top:6px">تم تسجيل طلبك</div>'
       +'<div class="rv-s" style="margin-top:4px">وصلنا '+(list.length===1?'طلبك على وظيفتك':'طلباتك على وظيفتَي فرصتيك')+' — لكن تعذّر عرض الاستمارة الكاملة على هذه الشاشة.</div>'
       +'<div class="rv-row" style="text-align:right"><div class="rv-k">رقم البطاقة</div><div class="rv-v mono" dir="ltr">'+esc(cardSerial)+'</div></div>'
       +rows
-      +'<div class="rv-note">اطبع الاستمارة أو راجع المكتب لنسخة مطبوعة. لا تُعِد التقديم؛ الفرصة تُستهلك مرة واحدة.</div>'
-      +'</div>';
+      +'<div class="rv-note">هذا ملخص للتقديم وليس الاستمارة الكاملة. راجع المكتب للحصول على الاستمارة. لا تُعِد التقديم؛ الفرصة تُستهلك مرة واحدة.</div>'
+      +'</div></div>';
     var acts=$('result-actions');
     if(acts){
       var a='<button type="button" class="btn btn-primary ra-print" onclick="G.printApplication()" aria-label="طباعة الاستمارة">'+AICO.print+'طباعة الاستمارة</button>';
