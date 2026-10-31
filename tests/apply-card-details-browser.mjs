@@ -13,7 +13,7 @@ const base='http://127.0.0.1:4173/', serial='K7M2XQ9T4R';
 try {
  for(const width of [320,375,768,1440]) for(const mode of ['blank','used','failed']) {
   const ctx=await browser.newContext({viewport:{width,height:850},serviceWorkers:'block',reducedMotion:'reduce'}),page=await ctx.newPage(),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.addInitScript(()=>{window.printCount=0;window.print=()=>window.printCount++;});
+  await page.addInitScript(()=>{window.printCount=0;window.print=()=>window.printCount++;const open=window.open;window.open=function(...args){const child=open.apply(this,args);if(child){child.autoPrintCalls=0;child.print=()=>{child.autoPrintCalls++;child.printSnapshot=child.document.querySelector('#print-root')?.textContent||'';};}return child;};});
   await page.route('**/*',async r=>{const u=r.request().url();
    if(u.includes('/rest/v1/rpc/self_service_card'))return r.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,card: mode==='blank'?{serial,status:'blank',chancesLeft:2,profile:{},chances:[{no:1,slotStatus:'empty'},{no:2,slotStatus:'empty'}]}:{serial,status:'active',profileLocked:true,chancesLeft:0,profile:{fullName:'زبون الاختبار',phone:'07700000000',address:'بابل',gender:'ذكر',dob:'2000-01-01'},chances:[{no:1,slotStatus:'expired',jobCode:'JOB-1',jobTitle:null},{no:2,slotStatus:'reserved',jobCode:'JOB-2',jobTitle:'الوظيفة الثانية'}]}})});
    if(u.includes('/rest/v1/rpc/customer_application_details')){
@@ -46,13 +46,14 @@ try {
     for(const n of [1,2]){
      const [preview]=await Promise.all([page.waitForEvent('popup'),page.locator('.cs-print').nth(n-1).click()]);
      await preview.locator('#preview-controls button').first().waitFor({state:'visible'});
-     await preview.waitForFunction(()=>!document.querySelector('#preview-controls button').disabled);
+     await preview.waitForFunction(()=>window.autoPrintCalls===1);
+     assert.match(await preview.evaluate(()=>window.printSnapshot),new RegExp('JOB-'+n));
      const root=preview.locator('#print-root'),text=await root.innerText();
      assert.match(text,new RegExp('جهة العمل '+n));assert.doesNotMatch(text,new RegExp('جهة العمل '+(n===1?2:1)));
      assert.match(text,new RegExp('الوظيفة الأصلية '+n));assert.match(text,/عنوان أصلي/);assert.match(text,/01\/01\/2000/);
      assert.equal(await root.locator('.form-sheet').count(),1);assert.equal(await root.locator('.hrc-card').count(),0);assert.equal(await root.locator('[data-qr] svg').count(),1);
      if(width===375){const pdf=await preview.pdf({format:'A4',printBackground:true});const doc=await getDocument({data:new Uint8Array(pdf),useSystemFonts:true}).promise;assert.equal(doc.numPages,1,'one A4 page');const txt=(await (await doc.getPage(1)).getTextContent()).items.map(i=>i.str).join(' ');assert.ok(txt.includes('K7M2XQ9T4R')&&txt.includes('JOB-'+n),'PDF contains correct application');}
-     await preview.evaluate(()=>{window.printCount=0;window.print=()=>window.printCount++;});await preview.getByRole('button',{name:'طباعة أو حفظ PDF'}).click();await preview.waitForFunction(()=>window.printCount===1);
+     await preview.getByRole('button',{name:'طباعة أو حفظ PDF'}).click();await preview.waitForFunction(()=>window.autoPrintCalls===2);
      await preview.close();
     }
     if(width===320){await page.evaluate(()=>{window.open=()=>null});await page.locator('.cs-print').first().click();assert.match(await page.locator('#cs-extra-1').innerText(),/تعذّر فتح معاينة الطباعة/);}
@@ -61,7 +62,7 @@ try {
      await page.evaluate(()=>{const a={code:'JOB-RESULT',title:'الوظيفة الأولى',governorate:'بابل',shift:'صباحي',salaryMin:500,salaryMax:600,employer:{name:'جهة 1',phone:'',address:''},interviewLocation:''};const b={...a,code:'JOB-SECOND',title:'الوظيفة الثانية',employer:{name:'جهة 2'}};G.showResults([a,b].map((job,i)=>({job,data:{app:{fullName:'صاحب البطاقة'},attempt:{no:i+1,slotStatus:'reserved'}},index:i})),[]);});
      await page.waitForFunction(()=>document.querySelector('#pg-result.active'));
      const [preview]=await Promise.all([page.waitForEvent('popup'),page.locator('#result-actions .ra-print').click()]);
-     await preview.waitForFunction(()=>!document.querySelector('#preview-controls button').disabled);
+     await preview.waitForFunction(()=>window.autoPrintCalls===1);
      assert.equal(await preview.locator('#print-root .form-sheet').count(),2);
      const doc=await getDocument({data:new Uint8Array(await preview.pdf({format:'A4',printBackground:true})),useSystemFonts:true}).promise;assert.equal(doc.numPages,2,'two applications print on two pages');
      const p1=(await (await doc.getPage(1)).getTextContent()).items.map(x=>x.str).join(' '),p2=(await (await doc.getPage(2)).getTextContent()).items.map(x=>x.str).join(' ');
@@ -85,9 +86,10 @@ try {
    return u.startsWith(base)&&r.request().method()==='GET'?r.continue():r.abort();
   });
   await page.goto(base+'test-frame');const frame=page.frameLocator('iframe');
+  await page.frames().find(f=>f.url().includes('apply.html')).evaluate(()=>{const open=window.open;window.open=function(...args){const child=open.apply(this,args);if(child){child.autoPrintCalls=0;child.print=()=>{child.autoPrintCalls++;};}return child;};});
   await frame.locator('#btn-card-details').click();await frame.locator('.cs-print').waitFor();
   const [preview]=await Promise.all([page.waitForEvent('popup'),frame.locator('.cs-print').click()]);
-  await preview.waitForFunction(()=>!document.querySelector('#preview-controls button').disabled);
+  await preview.waitForFunction(()=>window.autoPrintCalls===1);
   assert.equal(await preview.evaluate(()=>window===window.top),true);assert.equal(await preview.locator('.form-sheet').count(),1);
   assert.ok(!preview.url().includes(serial),'no private card identifier in preview URL');
   const pdf=await getDocument({data:new Uint8Array(await preview.pdf({format:'A4',printBackground:true})),useSystemFonts:true}).promise;

@@ -1,4 +1,4 @@
-/* Standalone, visible print preview for customer application forms.
+/* A standalone document lets the browser print the form instead of its embedding page.
    Keep private data in the opened document's memory, never in a URL or storage. */
 (function (root) {
   'use strict';
@@ -13,9 +13,13 @@
       doc.close();
       var base = doc.createElement('base'); base.href = document.baseURI; doc.head.appendChild(base);
       // Inline styles include the complete application sheet and its local fonts.
+      var stylesReady=[];
       Array.prototype.forEach.call(document.querySelectorAll('head style,head link[rel="stylesheet"]'), function (style) {
         var copy;
-        if (style.tagName.toLowerCase() === 'link') { copy=doc.createElement('link');copy.rel='stylesheet';copy.href=style.href; }
+        if (style.tagName.toLowerCase() === 'link') {
+          copy=doc.createElement('link');copy.rel='stylesheet';copy.href=style.href;
+          stylesReady.push(new Promise(function(resolve){var done=false;function finish(){if(!done){done=true;resolve();}}copy.onload=finish;copy.onerror=finish;setTimeout(finish,4000);}));
+        }
         else { copy=doc.createElement('style'); copy.textContent=style.textContent; }
         doc.head.appendChild(copy);
       });
@@ -37,19 +41,31 @@
       var note=doc.createElement('p'); note.id='preview-note'; note.textContent='جارٍ إعداد الاستمارة…'; controls.appendChild(note);
       var button=doc.createElement('button'); button.type='button'; button.textContent='طباعة أو حفظ PDF'; button.disabled=true; controls.appendChild(button);
       var close=doc.createElement('button'); close.type='button'; close.textContent='إغلاق'; close.onclick=function(){win.close();}; controls.appendChild(close);
-      button.onclick=function(){
-        if(button.disabled)return;
-        var fonts=doc.fonts;
-        var ready=fonts&&fonts.load?Promise.all([400,600,700,800,900].map(function(w){return fonts.load(w+' 12px Cairo','العراق ABC 123');})).catch(function(){}):Promise.resolve();
-        ready.then(function(){try{win.focus();win.print();}catch(e){note.textContent='تعذّر فتح الطباعة. استخدم خيار الطباعة من قائمة المتصفح.';}});
-      };
+      var printing=false;
+      function startPrint(){
+        if(button.disabled||printing||win.closed)return;
+        printing=true;
+        Promise.all(stylesReady).then(function(){
+          var fonts=doc.fonts;
+          return fonts&&fonts.load?Promise.all([400,600,700,800,900].map(function(w){return fonts.load(w+' 12px Cairo','العراق ABC 123');})).catch(function(){}):Promise.resolve();
+        }).then(function(){
+          if(win.closed)return;
+          // Let layout and the generated QR settle before opening the system dialog.
+          return new Promise(function(resolve){var done=false;function finish(){if(!done){done=true;resolve();}}win.setTimeout(finish,500);if(win.requestAnimationFrame)win.requestAnimationFrame(function(){win.requestAnimationFrame(finish);});});
+        }).then(function(){
+          if(win.closed)return;
+          note.textContent='إذا لم تفتح الطباعة تلقائياً، اضغط الزر أدناه.';
+          try{win.focus();win.print();}catch(e){note.textContent='تعذّر فتح الطباعة تلقائياً. اضغط الزر أدناه أو استخدم قائمة المتصفح.';}
+        }).finally(function(){printing=false;});
+      }
+      button.onclick=startPrint;
       doc.body.appendChild(controls);
       // The application sheet references a local SVG symbol for the logo.
       var symbol=document.getElementById('i-mkseb');
       if(symbol && symbol.ownerSVGElement){var sprite=symbol.ownerSVGElement.cloneNode(true);sprite.setAttribute('aria-hidden','true');sprite.style.position='absolute';sprite.style.width='0';sprite.style.height='0';doc.body.appendChild(sprite);}
       var host=doc.createElement('main');host.id='print-root';doc.body.appendChild(host);
       return {
-        render:function(html){if(win.closed)return false;host.innerHTML=html;note.textContent='تأكد من ظهور الاستمارة أدناه، ثم اضغط طباعة أو حفظ PDF.';button.disabled=false;return true;},
+        render:function(html){if(win.closed)return false;host.innerHTML=html;note.textContent='جارٍ فتح الطباعة…';button.disabled=false;startPrint();return true;},
         fail:function(message){if(!win.closed){note.textContent=message||'تعذّر إعداد الاستمارة. أغلق النافذة وأعد المحاولة.';button.disabled=true;}},
         close:function(){if(!win.closed)win.close();}
       };

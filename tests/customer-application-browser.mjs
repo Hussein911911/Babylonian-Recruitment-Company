@@ -15,6 +15,7 @@ try {
   const ctx=await browser.newContext({viewport:{width,height:850},serviceWorkers:'block'}),page=await ctx.newPage();
   await page.route('**/*',r=>r.request().url().startsWith(base)?r.continue():r.abort());
   await page.goto(base+'index.html', {waitUntil:'domcontentloaded'});
+  await page.evaluate(()=>{const open=window.open;window.open=function(...args){const child=open.apply(this,args);if(child){child.autoPrintCalls=0;child.print=()=>{child.autoPrintCalls++;child.printSnapshot=child.document.querySelector('#print-root')?.textContent||'';};}return child;};});
   await page.evaluate(()=>{
    const S=window.HRCStore, serial='K7M2XQ9T4R';
    window.testCalls=[]; window.printCount=0; window.print=()=>{window.printCount++};
@@ -33,7 +34,7 @@ try {
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   for(const n of [1,2]) {
    const [preview]=await Promise.all([page.waitForEvent('popup'),page.locator(`[data-cp-print="${n}"]`).click()]);
-   await preview.waitForFunction(()=>!document.querySelector('#preview-controls button').disabled);
+   await preview.waitForFunction(()=>window.autoPrintCalls===1);assert.match(await preview.evaluate(()=>window.printSnapshot),new RegExp('JOB-'+n));
    const html=await preview.locator('#print-root').innerText();
    assert.match(html,new RegExp('جهة '+n));assert.doesNotMatch(html,new RegExp('جهة '+(n===1?2:1)));
    assert.match(html,new RegExp('مكان مقابلة '+n));assert.match(html,/زبون الاختبار/);
