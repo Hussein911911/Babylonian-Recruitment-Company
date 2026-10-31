@@ -358,7 +358,7 @@
 }
 .app-section #jobs-grid.jobs-grid { gap: 14px; }
 @media screen and (max-width: 860px) {
-  /* على الجوال: شريط أفقي يُمرَّر بالأصبع كما في التطبيق (٣ كروت ظاهرة جزئياً) */
+  /* على الجوال: جميع الوظائف في شريط أفقي يُمرَّر بالأصبع. */
   .app-section #jobs-grid.jobs-grid {
     display: grid; grid-auto-flow: column; grid-auto-columns: 78%;
     overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px;
@@ -366,7 +366,6 @@
   }
   .app-section #jobs-grid.jobs-grid::-webkit-scrollbar { display: none; }
   .app-section #jobs-grid .job-card { scroll-snap-align: start; }
-  .app-section #jobs-grid .job-card:nth-child(n + 4) { display: none; }
   .jobs-head, .jobs-sub { padding-inline: 2px; }
 }
 
