@@ -1339,6 +1339,7 @@ body{
   .jf-reset{ width:44px; }
   .jf-panel .jf-grid{ grid-template-columns:1fr; }
   .jf-meta .jf-note{ display:none; }
+  .jf-meta{margin:0;padding:0;border:0}
   .job-filters #jobs-count{ margin-inline-start:0; }
   #jobs-list{ grid-template-columns:1fr; }
   .job-meta{ grid-template-columns:1fr; }
@@ -4886,7 +4887,6 @@ body.job-modal-open .app{
         <div class="jf-meta">
           <p id="jf-availability" class="jf-note">تُعرض الوظائف المتاحة للتقديم فقط.</p>
           <p id="jf-error" role="alert" hidden></p>
-          <div id="jobs-count" role="status" aria-live="polite"></div>
         </div>
       </section>
       <div id="jobs-list"></div>
@@ -5691,8 +5691,6 @@ var G={
     var invalidSalary=jobSalary(jobFilters.salary)===null;
     $('jf-error').hidden=!invalidSalary;
     $('jf-error').textContent=invalidSalary?'أدخل الأجر بالأرقام فقط، مثل 500000؛ الأجر بالدينار العراقي.':'';
-    $('jobs-count').innerHTML='عرض <b>'+ar(f.length)+'</b> من '+ar(jobs.length)+
-      ' وظيفة<span class="jf-dot">·</span>مختارة: <b>'+ar(pickedJobs.length)+'</b>';
     var c=$('jobs-list'),e=$('jobs-empty');
     if(!f.length){c.innerHTML='';e.style.display='block';G.syncJobsFooter();return;}
     e.style.display='none';
