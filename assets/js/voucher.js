@@ -357,12 +357,6 @@
     rootEl.innerHTML = formHtml(app, attempt, verifiedAttempts);
     try { Store.audit('طباعة استمارة توظيف', 'applicant', app.serial,
       'طباعة استمارة توظيف A4 بنفس باركود البطاقة — للزبون ' + app.fullName); } catch (e) { }
-    if (app.__customerApplication) {
-      var preview = root.HRCFormPrint && root.HRCFormPrint.open();
-      if (!preview) { UI.toast('err', 'تعذّر فتح معاينة الطباعة', 'اسمح بالنوافذ المنبثقة أو افتح الموقع مباشرة في المتصفح.'); return; }
-      preview.render(rootEl.innerHTML);
-      return;
-    }
     // Mobile browsers can emit afterprint before capturing the preview. Keep
     // this hidden form until it is explicitly replaced or the card is closed.
     setSheetCss(false);

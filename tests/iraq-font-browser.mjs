@@ -59,11 +59,9 @@ try{
   await page.goto(base+'apply.html');await page.waitForFunction(()=>typeof window.G?.printApplication==='function');
   check('independent application page uses local IBM Plex Sans Arabic: '+zone,(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)).split(',')[0].replace(/["']/g,'').trim()==='IBM Plex Sans Arabic' );
   check('application calendar year is Baghdad, not host zone: '+zone,await page.locator('#f-yr option').nth(1).textContent()==='2027');
-  await page.evaluate(()=>{document.querySelector('#result-content').innerHTML='<div class="form-sheet">استمارة اختبار</div>';});
-  const [preview]=await Promise.all([page.waitForEvent('popup'),page.evaluate(()=>G.printApplication())]);
-  await preview.evaluate(()=>{window.__applyPrints=0;window.print=()=>__applyPrints++;});
-  await preview.getByRole('button',{name:'طباعة أو حفظ PDF'}).click();await preview.waitForFunction(()=>__applyPrints===1);
-  check('application preview loads Cairo print weights including 800: '+zone,await preview.evaluate(()=>[400,600,700,800,900].every(w=>document.fonts.check(w+' 12px Cairo','العراق ABC 123'))));await preview.close();
+  await page.evaluate(()=>{window.__applyPrints=0;window.print=()=>__applyPrints++;document.querySelector('#result-content').innerHTML='<div class="form-sheet">استمارة اختبار</div>';G.printApplication();});
+  await page.waitForFunction(()=>__applyPrints===1);
+  check('application preserves all Cairo print weights including 800: '+zone,await page.evaluate(()=>[400,600,700,800,900].every(w=>document.fonts.check(w+' 12px Cairo','العراق ABC 123'))));
   /* صفحة صاحب العمل حُذفت نهائياً (2026-10-25) — لا تحقّق خطوط لها بعد اليوم. */
   check('no runtime errors: '+zone,errors.length===0);await context.close();
  }

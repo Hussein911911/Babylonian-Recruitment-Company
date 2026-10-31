@@ -15,10 +15,9 @@ try {
   const ctx=await browser.newContext({viewport:{width,height:850},serviceWorkers:'block'}),page=await ctx.newPage();
   await page.route('**/*',r=>r.request().url().startsWith(base)?r.continue():r.abort());
   await page.goto(base+'index.html', {waitUntil:'domcontentloaded'});
-  await page.evaluate(()=>{const open=window.open;window.open=function(...args){const child=open.apply(this,args);if(child){child.autoPrintCalls=0;child.print=()=>{child.autoPrintCalls++;child.printSnapshot=child.document.querySelector('#print-root')?.textContent||'';};}return child;};});
   await page.evaluate(()=>{
    const S=window.HRCStore, serial='K7M2XQ9T4R';
-   window.testCalls=[]; window.printCount=0; window.print=()=>{window.printCount++};
+   window.testCalls=[]; window.printCount=0; window.print=()=>{window.printCount++}; window.open=()=>{throw Error('Unexpected preview window');};
    S.cardLookup=async()=>({ok:true,card:{serial,fullName:'أ⚫',phone:'07⚫',status:'active',chancesLeft:0,chances:[
     {no:1,slotStatus:'reserved',jobCode:'JOB-1',jobTitle:'الوظيفة الأولى',selectedAt:'2026-10-30T09:00:00Z'},
     {no:2,slotStatus:'reserved',jobCode:'JOB-2',jobTitle:'الوظيفة الثانية',selectedAt:'2026-10-30T10:00:00Z'}]}});
@@ -33,14 +32,16 @@ try {
   assert.deepEqual(await page.evaluate(()=>window.testCalls),[['K7M2XQ9T4R',1],['K7M2XQ9T4R',2]]);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   for(const n of [1,2]) {
-   const [preview]=await Promise.all([page.waitForEvent('popup'),page.locator(`[data-cp-print="${n}"]`).click()]);
-   await preview.waitForFunction(()=>window.autoPrintCalls===1);assert.match(await preview.evaluate(()=>window.printSnapshot),new RegExp('JOB-'+n));
-   const html=await preview.locator('#print-root').innerText();
+   await page.locator(`[data-cp-print="${n}"]`).click();
+   const html=await page.locator('#print-root').innerText();
    assert.match(html,new RegExp('جهة '+n));assert.doesNotMatch(html,new RegExp('جهة '+(n===1?2:1)));
    assert.match(html,new RegExp('مكان مقابلة '+n));assert.match(html,/زبون الاختبار/);
-   assert.equal(await preview.locator('#print-root .hrc-card').count(),0);
-   if(width===375){const pdf=await preview.pdf({format:'A4',printBackground:true});const doc=await getDocument({data:new Uint8Array(pdf),useSystemFonts:true}).promise;assert.equal(doc.numPages,1,'one application on one A4 page');const contents=(await (await doc.getPage(1)).getTextContent()).items.map(i=>i.str).join(' ');assert.ok(contents.includes('K7M2XQ9T4R')&&contents.includes('JOB-'+n),'PDF contains this opportunity');}
-   await preview.close();
+   assert.equal(await page.locator('#print-root .hrc-card').count(),0);
+   await page.waitForFunction(n=>window.printCount>=n,n);
+   await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+   assert.equal(await page.locator('#print-root .hrc-form').count(),1,'early afterprint must not erase the application');
+   if(width===375){const pdf=await page.pdf({format:'A4',printBackground:true});const doc=await getDocument({data:new Uint8Array(pdf),useSystemFonts:true}).promise;const contents=(await (await doc.getPage(1)).getTextContent()).items.map(i=>i.str).join(' ');assert.ok(contents.includes('K7M2XQ9T4R')&&contents.includes('JOB-'+n),'PDF contains this opportunity, not a blank page');}
+
   }
   assert.equal(await page.locator('#bk-print').count(),0);
   await page.locator('#cp-again').click();assert.equal(await page.locator('#print-root .hrc-form').count(),0,'closing card removes the hidden print copy');
