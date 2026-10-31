@@ -698,7 +698,7 @@
 
   /* توحيد الإدخال: حروف كبيرة وبلا مسافات؛ والرقم القديم المجرّد (6 خانات) يُكمَّل بـ HRC-BC */
   function normalizeCardSerial(v) {
-    var s = String(v == null ? '' : v).trim().toUpperCase().replace(/\s+/g, '');
+    var s = String(v == null ? '' : v).replace(/[٠-٩۰-۹]/g, function (n) { var c = n.charCodeAt(0); return String(c - (c >= 0x6f0 ? 0x6f0 : 0x660)); }).trim().toUpperCase().replace(/\s+/g, '');
     var m = /^(?:HRC-?BC-?)?(\d{6})$/.exec(s);
     if (m) return 'HRC-BC-' + m[1];
     return s;
@@ -1127,7 +1127,12 @@
     var app = getApplicant(String(serial || '').trim().toUpperCase());
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود — تأكد من الرقم المطبوع على بطاقتك' };
     if (app.status === 'pending') return { ok: false, error: 'هذه البطاقة قيد المراجعة لدى الشركة' };
-    if (app.status === 'blank') return { ok: false, error: 'هذه البطاقة فارغة ولم تُبع بعد — إذا عُرضت لك للبيع فخابر الشركة فوراً لتفادي التزوير' };
+    if (app.status === 'blank') {
+      var empty = getAttempts(app.serial).filter(function (t) { return t.slotStatus === 'empty'; });
+      return {ok:true, card:{serial:app.serial, status:'blank', fullName:'', phone:'', issueDate:null, expiryDate:null,
+        chancesLeft:empty.length, usesCardPrintCode:false, succeeded:false,
+        chances:empty.map(function (t) { return {no:t.no, slotStatus:'empty'}; })}};
+    }
     var attempts = getAttempts(app.serial).map(function (t) {
       return {
         no: t.no, slotStatus: t.slotStatus,
@@ -1179,8 +1184,11 @@
   /* توجيه موحّد «بطاقتي»: سحابة إن كانت مفعّلة (RPC عامة آمنة)، وإلا محلياً */
   function cardLookup(serial) {
     var st = cloudStatus();
-    if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.lookupCard && cloud.client) {
-      return root.HRCCloud.lookupCard(cloud.client, serial);
+    if (st.configured && st.willBoot) {
+      if (st.state === 'connecting' && cloud.bootPromise) return cloud.bootPromise.then(function () { return cardLookup(serial); });
+      if (st.state === 'on' && root.HRCCloud && root.HRCCloud.lookupCard && cloud.client)
+        return root.HRCCloud.lookupCard(cloud.client, serial);
+      return Promise.resolve({ok:false, error:'تعذّر الاتصال بقاعدة الشركة — تحقّق من الإنترنت وأعد المحاولة.'});
     }
     return Promise.resolve(lookupCard(serial));
   }

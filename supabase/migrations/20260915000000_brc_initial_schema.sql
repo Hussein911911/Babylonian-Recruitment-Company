@@ -863,7 +863,14 @@ begin
     return jsonb_build_object('ok', false, 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
   end if;
   if f.status = 'blank' then
-    return jsonb_build_object('ok', false, 'error', 'هذه البطاقة فارغة ولم تُبع بعد — إذا عُرضت لك للبيع فخابر الشركة فوراً لتفادي التزوير');
+    -- البطاقة موجودة لكنها لم تُستخدم بعد. لا نكشف أي بيانات شخصية أو تفاصيل
+    -- تقديم محتملة، ولا نغيّر الصلاحية أو نُنشئ فرصاً عند مجرد عرضها.
+    return jsonb_build_object('ok', true, 'serial', f.serial, 'status', 'blank',
+      'fullName', '', 'phone', '', 'issueDate', null, 'expiryDate', null,
+      'usesCardPrintCode', false, 'succeeded', false,
+      'chancesLeft', (select count(*) from brc.job_attempts a where a.serial=f.serial and a.slot_status='empty'),
+      'chances', (select coalesce(jsonb_agg(jsonb_build_object('no', a.attempt_no, 'slotStatus', 'empty') order by a.attempt_no), '[]'::jsonb)
+                  from brc.job_attempts a where a.serial=f.serial and a.slot_status='empty'));
   end if;
 
   insert into brc.audit_log (username, role, action, entity, entity_id, details)

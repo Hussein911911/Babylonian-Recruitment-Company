@@ -17690,7 +17690,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
   /* توحيد الإدخال: حروف كبيرة وبلا مسافات؛ والرقم القديم المجرّد (6 خانات) يُكمَّل بـ HRC-BC */
   function normalizeCardSerial(v) {
-    var s = String(v == null ? '' : v).trim().toUpperCase().replace(/\s+/g, '');
+    var s = String(v == null ? '' : v).replace(/[٠-٩۰-۹]/g, function (n) { var c = n.charCodeAt(0); return String(c - (c >= 0x6f0 ? 0x6f0 : 0x660)); }).trim().toUpperCase().replace(/\s+/g, '');
     var m = /^(?:HRC-?BC-?)?(\d{6})$/.exec(s);
     if (m) return 'HRC-BC-' + m[1];
     return s;
@@ -18119,7 +18119,12 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var app = getApplicant(String(serial || '').trim().toUpperCase());
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود — تأكد من الرقم المطبوع على بطاقتك' };
     if (app.status === 'pending') return { ok: false, error: 'هذه البطاقة قيد المراجعة لدى الشركة' };
-    if (app.status === 'blank') return { ok: false, error: 'هذه البطاقة فارغة ولم تُبع بعد — إذا عُرضت لك للبيع فخابر الشركة فوراً لتفادي التزوير' };
+    if (app.status === 'blank') {
+      var empty = getAttempts(app.serial).filter(function (t) { return t.slotStatus === 'empty'; });
+      return {ok:true, card:{serial:app.serial, status:'blank', fullName:'', phone:'', issueDate:null, expiryDate:null,
+        chancesLeft:empty.length, usesCardPrintCode:false, succeeded:false,
+        chances:empty.map(function (t) { return {no:t.no, slotStatus:'empty'}; })}};
+    }
     var attempts = getAttempts(app.serial).map(function (t) {
       return {
         no: t.no, slotStatus: t.slotStatus,
@@ -18171,8 +18176,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   /* توجيه موحّد «بطاقتي»: سحابة إن كانت مفعّلة (RPC عامة آمنة)، وإلا محلياً */
   function cardLookup(serial) {
     var st = cloudStatus();
-    if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.lookupCard && cloud.client) {
-      return root.HRCCloud.lookupCard(cloud.client, serial);
+    if (st.configured && st.willBoot) {
+      if (st.state === 'connecting' && cloud.bootPromise) return cloud.bootPromise.then(function () { return cardLookup(serial); });
+      if (st.state === 'on' && root.HRCCloud && root.HRCCloud.lookupCard && cloud.client)
+        return root.HRCCloud.lookupCard(cloud.client, serial);
+      return Promise.resolve({ok:false, error:'تعذّر الاتصال بقاعدة الشركة — تحقّق من الإنترنت وأعد المحاولة.'});
     }
     return Promise.resolve(lookupCard(serial));
   }
@@ -22655,6 +22663,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (!host) return;
     var st = card.status || 'active';
     var badge = {
+      blank: { cls: 'warn', t: 'لم يبدأ التقديم بعد' },
       active: { cls: 'ok', t: 'سارية ونشطة' },
       expired: { cls: 'danger', t: 'منتهية الصلاحية' },
       exhausted: { cls: 'warn', t: 'استُهلكت الفرصتان' },
@@ -22727,9 +22736,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       '</div>' +
       '<h3 class="cp-h"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الفرص وتفاصيلها</h3>' +
       '<div class="cp-chances">' + (chances || '<div class="cp-empty-chance">لا توجد فرص مسجّلة على هذه البطاقة بعد.</div>') + '</div>' +
+      (st === 'blank' ? '<p class="cp-note-in">البطاقة موجودة ولم يبدأ التقديم عليها بعد. تبدأ الصلاحية عند أول تقديم ناجح.</p>' : '') +
       '<div class="cp-foot">' +
-        '<button type="button" class="btn btn-gold" id="cp-full">' +
-          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (متابعة · تقديم)</button>' +
+        (st === 'blank' && root.HRCBooking && root.HRCBooking.canApply && root.HRCBooking.canApply() ? '<a class="btn btn-gold" href="apply.html?form=' + encodeURIComponent(card.serial) + '">' + UI.ic('arrow-right') + ' تقديم الآن</a>' : '') +
+        (st !== 'blank' ? '<button type="button" class="btn btn-gold" id="cp-full">' +
+          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (متابعة · تقديم)</button>' : '') +
         '<button type="button" class="btn btn-outline" id="cp-again">' +
           '<svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> بطاقة أخرى</button>' +
       '</div>';

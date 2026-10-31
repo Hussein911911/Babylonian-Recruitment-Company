@@ -23,11 +23,18 @@ try {
  alter table brc.job_attempts enable always trigger trg_audit_attempts;`);
  const sql=readFileSync(new URL('../supabase/migrations/20261030110000_customer_application_details.sql',import.meta.url),'utf8');await db.exec(sql);await db.exec(sql);
  const preserve=readFileSync(new URL('../supabase/migrations/20261030120000_preserve_application_job_details.sql',import.meta.url),'utf8');await db.exec(preserve);await db.exec(preserve);
+ const blankLookup=readFileSync(new URL('../supabase/migrations/20261031120000_blank_card_lookup.sql',import.meta.url),'utf8');await db.exec(blankLookup);await db.exec(blankLookup);
  assert.equal(Number((await db.query('select count(*) n from brc.test_trigger_events')).rows[0].n),0,'backfill must not fire audit or job sync');
  const states=(await db.query("select tgname,tgenabled from pg_trigger where tgrelid='brc.job_attempts'::regclass and tgname in ('recovery_remember_chances','trg_audit_attempts','trg_sync_vacancies') order by tgname")).rows;
  assert.deepEqual(states.map(x=>x.tgenabled),['O','A','O']);
 
+ await db.exec("update brc.applicants set full_name='SECRET',phone='SECRET' where serial='BLANK'");
+ await db.exec("insert into brc.job_attempts(id,serial,attempt_no,slot_status) values ('00000000-0000-0000-0000-000000000014','BLANK',1,'empty'),('00000000-0000-0000-0000-000000000015','BLANK',2,'empty')");
  await db.exec('set role anon');
+ const blank=(await db.query("select brc.lookup_card(' blank ') as x")).rows[0].x;
+ assert.equal(blank.ok,true);assert.equal(blank.status,'blank');assert.equal(blank.chancesLeft,2);assert.equal(blank.chances.length,2);assert.ok(!JSON.stringify(blank).includes('SECRET'));assert.equal(blank.issueDate,null);
+ assert.equal((await db.query("select brc.lookup_card('MISSING') as x")).rows[0].x.ok,false);
+
  const get=async(s,n)=>(await db.query('select brc.customer_application_details($1,$2) x',[s,n])).rows[0].x;
  const a=await get(' card1 ',1);assert.equal(a.ok,true);assert.equal(a.app.fullName,'صاحب البطاقة');assert.equal(a.attempt.employerName,'جهة أولى');assert.equal(a.attempt.interviewLocation,'مقابلة أولى');
  assert.equal((await get('CARD1',2)).ok,false);assert.equal((await get('CARD1',3)).ok,false);assert.equal((await get('BLANK',1)).ok,false);assert.equal((await get('BAD',1)).ok,false);

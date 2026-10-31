@@ -381,11 +381,11 @@ const P = pub.w.HRCStore;
 injectFixture(P,DB1);
 await wait(250);
 
-/* بطاقة فارغة لم تُبع بعد: عرض الزبون يرفضها (منع التزوير ببيع ورق المخزون) */
+/* البطاقة غير المستخدمة تُعرض دون بيانات شخصية أو بدء للصلاحية. */
 {
   const blankLookup = P.lookupCard(blankSerials[1]);
-  check('بطاقة فارغة لم تُبع: عرض الزبون يرفضها برسالة واضحة', blankLookup.ok === false &&
-    /لم تُبع بعد/.test(blankLookup.error), blankLookup.error);
+  check('البطاقة الفارغة معروفة دون بيانات شخصية أو بدء صلاحية', blankLookup.ok === true &&
+    blankLookup.card.status === 'blank' && !blankLookup.card.fullName && !blankLookup.card.issueDate, JSON.stringify(blankLookup));
 }
 
 /* فتح «بطاقتي» من الهيدر وإدخال الباركود */

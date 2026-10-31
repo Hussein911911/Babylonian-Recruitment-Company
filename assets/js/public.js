@@ -570,6 +570,7 @@
     if (!host) return;
     var st = card.status || 'active';
     var badge = {
+      blank: { cls: 'warn', t: 'لم يبدأ التقديم بعد' },
       active: { cls: 'ok', t: 'سارية ونشطة' },
       expired: { cls: 'danger', t: 'منتهية الصلاحية' },
       exhausted: { cls: 'warn', t: 'استُهلكت الفرصتان' },
@@ -642,9 +643,11 @@
       '</div>' +
       '<h3 class="cp-h"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الفرص وتفاصيلها</h3>' +
       '<div class="cp-chances">' + (chances || '<div class="cp-empty-chance">لا توجد فرص مسجّلة على هذه البطاقة بعد.</div>') + '</div>' +
+      (st === 'blank' ? '<p class="cp-note-in">البطاقة موجودة ولم يبدأ التقديم عليها بعد. تبدأ الصلاحية عند أول تقديم ناجح.</p>' : '') +
       '<div class="cp-foot">' +
-        '<button type="button" class="btn btn-gold" id="cp-full">' +
-          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (متابعة · تقديم)</button>' +
+        (st === 'blank' && root.HRCBooking && root.HRCBooking.canApply && root.HRCBooking.canApply() ? '<a class="btn btn-gold" href="apply.html?form=' + encodeURIComponent(card.serial) + '">' + UI.ic('arrow-right') + ' تقديم الآن</a>' : '') +
+        (st !== 'blank' ? '<button type="button" class="btn btn-gold" id="cp-full">' +
+          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (متابعة · تقديم)</button>' : '') +
         '<button type="button" class="btn btn-outline" id="cp-again">' +
           '<svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> بطاقة أخرى</button>' +
       '</div>';
