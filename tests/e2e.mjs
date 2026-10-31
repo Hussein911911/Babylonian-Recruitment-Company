@@ -27,7 +27,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Cover the current customer application and security-definer SQL paths rather
 // than reviving the removed POS wizard. Fail the suite if any subprocess fails.
-for (const file of ['apply-flow.mjs', 'card-validity.mjs', 'card-identity.mjs', 'customer-application-sql.mjs', 'office-sql.mjs']) {
+for (const file of ['apply-flow.mjs', 'card-validity.mjs', 'card-identity.mjs', 'customer-application-sql.mjs', 'customer-snapshot-local.mjs', 'office-sql.mjs']) {
   console.log('\n▌ فحص المسار الحالي: ' + file);
   const run = spawnSync(process.execPath, [join(ROOT, 'tests', file)], { stdio: 'inherit' });
   if (run.error || run.status !== 0) {

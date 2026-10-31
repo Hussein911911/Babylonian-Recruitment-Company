@@ -161,18 +161,19 @@
    *  جدول الوظائف حتى تعمل الواجهة بلا تغيير (كانت تبنيها من CFG.seed محلياً).
    * ----------------------------------------------------------------------------- */
   function attemptFromDb(r, jobsById, jobsByCode, staffById) {
-    var job = (r.job_id && jobsById[r.job_id]) ||
-      (r.job_code && jobsByCode[r.job_code]) || null;
+    var job = (r.job_id && jobsById[r.job_id]) || null;
+    var snap = r.job_snapshot && r.job_snapshot.code === r.job_code ? r.job_snapshot : null;
     return {
       id: r.id,
       serial: r.serial,
       no: n(r.attempt_no),
       jobId: r.job_id || null,
       jobCode: r.job_code || (job ? job.code : null),
-      jobTitle: job ? job.title : null,
-      location: job ? (job.governorate || '') : null,
-      employerName: job ? job.employer.name : null,
-      employerPhone: job ? job.employer.phone : null,
+      jobTitle: job ? job.title : snap && snap.title,
+      location: job ? (job.governorate || '') : snap && snap.governorate,
+      employerName: job ? job.employer.name : snap && snap.employer_name,
+      employerPhone: job ? job.employer.phone : snap && snap.employer_phone,
+      jobSnapshot: snap,
       vacancyNo: r.vacancy_no || null,
       slotStatus: r.slot_status || 'empty',
       code: r.chance_code || null,          /* تاريخي: رموز الفرص أُلغيت ولا تُطبع */
@@ -743,10 +744,9 @@
         replaceIn(db.jobs, job, function (x) { return x.id; });
         /* تحديث البيانات المُسطّحة في المحاولات المرتبطة بهذه الوظيفة */
         db.attempts.forEach(function (a) {
-          if (a.jobId === job.id || (a.jobCode && a.jobCode === job.code)) {
+          if (a.jobId === job.id) {
             a.jobTitle = job.title; a.location = job.governorate || '';
             a.employerName = job.employer.name; a.employerPhone = job.employer.phone;
-            if (!a.jobId) a.jobId = job.id;
           }
         });
       }

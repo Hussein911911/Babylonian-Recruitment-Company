@@ -3067,6 +3067,24 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
   width: clamp(64px, 14vw, 84px); height: clamp(64px, 14vw, 84px);
   color: var(--gold-2); filter: drop-shadow(0 10px 26px rgba(0, 0, 0, .45));
   padding: clamp(7px, 1.6vw, 10px); border-radius: 27%;
+  position: relative; isolation: isolate;
+  box-shadow: 0 0 0 1px rgba(255, 223, 149, .65),
+              0 0 0 4px rgba(217, 177, 96, .12),
+              0 0 25px rgba(255, 200, 103, .42), 0 9px 24px rgba(0, 0, 0, .32);
+}
+/* Static, decorative rays behind the existing logo: no layout shift or motion. */
+.app-emblem::before {
+  content: ''; position: absolute; z-index: -1; inset: -85%; border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgba(255, 220, 149, .42) 0%, rgba(235, 176, 84, .16) 36%, transparent 68%),
+    repeating-conic-gradient(from 5deg, rgba(255, 223, 158, .22) 0deg 2deg, transparent 4deg 18deg);
+  -webkit-mask-image: radial-gradient(circle, #000 8%, rgba(0,0,0,.7) 34%, transparent 70%);
+  mask-image: radial-gradient(circle, #000 8%, rgba(0,0,0,.7) 34%, transparent 70%);
+}
+.app-emblem::after {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  border-radius: inherit; background: #012f3e; pointer-events: none;
 }
 .app-wordmark {
   font-size: clamp(1.5rem, 6.4vw, 2.1rem); font-weight: 900; color: #fff;
@@ -17635,6 +17653,14 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     return job;
   }
 
+  function snapshotJob(job) {
+    if (!job) return null;
+    return {code:job.code,title:job.title,governorate:job.governorate || '',
+      employer_name:(job.employer || {}).name || '', employer_phone:(job.employer || {}).phone || '',
+      employer_address:(job.employer || {}).address || '', interview_location:job.interviewLocation || '',
+      shift:job.shift || '', salary_min:job.salaryMin, salary_max:job.salaryMax};
+  }
+
   function deleteJob(code) {
     var job = getJob(code); if (!job) return false;
     /* حذف وظيفة عليها حجز/حرجة يغلق فرصة البطاقة المرتبطة (الفرصة مستهلكة —
@@ -17646,7 +17672,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         t.holdExpiresAt = null;
         t.note = 'حذفت الشركة الوظيفة ' + job.code + ' — استُهلكت الفرصة';
       }
-      if(t.jobId===job.id)t.jobId=null;
+      if(t.jobId===job.id) { if (!t.jobSnapshot && t.selectedAt) t.jobSnapshot=snapshotJob(job); t.jobId=null; }
     });
     if(db.meta&&db.meta.workspace){db.meta.explicitDeletes=db.meta.explicitDeletes||{};db.meta.explicitDeletes.jobs=(db.meta.explicitDeletes.jobs||[]).concat(code);}
     db.jobs = db.jobs.filter(function (j) { return j.code !== code; });
@@ -18048,7 +18074,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var freeSeat=vacancySummary(job).free[0];
     if(!freeSeat)return {ok:false,error:'لا يوجد شاغر متاح'};
     slot.vacancyNo=freeSeat;
-    slot.jobId = job.id; slot.jobCode = job.code; slot.jobTitle = job.title;
+    slot.jobId = job.id; slot.jobCode = job.code; slot.jobTitle = job.title; slot.jobSnapshot = snapshotJob(job);
     slot.location = job.governorate || ''; slot.employerName = job.employer.name; slot.employerPhone = job.employer.phone;
     slot.slotStatus = 'reserved';
     slot.selectedAt = nowISO();
@@ -18160,14 +18186,17 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       return Promise.resolve({ok:false, error:'تعذّر الاتصال لتحميل تفاصيل التقديم'});
     }
     var app = getApplicant(String(serial || '').trim().toUpperCase());
-    var t = app && getAttempts(app.serial).filter(function (a) { return Number(a.no) === Number(no) && a.slotStatus !== 'empty' && a.selectedAt && a.jobId; })[0];
-    var j = t && getJob(t.jobCode);
-    if (!app || ['blank','pending','rejected'].indexOf(app.status) >= 0 || !t || !j || j.id !== t.jobId)
+    var t = app && getAttempts(app.serial).filter(function (a) { return Number(a.no) === Number(no) && a.slotStatus !== 'empty' && a.selectedAt && a.jobCode; })[0];
+    var j = t && t.jobId && getJob(t.jobCode);
+    if (j && j.id !== t.jobId) j = null;
+    var snap = (t && t.jobSnapshot && t.jobSnapshot.code === t.jobCode) ? t.jobSnapshot : j ? snapshotJob(j) : null;
+    if (!app || ['blank','pending','rejected'].indexOf(app.status) >= 0 || !t || !snap || snap.code !== t.jobCode)
       return Promise.resolve({ok:false,error:'تفاصيل هذا التقديم غير متاحة، تواصل مع الشركة'});
     return Promise.resolve({ok:true, app:app, attempt:Object.assign({}, t, {
-      employerName:(j.employer || {}).name, employerPhone:(j.employer || {}).phone,
-      employerAddress:(j.employer || {}).address, interviewLocation:j.interviewLocation,
-      shift:j.shift, salaryMin:j.salaryMin, salaryMax:j.salaryMax
+      jobTitle:snap.title, location:snap.governorate,
+      employerName:snap.employer_name, employerPhone:snap.employer_phone,
+      employerAddress:snap.employer_address, interviewLocation:snap.interview_location,
+      shift:snap.shift, salaryMin:snap.salary_min, salaryMax:snap.salary_max
     })});
   }
 
@@ -20486,7 +20515,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           return (b.no || 0) - (a.no || 0);
         })[0] || null;
     }
-    var job = attempt && attempt.jobCode ? Store.getJob(attempt.jobCode) : null;
+    var job = !app.__customerApplication && attempt && attempt.jobCode ? Store.getJob(attempt.jobCode) : null;
     var cUrl = Store.cardUrl(app.serial);
     var st = (CFG.formStatus || {})[formStatusOf(app)] || { ar: '—' };
 
@@ -20505,7 +20534,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       field('تاريخ الميلاد', app.dob ? Store.fmtDate(app.dob) : '') + field('الجنسية', app.nationality) + '</div>');
     var jobDetails = section('job', '02', 'تفاصيل الوظيفة', attempt ? '<div class="ff-grid">' +
       field('الوظيفة المطلوبة', attempt.jobTitle || (job && job.title), 'ff-wide') + field('كود الوظيفة', attempt.jobCode, 'ff-ltr') +
-      field('المحافظة', (job && job.governorate) || attempt.governorate || '—') +
+      field('المحافظة', (job && job.governorate) || attempt.governorate || attempt.location || '—') +
       field('الأجر الشهري', attempt.salaryMin != null ? Store.money(attempt.salaryMin) + ' – ' + Store.money(attempt.salaryMax) : job ? Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) : '') +
       field('الدوام', attempt.shift || (job && job.shift)) + field('حالة التقديم', slotText(attempt)) +
       field('تاريخ التقديم', attempt.selectedAt ? Store.fmtDateTime(attempt.selectedAt) : '', 'ff-wide') + '</div>' :

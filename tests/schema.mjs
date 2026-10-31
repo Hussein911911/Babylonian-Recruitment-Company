@@ -85,8 +85,8 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 /* 2026-10-25 (لاحقاً): +5 دوال لجدولة النسخ التي يضبطها المدير
    (recovery_cron_expr · _schedule_get · _schedule_set · _run_scheduled ·
    recovery_ensure_fresh) ⇒ 54 تعريفاً و52 دالة فعلية. */
-check('تعريفات الدوال: 54 تعريفاً، 52 دالة فعلية (تحديثان مقصودان)',
-  funcs.length === 54 && new Set(funcs.map(x=>x.name)).size === 52,
+check('تعريفات الدوال: 57 تعريفاً، 55 دالة فعلية (تحديثان مقصودان)',
+  funcs.length === 57 && new Set(funcs.map(x=>x.name)).size === 55,
   funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
@@ -95,7 +95,7 @@ const EXPECTED_FUNCS = ['brc.recovery_manage', 'brc.office_submit', 'brc.next_jo
   'brc.run_auto_release', 'brc.is_staff', 'brc.is_admin', 'brc.current_staff_id',
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',
   'brc.select_attempt', 'brc.set_outcome', 'brc.release_hold',
-  'brc.activate_card',
+  'brc.activate_card', 'brc.customer_application_details', 'brc.application_job_snapshot', 'brc.capture_application_job_snapshot',
   'brc.self_service_card', 'brc.apply_with_card', 'brc.ensure_card_attempts',
   'brc.recovery_cron_expr', 'brc.recovery_schedule_get', 'brc.recovery_schedule_set',
   'brc.recovery_run_scheduled', 'brc.recovery_ensure_fresh'];
@@ -287,7 +287,7 @@ for (const [label, re] of [
 ]) check(label, re.test(RAW));
 
 const trigCount = [...stripped(RAW).matchAll(/create\s+trigger\s+\w+/gi)].length;
-check('تعريفات المشغّلات بما فيها حاجز الاسترجاع موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق/سجل الباركودات)', trigCount === 16, trigCount + '');
+check('تعريفات المشغّلات بما فيها حاجز الاسترجاع موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق/سجل الباركودات)', trigCount === 17 && /create\s+trigger\s+zz_capture_application_job_snapshot/i.test(stripped(RAW)), trigCount + '');
 
 /* ------------------------- 9) مزامنة ملف الـ migration ------------------------- */
 step(9, 'ملف الـ migration — متطابق مع المصدر (تكاملة GitHub في Supabase)');

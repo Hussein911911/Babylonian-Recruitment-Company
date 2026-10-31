@@ -660,6 +660,14 @@
     return job;
   }
 
+  function snapshotJob(job) {
+    if (!job) return null;
+    return {code:job.code,title:job.title,governorate:job.governorate || '',
+      employer_name:(job.employer || {}).name || '', employer_phone:(job.employer || {}).phone || '',
+      employer_address:(job.employer || {}).address || '', interview_location:job.interviewLocation || '',
+      shift:job.shift || '', salary_min:job.salaryMin, salary_max:job.salaryMax};
+  }
+
   function deleteJob(code) {
     var job = getJob(code); if (!job) return false;
     /* حذف وظيفة عليها حجز/حرجة يغلق فرصة البطاقة المرتبطة (الفرصة مستهلكة —
@@ -671,7 +679,7 @@
         t.holdExpiresAt = null;
         t.note = 'حذفت الشركة الوظيفة ' + job.code + ' — استُهلكت الفرصة';
       }
-      if(t.jobId===job.id)t.jobId=null;
+      if(t.jobId===job.id) { if (!t.jobSnapshot && t.selectedAt) t.jobSnapshot=snapshotJob(job); t.jobId=null; }
     });
     if(db.meta&&db.meta.workspace){db.meta.explicitDeletes=db.meta.explicitDeletes||{};db.meta.explicitDeletes.jobs=(db.meta.explicitDeletes.jobs||[]).concat(code);}
     db.jobs = db.jobs.filter(function (j) { return j.code !== code; });
@@ -1073,7 +1081,7 @@
     var freeSeat=vacancySummary(job).free[0];
     if(!freeSeat)return {ok:false,error:'لا يوجد شاغر متاح'};
     slot.vacancyNo=freeSeat;
-    slot.jobId = job.id; slot.jobCode = job.code; slot.jobTitle = job.title;
+    slot.jobId = job.id; slot.jobCode = job.code; slot.jobTitle = job.title; slot.jobSnapshot = snapshotJob(job);
     slot.location = job.governorate || ''; slot.employerName = job.employer.name; slot.employerPhone = job.employer.phone;
     slot.slotStatus = 'reserved';
     slot.selectedAt = nowISO();
@@ -1185,14 +1193,17 @@
       return Promise.resolve({ok:false, error:'تعذّر الاتصال لتحميل تفاصيل التقديم'});
     }
     var app = getApplicant(String(serial || '').trim().toUpperCase());
-    var t = app && getAttempts(app.serial).filter(function (a) { return Number(a.no) === Number(no) && a.slotStatus !== 'empty' && a.selectedAt && a.jobId; })[0];
-    var j = t && getJob(t.jobCode);
-    if (!app || ['blank','pending','rejected'].indexOf(app.status) >= 0 || !t || !j || j.id !== t.jobId)
+    var t = app && getAttempts(app.serial).filter(function (a) { return Number(a.no) === Number(no) && a.slotStatus !== 'empty' && a.selectedAt && a.jobCode; })[0];
+    var j = t && t.jobId && getJob(t.jobCode);
+    if (j && j.id !== t.jobId) j = null;
+    var snap = (t && t.jobSnapshot && t.jobSnapshot.code === t.jobCode) ? t.jobSnapshot : j ? snapshotJob(j) : null;
+    if (!app || ['blank','pending','rejected'].indexOf(app.status) >= 0 || !t || !snap || snap.code !== t.jobCode)
       return Promise.resolve({ok:false,error:'تفاصيل هذا التقديم غير متاحة، تواصل مع الشركة'});
     return Promise.resolve({ok:true, app:app, attempt:Object.assign({}, t, {
-      employerName:(j.employer || {}).name, employerPhone:(j.employer || {}).phone,
-      employerAddress:(j.employer || {}).address, interviewLocation:j.interviewLocation,
-      shift:j.shift, salaryMin:j.salaryMin, salaryMax:j.salaryMax
+      jobTitle:snap.title, location:snap.governorate,
+      employerName:snap.employer_name, employerPhone:snap.employer_phone,
+      employerAddress:snap.employer_address, interviewLocation:snap.interview_location,
+      shift:snap.shift, salaryMin:snap.salary_min, salaryMax:snap.salary_max
     })});
   }
 

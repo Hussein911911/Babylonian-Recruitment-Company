@@ -250,7 +250,7 @@
           return (b.no || 0) - (a.no || 0);
         })[0] || null;
     }
-    var job = attempt && attempt.jobCode ? Store.getJob(attempt.jobCode) : null;
+    var job = !app.__customerApplication && attempt && attempt.jobCode ? Store.getJob(attempt.jobCode) : null;
     var cUrl = Store.cardUrl(app.serial);
     var st = (CFG.formStatus || {})[formStatusOf(app)] || { ar: '—' };
 
@@ -269,7 +269,7 @@
       field('تاريخ الميلاد', app.dob ? Store.fmtDate(app.dob) : '') + field('الجنسية', app.nationality) + '</div>');
     var jobDetails = section('job', '02', 'تفاصيل الوظيفة', attempt ? '<div class="ff-grid">' +
       field('الوظيفة المطلوبة', attempt.jobTitle || (job && job.title), 'ff-wide') + field('كود الوظيفة', attempt.jobCode, 'ff-ltr') +
-      field('المحافظة', (job && job.governorate) || attempt.governorate || '—') +
+      field('المحافظة', (job && job.governorate) || attempt.governorate || attempt.location || '—') +
       field('الأجر الشهري', attempt.salaryMin != null ? Store.money(attempt.salaryMin) + ' – ' + Store.money(attempt.salaryMax) : job ? Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) : '') +
       field('الدوام', attempt.shift || (job && job.shift)) + field('حالة التقديم', slotText(attempt)) +
       field('تاريخ التقديم', attempt.selectedAt ? Store.fmtDateTime(attempt.selectedAt) : '', 'ff-wide') + '</div>' :

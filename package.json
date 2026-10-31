@@ -14,7 +14,7 @@
     "test:jobs-skeleton-browser": "node tests/jobs-skeleton-browser.mjs",
     "test:home-startup-browser": "node tests/home-startup-browser.mjs",
     "test:apply-mobile-browser": "node tests/apply-mobile-browser.mjs",
-    "test:customer-application": "node tests/customer-application-sql.mjs",
+    "test:customer-application": "node tests/customer-application-sql.mjs && node tests/customer-snapshot-local.mjs",
     "test:customer-application-browser": "node tests/customer-application-browser.mjs",
     "test:card-scanner": "node tests/card-scanner.mjs",
     "test:brand": "node tests/brand-consistency.mjs",

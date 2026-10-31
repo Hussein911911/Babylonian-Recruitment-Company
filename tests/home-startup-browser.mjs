@@ -49,6 +49,20 @@ try {
    await ctx.close();console.log(`PASS ${path} JS ${javascriptEnabled?'on':'off'}`);
   }
  }
+ // The decorative logo rays must not cover the mark, move layout, or intercept touch.
+ for (const width of [320,375,768,1440]) for (const motion of ['no-preference','reduce']) {
+  const ctx=await browser.newContext({viewport:{width,height:850},serviceWorkers:'block',reducedMotion:motion}),page=await ctx.newPage();
+  await page.route('**/*',r=>r.request().url().startsWith(base)?r.continue():r.abort());
+  await page.goto(base+'index.html',{waitUntil:'domcontentloaded'});
+  const glow=await page.locator('.app-emblem').evaluate(el=>{
+   const r=el.getBoundingClientRect(), rays=getComputedStyle(el,'::before'), tile=getComputedStyle(el,'::after');
+   const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+   return {background:rays.backgroundImage,hit:!!hit&&el.contains(hit),pointer:rays.pointerEvents,animation:rays.animationName,cover:tile.backgroundColor,svg:!!el.querySelector('svg use[href="#i-mkseb"]'),overflow:document.documentElement.scrollWidth>innerWidth};
+  });
+  assert.match(glow.background,/conic-gradient/);assert.equal(glow.pointer,'none');assert.equal(glow.animation,'none');
+  assert.equal(glow.cover,'rgb(1, 47, 62)');assert.ok(glow.svg && glow.hit && !glow.overflow,JSON.stringify(glow));
+  await ctx.close();console.log(`PASS hero logo glow ${width}px ${motion}`);
+ }
  // Old printed QR links, including retired roles, must open the current application.
  for (const role of ['', 'pos', 'employer']) {
   const ctx=await browser.newContext({viewport:{width:375,height:812},serviceWorkers:'block'}),page=await ctx.newPage();
