@@ -50,6 +50,10 @@
 
   /* ---------------- التهيئة ---------------- */
   function init() {
+    // HTTPS pages only; standalone file:// exports must remain self-contained.
+    if (/^https?:$/.test(location.protocol) && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    }
     Store.init();
     UI.startCountdowns();
     fillSelects();
@@ -407,6 +411,9 @@
     opts = opts || {};
     var isHome = page === 'home' || !APP_PAGES[page];
     currentPage = isHome ? 'home' : page;
+    // Prevent the card page from appearing during startup or on the home page.
+    var cardPage = document.getElementById('card');
+    if (cardPage) cardPage.hidden = currentPage !== 'card';
     var meta = APP_PAGES[currentPage] || {};
     document.body.classList.toggle('app-focus', !isHome);
     document.body.setAttribute('data-app-page', currentPage);
@@ -529,6 +536,7 @@
    * لا نعرض أي شكل/صورة للبطاقة (طلب المالك: لا معنى لعرضها للزبون بلا بيانات).
    * الصفحة: إدخال رقم البطاقة أو مسح الباركود ← تفاصيل حقيقية من القاعدة:
    * الحالة · بداية الصلاحية · الانتهاء · المتبقي · الفرص ووظائفها وتواريخها. */
+  var cpLookupGeneration = 0;
   var CP_KEY = 'hrc_last_card_v1';        /* آخر رقم بطاقة فتحه الزبون على جهازه */
 
   function cpSay(msg, isErr) {
@@ -540,6 +548,10 @@
 
   function cpSerialFromText(text) {
     var t = String(text || '').trim();
+    var scanner = root.HRCQRScan;
+    // QR cards encode an application URL, not just the printed serial number.
+    var scanned = scanner && scanner.serialFrom ? scanner.serialFrom(t) : '';
+    if (scanned) return scanned;
     var S = Store;
     if (S.normalizeCardSerial) { try { t = S.normalizeCardSerial(t); } catch (e) { } }
     return t.toUpperCase();
@@ -558,6 +570,7 @@
     if (!host) return;
     var st = card.status || 'active';
     var badge = {
+      blank: { cls: 'warn', t: 'لم يبدأ التقديم بعد' },
       active: { cls: 'ok', t: 'سارية ونشطة' },
       expired: { cls: 'danger', t: 'منتهية الصلاحية' },
       exhausted: { cls: 'warn', t: 'استُهلكت الفرصتان' },
@@ -565,10 +578,10 @@
       pending: { cls: 'warn', t: 'قيد المراجعة' }
     }[st] || { cls: 'warn', t: st };
 
-    var issued = card.issueDate ? Store.fmtDate(card.issueDate) : '—';
-    var expires = card.expiryDate ? Store.fmtDate(card.expiryDate) : '—';
+    var issued = card.issueDate ? Store.fmtDate(card.issueDate) : 'تبدأ عند أول تقديم';
+    var expires = card.expiryDate ? Store.fmtDate(card.expiryDate) : 'لم تبدأ بعد';
     var leftDays = card.expiryDate ? Math.ceil((new Date(card.expiryDate).getTime() - Date.now()) / 86400000) : null;
-    var leftTxt = leftDays === null ? '—' : (leftDays > 0 ? leftDays + ' يوماً' : 'انتهت');
+    var leftTxt = leftDays === null ? 'لم تبدأ بعد' : (leftDays > 0 ? leftDays + ' يوماً' : 'انتهت');
 
     var SLOT = {
       empty: { t: 'فرصة متاحة', cls: 'ok' },
@@ -600,6 +613,14 @@
             (job && job.salaryMin ? '<div class="cp-meta"><span>' + UI.ic('money') + ' ' +
               Store.money(job.salaryMin) + ' – ' + Store.money(job.salaryMax) + '</span>' +
               (job.shift ? '<span>' + UI.ic('clock') + ' ' + UI.esc(job.shift) + '</span>' : '') + '</div>' : '') +
+            (c.application && c.application.ok ? (function () {
+              var a = c.application.attempt;
+              function item(label, value) { return '<div class="cp-employer-row"><b>' + label + '</b><span>' + UI.esc(value || 'غير متوفر — تواصل مع الشركة') + '</span></div>'; }
+              return '<div class="cp-employer"><h4>معلومات جهة العمل والمقابلة</h4>' +
+                item('الاسم', a.employerName) + item('الهاتف', a.employerPhone) +
+                item('العنوان', a.employerAddress) + item('مكان المقابلة', a.interviewLocation) +
+                '<button type="button" class="btn btn-lapis cp-print-form" data-cp-print="' + UI.esc(String(c.no)) + '">' + UI.ic('print') + ' طباعة استمارة الفرصة</button></div>';
+            })() : c.selectedAt ? '<p class="cp-note-in">تفاصيل جهة العمل غير متاحة حالياً — أعد المحاولة أو تواصل مع الشركة.</p>' : '') +
             (c.note ? '<p class="cp-note-in">' + UI.esc(c.note) + '</p>' : '')
           : '<div class="cp-empty-chance">' + UI.ic('hourglass') + ' لم تُستخدم بعد — اختر لها وظيفة من الموقع أو استمارتك.</div>') +
       '</article>';
@@ -622,9 +643,11 @@
       '</div>' +
       '<h3 class="cp-h"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الفرص وتفاصيلها</h3>' +
       '<div class="cp-chances">' + (chances || '<div class="cp-empty-chance">لا توجد فرص مسجّلة على هذه البطاقة بعد.</div>') + '</div>' +
+      (st === 'blank' ? '<p class="cp-note-in">البطاقة موجودة ولم يبدأ التقديم عليها بعد. تبدأ الصلاحية عند أول تقديم ناجح.</p>' : '') +
       '<div class="cp-foot">' +
-        '<button type="button" class="btn btn-gold" id="cp-full">' +
-          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (تقديم · طباعة)</button>' +
+        (st === 'blank' && root.HRCBooking && root.HRCBooking.canApply && root.HRCBooking.canApply() ? '<a class="btn btn-gold" href="apply.html?form=' + encodeURIComponent(card.serial) + '">' + UI.ic('arrow-right') + ' تقديم الآن</a>' : '') +
+        (st !== 'blank' ? '<button type="button" class="btn btn-gold" id="cp-full">' +
+          '<svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> فتح بطاقتي الكاملة (متابعة · تقديم)</button>' : '') +
         '<button type="button" class="btn btn-outline" id="cp-again">' +
           '<svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> بطاقة أخرى</button>' +
       '</div>';
@@ -633,12 +656,24 @@
     host.hidden = false;
     var full = document.getElementById('cp-full');
     if (full) full.addEventListener('click', function () { cpOpenBook(card.serial); });
+    host.querySelectorAll('[data-cp-print]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var no = Number(button.getAttribute('data-cp-print'));
+        var chance = (card.chances || []).filter(function (c) { return Number(c.no) === no; })[0];
+        var data = chance && chance.application;
+        if (!data || !data.ok || !data.attempt || !root.HRCVoucher || !root.HRCVoucher.printForm) return;
+        try { root.HRCVoucher.printForm(Object.assign({}, data.app, {status: card.status, __customerApplication: true}), data.attempt, card.chances || []); }
+        catch (e) { UI.toast('err', 'تعذّرت الطباعة', 'أعد المحاولة أو تواصل مع الشركة.'); }
+      });
+    });
     var again = document.getElementById('cp-again');
     if (again) again.addEventListener('click', cpReset);
     try { localStorage.setItem(CP_KEY, card.serial); } catch (e) { }
   }
 
   function cpReset() {
+    if (root.HRCVoucher && root.HRCVoucher.clearFormPrint) root.HRCVoucher.clearFormPrint();
+    cpLookupGeneration++;
     var entry = document.getElementById('cp-entry');
     var host = document.getElementById('cp-result');
     if (host) { host.hidden = true; host.innerHTML = ''; }
@@ -657,20 +692,65 @@
       cpSay('الرقم لا يبدو باركود بطاقة — راجع الرقم المطبوع على وجه البطاقة.', true);
       return;
     }
+    var generation = ++cpLookupGeneration;
     var btn = document.getElementById('cp-go');
     if (btn) { btn.disabled = true; btn.textContent = 'جارٍ البحث…'; }
     cpSay('');
     Promise.resolve(Store.cardLookup(serial)).then(function (r) {
-      if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
+      if (generation !== cpLookupGeneration) return;
       if (!r || !r.ok) {
+        if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
         cpSay((r && r.error) || 'تعذّر العثور على البطاقة — تأكد من الرقم.', true);
         return;
       }
-      cpRenderDetails(r.card);
+      var card = r.card;
+      return Promise.all((card.chances || []).map(function (c) {
+        if (!c.jobCode || !c.selectedAt || c.slotStatus === 'empty') return Promise.resolve();
+        return Promise.resolve(Store.customerApplication(card.serial, c.no)).then(function (detail) { c.application = detail; }, function () { c.application = {ok:false}; });
+      })).then(function () {
+        if (generation !== cpLookupGeneration) return;
+        if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
+        cpRenderDetails(card);
+      });
     }).catch(function () {
+      if (generation !== cpLookupGeneration) return;
       if (btn) { btn.disabled = false; btn.innerHTML = UI.ic('search') + ' اعرض بطاقتي'; }
       cpSay('تعذّر الاتصال بقاعدة الشركة — تحقّق من الإنترنت وأعد المحاولة.', true);
     });
+  }
+
+  // بعد المسح يختار الزبون الإجراء قبل البحث أو الانتقال لصفحة التقديم.
+  function cpChooseAction(serial) {
+    var modal = UI.modal({
+      title: 'بطاقتي',
+      body: '<div class="cp-choice">' +
+        '<span class="cp-choice-icon" aria-hidden="true">' + UI.ic('card') + '</span>' +
+        '<h4>تمت قراءة البطاقة بنجاح</h4>' +
+        '<p>اختر شنو تحب تسوي ببطاقتك</p>' +
+        '<span class="cp-choice-serial">' + UI.esc(serial) + '</span>' +
+        '<div class="cp-choice-actions">' +
+          '<a class="btn cp-choice-primary" id="cp-choice-apply" href="apply.html?form=' + encodeURIComponent(serial) + '">' + UI.ic('arrow-right') + ' تقديم الآن</a>' +
+          '<button type="button" class="btn cp-choice-secondary" id="cp-choice-details">' + UI.ic('card') + ' عرض تفاصيل البطاقة</button>' +
+        '</div><p class="cp-choice-error" id="cp-choice-error" role="alert" hidden></p></div>',
+      onMount: function (box, close) {
+        box.classList.add('cp-choice-modal');
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-modal', 'true');
+        box.setAttribute('aria-label', 'اختيار إجراء البطاقة');
+        var apply = box.querySelector('#cp-choice-apply');
+        apply.addEventListener('click', function (e) {
+          if (!root.HRCBooking || !root.HRCBooking.canApply || !root.HRCBooking.canApply()) {
+            e.preventDefault();
+            var error = box.querySelector('#cp-choice-error');
+            error.hidden = false;
+            error.textContent = 'صفحة التقديم غير متاحة في النسخة المستقلة. افتح الموقع الإلكتروني للتقديم.';
+          }
+        });
+        box.querySelector('#cp-choice-details').addEventListener('click', function () { close(); cpLookup(serial); });
+        setTimeout(function () { if (document.contains(apply)) apply.focus(); }, 80);
+      }
+    });
+    if (!modal) cpSay('تعذّر عرض الخيارات — يمكنك عرض تفاصيل البطاقة من الزر أدناه.', true);
   }
 
   function bindCardPage() {
@@ -684,7 +764,7 @@
     if (scan) scan.addEventListener('click', function () {
       var Q = root.HRCQRScan;
       if (!Q || !Q.open) { cpSay('المسح غير متاح في هذا المتصفح — اكتب الرقم يدوياً.', true); return; }
-      Q.open({
+      var opened = Q.open({
         title: 'مسح باركود البطاقة',
         subtitle: 'وجّه الكاميرا نحو الباركود المطبوع على بطاقتك.',
         validate: function (text) {
@@ -695,9 +775,12 @@
           var inp = document.getElementById('cp-serial');
           var v = cpSerialFromText(text);
           if (inp) inp.value = v;
-          cpLookup(v);
+          cpSay('');
+          cpChooseAction(v);
+
         }
       });
+      if (!opened) cpSay('المسح غير متاح في هذا المتصفح — اكتب الرقم يدوياً.', true);
     });
     /* عودة الزائر: نُعيد فتح آخر بطاقة تلقائياً (على جهازه فقط) */
     try {
@@ -713,35 +796,47 @@
     renderAll();
   };
 
-  /* هيكل تحميل يظهر بدل بيانات المتصفح لحظة انتظار رد القاعدة */
+  /* حالة التحميل للوظائف: إعلان واحد لقارئات الشاشة دون إعلان كل بطاقة. */
+  function setJobsLoading(loading) {
+    var host = document.getElementById('jobs-grid');
+    var status = document.getElementById('jobs-loading-status');
+    if (!host) return;
+    var wasLoading = host.getAttribute('aria-busy') === 'true';
+    host.setAttribute('aria-busy', loading ? 'true' : 'false');
+    if (status && loading !== wasLoading) status.textContent = loading ? 'جاري تحميل الوظائف' : '';
+  }
+
+  /* نفس أجزاء بطاقة الوظيفة الفعلية: صورة، عنوان، تفاصيل وزر. */
   function skeletonCard() {
-    return '<article class="job-card skeleton" aria-hidden="true">' +
-      '<div class="skel-body">' +
-        '<div class="skel-line w60" style="height:16px"></div>' +
-        '<div class="skel-line w40"></div>' +
-        '<div class="skel-line"></div><div class="skel-line w80"></div><div class="skel-line w60"></div>' +
-      '</div>' +
-      '<div class="skel-foot"><span class="skel-line sq"></span><span class="skel-line sq" style="width:96px"></span></div>' +
-    '</article>';
+    var rows = ['w80', 'w60', 'w40', 'w60', 'w40'].map(function (w) {
+      return '<div class="ac-row"><span class="skel-line skel-icon"></span><span class="skel-line ' + w + '"></span></div>';
+    }).join('');
+    return '<article class="job-card app-card skeleton" aria-hidden="true">' +
+      '<div class="job-image skel-image"></div>' +
+      '<div class="ac-top"><span class="skel-line skel-badge"></span><span class="skel-line skel-fav"></span></div>' +
+      '<div class="ac-body"><div class="job-title skel-title"><span class="skel-line w60"></span></div>' + rows + '</div>' +
+      '<div class="ac-foot"><span class="skel-line skel-button"></span></div></article>';
   }
 
   function renderSkeleton() {
     var host = document.getElementById('jobs-grid');
-    if (host) host.innerHTML = skeletonCard().repeat(6);
+    setJobsLoading(true);
+    if (host && !host.querySelector('.job-card.skeleton')) host.innerHTML = skeletonCard().repeat(6);
     var empty = document.getElementById('jobs-empty');
     if (empty) empty.classList.add('hidden');
     var count = document.getElementById('jobs-count');
     if (count) count.textContent = '…';
     var hs = document.getElementById('hero-stats');
-    if (hs) {
+    if (hs && !hs.querySelector('.skeleton')) {
       hs.innerHTML = ['w60', 'w40', 'w60', 'w40'].map(function (w) {
-        return '<div class="app-stat skeleton"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
+        return '<div class="app-stat skeleton" aria-hidden="true"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
       }).join('');
     }
   }
 
   /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
   function renderCloudError() {
+    setJobsLoading(false);
     var host = document.getElementById('jobs-grid');
     if (host) {
       host.innerHTML =
@@ -798,66 +893,11 @@
 
   /* ── شريط التصنيفات: يُبنى من تصنيفات الوظائف المعروضة فعلاً ── */
 
-  root.HRCRefresh = function () {
-    if (cloudBlocked()) { if (cloudSettled) renderCloudError(); else renderSkeleton(); return; }
-    renderAll();
-  };
-
-  /* هيكل تحميل يظهر بدل بيانات المتصفح لحظة انتظار رد القاعدة */
-  function skeletonCard() {
-    return '<article class="job-card skeleton" aria-hidden="true">' +
-      '<div class="skel-body">' +
-        '<div class="skel-line w60" style="height:16px"></div>' +
-        '<div class="skel-line w40"></div>' +
-        '<div class="skel-line"></div><div class="skel-line w80"></div><div class="skel-line w60"></div>' +
-      '</div>' +
-      '<div class="skel-foot"><span class="skel-line sq"></span><span class="skel-line sq" style="width:96px"></span></div>' +
-    '</article>';
-  }
-
-  function renderSkeleton() {
-    var host = document.getElementById('jobs-grid');
-    if (host) host.innerHTML = skeletonCard().repeat(6);
-    var empty = document.getElementById('jobs-empty');
-    if (empty) empty.classList.add('hidden');
-    var count = document.getElementById('jobs-count');
-    if (count) count.textContent = '…';
-    var hs = document.getElementById('hero-stats');
-    if (hs) {
-      hs.innerHTML = ['w60', 'w40', 'w60', 'w40'].map(function (w) {
-        return '<div class="app-stat skeleton"><span class="skel-line ' + w + '"></span><span class="skel-line w80"></span></div>';
-      }).join('');
-    }
-  }
-
-  /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
-  function renderCloudError() {
-    var host = document.getElementById('jobs-grid');
-    if (host) {
-      host.innerHTML =
-        '<div class="empty-state" role="alert">' +
-          '<svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg>' +
-          '<h3>تعذّر الاتصال بقاعدة الشركة</h3>' +
-          '<p class="mb-2">تعذّر تحميل الوظائف المعلنة الآن — تحقّق من اتصالك بالإنترنت ثم أعد المحاولة، أو اتصل بنا على الأرقام الرسمية.</p>' +
-          '<button class="btn btn-outline btn-sm" data-action="retry-cloud">' + UI.ic('refresh') + ' إعادة المحاولة</button>' +
-        '</div>';
-    }
-    var empty = document.getElementById('jobs-empty');
-    if (empty) empty.classList.add('hidden');
-    var count = document.getElementById('jobs-count');
-    if (count) count.textContent = '—';
-    var hs = document.getElementById('hero-stats');
-    if (hs) {
-      hs.innerHTML = ['—', '—'].map(function () {
-        return '<div class="app-stat"><b>—</b><span>…</span></div>';
-      }).join('');
-    }
-  }
-
   function renderJobs() {
     var host = document.getElementById('jobs-grid');
     if (!host) return;
     if (cloudBlocked()) { if (!cloudSettled) renderSkeleton(); else renderCloudError(); return; }
+    setJobsLoading(false);
     var jobs = Store.listJobs(filters);
     if (filters.category && filters.category !== 'all') {
       jobs = jobs.filter(function (j) { return (j.category || '') === filters.category; });
@@ -960,7 +1000,7 @@
       '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
       '<img src="' + UI.esc(imgSrc) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async"' +
         (j.imageUrl ? ' referrerpolicy="no-referrer"' : '') +
-        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()">' + '</div>';
+        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.classList.add(\'img-failed\');this.parentNode.setAttribute(\'role\',\'img\');this.parentNode.setAttribute(\'aria-label\',\'تعذّر تحميل صورة الوظيفة\');this.remove()">' + '</div>';
     var b = cardBadge(j);
     var fav = favList().indexOf(j.code) >= 0;
     var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');
@@ -1049,13 +1089,12 @@
         '<ol class="jd-steps">' +
           '<li><b>١</b><div><span>تقدر تقدم ببطاقة التوظيف</span><small>امسح باركود بطاقتك أو أدخله — الحيازة وحدها تكفي.</small></div></li>' +
           '<li><b>٢</b><div><span>حجز 24 ساعة باسمك</span><small>الوظيفة تُحجز لك وحدك بانتظار نتيجة المقابلة.</small></div></li>' +
-          '<li><b>٣</b><div><span>تُطبع استمارة A4</span><small>تحمل بياناتك والوظيفة — سلّمها لصاحب العمل.</small></div></li>' +
+          '<li><b>٣</b><div><span>تُطبع استمارة A4</span><small>تحمل بياناتك وتفاصيل الوظيفة لتقديمها عند المقابلة.</small></div></li>' +
           '<li><b>٤</b><div><span>قرار الشركة</span><small>توظيف أو إرجاع الوظيفة — والفرصة المستهلكة لا تعود.</small></div></li>' +
         '</ol></section>' +
 
       '<div class="jd-privacy"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>' +
-        '<p><b>خصوصية صاحب العمل:</b> لا تُعرض بياناته (الاسم والهاتف والعنوان) في الموقع العام. ' +
-        'تُسلَّم للباحث عبر شركة الهدف عند التقديم ببطاقة التوظيف، وفق سياسة الشركة.</p></div>';
+        '<p><b>خصوصية البيانات:</b> تُعرض تفاصيل التواصل اللازمة بعد إتمام التقديم وفق سياسة الشركة.</p></div>';
 
     UI.modal({
       title: j.title,

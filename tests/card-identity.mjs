@@ -34,7 +34,9 @@ try{
  // Upgrade must be repeatable and exactly match canonical definitions.
  const migration=read('supabase/migrations/20261017120000_lock_card_identity_after_first_application.sql');
  await db.exec(migration);await db.exec(migration);
- check('migration is idempotent and matches both canonical RPC definitions',migration.includes(definition('self_service_card'))&&migration.includes(definition('apply_with_card')));
+ const latest=read('supabase/migrations/20261029100000_validity_from_first_application.sql');
+ await db.exec(definition('apply_with_card'));
+ check('identity and validity migrations match canonical RPC definitions',migration.includes(definition('self_service_card'))&&latest.includes(definition('apply_with_card')));
  for(const serial of ['DIRECT','UI','FAILED','STALE','LEGACY'])await rpc('self_service_card',[serial]);
  const failed=await apply('FAILED','DOES-NOT-EXIST',owner);
  check('failed first application does not lock identity or spend a chance',!failed.ok&&(await snapshot('FAILED')).full_name===''&&await empty('FAILED')===2&&!(await rpc('self_service_card',['FAILED'])).card.profileLocked);

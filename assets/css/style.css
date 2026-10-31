@@ -418,21 +418,11 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 .job-card.skeleton::before { display: none; }
 .skel-line {
   height: 12px; border-radius: 7px; margin: 8px 0;
-  background: linear-gradient(90deg, #fff 25%, #fff 45%, #fff 65%);
+  background: linear-gradient(90deg, var(--skel-base, #e2e8f0) 25%, var(--skel-highlight, #f5f7fa) 45%, var(--skel-base, #e2e8f0) 65%);
   background-size: 220% 100%;
   animation: skelWave 1.3s ease-in-out infinite;
 }
 .skel-line.w60 { width: 60%; } .skel-line.w40 { width: 40%; } .skel-line.w80 { width: 80%; }
-.skel-line.sq {
-  width: 74px; height: 24px; border-radius: 9px; margin: 0;
-  display: inline-block; background: linear-gradient(90deg, #fff 25%, #fff 45%, #fff 65%);
-  background-size: 220% 100%; animation: skelWave 1.3s ease-in-out infinite;
-}
-.job-card.skeleton .skel-body { padding: 18px; display: flex; flex-direction: column; }
-.job-card.skeleton .skel-foot {
-  margin-top: auto; padding: 14px 18px; border-top: 1px dashed var(--line-soft);
-  display: flex; justify-content: space-between; align-items: center; gap: 10px;
-}
 .hero-stat.skeleton { min-height: 74px; }
 @keyframes skelWave {
   0% { background-position: 130% 0; }
@@ -469,11 +459,16 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 }
 .job-image::before {
   content: ''; position: absolute; inset: -6%; z-index: 0; pointer-events: none;
-  background-image: var(--img, none);
+  background-image: none;
   background-size: cover; background-position: center;
   filter: blur(16px) saturate(1.15) brightness(.85);
   opacity: .85;
   transform: scale(1.08);
+}
+.job-image.has-img::before { background-image: var(--img, none); }
+.job-image:not(.has-img):not(.img-failed) {
+  background: linear-gradient(90deg, #142b47 25%, #29445f 45%, #142b47 65%);
+  background-size: 220% 100%; animation: skelWave 1.3s ease-in-out infinite;
 }
 .job-image::after {
   content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;

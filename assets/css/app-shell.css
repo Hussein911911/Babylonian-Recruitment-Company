@@ -38,6 +38,24 @@
   width: clamp(64px, 14vw, 84px); height: clamp(64px, 14vw, 84px);
   color: var(--gold-2); filter: drop-shadow(0 10px 26px rgba(0, 0, 0, .45));
   padding: clamp(7px, 1.6vw, 10px); border-radius: 27%;
+  position: relative; isolation: isolate;
+  box-shadow: 0 0 0 1px rgba(255, 223, 149, .65),
+              0 0 0 4px rgba(217, 177, 96, .12),
+              0 0 25px rgba(255, 200, 103, .42), 0 9px 24px rgba(0, 0, 0, .32);
+}
+/* Static, decorative rays behind the existing logo: no layout shift or motion. */
+.app-emblem::before {
+  content: ''; position: absolute; z-index: -1; inset: -85%; border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgba(255, 220, 149, .42) 0%, rgba(235, 176, 84, .16) 36%, transparent 68%),
+    repeating-conic-gradient(from 5deg, rgba(255, 223, 158, .22) 0deg 2deg, transparent 4deg 18deg);
+  -webkit-mask-image: radial-gradient(circle, #000 8%, rgba(0,0,0,.7) 34%, transparent 70%);
+  mask-image: radial-gradient(circle, #000 8%, rgba(0,0,0,.7) 34%, transparent 70%);
+}
+.app-emblem::after {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  border-radius: inherit; background: #012f3e; pointer-events: none;
 }
 .app-wordmark {
   font-size: clamp(1.5rem, 6.4vw, 2.1rem); font-weight: 900; color: #fff;
@@ -196,6 +214,9 @@
   display: grid; place-items: center; font-size: .8rem;
 }
 
+/* تبقى صفحة البطاقة مخفية حتى يطلبها الزائر، حتى قبل بدء JavaScript. */
+.card-page[hidden] { display: none !important; }
+
 /* ── 5) صفحة «بطاقتي» — إدخال الرقم ثم التفاصيل (لا شكل بطاقة) ── */
 .card-page { padding-block: clamp(18px, 3vw, 34px) 40px; }
 .cp-entry { display: grid; place-items: center; }
@@ -226,6 +247,24 @@
 .cp-field input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(200, 162, 74, .13); }
 .cp-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .cp-actions .btn { flex: 1 1 160px; justify-content: center; min-height: 46px; }
+/* نافذة الاختيار بعد مسح البطاقة */
+.modal.cp-choice-modal { width: min(440px, calc(100vw - 28px)); border-radius: 22px; overflow: hidden; }
+.cp-choice-modal .modal-head { border-bottom: 1px solid #e9edf5; }
+.cp-choice-modal .modal-head h3 { color: #102b50; font-weight: 900; }
+.cp-choice-modal .modal-body { padding: 24px; }
+.cp-choice { display: grid; justify-items: center; gap: 8px; text-align: center; color: #102b50; }
+.cp-choice-icon { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 18px; color: white; background: #102e52; box-shadow: 0 8px 18px #102e5226; }
+.cp-choice-icon .ic { width: 28px; height: 28px; }
+.cp-choice h4 { margin: 7px 0 0; font-size: 1.06rem; font-weight: 900; }
+.cp-choice p { margin: 0; color: #64748b; font-size: .84rem; line-height: 1.7; }
+.cp-choice-serial { direction: ltr; padding: 5px 12px; border-radius: 8px; background: #f1f5fa; color: #24425f; font-size: .78rem; font-weight: 800; letter-spacing: .04em; }
+.cp-choice-actions { display: grid; gap: 10px; width: 100%; margin-top: 14px; }
+.cp-choice-actions .btn { width: 100%; min-height: 50px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; font-weight: 900; }
+.cp-choice-actions .cp-choice-primary { background: #102e52; border: 1px solid #102e52; color: #fff; }
+.cp-choice-actions .cp-choice-primary:hover { background: #1a426a; border-color: #1a426a; }
+.cp-choice-actions .cp-choice-secondary { background: #fff; color: #102e52; border: 1.5px solid #b8c7d8; }
+.cp-choice-actions .cp-choice-secondary:hover { background: #f1f5fa; }
+.cp-choice-error { color: #a52c2c !important; font-size: .78rem !important; }
 .cp-err { margin: 2px 0 0; min-height: 18px; font-size: .76rem; font-weight: 700; color: var(--muted); }
 .cp-err.is-error { color: #b03a2e; }
 .cp-note {
@@ -287,6 +326,11 @@
   background: #fff; border: 1px dashed #e2e8f2; border-radius: 14px; padding: 14px;
 }
 .cp-empty-chance .ic { width: 16px; height: 16px; color: var(--gold-3); }
+.cp-employer { margin-top: 12px; padding: 14px; border: 1px solid #dce4f2; border-radius: 14px; background: #f7f9fd; }
+.cp-employer h4 { margin: 0 0 8px; color: var(--lapis-2); font-size: .88rem; }
+.cp-employer-row { display: grid; grid-template-columns: minmax(65px, auto) minmax(0, 1fr); gap: 8px; padding: 4px 0; font-size: .79rem; }
+.cp-employer-row span { overflow-wrap: anywhere; }
+.cp-print-form { margin-top: 10px; min-height: 44px; width: 100%; justify-content: center; }
 .cp-foot { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
 .cp-foot .btn { flex: 1 1 200px; justify-content: center; min-height: 46px; }
 @media (max-width: 760px) {
@@ -314,7 +358,7 @@
 }
 .app-section #jobs-grid.jobs-grid { gap: 14px; }
 @media screen and (max-width: 860px) {
-  /* على الجوال: شريط أفقي يُمرَّر بالأصبع كما في التطبيق (٣ كروت ظاهرة جزئياً) */
+  /* على الجوال: جميع الوظائف في شريط أفقي يُمرَّر بالأصبع. */
   .app-section #jobs-grid.jobs-grid {
     display: grid; grid-auto-flow: column; grid-auto-columns: 78%;
     overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px;
@@ -322,7 +366,6 @@
   }
   .app-section #jobs-grid.jobs-grid::-webkit-scrollbar { display: none; }
   .app-section #jobs-grid .job-card { scroll-snap-align: start; }
-  .app-section #jobs-grid .job-card:nth-child(n + 4) { display: none; }
   .jobs-head, .jobs-sub { padding-inline: 2px; }
 }
 
@@ -773,3 +816,28 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
   .page-bar { padding: 9px 12px; }
   .pb-copy b { font-size: .9rem; }
 }
+
+/* Job-card loading mirrors the real picture, text rows and action dimensions. */
+.jobs-loading-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.job-card.app-card.skeleton{pointer-events:none}
+.job-card.app-card.skeleton::after,.job-card.app-card.skeleton .job-image::before,.job-card.app-card.skeleton .job-image::after{display:none}
+.job-card.app-card.skeleton .job-image{background:linear-gradient(90deg,var(--skel-base,#e2e8f0) 25%,var(--skel-highlight,#f5f7fa) 45%,var(--skel-base,#e2e8f0) 65%);background-size:220% 100%;animation:skelWave 1.3s ease-in-out infinite}
+.job-card.app-card.skeleton .ac-body{cursor:default}
+.job-card.app-card.skeleton .skel-line{display:block;margin:0;flex:none;height:12px}
+.job-card.app-card.skeleton .skel-title{line-height:1.7;min-height:1.615rem;display:flex;align-items:center}
+.job-card.app-card.skeleton .skel-title .skel-line{height:15px}
+.job-card.app-card.skeleton .ac-row{min-height:1.258rem}
+.job-card.app-card.skeleton .skel-icon{width:13px;height:13px;border-radius:4px}
+.job-card.app-card.skeleton .skel-badge{width:56px;height:24px;border-radius:999px}
+.job-card.app-card.skeleton .skel-fav{width:30px;height:30px;border-radius:50%}
+.job-card.app-card.skeleton .skel-button{width:100%;height:40px;border-radius:12px}
+.app-stat.skeleton .skel-line{max-width:80%;margin:4px 0}
+/* Dark-ready tokens are used only when the app explicitly enables a dark theme. */
+[data-theme="dark"] .skeleton,.theme-dark .skeleton{--skel-base:#303741;--skel-highlight:#4c5663}
+[data-theme="dark"] .job-card.app-card.skeleton,.theme-dark .job-card.app-card.skeleton{background:#1c222a;border-color:#3c4550}
+@media(prefers-reduced-motion:reduce){.skeleton .skel-line,.job-card.app-card.skeleton .job-image{animation:none!important;background-position:50% 0}}
+
+/* The card theme also supplies an image background, so keep the loading
+   treatment more specific without touching the loaded image or skeleton card. */
+.app-card:not(.skeleton) .job-image:not(.has-img):not(.img-failed){background:linear-gradient(90deg,#142b47 25%,#29445f 45%,#142b47 65%);background-size:220% 100%;animation:skelWave 1.3s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.app-card .job-image:not(.has-img){animation:none!important}}

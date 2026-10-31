@@ -152,7 +152,7 @@ create table if not exists brc.applicants (
   dob           date,
   gender        text default 'ذكر',
   nationality   text default 'عراقي',
-  issue_date    timestamptz,                                   -- فارغة عند إصدار الدفعة — تُملأ عند البيع
+  issue_date    timestamptz,                                   -- تُملأ عند نجاح أول تقديم
   expiry_date   timestamptz,                                   -- تبدأ 30 يوماً من التعبئة لا من إصدار الدفعة
   attempt_limit smallint not null default 2 check (attempt_limit between 1 and 10),   -- مقفلة: فرصتان
   status        brc.form_status not null default 'active',
@@ -251,6 +251,7 @@ create table if not exists brc.job_attempts (
   attempt_no        smallint not null check (attempt_no between 1 and 10),
   job_id            uuid references brc.jobs (id) on delete set null,
   job_code          text,
+  job_snapshot      jsonb,                  -- نسخة الفرصة للحفاظ على تفاصيلها بعد حذف الوظيفة
   slot_status       brc.slot_status not null default 'empty',
   chance_code       text,                    -- تاريخي فقط: أُلغيت رموز الفرص 2026-10-25
   selected_at       timestamptz,
@@ -391,7 +392,7 @@ begin
     if new.fee_amount is null or new.fee_amount = 10000 then
       new.fee_amount := coalesce((rules->>'form_fee')::integer, 10000);
     end if;
-    /* الصلاحية تبدأ عند البيع (التعبئة) لا عند إصدار الدفعة الفارغة:
+    /* الصلاحية تبدأ عند نجاح أول تقديم لا عند إصدار الدفعة أو بيعها فارغة:
        البطاقة الفارغة (blank) بلا issue_date وتبقى expiry_date فارغة. */
     if new.expiry_date is null and new.issue_date is not null then
       new.expiry_date := new.issue_date + make_interval(days => coalesce((rules->>'validity_days')::int, 30));
@@ -459,6 +460,9 @@ begin
       raise exception 'الوظيفة % غير متاحة حالياً (%)', job_row.code, job_row.status using errcode = 'P0001';
     end if;
 
+    if form_row.issue_date is null and form_row.expiry_date is null then
+      update brc.applicants set issue_date=now(), expiry_date=now()+make_interval(days=>coalesce((rules->>'validity_days')::int,30)) where serial=new.serial;
+    end if;
     new.selected_at     := coalesce(new.selected_at, now());
     new.hold_expires_at := coalesce(new.hold_expires_at, now() + make_interval(hours => hold_hours));
     new.job_code        := coalesce(new.job_code, job_row.code);
@@ -859,7 +863,14 @@ begin
     return jsonb_build_object('ok', false, 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
   end if;
   if f.status = 'blank' then
-    return jsonb_build_object('ok', false, 'error', 'هذه البطاقة فارغة ولم تُبع بعد — إذا عُرضت لك للبيع فخابر الشركة فوراً لتفادي التزوير');
+    -- البطاقة موجودة لكنها لم تُستخدم بعد. لا نكشف أي بيانات شخصية أو تفاصيل
+    -- تقديم محتملة، ولا نغيّر الصلاحية أو نُنشئ فرصاً عند مجرد عرضها.
+    return jsonb_build_object('ok', true, 'serial', f.serial, 'status', 'blank',
+      'fullName', '', 'phone', '', 'issueDate', null, 'expiryDate', null,
+      'usesCardPrintCode', false, 'succeeded', false,
+      'chancesLeft', (select count(*) from brc.job_attempts a where a.serial=f.serial and a.slot_status='empty'),
+      'chances', (select coalesce(jsonb_agg(jsonb_build_object('no', a.attempt_no, 'slotStatus', 'empty') order by a.attempt_no), '[]'::jsonb)
+                  from brc.job_attempts a where a.serial=f.serial and a.slot_status='empty'));
   end if;
 
   insert into brc.audit_log (username, role, action, entity, entity_id, details)
@@ -880,8 +891,8 @@ begin
                'no', a.attempt_no,
                'slotStatus', a.slot_status,
                'jobCode', a.job_code,
-               'jobTitle', j.title,
-               'location', j.governorate,
+               'jobTitle', coalesce(a.job_snapshot->>'title', j.title),
+               'location', coalesce(a.job_snapshot->>'governorate', j.governorate),
                'selectedAt', a.selected_at,
                'holdExpiresAt', a.hold_expires_at,
                'note', case when a.slot_status in ('rejected', 'expired') then a.outcome_note else '' end
@@ -1117,8 +1128,8 @@ begin
       dob         = nullif(p_data->>'dob', '')::date,
       gender      = coalesce(nullif(p_data->>'gender', ''), 'ذكر'),
       status      = 'active',
-      issue_date  = now(),
-      expiry_date = now() + make_interval(days => coalesce((rules->>'validity_days')::int, 30)),
+      issue_date  = case when v_job <> '' then now() else null end,
+      expiry_date = case when v_job <> '' then now() + make_interval(days => coalesce((rules->>'validity_days')::int, 30)) else null end,
       pos_name    = v_pos,
       fee_amount  = coalesce(nullif(p_data->>'fee', '')::int, f.fee_amount),
       fee_paid    = coalesce((p_data->>'feePaid')::boolean, true),
@@ -1151,7 +1162,7 @@ begin
           'بيع البطاقة ' || f.serial || ' للزبون ' || f.full_name ||
           ' — نقطة البيع: ' || v_pos ||
           ' — سعر ' || to_char(f.fee_amount, 'FM999,999,999') || ' د.ع (كاش)' ||
-          ' — بدأت صلاحية ' || coalesce((rules->>'validity_days')::int, 30) || ' يوماً من الآن' ||
+          ' — الصلاحية تبدأ عند أول تقديم ناجح' ||
           case when v_job <> '' then ' | الوظيفة المختارة: ' || j.code || ' — ' || j.title
                else ' | بلا اختيار وظيفة — الفرصتان بانتظار اختيار الزبون بنفسه' end);
 
@@ -1350,7 +1361,7 @@ begin
       from brc.job_attempts
      where serial=f.serial and slot_status='empty'
      order by attempt_no limit 1;
-    if v_code is null then
+    if not found then
       return jsonb_build_object('ok', false, 'error', 'لا توجد فرص متبقية في هذه البطاقة');
     end if;
     v_result := brc.use_chance(f.serial, v_code, upper(btrim(coalesce(p_job_code, ''))));
@@ -1725,7 +1736,8 @@ grant execute on function brc.lookup_card(text)                to anon, authenti
 grant execute on function brc.use_chance(text, text, text)      to anon, authenticated;
 grant execute on function brc.verify_card_code(text, text)      to anon, authenticated;
 /* موديل 2026-10-01: مسح نقطة البيع وصاحب العمل من الموقع العام — بلا جلسة */
-grant execute on function brc.activate_card(text, jsonb)        to anon, authenticated;
+-- Internal helper only: self-service and office security-definer functions call it.
+revoke all on function brc.activate_card(text, jsonb) from public, anon, authenticated;
 /* موديل 2026-10-06: التقديم الذاتي من باركود البطاقة (apply.html) — مسار عام
    بلا جلسة: الباركود بيان الحيازة، والدالتان لا تكشفان اسماً ولا هاتفاً ولا
    رموز فرص. تُنزعان من PUBLIC أولاً (PostgreSQL يمنح EXECUTE لـ PUBLIC تلقائياً
@@ -1903,7 +1915,7 @@ begin
     if f.status<>'blank' or p_expected->>'app_updated_at' is null or f.updated_at is distinct from (p_expected->>'app_updated_at')::timestamptz then raise exception 'card_conflict';end if;
     result:=brc.activate_card(f.serial,p_data);
    else
-    if f.status<>'active' or f.expiry_date is null or f.expiry_date<=now() then raise exception 'card_unavailable';end if;
+    if f.status<>'active' or (f.expiry_date is not null and f.expiry_date<=now()) then raise exception 'card_unavailable';end if;
     select * into slot from brc.job_attempts where serial=f.serial and slot_status='empty' order by attempt_no limit 1 for update;
     if not found or slot.attempt_no is distinct from (p_expected->>'attempt_no')::smallint then raise exception 'chance_conflict';end if;
     result:=brc.select_attempt(f.serial,j.code);
@@ -2369,6 +2381,10 @@ begin
   if j.id is null or j.manual_closed then raise exception 'الوظيفة غير متاحة';end if;
   select n into seat from generate_series(1,j.vacancies) n where not(n=any(j.filled_vacancy_numbers)) and not exists(select 1 from brc.job_attempts a where a.job_id=j.id and a.vacancy_no=n and a.slot_status in('reserved','critical','hiring','succeeded') and a.id<>new.id) order by n limit 1;
   if seat is null then raise exception 'لا يوجد شاغر متاح';end if;
+  -- Start validity atomically only on the first successful reservation.
+  if f.issue_date is null and f.expiry_date is null then
+   update brc.applicants set issue_date=now(), expiry_date=now()+make_interval(days=>coalesce((select (value->>'validity_days')::int from brc.settings where key='rules'),30)) where serial=f.serial;
+  end if;
   select coalesce((value->>'hold_hours')::int,24) into hours from brc.settings where key='rules';
   new.vacancy_no:=seat;new.job_code:=j.code;new.selected_at:=coalesce(new.selected_at,now());new.hold_expires_at:=coalesce(new.hold_expires_at,now()+make_interval(hours=>coalesce(hours,24)));new.closed_at:=null;
  elsif tg_op='UPDATE' and old.vacancy_no is not null and (new.vacancy_no is distinct from old.vacancy_no or (new.job_id is distinct from old.job_id and new.job_id is not null)) then raise exception 'لا يمكن نقل شاغر فرصة مستخدمة';
@@ -2555,7 +2571,7 @@ begin
  ), cards as materialized (
  select a.*,coalesce(t.hires,0) hires,coalesce(t.holds,0) holds,
  case when a.status in('blank','pending','rejected') then a.status::text
- when a.expiry_date is null or a.expiry_date<now() then 'expired'
+ when a.expiry_date is not null and a.expiry_date<now() then 'expired'
  when coalesce(t.empty_count,0)=0 and coalesce(t.in_play,0)=0 then 'exhausted' else 'active' end effective_status,
  coalesce((to_jsonb(a)->>'paid_amount')::numeric,0) paid_amount
  from brc.applicants a left join attempts t on t.serial=a.serial
@@ -2613,3 +2629,97 @@ do $$begin
  end if;
 end $$;
 notify pgrst,'reload schema';
+
+-- Customer access is by card barcode alone (owner-approved). Limit every result
+-- to the exact card and selected opportunity; never expose unused/other jobs.
+create or replace function brc.customer_application_details(p_serial text, p_attempt_no integer)
+returns jsonb language plpgsql security definer set search_path = brc, public as $$
+declare f record; a record; v_job jsonb;
+begin
+  select * into f from brc.applicants where serial=upper(btrim(coalesce(p_serial,'')));
+  if f.serial is null or f.status in ('blank','pending','rejected') then
+    return jsonb_build_object('ok',false,'error','لا تتوفر تفاصيل تقديم لهذه البطاقة');
+  end if;
+  select * into a from brc.job_attempts where serial=f.serial and attempt_no=p_attempt_no
+    and slot_status <> 'empty' and selected_at is not null and job_code is not null;
+  if a.id is null then
+    return jsonb_build_object('ok',false,'error','لا يوجد تقديم مسجل لهذه الفرصة');
+  end if;
+  -- A matching application snapshot is authoritative, including after deletion.
+  -- Legacy linked rows may use the exact job ID, never a reused code alone.
+  if a.job_snapshot->>'code'=a.job_code then v_job := a.job_snapshot; end if;
+  if v_job is null then
+    select to_jsonb(j) into v_job from brc.jobs j where j.id=a.job_id and j.code=a.job_code;
+  end if;
+  if v_job is null then
+    return jsonb_build_object('ok',false,'error','تفاصيل الوظيفة غير متوفرة، تواصل مع الشركة');
+  end if;
+  return jsonb_build_object('ok',true,
+    'app',jsonb_build_object('serial',f.serial,'fullName',f.full_name,'phone',f.phone,
+      'address',f.address,'dob',f.dob,'gender',f.gender,'nationality',f.nationality,
+      'status',f.status,'issueDate',f.issue_date,'expiryDate',f.expiry_date),
+    'attempt',jsonb_build_object('no',a.attempt_no,'slotStatus',a.slot_status,'jobCode',a.job_code,
+      'jobTitle',v_job->>'title','location',v_job->>'governorate','selectedAt',a.selected_at,'holdExpiresAt',a.hold_expires_at,
+      'employerName',v_job->>'employer_name','employerPhone',v_job->>'employer_phone',
+      'employerAddress',v_job->>'employer_address','interviewLocation',v_job->>'interview_location',
+      'shift',v_job->>'shift','salaryMin',v_job->'salary_min','salaryMax',v_job->'salary_max'));
+end $$;
+revoke all on function brc.customer_application_details(text,integer) from public;
+grant execute on function brc.customer_application_details(text,integer) to anon,authenticated;
+notify pgrst, 'reload schema';
+
+-- Snapshot only information needed for the issued application, on the
+-- opportunity itself so ordinary backup/restore includes it. Historical
+-- opportunities with a still-linked job are backfilled without inventing data.
+alter table brc.job_attempts add column if not exists job_snapshot jsonb;
+-- A PostgreSQL SELECT * view does not automatically include newly added columns.
+create or replace view brc.working_job_attempts with(security_invoker=true) as
+ select t.* from brc.job_attempts t join brc.working_applicants a on a.serial=t.serial;
+create or replace function brc.application_job_snapshot(j brc.jobs) returns jsonb
+language sql stable set search_path=brc,public as $$
+  select jsonb_build_object('code',j.code,'title',j.title,'governorate',j.governorate,
+    'employer_name',j.employer_name,'employer_phone',j.employer_phone,'employer_address',j.employer_address,
+    'interview_location',j.interview_location,'shift',j.shift,'salary_min',j.salary_min,'salary_max',j.salary_max)
+$$;
+revoke all on function brc.application_job_snapshot(brc.jobs) from public,anon,authenticated;
+-- Backfill runs under the table DDL lock. Suppress the audit, recovery registry and job
+-- recomputation side effects; preserve their previous enabled states exactly.
+-- Recovery fences and all integrity triggers stay enabled.
+do $$
+declare t record; saved jsonb;
+begin
+ select coalesce(jsonb_object_agg(tgname,tgenabled::text),'{}'::jsonb) into saved
+ from pg_trigger where tgrelid='brc.job_attempts'::regclass and not tgisinternal
+   and tgname in ('trg_sync_vacancies','trg_audit_attempts','recovery_remember_chances');
+ for t in select key as name,value as state from jsonb_each_text(saved) where value<>'D' loop
+   execute format('alter table brc.job_attempts disable trigger %I',t.name);
+ end loop;
+ update brc.job_attempts a set job_snapshot=brc.application_job_snapshot(j)
+  from brc.jobs j where a.job_id=j.id and a.job_code=j.code and a.selected_at is not null
+  and a.slot_status<>'empty' and a.job_snapshot is null;
+ for t in select key as name,value as state from jsonb_each_text(saved) where value<>'D' loop
+   execute format('alter table brc.job_attempts %s trigger %I',
+     case t.state when 'R' then 'enable replica' when 'A' then 'enable always' else 'enable' end,t.name);
+ end loop;
+end $$;
+create or replace function brc.capture_application_job_snapshot() returns trigger
+language plpgsql security definer set search_path=brc,public as $$
+begin
+  if tg_op='UPDATE' and old.job_snapshot is not null and new.job_code is not distinct from old.job_code then
+    -- Stale client upserts must not erase the archived details, including on FK SET NULL.
+    new.job_snapshot:=old.job_snapshot;
+  elsif new.slot_status<>'empty' and new.selected_at is not null and new.job_snapshot->>'code'=new.job_code then
+    -- Retain an archived snapshot from a legitimate backup restore.
+    null;
+  elsif new.job_id is not null and new.selected_at is not null and new.slot_status<>'empty' then
+    select brc.application_job_snapshot(j) into new.job_snapshot
+      from brc.jobs j where j.id=new.job_id and j.code=new.job_code;
+  else
+    new.job_snapshot:=null;
+  end if;
+  return new;
+end $$;
+drop trigger if exists zz_capture_application_job_snapshot on brc.job_attempts;
+create trigger zz_capture_application_job_snapshot before insert or update on brc.job_attempts
+ for each row execute function brc.capture_application_job_snapshot();
+revoke all on function brc.capture_application_job_snapshot() from public,anon,authenticated;

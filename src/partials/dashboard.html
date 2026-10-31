@@ -4,7 +4,7 @@
   <div class="login-container">
     <div class="login-header">
       <div class="login-logo">
-        <svg class="emblem" viewBox="0 0 120 120" role="img" aria-label="شعار الشركة"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
+        <svg class="emblem" viewBox="0 0 415 418" role="img" aria-label="شعار منصة مكسب"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg>
       </div>
       <h2 class="login-title">المنظومة الداخلية</h2>
       <p>شركة الهدف للتوظيف</p>
@@ -56,7 +56,7 @@
 <div class="app-shell hidden" id="app-shell">
   <aside class="app-side">
     <div class="brand">
-      <svg class="emblem" viewBox="0 0 120 120" role="img" aria-label="شعار الشركة"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>
+      <svg class="emblem" viewBox="0 0 415 418" role="img" aria-label="شعار منصة مكسب"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg>
       <span class="brand-text">
         <b style="font-size:1rem">بابل للتوظيف</b>
         <span>المنظومة الداخلية</span>
@@ -111,7 +111,6 @@
           <input type="text" id="quick-code" placeholder="بحث سريع بكود الوظيفة (HRC-1042)" aria-label="بحث بكود الوظيفة">
         </form>
         <button class="btn btn-outline btn-sm" id="btn-card-history">بحث السجل الكامل والأرشيف</button>
-        <button class="btn btn-lapis btn-sm" id="btn-new-app"><svg class="ic"><use href="#i-user-plus" xlink:href="#i-user-plus"/></svg> بيع وتعبئة بطاقة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-batch" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
         <button class="btn btn-outline btn-sm" id="btn-new-card" data-admin-only="true" title="بطاقة واحدة فارغة بكودها — للمدير فقط"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
         <button class="btn btn-gold btn-sm" id="btn-new-job"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة وظيفة</button>
@@ -144,7 +143,7 @@
             <h3><svg class="ic" style="color:#d44"><use href="#i-alert" xlink:href="#i-alert"/></svg> إجراءات مطلوبة الآن</h3>
             <span class="badge warn" id="ov-actions-count">0</span>
           </div>
-          <div id="ov-actions" style="max-height:340px;overflow-y:auto"></div>
+          <div id="ov-actions" tabindex="0" role="region" aria-label="الإجراءات المطلوبة — مرّر أفقياً عند الحاجة" style="max-height:340px;overflow-y:auto"></div>
         </div>
         <!-- حجوزات جارية -->
         <div class="panel">
@@ -152,7 +151,7 @@
             <h3><svg class="ic" style="color:#c8a24a"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> حجوزات 24 ساعة الجارية</h3>
             <button class="btn btn-outline btn-sm" data-goto="holds">عرض الكل</button>
           </div>
-          <div id="ov-holds" style="max-height:340px;overflow-y:auto"></div>
+          <div id="ov-holds" tabindex="0" role="region" aria-label="الحجوزات الجارية — مرّر أفقياً عند الحاجة" style="max-height:340px;overflow-y:auto"></div>
         </div>
       </div>
 
@@ -162,7 +161,7 @@
           <h3><svg class="ic" style="color:#5b2ea8"><use href="#i-list" xlink:href="#i-list"/></svg> آخر العمليات في السجل</h3>
           <button class="btn btn-outline btn-sm" data-goto="audit">سجل التدقيق الكامل</button>
         </div>
-        <div id="ov-recent"></div>
+        <div id="ov-recent" tabindex="0" role="region" aria-label="آخر العمليات — مرّر أفقياً عند الحاجة"></div>
       </div>
     </section>
 
@@ -206,9 +205,10 @@
           </div>
 
           <!-- الجدول -->
+          <p class="jobs-scroll-hint">اسحب الجدول أفقياً لعرض جميع تفاصيل الوظيفة والإجراءات.</p>
           <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
-              <table class="data" style="margin:0">
+            <div class="table-scroll jobs-table-scroll" tabindex="0" role="region" aria-label="جدول الوظائف — مرّر أفقياً لعرض جميع التفاصيل">
+              <table class="data jobs-workspace-table" style="margin:0">
                 <thead>
                   <tr>
                     <th>صورة</th><th>الكود</th><th>الوظيفة</th><th>المحافظة</th><th>الأجر الشهري</th>
@@ -268,8 +268,9 @@
           </div>
 
           <!-- الجدول -->
+          <p class="jobs-scroll-hint workspace-scroll-hint">اسحب الجدول أفقياً لعرض بيانات البطاقة والإجراءات.</p>
           <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البطاقات — مرّر أفقياً لعرض التفاصيل">
               <table class="data" style="margin:0">
                 <thead>
                   <tr>
@@ -307,10 +308,12 @@
           <h3><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> متابعة الحجوزات المؤقتة (24 ساعة)</h3>
           <span class="badge warn" id="holds-count-label">0 حجز جارٍ</span>
         </div>
-        <div class="panel-body" id="holds-list"></div>
+        <p class="jobs-scroll-hint workspace-scroll-hint">اسحب أفقياً لعرض تفاصيل الحجوزات والأزرار كاملة.</p>
+        <div class="panel-body" id="holds-list" tabindex="0" role="region" aria-label="الحجوزات — مرّر أفقياً لعرض التفاصيل"></div>
       </div>
       <div class="panel">
         <div class="panel-head"><h3><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> حالات حرجة بانتظار قرار (توظيف / إرجاع / حذف)</h3></div>
+        <p class="jobs-scroll-hint workspace-scroll-hint">اسحب الجدول أفقياً لعرض جميع البيانات والإجراءات.</p>
         <div class="table-wrap" style="border:none;box-shadow:none">
           <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:700px">
             <thead><tr><th>البطاقة</th><th>الباحث</th><th>الفرصة</th><th>كود الوظيفة</th><th>انتهت في</th><th>ملاحظة</th><th>إجراء</th></tr></thead>
@@ -382,6 +385,7 @@
           <p class="tiny hidden" id="log-date-error" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.</p>
         </div>
         <div class="table-wrap" style="border:none;box-shadow:none">
+          <p class="jobs-scroll-hint workspace-scroll-hint">اسحب السجل أفقياً لعرض جميع التفاصيل.</p>
           <!-- سجل بصيغة جدول مرتّب: أعمدة واضحة بعرض كافٍ فلا ينزل النص عمودياً -->
           <div class="table-scroll audit-scroll" tabindex="0" role="region" aria-label="سجل التدقيق">
             <table class="data audit-table">
@@ -424,8 +428,9 @@
           </div>
         </div>
         <div class="panel-body"><div class="bars" id="fin-bars"></div></div>
+        <p class="jobs-scroll-hint workspace-scroll-hint">اسحب الجدول أفقياً لعرض جميع البيانات المالية.</p>
         <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="البيانات المالية — تمرير أفقي عند الحاجة">
             <table class="data" style="min-width:680px">
               <thead><tr><th>الموظف</th><th>البطاقات الصادرة</th><th>مرات الطباعة</th><th>سعر البطاقة</th><th>المتوقع تحصيله</th><th>المستلَم (كاش)</th><th>حالة البيع</th><th>توظيف ناجح</th><th>حجوزات جارية</th></tr></thead>
               <tbody id="fin-table-body"></tbody>
@@ -454,8 +459,9 @@
 <button class="btn btn-gold btn-sm" id="btn-add-user"><svg class="ic"><use href="#i-plus"></use></svg> إضافة موظف</button>
 </div>
 <div class="panel-body" style="padding:0">
+<p class="jobs-scroll-hint workspace-scroll-hint">اسحب الجدول أفقياً لعرض بيانات الموظفين والإجراءات.</p>
 <div class="table-wrap" style="border:none;box-shadow:none;margin:0">
-<div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة" tabindex="0" role="region" aria-label="جدول الموظفين — مرّر أفقياً لعرض بقية الأعمدة"><table class="data" style="min-width:520px;margin:0">
+<div class="table-scroll" tabindex="0" role="region" aria-label="جدول الموظفين — مرّر أفقياً لعرض بقية الأعمدة"><table class="data" style="min-width:520px;margin:0">
 <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>المسمى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
 <tbody id="users-table-body"></tbody>
 </table></div>
@@ -471,7 +477,7 @@
 <div class="data-item wide"><div class="k">العنوان</div><div class="v">حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي</div></div>
 <div class="data-item"><div class="k">الهاتف 1</div><div class="v mono" dir="ltr">07760058007</div></div>
 <div class="data-item"><div class="k">الهاتف 2</div><div class="v mono" dir="ltr">07715993271</div></div>
-<div class="data-item wide"><div class="k">رابط التحقق المطبوع في الكيو آر كود</div><div class="v mono" dir="ltr" id="set-verify-base">—</div></div>
+<div class="data-item wide"><div class="k">رابط التحقق المطبوع في الكيو آر كود</div><div class="v mono" dir="ltr" id="set-verify-base" tabindex="0" aria-label="رابط التحقق، قابل للتمرير أفقياً">—</div></div>
 </div>
 <p class="tiny muted mt-3 mb-0">
               نص الإخلاء القانوني المطبوع على ظهر كل بطاقة:
@@ -489,6 +495,14 @@
     navigator.serviceWorker.register('/sw.js')
       .then(reg => {
         console.log('✓ Service Worker مسجل', reg.scope);
+        function warmStaffShell() {
+          navigator.serviceWorker.ready.then(function (ready) {
+            var worker = navigator.serviceWorker.controller || ready.active;
+            if (worker) worker.postMessage({ type: 'WARM_STAFF_SHELL' });
+          }).catch(function () {});
+        }
+        warmStaffShell();
+        navigator.serviceWorker.addEventListener('controllerchange', warmStaffShell);
       })
       .catch(err => {
         console.log('✗ فشل تسجيل Service Worker', err);

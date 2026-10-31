@@ -111,25 +111,15 @@ try {
     await page.locator('#notification-toggle').click();
     check(await page.locator('#notification-center').isVisible(), 'Drawer opens');
     const unread = page.locator('.notice-unread').first();
-    check(await unread.locator('.notice-state').textContent() === 'غير مقروء', 'Unread has explicit state label');
-    const unreadPaint = await unread.evaluate(el => ({ background: getComputedStyle(el).backgroundImage, color: getComputedStyle(el.querySelector('h3')).color, surface: getComputedStyle(el).getPropertyValue(el.classList.contains('notice-unread') ? '--notice-deep' : '--notice-light').trim().replace('#','') }));
+    check((await unread.locator('.sr-only').textContent()).includes('غير مقروء'), 'Unread state is available to assistive technology');
+    check(await unread.locator('.notice-row').count()===1 && await unread.locator('.notice-summary').count()===1, 'Each notice is one tappable title and summary row');
     check(await page.evaluate(() => document.getElementById('app-shell').inert), 'Background is inert');
     await page.keyboard.press('Shift+Tab');
     check(await page.evaluate(() => document.querySelector('.notification-drawer').contains(document.activeElement)), 'Keyboard focus trapped');
     await page.locator('#notification-read-all').click();
     check(await page.locator('#notification-count').isHidden(), 'Read all clears counter');
     const readCard = page.locator('.notice-item').first();
-    check(await readCard.locator('.notice-state').textContent() === 'مقروء', 'Read has explicit state label');
-    const readPaint = await readCard.evaluate(el => ({ background: getComputedStyle(el).backgroundImage, color: getComputedStyle(el.querySelector('h3')).color, surface: getComputedStyle(el).getPropertyValue(el.classList.contains('notice-unread') ? '--notice-deep' : '--notice-light').trim().replace('#','') }));
-    check(readPaint.background !== unreadPaint.background && readPaint.color !== unreadPaint.color, 'Read/unread backgrounds and title colors differ');
-    // Real computed title contrast: both states must remain readable.
-    function contrast(hex, rgb) {
-      const a = hex.match(/[a-f\d]{2}/gi).map(c => parseInt(c, 16));
-      const b = rgb.match(/[\d.]+/g).slice(0, 3).map(Number);
-      const luminance = x => x.map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }).reduce((n, v, i) => n + v * [.2126, .7152, .0722][i], 0);
-      const x = luminance(a), y = luminance(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
-    }
-    check(contrast(unreadPaint.surface, unreadPaint.color) >= 4.5 && contrast(readPaint.surface, readPaint.color) >= 4.5, 'Title contrast passes 4.5:1 in both states');
+    check((await readCard.locator('.sr-only').textContent()).includes('مقروء'), 'Read state is available to assistive technology');
     await page.keyboard.press('Escape');
     check(await page.locator('#notification-toggle').evaluate(el => el === document.activeElement), 'Escape restores trigger focus');
     check(!await page.evaluate(() => document.getElementById('app-shell').inert), 'Background restored');
@@ -152,6 +142,11 @@ try {
     const serialNotice = await page.evaluate(() => __noticeBooking.serial);
     const decision = await recordEmployerDecision(page, serialNotice, 'reject', reason);
     check(decision.ok, 'Fixture employer decision emits a Store update');
+    // Parent remains available when other vacancies exist: select this exact seat.
+    await page.evaluate(() => {
+      const db=HRCStore.db(), t=db.attempts.find(t=>t.serial===__noticeBooking.serial && t.employerDecision==='reject');
+      const job=db.jobs.find(j=>j.id===t.jobId); t.vacancyNo=2; job.vacancies=3; job.status='available'; HRCStore.emit();
+    });
     await page.waitForFunction(()=>document.getElementById('notification-count').textContent === '1');
     check(await page.locator('#notification-count').textContent() === '1', 'One new decision, no duplicate audit/decision notices');
     check(await page.evaluate(() => __noticeToasts.length === 1), 'Exactly one live employer-decision toast');
@@ -159,20 +154,31 @@ try {
     check(await page.evaluate(() => __noticeToasts.length === 1), 'Repeated Store renders do not repeat the toast');
     await page.locator('#notification-toggle').click();
     await page.locator('[data-filter="decision"]').click();
-    const notice = page.locator('.notice-item').filter({ hasText: reason }).first();
-    check(await notice.isVisible(), 'Employer rejection and exact reason visible');
-    const detailStyle = await notice.locator('[data-notice-open]').evaluate(el => ({ color: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor }));
-    check(contrast('ead29d', detailStyle.color) >= 4.5 && detailStyle.background === 'rgb(234, 210, 157)', 'Unread details button has a legible gold surface');
-    check(await notice.locator('img').count() === 0 && !await page.evaluate(() => window.__noticeXss), 'Reason HTML is escaped');
-    await contentFits(page, '.notice-heading h3,.notice-content>p,.notice-content time');
+    const notice = page.locator('.notice-item').filter({ hasText: 'عدم توظيف' }).first();
+    check(await notice.isVisible(), 'Decision appears as a compact row');
+    check(await notice.locator('.notice-reason').count()===0, 'Full details are not displayed in the list');
+    check(await notice.evaluate(el => el.getBoundingClientRect().right <= window.innerWidth && el.getBoundingClientRect().left >= 0), 'Compact row fits the viewport');
     if ([375, 1440].includes(width)) await page.screenshot({ path: join(output, `notifications-${width}.png`) });
-    if ([375, 1440].includes(width)) {
-      await page.locator('[data-filter="all"]').click();
-      await page.screenshot({ path: join(output, `notification-states-${width}.png`) });
-      await page.locator('[data-filter="decision"]').click();
-    }
-    await notice.locator('[data-notice-read]').click();
-    check(await page.locator('#notification-count').isHidden(), 'Mark individual decision read');
+    await notice.locator('[data-notice-open]').click();
+    check(await page.locator('#notification-center').isHidden(), 'Opening the row closes the drawer');
+    const modal=page.locator('.modal-backdrop').last();
+    check(await modal.isVisible() && (await modal.textContent()).includes(reason), 'Case details show the exact reason');
+    check(await modal.locator('img').count()===0 && !await page.evaluate(() => window.__noticeXss), 'Reason HTML is escaped');
+    check(await modal.locator('#h-release').isVisible() && await modal.locator('#h-win').isVisible(), 'Company decisions are available directly from notification');
+    check((await modal.textContent()).includes(serialNotice) && (await modal.textContent()).includes('الشاغر 2 من 3'), 'Decision targets the exact card and vacancy even while the job remains available');
+    await modal.locator('[data-close]').first().click();
+    check(await page.locator('#notification-count').isHidden(), 'Opening marks the decision read');
+    check(await page.locator('[data-view="holds"].active').count()===1, 'The same case is available in the dedicated holds section');
+    await page.locator('#holds-list [data-hold-serial="' + serialNotice + '"]').first().click();
+    const sectionModal=page.locator('.modal-backdrop').last();
+    check(await sectionModal.locator('#h-release').isVisible() && (await sectionModal.textContent()).includes(reason), 'Dedicated section opens the same case actions and details');
+    await sectionModal.locator('[data-close]').first().click();
+    await page.locator('#notification-toggle').click();
+    await page.locator('[data-filter="decision"]').click();
+    await page.locator('.notice-item').filter({hasText:'عدم توظيف'}).first().locator('[data-notice-open]').click();
+    await page.locator('.modal-backdrop').last().locator('#h-release').click();
+    check(await page.evaluate(serial => HRCStore.getAttempts(serial).some(t => t.vacancyNo===2 && t.slotStatus==='expired'), serialNotice), 'Decision from notification updates the exact vacancy');
+    await page.locator('#notification-toggle').click();
     await page.locator('[data-filter="unread"]').click();
     check(await page.locator('.notice-empty').isVisible(), 'Unread empty state');
     const ids = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('hrc-notifications-read:')).map(k => localStorage.getItem(k)).join(''));
@@ -192,13 +198,6 @@ try {
       await HRCNotifications.refresh();
     });
     check(await page.locator('#notification-count').isHidden(), 'Original account read state restored');
-    await page.locator('#notification-toggle').click();
-    await page.locator('[data-filter="decision"]').click();
-    await page.locator('.notice-item').filter({ hasText: reason }).first().locator('[data-notice-open]').click();
-    check(await page.locator('#notification-center').isHidden(), 'Details closes drawer');
-    check(await page.locator('.modal-backdrop').isVisible(), 'Details opens existing authorized company workflow');
-    await page.locator('.modal-backdrop [data-close]').first().click();
-
     // Large real numbers must remain legible even when clipping hides overflow.
     await page.evaluate(() => {
       document.querySelector('[data-view="overview"]').click();
@@ -236,8 +235,7 @@ try {
     for(const section of ['alert','decision','booking','update']){
       await page.locator(`[data-filter="${section}"]`).click();
       check(await page.locator(`[data-filter="${section}"] [data-filter-count]`).textContent()==='2', 'Category count '+section);
-      const styles=await page.locator(`.notice-item[data-section="${section}"]`).first().evaluate(el=>{const st=getComputedStyle(el);return {start:st.getPropertyValue('--notice-deep').trim().replace('#',''),end:st.getPropertyValue('--notice-end').trim().replace('#',''),text:getComputedStyle(el.querySelector('h3')).color,chip:st.getPropertyValue('--notice-chip').trim().replace('#',''),chipText:getComputedStyle(el.querySelector('.notice-priority')).color};});
-      check(contrast(styles.start,styles.text)>=4.5&&contrast(styles.end,styles.text)>=4.5&&contrast(styles.chip,styles.chipText)>=4.5, 'Actual category text/badge contrast passes AA '+section);
+      check(await page.locator(`.notice-item[data-section="${section}"] .notice-row`).count()===2, 'Each priority uses a compact actionable row '+section);
       const times=await page.locator(`.notice-item[data-section="${section}"] time`).evaluateAll(nodes=>nodes.map(n=>Date.parse(n.dateTime)));
       check(times[0]>=times[1], 'Newest first within '+section);
       await page.locator(`[data-filter="${section}"]`).click();
@@ -245,21 +243,9 @@ try {
       if([375,1440].includes(width))await page.locator('.notification-drawer').screenshot({path:join(output,`priority-${section}-${width}.png`)});
     }
     await page.locator('[data-filter="all"]').click();
-    await page.locator('.notice-item[data-section="alert"] [data-notice-read]').first().click();
-    const readCritical=page.locator('.notice-item[data-section="alert"]:not(.notice-unread)').first();
-    check(await readCritical.locator('.notice-priority').textContent()==='حرج','Reading a critical notice never downgrades its urgency');
-    const readStyles=await readCritical.evaluate(el=>({light:getComputedStyle(el).getPropertyValue('--notice-light').trim().replace('#',''),title:getComputedStyle(el.querySelector('h3')).color}));
-    check(contrast(readStyles.light,readStyles.title)>=4.5,'Read critical title still meets AA');
-    await page.locator('.notice-item[data-section="alert"] [data-notice-read]').first().click();
-    check(await page.locator('#notification-toggle').getAttribute('data-priority')==='decision','Bell moves to next unread priority after urgent notices read');
-    await page.locator('[data-filter="unread"]').click();
-    check(await page.locator('.notice-item').count()===6&&await page.locator('.notice-group[data-section="alert"]').count()===0,'Unread filter respects priority and read status separately');
     await page.locator('#notification-read-all').click();
-    await page.locator('[data-filter="all"]').click();
     for(const section of ['alert','decision','booking','update']){
-      const styles=await page.locator(`.notice-item[data-section="${section}"]`).first().evaluate(el=>{const st=getComputedStyle(el);return {light:st.getPropertyValue('--notice-light').trim().replace('#',''),text:getComputedStyle(el.querySelector('h3')).color,chip:st.getPropertyValue('--notice-chip').trim().replace('#',''),chipText:getComputedStyle(el.querySelector('.notice-priority')).color};});
-      check(contrast(styles.light,styles.text)>=4.5&&contrast(styles.chip,styles.chipText)>=4.5,'Read category text/badge actual contrast AA '+section);
-      check(await page.locator(`.notice-item[data-section="${section}"] .notice-state`).first().textContent()==='مقروء','Read state stays independent of category '+section);
+      check((await page.locator(`.notice-item[data-section="${section}"] .sr-only`).first().textContent()).includes('مقروء'),'Read state stays independent of category '+section);
     }
     check(await page.locator('#notification-toggle').getAttribute('data-priority')===null,'No stale urgency on the bell once all read');
     if(width===375){

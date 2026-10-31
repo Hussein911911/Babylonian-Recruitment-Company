@@ -36,9 +36,13 @@ export class OfficeEngine {
   if(input.kind==='job_note')data.note=text(input.note,2000);
   else{
    if(job.status!=='available')throw new Error('job_unavailable');
-   data.serial=text(input.serial);const app=snapshot.applicants.find(a=>a.serial===data.serial);if(!app)throw new Error('card_not_in_snapshot');
+   const serialInput=text(input.serial).toUpperCase();
+   const matches=snapshot.applicants.filter(a=>typeof a.serial==='string'&&a.serial.toUpperCase()===serialInput);
+   if(matches.length!==1)throw new Error(matches.length?'ambiguous_card':'card_not_in_snapshot');
+   const app=matches[0];data.serial=app.serial; // keep the exact database key for queue and sync
+
    if(input.kind==='reserve'){
-    if(app.status!=='active'||!Number.isFinite(Date.parse(app.expiry_date))||Date.parse(app.expiry_date)<=this.clock())throw new Error('card_unavailable');
+    if(app.status!=='active'||(app.expiry_date!=null&&(!Number.isFinite(Date.parse(app.expiry_date))||Date.parse(app.expiry_date)<=this.clock())))throw new Error('card_unavailable');
     const used=new Set(occupied.filter(o=>o.kind==='reserve'&&o.data.serial===data.serial).map(o=>o.expected.attempt_no));
     const next=snapshot.attempts.filter(t=>t.serial===data.serial&&t.slot_status==='empty'&&!used.has(t.attempt_no)).sort((a,b)=>a.attempt_no-b.attempt_no)[0];
     if(!next)throw new Error('no_empty_chance');expected.attempt_no=next.attempt_no;

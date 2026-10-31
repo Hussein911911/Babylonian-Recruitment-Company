@@ -26,11 +26,11 @@ ${style}
 @media print{body>*{display:none!important}#print-root{display:block!important}}
 </style></head><body>
 ${sprite}
-<main class="wallet-demo"><h1>بطاقة التوظيف</h1><p>معاينة الوجهين — الطباعة على ورقتين A4 بالعرض، وجه واحد في كل ورقة.</p>
+<main class="wallet-demo"><h1>بطاقة التوظيف</h1><p>معاينة الوجهين — الطباعة بمقاس 59.4 × 94.6 مم على ورقتين A4 بالطول، وجه واحد في كل ورقة.</p>
 <div class="wallet-safety">الرموز والباركود <b>تجريبية للمعاينة فقط</b>، ولا تصلح للتقديم أو البيع.</div>
 ${html}
-<div class="wallet-demo-actions"><button class="btn btn-lapis" type="button" onclick="window.print()">طباعة معاينة على A4 بالعرض</button><a class="btn btn-outline" href="/">العودة للموقع</a></div>
-<p class="small">لأفضل نتيجة: اختر A4 بالعرض، صفحتين، وفعّل طباعة الخلفيات. الوجه الأمامي في الصفحة الأولى والظهر في الثانية.</p></main>
+<div class="wallet-demo-actions"><button class="btn btn-lapis" type="button" onclick="window.print()">طباعة معاينة على A4 بالطول</button><a class="btn btn-outline" href="/">العودة للموقع</a></div>
+<p class="small">لأفضل نتيجة: اختر A4 بالطول والحجم الفعلي 100%، صفحتين، وفعّل طباعة الخلفيات. الوجه الأمامي في الصفحة الأولى والظهر في الثانية.</p></main>
 <div id="print-root">${html}</div>
 </body></html>`);
 dom.window.close();

@@ -590,7 +590,7 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- *  دخول سريع (2026-10-25): الجلسة تظهر فوراً والبيانات تصل بعدها
+ *  دخول متوازٍ: الجلسة والبيانات لا تظهران قبل التحقق والتحميل
  * ═══════════════════════════════════════════════════════════════════════════ */
 {
   const mock = makeMock({
@@ -609,12 +609,56 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
     jobsAtResolve = Store.listJobs({}).length;
   });
   const u = Store.currentUser();
-  check('الدخول السريع ينجح ويضع الجلسة فوراً (قبل وصول البيانات)',
-    ok && u && u.username === 'hussein', JSON.stringify({ ok, u: u && u.username, jobsAtResolve }));
+  check('الدخول ينجح ويضع الجلسة بعد وصول البيانات',
+    ok && u && u.username === 'hussein' && jobsAtResolve > 0, JSON.stringify({ ok, u: u && u.username, jobsAtResolve }));
   await sleep(300);
   check('البيانات تصل بعد الدخول وتُحدَّث الواجهة تلقائياً',
     Store.listJobs({}).length > 0 && Store.cloudStatus().state === 'on',
     JSON.stringify({ jobs: Store.listJobs({}).length, state: Store.cloudStatus().state }));
+}
+
+// Deterministic gates prove overlap, while the dashboard remains inaccessible.
+{
+  let releaseProfile, releaseJobs, sawProfile=false, sawJobs=false, start=false;
+  const profileGate=new Promise(r=>{releaseProfile=r}), jobsGate=new Promise(r=>{releaseJobs=r});
+  const rows=cloudRows();
+  const mock=makeMock({rows,session:null,onCall(rec){
+    if(!start || rec.op!=='select') return null;
+    if(rec.table==='staff' && rec.filters.some(([key])=>key==='auth_id')) {sawProfile=true;return profileGate.then(()=>({data:rows.staff,error:null}));}
+    if(rec.table==='jobs') {sawJobs=true;return jobsGate.then(()=>({data:rows.jobs,error:null}));}
+    return null;
+  }});
+  const {Store}=bootStore(mock,{enforceAuth:true}); Store.init(); await sleep(80);start=true;
+  const result=Store.signInFast('hussein','correct-password');
+  await sleep(30);
+  check('التحقق من الموظف وقراءة مساحة العمل يبدآن معاً',sawProfile && sawJobs);
+  check('لا جلسة قبل اكتمال التحقق والبيانات',!Store.currentUser());
+  releaseProfile(); await sleep(30);
+  check('لا جلسة بعد التحقق وحده وقبل وصول البيانات',!Store.currentUser());
+  releaseJobs(); const r=await result;
+  check('تُفتح الجلسة بعد تحميل بيانات العمل الموثوقة',r.ok && Store.currentUser() && Store.listJobs({}).length===1);
+  const profiles=mock.__calls.filter(c=>c.table==='staff' && c.filters && c.filters.some(([k])=>k==='auth_id'));
+  check('لا إعادة لطلب ملف الموظف بعد الدخول',profiles.length===1,String(profiles.length));
+}
+{
+  let releaseJobs, start=false;
+  const gate=new Promise(r=>{releaseJobs=r}),rows=cloudRows();
+  const mock=makeMock({rows,session:null,onCall(rec){
+    if(!start || rec.op!=='select') return null;
+    if(rec.table==='staff' && rec.filters.some(([key])=>key==='auth_id')) return {data:[{...rows.staff[0],active:false}],error:null};
+    if(rec.table==='jobs') return gate.then(()=>({data:rows.jobs,error:null}));
+    return null;
+  }});
+  const {Store}=bootStore(mock,{enforceAuth:true});Store.init();await sleep(80);start=true;
+  const r=await Store.signInFast('hussein','correct-password');releaseJobs();await sleep(30);
+  check('الحساب الموقوف لا يحصل على جلسة ولا يتبنى بيانات العمل',!r.ok && !Store.currentUser() && !Store.listJobs({}).some(j=>j.code==='HRC-5001'));
+  check('تُنهى جلسة Auth للحساب غير الفعّال',mock.__calls.some(c=>c.auth==='signOut'));
+}
+{
+  const rows=cloudRows(),mock=makeMock({rows,session:null,failTables:{jobs:{code:'42501',message:'denied'}}});
+  const {Store}=bootStore(mock,{enforceAuth:true});Store.init();await sleep(80);
+  const r=await Store.signInFast('hussein','correct-password');
+  check('فشل بيانات العمل لا يفتح اللوحة أو جلسة محلية',!r.ok && r.code==='data_unavailable' && !Store.currentUser());
 }
 
 console.log('\n' + '═'.repeat(74));

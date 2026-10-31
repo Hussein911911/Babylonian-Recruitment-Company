@@ -105,7 +105,7 @@
     // الباحثون عن عمل + الاستمارات
     CFG.seed.applicants.forEach(function (a, idx) {
       /* بطاقات فارغة بالمخزن (d.blank): تُصدر من الشركة دفعات وتنتظر التعبئة
-         عند البيع — لا تواريخ لها والصلاحية تبدأ عند التعبئة. */
+         عند البيع — لا تواريخ لها والصلاحية تبدأ عند أول تقديم ناجح. */
       if (a.blank) {
         d.applicants.push({
           id: uid('app'), serial: a.serial, fullName: '', phone: '', address: '',
@@ -660,6 +660,14 @@
     return job;
   }
 
+  function snapshotJob(job) {
+    if (!job) return null;
+    return {code:job.code,title:job.title,governorate:job.governorate || '',
+      employer_name:(job.employer || {}).name || '', employer_phone:(job.employer || {}).phone || '',
+      employer_address:(job.employer || {}).address || '', interview_location:job.interviewLocation || '',
+      shift:job.shift || '', salary_min:job.salaryMin, salary_max:job.salaryMax};
+  }
+
   function deleteJob(code) {
     var job = getJob(code); if (!job) return false;
     /* حذف وظيفة عليها حجز/حرجة يغلق فرصة البطاقة المرتبطة (الفرصة مستهلكة —
@@ -671,7 +679,7 @@
         t.holdExpiresAt = null;
         t.note = 'حذفت الشركة الوظيفة ' + job.code + ' — استُهلكت الفرصة';
       }
-      if(t.jobId===job.id)t.jobId=null;
+      if(t.jobId===job.id) { if (!t.jobSnapshot && t.selectedAt) t.jobSnapshot=snapshotJob(job); t.jobId=null; }
     });
     if(db.meta&&db.meta.workspace){db.meta.explicitDeletes=db.meta.explicitDeletes||{};db.meta.explicitDeletes.jobs=(db.meta.explicitDeletes.jobs||[]).concat(code);}
     db.jobs = db.jobs.filter(function (j) { return j.code !== code; });
@@ -690,7 +698,7 @@
 
   /* توحيد الإدخال: حروف كبيرة وبلا مسافات؛ والرقم القديم المجرّد (6 خانات) يُكمَّل بـ HRC-BC */
   function normalizeCardSerial(v) {
-    var s = String(v == null ? '' : v).trim().toUpperCase().replace(/\s+/g, '');
+    var s = String(v == null ? '' : v).replace(/[٠-٩۰-۹]/g, function (n) { var c = n.charCodeAt(0); return String(c - (c >= 0x6f0 ? 0x6f0 : 0x660)); }).trim().toUpperCase().replace(/\s+/g, '');
     var m = /^(?:HRC-?BC-?)?(\d{6})$/.exec(s);
     if (m) return 'HRC-BC-' + m[1];
     return s;
@@ -781,7 +789,7 @@
 
   /* إصدار دفعة بطاقات فارغة (الشركة/الإدارة): بطاقات بباركود عشوائي فريد
      ورمزي فرصتين — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
-     والصلاحية (30 يوماً) لا تبدأ إلا عند تعبئة بيانات الزبون عند البيع. */
+     والصلاحية (30 يوماً) لا تبدأ إلا عند أول تقديم ناجح. */
   function createCardBatch(count, notes) {
     if (!isAdmin()) return [];           /* إصدار الدفعات للمدير فقط */
     count = Math.max(1, Math.min(1000, Number(count) || 0));
@@ -804,7 +812,7 @@
     }
     if (made.length) audit('إصدار دفعة بطاقات فارغة', 'applicant', made[0].serial,
       'دفعة ' + made.length + ' بطاقة فارغة بباركودات عشوائية فريدة — تبدأ من ' + made[0].serial +
-      ' — الصلاحية تبدأ عند التعبئة عند البيع' + (notes ? ' | ' + notes : ''));
+      ' — الصلاحية تبدأ عند أول تقديم ناجح' + (notes ? ' | ' + notes : ''));
     save(); emit();
     return made;
   }
@@ -853,7 +861,7 @@
   }
 
   /* تعبئة بطاقة فارغة عند البيع (نقطة البيع): بيانات الزبون تُسجَّل على نفس
-     الباركود المطبوع على الورقة، والصلاحية (30 يوماً) تبدأ من هذه اللحظة. */
+     الباركود المطبوع على الورقة، والصلاحية تبدأ عند أول تقديم ناجح. */
   function activateCard(serial, data) {
     serial = String(serial || '').trim().toUpperCase();
     data = data || {};
@@ -874,15 +882,14 @@
       if (!preJob) return { ok: false, error: 'الوظيفة المختارة غير موجودة' };
       if (preJob.status !== 'available') return { ok: false, error: 'الوظيفة ' + preJob.code + ' غير متاحة حالياً — اختر وظيفة أخرى' };
     }
-    var issue = new Date();
     app.fullName = String(data.fullName).trim();
     app.phone = String(data.phone).trim();
     app.address = data.address || '';
     app.dob = data.dob || '';
     app.gender = data.gender || 'ذكر';
     app.status = 'active';
-    app.issueDate = issue.toISOString();
-    app.expiryDate = addDays(issue, Number(db.settings.validityDays || 30)).toISOString();
+    app.issueDate = null;
+    app.expiryDate = null;
     app.posName = data.posName || '';
     app.fee = Number(data.fee != null ? data.fee : app.fee);
     app.feePaid = data.feePaid != null ? !!data.feePaid : true;   /* بيع كاش */
@@ -891,7 +898,7 @@
     audit('بيع وتعبئة بطاقة فارغة', 'applicant', app.serial,
       'بيع البطاقة ' + app.serial + ' للزبون ' + app.fullName +
       (app.posName ? ' — نقطة البيع: ' + app.posName : '') +
-      ' — سعر ' + money(app.fee) + ' (كاش) — بدأت صلاحية 30 يوماً من الآن' +
+      ' — سعر ' + money(app.fee) + ' (كاش) — تبدأ الصلاحية عند أول تقديم ناجح' +
       (preJob ? ' | الوظيفة المختارة: ' + preJob.code + ' — ' + preJob.title
               : ' | بلا اختيار وظيفة — الفرصتان بانتظار اختيار الزبون بنفسه'));
     var applied = null;
@@ -1020,7 +1027,8 @@
     if (app.status === 'blank') return 'blank';
     if (app.status === 'pending') return 'pending';
     if (app.status === 'rejected') return 'rejected';
-    if (new Date(app.expiryDate).getTime() < Date.now()) return 'expired';
+    if (app.status === 'expired') return 'expired';
+    if (app.expiryDate && new Date(app.expiryDate).getTime() < Date.now()) return 'expired';
     /* «سارية» ما دامت فرصة قيد اللعب (حجز جارٍ أو حالة حرجة بانتظار قرار) —
        أما «استُهلكت الفرصتان» فتعني انتهاء كل الفرص بنتيجة نهائية. */
     var inPlay = getAttempts(app.serial).some(function (t) {
@@ -1073,10 +1081,14 @@
     var freeSeat=vacancySummary(job).free[0];
     if(!freeSeat)return {ok:false,error:'لا يوجد شاغر متاح'};
     slot.vacancyNo=freeSeat;
-    slot.jobId = job.id; slot.jobCode = job.code; slot.jobTitle = job.title;
+    slot.jobId = job.id; slot.jobCode = job.code; slot.jobTitle = job.title; slot.jobSnapshot = snapshotJob(job);
     slot.location = job.governorate || ''; slot.employerName = job.employer.name; slot.employerPhone = job.employer.phone;
     slot.slotStatus = 'reserved';
     slot.selectedAt = nowISO();
+    if (!app.issueDate && !app.expiryDate) {
+      app.issueDate = slot.selectedAt;
+      app.expiryDate = addDays(new Date(slot.selectedAt), Number(db.settings.validityDays || 30)).toISOString();
+    }
     slot.holdExpiresAt = addHours(new Date(), hours).toISOString();
     slot.staff = currentUser() ? currentUser().username : 'system';
 
@@ -1115,7 +1127,12 @@
     var app = getApplicant(String(serial || '').trim().toUpperCase());
     if (!app) return { ok: false, error: 'لا توجد بطاقة بهذا الباركود — تأكد من الرقم المطبوع على بطاقتك' };
     if (app.status === 'pending') return { ok: false, error: 'هذه البطاقة قيد المراجعة لدى الشركة' };
-    if (app.status === 'blank') return { ok: false, error: 'هذه البطاقة فارغة ولم تُبع بعد — إذا عُرضت لك للبيع فخابر الشركة فوراً لتفادي التزوير' };
+    if (app.status === 'blank') {
+      var empty = getAttempts(app.serial).filter(function (t) { return t.slotStatus === 'empty'; });
+      return {ok:true, card:{serial:app.serial, status:'blank', fullName:'', phone:'', issueDate:null, expiryDate:null,
+        chancesLeft:empty.length, usesCardPrintCode:false, succeeded:false,
+        chances:empty.map(function (t) { return {no:t.no, slotStatus:'empty'}; })}};
+    }
     var attempts = getAttempts(app.serial).map(function (t) {
       return {
         no: t.no, slotStatus: t.slotStatus,
@@ -1167,10 +1184,35 @@
   /* توجيه موحّد «بطاقتي»: سحابة إن كانت مفعّلة (RPC عامة آمنة)، وإلا محلياً */
   function cardLookup(serial) {
     var st = cloudStatus();
-    if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.lookupCard && cloud.client) {
-      return root.HRCCloud.lookupCard(cloud.client, serial);
+    if (st.configured && st.willBoot) {
+      if (st.state === 'connecting' && cloud.bootPromise) return cloud.bootPromise.then(function () { return cardLookup(serial); });
+      if (st.state === 'on' && root.HRCCloud && root.HRCCloud.lookupCard && cloud.client)
+        return root.HRCCloud.lookupCard(cloud.client, serial);
+      return Promise.resolve({ok:false, error:'تعذّر الاتصال بقاعدة الشركة — تحقّق من الإنترنت وأعد المحاولة.'});
     }
     return Promise.resolve(lookupCard(serial));
+  }
+
+  function customerApplication(serial, no) {
+    var st = cloudStatus();
+    if (st.configured) {
+      if (st.state === 'on' && cloud.client && root.HRCCloud && root.HRCCloud.customerApplication)
+        return root.HRCCloud.customerApplication(cloud.client, serial, no);
+      return Promise.resolve({ok:false, error:'تعذّر الاتصال لتحميل تفاصيل التقديم'});
+    }
+    var app = getApplicant(String(serial || '').trim().toUpperCase());
+    var t = app && getAttempts(app.serial).filter(function (a) { return Number(a.no) === Number(no) && a.slotStatus !== 'empty' && a.selectedAt && a.jobCode; })[0];
+    var j = t && t.jobId && getJob(t.jobCode);
+    if (j && j.id !== t.jobId) j = null;
+    var snap = (t && t.jobSnapshot && t.jobSnapshot.code === t.jobCode) ? t.jobSnapshot : j ? snapshotJob(j) : null;
+    if (!app || ['blank','pending','rejected'].indexOf(app.status) >= 0 || !t || !snap || snap.code !== t.jobCode)
+      return Promise.resolve({ok:false,error:'تفاصيل هذا التقديم غير متاحة، تواصل مع الشركة'});
+    return Promise.resolve({ok:true, app:app, attempt:Object.assign({}, t, {
+      jobTitle:snap.title, location:snap.governorate,
+      employerName:snap.employer_name, employerPhone:snap.employer_phone,
+      employerAddress:snap.employer_address, interviewLocation:snap.interview_location,
+      shift:snap.shift, salaryMin:snap.salary_min, salaryMax:snap.salary_max
+    })});
   }
 
   function cardUseChance(serial, code, jobCode) {
@@ -1289,7 +1331,7 @@
 
     // 2) انتهاء صلاحية البطاقات (30 يوماً)
     db.applicants.forEach(function (app) {
-      if (app.status === 'active' && new Date(app.expiryDate).getTime() < now.getTime()) {
+      if (app.status === 'active' && app.expiryDate && new Date(app.expiryDate).getTime() < now.getTime()) {
         app.status = 'expired';
         db.audit.unshift({
           id: uid('log'), ts: now.toISOString(), user: 'system', role: 'system', name: 'النظام (تلقائي)',
@@ -1485,7 +1527,7 @@
   function markPrinted(serial) {
     var app = getApplicant(serial); if (!app) return;
     app.printedCount = Number(app.printedCount || 0) + 1;
-    audit('طباعة بطاقة', 'applicant', serial, 'طباعة بطاقة التوظيف 86×54مم مع باركود QR — العدد الكلي ' + app.printedCount);
+    audit('طباعة بطاقة', 'applicant', serial, 'طباعة بطاقة التوظيف 59.4×94.6مم مع باركود QR — العدد الكلي ' + app.printedCount);
     save(); emit();
   }
 
@@ -1785,7 +1827,7 @@
 
   var cloud = {
     client: null, sync: null, auth: null,
-    state: 'off',          // off | connecting | on | degraded
+    state: 'off',          // off | ready | connecting | on | degraded
     role: 'guest',         // staff | public | guest
     error: null, detail: null, failedTables: [],
     readOnly: false, applying: false, needsReload: false,
@@ -1968,8 +2010,15 @@
     if (!cloud.auth || !cloud.auth.sessionOnly) return loadFromCloud();
     return cloud.auth.sessionOnly().then(function (sess) {
       if (!sess || !sess.ok) {
-        /* بلا جلسة موظف: لا معنى لمحاولة قراءة brc.jobs/applicants — anon ممنوع
-           منها فتُرفض كلها. نبدأ من الواجهة العامة مباشرةً. */
+        /* بلا جلسة موظف لا نقرأ جداول الموظفين. في اللوحة لا حاجة أيضاً
+           لانتظار الوظائف العامة قبل السماح بالدخول. */
+        // The staff login screen does not need the public jobs feed before it
+        // can accept credentials. This is readiness, not proof of connectivity.
+        if (enforceAuth() && typeof document !== 'undefined' && document.getElementById('app-shell')) {
+          cloud.state = 'ready'; cloud.role = 'guest'; cloud.readOnly = true;
+          cloud.error = null; cloud.detail = null;
+          return cloudStatus();
+        }
         return publicBoot(null);
       }
       var pProfile = Promise.resolve(cloud.auth.profileFor(sess.session)).then(function (r) {
@@ -2025,11 +2074,11 @@
     return cloud.auditPromise;
   }
 
-  function loadFromCloud() {
+  function loadFromCloud(prefetched) {
     /* الجداول أولاً (سريعة)، ثم التقارير الثقيلة في الخلفية — لا في مسار الإقلاع */
     /* ⚡ سجل التدقيق (حتى ٢٠٠٠ صف بأحجام كبيرة) لا يدخل مسار الإقلاع: يُقرأ
        عند فتح «سجل التدقيق» أول مرة، وتبقى اللوحة تعمل بلا انتظاره. */
-    return root.HRCCloud.fetchAll(cloud.client,{workspace:true, deferReports:true, deferAudit:true}).then(function (cdb) {
+    return (prefetched || root.HRCCloud.fetchAll(cloud.client,{workspace:true, deferReports:true, deferAudit:true})).then(function (cdb) {
       var failed = (cdb.meta && cdb.meta.failedTables) || [];
       cloud.failedTables = failed;
       var coreFailed = failed.filter(function (t) { return CORE_TABLES.indexOf(t) >= 0; });
@@ -2415,27 +2464,54 @@
     });
   }
 
-  /* ⚡ دخول سريع (للّوحة): يتحقّق من الحساب ويُدخل الموظف **فوراً**، والبيانات
-     تُجلب بعد ذلك وتُحدَّث الواجهة تلقائياً عبر emit — بلا شاشة انتظار طويلة.
-     signIn الكامل بقي كما هو لمن يريد انتظار البيانات (والاختبارات). */
+  /* تسجيل الموظف: نتحقق من الملف ونقرأ مساحة العمل بالتوازي بعد Auth؛
+     لا تُعرض بيانات أو تُمنح جلسة قبل نجاح الأمرين. */
   function signInFast(username, password) {
     if (!cloudConfigured() || !canReadStaffTables() || !cloudWillBoot()) return signIn(username, password);
+    if (cloud.state === 'connecting' && cloud.bootPromise) {
+      return cloud.bootPromise.then(function () { return signInFast(username, password); });
+    }
     if (!cloud.client || !root.HRCCloudAuth) return signIn(username, password);
     var auth = cloud.auth || (cloud.auth = root.HRCCloudAuth.create(cloud.client));
-    return auth.login(username, password).then(function (r) {
-      if (!r || !r.ok) return r || { ok: false, code: 'auth_failed', error: 'فشل الدخول' };
-      applyStaffSession(r.profile);
-      cloud.knownProfile = r.profile;
-      saveLocal();
-      emit();
-      cloud.bootPromise = null;
-      /* الجلب في الخلفية — لا يُعطّل ظهور اللوحة */
-      bootCloud().then(function () {
+    var prefetch = null;
+    return auth.login(username, password, function () {
+      // Auth is valid; staff verification and RLS-protected reads overlap.
+      // Do not adopt data or create an application session until both succeed.
+      prefetch = Promise.resolve().then(function () {
+        return root.HRCCloud.fetchAll(cloud.client, {workspace:true, deferReports:true, deferAudit:true});
+      });
+      prefetch.catch(function () {});
+    }).then(function (r) {
+      if (!r || !r.ok) {
+        // Auth can succeed while the staff row is inactive/missing: clear it.
+        if (prefetch && auth.logout) return auth.logout().catch(function () {}).then(function () { return r; });
+        return r || { ok: false, code: 'auth_failed', error: 'فشل الدخول' };
+      }
+      cloud.state = 'connecting'; cloud.role = 'guest'; cloud.readOnly = true;
+      notifyCloudStatus();
+      var work = loadFromCloud(prefetch).then(function (st) {
+        if (!st || st.state !== 'on' || st.role !== 'staff') {
+          return auth.logout().catch(function () {}).then(function () {
+            cloud.state = 'ready'; cloud.role = 'guest'; cloud.readOnly = true; notifyCloudStatus();
+            return { ok: false, code: 'data_unavailable', error: 'تم التحقق من الحساب، لكن تعذّر تحميل بيانات الشركة. تحقق من الاتصال وأعد المحاولة.' };
+          });
+        }
+        applyStaffSession(r.profile);
+        cloud.knownProfile = r.profile;
         audit('تسجيل دخول', 'auth', r.profile.username,
           'دخول عبر Supabase Auth (' + (r.profile.role === 'admin' ? 'مدير عام' : 'موظف') + ')');
         save(); emit();
-      }).catch(function () { });
-      return { ok: true, session: currentUser(), profile: r.profile, pending: true };
+        return { ok: true, session: currentUser(), profile: r.profile };
+      }).catch(function () {
+        return auth.logout().catch(function () {}).then(function () {
+          cloud.state = 'ready'; cloud.role = 'guest'; cloud.readOnly = true; notifyCloudStatus();
+          return { ok: false, code: 'data_unavailable', error: 'تعذّر تحميل بيانات الشركة. تحقق من الاتصال وأعد المحاولة.' };
+        });
+      });
+      cloud.bootPromise = work.then(function (result) {
+        cloud.bootPromise = null; notifyCloudStatus(); return result;
+      });
+      return cloud.bootPromise;
     });
   }
 
@@ -2603,7 +2679,7 @@
     maskName: maskName, maskPhone: maskPhone,
     // بطاقتي (الزبون)
     lookupCard: lookupCard, useChance: useChance,
-    cardLookup: cardLookup, cardActivate: cardActivate, cardUseChance: cardUseChance,
+    cardLookup: cardLookup, customerApplication: customerApplication, cardActivate: cardActivate, cardUseChance: cardUseChance,
     cardVerify: cardVerify, cardVerifyCode: cardVerifyCode, listPosNames: listPosNames,
     // مالية
     stats: stats, financials: financials, financialTotals: financialTotals,

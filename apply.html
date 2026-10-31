@@ -3,6 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script data-phone-viewport>
+/* Some phone browsers request a desktop-width viewport. Keep the application
+   readable on a small touch screen, without disabling the user's zoom. */
+(function () {
+  var meta = document.querySelector('meta[name="viewport"]');
+  var phone = (navigator.maxTouchPoints > 0 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches));
+  var sw = window.screen && window.screen.width;
+  if (!meta || !phone || !sw || sw > 600 || window.innerWidth < sw * 1.35) return;
+  document.documentElement.classList.add('phone-wide-viewport');
+  function fitPhone() {
+    var width = window.screen && window.screen.width;
+    if (!width || width > 900) return;
+    meta.setAttribute('content', 'width=' + width + ', initial-scale=1');
+    // Some browsers ignore viewport metadata in desktop mode. In that case
+    // enlarge the application itself to restore a phone-sized layout.
+    setTimeout(function () {
+      var ratio = window.innerWidth / width;
+      document.documentElement.classList.toggle('phone-viewport-fallback', ratio > 1.35);
+      document.documentElement.style.setProperty('--phone-fit', String(Math.min(3, Math.max(1, ratio))));
+    }, 200);
+  }
+  fitPhone();
+  window.addEventListener('orientationchange', function () { setTimeout(fitPhone, 150); });
+})();
+</script>
 <title>تقديم على وظيفة | منصة مكسب للتوظيف</title>
 <meta name="theme-color" content="#0d2247">
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon-mkseb.svg">
@@ -577,6 +602,21 @@ body{
 }
 
 
+/* Welcome navigation and per-opportunity print controls. */
+.mk-platform-link{display:flex;align-items:center;justify-content:center;min-height:48px;width:min(100%,330px);margin:12px auto 0;padding:10px 16px;position:relative;z-index:2;border:1px solid #d2b46c;border-radius:13px;background:linear-gradient(135deg,#f4d681,#d5aa47);color:#132b4a;box-shadow:0 7px 20px #081b3259;text-decoration:none;font-weight:900}
+.mk-platform-link:focus-visible,.cs-print:focus-visible{outline:3px solid #b08d3c;outline-offset:3px}
+.welcome-details-message{position:relative;z-index:2;margin:8px 0 0;color:#fff;font-weight:800;line-height:1.8}
+.cs-print{grid-column:1/-1;justify-self:start;min-height:44px;padding:8px 14px;border:1px solid #b08d3c;border-radius:10px;background:#16294d;color:#fff;font:800 13px/1.6 "IBM Plex Sans Arabic",sans-serif;cursor:pointer}
+.cs-print:disabled{opacity:.55;cursor:not-allowed}.cs-detail-extra{grid-column:1/-1;color:#23354e;font-size:13px;line-height:1.8;overflow-wrap:anywhere}.cs-detail-error{color:#a02828}
+@media screen{#chance-print-root{position:absolute;top:0;left:0;width:210mm;clip-path:inset(100%);pointer-events:none}}
+@media print{
+ body.chance-printing #result-content .form-sheet,body.chance-printing #result-content .form-sheet *{visibility:hidden!important}
+ body.chance-printing #app,body.chance-printing #job-modal{display:none!important}
+ body.chance-printing #chance-print-root{display:block!important;position:static;width:100%;background:#fff;clip-path:none!important}
+ body.chance-printing #chance-print-root .form-sheet,body.chance-printing #chance-print-root .form-sheet *{visibility:visible!important}
+ body.chance-printing #chance-print-root .form-sheet{width:100%;max-width:100%;margin:0;box-shadow:none;border-radius:0;overflow:visible}
+ body.chance-printing #chance-print-root .form-sheet + .form-sheet{break-before:page;page-break-before:always}
+}
 /* ═══ تفاصيل البطاقة: زر في شاشة الترحيب + نافذة أنيقة ═══ */
 .welcome-details{width:min(100%,600px);margin-top:12px}
 @supports not (display:grid){.welcome-details{display:block}}
@@ -1169,9 +1209,13 @@ body{
 }
 .job-thumb::before{
   content:''; position:absolute; inset:-8%; z-index:0; pointer-events:none;
-  background-image:var(--img, none); background-size:cover; background-position:center;
+  background-image:none; background-size:cover; background-position:center;
   filter:blur(10px) saturate(1.1) brightness(.85); opacity:.85; transform:scale(1.1);
 }
+.job-thumb.has-img::before{background-image:var(--img, none)}
+.job-thumb:not(.has-img){background:linear-gradient(90deg,#142b47 25%,#29445f 45%,#142b47 65%);background-size:220% 100%;animation:jobImageLoading 1.3s ease-in-out infinite}
+@keyframes jobImageLoading{0%{background-position:130% 0}100%{background-position:-130% 0}}
+@media(prefers-reduced-motion:reduce){.job-thumb:not(.has-img){animation:none}}
 .job-thumb img{
   position:relative; z-index:1; width:100%; height:100%;
   object-fit:contain; object-position:center; display:block;
@@ -1824,6 +1868,12 @@ body{
       box-shadow:0 34px 90px rgba(13,34,71,.24);
     }
   }
+
+  /* If the browser keeps its desktop viewport despite the meta setting, the
+     landing page should at least use the available width and avoid four tiny columns. */
+  html.phone-viewport-fallback .app{zoom:var(--phone-fit,1)}
+  html.phone-wide-viewport .mk-screen{max-width:none;border:0;border-radius:0;box-shadow:none}
+  html.phone-wide-viewport .mk-feats{grid-template-columns:repeat(2,minmax(0,1fr))}
 
   /* شريط علوي كحلي: هوية المنصة */
   .mk-top{
@@ -4044,6 +4094,7 @@ body.job-modal-open .app{
     width:100%!important;height:100%!important;aspect-ratio:auto!important;
     border:0!important;border-radius:0!important;box-shadow:none!important;background:#0D2247!important;
   }
+  body[data-step="6"] #jobs-list .job-thumb:not(.has-img){background:linear-gradient(90deg,#142b47 25%,#29445f 45%,#142b47 65%)!important;background-size:220% 100%!important}
   body[data-step="6"] #jobs-list .job-thumb::before{
     filter:blur(14px) saturate(1.1) brightness(.7);opacity:.9;transform:scale(1.15);
   }
@@ -4543,14 +4594,17 @@ body.job-modal-open .app{
             </button>
           </div>
 
-          <!-- تفاصيل البطاقة: تظهر فقط بعد قراءة الباركود وتعبئة بيانات البطاقة -->
-          <div class="anim-fade-up2 welcome-details" id="welcome-details-wrap" hidden>
+          <!-- تفاصيل البطاقة متاحة حتى للبطاقة الفارغة -->
+          <div class="anim-fade-up2 welcome-details" id="welcome-details-wrap">
             <button type="button" class="btn-card-details" id="btn-card-details" onclick="G.cardDetails()">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.6"/><path d="M2.5 9.6h19M6 14.5h3.2M12 14.5h2.4"/></svg>
               <span>عرض تفاصيل البطاقة</span>
               <span class="bcd-count" id="bcd-count"></span>
             </button>
           </div>
+
+          <p class="welcome-details-message" id="welcome-details-message" role="status" aria-live="polite"></p>
+          <a class="mk-platform-link" href="./">رابط موقع المنصة</a>
 
           <!-- الموجة الكريمية أسفل الصورة -->
           <svg class="mk-sweep" viewBox="0 0 1200 200" preserveAspectRatio="none" aria-hidden="true">
@@ -4931,6 +4985,7 @@ body.job-modal-open .app{
           «Could not find the function public.… in the schema cache» رغم أن
           الدالة موجودة في brc (نفس العطل المُصلَح سابقاً في cloud-http.js).
      عميل HRCHttp المحلي يعلن الترويستين معاً ولا يترك الصفحة رهينة طرف خارجي. ── -->
+<div id="chance-print-root" aria-hidden="true"></div>
 <script src="assets/js/cloud-http.js"></script>
 <script src="assets/js/iraq-admin.js"></script>
 <script src="assets/js/apply-navigation.js"></script>
@@ -4987,7 +5042,22 @@ var AICO={
   tag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 3.6H20v7.4l-9 9-7.4-7.4z"/><circle cx="16.4" cy="7.2" r="1.3"/></svg>'
 };
 function aico(name,cls){return '<span class="ico'+(cls?' '+cls:'')+'">'+(AICO[name]||AICO.info)+'</span>';}
-function printApplication(){var fonts=document.fonts;var ready=fonts&&fonts.load?Promise.all([400,600,700,800,900].map(function(w){return fonts.load(w+' 12px Cairo','العراق ABC 123');})).catch(function(){}):Promise.resolve();ready.then(function(){window.print();});}
+// Some mobile browsers fire afterprint before the print preview has captured
+// the document. Keep the hidden sheet intact until another explicit action.
+function clearChancePrint(){document.body.classList.remove('chance-printing');var root=$('chance-print-root');if(root)root.innerHTML='';}
+function printApplication(chance){
+  if(chance!==true){
+    clearChancePrint();
+    var container=$('result-content'),root=$('chance-print-root');
+    var sheets=container&&container.querySelectorAll?container.querySelectorAll('.form-sheet'):[];
+    if(!root||!sheets.length)return;
+    root.innerHTML=Array.prototype.map.call(sheets,function(sheet){return sheet.outerHTML;}).join('');
+    document.body.classList.add('chance-printing');
+  }
+  var fonts=document.fonts;
+  var ready=fonts&&fonts.load?Promise.all([400,600,700,800,900].map(function(w){return fonts.load(w+' 12px Cairo','العراق ABC 123');})).catch(function(){}):Promise.resolve();
+  ready.then(function(){window.print();});
+}
 function iraqYear(){return Number(new Intl.DateTimeFormat('en',{timeZone:'Asia/Baghdad',year:'numeric',calendar:'gregory'}).format(new Date()));}
 function money(n){return(n==null||isNaN(n))?'—':Number(n).toLocaleString('en-US')+' د.ع';}
 /* إظهار/إخفاء عنصر بسمة hidden — يعمل في المتصفح وفي DOM الاختبار المصغّر */
@@ -5047,8 +5117,7 @@ var G={
   printApplication:printApplication,
 
   /* ═══ تفاصيل البطاقة (بعد قراءة الباركود) ═══
-     الزر يظهر فقط إذا كانت البطاقة مُعبّأة/مُفعّلة، ويجمع كل ما تعرفه الصفحة
-     عن البطاقة (البيانات + الفرص) في نافذة واحدة بلا أي طلب قاعدة إضافي. */
+     يُظهر الزر دائماً، ويجلب بيانات كل فرصة محفوظة من قاعدة الشركة. */
   cardFilled:function(){
     if(!cardData)return false;
     var cp=cardData.profile||{}, lp=G.readProfile()||{};
@@ -5057,8 +5126,8 @@ var G={
   },
   refreshCardDetails:function(){
     var filled=G.cardFilled();
-    showEl($('welcome-details-wrap'),filled);
-    if(!filled)return;
+    showEl($('welcome-details-wrap'),true);
+    if(!filled){var blankCount=$('bcd-count');if(blankCount)blankCount.textContent='';return;}
     var bcd=$('bcd-count');
     if(bcd)bcd.textContent=cardData&&cardData.chancesLeft>0
       ? 'الفرص المتاحة: '+ar(cardData.chancesLeft) : 'انتهت الفرص';
@@ -5069,6 +5138,8 @@ var G={
       if(ws)ws.textContent='جارٍ قراءة بيانات البطاقة… أعد المحاولة بعد لحظة.';
       return;
     }
+    if(!G.cardFilled()){var msg=$('welcome-details-message');if(msg)msg.textContent='البطاقة فارغة — لم تُسجَّل عليها بيانات أو فرص بعد.';return;}
+    var msg=$('welcome-details-message');if(msg)msg.textContent='';
     var p=cardData.profile||{}, lp=G.readProfile()||{};
     p={fullName:p.fullName||lp.fullName,phone:p.phone||lp.phone,
        address:p.address||[lp.province,lp.landmark].filter(Boolean).join(' - ')||lp.address,
@@ -5083,14 +5154,17 @@ var G={
         :(ch.slotStatus==='rejected'?'مرفوض'
         :(ch.slotStatus==='expired'?'انتهت':'قيد المتابعة')));
       var cls=ch.slotStatus==='empty'?'is-open':(ch.slotStatus==='succeeded'?'is-done':(ch.slotStatus==='rejected'||ch.slotStatus==='expired'?'is-closed':'is-live'));
-      var jj=ch.jobCode?(jobs.filter(function(x){return x.code===ch.jobCode;})[0]||null):null;
-      var meta=jj?[jobProvince(jj.governorate),jj.shift,(Number(jj.salaryMin)>0?money(jj.salaryMin)+' – '+money(jj.salaryMax)+' د.ع':'')].filter(Boolean).join(' · '):'';
+      var detail=ch._detail&&ch._detail.attempt;
+      var meta=detail?[detail.location,detail.shift,(Number(detail.salaryMin)>0?money(detail.salaryMin)+' – '+money(detail.salaryMax)+' د.ع':'')].filter(Boolean).join(' · '):'';
       return '<li class="cs-chance '+cls+'">'+
         '<span class="cs-chance-no">الفرصة '+ar(ch.no||0)+'</span>'+
-        '<span class="cs-chance-job">'+(ch.jobTitle?esc(ch.jobTitle):'لم تُستخدم بعد')+
+        '<span class="cs-chance-job">'+(detail&&detail.jobTitle?esc(detail.jobTitle):(ch.jobTitle?esc(ch.jobTitle):(ch.jobCode?'تفاصيل الفرصة':'لم تُستخدم بعد')))+
           (ch.jobCode?' <b class="mono" dir="ltr">('+esc(ch.jobCode)+')</b>':'')+
           (meta?'<i class="cs-chance-meta">'+esc(meta)+'</i>':'')+'</span>'+
-        '<span class="cs-chance-state">'+label+'</span></li>';
+        '<span class="cs-chance-state">'+label+'</span>'+
+        '<div class="cs-detail-extra" id="cs-extra-'+Number(ch.no)+'">'+(ch.slotStatus==='empty'?'':(detail?G.chanceDetailHtml(detail):'جارٍ تحميل تفاصيل الفرصة…'))+'</div>'+
+        (ch.slotStatus==='empty'?'<button type="button" class="cs-print" disabled>لا توجد استمارة بعد</button>':
+          '<button type="button" class="cs-print" onclick="G.printChance('+Number(ch.no)+')">طباعة استمارة الفرصة '+ar(ch.no||0)+'</button>')+'</li>';
     }).join('');
 
     $('card-details-serial').textContent=cardData.serial||cardSerial||'—';
@@ -5101,7 +5175,7 @@ var G={
       '<div class="cs-grid">'+
         '<div class="cs-f"><span>اسم صاحب البطاقة</span><b>'+(p.fullName?esc(p.fullName):'— لم تُعبّأ بعد —')+'</b></div>'+
         '<div class="cs-f"><span>رقم الهاتف</span><b class="mono" dir="ltr">'+(p.phone?esc(p.phone):'—')+'</b></div>'+
-        '<div class="cs-f"><span>السكن</span><b>'+addr+'</b></div>'+
+        '<div class="cs-f"><span>السكن</span><b>'+esc(addr)+'</b></div>'+
         '<div class="cs-f"><span>تاريخ الميلاد</span><b dir="ltr">'+dob+'</b></div>'+
         '<div class="cs-f"><span>الفرص المتاحة</span><b>'+ar(cardData.chancesLeft||0)+' من '+ar(2)+'</b></div>'+
         '<div class="cs-f"><span>طريقة الدفع</span><b>كاش عند نقطة البيع</b></div>'+
@@ -5116,13 +5190,51 @@ var G={
     sheet.classList.add('is-open');
     try{document.body.style.overflow='hidden';}catch(e){}
     showEl($('card-details-start'),chancesLeft>0);
+    (cardData.chances||[]).forEach(function(ch){if(ch.slotStatus!=='empty')G.loadChanceDetails(ch);});
     setTimeout(function(){
       var b=(cardData&&cardData.chancesLeft>0)?$('card-details-start'):null;
       try{(b||document.querySelector('.cs-close')).focus();}catch(e){}
     },40);
   },
+  chanceDetailHtml:function(a){
+    function row(label,value){return '<div><b>'+label+':</b> '+esc(value||'غير متوفر')+'</div>';}
+    return row('الوظيفة',a.jobTitle)+row('المحافظة',a.location)+row('الدوام',a.shift)+row('جهة العمل',a.employerName)+row('الهاتف',a.employerPhone)+row('العنوان',a.employerAddress)+row('مكان المقابلة',a.interviewLocation);
+  },
+  loadChanceDetails:function(ch){
+    if(ch._detail)return Promise.resolve(ch._detail);
+    if(ch._loading)return ch._loading;
+    var box=$('cs-extra-'+Number(ch.no));
+    ch._loading=Promise.resolve().then(function(){return client.rpc('customer_application_details',{p_serial:cardSerial,p_attempt_no:Number(ch.no)});}).then(function(r){
+      var d=r&&r.data;
+      if(r.error||!d||!d.ok||!d.app||!d.attempt||String(d.app.serial).toUpperCase()!==cardSerial||Number(d.attempt.no)!==Number(ch.no)||!d.attempt.jobCode||(ch.jobCode&&d.attempt.jobCode!==ch.jobCode))throw new Error('unavailable');
+      ch._detail=d;
+      box=$('cs-extra-'+Number(ch.no));if(box){box.classList.remove('cs-detail-error');box.innerHTML=G.chanceDetailHtml(d.attempt);}
+      return d;
+    }).catch(function(){box=$('cs-extra-'+Number(ch.no));if(box){box.classList.add('cs-detail-error');box.textContent='تعذّر تحميل تفاصيل هذه الفرصة — أعد المحاولة أو تواصل مع الشركة.';}return null;}).then(function(d){ch._loading=null;return d;});
+    return ch._loading;
+  },
+  printChance:function(no){
+    var ch=(cardData&&cardData.chances||[]).filter(function(c){return Number(c.no)===Number(no)&&c.slotStatus!=='empty';})[0];
+    if(!ch)return;
+    var box=$('cs-extra-'+Number(no));if(box&&!ch._detail){box.classList.remove('cs-detail-error');box.textContent='جارٍ تحميل استمارة الفرصة…';}
+    G.loadChanceDetails(ch).then(function(d){
+      if(!d)return;
+      var a=d.attempt, app=d.app;
+      var job={code:a.jobCode,title:a.jobTitle||'—',governorate:a.location||'—',shift:a.shift||'—',salaryMin:a.salaryMin,salaryMax:a.salaryMax,employer:{name:'',phone:'',address:''},interviewLocation:''};
+      var host=$('chance-print-root');if(!host)return;
+      host.innerHTML=G.buildForm(d,job,Number(no),true);
+      function qr(){
+        var el=host.querySelector('[data-qr]');if(!el)return;
+        try{if(window.HRCQR){el.innerHTML=window.HRCQR.renderSVG(window.HRCQR.encode(el.getAttribute('data-qr'),'M'),{margin:1,size:84,dark:'#16294d',light:'#ffffff'});return;}}catch(e){}
+        el.textContent=cardSerial;
+      }
+      function print(){qr();document.body.classList.add('chance-printing');printApplication(true);}
+      if(window.HRCQR)print();else{var script=document.createElement('script');script.src='assets/js/qr.js';script.onload=print;script.onerror=print;document.head.appendChild(script);}
+    });
+  },
   arabicDate:arabicDate,
   closeCardDetails:function(){
+    clearChancePrint();
     var sheet=$('card-details');
     if(!sheet)return;
     sheet.classList.remove('is-open');
@@ -5608,7 +5720,7 @@ var G={
           +(j.imageUrl
             ? '<span class="job-thumb" style="--img:url(&quot;'+esc(j.imageUrl)+'&quot;)">'
               +'<img src="'+esc(j.imageUrl)+'" alt="صورة وظيفة '+esc(j.title)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer"'
-              +' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.remove()"></span>'
+              +' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.parentNode.classList.remove(\'has-img\');this.parentNode.remove()"></span>'
             : '')
           +'<span class="job-state '+stateCls+'">'+stateTxt+'</span>'
         +'</div>'
@@ -6006,14 +6118,14 @@ var G={
       return '<div class="rv-row" style="text-align:right"><div class="rv-k">الوظيفة</div><div class="rv-v">'+esc(j.jobTitle||'—')+
         ' <span class="mono" dir="ltr">('+esc(j.jobCode||'—')+')</span></div></div>';
     }).join('');
-    host.innerHTML='<div class="rv-card" style="text-align:center">'
+    host.innerHTML='<div class="form-sheet"><div class="rv-card" style="text-align:center">'
       +'<div class="ok-ico">'+AICO.check+'</div>'
       +'<div class="rv-t" style="margin-top:6px">تم تسجيل طلبك</div>'
       +'<div class="rv-s" style="margin-top:4px">وصلنا '+(list.length===1?'طلبك على وظيفتك':'طلباتك على وظيفتَي فرصتيك')+' — لكن تعذّر عرض الاستمارة الكاملة على هذه الشاشة.</div>'
       +'<div class="rv-row" style="text-align:right"><div class="rv-k">رقم البطاقة</div><div class="rv-v mono" dir="ltr">'+esc(cardSerial)+'</div></div>'
       +rows
-      +'<div class="rv-note">اطبع الاستمارة أو راجع المكتب لنسخة مطبوعة. لا تُعِد التقديم؛ الفرصة تُستهلك مرة واحدة.</div>'
-      +'</div>';
+      +'<div class="rv-note">هذا ملخص للتقديم وليس الاستمارة الكاملة. راجع المكتب للحصول على الاستمارة. لا تُعِد التقديم؛ الفرصة تُستهلك مرة واحدة.</div>'
+      +'</div></div>';
     var acts=$('result-actions');
     if(acts){
       var a='<button type="button" class="btn btn-primary ra-print" onclick="G.printApplication()" aria-label="طباعة الاستمارة">'+AICO.print+'طباعة الاستمارة</button>';
@@ -6027,8 +6139,8 @@ var G={
   /* ═══════════════════════════════════════════════════════════
      ورقة الاستمارة (A4) لتقديم واحد — تُبنى لكل وظيفة قدّم عليها الزبون
      ═══════════════════════════════════════════════════════════ */
-  buildForm:function(data,job,attemptNo){
-    if(lockedProfile)G.fillProfile(lockedProfile);
+  buildForm:function(data,job,attemptNo,official){
+    if(lockedProfile&&!official)G.fillProfile(lockedProfile);
     var att=data.attempt||{};
     attemptNo=Number(att.no)||attemptNo;
     var jR=data.job||{};
@@ -6037,16 +6149,17 @@ var G={
     var empP=att.employerPhone||(att.employer&&att.employer.phone)||jR.employer_phone||(jR.employer&&jR.employer.phone)||job.employer.phone||'—';
     var empA=att.employerAddress||(att.employer&&att.employer.address)||jR.employer_address||(jR.employer&&jR.employer.address)||job.employer.address||'—';
     var empL=att.interviewLocation||(att.employer&&att.employer.interviewLocation)||jR.interview_location||job.interviewLocation||'—';
-    var sal=money(job.salaryMin)+' – '+money(job.salaryMax);
-    var savedProfile=G.readProfile();
-    var addr=savedProfile.address||[savedProfile.province].filter(Boolean).join(' - ');
-    var lm=savedProfile.landmark||'';if(lm&&!savedProfile.address)addr+=' ('+lm+')';
-    var dob=savedProfile.dob?String(savedProfile.dob).slice(0,10).split('-').reverse().join('/'):'—';
+    var sal=(Number(job.salaryMin)>0 || Number(job.salaryMax)>0) ? money(job.salaryMin)+' – '+money(job.salaryMax) : 'غير متوفر';
+    var savedProfile=official?{}:G.readProfile();
+    var addr=app.address||savedProfile.address||[savedProfile.province].filter(Boolean).join(' - ');
+    var lm=savedProfile.landmark||'';if(lm&&!app.address&&!savedProfile.address)addr+=' ('+lm+')';
+    var savedDob=app.dob||savedProfile.dob;
+    var dob=savedDob?String(savedDob).slice(0,10).split('-').reverse().join('/'):'—';
     var cUrl=(location.origin||'https://hrc-babil.com')+location.pathname.replace(/[^/]*$/,'')+'apply.html?form='+encodeURIComponent(cardSerial);
 
     /* تاريخان يهمّان صاحب العمل: مهلة الحجز (24 ساعة) وانتهاء صلاحية البطاقة */
     var holdTxt='—',expTxt='—';
-    if(cardData&&cardData.expiryDate){var expiry=new Date(cardData.expiryDate);if(!isNaN(expiry.getTime()))expTxt=expiry.toLocaleDateString('en-GB',{timeZone:'Asia/Baghdad',calendar:'gregory'});}
+    if(app.expiryDate||(cardData&&cardData.expiryDate)){var expiry=new Date(app.expiryDate||cardData.expiryDate);if(!isNaN(expiry.getTime()))expTxt=expiry.toLocaleDateString('en-GB',{timeZone:'Asia/Baghdad',calendar:'gregory'});}
     if(att.holdExpiresAt){
       var hd=new Date(att.holdExpiresAt);
       if(!isNaN(hd.getTime())){
@@ -6054,13 +6167,13 @@ var G={
       }
     }
     var statusTxt = chancesLeft<=0 ? 'مستنفدة الفرص' : 'سارية';
-    var jobStatus = 'مُرشّح للمقابلة';
+    var jobStatus = ({reserved:'محجوزة — بانتظار القرار',critical:'حرجة — قرار الشركة',hiring:'طلب توظيف — بانتظار التثبيت',succeeded:'تم التوظيف',rejected:'لم يتم التوظيف',expired:'انتهت دون نتيجة'})[att.slotStatus] || 'مُرشّح للمقابلة';
 
     return ''
       +'<div class="form-sheet">'
       /* ── رأس الاستمارة ── */
       +'<div class="fs-head">'
-      +'<div class="brand"><svg viewBox="0 0 120 120" width="31" height="31"><use href="#i-emblem" xlink:href="#i-emblem"/></svg>'
+      +'<div class="brand"><svg viewBox="0 0 415 418" width="31" height="31" role="img" aria-label="شعار منصة مكسب"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg>'
       +'<div><div class="n1">منصة مكسب للتوظيف</div><div class="n2">مكسب للتوظيف · بابل، العراق</div></div></div>'
       +'<div style="text-align:left"><div class="ttl">استمارة توظيف</div><div class="ttl2">JOB APPLICATION FORM</div></div>'
       +'</div>'
@@ -6083,10 +6196,10 @@ var G={
       /* ── بيانات المتقدم ── */
       +'<section class="fs-section fs-customer" aria-label="بيانات الزبون"><h3 class="fs-h3"><span class="fs-section-no">01</span>بيانات الزبون<span class="en">APPLICANT</span></h3>'
       +'<div class="fs-tbl">'
-      +'<div class="fs-td"><span class="k">الاسم الثلاثي:</span><span class="v">'+esc(app.fullName||$('f-name').value)+'</span></div>'
-      +'<div class="fs-td mono"><span class="k">الهاتف:</span><span class="v">'+esc(app.phone||$('f-phone').value)+'</span></div>'
+      +'<div class="fs-td"><span class="k">الاسم الثلاثي:</span><span class="v">'+esc(app.fullName||(official?'—':$('f-name').value))+'</span></div>'
+      +'<div class="fs-td mono"><span class="k">الهاتف:</span><span class="v">'+esc(app.phone||(official?'—':$('f-phone').value))+'</span></div>'
       +'<div class="fs-td"><span class="k">الميلاد:</span><span class="v" style="direction:ltr">'+esc(dob)+'</span></div>'
-      +'<div class="fs-td"><span class="k">الجنس:</span><span class="v">'+esc(selectedGender)+'</span></div>'
+      +'<div class="fs-td"><span class="k">الجنس:</span><span class="v">'+esc(app.gender||(official?'—':selectedGender))+'</span></div>'
       +'<div class="fs-td wide"><span class="k">السكن:</span><span class="v">'+esc(addr)+'</span></div>'
       +'</div>'
 
@@ -6421,8 +6534,7 @@ function loadData(){
     };
     chancesLeft=cardData.chancesLeft;
 
-    /* زر «عرض تفاصيل البطاقة» يظهر فقط إذا كانت البطاقة مُعبّأة أو مُفعّلة
-       (بطاقة فارغة لم تُبع بعد لا معنى لعرض تفاصيلها). */
+    /* تفاصيل البطاقة متاحة دائماً، ويظهر تنبيه واضح عندما تكون فارغة. */
     G.refreshCardDetails();
     var bbtn=$('btn-card-details');
     if(bbtn&&cardData.serial&&!bbtn.getAttribute('aria-label')){
@@ -6515,6 +6627,7 @@ function ensureClient(){
 }
 
 function startApp(){
+  if(/^https?:$/.test(location.protocol)&&'serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}
   /* الحالة الابتدائية: شاشة الترحيب (لها تركيبها الخاص بلا شريط علوي) */
   document.body.setAttribute('data-step','0');
   initProvince();initDates();

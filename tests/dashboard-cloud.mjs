@@ -181,6 +181,8 @@ check('لا شيء يُدفع للقاعدة في الوضع الانتقالي 
 step(2, 'الوضع النهائي — enforceAuth=true يمنع الدخول المحلي تماماً');
 const t2 = await open(); // production settings, without overriding the auth lock
 check('الإنتاج بلا حسابات محلية افتراضية', t2.window.HRC_CONFIG.users.length === 0);
+check('شاشة دخول الموظف جاهزة دون انتظار طلب الوظائف العامة', t2.window.HRCStore.cloudStatus().state === 'ready' && !t2.window.__brcMock.__calls.some(c=>c.table === 'public_jobs'));
+check('لا تدّعي شاشة الدخول اتصالاً قبل تجربة الحساب', /سيتم التحقق/.test(t2.doc.getElementById('hrc-cloud-note').textContent));
 t2.window.HRCStore.logout();
 await new Promise((r) => setTimeout(r, 120));
 check('مفتاح enforceAuth مفعّل كما ضبطه المسؤول', t2.window.HRCStore.cloudStatus().enforceAuth === true);

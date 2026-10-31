@@ -478,7 +478,7 @@ npm run build        # = node tools/build.mjs
 | مناطق العمل (بيانات الوظيفة فقط — لا فلتر) | `assets/js/config.js` → `regions` |
 | المستخدمون | `assets/js/config.js` → `users` |
 | الألوان والخطوط والهوية | `assets/css/style.css` → `--lapis` `--gold` `--turq`، و`apply.html` → `--lux-gold` `--lux-neon` (وظائف التقديم) |
-| الشعار (بوابة عشتار) | `src/partials/sprite.html` → الرمز `#i-emblem` + `assets/img/favicon.svg` |
+| شعار منصة مكسب | `src/partials/sprite.html` → الرمزان `#i-mkseb` و`#i-mkseb-dark` + `assets/img/favicon.svg` |
 | صور الوظائف ومحرّرها | لوحة الموظفين → «إضافة وظيفة» → صورة الوظيفة (تكبير/تصغير/سحب) |
 
 ---

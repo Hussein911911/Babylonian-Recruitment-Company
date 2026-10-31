@@ -1,5 +1,5 @@
 /* بطاقتي: عرض مقنّع بالباركود، وتقديم عبر apply.html للبطاقات الجديدة.
-   إعادة طباعة البطاقة وA4 تتطلب رمز تحقق مستقل؛ القديمة تقبل رمز فرصة سابقاً. */
+   إعادة طباعة الاستمارة تتطلب رمز التحقق عند الحاجة؛ طباعة البطاقة للموظفين فقط. */
 (function (root) {
   'use strict';
   var CFG = root.HRC_CONFIG, UI = root.HRCUI, Store = root.HRCStore;
@@ -416,7 +416,7 @@
     var camToggle = document.getElementById('bk-cam-toggle');
     var camManual = document.getElementById('bk-cam-manual');
     var fileInp = document.getElementById('bk-scan-file');
-    var camStream = null, camRaf = null, camWarned = false, camTeardown = false;
+    var camStream = null, camRaf = null, camWarned = false, camTeardown = false, camGeneration = 0, lastFrame = 0;
 
     function camSet(state, title, sub) {
       if (camBox) camBox.setAttribute('data-state', state);
@@ -433,6 +433,7 @@
     }
 
     function stopCam(silent) {
+      camGeneration++;
       if (camRaf) { try { cancelAnimationFrame(camRaf); } catch (e) { } camRaf = null; }
       if (camStream) { try { camStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { } camStream = null; }
       if (camVideo) { try { camVideo.srcObject = null; } catch (e) { } }
@@ -462,14 +463,17 @@
       return true;
     }
 
-    function camTick() {
+    function camTick(timestamp) {
       if (!camStream || camTeardown) return;
+      if (timestamp && timestamp - lastFrame < 160) { camRaf = requestAnimationFrame(camTick); return; }
+      lastFrame = timestamp || 0;
+      var generation = camGeneration;
       Promise.resolve(root.HRCQRScan.detectVideoFrame(camVideo)).then(function (vals) {
-        if (!camStream || camTeardown) return;
+        if (!camStream || camTeardown || generation !== camGeneration) return;
         if (vals && vals.length && onScanned(vals[0])) return;
         camRaf = requestAnimationFrame(camTick);
       }).catch(function () {
-        if (camStream && !camTeardown) camRaf = requestAnimationFrame(camTick);
+        if (camStream && !camTeardown && generation === camGeneration) camRaf = requestAnimationFrame(camTick);
       });
     }
 
@@ -480,10 +484,11 @@
           'هذا المتصفح لا يسمح بالكاميرا — ارفع صورة للباركود أو اكتب الرقم يدوياً.');
         return;
       }
+      var generation = ++camGeneration;
       camSet('starting', 'جارٍ تشغيل الكاميرا…', 'اسمح للموقع باستخدام الكاميرا من نافذة المتصفح.');
       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
         .then(function (st) {
-          if (camTeardown) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
+          if (camTeardown || generation !== camGeneration || document.hidden) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
           camStream = st;
           if (camVideo) {
             camVideo.srcObject = st;
@@ -494,12 +499,13 @@
           camTick();
         })
         .catch(function () {
+          if (camTeardown || generation !== camGeneration) return;
           camSet('error', 'تعذّر تشغيل الكاميرا',
             'لم يُسمح بالكاميرا أو لا توجد كاميرا. ارفع صورة للباركود أو اكتب الرقم يدوياً.');
         });
     }
 
-    entryCamPause = function () { if (camStream) stopCam(true); };
+    entryCamPause = function () { stopCam(); };
     entryCamStop = function () { camTeardown = true; stopCam(true); };
 
     var goBtn = document.getElementById('bk-apply');
@@ -1037,7 +1043,7 @@
         (card.succeeded ? '<span class="chip chip-ok tiny">' + UI.ic('check') + ' تم توظيف بإحدى الفرصتين</span>' : '') +
       '</div>' +
       '<div class="tiny muted">الاسم: <b>' + esc(card.fullName) + '</b> · الهاتف: <b dir="ltr">' + esc(card.phone) + '</b></div>' +
-      '<div class="tiny muted">تنتهي الصلاحية: <b>' + esc(Store.fmtDate(card.expiryDate)) + '</b>' +
+      '<div class="tiny muted">تنتهي الصلاحية: <b>' + esc(card.expiryDate ? Store.fmtDate(card.expiryDate) : 'تبدأ عند أول تقديم ناجح') + '</b>' +
         ' · الفرص المتاحة: <b>' + esc(card.chancesLeft) + '</b></div>' +
       (card.chances || []).map(function (c, i) { return chanceRow(c, i + 1); }).join('') +
       '<div class="bk-info" style="margin-top:12px">' + UI.ic('clock') +
@@ -1045,7 +1051,7 @@
       btnRow(
         (canUse && applyPageAvailable() ? '<button class="btn btn-gold" id="bk-apply-page">' + UI.ic('arrow-right') + ' ابدأ التقديم على وظيفة</button>' : '') +
         (canUse ? '<button class="btn ' + (applyPageAvailable() ? 'btn-outline' : 'btn-gold') + '" id="bk-use">' + UI.ic('briefcase') + ' استخدم فرصة على وظيفة</button>' : '') +
-        '<button class="btn btn-lapis" id="bk-reprint">' + UI.ic('print') + ' إعادة الطباعة (البطاقة أو الاستمارة)</button>' +
+        '<button class="btn btn-lapis" id="bk-reprint">' + UI.ic('print') + ' إعادة طباعة استمارة التوظيف</button>' +
         '<button class="btn btn-ghost" id="bk-back">' + UI.ic('arrow-right') + ' بطاقة أخرى</button>');
     var b;
     if ((b = document.getElementById('bk-apply-page'))) b.addEventListener('click', function () { goApply(serial); });
@@ -1123,19 +1129,17 @@
   /* ======================= 4) إعادة الطباعة ======================= */
   function renderReprint(host) {
     var needsCode = !card || card.usesCardPrintCode !== false;
-    host.innerHTML = stepHead('إعادة طباعة البطاقة',
-        needsCode ? 'أدخل رمز التحقق من ظهر البطاقة لإعادة الطباعة.'
-                  : 'بطاقتك لا تحمل أي رمز — الباركود نفسه يكفي لإعادة الطباعة.', 'print') +
+    host.innerHTML = stepHead('إعادة طباعة استمارة التوظيف',
+        needsCode ? 'أدخل رمز التحقق من ظهر البطاقة لطباعة الاستمارة.'
+                  : 'بطاقتك لا تحمل أي رمز — الباركود نفسه يكفي لطباعة الاستمارة.', 'print') +
       (needsCode
         ? fieldHtml('rcode', 'رمز التحقق (من ظهر البطاقة)',
             inputHtml('rcode', 'text', 'مثال: 7A2C-9E4B-1D8F-6C03', '', 'dir="ltr" style="direction:ltr;text-align:left;font-weight:700;letter-spacing:.08em" inputmode="latin"'),
             'الرمز المطبوع على ظهر بطاقتك. إن لم يكن لبطاقتك رمز فاتركه فارغاً.')
-        : '<div class="bk-info">' + UI.ic('check-circle') + ' لا حاجة لأي رمز — اضغط «اطبع البطاقة».</div>') +
+        : '<div class="bk-info">' + UI.ic('check-circle') + ' لا حاجة لأي رمز — اضغط «اطبع الاستمارة».</div>') +
       '<div class="bk-info">' + UI.ic('alert') +
-        ' <b>البطاقة:</b> صفحتان بحجم البطاقة المصرفية (86×54مم) — ورق مقوى 300–350غم + تغليف حراري وخيار «الحجم الفعلي» دون تحجيم.<br>' +
         UI.ic('file') + ' <b>استمارة التوظيف A4:</b> تحمل بياناتك وبيانات الوظيفة وصاحب العمل — تُسلَّم لصاحب العمل عند المقابلة.</div>' +
       btnRow(
-        '<button class="btn btn-gold" id="bk-print">' + UI.ic('print') + ' تحقق واطبع البطاقة</button>' +
         '<button class="btn btn-lapis" id="bk-print-form">' + UI.ic('file') + ' تحقق واطبع استمارة A4</button>' +
         '<button class="btn btn-ghost" id="bk-cancel">' + UI.ic('arrow-right') + ' رجوع</button>');
     var b;
@@ -1145,7 +1149,6 @@
       inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') doReprint(); });
       setTimeout(function () { try { inp.focus(); } catch (e) { } }, 60);
     }
-    if ((b = document.getElementById('bk-print'))) b.addEventListener('click', function () { doReprint('card'); });
     if ((b = document.getElementById('bk-print-form'))) b.addEventListener('click', function () { doReprint('form'); });
     if ((b = document.getElementById('bk-cancel'))) b.addEventListener('click', function () { view = 'status'; render(); });
   }
@@ -1161,7 +1164,7 @@
     }
     if (busy) return;
     busy = true;
-    var btn = document.getElementById('bk-print');
+    var btn = document.getElementById('bk-print-form');
     if (btn) { btn.disabled = true; btn.textContent = 'جارٍ التحقق…'; }
     Promise.resolve(Store.cardVerify(serial, code)).then(function (r) {
       busy = false;
@@ -1171,16 +1174,9 @@
         return;
       }
       var V = root.HRCVoucher;
-      if (mode === 'form') {
-        if (!V || !V.printForm) { setErr('rcode', 'قالب طباعة الاستمارة غير متوفر بهذه الصفحة.'); return; }
-        try { V.printForm(r.app, null, r.attempts); } catch (e) {
-          setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
-        }
-      } else {
-        if (!V || !V.print) { setErr('rcode', 'قالب الطباعة غير متوفر بهذه الصفحة.'); return; }
-        try { V.print(r.app, { attempts: r.attempts, verifiedReprint: true }); } catch (e) {
-          setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
-        }
+      if (!V || !V.printForm) { setErr('rcode', 'قالب طباعة الاستمارة غير متوفر بهذه الصفحة.'); return; }
+      try { V.printForm(r.app, null, r.attempts); } catch (e) {
+        setErr('rcode', 'تعذّر فتح الطباعة — حاول مرة أخرى.');
       }
     }).catch(function (e) {
       busy = false;
@@ -1206,7 +1202,7 @@
           ' تذكير: الفرصة تُستهلك بالتقديم ولا تعود بأي نتيجة — وبعد الفرصتين تُشترى بطاقة جديدة من نقاط البيع.</div>' +
       '</div>' +
       btnRow(
-        '<button class="btn btn-lapis" id="bk-reprint2">' + UI.ic('print') + ' اطبع بطاقتك المحدّثة</button>' +
+        '<button class="btn btn-lapis" id="bk-reprint2">' + UI.ic('print') + ' اطبع استمارة التوظيف</button>' +
         '<button class="btn btn-gold" id="bk-done">' + UI.ic('check') + ' تم — إغلاق</button>');
     var b;
     if ((b = document.getElementById('bk-reprint2'))) b.addEventListener('click', function () { view = 'reprint'; render(); });
@@ -1270,14 +1266,6 @@
     if (!mt) return;
     var s = decodeURIComponent(mt[1]).trim().toUpperCase();
     if (!serialPattern(s)) return;
-    var role = new URLSearchParams(location.search).get('role');
-    /* روابط قديمة (?role=employer أو role=pos): صاحب العمل حُذف نهائياً،
-       فنفتح بطاقة الزبون بدل تحويل ميت. */
-    if (role === 'pos' || role === 'employer') {
-      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
-      open({ serial: s, fromHash: true });
-      return;
-    }
     location.replace('apply.html?form=' + encodeURIComponent(s));
   }
 

@@ -3,26 +3,12 @@
 // the restore API (now admin-only). Production Auth/security checks stay intact.
 function injectFixture(store,json){const db=store.db();for(const k of Object.keys(db))delete db[k];Object.assign(db,JSON.parse(json));store.emit();}
 /* ===========================================================================
- *  HRC — اختبار المسار الكامل لنظام بطاقة التوظيف (End-to-End)
- *  ---------------------------------------------------------------------------
- *  يحاكي رحلة البطاقة الحقيقية كاملة ببيانات واحدة تنتقل بين الصفحات:
- *
- *    1) زائر يتصفّح الوظائف — بلا طلب إلكتروني وبلا تحقق (سياسة البطاقة)
- *    2) المكتب يبيع بطاقة كاش عند نقطة البيع ويطبعها (86×54مم)
- *    3) الزبون يتابع بطاقته بالباركود من «بطاقتي» ويستخدم الفرصة الأولى
- *       برمزها السري ⇒ الوظيفة محجوزة 24 ساعة
- *    4) انتهاء المهلة دون قرار ⇒ حالة «حرجة» (لا إفراج تلقائي)
- *    5) قرار الموظف: تم التوظيف ⇒ الوظيفة مغلقة والبطاقة تبقى سارية
- *    6) الفرصة الثانية ثم قرار الإرجاع ⇒ الفرصة مستهلكة والبطاقة مستنفدة
- *    7) صفحة التحقق للموظف (باركود QR) + بوابة تحجب الزائر + بصمة مزيفة
- *    8) إعادة طباعة البطاقة من الموقع العام بإثبات الحيازة (رمز الفرصة)
- *    9) الملف المستقل: التحقق بالمسار الهاشي بجلسة موظف
- *
- *  ملاحظة: كل نافذة متصفح افتراضي (jsdom) لها تخزينها الخاص، فننقل قاعدة
- *  البيانات بين الصفحات عبر export/import — وهذا يحاكي «نفس المتصفح» تماماً.
- *
- *  التشغيل:  node tests/e2e.mjs
+ * Local integration/regression suite. Application UI and database permissions
+ * are tested by the focused suites below; the jsdom journey uses synthetic
+ * historical card fixtures for staff decisions, printing and verification.
+ * No production data, network, real purchase or browser camera is involved.
  * =========================================================================== */
+import { spawnSync } from 'node:child_process';
 import { JSDOM, VirtualConsole } from 'jsdom';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -38,6 +24,18 @@ const ok = (t) => { pass++; console.log('   ✅ ' + t); };
 const bad = (t, d) => { fail++; problems.push(t + (d ? ' — ' + d : '')); console.log('   ❌ ' + t + (d ? '  → ' + d : '')); };
 const check = (t, cond, detail) => (cond ? ok(t) : bad(t, detail));
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Cover the current customer application and security-definer SQL paths rather
+// than reviving the removed POS wizard. Fail the suite if any subprocess fails.
+for (const file of ['apply-flow.mjs', 'card-validity.mjs', 'card-identity.mjs', 'customer-application-sql.mjs', 'customer-snapshot-local.mjs', 'office-sql.mjs']) {
+  console.log('\n▌ فحص المسار الحالي: ' + file);
+  const run = spawnSync(process.execPath, [join(ROOT, 'tests', file)], { stdio: 'inherit' });
+  if (run.error || run.status !== 0) {
+    console.error('فشل الاختبار: ' + file, run.error || ('exit ' + run.status));
+    process.exit(run.status || 1);
+  }
+}
+
 
 /* jsdom لا يوفّر sessionStorage لأصول file:// — نزرع جلسة الموظف عبر واجهة تخزين بديلة */
 function staffStorage(role) {
@@ -108,7 +106,7 @@ const setVal = (w, el, v) => {
 const lastModal = (doc) => [...doc.querySelectorAll('.modal-backdrop .modal')].pop();
 
 console.log('\n' + '═'.repeat(72));
-console.log('  HRC — اختبار المسار الكامل لنظام بطاقة التوظيف (من البيع إلى الإرجاع)');
+console.log('  HRC — اختبار التقديم ومسارات البطاقة والموظف ببيانات تجريبية');
 console.log('═'.repeat(72));
 
 /* ═══ 1) الموقع العام: الزائر يتصفّح — بلا طلب إلكتروني وبلا تحقق ═════════ */
@@ -140,7 +138,7 @@ check('زر التقديم يحمل كود وظيفته', (() => {
 check('زر «بطاقتي» موجود بالقائمة العلوية والفوتر', !!site.doc.querySelector('header [data-action="open-booking"]') &&
   !!site.doc.querySelector('footer [data-action="open-booking"]'));
 
-/* نافذة التفاصيل: خصوصية صاحب العمل + آلية البطاقة + قناة واتساب */
+/* نافذة التفاصيل: خصوصية البيانات + آلية البطاقة + قناة واتساب */
 {
   const detailsBtn = site.doc.querySelector('#jobs-grid [data-action="job-details"]');
   if (detailsBtn) {
@@ -148,7 +146,7 @@ check('زر «بطاقتي» موجود بالقائمة العلوية والف
     await wait(200);
     const box = lastModal(site.doc);
     const mtext = box ? box.textContent : '';
-    check('نافذة التفاصيل تعرض تحذير خصوصية صاحب العمل', /خصوصية صاحب العمل/.test(mtext));
+    check('نافذة التفاصيل تعرض خصوصية البيانات دون نص موجّه لصاحب العمل', /خصوصية البيانات/.test(mtext) && !/صاحب العمل/.test(mtext));
     /* 2026-10-25: صياغة النافذة الجديدة تشرح الآلية في خطوات «كيف تُقدّم عليها؟» */
     check('نافذة التفاصيل تشرح آلية البطاقة (باركود + حجز 24 ساعة)',
       /بطاقة التوظيف/.test(mtext) && /24 ساعة/.test(mtext) && /كيف تُقدّم عليها/.test(mtext));
@@ -202,28 +200,28 @@ await wait(200);
   const box = lastModal(dash.doc);
   check('نافذة الدفعة: عدد + ملاحظة + تحذير التزوير', !!box.querySelector('#b-count') &&
     /عشوائي فريد/.test(box.textContent) && /لا يتشابه/.test(box.textContent));
-  setVal(dash.w, box.querySelector('#b-count'), '3');
+  setVal(dash.w, box.querySelector('#b-count'), '5');
   setVal(dash.w, box.querySelector('#b-notes'), 'دفعة اختبار المسار');
   click(dash.w, box.querySelector('#b-save'));
   await wait(300);
 }
 {
   const box = lastModal(dash.doc);
-  check('صدرت الدفعة (3 بطاقات) ونتيجة الدفعة معروضة', !!box && /3 بطاقة فارغة/.test(box.textContent));
-  /* طباعة الدفعة: 3 بطاقات فارغة بوجهيها — بلا أسماء زبائن */
+  check('صدرت الدفعة (5 بطاقات) ونتيجة الدفعة معروضة', !!box && /5 بطاقة فارغة/.test(box.textContent));
+  /* طباعة الدفعة: 5 بطاقات فارغة بوجهيها — بلا أسماء زبائن */
   const printBtn = box.querySelector('#b-print');
   check('زر طباعة الدفعة ظاهر', !!printBtn);
   if (printBtn) click(dash.w, printBtn);
   await wait(450);
 }
-const BLANKS = D.listBlankCards().slice(0, 3);
+const BLANKS = D.listBlankCards().slice(0, 5);
 check('المخزون الفارغ زاد (' + stockBefore + ' → ' + D.listBlankCards().length + ')',
-  D.listBlankCards().length === stockBefore + 3);
+  D.listBlankCards().length === stockBefore + 5);
 check('البطاقات الفارغة بلا اسم وبلا تواريخ (بانتظار التعبئة)',
   BLANKS.every((b) => b.status === 'blank' && !b.fullName && !b.phone && !b.issueDate && !b.expiryDate));
 const blankSerials = BLANKS.map((b) => b.serial);
 check('الباركودات بصيغة 10 خانات (حروف وأرقام) وفريدة', blankSerials.every((x) => /^[2-9A-HJKMNP-Z]{10}$/.test(x)) &&
-  new Set(blankSerials).size === 3, blankSerials.join('،'));
+  new Set(blankSerials).size === 5, blankSerials.join('،'));
 {
   const nums = blankSerials.map((x) => Number(x.slice(7))).sort((a, b) => a - b);
   check('الباركودات عشوائية غير متسلسلة (لا تُخمَّن)', !(nums[1] - nums[0] === 1 && nums[2] - nums[1] === 1),
@@ -233,12 +231,14 @@ const blankCodes = BLANKS.flatMap((b) => D.getAttempts(b.serial).map((t) => t.co
 check('البطاقات الجديدة لا تحمل أي رمز فرصة (أُلغيت نهائياً 2026-10-25)',
   blankCodes.length === 0, 'رموز مولّدة: ' + blankCodes.join(','));
 const batchPrintHtml = dash.doc.getElementById('print-root').innerHTML;
-check('ورق الدفعة المطبوع: 3 بطاقات بوجهيها (6 أوجه) بلا أسماء زبائن',
-  (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length === 6 &&
+const sheetPrintStyle = dash.doc.getElementById('hrc-sheet-style').textContent;
+check('مقاس الدفعة موحّد مع البطاقة المفردة واستغلال ورقة A4', /repeat\(3,59\.4mm\)/.test(sheetPrintStyle) && /grid-auto-rows:94\.6mm/.test(sheetPrintStyle) && /zoom:1\.1/.test(sheetPrintStyle) && /padding:3\.6mm 12\.9mm/.test(sheetPrintStyle));
+check('ورق الدفعة المطبوع: 5 بطاقات بوجهيها (10 أوجه) بلا أسماء زبائن',
+  (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length === 10 &&
   blankSerials.every((x) => batchPrintHtml.includes(x)) &&
   !/مرتضى|باحث/.test(batchPrintHtml),
   'أوجه ' + (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length);
-check('ورق الدفعة يوضّح أن الصلاحية تبدأ عند التعبئة', /تبدأ من التعبئة|تُعبّأ بيانات الزبون عند البيع/.test(batchPrintHtml));
+check('ورق الدفعة يوضّح أن الصلاحية تبدأ عند أول تقديم', /30 يوماً<\/b> من أول تقديم/.test(batchPrintHtml));
 {
   const closeB = lastModal(dash.doc).querySelector('[data-close]');
   if (closeB) click(dash.w, closeB);
@@ -288,30 +288,27 @@ await wait(200);
   await wait(150);
 }
 
-/* بيع وتعبئة بطاقة فارغة: البيانات تُسجَّل على نفس الباركود */
-click(dash.w, dash.doc.getElementById('btn-new-app'));
-await wait(200);
+/* Historical activated card fixture for the staff/printing journey. The real
+   first application is exercised separately by apply-flow and card-validity. */
 const SERIAL = blankSerials[0];
-{
-  const box = lastModal(dash.doc);
-  check('نافذة البيع تعرض مخزون البطاقات الفارغة وتطلب اختيار الباركود', !!box.querySelector('#n-card') &&
-    new RegExp(SERIAL).test(box.querySelector('#n-card').innerHTML));
-  setVal(dash.w, box.querySelector('#n-card'), SERIAL);
-  setVal(dash.w, box.querySelector('#n-name'), 'مرتضى كريم جبر الحلفاوي');
-  setVal(dash.w, box.querySelector('#n-phone'), '07811234599');
-  setVal(dash.w, box.querySelector('#n-pos'), 'مكتب الاستنساخ — الحلة شارع 40');
-  /* موديل 2026-10-01: اختيار الوظيفة جزء من عملية البيع — يستهلك الفرصة الأولى */
-  check('نافذة البيع تطلب اختيار الوظيفة (إلزامي) قبل الإتمام', !!box.querySelector('#n-job'));
-  setVal(dash.w, box.querySelector('#n-job'), 'HRC-1043');
-  click(dash.w, box.querySelector('#n-save'));
-  await wait(350);
-}
+check('زر البيع المحذوف غير موجود ولا يظهر إجراء تعبئة للبطاقات',
+  !dash.doc.getElementById('btn-new-app') && !dash.doc.querySelector('[data-app-fill]'));
+const fixtureActivation = D.activateCard(SERIAL, {fullName:'مرتضى كريم جبر الحلفاوي', phone:'07811234599', posName:'مكتب الاستنساخ — الحلة شارع 40', jobCode:'HRC-1043', feePaid:true});
+if (!fixtureActivation.ok) throw new Error('إعداد بيانات الرحلة: ' + fixtureActivation.error);
+dash.w.HRCRefresh && dash.w.HRCRefresh();
+click(dash.w, dash.doc.querySelector('#side-nav button[data-view="applicants"]'));
+await wait(200);
+const attemptsButton = dash.doc.querySelector('[data-app-attempts="' + SERIAL + '"]');
+if (!attemptsButton) throw new Error('تعذر فتح فرص بطاقة الاختبار');
+click(dash.w, attemptsButton); await wait(150);
+const initialModal = lastModal(dash.doc);
+click(dash.w, initialModal.querySelector('#m-print-form')); await wait(200);
 const RECORD = D.getApplicant(SERIAL);
 const TOKEN = D.token(SERIAL);
 /* المخزون: 2 قبل الدفعة + 3 دفعة + 1 بطاقة الزر اليدوية − 1 المبيعة = +3 */
-check('البيع نجح على نفس الباركود المطبوع (' + SERIAL + ')', !!RECORD && RECORD.status === 'active' &&
-  RECORD.serial === SERIAL && D.listBlankCards().length === stockBefore + 3);
-check('بيع البطاقة سُجّل كاشاً مع نقطة البيع', RECORD.feePaid === true &&
+check('بيانات الاختبار محفوظة على نفس الباركود (' + SERIAL + ')', !!RECORD && RECORD.status === 'active' &&
+  RECORD.serial === SERIAL && D.listBlankCards().length === stockBefore + 5);
+check('بيانات البطاقة التجريبية تتضمن نقطة البيع', RECORD.feePaid === true &&
   RECORD.posName === 'مكتب الاستنساخ — الحلة شارع 40');
 check('الصلاحية (30 يوماً) بدأت من لحظة التعبئة لا من إصدار الدفعة',
   Math.round((new Date(RECORD.expiryDate) - new Date(RECORD.issueDate)) / 86400000) === 30 &&
@@ -328,7 +325,7 @@ check('تعبئة البطاقة القديمة لا تُنشئ أي رمز فر
   'رموز: ' + D.getAttempts(SERIAL).map((t) => t.code).join(','));
 console.log('   ℹ  البطاقة: ' + SERIAL + ' | الفرصتان بلا رموز (الباركود وحده)');
 
-/* موديل 2026-10-01: استمارة التوظيف A4 تُطبع تلقائياً جزءاً من عملية البيع —
+/* موديل 2026-10-01: استمارة التوظيف A4 طُبعت من نافذة الفرص —
    هي الوثيقة التي تحمل بيانات الزبون والوظيفة وبيانات صاحب العمل.
    (تُقرأ حاوية الطباعة قبل النقر على طباعة البطاقة الورقية بعدها) */
 const formHtmlPrinted = dash.doc.getElementById('print-root').innerHTML;
@@ -336,11 +333,11 @@ const formHtmlPrinted = dash.doc.getElementById('print-root').innerHTML;
 /* نافذة الفرصتين + طباعة البطاقة الورقية */
 {
   const box = lastModal(dash.doc);
-  check('نافذة «بطاقة التوظيف — الفرصتان» انفتحت بعد البيع', !!box && /الفرصتان/.test(box.textContent) &&
+  check('نافذة «بطاقة التوظيف — الفرصتان» انفتحت من جدول البطاقات', !!box && /الفرصتان/.test(box.textContent) &&
     box.textContent.includes(SERIAL));
   check('زر طباعة استمارة A4 ظاهر بنافذة الفرصتين', !!box.querySelector('#m-print-form'));
   const printBtn = box && box.querySelector('#m-print');
-  check('زر طباعة البطاقة (86×54مم) ظاهر', !!printBtn);
+  check('زر طباعة البطاقة ظاهر', !!printBtn);
   if (printBtn) click(dash.w, printBtn);
   await wait(400);
 }
@@ -353,7 +350,7 @@ const mustForm = [
   ['باركود QR', /<svg[\s\S]*<path/.test(formHtmlPrinted)]
 ];
 const missForm = mustForm.filter(([, c]) => !c).map(([k]) => k);
-check('استمارة A4 طُبعت تلقائياً بعد البيع ببيانات كاملة (' + (mustForm.length - missForm.length) + '/' + mustForm.length + ')',
+check('استمارة A4 طُبعت من نافذة الفرص ببيانات كاملة (' + (mustForm.length - missForm.length) + '/' + mustForm.length + ')',
   missForm.length === 0, missForm.join(' · '));
 check('نافذة الطباعة استُدعيت فعلاً', dash.w.__printed > 0, 'عدد الاستدعاءات ' + dash.w.__printed);
 check('طباعة الاستمارة موثّقة بسجل التدقيق', D.listAudit().some((l) => /طباعة استمارة توظيف/.test(l.action)));
@@ -362,7 +359,7 @@ check('طباعة الاستمارة موثّقة بسجل التدقيق', D.li
 const printHtml = dash.doc.getElementById('print-root').innerHTML;
 const mustPrint = [
   ['الوجهان', (printHtml.match(/class="hrc-card[" ]/g) || []).length === 2],
-  ['الشركة', /شركة الهدف للتوظيف|Al-Hadaf/.test(printHtml)],
+  ['الشركة', /منصة مكسب/.test(printHtml)],
   ['الباركود QR', /<svg[\s\S]*<path/.test(printHtml)],
   ['الرقم التسلسلي', printHtml.includes(SERIAL)],
   ['رمزا الفرصتين الأصليان', printHtml.includes(CHANCES[0].code) && printHtml.includes(CHANCES[1].code)],
@@ -384,11 +381,13 @@ const P = pub.w.HRCStore;
 injectFixture(P,DB1);
 await wait(250);
 
-/* بطاقة فارغة لم تُبع بعد: عرض الزبون يرفضها (منع التزوير ببيع ورق المخزون) */
+/* البطاقة غير المستخدمة تُعرض دون بيانات شخصية أو بدء للصلاحية. */
 {
   const blankLookup = P.lookupCard(blankSerials[1]);
-  check('بطاقة فارغة لم تُبع: عرض الزبون يرفضها برسالة واضحة', blankLookup.ok === false &&
-    /لم تُبع بعد/.test(blankLookup.error), blankLookup.error);
+  const caseCode = blankSerials[1];
+  check('بحث البطاقات بالحروف الكبيرة والصغيرة يعيد نفس النتائج', P.listApplicants({q:caseCode.toLowerCase()}).some(a=>a.serial===caseCode) && P.listApplicants({q:caseCode.toUpperCase()}).some(a=>a.serial===caseCode));
+  check('البطاقة الفارغة معروفة دون بيانات شخصية أو بدء صلاحية', blankLookup.ok === true &&
+    blankLookup.card.status === 'blank' && !blankLookup.card.fullName && !blankLookup.card.issueDate, JSON.stringify(blankLookup));
 }
 
 /* فتح «بطاقتي» من الهيدر وإدخال الباركود */
@@ -446,12 +445,11 @@ step('3ب', 'بوابة صاحب العمل — محذوفة: لا صفحة ول
   const src = await (await import('node:fs/promises')).readFile(new URL('../assets/js/booking.js', import.meta.url), 'utf8');
   check('نافذة «بطاقتي» بلا أي زر أو مسار لصاحب العمل',
     !/bk-emp-open|employerRoute|renderEmployer/.test(src) && !/أنا صاحب العمل/.test(src));
-  /* رابط role=employer القديم لا يفتح صفحة صاحب عمل — يفتح بطاقة الزبون */
-  const legacy = await open('index.html', '?role=employer#card=' + encodeURIComponent(SERIAL), { db: DB2 });
-  await wait(900);
-  const box = lastModal(legacy.doc);
-  check('رابط role=employer القديم يفتح بطاقة الزبون بلا صفحة صاحب عمل',
-    !!box && !/تعريف المتقدم/.test(box.textContent), box ? box.textContent.slice(0, 60) : 'لا نافذة');
+  /* jsdom does not implement navigation; verify the actual route in the
+     source, with browser navigation exercised in home-startup-browser. */
+  const route = src.slice(src.indexOf('function openFromHash()'), src.indexOf('/* التقاط أزرار', src.indexOf('function openFromHash()')));
+  check('روابط البطاقات القديمة تتجه لصفحة التقديم وليس بوابة صاحب العمل',
+    /location\.replace\('apply\.html\?form='/.test(route) && !/role === 'employer'|role === 'pos'/.test(route));
 }
 
 /* حالة «طلب توظيف من صاحب العمل» صارت تُسجَّل من لوحة الموظفين (حُذف مسار
@@ -528,219 +526,15 @@ check('عرض الزبون يبيّن «تم توظيف بإحدى الفرصت�
 
 const DB4 = JSON.stringify(D2.db());
 
-/* ═══ 6) نقطة البيع عبر الموقع + طلب صاحب العمل وإلغاء الشركة ══════════ */
-step(6, 'نقطة البيع عبر الموقع — تعبئة بطاقة فارغة بخطوتين ثم طلب «لم يتم التوظيف» وإلغاء الشركة للتوظيف');
-
-/* بطاقة ثانية من دفعة الجلسة لا تزال فارغة: نقطة البيع تمسح باركودها بأي
-   موبايل فيفتح الموقع «استمارة الزبون» مباشرة (موديل 2026-10-01). */
+/* Prepare a second historical active card fixture for the staff decision flow.
+   This is not an assertion that the deleted sale interface still exists. */
+step(6, 'متابعة قرار الموظف على بطاقة تجريبية');
 const SERIAL2 = blankSerials[1];
-const pub2 = await open('index.html', '?role=pos#card=' + encodeURIComponent(SERIAL2), { db: DB4 });
-await wait(900);
-{
-  const box = lastModal(pub2.doc);
-  check('مسح باركود بطاقة فارغة يفتح «استمارة الزبون» لنقطة البيع',
-    !!box && /استمارة الزبون|الخطوة 1 من 6/.test(box.textContent) && !!box.querySelector('#bk-posName'));
-  check('المعالج الخطوي: الخطوة الأولى تعرض معلومة واحدة فقط (نقطة البيع) وبلا بقية الحقول',
-    !!box.querySelector('#bk-posName') && !box.querySelector('#bk-fullName') &&
-    !box.querySelector('#bk-phone') && !box.querySelector('#bk-job') &&
-    /الخطوة 1 من 6/.test(box.textContent));
-  /* إلزامي الاسم: «التالي» بحقل فاضغ يوقف ويظهر الخطأ */
-  click(pub2.w, box.querySelector('#bk-pos-next'));
-  await wait(150);
-  check('«التالي» بحقل إلزامي فاضغ يوقف مع رسالة خطأ واضحة',
-    pub2.w.HRCBooking.state().posStep === 1 &&
-    box.querySelector('[data-bk-err="posName"]').style.display !== 'none');
-  setVal(pub2.w, box.querySelector('#bk-posName'), 'مكتب الرافدين — المحاويل');
-  click(pub2.w, box.querySelector('#bk-pos-next'));
-  await wait(250);
-}
-{
-  const box = lastModal(pub2.doc);
-  check('خطوة 2: الاسم الكامل بمعلومة واحدة وزر «التالي»',
-    pub2.w.HRCBooking.state().posStep === 2 && !!box.querySelector('#bk-fullName') &&
-    !box.querySelector('#bk-phone') && /الخطوة 2 من 6/.test(box.textContent));
-  setVal(pub2.w, box.querySelector('#bk-fullName'), 'سجاد حسن الموسوي');
-  click(pub2.w, box.querySelector('#bk-pos-next'));
-  await wait(250);
-}
-{
-  const box = lastModal(pub2.doc);
-  check('خطوة 3: رقم الهاتف', pub2.w.HRCBooking.state().posStep === 3 && !!box.querySelector('#bk-phone'));
-  setVal(pub2.w, box.querySelector('#bk-phone'), '07709876543');
-  click(pub2.w, box.querySelector('#bk-pos-next'));
-  await wait(250);
-}
-{
-  const box = lastModal(pub2.doc);
-  check('خطوة 4: العنوان (اختياري — يمشي فاضغاً)', pub2.w.HRCBooking.state().posStep === 4 && !!box.querySelector('#bk-address'));
-  setVal(pub2.w, box.querySelector('#bk-address'), 'المحاويل - المركز');
-  click(pub2.w, box.querySelector('#bk-pos-next'));
-  await wait(250);
-}
-{
-  const box = lastModal(pub2.doc);
-  check('خطوة 5: الجنس وتاريخ الميلاد (اختيارية)', pub2.w.HRCBooking.state().posStep === 5 &&
-    !!box.querySelector('#bk-gender') && !!box.querySelector('#bk-dob'));
-  click(pub2.w, box.querySelector('#bk-pos-next'));
-  await wait(250);
-}
-{
-  const box = lastModal(pub2.doc);
-  check('خطوة 6: متصفح وظائف ببطاقات وفلاتر (بحث + منطقة + دوام) — بلا قائمة منسدلة',
-    pub2.w.HRCBooking.state().posStep === 6 && !!box.querySelector('#bk-jlist') &&
-    !!box.querySelector('#bk-jq') && !!box.querySelector('#bk-jr') && !!box.querySelector('#bk-js') &&
-    box.querySelectorAll('[data-bk-pick]').length >= 3 && !box.querySelector('#bk-fullName'));
-  check('بطاقات الوظائف المتاحة تعرض العنوان والكود والمنطقة والأجر — بلا بيانات صاحب عمل',
-    (() => { const c = box.querySelector('[data-bk-pick]'); const t = c.textContent;
-      return /HRC-10\d\d/.test(c.getAttribute('data-bk-pick')) && /\d{3}.\d{3}/.test(t) && !t.includes('07701234567'); })());
-  click(pub2.w, box.querySelector('#bk-pos-next'));
-  await wait(150);
-  check('«التالي» بلا وظيفة مختارة يوقف مع خطأ', pub2.w.HRCBooking.state().posStep === 6 &&
-    box.querySelector('[data-bk-err="job"]').style.display !== 'none');
-  /* الفلترة الحية: البحث يقصّر القائمة فورياً */
-  setVal(pub2.w, box.querySelector('#bk-jq'), 'باريستا');
-  await wait(200);
-  check('البحث يفلتر البطاقات فورياً (باريستا وحدها)',
-    box.querySelectorAll('[data-bk-pick]').length === 1 &&
-    !!box.querySelector('[data-bk-pick="HRC-1046"]'));
-  setVal(pub2.w, box.querySelector('#bk-jq'), '');
-  await wait(200);
-  check('تصفير البحث يعيد كل الوظائف المتاحة', box.querySelectorAll('[data-bk-pick]').length >= 3);
-  /* الاختيار بالضغط على البطاقة */
-  click(pub2.w, box.querySelector('[data-bk-pick="HRC-1046"]'));
-  await wait(200);
-  check('اختيار البطاقة يميزها بالذهبي مع ملخص فوري (الأجر والمحافظة والدوام)',
-    box.querySelector('[data-bk-pick="HRC-1046"]').classList.contains('is-picked') &&
-    /باريستا/.test(box.querySelector('#bk-job-sum').textContent) &&
-    /بابل/.test(box.querySelector('#bk-job-sum').textContent),
-    'picked=' + box.querySelector('[data-bk-pick="HRC-1046"]').classList.contains('is-picked') +
-    ' | sum=' + (box.querySelector('#bk-job-sum') || {}).textContent);
-  click(pub2.w, box.querySelector('#bk-pos-next'));
-  await wait(350);
-}
-{
-  /* رجوع من المراجعة → خطوة الوظيفة → رجوع خطوة خطوة → تقدم ثانية */
-  const box = lastModal(pub2.doc);
-  check('زر «رجوع للتعديل» يعيد لآخر خطوة (الوظيفة)', !!box.querySelector('#bk-pos-back'));
-  click(pub2.w, box.querySelector('#bk-pos-back'));
-  await wait(200);
-  check('الرجوع من المراجعة يفتح متصفح الوظائف والاختيار محفوظ (بطاقة مميزة)',
-    pub2.w.HRCBooking.state().view === 'posfill' &&
-    pub2.w.HRCBooking.state().posStep === 6 &&
-    lastModal(pub2.doc).querySelector('[data-bk-pick="HRC-1046"]').classList.contains('is-picked'));
-  click(pub2.w, lastModal(pub2.doc).querySelector('#bk-pos-back'));
-  await wait(200);
-  check('«رجوع» داخل المعالج يرجع خطوة ويحفظ المسوّدة',
-    pub2.w.HRCBooking.state().posStep === 5 &&
-    lastModal(pub2.doc).querySelector('#bk-gender').value === 'ذكر');
-  click(pub2.w, lastModal(pub2.doc).querySelector('#bk-pos-next'));
-  await wait(200);
-  click(pub2.w, lastModal(pub2.doc).querySelector('#bk-pos-next'));
-  await wait(350);
-}
-{
-  const box = lastModal(pub2.doc);
-  const text = box ? box.textContent : '';
-  check('شاشة «مراجعة الزبون» تعرض بياناته ووظيفته المختارة',
-    /مراجعة الزبون/.test(text) && text.includes('سجاد حسن الموسوي') &&
-    text.includes('07709876543') && text.includes('HRC-1046'));
-  check('المراجعة لا تكشف أي بيانات لصاحب العمل قبل ضغطة «إتمام»',
-    !/مكان المقابلة/.test(text) && !text.includes('07751234567') && !text.includes('كافيه دجلة'));
-  const confirmBtn = lastModal(pub2.doc).querySelector('#bk-pos-confirm');
-  check('زر «إتمام» بيد الزبون نفسه', !!confirmBtn && /إتمام/.test(confirmBtn.textContent));
-  if (confirmBtn) click(pub2.w, confirmBtn);
-  await wait(1000);   /* يشمل الطباعة التلقائية لاستمارة A4 ببيانات صاحب العمل */
-}
-{
-  const P2 = pub2.w.HRCStore;
-  const a2 = P2.getApplicant(SERIAL2);
-  check('تفعيل البطاقة من الموقع نجح على نفس الباركود المطبوع', a2 && a2.status === 'active' &&
-    a2.fullName === 'سجاد حسن الموسوي' && a2.posName === 'مكتب الرافدين — المحاويل');
-  check('اختيار الوظيفة استهلك الفرصة الأولى بحجز 24 ساعة', P2.getAttempts(SERIAL2)[0].slotStatus === 'reserved' &&
-    P2.getAttempts(SERIAL2)[0].jobCode === 'HRC-1046' && P2.getJob('HRC-1046').status === 'reserved');
-  check('استمارة A4 طُبعت تلقائياً بنفس باركود البطاقة', pub2.w.__printed > 0 &&
-    pub2.doc.getElementById('print-root').innerHTML.includes(SERIAL2) &&
-    /استمارة توظيف/.test(pub2.doc.getElementById('print-root').innerHTML));
-  check('شاشة النجاح تعرض الاستمارة نفسها للعين — ببيانات صاحب العمل كاملة',
-    !!lastModal(pub2.doc).querySelector('.hrc-form') &&
-    lastModal(pub2.doc).textContent.includes('سجاد حسن الموسوي') &&
-    lastModal(pub2.doc).textContent.includes('كافيه دجلة') &&
-    /مكان المقابلة/.test(lastModal(pub2.doc).textContent));
-  check('بيع نقطة البيع من الموقع موثّق بسجل التدقيق',
-    P2.listAudit().some((l) => /بيع وتعبئة بطاقة فارغة/.test(l.action)));
-}
+const pub2 = await open('index.html');
+injectFixture(pub2.w.HRCStore, DB4);
+const secondFixture = pub2.w.HRCStore.activateCard(SERIAL2, {fullName:'سجاد حسن الموسوي', phone:'07709876543', posName:'بيانات اختبار', jobCode:'HRC-1046'});
+if (!secondFixture.ok) throw new Error('إعداد البطاقة الثانية: ' + secondFixture.error);
 const DB5 = JSON.stringify(pub2.w.HRCStore.db());
-
-/* ═══ ج10) سباق الوظيفة: حُجزت من لحظة اختيارها حتى «إتمام» ═══════════════
-   بيع متزامن (صفحة بقيت مفتوحة أو تبويب ثانٍ) يفوز بالوظيفة — وفشل «إتمام»
-   يجب أن يشرح سببه داخل الشاشة لا بتوست يختفي، وينظف الاختيار العالق،
-   ويتعافى الزبون باختيار وظيفة أخرى فوراً. */
-{
-  const P2 = pub2.w.HRCStore, B2 = pub2.w.HRCBooking;
-  /* إنشاء البطاقات تجهيزاً للاختبار يتطلب جلسة مدير (قرار 2026-10-10) */
-  Object.defineProperty(pub2.w, 'sessionStorage', { configurable: true, value: staffStorage('admin') });
-  const dbgR = P2.createCardWithSerial(P2.suggestSerial(), '');
-  if (!dbgR.ok) throw new Error('إعداد الاختبار: ' + dbgR.error);
-  const sRace = dbgR.card.serial;
-  const sOther = P2.createCardWithSerial(P2.suggestSerial(), '').card.serial;
-  const sThird = P2.createCardWithSerial(P2.suggestSerial(), '').card.serial;
-  delete pub2.w.sessionStorage;   /* إعادة الزائر إلى حالته الطبيعية */
-  B2.open({ serial: sRace, fromHash: true });
-  await wait(350);
-  const bx = () => lastModal(pub2.doc);
-  for (const [id, v] of [['bk-posName', 'نقطة السباق'], ['bk-fullName', 'زبون السباق'], ['bk-phone', '07812121212']]) {
-    setVal(pub2.w, bx().querySelector('#' + id), v);
-    click(pub2.w, bx().querySelector('#bk-pos-next'));
-    await wait(220);
-  }
-  for (let i = 0; i < 2; i++) { click(pub2.w, bx().querySelector('#bk-pos-next')); await wait(220); }
-  check('رحلة السباق وصلت خطوة الوظيفة', B2.state().posStep === 6 && !!bx().querySelector('[data-bk-pick="HRC-1047"]'));
-  click(pub2.w, bx().querySelector('[data-bk-pick="HRC-1047"]'));
-  await wait(250);
-  click(pub2.w, bx().querySelector('#bk-pos-next'));
-  await wait(250);
-  check('وصل المراجعة بوظيفة مختارة', B2.state().view === 'posreview');
-  /* «تبويب آخر» يبيع نفس الوظيفة أولاً — الزبون الأول لا يعلم */
-  const rOther = P2.activateCard(sOther, { posName: 'نقطة أخرى', fullName: 'زبون آخر', phone: '07813131313', jobCode: 'HRC-1047' });
-  check('بيع متزامن على HRC-1047 ينجح للبطاقة الأخرى أولاً', rOther && rOther.ok === true, rOther && rOther.error);
-  click(pub2.w, bx().querySelector('#bk-pos-confirm'));
-  await wait(550);
-  check('فشل «إتمام» لوظيفة محجوزة يعيد لخطوة الوظيفة والسبب داخل الشاشة — لا توستاً عابراً',
-    B2.state().view === 'posfill' && B2.state().posStep === 6 &&
-    bx().textContent.includes('تعذّر إتمام البيع') && bx().textContent.includes('غير متاحة'));
-  check('الوظيفة المحجوزة انحذفت من الاختيار — بلا بطاقة مختارة وبلا ملخص',
-    !bx().querySelector('[data-bk-pick].is-picked') && !bx().querySelector('#bk-job-sum').textContent.trim());
-  /* التعافي: يختار وظيفة متاحة أخرى فيصل المراجعة من جديد */
-  click(pub2.w, bx().querySelector('[data-bk-pick="HRC-1048"]'));
-  await wait(250);
-  click(pub2.w, bx().querySelector('#bk-pos-next'));
-  await wait(250);
-  check('التعافي: اختيار وظيفة أخرى يوصل المراجعة ويختفي خطأ السباق',
-    B2.state().view === 'posreview' && !bx().textContent.includes('تعذّر إتمام البيع'));
-  /* حارس «التالي»: وظيفة حُجزت بعد الاختيار لا تمر للمراجعة أصلاً */
-  click(pub2.w, bx().querySelector('#bk-pos-back'));
-  await wait(250);
-  check('«رجوع» أعاده لخطوة الوظيفة والاختيار محفوظ',
-    B2.state().posStep === 6 && !!bx().querySelector('[data-bk-pick].is-picked'));
-  const rThird = P2.activateCard(sThird, { posName: 'نقطة ثالثة', fullName: 'زبون ثالث', phone: '07814141414', jobCode: 'HRC-1048' });
-  check('حجز HRC-1048 من بطاقة ثالثة ينجح', rThird && rThird.ok === true, rThird && rThird.error);
-  click(pub2.w, bx().querySelector('#bk-pos-next'));
-  await wait(300);
-  const errJob = bx().querySelector('[data-bk-err="job"]');
-  /* عنصر خطأ الوظيفة يوجد فقط حين تُرسم قائمة الوظائف — فإن نفدت كل الوظائف
-     فصندوق السبب أعلى الشاشة هو الرسالة (لا قائمة كي يحملها خطأ الوظيفة) */
-  const pickerShown = !!bx().querySelector('#bk-jlist');
-  check('حارس «التالي» يوقف وظيفة حُجزت بعد الاختيار — والسبب داخل الشاشة',
-    B2.state().posStep === 6 && B2.state().view === 'posfill' &&
-    bx().textContent.includes('لم تعد متاحة') &&
-    (!pickerShown || (errJob && errJob.style.display !== 'none')));
-  B2.close();
-}
-
-/* رفض التوظيف من صاحب العمل — حُذف مسار صاحب العمل من الويب (2026-10-25)،
-   فصار الموظف يسجّل الرفض من اللوحة بعد إبلاغ صاحب العمل هاتفياً. نجهّز هنا
-   الحالة نفسها كما تُسجَّل: الفرصة «حرجة» بقرار رفض وسبب مكتوب، والوظيفة
-   «معلّقة/حرجة» بانتظار قرار الشركة (إرجاع متاحة أو حذف). */
 const DB5R = (function () {
   const snapshot = JSON.parse(JSON.stringify(pub2.w.HRCStore.db()));
   const REASON = 'العدد مكتمل ولا حاجة لمزيد من العاملين';
@@ -815,63 +609,9 @@ check('الوظيفة HRC-1047 حُذفت نهائياً بقرار الموظف
 check('كل قرارات الرحلة موثقة بسجل التدقيق (' + D3.listAudit().length + ' قيداً)',
   D3.listAudit().some((l) => /توظيف/.test(l.action)) && D3.listAudit().some((l) => /رفض|إرجاع|حذف/.test(l.action)));
 
-/* ── 6ب) بيع بلا وظيفة: البطاقة تُباع بفرصتين فارغتين والزبون يختار وظيفتَيه ──
-   قرار 2026-10-06: اختيار الوظيفة عند البيع صار اختيارياً — من تخطّاها يعيّن
-   صاحبُ البطاقة وظيفتَي فرصتيه بنفسه من صفحة باركود بطاقته (apply.html). */
-step('6ب', 'بيع بطاقة بلا وظيفة — فرصتان فارغتان يختارهما صاحب البطاقة بنفسه');
-const SERIAL_SKIP = blankSerials[2];
-const pubSkip = await open('index.html', '?role=pos#card=' + encodeURIComponent(SERIAL_SKIP), { db: JSON.stringify(D3.db()) });
-await wait(900);
-{
-  const box = lastModal(pubSkip.doc);
-  check('مسح باركود بطاقة فارغة ثالثة يفتح استمارة نقطة البيع', !!box && !!box.querySelector('#bk-posName'));
-  setVal(pubSkip.w, box.querySelector('#bk-posName'), 'مكتب بابل — المركز');
-  click(pubSkip.w, box.querySelector('#bk-pos-next')); await wait(200);
-  setVal(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-fullName'), 'ليلى عبد الأمير حسن');
-  click(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-pos-next')); await wait(200);
-  setVal(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-phone'), '07711223344');
-  click(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-pos-next')); await wait(200);
-  click(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-pos-next')); await wait(200);  /* العنوان اختياري */
-  click(pubSkip.w, lastModal(pubSkip.doc).querySelector('#bk-pos-next')); await wait(250);  /* الجنس والميلاد */
-}
-{
-  const box = lastModal(pubSkip.doc);
-  check('خطوة الوظيفة صارت اختيارية بعنوان واضح وخيار تخطٍّ ظاهر',
-    /اختيار الوظيفة \(اختياري\)/.test(box.textContent) && !!box.querySelector('#bk-pos-skip') &&
-    /تخطّي/.test(box.querySelector('#bk-pos-skip').textContent));
-  click(pubSkip.w, box.querySelector('#bk-pos-skip'));
-  await wait(300);
-}
-{
-  const box = lastModal(pubSkip.doc);
-  check('التخطّي ينقل لمراجعة الزبون بلا وظيفة مع توضيح المصير (فرصتان فارغتان)',
-    !!box && /بلا اختيار وظيفة/.test(box.textContent) && /فرصتين فارغتين/.test(box.textContent) &&
-    !/HRC-1046/.test(box.textContent));
-  check('المراجعة لا تطالب بوظيفة ولا تعرض بيانات صاحب عمل', !/مكان المقابلة/.test(box.textContent));
-  click(pubSkip.w, box.querySelector('#bk-pos-confirm'));
-  await wait(600);
-}
-{
-  const P3 = pubSkip.w.HRCStore;
-  const a3 = P3.getApplicant(SERIAL_SKIP);
-  const att3 = P3.getAttempts(SERIAL_SKIP);
-  check('البطاقة فُعّلت بيعاً وبلا وظيفة (الحالة active)', !!a3 && a3.status === 'active', a3 && a3.status);
-  check('الفرصتان بقيتا فارغتين — لم تُستهلك أي فرصة عند البيع',
-    att3.length === 2 && att3.every((t) => t.slotStatus === 'empty') && P3.attemptsLeft(SERIAL_SKIP) === 2,
-    att3.map((t) => t.slotStatus).join(','));
-  check('لا وظيفة محجوزة من هذا البيع', P3.pendingActions().holds.every((h) => h.serial !== SERIAL_SKIP));
-  check('البيع بلا وظيفة موثّق بسجل التدقيق كما هو (بلا اختيار وظيفة)',
-    P3.listAudit().some((l) => /بيع وتعبئة بطاقة فارغة/.test(l.action) && /السERIAL|ليلى عبد الأمير/.test(l.details || '') &&
-      /بلا اختيار وظيفة/.test(l.details || '')));
-  const box = lastModal(pubSkip.doc);
-  check('شاشة البيع تُخبر نقطة البيع أن الزبون يختار وظيفتَيه بنفسه',
-    !!box && /البطاقة صارت نشطة بفرصتين فارغتين/.test(box.textContent) && /يختار وظيفتَيه/.test(box.textContent),
-    box ? box.textContent.slice(0, 160) : '');
-  check('بلا زر طباعة استمارة A4 — لا وظيفة بعد', !box.querySelector('#bk-pos-print'));
-  const closeBtn = box.querySelector('#bk-pos-close');
-  if (closeBtn) { click(pubSkip.w, closeBtn); await wait(200); }
-}
-
+/* The removed sale wizard is not part of the current customer journey.
+   Blank-card first application and failures are tested against SQL in
+   card-validity.mjs and the real application UI in apply-flow.mjs. */
 const DB6 = JSON.stringify(D3.db());
 
 /* ═══ 7) صفحة التحقق: الموظف يفحص البطاقة — والزائر محجوب ═══════════════ */
@@ -911,7 +651,7 @@ await wait(250);
 }
 
 /* ═══ 8) إعادة طباعة البطاقة من الموقع العام (إثبات الحيازة) ═════════════ */
-step(8, 'إعادة الطباعة — الزبون يعيد طباعة بطاقته برمز الفرصة (إثبات الحيازة)');
+step(8, 'إعادة الطباعة — الزبون يعيد طباعة بطاقته بالباركود');
 
 const pubCard = await open('index.html');
 const P3C = pubCard.w.HRCStore;
@@ -930,7 +670,7 @@ await wait(150);
 {
   const box = lastModal(pubCard.doc);
   const rp = box.querySelector('#bk-reprint');
-  check('زر «إعادة طباعة البطاقة» ظاهر حتى بعد استنفاد الفرصتين', !!rp);
+  check('زر إعادة طباعة الاستمارة ظاهر حتى بعد استنفاد الفرصتين', !!rp);
   if (rp) { click(pubCard.w, rp); await wait(250); }
 }
 {
@@ -938,16 +678,9 @@ await wait(150);
   /* بعد إلغاء رموز الفرص: البطاقة بلا رمز تحقق → الطباعة بالباركود مباشرة */
   check('بطاقة بلا رمز تحقق: لا تطلب شاشة إعادة الطباعة أي رمز',
     !box.querySelector('#bk-rcode') && /لا حاجة لأي رمز/.test(box.textContent));
-  click(pubCard.w, box.querySelector('#bk-print'));
-  await wait(450);
+  check('لا يوجد زر طباعة البطاقة للزبون', !box.querySelector('#bk-print'));
 }
-const reprintHtml = pubCard.doc.getElementById('print-root').innerHTML;
-check('إعادة طباعة البطاقة القديمة نجحت: وجهان وباركود بلا أي رموز — وبلا اسم زبون',
-  (reprintHtml.match(/class="hrc-card[" ]/g) || []).length === 2 && reprintHtml.includes(SERIAL) &&
-  !/رمز الفرصة/.test(reprintHtml) && !reprintHtml.includes('مرتضى كريم جبر'));
-check('نافذة الطباعة استُدعيت لإعادة الطباعة', pubCard.w.__printed > 0, 'عدد الاستدعاءات ' + pubCard.w.__printed);
-check('عدّاد طباعة البطاقة زاد (' + printedBefore + ' → ' + P3C.getApplicant(SERIAL).printedCount + ')',
-  P3C.getApplicant(SERIAL).printedCount > printedBefore);
+check('عداد طباعة البطاقة لم يتغير', P3C.getApplicant(SERIAL).printedCount === printedBefore);
 
 /* إعادة طباعة استمارة التوظيف A4 بنفس إثبات الحيازة (رمز الفرصة) */
 {
@@ -986,5 +719,5 @@ console.log('\n' + '═'.repeat(72));
 console.log('  النتيجة:  ✅ ' + pass + ' ناجح   |   ❌ ' + fail + ' فاشل');
 console.log('═'.repeat(72));
 if (problems.length) { console.log('\n  الإخفاقات:'); problems.forEach((p) => console.log('   • ' + p)); }
-console.log(fail ? '' : '\n  🎉 رحلة بطاقة التوظيف كاملة تعمل من البيع حتى الإرجاع بلا أي خلل.\n');
+console.log(fail ? '' : '\n  اكتملت فحوص رحلة الموظف والبطاقة ببيانات اختبار محلية.\n');
 process.exit(fail ? 1 : 0);

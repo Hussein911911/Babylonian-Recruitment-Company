@@ -25,9 +25,10 @@ try {
    await images.first().waitFor();
    assert.equal(await images.count(),8);checks++;
    for(const image of await images.all()) {
-    await image.scrollIntoViewIfNeeded();
-    await image.evaluate(img=>img.decode());
-    assert.equal(await image.evaluate(img=>img.complete&&img.naturalWidth>0&&img.src.startsWith('data:image/svg+xml;base64,')),true);checks++;
+    // Some demo cards are intentionally hidden on mobile; explicitly decode
+    // their embedded images without changing the site's layout.
+    await image.evaluate(img=>{img.loading='eager'; return img.decode()});
+    assert.equal(await image.evaluate(img=>img.complete&&img.naturalWidth>0&&/^data:image\/(?:webp|svg\+xml);base64,/.test(img.src)),true);checks++;
    }
    assert.deepEqual(external,[],'Offline demo must not attempt HTTP(S) requests');checks++;
    assert.deepEqual(errors,[],'No runtime errors');checks++;

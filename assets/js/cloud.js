@@ -161,18 +161,19 @@
    *  جدول الوظائف حتى تعمل الواجهة بلا تغيير (كانت تبنيها من CFG.seed محلياً).
    * ----------------------------------------------------------------------------- */
   function attemptFromDb(r, jobsById, jobsByCode, staffById) {
-    var job = (r.job_id && jobsById[r.job_id]) ||
-      (r.job_code && jobsByCode[r.job_code]) || null;
+    var job = (r.job_id && jobsById[r.job_id]) || null;
+    var snap = r.job_snapshot && r.job_snapshot.code === r.job_code ? r.job_snapshot : null;
     return {
       id: r.id,
       serial: r.serial,
       no: n(r.attempt_no),
       jobId: r.job_id || null,
       jobCode: r.job_code || (job ? job.code : null),
-      jobTitle: job ? job.title : null,
-      location: job ? (job.governorate || '') : null,
-      employerName: job ? job.employer.name : null,
-      employerPhone: job ? job.employer.phone : null,
+      jobTitle: job ? job.title : snap && snap.title,
+      location: job ? (job.governorate || '') : snap && snap.governorate,
+      employerName: job ? job.employer.name : snap && snap.employer_name,
+      employerPhone: job ? job.employer.phone : snap && snap.employer_phone,
+      jobSnapshot: snap,
       vacancyNo: r.vacancy_no || null,
       slotStatus: r.slot_status || 'empty',
       code: r.chance_code || null,          /* تاريخي: رموز الفرص أُلغيت ولا تُطبع */
@@ -673,7 +674,7 @@
    * ------------------------------------------------------------------------- */
   function verifyForm(client, serial, token) {
     if (!serial) return Promise.resolve({ ok: false, code: 'bad_input', error: 'أدخل رقم الاستمارة' });
-    return rpcCall(client, 'verify_form', { p_serial: String(serial).trim(), p_token: token || null })
+    return rpcCall(client, 'verify_form', { p_serial: String(serial).trim().toUpperCase(), p_token: token || null })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر التحقق' };
@@ -743,10 +744,9 @@
         replaceIn(db.jobs, job, function (x) { return x.id; });
         /* تحديث البيانات المُسطّحة في المحاولات المرتبطة بهذه الوظيفة */
         db.attempts.forEach(function (a) {
-          if (a.jobId === job.id || (a.jobCode && a.jobCode === job.code)) {
+          if (a.jobId === job.id) {
             a.jobTitle = job.title; a.location = job.governorate || '';
             a.employerName = job.employer.name; a.employerPhone = job.employer.phone;
-            if (!a.jobId) a.jobId = job.id;
           }
         });
       }
@@ -824,7 +824,7 @@
   /* عرض آمن للبطاقة بالباركود: بلا رموز فرص وبلا بيانات صاحب العمل */
   function lookupCardRpc(client, serial) {
     if (!serial) return Promise.resolve({ ok: false, error: 'أدخل باركود البطاقة' });
-    return rpcCall(client, 'lookup_card', { p_serial: String(serial).trim() })
+    return rpcCall(client, 'lookup_card', { p_serial: String(serial).trim().toUpperCase() })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
@@ -856,6 +856,13 @@
       });
   }
 
+  // Only the specified card's already-used opportunity is returned by SQL.
+  function customerApplicationRpc(client, serial, no) {
+    return rpcCall(client, 'customer_application_details', {p_serial: String(serial || '').trim().toUpperCase(), p_attempt_no: Number(no)})
+      .then(function (r) { return r && r.data && !r.error ? r.data : {ok:false, error:(r && r.error && r.error.message) || 'تعذّر تحميل تفاصيل التقديم'}; })
+      .catch(function () { return {ok:false, error:'تعذّر الاتصال لتحميل تفاصيل التقديم'}; });
+  }
+
   /* التقديم الذاتي: الباركود + الوظيفة (رموز الفرص أُلغيت 2026-10-25) */
   /* استخدام فرصة: الباركود وحده كافٍ — أُلغيت رموز الفرص (2026-10-25).
      يُمرَّر p_code فارغاً فتُستهلك أول فرصة فارغة بالترتيب. */
@@ -864,7 +871,7 @@
     if (!serial || !jobCode)
       return Promise.resolve({ ok: false, error: 'أكمل الباركود والوظيفة' });
     return rpcCall(client, 'use_chance', {
-      p_serial: String(serial).trim(), p_code: String(code || '').trim(), p_job_code: String(jobCode).trim()
+      p_serial: String(serial).trim().toUpperCase(), p_code: String(code || '').trim(), p_job_code: String(jobCode).trim()
     })
       .then(function (res) {
         if (res && res.error) {
@@ -883,7 +890,7 @@
   /* حمولة الطباعة المحمية برمز مستقل، أو رمز فرصة للبطاقات القديمة فقط. */
   function verifyCardCodeRpc(client, serial, code) {
     if (!serial || !code) return Promise.resolve({ ok: false, error: 'أدخل الباركود ورمز التحقق' });
-    return rpcCall(client, 'verify_card_code', { p_serial: String(serial).trim(), p_code: String(code).trim() })
+    return rpcCall(client, 'verify_card_code', { p_serial: String(serial).trim().toUpperCase(), p_code: String(code).trim() })
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
@@ -925,7 +932,7 @@
   function activateCardRpc(client, serial, data) {
     if (!serial) return Promise.resolve({ ok: false, error: 'أدخل باركود البطاقة' });
     return rpcCall(client, 'activate_card', {
-      p_serial: String(serial).trim(),
+      p_serial: String(serial).trim().toUpperCase(),
       p_data: data || {}
     })
       .then(function (res) {
@@ -956,7 +963,7 @@
     chanceUsed:chanceUsed,rememberChance:rememberChance,clearChanceRegistry:clearChanceRegistry, rpcCall:rpcCall, buildDb: buildDb, fetchAll: fetchAll, loadWorkspaceReports: loadWorkspaceReports, loadAuditLog: loadAuditLog, TABLES: TABLES,
 
     fetchPublicJobs: fetchPublicJobs, readPublicCache: readPublicCache, clearPublicCache: clearPublicCache, verifyForm: verifyForm,
-    lookupCard: lookupCardRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,
+    lookupCard: lookupCardRpc, customerApplication: customerApplicationRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,
     activateCard: activateCardRpc,
     requestForm: requestForm,
     applyChange: applyChange, subscribeAll: subscribeAll,

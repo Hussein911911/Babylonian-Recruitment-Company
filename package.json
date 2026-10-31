@@ -9,6 +9,16 @@
     "test": "node tests/smoke.mjs",
     "test:backup": "node tests/backup.mjs",
     "test:apply": "node tests/apply-flow.mjs",
+    "test:job-image-cache-browser": "node tests/job-image-cache-browser.mjs",
+    "test:job-image-ui-browser": "node tests/job-image-ui-browser.mjs",
+    "test:jobs-skeleton-browser": "node tests/jobs-skeleton-browser.mjs",
+    "test:home-startup-browser": "node tests/home-startup-browser.mjs",
+    "test:apply-mobile-browser": "node tests/apply-mobile-browser.mjs",
+    "test:customer-application": "node tests/customer-application-sql.mjs && node tests/customer-snapshot-local.mjs",
+    "test:customer-application-browser": "node tests/customer-application-browser.mjs",
+    "test:card-scanner": "node tests/card-scanner.mjs",
+    "test:brand": "node tests/brand-consistency.mjs",
+    "test:card-validity": "node tests/card-validity.mjs",
     "test:job-filters": "node tests/job-filters.mjs",
     "test:card-identity": "node tests/card-identity.mjs",
     "test:apply-navigation": "node tests/apply-navigation.mjs",
@@ -55,12 +65,16 @@
     "test:workspace-layout": "node tests/horizontal-workspace-browser.mjs",
     "test:offline-images": "node tests/offline-images-browser.mjs",
     "test:capacity": "node tests/capacity-three-staff.mjs",
-    "test:capacity-browser": "node tests/capacity-browser.mjs"
+    "test:capacity-browser": "node tests/capacity-browser.mjs",
+    "test:mobile-jobs-browser": "node tests/mobile-jobs-browser.mjs",
+    "test:manual-card-browser": "node tests/manual-card-browser.mjs",
+    "test:apply-card-details-browser": "node tests/apply-card-details-browser.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",
     "jsdom": "^26.1.0",
     "jsqr": "^1.4.0",
+    "pdfjs-dist": "^6.4.299",
     "qrcode-generator": "^1.4.4"
   },
   "license": "UNLICENSED"

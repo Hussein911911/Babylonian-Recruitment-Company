@@ -118,7 +118,8 @@
 
     <!-- مراجع صريحة لأيقونات التصنيفات التي يبنيها الكود ديناميكياً -->
     <svg width="0" height="0" aria-hidden="true" style="position:absolute;opacity:0"><use href="#i-bag" xlink:href="#i-bag"/><use href="#i-list" xlink:href="#i-list"/><use href="#i-chart" xlink:href="#i-chart"/><use href="#i-server" xlink:href="#i-server"/><use href="#i-sparkle" xlink:href="#i-sparkle"/></svg>
-    <div class="jobs-grid" id="jobs-grid"></div>
+    <p id="jobs-loading-status" class="jobs-loading-status" role="status" aria-live="polite"></p>
+    <div class="jobs-grid" id="jobs-grid" aria-busy="false"></div>
     <div class="empty-state hidden" id="jobs-empty">
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
       <h3>لا توجد وظائف مطابقة</h3>
@@ -146,7 +147,7 @@
 </section>
 
 <!-- ============================== بطاقتي — إدخال الرقم أو المسح ثم التفاصيل ============================== -->
-<section class="section app-section card-page" id="card" data-page="card">
+<section class="section app-section card-page" id="card" data-page="card" hidden>
   <div class="container">
     <!-- (١) شاشة الإدخال -->
     <div class="cp-entry" id="cp-entry">
@@ -172,7 +173,7 @@
           <p class="cp-err" id="cp-err" role="alert"></p>
         </form>
         <p class="cp-note"><svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
-          بياناتك تُعرض مختصرة (اسم وهاتف مقنّعان) — التفاصيل الكاملة على استمارتك المطبوعة.</p>
+          رقم البطاقة يتيح عرض تفاصيل التقديم وطباعة الاستمارة، فاحتفظ به ولا تشاركه مع الآخرين.</p>
       </div>
     </div>
 
@@ -257,7 +258,7 @@
       <div class="service reveal" data-d="360">
         <svg class="ic"><use href="#i-lock" xlink:href="#i-lock"/></svg>
         <h3>حفظ الخصوصية</h3>
-        <p>بيانات صاحب العمل لا تظهر للعامة.</p>
+        <p>نحافظ على خصوصية بيانات الباحثين عن عمل.</p>
       </div>
     </div>
   </div>
@@ -302,12 +303,12 @@
           <div class="contact-card" style="text-align:right">
             <div class="ic"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg></div>
             <h3>بطاقة التوظيف</h3>
-            <p>افتح <b>«بطاقتي»</b> بالباركود لمتابعة فرصك والتقديم وإعادة طباعة البطاقة أو <b>استمارة A4</b>.</p>
+            <p>افتح <b>«بطاقتي»</b> بالباركود لمتابعة فرصك والتقديم وإعادة طباعة <b>استمارة التوظيف A4</b>.</p>
           </div>
           <div class="contact-card" style="text-align:right">
             <div class="ic"><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg></div>
-            <h3>لصاحب العمل</h3>
-            <p>تستلم استمارة المتقدم مطبوعة بباركود بطاقته، وتبلّغ الشركة بنتيجة المقابلة وهي التي تثبّتها في ملف المرشح.</p>
+            <h3>متابعة التقديم</h3>
+            <p>تابع حالة فرصك وتواصل مع الشركة للاستفسار عن طلبك ونتيجة المقابلة.</p>
           </div>
         </div>
         <div class="flex flex-wrap mt-3" style="gap:10px">

@@ -66,7 +66,7 @@ try {
       if (!url.startsWith(base) || route.request().method() !== 'GET') return route.abort();
       return route.continue();
     });
-    for (const path of ['index.html', 'employer.html', 'verify.html', 'dashboard.html', 'apply.html?form=HRC-BC-000120']) {
+    for (const path of ['index.html', 'verify.html', 'dashboard.html', 'apply.html?form=HRC-BC-000120']) {
       await page.goto(base + path);
       await page.waitForTimeout(800);
       if (path === 'dashboard.html') {
@@ -107,14 +107,6 @@ try {
           await noOverflow(page, `${width} dashboard ${view}`);
         }
       }
-      if (path === 'employer.html') {
-        await page.evaluate(() => {
-          document.getElementById('job-form').hidden = true;
-          document.getElementById('application').hidden = false;
-          document.getElementById('details').innerHTML = '<div><dt>اسم المتقدم</dt><dd>متقدم اختبار التنسيق</dd></div><div><dt>هاتف المتقدم</dt><dd>07700000000</dd></div><div><dt>السكن</dt><dd>بابل — الحلة — عنوان طويل لاختبار التفاف النص دون قص البيانات أو تكدس الحروف</dd></div>';
-        });
-        await noOverflow(page, `${width} employer details`);
-      }
       if (path.startsWith('apply.html')) {
         // A style-only probe using the real A4 template classes. The new screen
         // layout must not leak into printing; no form is submitted or printed.
@@ -135,7 +127,7 @@ try {
     }
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(base + 'index.html');
-    assert.equal(await page.locator('.hero-badge').evaluate(el => getComputedStyle(el).animationName), 'none');
+    assert.equal(await page.locator('.hero-app').evaluate(el => getComputedStyle(el).animationName), 'none');
     cases++;
     await page.close();
   }

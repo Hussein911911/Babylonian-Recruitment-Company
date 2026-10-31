@@ -109,6 +109,21 @@ try {
   new Function('window', cloudSrc)(cloudWin);
   const C = cloudWin.HRCCloud;
   check('cloud.js يُحمّل ويصدّر HRCCloud', !!C);
+  let customerArgs;
+  const customerClient = {rpc: async (name, args) => {customerArgs={name,args};return {data:{ok:true,app:{serial:'CARD'},attempt:{no:2,employerName:'جهة الاختبار'}},error:null};}};
+  const customer = await C.customerApplication(customerClient, ' cArD ', 2);
+  check('تفاصيل التقديم تطلب البطاقة والفرصة المحددة فقط', customer.ok && customer.attempt.no === 2 && customerArgs.name === 'customer_application_details' && customerArgs.args.p_serial === 'CARD' && customerArgs.args.p_attempt_no === 2);
+  const deniedCustomer = await C.customerApplication({rpc:async()=>({data:{ok:false,error:'لا توجد فرصة'},error:null})},'CARD',1);
+  check('رفض التفاصيل من الخادم لا يتحول إلى نجاح', deniedCustomer.ok === false);
+  const offlineCustomer = await C.customerApplication({rpc:async()=>{throw new Error('offline')}},'CARD',1);
+  check('فشل شبكة تفاصيل التقديم لا يكشف بيانات وهمية', offlineCustomer.ok === false && !offlineCustomer.app);
+
+
+  const argsSeen=[];
+  const caseClient={rpc:async (name,args)=>{argsSeen.push({name,args});return {data:{ok:false,error:'اختبار'},error:null}}};
+  await C.lookupCard(caseClient,' k7m2xq9t4r ');
+  await C.verifyForm(caseClient,' hrc-no-900001 ',null);
+  check('بحث البطاقة والتحقق يرسلان نفس الرقم مهما اختلف حجم الحروف',argsSeen[0].args.p_serial==='K7M2XQ9T4R' && argsSeen[1].args.p_serial==='HRC-NO-900001');
 
   /* عميل كامل الشكل (مثل supabase-js): rest.headers.set قابلة للاعتراض */
   const headerSets = [];

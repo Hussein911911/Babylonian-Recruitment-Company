@@ -51,12 +51,21 @@
     document.addEventListener('hrc:notification-open', function (e) {
       if (!Store.currentUser()) return;
       var n = e.detail || {};
+      // افتح القرار نفسه المستخدم في قسم الحجوزات، للشاغر والفرصة المحددين.
+      // حالة الإعلان العامة قد تكون متاحة أو مغلقة مع بقاء شواغر بانتظار القرار.
+      if (n.view === 'holds' && n.jobCode && n.serial && n.attemptNo) {
+        var target = Store.getAttempts(n.serial).find(function (t) {
+          return Number(t.no) === Number(n.attemptNo) && t.jobCode === n.jobCode &&
+            ['reserved', 'critical', 'hiring'].indexOf(t.slotStatus) >= 0;
+        });
+        if (!target || !Store.getJob(n.jobCode)) {
+          UI.toast('info', 'تحدثت الحالة', 'هذا الحجز لم يعد متاحاً لاتخاذ إجراء.'); return;
+        }
+        setView('holds'); openHoldsModal(n.jobCode, n.serial, n.attemptNo); return;
+      }
       if(n.serial && Store.getApplicant(n.serial)){ attemptsModal(n.serial); return; }
       if (n.jobCode) {
         var job = Store.getJob(n.jobCode);
-        if (n.view === 'holds' && job && ['reserved', 'hiring'].indexOf(job.status) >= 0) {
-          setView('holds'); openHoldsModal(n.jobCode); return;
-        }
         state.j = { q: n.jobCode, status: 'all', governorate: 'all', shift: 'all' };
         document.getElementById('jq').value = n.jobCode;
         ['j-status', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });
@@ -635,7 +644,7 @@
       }
       function showLoginErr(msg) {
         var el = document.getElementById('login-error');
-        if (el) { el.className = 'login-error'; el.innerHTML = '<svg class="ic"><use href="#i-alert"/></svg><span>' + msg + '</span>'; }
+        if (el) { el.className = 'login-error'; el.innerHTML = '<svg class="ic"><use href="#i-alert"/></svg><span>' + UI.esc(msg) + '</span>'; }
         UI.toast('err', 'فشل الدخول', msg);
       }
       function clearLoginErr() {
@@ -660,17 +669,14 @@
       }
 
       var cs = Store.cloudStatus ? Store.cloudStatus() : null;
-      /* متى كانت السحابة مُعدَّة فالدخول يمرّ بها حصراً (Supabase Auth + brc.staff).
-         المسار المحلي يبقى للتشغيل بلا إنترنت فقط، ولا يُسمح به متى كانت السحابة
-         متاحة (store.login يرفضه بنفسه أيضاً — حماية مزدوجة مقصودة).
-         ⚠️ إن كنا نعلم مسبقاً أن الاتصال ساقط (degraded) فلا معنى لانتظار طلب
-         شبكي محكوم عليه بالفشل: نُدخل الموظف محلياً فوراً مع بقاء التنبيه ظاهراً. */
-      if (cs && cs.configured && cs.state === 'on' && Store.signIn) { cloudLogin(); return; }
+      /* الإنتاج: Auth وملف الموظف إلزاميان، حتى عند تأخر الاتصال أو فشله.
+         الوضع المحلي الانتقالي يبقى محصوراً بما يسمح به إعداد enforceAuth. */
+      if (cs && cs.configured && Store.signIn && (cs.state === 'on' || (cs.enforceAuth && cs.willBoot))) { cloudLogin(); return; }
       localLogin();
 
       function cloudLogin() {
         busy(true, 'جارٍ التحقق…');
-        /* signInFast: يتحقّق من الحساب ويُظهر اللوحة فوراً، والبيانات تُجلب بعدها */
+        /* يتحقق من الحساب ويجلب بيانات الموظف بالتوازي، ولا يفتح بيانات قديمة. */
         (Store.signInFast || Store.signIn)(u, p).then(function (r) {
           busy(false, '');
           /* ✅ نجح الدخول السحابي */
@@ -693,7 +699,7 @@
           }
           /* ❌ لا سحابي ولا محلي — خطأ */
           showLoginErr((r && r.error) || 'اسم المستخدم أو كلمة المرور غير صحيحة.');
-        });
+        }).catch(function () { busy(false, ''); showLoginErr('تعذّر الاتصال بقاعدة الشركة. تحقق من الإنترنت وأعد المحاولة.'); });
       }
     });
     var logout = document.getElementById('btn-logout');
@@ -799,7 +805,10 @@
       el.style.cssText += ';background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d';
       el.innerHTML = '<b>لم يتم الاتصال بقاعدة الشركة.</b><br>' + UI.esc(st.error || '') +
         (st.detail ? '<br>' + UI.esc(st.detail) : '') +
-        '<br>سيعمل الدخول محلياً (وضع مؤقّت) — <a href="supabase-check.html" style="text-decoration:underline">افتح صفحة فحص الاتصال</a>.';
+        (st.enforceAuth ? '<br>الدخول يتطلب اتصالاً بحساب الشركة.' : '<br>يمكن تجربة الوضع المحلي المؤقت.') + ' — <a href="supabase-check.html" style="text-decoration:underline">افتح صفحة فحص الاتصال</a>.';
+    } else if (st.state === 'ready') {
+      el.style.cssText += ';background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a';
+      el.textContent = 'أدخل حساب الموظف؛ سيتم التحقق من الاتصال والبيانات عند الدخول.';
     } else if (st.state === 'on') {
       el.style.cssText += ';background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d';
       el.innerHTML = (st.role === 'staff'
@@ -1107,32 +1116,32 @@
       var v=Store.vacancySummary(j);
       var holdCell = '—';
       if (j.status === 'hiring') {
-        holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div><span class="badge info">جاري التوظيف — قرار الشركة</span>';
+        holdCell = '<span class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b> · </span><span class="badge info">جاري التوظيف — قرار الشركة</span>';
       } else if (j.status === 'reserved' && j.critical) {
         var rejT = Store.getAttempts(j.reservedBy).filter(function (x) {
           return x.jobId === j.id && x.slotStatus === 'critical';
         })[0];
-        holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div>' +
+        holdCell = '<span class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b> · </span>' +
           (rejT && rejT.employerDecision === 'reject'
-            ? '<span class="badge danger">رفض صاحب العمل — معلّقة</span><div class="tiny muted">السبب: ' + UI.esc(rejT.reason || '—') + '</div>'
+            ? '<span class="badge danger">رفض صاحب العمل — معلّقة</span><span class="tiny muted"> · السبب: ' + UI.esc(rejT.reason || '—') + '</span>'
             : '<span class="badge danger">حرجة — قرار مطلوب</span>');
       } else if (j.status === 'reserved' && j.holdExpiresAt) {
-        holdCell = '<div class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b></div>' + UI.holdHtml(j.holdExpiresAt, { withDate: false });
+        holdCell = '<span class="tiny">البطاقة <b class="mono">' + UI.esc(j.reservedBy || '—') + '</b> · </span>' + UI.holdHtml(j.holdExpiresAt, { withDate: false });
       }
-      if(Number(j.vacancies||1)>1)holdCell='<div class="tiny">'+v.available+' متاح · '+v.held+' محجوز · '+v.filled+' ممتلئ<br>المجموع '+v.total+'</div>';
+      if(Number(j.vacancies||1)>1)holdCell='<div class="tiny">'+v.available+' متاح · '+v.held+' محجوز · '+v.filled+' ممتلئ · المجموع '+v.total+'</div>';
       var imageCell = j.imageUrl
         ? '<span class="job-cell-photo" style="--img:url(&quot;' + UI.esc(j.imageUrl) + '&quot;)"><img src="' + UI.esc(j.imageUrl) + '" alt="' + UI.esc(j.title) + '"></span>'
         : '<span class="job-cell-photo is-empty"><svg class="ic" style="width:18px;height:18px;color:#8fa0c4"><use href="#i-briefcase"/></svg></span>';
       return '<tr>' +
         '<td>' + imageCell + '</td>' +
         '<td><span class="chip chip-code mono" style="font-size:.8rem">' + UI.esc(j.code) + '</span></td>' +
-        '<td><b style="color:var(--lapis-2)">' + UI.esc(j.title) + '</b><div class="tiny muted" style="margin-top:2px">' + UI.esc(j.category) + '</div></td>' +
+        '<td><b style="color:var(--lapis-2)">' + UI.esc(j.title) + '</b> <span class="tiny muted"> · ' + UI.esc(j.category) + '</span></td>' +
         '<td><span style="font-weight:600">' + UI.esc(j.governorate || '—') + '</span></td>' +
-        '<td class="nowrap tiny"><b>' + Store.money(j.salaryMin) + '</b><br><span class="muted">إلى ' + Store.money(j.salaryMax) + '</span></td>' +
+        '<td class="nowrap tiny"><b>' + Store.money(j.salaryMin) + '</b> <span class="muted">إلى ' + Store.money(j.salaryMax) + '</span></td>' +
         '<td class="tiny"><span style="background:#eef1f7;padding:3px 8px;border-radius:6px;font-weight:600">' + UI.esc(j.shift) + '</span></td>' +
         '<td>' + UI.jobBadge(j.status) + '</td>' +
         '<td>' + holdCell + '</td>' +
-        '<td class="tiny"><b>' + UI.esc(j.employer.name) + '</b><br><span class="mono" dir="ltr">' + UI.esc(j.employer.phone) + '</span></td>' +
+        '<td class="tiny"><b>' + UI.esc(j.employer.name) + '</b> <span class="mono" dir="ltr">' + UI.esc(j.employer.phone) + '</span></td>' +
         '<td><div class="cell-actions">' +
           '<button class="btn btn-outline btn-sm" data-job-edit="' + UI.esc(j.code) + '">' + UI.ic('edit') + ' تعديل</button>' +
           (Number(j.vacancies||1)>1&&v.held
@@ -1564,10 +1573,10 @@
         ? '<td class="tiny muted">—</td><td class="tiny muted">—</td><td class="tiny muted">—</td>'
         : '<td class="tiny" dir="ltr">' + Store.fmtDate(a.issueDate) + '</td>' +
           '<td class="tiny" dir="ltr">' + Store.fmtDate(a.expiryDate) + '</td>' +
-          '<td class="tiny">' + (a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>';
+          '<td class="tiny">' + (a.daysLeft == null ? 'تبدأ عند أول تقديم' : a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>';
 
       var attemptsCell = isBlank
-        ? '<td class="tiny muted">فرصتان جاهزتان — الصلاحية تبدأ عند التعبئة</td>'
+        ? '<td class="tiny muted">فرصتان جاهزتان — الصلاحية تبدأ عند أول تقديم</td>'
         : (isPending || isRejected
         ? '<td class="tiny muted">—</td>'
         : '<td>' + a.attemptsUsed + ' / ' + a.attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>');
@@ -1589,7 +1598,6 @@
       var actionsCell;
       if (isBlank) {
         actionsCell = '<td><div class="cell-actions">' +
-          '<button class="btn btn-gold btn-sm" data-app-fill="' + UI.esc(a.serial) + '">' + UI.ic('user-plus') + ' تعبئة وبيع</button>' +
           '<button class="btn btn-outline btn-sm" data-app-print="' + UI.esc(a.serial) + '">' + UI.ic('print') + ' طباعة فارغة</button>' +
           '</div></td>';
       } else if (isPending) {
@@ -1622,9 +1630,6 @@
         '</tr>';
     }).join('') || '<tr><td colspan="10" class="table-empty" style="padding:40px;text-align:center;color:var(--muted)"><svg class="ic" style="width:28px;height:28px;display:block;margin:0 auto 10px;opacity:.4"><use href="#i-card"/></svg>لا توجد بطاقات مطابقة</td></tr>';
 
-    tbody.querySelectorAll('[data-app-fill]').forEach(function (b) {
-      b.addEventListener('click', function () { newApplicantModal(b.getAttribute('data-app-fill')); });
-    });
     tbody.querySelectorAll('[data-app-approve]').forEach(function (b) {
       b.addEventListener('click', function () {
         var serial = b.getAttribute('data-app-approve');
@@ -1646,7 +1651,7 @@
       b.addEventListener('click', function () {
         var app = Store.getApplicant(b.getAttribute('data-app-print'));
         V.print(app);
-        UI.toast('ok', 'طباعة البطاقة', app.serial + ' — بطاقة 86×54مم مع الباركود.');
+        UI.toast('ok', 'طباعة البطاقة', app.serial + ' — بطاقة 59.4×94.6مم مع الباركود.');
       });
     });
     tbody.querySelectorAll('[data-app-verify]').forEach(function (b) {
@@ -1656,11 +1661,11 @@
         var url = Store.verifyUrl(serial);
         UI.modal({
           title: 'التحقق من البطاقة', subtitle: serial, body:
-            '<div class="grid card-verification">' +
+            '<p class="jobs-scroll-hint">اسحب النص أو الرابط أفقياً إذا لم يظهر كاملاً.</p><div class="grid card-verification">' +
             '<div><div class="data-grid">' +
-            '<div class="data-item"><div class="k">الباحث</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
-            '<div class="data-item"><div class="k">حالة البطاقة</div><div class="v">' + CFG.formStatus[Store.formStatus(app)].ar + '</div></div>' +
-            '<div class="data-item"><div class="k">المتبقي</div><div class="v">' + Store.attemptsLeft(serial) + ' فرصة</div></div>' +
+            '<div class="data-item"><div class="k">الباحث</div><div class="v" tabindex="0">' + UI.esc(app.fullName) + '</div></div>' +
+            '<div class="data-item"><div class="k">حالة البطاقة</div><div class="v" tabindex="0">' + CFG.formStatus[Store.formStatus(app)].ar + '</div></div>' +
+            '<div class="data-item"><div class="k">المتبقي</div><div class="v" tabindex="0">' + Store.attemptsLeft(serial) + ' فرصة</div></div>' +
             '<div class="data-item card-link-row" style="grid-column:1/-1"><div class="k">رابط التحقق (المطبوع في الكيو آر كود)</div><div class="v mono tiny" dir="ltr" tabindex="0" aria-label="رابط التحقق — تمرير أفقي">' + UI.esc(url) + '</div></div>' +
             '</div><div class="flex mt-2"><button class="btn btn-lapis btn-sm" id="go-verify">' + UI.ic('eye') + ' فتح صفحة التحقق</button>' +
             '<button class="btn btn-outline btn-sm" id="copy-url">' + UI.ic('share') + ' نسخ الرابط</button></div></div>' +
@@ -1765,7 +1770,7 @@
     if (!app || Store.formStatus(app) !== 'pending') return;
     var job = app.requestedCode ? Store.getJob(app.requestedCode) : null;
     var body =
-      '<div class="data-grid mb-3">' +
+      '<p class="jobs-scroll-hint">اسحب التفاصيل أفقياً لقراءة النص الكامل.</p><div class="staff-details-scroll" tabindex="0" role="region" aria-label="تفاصيل طلب البطاقة — مرّر أفقياً"><div class="data-grid staff-details-grid mb-3">' +
         '<div class="data-item"><div class="k">رقم الطلب</div><div class="v mono" dir="ltr">' + UI.esc(app.serial) + '</div></div>' +
         '<div class="data-item"><div class="k">الاسم الكامل</div><div class="v">' + UI.esc(app.fullName) + '</div></div>' +
         '<div class="data-item"><div class="k">الهاتف</div><div class="v mono" dir="ltr">' + UI.esc(app.phone) + '</div></div>' +
@@ -1775,7 +1780,7 @@
         '<div class="data-item" style="grid-column:1/-1"><div class="k">الوظيفة المطلوبة</div><div class="v">' +
           (job ? '<span class="chip chip-code mono">' + UI.esc(job.code) + '</span> ' + UI.esc(job.title) + ' — ' + UI.esc(job.governorate) : (UI.esc(app.requestedCode || '—') + ' <span class="tiny muted">(كود غير معروف)</span>')) +
         '</div></div>' +
-      '</div>' +
+      '</div></div>' +
       (rejectMode
         ? '<div class="field"><label for="rr-reason">سبب الرفض</label><input type="text" id="rr-reason" placeholder="مثال: بيانات ناقصة / لا يطابق الشروط"></div>'
         : '<div class="panel" style="background:#fdf6e3;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
@@ -1888,23 +1893,23 @@
           '<div class="mt-2"><b>' + UI.esc(app.fullName) + '</b> · <span class="mono" dir="ltr">' + UI.esc(app.phone) + '</span>' +
           '<div class="tiny muted">' + UI.esc(app.address || '') + '</div></div>' +
         '</div>' +
-        '<div class="data-grid" style="gap:10px">' +
+        '<div class="staff-details-scroll" tabindex="0" role="region" aria-label="بيانات البطاقة — مرّر أفقياً"><div class="data-grid staff-details-grid" style="gap:10px">' +
           '<div class="data-item"><div class="k">الإصدار</div><div class="v" dir="ltr">' + Store.fmtDate(app.issueDate) + '</div></div>' +
           '<div class="data-item"><div class="k">الانتهاء</div><div class="v" dir="ltr">' + Store.fmtDate(app.expiryDate) + '</div></div>' +
           '<div class="data-item"><div class="k">الفرص المستخدمة</div><div class="v">' + attempts.filter(function (t) { return t.slotStatus !== 'empty'; }).length + ' / ' + limit + '</div></div>' +
-        '</div>' +
+        '</div></div>' +
       '</div>' +
       (st !== 'active' ? '<div class="panel mb-3" style="background:#fdf1d8;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('alert') + ' البطاقة ' + CFG.formStatus[st].ar +
         (st === 'expired' ? ' — انتهت مدة الثلاثين يوماً، لا يمكن استخدام الفرص.' : ' — الفرصتان مستهلكتان.') + '</p></div></div>' : '') +
       '<h3 class="mb-2">فرص البطاقة (فرصتان مستقلتان)</h3>' +
-      '<div class="attempts-stack">' + slots + '</div>';
+      '<p class="jobs-scroll-hint">اسحب الفرص أفقياً لعرض تفاصيلها والأزرار كاملة.</p><div class="attempts-stack" tabindex="0" role="region" aria-label="فرص البطاقة — مرّر أفقياً">' + slots + '</div>';
 
     UI.modal({
       title: 'بطاقة التوظيف — الفرصتان', subtitle: app.fullName + ' — ' + app.serial, wide: true, body: body,
       footer:
         '<button class="btn btn-gold" id="m-print-form">' + UI.ic('print') + ' طباعة استمارة التوظيف A4</button>' +
-        '<button class="btn btn-lapis" id="m-print">' + UI.ic('card') + ' طباعة البطاقة (86×54مم)</button>' +
+        '<button class="btn btn-lapis" id="m-print">' + UI.ic('card') + ' طباعة البطاقة (59.4×94.6مم)</button>' +
         '<button class="btn btn-outline" id="m-verify">' + UI.ic('qr') + ' صفحة التحقق</button>' +
         '<button class="btn btn-outline" data-close>إغلاق</button>',
       onMount: function (box, close) {
@@ -2058,7 +2063,7 @@
     UI.modal({
       title: (hiring ? '🔵 قرار توظيف صاحب العمل — ' : empReject ? '🔴 رفض صاحب العمل — قرارك بالوظيفة — ' : critical ? '🔴 قرار حالة حرجة — ' : 'إدارة الحجز المؤقت — ') + job.code,
       subtitle: job.title + ' · ' + job.governorate + ' · الشاغر ' + Number(t.vacancyNo||1) + ' من ' + Number(job.vacancies||1),
-      body: '<div class="data-grid mb-3">' +
+      body: '<p class="jobs-scroll-hint">اسحب التفاصيل أفقياً لقراءة النص الكامل.</p><div class="staff-details-scroll" tabindex="0" role="region" aria-label="تفاصيل الحجز — مرّر أفقياً"><div class="data-grid staff-details-grid mb-3">' +
         '<div class="data-item"><div class="k">البطاقة المحجوزة</div><div class="v mono">' + UI.esc(serial) + '</div></div>' +
         '<div class="data-item"><div class="k">الفرصة</div><div class="v">#' + (t ? t.no : '—') + '</div></div>' +
         '<div class="data-item"><div class="k">' + (hiring ? 'طلب صاحب العمل' : empReject ? 'قرار صاحب العمل' : critical ? 'انتهى الحجز' : 'ينتهي الحجز') + '</div><div class="v"' + (hiring || empReject ? ' dir="ltr"' : '') + '>' +
@@ -2077,7 +2082,7 @@
         '<div class="data-item"><div class="k">صاحب العمل</div><div class="v">' + UI.esc(job.employer.name) + '</div></div>' +
         '<div class="data-item"><div class="k">هاتفه</div><div class="v mono" dir="ltr">' + UI.esc(job.employer.phone) + '</div></div>' +
         '<div class="data-item" style="grid-column:1/-1"><div class="k">مكان المقابلة</div><div class="v">' + UI.esc(job.interviewLocation) + '</div></div>' +
-        '</div>' +
+        '</div></div>' +
         '<p class="tiny muted mb-0">' + UI.ic('hourglass') + (hiring
           ? ' طلب صاحب العمل بانتظار قرارك: «تم التوظيف» يثبّته ويغلق الوظيفة، و«رفض» أو «إرجاع» يعيد الشاغر المعني متاحاً — والفرصة مستهلكة بأي نتيجة (قرار معتمد).'
           : empReject
@@ -2362,7 +2367,7 @@
 
     var max = rows.reduce(function (m, r) { return Math.max(m, r.expected); }, 1);
     document.getElementById('fin-bars').innerHTML = rows.length ? rows.map(function (r) {
-      return '<div class="bar-row"><div>' + UI.esc(r.name) + '<div class="tiny muted mono">' + UI.esc(r.user) + '</div></div>' +
+      return '<div class="bar-row"><div>' + UI.esc(r.name) + '<div class="tiny muted mono" tabindex="0" aria-label="اسم المستخدم، قابل للتمرير أفقياً">' + UI.esc(r.user) + '</div></div>' +
         '<div class="bar-track"><div class="bar-fill" style="width:' + Math.round(r.expected / max * 100) + '%"></div></div>' +
         '<div class="val">' + Store.money(r.expected) + '</div></div>';
     }).join('') : '<div class="table-empty">لا بيانات في هذه الفترة</div>';
@@ -2571,17 +2576,16 @@
     var j = Store.getJob(code);
     if (!j) return;
     var attempts = Store.db().attempts.filter(function (t) { return t.jobCode === code; });
-    var body = '<div class="data-grid mb-3">' +
+    var body = '<p class="jobs-scroll-hint">اسحب التفاصيل أفقياً لقراءة النص الكامل عند الحاجة.</p><div class="job-details-scroll" tabindex="0" role="region" aria-label="تفاصيل الوظيفة — مرّر أفقياً لعرض النص الكامل"><div class="data-grid job-details-grid mb-3">' +
       '<div class="data-item"><div class="k">الحالة</div><div class="v">' + CFG.jobStatus[j.status].ar + '</div></div>' +
       '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || '—') + '</div></div>' +
-      '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || 'بابل') + '</div></div>' +
       '<div class="data-item"><div class="k">الأجر</div><div class="v">' + Store.money(j.salaryMin) + ' - ' + Store.money(j.salaryMax) + '</div></div>' +
       '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
       '<div class="data-item"><div class="k">صاحب العمل (داخلي)</div><div class="v">' + UI.esc(j.employer.name) + '</div></div>' +
       '<div class="data-item"><div class="k">هاتفه (داخلي)</div><div class="v mono" dir="ltr">' + UI.esc(j.employer.phone) + '</div></div>' +
       '<div class="data-item" style="grid-column:1/-1"><div class="k">العنوان (داخلي)</div><div class="v">' + UI.esc(j.employer.address) + '</div></div>' +
       '<div class="data-item" style="grid-column:1/-1"><div class="k">مكان المقابلة</div><div class="v">' + UI.esc(j.interviewLocation) + '</div></div>' +
-      '</div>' +
+      '</div></div>' +
       (j.status === 'reserved' && j.holdExpiresAt
         ? '<div class="panel" style="background:#fdf1d8;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
           '<p class="mb-0 small">' + UI.ic('hourglass') + ' محجوزة للبطاقة <b class="mono">' + UI.esc(j.reservedBy) + '</b> — ' + UI.holdHtml(j.holdExpiresAt) + '</p></div></div>' : '') +
@@ -2601,6 +2605,9 @@
           (j.status === 'available' ? '<button class="btn btn-gold" id="q-assign">' + UI.ic('user-plus') + ' ترشيح</button>'
             : '<button class="btn btn-ok" id="q-reopen">إعادة تفعيل</button>')),
       onMount: function (box, close) {
+        box.classList.add('job-details-modal');
+        var heading = box.querySelector('.modal-head h3');
+        if (heading) heading.tabIndex = 0;
         box.querySelector('#q-edit').addEventListener('click', function () { close(); jobModal(code); });
         var a = box.querySelector('#q-assign'); if (a) a.addEventListener('click', function () { close(); pickApplicantModal(code); });
         var h = box.querySelector('#q-hold'); if (h) h.addEventListener('click', function () { close(); openHoldsModal(code); });
@@ -2641,8 +2648,6 @@
     var history=document.getElementById('btn-card-history');if(history)history.onclick=function(){if(root.HRCArchive)return root.HRCArchive.open(Store,UI);history.disabled=true;var js=document.createElement('script');js.src='assets/js/card-archive.js';js.onload=function(){history.disabled=false;root.HRCArchive.open(Store,UI);};js.onerror=function(){history.disabled=false;UI.toast('err','تعذر فتح السجل','تحقق من الاتصال وأعد المحاولة');};document.head.appendChild(js);};
     var nj = document.getElementById('btn-new-job');
     if (nj) nj.addEventListener('click', function () { jobModal(null); });
-    var na = document.getElementById('btn-new-app');
-    if (na) na.addEventListener('click', function () { newApplicantModal(); });
     var nb = document.getElementById('btn-new-batch');
     if (nb) nb.addEventListener('click', newBatchModal);
     var nc = document.getElementById('btn-new-card');
@@ -2681,100 +2686,6 @@
   /* ======================= النسخ الاحتياطي والجدولة =======================
    *  تُستدعى من bindActions() عند الإقلاع ومن renderSettings() بعد كل
    *  إعادة رسم — bindOnce يضمن ألا يُربط الزر مرتين (لا نوافذ مكرّرة). */
-  /* بيع/إصدار بطاقة توظيف جديدة — كاش عند نقطة البيع (لا دفع إلكتروني) */
-  /* بيع وتعبئة بطاقة فارغة — كاش عند نقطة البيع (لا دفع إلكتروني).
-     البطاقات تُصدر من الشركة دفعات فارغة (باركود عشوائي فريد) وتوزَّع على
-     نقاط البيع؛ هنا تُقرأ باركود الورقة وتُعبّأ بيانات الزبون عليها —
-     والصلاحية (30 يوماً) تبدأ من هذه اللحظة لا من إصدار الدفعة. */
-  function newApplicantModal(prefillSerial) {
-    var blanks = Store.listBlankCards();
-    var govList = CFG.governorates.map(function (g) { return '<option>' + UI.esc(g) + '</option>'; }).join('');
-    var posList = (Store.listPosNames ? Store.listPosNames() : []).map(function (n) { return '<option>' + UI.esc(n) + '</option>'; }).join('');
-
-    if (!blanks.length) {
-      UI.modal({
-        title: 'بيع وتعبئة بطاقة', subtitle: 'لا توجد بطاقات فارغة بالمخزون', wide: true,
-        body: '<div class="bk-empty" style="padding:26px 10px;text-align:center">' + UI.ic('card') +
-          '<b>المخزون فارغ</b>' +
-          '<span class="tiny muted">البطاقة تُصدر من الشركة كدفعة فارغة (باركود عشوائي فريد) ثم تُعبّأ هنا عند البيع.<br>' +
-          'اطلب من الإدارة إصدار دفعة جديدة من زر «إصدار دفعة فارغة».</span></div>',
-        footer: '<button class="btn btn-outline" data-close>إغلاق</button>'
-      });
-      return;
-    }
-
-    var cardOptions = blanks.map(function (b) {
-      return '<option value="' + UI.esc(b.serial) + '"' + (b.serial === prefillSerial ? ' selected' : '') + '>' +
-        UI.esc(b.serial) + '</option>';
-    }).join('');
-
-    /* اختيار الوظيفة إلزامي بعملية البيع (قرار الإدارة 2026-10-01): يستهلك
-       الفرصة الأولى بحجز 24 ساعة بانتظار قرار صاحب العمل. */
-    var jobsAvail = (Store.listJobs() || []).filter(function (j) { return j.status === 'available'; });
-    var jobOptions = jobsAvail.map(function (j) {
-      return '<option value="' + UI.esc(j.code) + '">' + UI.esc(j.code + ' — ' + j.title + ' (' + (j.governorate || '—') + ')') + '</option>';
-    }).join('');
-
-    var body = '<form id="app-form" class="grid grid-2" style="gap:14px">' +
-      '<div class="field" style="grid-column:1/-1"><label for="n-card">باركود البطاقة الفارغة * <span class="tiny muted">(' + blanks.length + ' بالمخزون)</span></label>' +
-        '<select id="n-card" required>' + cardOptions + '</select>' +
-        '<span class="tiny muted">اقرأ الباركود المطبوع على الورقة بأي موبايل أو اختره من القائمة.</span></div>' +
-      '<div class="field"><label for="n-name">اسم الزبون *</label><input type="text" id="n-name" required></div>' +
-      '<div class="field"><label for="n-phone">هاتف الزبون *</label><input type="tel" id="n-phone" required dir="ltr" placeholder="07XXXXXXXXX"></div>' +
-      '<div class="field"><label for="n-dob">تاريخ الميلاد</label><input type="date" id="n-dob"></div>' +
-      '<div class="field"><label for="n-gender">الجنس</label><select id="n-gender"><option>ذكر</option><option>أنثى</option></select></div>' +
-      '<div class="field"><label for="n-gov">المحافظة</label><select id="n-gov">' + govList + '</select></div>' +
-      '<div class="field"><label for="n-fee">سعر البطاقة (د.ع — كاش)</label><input type="number" id="n-fee" value="' + Store.settings().formFee + '" step="500"></div>' +
-      '<div class="field"><label for="n-pos">نقطة البيع *</label><input type="text" id="n-pos" required list="pos-names" placeholder="مثال: مكتب استنساخ — شارع 40">' +
-        '<datalist id="pos-names">' + posList + '</datalist></div>' +
-      '<div class="field" style="grid-column:1/-1"><label for="n-address">العنوان التفصيلي</label><input type="text" id="n-address"></div>' +
-      '<div class="field" style="grid-column:1/-1"><label for="n-job">الوظيفة المقدَّم عليها * <span class="tiny muted">(إلزامي — يستهلك الفرصة الأولى)</span></label>' +
-        '<select id="n-job" required>' +
-        (jobsAvail.length
-          ? '<option value="">— اختر وظيفة من المتاحة —</option>' + jobOptions
-          : '<option value="">لا توجد وظائف متاحة — أضف وظيفة أولاً</option>') + '</select>' +
-        '<span class="tiny muted">تُطبع بيانات الوظيفة وجهة العمل على استمارة A4 المسلَّمة للزبون.</span></div>' +
-      '</form>' +
-      '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
-        '<p class="mb-0 small">' + UI.ic('card') + ' البطاقة تبقى <b>فارغة الوجه</b> (باركود + رمزا الفرصتين) — وتبدأ صلاحية <b>' +
-        Store.settings().validityDays + ' يوماً</b> وفرصتان مستقلتان <b>من لحظة البيع</b>. بعد التعبئة تُطبع <b>استمارة التوظيف A4</b> بنفس الباركود ' +
-        'تحمل بيانات الزبون والوظيفة وبيانات صاحب العمل — تُسلَّم للزبون ليقدمها لصاحب العمل. البيع <b>كاش فقط</b>.</p></div></div>';
-
-    UI.modal({
-      title: 'بيع وتعبئة بطاقة فارغة', subtitle: 'HRC-BC — كاش عند نقطة البيع', wide: true, body: body,
-      footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
-        '<button class="btn btn-gold" id="n-save">' + UI.ic('check') + ' بيع وتعبئة وطباعة الاستمارة</button>',
-      onMount: function (box, close) {
-        box.querySelector('#n-save').addEventListener('click', function () {
-          var f = box.querySelector('#app-form');
-          if (!f.reportValidity()) return;
-          var serial = box.querySelector('#n-card').value;
-          var jobCode = (box.querySelector('#n-job').value || '').trim();
-          if (!jobCode) { UI.toast('err', 'الوظيفة مطلوبة', 'اختيار الوظيفة إلزامي بعملية البيع — تُستهلك الفرصة الأولى'); return; }
-          var res = Store.activateCard(serial, {
-            fullName: box.querySelector('#n-name').value.trim(),
-            phone: box.querySelector('#n-phone').value.trim(),
-            dob: box.querySelector('#n-dob').value,
-            gender: box.querySelector('#n-gender').value,
-            address: box.querySelector('#n-address').value.trim() || box.querySelector('#n-gov').value,
-            fee: Number(box.querySelector('#n-fee').value),
-            feePaid: true,
-            posName: box.querySelector('#n-pos').value.trim(),
-            jobCode: jobCode,
-            notes: 'بيع وتعبئة بطاقة فارغة — كاش من نقطة بيع'
-          });
-          if (!res.ok) { UI.toast('err', 'تعذّر البيع', res.error); return; }
-          close();
-          UI.toast('ok', 'تم البيع والتعبئة', res.app.serial + ' — ' + res.app.fullName + ' — كاش: ' + Store.money(res.app.fee) +
-            ' — بدأت صلاحية 30 يوماً' + (res.attempt ? ' — الفرصة 1 على ' + res.attempt.jobCode : ''));
-          /* استمارة A4 جزء من عملية البيع: تُطبع تلقائياً وتظل متاحة من نافذة الفرص */
-          try { if (V && V.printForm) V.printForm(res.app, res.attempt); } catch (e) { }
-          attemptsModal(res.app.serial);
-        });
-      }
-    });
-  }
-
   /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
      المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة. */
   function newCardModal() {
@@ -2792,8 +2703,8 @@
         '<input type="text" id="c-notes" placeholder="مثال: بطاقة تعويض للسيد أحمد — مكتب الحلة"></div>' +
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
-        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرصتين ورمزين، وتُطبع بوجهيها بمقاس 86×54مم — ' +
-        'وصلاحية 30 يوماً تبدأ عند تعبئتها عند البيع لا من الآن. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
+        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرصتين ورمزين، وتُطبع بوجهيها بمقاس 59.4×94.6مم — ' +
+        'وصلاحية 30 يوماً تبدأ عند أول تقديم ناجح على وظيفة. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
 
     UI.modal({
       title: 'إضافة بطاقة بكودها', subtitle: 'بطاقة واحدة فارغة تُسجَّل فوراً بالمخزون — بلا دفعة كاملة',
@@ -2834,7 +2745,7 @@
       subtitle: 'بطاقة فارغة واحدة بالمخزون — بفرصتين ورمزين',
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
           '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت البطاقة بالمخزون وجاهزة للبيع والتعبئة. ' +
-          'اطبعها الآن على <b>ورق مقوى 300–350غم</b> بخيار «الحجم الفعلي» — صفحتان (وجه أمامي وخلفي) بمقاس 86×54مم، وتُغلَّف حرارياً بمكتب الاستنساخ.</p></div></div>' +
+          'اطبعها الآن على <b>ورق مقوى 300–350غم</b> بخيار «الحجم الفعلي» — صفحتان (وجه أمامي وخلفي) بمقاس 59.4×94.6مم، وتُغلَّف حرارياً بمكتب الاستنساخ.</p></div></div>' +
         '<div style="text-align:center"><span class="chip chip-code mono" dir="ltr" style="font-size:15px">' + UI.esc(card.serial) + '</span></div>',
       footer: '<button class="btn btn-outline" data-close>لاحقاً</button>' +
         '<button class="btn btn-gold" id="c-print">' + UI.ic('print') + ' طباعة البطاقة</button>',
@@ -2850,36 +2761,36 @@
      تُطبع فارغة وتوزَّع على نقاط البيع، وتُعبّأ كل واحدة عند بيعها. */
   function newBatchModal() {
     if (!Store.isAdmin()) { UI.toast('err', 'صلاحية المدير فقط', 'إصدار الدفعات من صلاحيات المدير العام.'); return; }
-    var presets = [10, 20, 30, 40, 50, 100];
+    var presets = [9, 18, 27, 36, 45, 54, 63, 72, 81, 90];
     var chips = presets.map(function (n) {
       return '<button type="button" class="btn btn-outline btn-sm b-preset" data-n="' + n + '">' + n + '</button>';
     }).join(' ');
     var body = '<form id="batch-form" class="grid grid-2" style="gap:14px">' +
-      '<div class="field" style="grid-column:1/-1"><label for="b-count">عدد البطاقات بالدفعة *</label>' +
+      '<div class="field" style="grid-column:1/-1"><label for="b-count">عدد البطاقات بالدفعة * (من ١ إلى ٩٠)</label>' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
-          '<input type="number" id="b-count" min="1" max="1000" value="30" required style="width:140px">' +
+          '<input type="number" id="b-count" min="1" max="90" step="1" value="9" required style="width:140px">' +
           '<div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div></div>' +
         '<span class="tiny muted" id="b-est" style="display:block;margin-top:6px"></span></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('shield') + ' كل بطاقة تولد <b>بكود عشوائي فريد</b> من 10 خانات (حروف وأرقام بلا شرطة) لا يتشابه مع أي بطاقة أخرى ولا يعود أبداً — ' +
-        'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين مع رمزي الفرصتين بظهرها، ' +
-        'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ من التعبئة لا من اليوم.</p></div></div>';
+        'لا نمط يمكن تخمينه، وهذا أساس منع التزوير. البطاقات تُطبع <b>فارغة</b> (بلا اسم وبلا هاتف) وبتصميم الوجهين، ' +
+        'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ عند أول تقديم ناجح على وظيفة.</p></div></div>';
 
     UI.modal({
-      title: 'إصدار دفعة بطاقات فارغة', subtitle: 'أكواد عشوائية فريدة — تُطبع على ورق A4 (10 بطاقات بالصفحة) وتوزَّع على نقاط البيع', wide: true, body: body,
+      title: 'إصدار دفعة بطاقات فارغة', subtitle: 'أكواد عشوائية فريدة — تُطبع على ورق A4 (9 بطاقات بالصفحة) وتوزَّع على نقاط البيع', wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="b-save">' + UI.ic('card') + ' إصدار الدفعة</button>',
       onMount: function (box, close) {
         var cnt = box.querySelector('#b-count');
         var est = box.querySelector('#b-est');
         function refresh() {
-          var n = Math.max(0, Math.min(1000, Number(cnt.value) || 0));
-          var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 10);
-          est.textContent = n
-            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 10 بطاقات بالورقة الواحدة')
-            : 'أدخل عدداً بين 1 و1000';
+          var n = Number(cnt.value) || 0;
+          var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 9);
+          est.textContent = Number.isInteger(n) && n >= 1 && n <= 90
+            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — حتى 9 بطاقات بالورقة الواحدة')
+            : 'أدخل عدداً صحيحاً من ١ إلى ٩٠ بطاقة.';
         }
         cnt.addEventListener('input', refresh);
         box.querySelectorAll('.b-preset').forEach(function (b) {
@@ -2890,9 +2801,10 @@
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
           var count = Number(cnt.value) || 0;
+          if (!Number.isInteger(count) || count < 1 || count > 90) { UI.toast('err', 'عدد غير صالح', 'أدخل عدداً صحيحاً من ١ إلى ٩٠ بطاقة.'); return; }
           var notes = box.querySelector('#b-notes').value.trim();
           var made = Store.createCardBatch(count, notes);
-          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (1 إلى 1000)'); return; }
+          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (١ إلى ٩٠)'); return; }
           close();
           batchResultModal(made);
         });
@@ -2910,7 +2822,7 @@
       subtitle: 'أكواد عشوائية فريدة — تُطبع الآن على A4 وتوزَّع على نقاط البيع',
       wide: true,
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
-          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>10 بطاقات بكل صفحة</b> بمقاسها الفعلي 86×54مم، ' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>حتى 9 بطاقات بكل صفحة</b> بمقاسها الفعلي 59.4×94.6مم، ' +
           'والباقي على الصفحات التالية. للطباعة على الوجهين اختر «قلب على الحافة الطويلة» وخيار «الحجم الفعلي» (100%)، ثم قصّ البطاقات وغلّفها حرارياً بمكتب الاستنساخ.</p></div></div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px;direction:ltr;justify-content:flex-end">' + chips + '</div>',
       footer: '<button class="btn btn-outline" data-close>لاحقاً</button>' +

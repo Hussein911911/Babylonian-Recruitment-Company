@@ -54,12 +54,12 @@ try{
   await page.emulateMedia({media:'print'});
   const card=page.locator('#print-root .hrc-card').first();
   check('printed card retains Cairo: '+zone,(await card.evaluate(e=>getComputedStyle(e).fontFamily)).startsWith('Cairo'));
-  check('original 86x54mm card dimensions unchanged: '+zone,await card.evaluate(e=>{const r=e.getBoundingClientRect();return Math.abs(r.width-86*96/25.4)<1&&Math.abs(r.height-54*96/25.4)<1;}));
+  check('printed card dimensions are 59.4x94.6mm: '+zone,await card.evaluate(e=>{const r=e.getBoundingClientRect();return Math.abs(r.width-59.4*96/25.4)<1&&Math.abs(r.height-94.6*96/25.4)<1;}));
   await page.emulateMedia({media:'screen'});
   await page.goto(base+'apply.html');await page.waitForFunction(()=>typeof window.G?.printApplication==='function');
   check('independent application page uses local IBM Plex Sans Arabic: '+zone,(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily)).split(',')[0].replace(/["']/g,'').trim()==='IBM Plex Sans Arabic' );
   check('application calendar year is Baghdad, not host zone: '+zone,await page.locator('#f-yr option').nth(1).textContent()==='2027');
-  await page.evaluate(()=>{window.__applyPrints=0;window.print=()=>__applyPrints++;G.printApplication();});
+  await page.evaluate(()=>{window.__applyPrints=0;window.print=()=>__applyPrints++;document.querySelector('#result-content').innerHTML='<div class="form-sheet">استمارة اختبار</div>';G.printApplication();});
   await page.waitForFunction(()=>__applyPrints===1);
   check('application preserves all Cairo print weights including 800: '+zone,await page.evaluate(()=>[400,600,700,800,900].every(w=>document.fonts.check(w+' 12px Cairo','العراق ABC 123'))));
   /* صفحة صاحب العمل حُذفت نهائياً (2026-10-25) — لا تحقّق خطوط لها بعد اليوم. */
