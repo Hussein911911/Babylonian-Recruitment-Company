@@ -67,7 +67,8 @@
     "test:capacity": "node tests/capacity-three-staff.mjs",
     "test:capacity-browser": "node tests/capacity-browser.mjs",
     "test:mobile-jobs-browser": "node tests/mobile-jobs-browser.mjs",
-    "test:manual-card-browser": "node tests/manual-card-browser.mjs"
+    "test:manual-card-browser": "node tests/manual-card-browser.mjs",
+    "test:apply-card-details-browser": "node tests/apply-card-details-browser.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",

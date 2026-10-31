@@ -387,24 +387,14 @@ check('إلغاء التعيين يعيد الاختيار فارغاً قبل �
  *  3ج) زر «عرض تفاصيل البطاقة» — يظهر بعد قراءة الباركود ويُظهر بيانات البطاقة
  * =========================================================================== */
 step('1ج', 'زر «عرض تفاصيل البطاقة» في شاشة الترحيب');
-check('الزر مخفيّ في الوسم الأصلي (لا يظهر قبل قراءة بطاقة معبّأة)',
-  doc.getElementById('welcome-details-wrap').attrs.hidden !== undefined);
-check('بطاقة لم تُعبّأ بعد: الزر لا يظهر (لا تفاصيل بلا بيانات)',
-  doc.getElementById('welcome-details-wrap').attrs.hidden !== undefined);
+check('زر تفاصيل البطاقة ظاهر حتى قبل تعبئتها',
+  doc.getElementById('welcome-details-wrap').attrs.hidden === undefined);
 check('النافذة مغلقة ابتدائياً (hidden)',
   doc.getElementById('card-details').attrs.hidden !== undefined);
 vm.runInContext('G.cardDetails()', ctx);
 await tick(20);
-check('النافذة تفتح وتضع رقم البطاقة وحالة كل فرصة',
-  doc.getElementById('card-details').attrs.hidden === undefined &&
-  $('card-details-serial').textContent === 'HRC-BC-000120' &&
-  /الفرصة ١/.test($('card-details-body').textContent) &&
-  /متاحة للاستخدام/.test($('card-details-body').textContent),
-  'الرقم: ' + $('card-details-serial').textContent);
-check('بطاقة لم تُعبّأ: شارة الحالة تقول «بانتظار التعبئة»',
-  /بانتظار التعبئة/.test($('card-details-status').textContent), $('card-details-status').textContent);
-vm.runInContext('G.closeCardDetails()', ctx);
-check('الإغلاق يُخفي النافذة', doc.getElementById('card-details').attrs.hidden !== undefined);
+check('البطاقة الفارغة تظهر تنبيهاً ولا تعرض تفاصيل وهمية',
+  doc.getElementById('card-details').attrs.hidden !== undefined && /البطاقة فارغة/.test($('welcome-details-message').textContent));
 
 /* ===========================================================================
  *  4) الخطوة 1 — الاسم الثلاثي
