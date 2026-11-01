@@ -3087,6 +3087,15 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
   content: ''; position: absolute; inset: 0; z-index: -1;
   border-radius: inherit; background: #012f3e; pointer-events: none;
 }
+/* شارة الترخيص فوق الاسم، واضحة على خلفية الصورة وعلى الشاشات الصغيرة. */
+.app-license {
+  display: inline-block; max-width: 100%; margin: 6px 0 2px;
+  padding: 5px 14px; border: 1px solid rgba(232, 195, 112, .7);
+  border-radius: 999px; background: rgba(8, 25, 52, .88);
+  color: #f8e7bd; font-size: clamp(.68rem, 2.8vw, .8rem);
+  font-weight: 800; line-height: 1.6;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+}
 .app-wordmark {
   font-size: clamp(1.5rem, 6.4vw, 2.1rem); font-weight: 900; color: #fff;
   letter-spacing: -.4px; line-height: 1.3; text-shadow: 0 6px 20px rgba(0, 0, 0, .5);
@@ -4526,6 +4535,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
   <div class="app-hero">
     <div class="app-brand brand" data-staff-gate>
       <span class="app-emblem mk-tile"><svg viewBox="0 0 415 418"><use href="#i-mkseb" xlink:href="#i-mkseb"/></svg></span>
+      <span class="app-license">🛡️ منصة مرخصة رسمياً | خدمات توظيف معتمدة</span>
       <b class="app-wordmark">منصة <span class="accent">مكسب</span> للتوظيف</b>
       <span class="app-tagline">منصة الفرص والوظائف</span>
     </div>
