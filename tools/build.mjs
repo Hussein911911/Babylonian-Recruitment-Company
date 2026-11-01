@@ -148,8 +148,8 @@ const ASSET_VER = process.env.HRC_ASSET_VER || createHash('sha1')
 const verQ = (p) => `${p}?v=${ASSET_VER}`;
 
 const META = {
-  title: 'شركة الهدف للتوظيف | Al-Hadaf Recruitment Company',
-  desc: 'شركة الهدف للتوظيف (HRC) في الحلة — بابل: بطاقات توظيف بباركود QR وفرصتين مستقلتين، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة بقرار حرج.',
+  title: 'منصة مكسب للتوظيف | Makseb Employment Platform',
+  desc: 'منصة مكسب للتوظيف (HRC) في الحلة — بابل: بطاقات توظيف بباركود QR وفرص مستقلة حسب البطاقة، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة بقرار حرج.',
   keywords: 'توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, بطاقة توظيف, HRC, عمالة فنية'
 };
 
@@ -163,7 +163,7 @@ function docHead({ title, desc, css = null, icon = 'assets/img/favicon.svg', ext
 <meta name="description" content="${desc}">
 <meta name="keywords" content="${META.keywords}">
 <meta name="theme-color" content="#0b1a3a">
-<meta name="author" content="Al-Hadaf Recruitment Company">
+<meta name="author" content="Makseb Employment Platform">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="${desc}">
 <meta property="og:type" content="website">
@@ -196,8 +196,8 @@ writeFileSync(P('index.html'), buildPage({
   publicStyle: true, cardStyle: true
 }));
 writeFileSync(P('verify.html'), buildPage({
-  title: 'التحقق من بطاقة التوظيف | شركة الهدف للتوظيف',
-  desc: 'صفحة التحقق الرسمية لبطاقات شركة الهدف للتوظيف — امسح الباركود أو أدخل الرقم التسلسلي للتحقق من صحة البطاقة وحالة الفرصتين.',
+  title: 'التحقق من بطاقة التوظيف | منصة مكسب للتوظيف',
+  desc: 'صفحة التحقق الرسمية لبطاقات منصة مكسب للتوظيف — امسح الباركود أو أدخل الرقم التسلسلي للتحقق من صحة البطاقة وحالة الفرص.',
   body: partials.verify, scripts: SCRIPTS.verify
 }));
 /* صفحة 404 بهوية الشركة: يقرأها Cloudflare Pages تلقائياً من /404.html عند أي
@@ -209,8 +209,8 @@ writeFileSync(P('verify.html'), buildPage({
      صفحة بلا أنماط ولا أيقونات. لذلك تُثبَّت مراجعها على جذر الموقع (/assets/…)
      وهي الصفحة الوحيدة التي تحتاج ذلك. */
   const nf = buildPage({
-    title: 'الصفحة غير موجودة | شركة الهدف للتوظيف',
-    desc: 'الرابط المطلوب غير موجود على موقع شركة الهدف للتوظيف — تصفّح الوظائف المتاحة أو تواصل معنا مباشرة.',
+    title: 'الصفحة غير موجودة | منصة مكسب للتوظيف',
+    desc: 'الرابط المطلوب غير موجود على موقع منصة مكسب للتوظيف — تصفّح الوظائف المتاحة أو تواصل معنا مباشرة.',
     body: partials.notfound, scripts: ['config', 'ui', 'nav']
   }).replace(/(src|href)="assets\//g, '$1="/assets/')
     .replace(/(src|href)="index\.html/g, '$1="/index.html');
@@ -218,8 +218,8 @@ writeFileSync(P('verify.html'), buildPage({
 }
 
 writeFileSync(P('dashboard.html'), buildPage({
-  title: 'المنظومة الداخلية | شركة الهدف للتوظيف',
-  desc: 'لوحة الموظفين والإدارة لشركة الهدف للتوظيف: إدارة الوظائف، إصدار الاستمارات، متابعة الحجوزات، سجل التدقيق، واللوحة المالية.',
+  title: 'المنظومة الداخلية | منصة مكسب للتوظيف',
+  desc: 'لوحة الموظفين والإدارة لمنصة مكسب للتوظيف: إدارة الوظائف، إصدار الاستمارات، متابعة الحجوزات، سجل التدقيق، واللوحة المالية.',
   body: partials.dashboard, scripts: SCRIPTS.dashboard, staffStyle: true
 }));
 

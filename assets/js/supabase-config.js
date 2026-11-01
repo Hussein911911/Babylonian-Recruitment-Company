@@ -17,7 +17,7 @@
   'use strict';
 
   root.HRCSupabaseConfig = {
-    /* مشروع شركة الهدف للتوظيف — منطقة فرانكفورت */
+    /* مشروع منصة مكسب للتوظيف — منطقة فرانكفورت */
     url: 'https://vqsvztudvfukyuerzcgx.supabase.co',
 
     /* المفتاح العام (Publishable) — آمن للعرض في المتصفح */

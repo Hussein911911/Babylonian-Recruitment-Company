@@ -153,8 +153,8 @@ function makeState() {
     calls: [],
     staff: [{ id: 'staff-admin', auth_id: 'auth-admin', username: 'admin', full_name: 'مدير اختبار', role: 'admin', job_title: 'مدير عام', phone: '', active: true }],
     authUsers: [],
-    public_jobs: [{
-      code: 'HRC-7777', title: 'وظيفة معلنة', category: 'خدمات', region: 'بابل', salary_min: 500000,
+    jobs: [{
+      id: 'job-test-7777', code: 'HRC-7777', title: 'وظيفة معلنة', category: 'خدمات', region: 'بابل', salary_min: 500000,
       salary_max: 700000, shift: 'صباحي', gender: 'لا فرق', vacancies: 2, requirements: [], status: 'available',
       hold_expires_at: null, created_at: '2026-01-01T00:00:00.000Z', description: 'وصف', image_url: ''
     }]

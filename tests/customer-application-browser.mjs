@@ -34,6 +34,7 @@ try {
   for(const n of [1,2]) {
    await page.locator(`[data-cp-print="${n}"]`).click();
    const html=await page.locator('#print-root').innerText();
+   assert.doesNotMatch(html,/توقيع الزبون|توقيع نقطة البيع|ختم الشركة|خدمات الشركة تنحصر/);
    assert.match(html,new RegExp('جهة '+n));assert.doesNotMatch(html,new RegExp('جهة '+(n===1?2:1)));
    assert.match(html,new RegExp('مكان مقابلة '+n));assert.match(html,/زبون الاختبار/);
    assert.equal(await page.locator('#print-root .hrc-card').count(),0);
@@ -56,5 +57,21 @@ try {
   assert.equal(await page.locator('[data-cp-print]').count(),0);
   assert.deepEqual(await page.evaluate(()=>window.testCalls),[['K7M2XQ9T4R',1]]);
   await ctx.close();console.log('PASS two chances, matching employer and A4-only printing',width);
+ }
+ for(const total of [1,3,5]){
+  const ctx=await browser.newContext({viewport:{width:375,height:850},serviceWorkers:'block'}),page=await ctx.newPage();
+  await page.route('**/*',r=>r.request().url().startsWith(base)?r.continue():r.abort());
+  await page.goto(base+'index.html',{waitUntil:'domcontentloaded'});
+  await page.evaluate(total=>{
+   const S=window.HRCStore,serial='K7M2XQ9T4R';window.print=()=>{};
+   S.cardLookup=async()=>({ok:true,card:{serial,status:'active',chancesLeft:total-1,chances:Array.from({length:total},(_,i)=>({no:i+1,slotStatus:i?'empty':'reserved',jobCode:i?null:'JOB-1',selectedAt:i?null:'2026-10-30T09:00:00Z'}))}});
+   S.customerApplication=async()=>({ok:true,app:{serial,fullName:'زبون اختبار'},attempt:{no:1,slotStatus:'reserved',jobCode:'JOB-1',employerName:'جهة اختبار'}});
+   window.HRCQRScan.open=o=>{o.onResult(serial);return true;};
+  },total);
+  await page.locator('[data-page-tab=card]').click();await page.locator('#cp-scan').click();await page.locator('#cp-choice-details').click();await page.locator('#cp-result .cp-employer').first().waitFor();
+  assert.match(await page.locator('#cp-result').innerText(),new RegExp((total-1)+' من '+total));
+  assert.equal(await page.locator('#cp-result .cp-chance').count(),total);
+  await page.locator('[data-cp-print="1"]').click();const form=await page.locator('#print-root').innerText();assert.doesNotMatch(form,/توقيع الزبون|توقيع نقطة البيع|ختم الشركة|خدمات الشركة تنحصر/);assert.match(form,/جهة اختبار/);
+  await ctx.close();console.log('PASS card page uses actual opportunity count',total);
  }
 } finally {await browser.close();}

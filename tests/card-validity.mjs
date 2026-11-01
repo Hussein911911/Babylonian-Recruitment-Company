@@ -36,6 +36,13 @@ try {
     update brc.jobs set vacancies=1 where code='JOB-1';
     insert into brc.applicants(serial) values('SELF'),('SOLD'),('FAIL'),('FULL'),('ONSALE');`);
   for (const serial of ['SELF', 'SOLD', 'FAIL', 'FULL', 'ONSALE']) await rpc('self_service_card', [serial]);
+  for (const count of [1,3,5]) {
+    const serial='LIMIT'+count;
+    await db.query('insert into brc.applicants(serial,attempt_limit) values($1,$2)',[serial,count]);
+    const info=await rpc('self_service_card',[serial]);
+    assert.equal(info.card.chances.length,count);assert.equal(info.card.chancesLeft,count);
+    assert.equal((await row(serial)).expiry_date,null);
+  }
   const bad = await rpc('apply_with_card', ['FAIL', 'MISSING', JSON.stringify(data)]);
   assert.equal(bad.ok, false); assert.equal((await row('FAIL')).expiry_date, null);
   const sale = await rpc('activate_card', ['SOLD', JSON.stringify({ ...data, posName:'نقطة بيع' })]);
@@ -71,6 +78,13 @@ try {
   w.__HRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
   w.eval(read('assets/js/config.js')); w.HRC_CONFIG.users = [{username:'admin', password:'admin123', name:'مدير اختبار', role:'admin'}]; w.eval(read('assets/js/store.js'));
   const store = w.HRCStore; store.init(); store.login('admin','admin123');
+  for (const [n, serial] of [[1,'7AAA222AAA'],[3,'7AAA333AAA'],[5,'7AAA555AAA']]) {
+    store.updateSettings({attemptLimit:n});
+    const c=store.createCardWithSerial(serial,'اختبار الفرص');assert.equal(c.ok,true);
+    assert.equal(c.card.attemptLimit,n);assert.equal(store.getAttempts(serial).length,n);
+  }
+  store.updateSettings({attemptLimit:2});
+  for (const [n, serial] of [[1,'7AAA222AAA'],[3,'7AAA333AAA'],[5,'7AAA555AAA']]) assert.equal(store.getAttempts(serial).length,n,'existing card count remains frozen');
   const created = store.createCardWithSerial('9TRX2KQ4M7', 'اختبار');
   assert.equal(created.ok, true);
   const sold = store.activateCard(created.card.serial, { fullName:'أحمد محمد علي', phone:'07712345678' });

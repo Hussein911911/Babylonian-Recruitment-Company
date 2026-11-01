@@ -97,7 +97,7 @@ try {
   reset();set('jf-picked',true);check('selected-only uses existing picks',codes().sort().join(',')==='F-100,F-200');
   $('jobs-hint').querySelector('.job-remove').click();check('hidden/visible pick can be removed independently',codes().join(',')==='F-200');
   reset();check('reset restores site order but preserves remaining selection',codes().join(',')===siteCodes.join(',')&&$('jobs-hint').textContent.includes('F-200'));
-  check('result count announces total and selection', $('jobs-count').getAttribute('aria-live')==='polite'&&$('jobs-count').textContent.includes('٨')&&$('jobs-count').textContent.includes('١'));
+  check('requested result count is removed', !$('jobs-count'));
   check('all filter controls have associated visible labels',Array.from(w.document.querySelectorAll('.job-filters input,.job-filters select')).every(el=>el.closest('label')||w.document.querySelector('label[for="'+el.id+'"]')));
   check('filtering and selection never call a write RPC or spend chances',calls.length===1);
   w.G.setJobFilter('province','الديوانية');
@@ -142,12 +142,7 @@ try {
       return badge.hidden === false && badge.textContent.trim() === '٢' &&
         w.document.getElementById('jf-more').classList.contains('has-filters');
     })());
-  check('compact result counter still announces total and selection',
-    (() => {
-      reset();
-      const t = w.document.getElementById('jobs-count').textContent;
-      return /عرض/.test(t) && /مختارة/.test(t) && /[٠-٩]/.test(t);
-    })());
+  check('result count stays absent when filters change', !$('jobs-count'));
   /* ── صورة الوظيفة داخل البطاقة ── */
   check('active filters render as removable chips (not raw values scattered in fields)',
     (() => {

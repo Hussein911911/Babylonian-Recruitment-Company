@@ -607,7 +607,7 @@ check('التلميح يعدّ الاختيارين ويعرض الفرصتين'
 /* لا فرصة ثالثة: الوظيفة الثالثة لا تُعيَّن */
 await pickViaModal('HRC-1049');
 check('تعيين وظيفة ثالثة ممنوع — البطاقة بفرصتين فقط',
-  doc.querySelectorAll('.job-card.selected').length === 2 && /أكملت اختيار وظيفتَي فرصتيك/.test($('jobs-hint').innerHTML),
+  doc.querySelectorAll('.job-card.selected').length === 2 && /أكملت اختيار وظائفك المتاحة/.test($('jobs-hint').innerHTML),
   $('jobs-hint').innerHTML);
 
 click($('btn-jobs-next'));
@@ -691,6 +691,7 @@ check('كل استمارة تقسم البيانات إلى ثلاثة أقسا�
   (res.match(/class="fs-section-no"/g) || []).length === 6 &&
   (res.match(/<section/g) || []).length === (res.match(/<\/section>/g) || []).length);
 check('الاستمارتان تحملان رقم الباركود', (res.match(/HRC-BC-000120/g) || []).length >= 4, String((res.match(/HRC-BC-000120/g) || []).length));
+check('الاستمارة بلا تواقيع وختم وشرح التذييل', !/توقيع الزبون|توقيع نقطة البيع|ختم الشركة|خدمات الشركة تنحصر/.test(res));
 check('الاستمارتان تُعيدان بيانات الزبون المطبوعة', res.includes('أحمد محمد علي حسن') && res.includes('07712345678'));
 check('كل استمارة تحمل وظيفتها وكودها',
   res.includes('عامل إنتاج') && res.includes('HRC-1042') && res.includes('سائق توصيل') && res.includes('HRC-1047'));
@@ -702,11 +703,11 @@ check('كل استمارة تسمّي فرصتها (١ من ٢ / ٢ من ٢)',
 check('الوظيفة غير المُعيَّنة (HRC-1049) لا تظهر في أي استمارة', !res.includes('HRC-1049'));
 check('ملاحظة «باركود البطاقة نفسه» موجودة في الأوراق', res.includes('fs-qr-note') && res.includes('باركود البطاقة نفسه'));
 check('كل استمارة بها الفرصة والمهلة وتاريخ الانتهاء', /الفرصة/.test(res) && /مهلة الرد على الحجز/.test(res));
-check('عنوان النجاح يعدّ الفرصتين', /فرصتان|فرصتين/.test(res), (res.match(/ok-sub[^<]*/) || [''])[0]);
+check('عنوان النجاح يعدّ الفرصتين', /مُسجَّلة <b>٢<\/b> فرص/.test(res), (res.match(/ok-sub[^<]*/) || [''])[0]);
 const acts = $('result-actions').innerHTML;
 check('زر طباعة الاستمارات', actions_has(acts, 'طباعة') && acts.includes('G.printApplication()') && typeof sandbox.G.printApplication === 'function');
 check('لا زر «وظيفة ثانية» — الفرصتان استُهلكتا', !actions_has(acts, 'وظيفة ثانية'), acts.slice(0, 160));
-check('تنبيه استهلاك الفرصتين ظاهر للزبون', /استُهلكت فرصتا البطاقة/.test(res), res.slice(-260));
+check('تنبيه استهلاك الفرصتين ظاهر للزبون', /استُهلكت فرص البطاقة/.test(res), res.slice(-260));
 check('زر نسخ رابط الاستمارة', acts.includes('copyLink'));
 check('شريط التقدم يقول «تم التقديم» ١٠٠٪', /تم التقديم/.test($('step-label').textContent), $('step-label').textContent);
 
@@ -750,7 +751,7 @@ step(13, 'اختيار الوظيفة: تأثير البورتريه (المخت
 {
   const src = readFileSync(join(ROOT, 'apply.html'), 'utf8');
   check('القائمة تُفعّل has-focus عند وجود وظيفة مختارة',
-    /classList\.toggle\('has-focus',\s*pickedJobs\.length>0\)/.test(src));
+    /classList\.toggle\('has-focus',\s*pickedJobs\.length>0 && pickedJobs\.length>=G\.maxPick\(\)\)/.test(src));
   check('البقية تُغبَّش وتُعتَّم (blur + تعتيم + تصغير)',
     /has-focus \.job-card:not\(\.selected\)\{[^}]*filter:blur/.test(src) &&
     /has-focus \.job-card:not\(\.selected\)\{[^}]*opacity:\.4/.test(src));

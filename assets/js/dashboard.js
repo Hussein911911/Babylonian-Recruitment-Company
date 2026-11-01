@@ -1022,7 +1022,7 @@
       actions.push({ icon: 'critical', title: 'بطاقة منتهية: ' + a.serial, sub: a.fullName, badge: '<span class="badge danger">منتهية</span>', act: { label: 'فتح', handler: function () { attemptsModal(a.serial); } } });
     });
     (pa.exhausted || []).forEach(function (a) {
-      actions.push({ icon: 'hold', title: 'فرصتان مستهلكتان: ' + a.serial, sub: a.fullName, badge: '<span class="badge warn">مستهلكة</span>', act: { label: 'فتح', handler: function () { attemptsModal(a.serial); } } });
+      actions.push({ icon: 'hold', title: 'فرص البطاقة مستهلكة: ' + a.serial, sub: a.fullName, badge: '<span class="badge warn">مستهلكة</span>', act: { label: 'فتح', handler: function () { attemptsModal(a.serial); } } });
     });
 
     var cEl = document.getElementById('ov-actions-count');
@@ -1576,7 +1576,7 @@
           '<td class="tiny">' + (a.daysLeft == null ? 'تبدأ عند أول تقديم' : a.daysLeft < 0 ? '<span class="badge danger">منتهية</span>' : a.daysLeft + ' يوم') + '</td>';
 
       var attemptsCell = isBlank
-        ? '<td class="tiny muted">فرصتان جاهزتان — الصلاحية تبدأ عند أول تقديم</td>'
+        ? '<td class="tiny muted">الفرص جاهزة — الصلاحية تبدأ عند أول تقديم</td>'
         : (isPending || isRejected
         ? '<td class="tiny muted">—</td>'
         : '<td>' + a.attemptsUsed + ' / ' + a.attemptLimit + '<div class="tiny muted">متبقٍ ' + left + '</div>' + hold + '</td>');
@@ -1635,7 +1635,7 @@
         var serial = b.getAttribute('data-app-approve');
         var res = Store.approveApplicant(serial);
         if (res.ok) {
-          UI.toast('ok', 'قُبل الطلب', 'صدرت البطاقة ' + serial + ' رسمياً — صلاحية 30 يوماً وفرصتان.');
+          UI.toast('ok', 'قُبل الطلب', 'صدرت البطاقة ' + serial + ' رسمياً — صلاحية 30 يوماً وفرص حسب البطاقة.');
           renderApplicants(); renderNavCounts();
         } else UI.toast('err', 'تعذّر القبول', res.error);
       });
@@ -1784,7 +1784,7 @@
       (rejectMode
         ? '<div class="field"><label for="rr-reason">سبب الرفض</label><input type="text" id="rr-reason" placeholder="مثال: بيانات ناقصة / لا يطابق الشروط"></div>'
         : '<div class="panel" style="background:#fdf6e3;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
-          '<p class="mb-0 small">' + UI.ic('check') + ' عند القبول تصدر البطاقة رسمياً برقم ' + UI.esc(app.serial) + ' وتصبح صالحة 30 يوماً بفرصتين مستقلتين.</p></div></div>');
+          '<p class="mb-0 small">' + UI.ic('check') + ' عند القبول تصدر البطاقة رسمياً برقم ' + UI.esc(app.serial) + ' وتصبح صالحة 30 يوماً بفرص مستقلة حسب البطاقة.</p></div></div>');
 
     UI.modal({
       title: (rejectMode ? 'رفض طلب البطاقة' : 'مراجعة طلب البطاقة'),
@@ -1901,12 +1901,12 @@
       '</div>' +
       (st !== 'active' ? '<div class="panel mb-3" style="background:#fdf1d8;border-color:#f0d9a3"><div class="panel-body" style="padding:12px 15px">' +
         '<p class="mb-0 small">' + UI.ic('alert') + ' البطاقة ' + CFG.formStatus[st].ar +
-        (st === 'expired' ? ' — انتهت مدة الثلاثين يوماً، لا يمكن استخدام الفرص.' : ' — الفرصتان مستهلكتان.') + '</p></div></div>' : '') +
-      '<h3 class="mb-2">فرص البطاقة (فرصتان مستقلتان)</h3>' +
+        (st === 'expired' ? ' — انتهت مدة الثلاثين يوماً، لا يمكن استخدام الفرص.' : ' — فرص البطاقة مستهلكة.') + '</p></div></div>' : '') +
+      '<h3 class="mb-2">فرص البطاقة</h3>' +
       '<p class="jobs-scroll-hint">اسحب الفرص أفقياً لعرض تفاصيلها والأزرار كاملة.</p><div class="attempts-stack" tabindex="0" role="region" aria-label="فرص البطاقة — مرّر أفقياً">' + slots + '</div>';
 
     UI.modal({
-      title: 'بطاقة التوظيف — الفرصتان', subtitle: app.fullName + ' — ' + app.serial, wide: true, body: body,
+      title: 'بطاقة التوظيف — الفرص', subtitle: app.fullName + ' — ' + app.serial, wide: true, body: body,
       footer:
         '<button class="btn btn-gold" id="m-print-form">' + UI.ic('print') + ' طباعة استمارة التوظيف A4</button>' +
         '<button class="btn btn-lapis" id="m-print">' + UI.ic('card') + ' طباعة البطاقة (59.4×94.6مم)</button>' +
@@ -2703,7 +2703,7 @@
         '<input type="text" id="c-notes" placeholder="مثال: بطاقة تعويض للسيد أحمد — مكتب الحلة"></div>' +
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
-        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرصتين ورمزين، وتُطبع بوجهيها بمقاس 59.4×94.6مم — ' +
+        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرص حسب الإعدادات، وتُطبع بوجهيها بمقاس 59.4×94.6مم — ' +
         'وصلاحية 30 يوماً تبدأ عند أول تقديم ناجح على وظيفة. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
 
     UI.modal({
@@ -2742,7 +2742,7 @@
   function cardResultModal(card) {
     UI.modal({
       title: 'أُضيفت البطاقة ' + card.serial,
-      subtitle: 'بطاقة فارغة واحدة بالمخزون — بفرصتين ورمزين',
+      subtitle: 'بطاقة فارغة واحدة بالمخزون — بفرص حسب الإعدادات',
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
           '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت البطاقة بالمخزون وجاهزة للبيع والتعبئة. ' +
           'اطبعها الآن على <b>ورق مقوى 300–350غم</b> بخيار «الحجم الفعلي» — صفحتان (وجه أمامي وخلفي) بمقاس 59.4×94.6مم، وتُغلَّف حرارياً بمكتب الاستنساخ.</p></div></div>' +

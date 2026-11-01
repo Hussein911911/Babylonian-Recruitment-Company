@@ -10,7 +10,7 @@
     'الشركة غير مسؤولة قانونياً وعشائرياً عن الشخص المرسل وصاحب العمل.';
 
   var TERMS = [
-    'بطاقة <b>شخصية</b> بـ<b>فرصتين مستقلتين</b>؛ صالحة <b>30 يوماً</b> من أول تقديم.',
+    'بطاقة <b>شخصية</b> بـ<b>فرص مستقلة حسب البطاقة</b>؛ صالحة <b>30 يوماً</b> من أول تقديم.',
     'الحجز <b>24 ساعة</b>؛ بعدها تصبح الوظيفة حرجة وتقرر الشركة: توظيف أو إرجاع أو حذف.',
     'تُستهلك الفرصة بالتقديم <b>ولا تعود</b>؛ بعد استهلاك فرص البطاقة تُشترى بطاقة جديدة.',
     'المتابعة وإعادة الطباعة من «بطاقتي» أو <b>أي مكتب استنساخ</b>.'
@@ -96,7 +96,7 @@
 
   function frontHtml(app, attempts) {
     var blank = isBlank(app);
-    var count = attempts.length === 2 ? 'بطاقة واحدة .. فرصتان للتقديم' : 'بطاقة واحدة .. ' + attempts.length + ' فرص للتقديم';
+    var count = 'بطاقة واحدة .. ' + attempts.length + (attempts.length === 1 ? ' فرصة للتقديم' : ' فرص للتقديم');
     return '<div class="hrc-card" aria-label="الوجه الأمامي لبطاقة التوظيف">' +
       '<svg class="mk-art" viewBox="0 0 540 860" preserveAspectRatio="none" aria-hidden="true"><rect width="540" height="860" fill="#f3f0e7"/><path d="M0 0H540V372C408 449 131 459 0 379Z" fill="#052a4b"/><path d="M0 379C131 459 408 449 540 372" fill="none" stroke="#c7a255" stroke-width="6"/><path d="M0 766C151 813 383 803 540 756V860H0Z" fill="#052a4b"/><path d="M0 766C151 813 383 803 540 756" fill="none" stroke="#c7a255" stroke-width="5"/></svg>' +
       '<svg class="mk-hole" viewBox="0 0 150 42" aria-hidden="true"><path d="M17 11h33C58 11 58 2 75 2s17 9 25 9h33c22 0 22 29 0 29H17C-5 40-5 11 17 11Z" fill="#f8f8f6"/></svg>' +
@@ -112,9 +112,7 @@
 
   function backHtml(app, attempts) {
     var printed = app.cardPrintCode ? (app.cardPrintCode.match(/.{1,4}/g) || []).join('-') : '';
-    var terms = TERMS.map(function (n) {
-      return attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة');
-    });
+    var terms = TERMS;
     return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف">' +
       '<svg class="mb-art" viewBox="0 0 540 860" preserveAspectRatio="none" aria-hidden="true"><path d="M0 795C135 852 407 860 540 817V860H0Z" fill="#062d50"/><path d="M0 795C135 852 407 860 540 817" fill="none" stroke="#d4ab51" stroke-width="7"/><g fill="#bed0de" opacity=".8"><circle cx="42" cy="744" r="14"/><path d="M17 807l8-42q17-12 34 0l9 52z"/><circle cx="99" cy="756" r="13"/><path d="M72 820l10-44q17-10 33 0l9 49z"/><circle cx="155" cy="771" r="12"/><path d="M129 827l9-39q17-9 32 0l10 42z"/></g></svg>' +
       '<svg class="mb-hole" viewBox="0 0 150 42" aria-hidden="true"><path d="M17 11h33C58 11 58 2 75 2s17 9 25 9h33c22 0 22 29 0 29H17C-5 40-5 11 17 11Z" fill="#e0e3e5"/></svg>' +
@@ -307,7 +305,7 @@
       +   '</div>'
       +   customer + jobDetails + employerDetails + holdNote
       +   '<h3>شروط البطاقة</h3>'
-      +   '<ul class="ff-terms">' + TERMS.map(function (n) { return '<li>' + (attempts.length === 2 ? n : n.replace('فرصتين مستقلتين', attempts.length + ' فرص مستقلة').replace('بعد الفرصتين', 'بعد استهلاك فرص البطاقة')) + '</li>'; }).join('') + '</ul>'
+      +   '<ul class="ff-terms">' + TERMS.map(function (n) { return '<li>' + n + '</li>'; }).join('') + '</ul>'
       +   '<div class="ff-employer-box">'
       +     '<h4>✦ لصاحب العمل — كيف تُكمل التوظيف؟</h4>'
       +     '<ol>'
@@ -316,15 +314,6 @@
       +       '<li>بلّغ الشركة بنتيجة المقابلة لتثبيت القرار في ملف المتقدم.</li>'
       +       '<li>إن لم يُسجَّل طلب خلال <b>24 ساعة</b> من التقديم، تنتقل الوظيفة لحالة حرجة وتقرر الشركة.</li>'
       +     '</ol>'
-      +   '</div>'
-      +   '<div class="ff-sign">'
-      +     '<div class="s"><div class="l"></div>توقيع الزبون</div>'
-      +     '<div class="s"><div class="l"></div>توقيع نقطة البيع</div>'
-      +     '<div class="s"><div class="l"></div>ختم الشركة (اختياري)</div>'
-      +   '</div>'
-      +   '<div class="ff-foot">'
-      +     esc(DISCLAIMER) + ' — ' + esc(CFG.company.addressShort) + ' — '
-      +     '<b dir="ltr">' + esc(CFG.company.phones.join(' / ')) + '</b>'
       +   '</div>'
       + '</div>';
   }

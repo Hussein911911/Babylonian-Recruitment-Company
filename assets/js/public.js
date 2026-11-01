@@ -126,7 +126,7 @@
       entries.forEach(function (en) {
         if (!en.isIntersecting) return;
         io.unobserve(en.target);
-        var d = Number(en.target.getAttribute('data-d')) || 0;
+        var d = Math.min(120, Math.max(0, Number(en.target.getAttribute('data-d')) || 0));
         setTimeout(function () { en.target.classList.add('is-visible'); }, d);
       });
     }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
@@ -188,6 +188,14 @@
       if (r) { e.preventDefault(); window.location.reload(); }
     });
 
+    // عناصر تفاصيل الوظيفة المعرّفة كأزرار تدعم لوحة المفاتيح أيضاً.
+    document.addEventListener('keydown', function (e) {
+      var target = e.target.closest && e.target.closest('[data-action="job-details"][role="button"]');
+      if (target && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault(); openJob(target.getAttribute('data-code'));
+      }
+    });
+
     // قائمة الجوال
     var toggle = document.getElementById('nav-toggle');
     var nav = document.getElementById('main-nav');
@@ -207,7 +215,7 @@
         var href = a.getAttribute('href') || '';
         a.classList.toggle('active', href.split('#')[1] === current);
       });
-    }, 120));
+    }, 120), { passive: true });
 
     var y = document.getElementById('year');
     if (y) y.textContent = Store.fmtDate(new Date()).slice(0,4);
@@ -280,7 +288,7 @@
       if (B && B.open) {
         B.open({ serial: serial[0] });
       } else {
-        UI.toast('info', 'بطاقة توظيف شركة الهدف',
+        UI.toast('info', 'بطاقة توظيف منصة مكسب',
           'افتح الموقع الرئيسي وأدخل باركود بطاقتك من نافذة «بطاقتي».', 8000);
       }
       return;
@@ -314,9 +322,9 @@
     var PALETTE = ['#0f9c94', '#2563d9', '#7c4ddb', '#d98324', '#16a34a', '#db3d6a', '#0891b2'];
     catColor = {};
     cats.forEach(function (c, i) { catColor[c] = PALETTE[i % PALETTE.length]; });
-    var hint = document.getElementById('cats-hint');
-    if (hint) hint.textContent = (cur && cur !== 'all') ? 'مُصفّى: ' + cur : 'كل التخصصات';
     var cur = filters.category || 'all';
+    var hint = document.getElementById('cats-hint');
+    if (hint) hint.textContent = cur !== 'all' ? 'مُصفّى: ' + cur : 'كل التخصصات';
     var html = '<button type="button" class="cat' + (cur === 'all' ? ' is-active' : '') + '" data-cat="all" role="tab"' +
       ' aria-selected="' + (cur === 'all') + '" style="--cat:var(--gold)">' +
       '<span class="cat-ic"><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg></span>' +
@@ -490,6 +498,15 @@
 
   /* ── المفضلة: تبديل فوري + تحديث قسم «المفضلة» والعدّاد ──
      الربط مفوَّض على الصفحة كلها، فتعمل القلوب في شبكة الوظائف وفي المفضلة. */
+  function syncFavoriteButtons() {
+    var saved = favList();
+    document.querySelectorAll('[data-fav]').forEach(function (button) {
+      var on = saved.indexOf(button.getAttribute('data-fav')) >= 0;
+      button.classList.toggle('is-on', on);
+      button.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
   function bindFavorites() {
     document.addEventListener('click', function (e) {
       var b = e.target.closest && e.target.closest('[data-fav]');
@@ -498,6 +515,7 @@
       var code = b.getAttribute('data-fav');
       var on = favToggle(code);
       renderFavorites();
+      syncFavoriteButtons();
       if (UI.toast) UI.toast(on ? 'ok' : 'info', on ? 'أُضيفت للمفضلة' : 'أُزيلت من المفضلة',
         on ? 'ستجدها في قسم «المفضلة» أسفل الوظائف.' : 'يمكنك إضافتها مجدداً في أي وقت.');
     });
@@ -505,6 +523,7 @@
     if (clear) clear.addEventListener('click', function () {
       try { localStorage.removeItem(FAV_KEY); } catch (e) { }
       renderFavorites();
+      syncFavoriteButtons();
       if (UI.toast) UI.toast('info', 'مُسحت المفضلة', 'لا توجد وظائف محفوظة الآن.');
     });
   }
@@ -528,7 +547,7 @@
     if (badge) { badge.textContent = jobs.length > 99 ? '99+' : String(jobs.length); badge.hidden = jobs.length === 0; }
     if (clear) clear.hidden = saved.length === 0;
     if (empty) empty.hidden = jobs.length > 0;
-    host.innerHTML = jobs.map(cardHtml).join('') +
+    host.innerHTML = jobs.map(function (job) { return cardHtml(job, saved); }).join('') +
       (gone ? '<div class="fav-note">' + UI.ic('info') + ' ' + gone + ' وظيفة محفوظة لم تعد معروضة (أُغلقت أو حُذفت).</div>' : '');
   }
 
@@ -573,7 +592,7 @@
       blank: { cls: 'warn', t: 'لم يبدأ التقديم بعد' },
       active: { cls: 'ok', t: 'سارية ونشطة' },
       expired: { cls: 'danger', t: 'منتهية الصلاحية' },
-      exhausted: { cls: 'warn', t: 'استُهلكت الفرصتان' },
+      exhausted: { cls: 'warn', t: 'استُهلكت فرص البطاقة' },
       rejected: { cls: 'danger', t: 'مرفوضة' },
       pending: { cls: 'warn', t: 'قيد المراجعة' }
     }[st] || { cls: 'warn', t: st };
@@ -639,7 +658,7 @@
         '<div class="cp-kv"><span>بداية الصلاحية</span><b>' + UI.esc(issued) + '</b></div>' +
         '<div class="cp-kv"><span>تنتهي في</span><b>' + UI.esc(expires) + '</b></div>' +
         '<div class="cp-kv"><span>المتبقي</span><b>' + UI.esc(leftTxt) + '</b></div>' +
-        '<div class="cp-kv"><span>الفرص المتبقية</span><b>' + UI.esc(String(card.chancesLeft != null ? card.chancesLeft : '—')) + ' من 2</b></div>' +
+        '<div class="cp-kv"><span>الفرص المتبقية</span><b>' + UI.esc(String(card.chancesLeft != null ? card.chancesLeft : '—')) + ' من ' + UI.esc(String((card.chances || []).length)) + '</b></div>' +
       '</div>' +
       '<h3 class="cp-h"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الفرص وتفاصيلها</h3>' +
       '<div class="cp-chances">' + (chances || '<div class="cp-empty-chance">لا توجد فرص مسجّلة على هذه البطاقة بعد.</div>') + '</div>' +
@@ -873,7 +892,7 @@
       var jobsAll = Store.listJobs({});
       items = [
         { ic: 'briefcase', v: jobsAll.filter(function (j) { return j.status === 'available'; }).length, l: 'وظيفة متاحة الآن' },
-        { ic: 'card', v: '2', l: 'فرصتان بكل بطاقة' },
+        { ic: 'card', v: 'عدة', l: 'فرص حسب البطاقة' },
         { ic: 'calendar', v: '30', l: 'يوماً صلاحية البطاقة' },
         { ic: 'clock', v: '24', l: 'ساعة حجز عادل' }
       ];
@@ -921,7 +940,8 @@
           : 'جرّب كوداً آخر أو صفّر عوامل التصفية، أو تواصل معنا لتسجيلك في قائمة الانتظار.';
       }
     }
-    host.innerHTML = jobs.map(cardHtml).join('');
+    var favorites = favList();
+    host.innerHTML = jobs.map(function (job) { return cardHtml(job, favorites); }).join('');
     renderActiveChips();
   }
 
@@ -937,7 +957,7 @@
   }
 
   function bookUrl(code, title) {
-    var msg = 'مرحباً شركة الهدف للتوظيف، أرغب بالحجز على وظيفة ' + (code || '') +
+    var msg = 'مرحباً منصة مكسب للتوظيف، أرغب بالحجز على وظيفة ' + (code || '') +
       (title ? ' — ' + title : '') + '.';
     return 'https://wa.me/' + waNumber() + '?text=' + encodeURIComponent(msg);
   }
@@ -987,7 +1007,7 @@
     return (j.category ? j.category + ' · ' : '') + (j.gender && j.gender !== 'لا فرق' ? j.gender : 'فرصة متاحة');
   }
 
-  function cardHtml(j) {
+  function cardHtml(j, favorites) {
     var st = CFG.jobStatus[j.status];
     var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : ''));
     var hold = '';
@@ -1002,7 +1022,7 @@
         (j.imageUrl ? ' referrerpolicy="no-referrer"' : '') +
         ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.classList.add(\'img-failed\');this.parentNode.setAttribute(\'role\',\'img\');this.parentNode.setAttribute(\'aria-label\',\'تعذّر تحميل صورة الوظيفة\');this.remove()">' + '</div>';
     var b = cardBadge(j);
-    var fav = favList().indexOf(j.code) >= 0;
+    var fav = favorites.indexOf(j.code) >= 0;
     var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');
     return '' +
       '<article class="job-card ' + cls + '">' +

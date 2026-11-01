@@ -73,7 +73,7 @@ try{
   w.HRCHttp={createClient:()=>({from:()=>({select:async()=>({data:JSON.parse(JSON.stringify((await db.query("select * from brc.public_jobs where status='available'")).rows)),error:null})}),rpc:async(name,args)=>{calls.push({name,args});try{return{data:await rpc(name,name==='self_service_card'?[args.p_serial]:[args.p_serial,args.p_job_code,JSON.stringify(args.p_data)]),error:null};}catch(e){return{data:null,error:{message:e.message}};}}})};
   w.eval(inline);await tick(80);w.G.start();await tick(450);
   check('second scan goes directly to jobs', $('pg-jobs').classList.contains('active'));
-  check('job back button is removed and owner notice visible',$('btn-jobs-back').hidden&&!$('profile-lock-notice').hidden);
+  check('job back button remains removed and notice is absent',$('btn-jobs-back').hidden&&!$('profile-lock-notice'));
   check('all original profile fields disabled',Array.from(w.document.querySelectorAll('.step-fields input,.step-fields select')).every(e=>e.disabled));
   for(const n of [0,1,2,3,4,5,-1]){w.G.go(n);await tick(5);assert.ok($('pg-jobs').classList.contains('active'));}
   check('direct and relative navigation cannot reach identity pages',true);
@@ -83,7 +83,7 @@ try{
   check('payload ignores tampered DOM fields and gender actions',w.G.readProfile().fullName===owner.fullName&&w.G.readProfile().phone===owner.phone&&w.G.readProfile().gender===owner.gender);
   w.G.pickJob('J-7');w.G.go(7);await tick(450);
   check('review retains original owner and allows only job editing',$('review-content').textContent.includes(owner.fullName)&&!w.document.querySelector('#review-content [onclick="G.editStep(1)"]')&&!!w.document.querySelector('#review-content [onclick="G.editStep(6)"]'));
-  check('rescan review labels the actual second opportunity', $('review-content').textContent.includes('الفرصة ٢')&&$('review-content').textContent.includes('وظيفة الفرصة المتبقية'));
+  check('rescan review labels the actual second opportunity', $('review-content').textContent.includes('الفرصة ٢')&&$('review-content').textContent.includes('وظائف الفرص المتبقية'));
   $('f-name').value=attacker.fullName;w.G.finish();
   for(let i=0;i<100&&!$('pg-result').classList.contains('active');i++)await tick(20);
   check('second application completes with original identity', $('pg-result').classList.contains('active')&&$('result-content').textContent.includes(owner.fullName)&&!$('result-content').textContent.includes(attacker.fullName));

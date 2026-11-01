@@ -143,14 +143,20 @@ check('إحصاءات الواجهة (شريط الأرقام) ظهرت', () => 
 });
 check('أيقونة/شعار الشركة موجود داخل الرموز (Sprite)', () =>
   !!site.doc.getElementById('i-emblem') || 'رمز الشعار غير موجود');
-check('صورة المدينة في الواجهة + صورة أسد بابل في قسم الشركة', () => {
-  /* 2026-10-25: خلفية الواجهة صارت صورة مدينة (hero-skyline) بنمط التطبيق،
-     وأسد بابل بقي صورة قسم «عن الشركة». نتحقق من الاثنين فعلياً على القرص. */
+check('صورة المدينة في الواجهة وصورتا التوظيف والمتابعة في الأقسام', () => {
   const bg = site.window.getComputedStyle(site.doc.querySelector('.hero.hero-app .hero-bg')).backgroundImage || '';
-  const okCity = /hero-skyline\.webp/.test(bg) && existsSync(join(ROOT, 'assets/img/hero-skyline.webp'));
-  const lion = site.doc.querySelector('.lion-frame img');
-  const okLion = !!lion && lion.getAttribute('src').includes('lion-of-babylon');
-  return (okCity && okLion) || ('الخلفية: ' + bg.slice(0, 60) + ' | الأسد: ' + okLion);
+  const imgs = Array.from(site.doc.querySelectorAll('.lion-frame img')).map(img => img.getAttribute('src'));
+  return (/hero-skyline\.webp/.test(bg) && imgs.includes('assets/img/recruitment-team.webp') && imgs.includes('assets/img/recruitment-digital.webp') && imgs.every(p => existsSync(join(ROOT,p)))) || 'صور التوظيف أو الخلفية غير متوفرة';
+});
+check('رسالة التواصل تعرض النص المحدّث مع أزرار البطاقة وواتساب', () => {
+  const section = site.doc.querySelector('#contact');
+  return !!section && section.textContent.includes('جاهز للبدء؟ احصل على بطاقتك الآن') &&
+    section.textContent.includes('احصل على بطاقة التوظيف من أقرب نقطة بيع مباشر، وابدأ بالتقديم ومتابعة طلباتك فوراً عبر المنصة.') &&
+    !!section.querySelector('[data-action="open-booking"]') && !!section.querySelector('a[href^="https://wa.me/"]');
+});
+check('قسم عن المنصة يعرض التعريف الجديد', () => {
+  const about = site.doc.querySelector('#about');
+  return !!about && ['عن المنصة','منصة مكسب للتوظيف','حلول التوظيف الشاملة','نربط بين أصحاب العمل والباحثين عن وظائف في كافة المجالات والقطاعات على مستوى العراق.'].every(t=>about.textContent.includes(t)) && !about.textContent.includes('شركة الهدف للتوظيف');
 });
 check('التصفية بالحالة تعمل', () => {
   const sel = site.doc.getElementById('filter-status');
@@ -631,7 +637,7 @@ check('قالب البطاقة يحوي الوجهين وكل بياناتها �
     '07760058007',
     'HRC-BC-000120',
     'رقم البطاقة',
-    'hrc-card', '<svg', 'فرصتان'
+    'hrc-card', '<svg', 'فرص للتقديم'
   ];
   const missing = needed.filter((x) => !html.includes(x));
   if (missing.length) return 'ناقص: ' + missing.join(' , ');
@@ -662,7 +668,7 @@ check('البطاقة الأصلية تُطبع بلا أي رمز فرصة مع
   const html = site.window.HRCVoucher.buildHtml(app);
   if (/رمز الفرصة/.test(html)) return 'ما زال الظهر يطبع «رمز الفرصة»';
   if (/\b\d{4}-[A-HJ-NP-Z]{2}\b/.test(html)) return 'ظهر البطاقة يحمل رمزاً بصيغة رمز الفرصة';
-  const rules = ['فرصتين مستقلتين', '24 ساعة', 'ولا تعود', 'مكتب استنساخ'];
+  const rules = ['فرص مستقلة حسب البطاقة', '24 ساعة', 'ولا تعود', 'مكتب استنساخ'];
   const miss = rules.filter((r) => !html.includes(r));
   return miss.length === 0 || 'تعليمات ناقصة بالظهر: ' + miss.join(' , ');
 });
@@ -716,7 +722,7 @@ check('لا توجد نافذة تأكيد قديمة — الإتمام من ص
 check('الاستمارة تُطبع بباركود البطاقة نفسه وتذكر إمكانية وظيفة ثانية', () => {
   const page = readFileSync(resolve(ROOT, 'apply.html'), 'utf8');
   return (page.includes('fs-qr-note') && page.includes('باركود البطاقة نفسه') &&
-    page.includes('اختيار وظيفة ثانية') && page.includes('قابل للطباعة'.slice(0, 0) + 'window.print()')) ||
+    page.includes('اختيار وظيفة أخرى') && page.includes('قابل للطباعة'.slice(0, 0) + 'window.print()')) ||
     'ملاحظة الباركود في الاستمارة ناقصة';
 });
 check('الطباعة تُخرج ورقة الاستمارة وحدها (بلا هيرو النجاح وبلا أزرار)', () => {

@@ -333,7 +333,7 @@ const formHtmlPrinted = dash.doc.getElementById('print-root').innerHTML;
 /* نافذة الفرصتين + طباعة البطاقة الورقية */
 {
   const box = lastModal(dash.doc);
-  check('نافذة «بطاقة التوظيف — الفرصتان» انفتحت من جدول البطاقات', !!box && /الفرصتان/.test(box.textContent) &&
+  check('نافذة «بطاقة التوظيف — الفرصتان» انفتحت من جدول البطاقات', !!box && /الفرص/.test(box.textContent) &&
     box.textContent.includes(SERIAL));
   check('زر طباعة استمارة A4 ظاهر بنافذة الفرصتين', !!box.querySelector('#m-print-form'));
   const printBtn = box && box.querySelector('#m-print');
@@ -625,7 +625,7 @@ await wait(250);
 {
   const vtext = ver.doc.body.textContent;
   check('الاسم الكامل يظهر للموظف (بلا تقنيع)', vtext.includes('مرتضى كريم جبر الحلفاوي'));
-  check('الرقم التسلسلي وحالة البطاقة ظاهران', vtext.includes(SERIAL) && /استُهلكت الفرصتان/.test(vtext));
+  check('الرقم التسلسلي وحالة البطاقة ظاهران', vtext.includes(SERIAL) && /استُهلكت فرص البطاقة/.test(vtext));
   check('جدول الفرص يعرض وظيفتي البطاقة HRC-1043 و HRC-1042', vtext.includes('HRC-1043') && vtext.includes('HRC-1042'));
   check('باركود QR التحقق مرسوم في الصفحة', !!ver.doc.querySelector('#verify-root svg'));
   check('لا أخطاء في صفحة التحقق', ver.errors.length === 0, ver.errors[0]);

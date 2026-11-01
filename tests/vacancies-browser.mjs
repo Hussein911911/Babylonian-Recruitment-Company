@@ -55,9 +55,9 @@ try{
   check((await recordEmployerDecision(p,'A','hire')).ok,'employer request accepted');
   await p.waitForFunction(()=>document.querySelector('#notification-count').textContent==='1');
   await p.locator('#notification-toggle').click();await p.locator('[data-filter="decision"]').click();
-  await p.locator('.notice-item').filter({hasText:'البطاقة A'}).locator('[data-notice-open]').click();
+  await p.locator('.notice-item').filter({hasText:'طلب توظيف'}).locator('[data-notice-open]').click();
   check((await p.locator('.modal-backdrop').last().textContent()).includes('الشاغر 1'),'notice opens exact seat/card');
-  await p.locator('.modal-backdrop').last().locator('[data-win="1"]').click();await p.locator('#o-save').click();
+  await p.locator('.modal-backdrop').last().locator('#h-win').click();await p.locator('#o-save').click();
   await p.waitForFunction(()=>document.querySelectorAll('.modal-backdrop').length===1 && !document.getElementById('o-save'));
   await p.locator('.modal-backdrop').last().locator('[data-close]').first().click();
   check(await p.evaluate(()=>HRCNotifications.build(HRCStore.db(),HRCStore.currentUser()).every(n=>n.serial!=='A')),'resolved old alerts gone');

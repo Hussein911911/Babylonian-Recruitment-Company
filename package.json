@@ -2,7 +2,7 @@
   "name": "babylonian-recruitment-company",
   "version": "1.0.0",
   "private": true,
-  "description": "منصة شركة الهدف للتوظيف (HRC) — بطاقة توظيف بفرصتين وباركود QR، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة بقرار حرج. HTML/CSS/JS يعمل بلا خادم.",
+  "description": "منصة مكسب للتوظيف (HRC) — بطاقة توظيف بفرص مستقلة وباركود QR، صلاحية 30 يوماً، وحجز مؤقت للوظيفة 24 ساعة بقرار حرج. HTML/CSS/JS يعمل بلا خادم.",
   "scripts": {
     "build": "node tools/build.mjs",
     "start": "node tools/serve.mjs",

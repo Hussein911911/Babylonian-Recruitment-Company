@@ -307,7 +307,7 @@
         '<span class="bk-card-brand">' + UI.ic('emblem') + ' بطاقة التوظيف</span>' +
         '<span class="bk-card-num" dir="ltr">' + (v ? esc(v) : '• • • • • •') + '</span>' +
       '</span>' +
-      '<span class="bk-card-tags"><b>فرصتان</b><b>٣٠ يوماً</b></span>' +
+      '<span class="bk-card-tags"><b>فرص حسب البطاقة</b><b>٣٠ يوماً</b></span>' +
     '</div>';
   }
 
@@ -713,7 +713,7 @@
         fieldHtml('gender', 'الجنس', selectHtml('gender', [{ v: 'ذكر', t: 'ذكر' }, { v: 'أنثى', t: 'أنثى' }], d.gender || 'ذكر'), null, true) +
         fieldHtml('dob', 'تاريخ الميلاد (اختياري)', inputHtml('dob', 'date', '', d.dob || '', 'dir="ltr"'), null, true) +
         '</div>' + opt, focus = 'bk-gender';
-    else body = head('اختيار الوظيفة (اختياري)', 'إن أراد الزبون اختيار وظيفته الآن اخترها له — أو اضغط «تخطّي» فيختار وظيفتَي فرصتيه بنفسه لاحقاً من باركود بطاقته.', 'briefcase') +
+    else body = head('اختيار الوظيفة (اختياري)', 'إن أراد الزبون اختيار وظيفته الآن اخترها له — أو اضغط «تخطّي» فيختار وظائف فرصه المتاحة بنفسه لاحقاً من باركود بطاقته.', 'briefcase') +
       (jobs.length ? jobPickerHtml(jobs, d) +
         infoBox('alert', 'اختيار وظيفة الآن يستهلك فرصة بحجز <b>24 ساعة</b>. يمكنك التخطي ليختار الزبون لاحقاً؛ تُطبع استمارة لكل تقديم.') :
         infoBox('alert', '<b>لا توجد وظائف متاحة حالياً</b> — يمكنك تخطّي الاختيار وإتمام البيع، ويختار الزبون لاحقاً عند توفّر وظائف.'));
@@ -826,7 +826,7 @@
 
   function posBack() { if (posStep > 1) { posStep--; render(); } }
 
-  /* تخطّي اختيار الوظيفة: تُباع البطاقة بفرصتين فارغتين ويختار الزبون
+  /* تخطّي اختيار الوظيفة: تُباع البطاقة بفرص فارغة حسب البطاقة ويختار الزبون
      وظيفتيه بنفسه من باركود بطاقته (قرار الإدارة 2026-10-06). */
   function posSkip() {
     posErr = '';
@@ -856,7 +856,7 @@
       }
     } else if (posStep === POS_STEPS) {
       /* الوظيفة اختيارية (2026-10-06): إمّا يختارها موظف النقطة للزبون،
-         وإمّا يتخطّاها فيختار الزبون وظيفتَي فرصتيه بنفسه من باركود بطاقته. */
+         وإمّا يتخطّاها فيختار الزبون وظائف فرصه المتاحة بنفسه من باركود بطاقته. */
       if (!d.jobCode && !d.skipJob) {
         setErr('job', 'اختر وظيفة للزبون، أو اضغط «تخطّي — الزبون يختار وظيفتيه بنفسه».');
         return;
@@ -887,7 +887,7 @@
     var skipJob = !!(d.skipJob && !d.jobCode);
     host.innerHTML = stepHead('مراجعة الزبون قبل الإتمام',
         skipJob
-          ? 'راجع بياناتك يا زبون — بالضغط على «إتمام» تُفعَّل بطاقتك بفرصتين وتختار أنت وظيفتَيك لاحقاً من باركود البطاقة.'
+          ? 'راجع بياناتك يا زبون — بالضغط على «إتمام» تُفعَّل بطاقتك بفرص حسب البطاقة وتختار أنت وظائفك لاحقاً من باركود البطاقة.'
           : 'راجع بياناتك يا زبون — بالضغط على «إتمام» تُستهلك الفرصة الأولى وتُطبع استمارة التوظيف ببيانات صاحب العمل.', 'user') +
       '<div class="bk-info" style="border-color:#c8a24a;background:#fdf9ee">' + UI.ic('alert') +
         ' <b>للزبون:</b> سلّمك موظف نقطة البيع الجهاز — تأكد من بياناتك ووظيفتك ثم اضغط <b>«إتمام»</b> بنفسك.' +
@@ -910,10 +910,10 @@
             'الدوام: <b>' + esc(job.shift) + '</b>' +
           '</div>'
         : skipJob
-        ? infoBox('card', '<b>بلا اختيار وظيفة</b> — تُباع البطاقة بفرصتين فارغتين، ويختار الزبون وظيفتَيه بنفسه من باركود بطاقته، وتُطبع استمارة A4 لكل وظيفة يختارها. <b>إن أردت اختيار وظيفة الآن</b> ارجع واخترها.')
+        ? infoBox('card', '<b>بلا اختيار وظيفة</b> — تُباع البطاقة بفرص فارغة حسب البطاقة، ويختار الزبون وظائفه بنفسه من باركود بطاقته، وتُطبع استمارة A4 لكل وظيفة يختارها. <b>إن أردت اختيار وظيفة الآن</b> ارجع واخترها.')
         : infoBox('alert', 'الوظيفة غير متاحة — ارجع للتعديل واختر وظيفة أخرى.')) +
       (skipJob
-        ? '<div class="bk-info">' + UI.ic('clock') + ' بإتمامك: تُفعَّل البطاقة وتصلح <b>30 يوماً</b> بفرصتين فارغتين — لا تُستهلك أي فرصة الآن.</div>'
+        ? '<div class="bk-info">' + UI.ic('clock') + ' بإتمامك: تُفعَّل البطاقة وتصلح <b>30 يوماً</b> بفرص فارغة حسب البطاقة — لا تُستهلك أي فرصة الآن.</div>'
         : '<div class="bk-info">' + UI.ic('clock') + ' بإتمامك: تُحجز الوظيفة <b>24 ساعة</b> بانتظار قرار صاحب العمل والشركة، وتُستهلك الفرصة الأولى بالتقديم (لا تعود بأي نتيجة).</div>') +
       btnRow(
         '<button class="btn btn-gold" id="bk-pos-confirm" style="padding:14px 26px;font-size:16px">' + UI.ic('check') + ' إتمام</button>' +
@@ -998,7 +998,7 @@
           ' — الوظيفة محجوزة 24 ساعة بانتظار قرار صاحب العمل' +
           (at.holdExpiresAt ? ' حتى <b>' + esc(Store.fmtDateTime(at.holdExpiresAt)) + '</b>' : '') + '.</div>'
           : '<div class="bk-info" style="text-align:right;border-color:#1f8f96;background:#eefaf7">' + UI.ic('card') +
-            ' <b>البطاقة صارت نشطة بفرصتين فارغتين</b> — الزبون يمسح باركود بطاقته بنفسه ويختار وظيفتَيه ' +
+            ' <b>البطاقة صارت نشطة بفرص فارغة حسب البطاقة</b> — الزبون يمسح باركود بطاقته بنفسه ويختار وظائفه ' +
             '(وتُطبع استمارة A4 لكل وظيفة يختارها).</div>') +
         (at ? '<div class="bk-info" style="text-align:right;border-color:#c8a24a;background:#fdf9ee">' + UI.ic('print') +
           ' <b>هذي استمارة التوظيف A4</b> — تحمل نفس باركود البطاقة وبيانات الزبون والوظيفة ' +
@@ -1037,10 +1037,10 @@
   }
   function renderStatus(host) {
     var canUse = card.status === 'active' && Number(card.chancesLeft) > 0;
-    host.innerHTML = stepHead('حالة البطاقة', 'الفرصتان وحالة كل فرصة على حدة — والتواريخ محسوبة لحظياً.', 'list') +
+    host.innerHTML = stepHead('حالة البطاقة', 'الفرص وحالة كل فرصة على حدة — والتواريخ محسوبة لحظياً.', 'list') +
       '<div style="display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:4px 0 6px">' +
         '<b dir="ltr">' + esc(card.serial) + '</b>' + cardStatusBadge(card.status) +
-        (card.succeeded ? '<span class="chip chip-ok tiny">' + UI.ic('check') + ' تم توظيف بإحدى الفرصتين</span>' : '') +
+        (card.succeeded ? '<span class="chip chip-ok tiny">' + UI.ic('check') + ' تم توظيف بإحدى الفرص</span>' : '') +
       '</div>' +
       '<div class="tiny muted">الاسم: <b>' + esc(card.fullName) + '</b> · الهاتف: <b dir="ltr">' + esc(card.phone) + '</b></div>' +
       '<div class="tiny muted">تنتهي الصلاحية: <b>' + esc(card.expiryDate ? Store.fmtDate(card.expiryDate) : 'تبدأ عند أول تقديم ناجح') + '</b>' +
@@ -1199,7 +1199,7 @@
           (d.holdExpiresAt ? ' حتى <b>' + esc(Store.fmtDateTime(d.holdExpiresAt)) + '</b>' : '') +
           ' بانتظار نتيجة المقابلة — تابعها من بطاقتك هنا أو عند نقطة البيع.</div>' +
         '<div class="bk-info" style="text-align:right">' + UI.ic('alert') +
-          ' تذكير: الفرصة تُستهلك بالتقديم ولا تعود بأي نتيجة — وبعد الفرصتين تُشترى بطاقة جديدة من نقاط البيع.</div>' +
+          ' تذكير: الفرصة تُستهلك بالتقديم ولا تعود بأي نتيجة — وبعد استهلاك فرص البطاقة تُشترى بطاقة جديدة من نقاط البيع.</div>' +
       '</div>' +
       btnRow(
         '<button class="btn btn-lapis" id="bk-reprint2">' + UI.ic('print') + ' اطبع استمارة التوظيف</button>' +

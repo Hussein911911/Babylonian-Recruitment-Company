@@ -18,7 +18,7 @@ try{
   await p.goto(base+'index.html');await p.waitForSelector('#jobs-grid .job-card:not(.skeleton)');
   const img=p.locator('#jobs-grid .job-image');await img.scrollIntoViewIfNeeded();
   const state=await img.evaluate(e=>({bg:getComputedStyle(e,'::before').backgroundImage,animation:getComputedStyle(e).animationName,loaded:e.classList.contains('has-img')}));
-  assert.equal(state.bg,'none','blur must not load image before lazy image finishes');assert.equal(state.loaded,false);assert.equal(state.animation==='none',motion==='reduce');
+  assert.equal(state.bg,'none','blur must not load image before lazy image finishes');assert.equal(state.loaded,false);assert.equal(state.animation,'none','lazy placeholders must not continuously repaint while scrolling');
   release();await p.waitForFunction(()=>document.querySelector('#jobs-grid .job-image.img-failed'));
   assert.equal(await img.getAttribute('aria-label'),'تعذّر تحميل صورة الوظيفة');
   assert.equal(await img.locator('img').count(),0);assert.equal(await img.evaluate(e=>getComputedStyle(e).animationName),'none');

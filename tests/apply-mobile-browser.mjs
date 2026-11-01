@@ -53,6 +53,8 @@ try{
   await page.evaluate(()=>G.go(6));
   await page.waitForFunction(()=>document.querySelector('#pg-jobs.active'));
   check(await page.evaluate(()=>G.pickedIndex('HRC-1003')===0),config.name+' selected job stays selected after barcode scan');
+  check(await page.locator('#pg-jobs #jobs-count').count()===0,config.name+' result count badge is removed');
+  check(await page.locator('#jf-query').isVisible(),config.name+' job search remains available');
   await page.waitForFunction(()=>{const m=document.querySelector('#jobs-list .job-media');return m&&!m.classList.contains('has-img')&&!m.querySelector('.job-thumb')});
   check(await page.locator('#jobs-list .job-media').count()>0,config.name+' broken image falls back without hiding the job');
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),config.name+' job step fits without horizontal overflow');

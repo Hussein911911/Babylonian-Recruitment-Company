@@ -1,5 +1,5 @@
 /* ===========================================================================
- *  HRC — شركة الهدف للتوظيف | نظام التصميم
+ *  HRC — منصة مكسب للتوظيف | نظام التصميم
  *  الهوية: لازورد بابلي + ذهب + نقش بوابة عشتار + أسد بابل
  *  يشمل: الموقع العام، لوحة الموظفين، صفحة التحقق، وقالب الطباعة A4
  * =========================================================================== */
@@ -240,7 +240,7 @@ a.hc-item:hover { color: var(--gold-2); }
 .hero { position: relative; color: #fff; isolation: isolate; overflow: hidden; }
 .hero-bg {
   position: absolute; inset: 0; z-index: -2;
-  background-image: url('../img/ishtar-gate.jpg');
+  background-image: url('../img/recruitment-team.webp');
   background-size: cover; background-position: center 32%;
   transform: scale(1.02);
 }
@@ -565,7 +565,6 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
     opacity .7s cubic-bezier(.22, .61, .36, 1),
     transform .7s cubic-bezier(.22, .61, .36, 1),
     box-shadow .3s ease, border-color .3s ease, background .3s ease;
-  will-change: opacity, transform;
 }
 .reveal.is-visible { opacity: 1; transform: none; }
 .step:hover, .service:hover {
@@ -600,6 +599,7 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 .section-about .eyebrow { color: var(--gold-2); }
 .section-about .eyebrow-line::after { background: linear-gradient(90deg, var(--gold-2), transparent); }
 .section-about h2 { color: #fff; text-shadow: 0 0 26px rgba(120, 205, 255, .35); }
+.section-about .about-subtitle { color: var(--gold-2); font-size: 1.12rem; margin: 12px 0; }
 .section-about .about-lede { color: #c6d6f4; font-size: 1.02rem; }
 
 .section-about .feature-list li { color: #d6e2fb; transition: transform .3s ease; }
@@ -668,7 +668,7 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 
 .quote-band {
   position: relative; padding: clamp(52px, 7vw, 88px) 0; color: #fff; text-align: center; overflow: hidden;
-  background-image: url('../img/ishtar-gate.jpg'); background-size: cover; background-position: center 40%;
+  background-image: url('../img/recruitment-digital.webp'); background-size: cover; background-position: center 40%;
   background-attachment: fixed;
 }
 .quote-band::before { content: ''; position: absolute; inset: 0; background: rgba(6, 13, 31, .80); }
