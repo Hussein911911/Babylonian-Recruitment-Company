@@ -148,6 +148,12 @@ check('صورة المدينة في الواجهة وصورتا التوظيف �
   const imgs = Array.from(site.doc.querySelectorAll('.lion-frame img')).map(img => img.getAttribute('src'));
   return (/hero-skyline\.webp/.test(bg) && imgs.includes('assets/img/recruitment-team.webp') && imgs.includes('assets/img/recruitment-digital.webp') && imgs.every(p => existsSync(join(ROOT,p)))) || 'صور التوظيف أو الخلفية غير متوفرة';
 });
+check('رسالة التواصل تعرض النص المحدّث مع أزرار البطاقة وواتساب', () => {
+  const section = site.doc.querySelector('#contact');
+  return !!section && section.textContent.includes('جاهز للبدء؟ احصل على بطاقتك الآن') &&
+    section.textContent.includes('احصل على بطاقة التوظيف من أقرب نقطة بيع مباشر، وابدأ بالتقديم ومتابعة طلباتك فوراً عبر المنصة.') &&
+    !!section.querySelector('[data-action="open-booking"]') && !!section.querySelector('a[href^="https://wa.me/"]');
+});
 check('التصفية بالحالة تعمل', () => {
   const sel = site.doc.getElementById('filter-status');
   sel.value = 'available';
