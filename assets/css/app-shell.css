@@ -57,7 +57,7 @@
   content: ''; position: absolute; inset: 0; z-index: -1;
   border-radius: inherit; background: #012f3e; pointer-events: none;
 }
-/* شارة الترخيص فوق الاسم، واضحة على خلفية الصورة وعلى الشاشات الصغيرة. */
+/* شارة الترخيص تحت الاسم، واضحة على خلفية الصورة وعلى الشاشات الصغيرة. */
 .app-license {
   display: inline-block; max-width: 100%; margin: 6px 0 2px;
   padding: 5px 14px; border: 1px solid rgba(232, 195, 112, .7);
