@@ -392,6 +392,8 @@
 .app-card .job-image { border-radius: 0; aspect-ratio: 16 / 10; background: #0b1a3a; }
 .app-card .job-image img { object-fit: cover; }
 .app-card .job-image::before { filter: none; }
+/* The cover image already fills public cards; avoid painting a duplicate. */
+.app-card .job-image.has-img::before { background-image: none; }
 .app-card .ac-top {
   position: absolute; inset-block-start: 10px; inset-inline: 10px; z-index: 2;
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
@@ -848,5 +850,5 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
 
 /* The card theme also supplies an image background, so keep the loading
    treatment more specific without touching the loaded image or skeleton card. */
-.app-card:not(.skeleton) .job-image:not(.has-img):not(.img-failed){background:linear-gradient(90deg,#142b47 25%,#29445f 45%,#142b47 65%);background-size:220% 100%;animation:skelWave 1.3s ease-in-out infinite}
+.app-card:not(.skeleton) .job-image:not(.has-img):not(.img-failed){background:#142b47;animation:none}
 @media(prefers-reduced-motion:reduce){.app-card .job-image:not(.has-img){animation:none!important}}

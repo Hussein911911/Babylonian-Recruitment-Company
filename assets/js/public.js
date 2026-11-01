@@ -126,7 +126,7 @@
       entries.forEach(function (en) {
         if (!en.isIntersecting) return;
         io.unobserve(en.target);
-        var d = Number(en.target.getAttribute('data-d')) || 0;
+        var d = Math.min(120, Math.max(0, Number(en.target.getAttribute('data-d')) || 0));
         setTimeout(function () { en.target.classList.add('is-visible'); }, d);
       });
     }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
@@ -215,7 +215,7 @@
         var href = a.getAttribute('href') || '';
         a.classList.toggle('active', href.split('#')[1] === current);
       });
-    }, 120));
+    }, 120), { passive: true });
 
     var y = document.getElementById('year');
     if (y) y.textContent = Store.fmtDate(new Date()).slice(0,4);
@@ -547,7 +547,7 @@
     if (badge) { badge.textContent = jobs.length > 99 ? '99+' : String(jobs.length); badge.hidden = jobs.length === 0; }
     if (clear) clear.hidden = saved.length === 0;
     if (empty) empty.hidden = jobs.length > 0;
-    host.innerHTML = jobs.map(cardHtml).join('') +
+    host.innerHTML = jobs.map(function (job) { return cardHtml(job, saved); }).join('') +
       (gone ? '<div class="fav-note">' + UI.ic('info') + ' ' + gone + ' وظيفة محفوظة لم تعد معروضة (أُغلقت أو حُذفت).</div>' : '');
   }
 
@@ -940,7 +940,8 @@
           : 'جرّب كوداً آخر أو صفّر عوامل التصفية، أو تواصل معنا لتسجيلك في قائمة الانتظار.';
       }
     }
-    host.innerHTML = jobs.map(cardHtml).join('');
+    var favorites = favList();
+    host.innerHTML = jobs.map(function (job) { return cardHtml(job, favorites); }).join('');
     renderActiveChips();
   }
 
@@ -1006,7 +1007,7 @@
     return (j.category ? j.category + ' · ' : '') + (j.gender && j.gender !== 'لا فرق' ? j.gender : 'فرصة متاحة');
   }
 
-  function cardHtml(j) {
+  function cardHtml(j, favorites) {
     var st = CFG.jobStatus[j.status];
     var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : ''));
     var hold = '';
@@ -1021,7 +1022,7 @@
         (j.imageUrl ? ' referrerpolicy="no-referrer"' : '') +
         ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.classList.add(\'img-failed\');this.parentNode.setAttribute(\'role\',\'img\');this.parentNode.setAttribute(\'aria-label\',\'تعذّر تحميل صورة الوظيفة\');this.remove()">' + '</div>';
     var b = cardBadge(j);
-    var fav = favList().indexOf(j.code) >= 0;
+    var fav = favorites.indexOf(j.code) >= 0;
     var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');
     return '' +
       '<article class="job-card ' + cls + '">' +

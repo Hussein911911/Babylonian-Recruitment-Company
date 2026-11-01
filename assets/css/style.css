@@ -565,7 +565,6 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
     opacity .7s cubic-bezier(.22, .61, .36, 1),
     transform .7s cubic-bezier(.22, .61, .36, 1),
     box-shadow .3s ease, border-color .3s ease, background .3s ease;
-  will-change: opacity, transform;
 }
 .reveal.is-visible { opacity: 1; transform: none; }
 .step:hover, .service:hover {

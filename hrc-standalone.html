@@ -585,7 +585,6 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
     opacity .7s cubic-bezier(.22, .61, .36, 1),
     transform .7s cubic-bezier(.22, .61, .36, 1),
     box-shadow .3s ease, border-color .3s ease, background .3s ease;
-  will-change: opacity, transform;
 }
 .reveal.is-visible { opacity: 1; transform: none; }
 .step:hover, .service:hover {
@@ -3422,6 +3421,8 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 .app-card .job-image { border-radius: 0; aspect-ratio: 16 / 10; background: #0b1a3a; }
 .app-card .job-image img { object-fit: cover; }
 .app-card .job-image::before { filter: none; }
+/* The cover image already fills public cards; avoid painting a duplicate. */
+.app-card .job-image.has-img::before { background-image: none; }
 .app-card .ac-top {
   position: absolute; inset-block-start: 10px; inset-inline: 10px; z-index: 2;
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
@@ -3878,7 +3879,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
 
 /* The card theme also supplies an image background, so keep the loading
    treatment more specific without touching the loaded image or skeleton card. */
-.app-card:not(.skeleton) .job-image:not(.has-img):not(.img-failed){background:linear-gradient(90deg,#142b47 25%,#29445f 45%,#142b47 65%);background-size:220% 100%;animation:skelWave 1.3s ease-in-out infinite}
+.app-card:not(.skeleton) .job-image:not(.has-img):not(.img-failed){background:#142b47;animation:none}
 @media(prefers-reduced-motion:reduce){.app-card .job-image:not(.has-img){animation:none!important}}
 
 /* Staff activity drawer — no public payload and no printed UI. */
@@ -22221,7 +22222,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       entries.forEach(function (en) {
         if (!en.isIntersecting) return;
         io.unobserve(en.target);
-        var d = Number(en.target.getAttribute('data-d')) || 0;
+        var d = Math.min(120, Math.max(0, Number(en.target.getAttribute('data-d')) || 0));
         setTimeout(function () { en.target.classList.add('is-visible'); }, d);
       });
     }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
@@ -22310,7 +22311,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         var href = a.getAttribute('href') || '';
         a.classList.toggle('active', href.split('#')[1] === current);
       });
-    }, 120));
+    }, 120), { passive: true });
 
     var y = document.getElementById('year');
     if (y) y.textContent = Store.fmtDate(new Date()).slice(0,4);
@@ -22642,7 +22643,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (badge) { badge.textContent = jobs.length > 99 ? '99+' : String(jobs.length); badge.hidden = jobs.length === 0; }
     if (clear) clear.hidden = saved.length === 0;
     if (empty) empty.hidden = jobs.length > 0;
-    host.innerHTML = jobs.map(cardHtml).join('') +
+    host.innerHTML = jobs.map(function (job) { return cardHtml(job, saved); }).join('') +
       (gone ? '<div class="fav-note">' + UI.ic('info') + ' ' + gone + ' وظيفة محفوظة لم تعد معروضة (أُغلقت أو حُذفت).</div>' : '');
   }
 
@@ -23035,7 +23036,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           : 'جرّب كوداً آخر أو صفّر عوامل التصفية، أو تواصل معنا لتسجيلك في قائمة الانتظار.';
       }
     }
-    host.innerHTML = jobs.map(cardHtml).join('');
+    var favorites = favList();
+    host.innerHTML = jobs.map(function (job) { return cardHtml(job, favorites); }).join('');
     renderActiveChips();
   }
 
@@ -23101,7 +23103,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     return (j.category ? j.category + ' · ' : '') + (j.gender && j.gender !== 'لا فرق' ? j.gender : 'فرصة متاحة');
   }
 
-  function cardHtml(j) {
+  function cardHtml(j, favorites) {
     var st = CFG.jobStatus[j.status];
     var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : ''));
     var hold = '';
@@ -23116,7 +23118,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         (j.imageUrl ? ' referrerpolicy="no-referrer"' : '') +
         ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.classList.add(\'img-failed\');this.parentNode.setAttribute(\'role\',\'img\');this.parentNode.setAttribute(\'aria-label\',\'تعذّر تحميل صورة الوظيفة\');this.remove()">' + '</div>';
     var b = cardBadge(j);
-    var fav = favList().indexOf(j.code) >= 0;
+    var fav = favorites.indexOf(j.code) >= 0;
     var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');
     return '' +
       '<article class="job-card ' + cls + '">' +
