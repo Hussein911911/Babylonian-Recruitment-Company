@@ -188,6 +188,14 @@
       if (r) { e.preventDefault(); window.location.reload(); }
     });
 
+    // عناصر تفاصيل الوظيفة المعرّفة كأزرار تدعم لوحة المفاتيح أيضاً.
+    document.addEventListener('keydown', function (e) {
+      var target = e.target.closest && e.target.closest('[data-action="job-details"][role="button"]');
+      if (target && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault(); openJob(target.getAttribute('data-code'));
+      }
+    });
+
     // قائمة الجوال
     var toggle = document.getElementById('nav-toggle');
     var nav = document.getElementById('main-nav');
@@ -314,9 +322,9 @@
     var PALETTE = ['#0f9c94', '#2563d9', '#7c4ddb', '#d98324', '#16a34a', '#db3d6a', '#0891b2'];
     catColor = {};
     cats.forEach(function (c, i) { catColor[c] = PALETTE[i % PALETTE.length]; });
-    var hint = document.getElementById('cats-hint');
-    if (hint) hint.textContent = (cur && cur !== 'all') ? 'مُصفّى: ' + cur : 'كل التخصصات';
     var cur = filters.category || 'all';
+    var hint = document.getElementById('cats-hint');
+    if (hint) hint.textContent = cur !== 'all' ? 'مُصفّى: ' + cur : 'كل التخصصات';
     var html = '<button type="button" class="cat' + (cur === 'all' ? ' is-active' : '') + '" data-cat="all" role="tab"' +
       ' aria-selected="' + (cur === 'all') + '" style="--cat:var(--gold)">' +
       '<span class="cat-ic"><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg></span>' +
@@ -490,6 +498,15 @@
 
   /* ── المفضلة: تبديل فوري + تحديث قسم «المفضلة» والعدّاد ──
      الربط مفوَّض على الصفحة كلها، فتعمل القلوب في شبكة الوظائف وفي المفضلة. */
+  function syncFavoriteButtons() {
+    var saved = favList();
+    document.querySelectorAll('[data-fav]').forEach(function (button) {
+      var on = saved.indexOf(button.getAttribute('data-fav')) >= 0;
+      button.classList.toggle('is-on', on);
+      button.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
   function bindFavorites() {
     document.addEventListener('click', function (e) {
       var b = e.target.closest && e.target.closest('[data-fav]');
@@ -498,6 +515,7 @@
       var code = b.getAttribute('data-fav');
       var on = favToggle(code);
       renderFavorites();
+      syncFavoriteButtons();
       if (UI.toast) UI.toast(on ? 'ok' : 'info', on ? 'أُضيفت للمفضلة' : 'أُزيلت من المفضلة',
         on ? 'ستجدها في قسم «المفضلة» أسفل الوظائف.' : 'يمكنك إضافتها مجدداً في أي وقت.');
     });
@@ -505,6 +523,7 @@
     if (clear) clear.addEventListener('click', function () {
       try { localStorage.removeItem(FAV_KEY); } catch (e) { }
       renderFavorites();
+      syncFavoriteButtons();
       if (UI.toast) UI.toast('info', 'مُسحت المفضلة', 'لا توجد وظائف محفوظة الآن.');
     });
   }
