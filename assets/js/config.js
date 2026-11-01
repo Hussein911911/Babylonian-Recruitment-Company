@@ -8,8 +8,8 @@
 
   var CONFIG = {
     company: {
-      nameAr: 'شركة الهدف للتوظيف',
-      nameEn: 'Al-Hadaf Recruitment Company',
+      nameAr: 'منصة مكسب للتوظيف',
+      nameEn: 'Makseb Employment Platform',
       legalName: 'شركة الهدف للتوظيف',
       slogan: 'نوفّر الأيادي العاملة الفنية والتخصصية في بابل والفرات الأوسط',
       phones: ['07760058007', '07715993271'],

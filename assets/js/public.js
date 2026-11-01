@@ -280,7 +280,7 @@
       if (B && B.open) {
         B.open({ serial: serial[0] });
       } else {
-        UI.toast('info', 'بطاقة توظيف شركة الهدف',
+        UI.toast('info', 'بطاقة توظيف منصة مكسب',
           'افتح الموقع الرئيسي وأدخل باركود بطاقتك من نافذة «بطاقتي».', 8000);
       }
       return;
@@ -937,7 +937,7 @@
   }
 
   function bookUrl(code, title) {
-    var msg = 'مرحباً شركة الهدف للتوظيف، أرغب بالحجز على وظيفة ' + (code || '') +
+    var msg = 'مرحباً منصة مكسب للتوظيف، أرغب بالحجز على وظيفة ' + (code || '') +
       (title ? ' — ' + title : '') + '.';
     return 'https://wa.me/' + waNumber() + '?text=' + encodeURIComponent(msg);
   }

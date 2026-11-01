@@ -17,7 +17,7 @@ const style=w.document.getElementById('hrc-card-style').textContent;
 const sprite=fs.readFileSync(root+'src/partials/sprite.html','utf8');
 fs.writeFileSync(root+'card-design.html',`<!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>معاينة بطاقة التوظيف — شركة الهدف</title>
+<title>معاينة بطاقة التوظيف — منصة مكسب</title>
 <link rel="stylesheet" href="assets/css/style.css">
 <style>
 body{background:#edf0f5;color:#14203a}.wallet-demo{max-width:1000px;margin:40px auto;padding:0 18px}.wallet-demo h1{font-size:1.6rem;margin:0 0 10px}.wallet-demo p{color:#5a6781}.wallet-demo .hrc-card-sheet{gap:24px;padding:30px 0}.wallet-demo-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}.wallet-safety{padding:12px 16px;background:#fff3d2;border:1px solid #e4cb84;border-radius:12px;font-size:.85rem}.wallet-demo .hrc-card{box-shadow:0 16px 36px #10234230}
