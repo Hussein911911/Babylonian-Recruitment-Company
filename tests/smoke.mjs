@@ -154,6 +154,10 @@ check('رسالة التواصل تعرض النص المحدّث مع أزرا�
     section.textContent.includes('احصل على بطاقة التوظيف من أقرب نقطة بيع مباشر، وابدأ بالتقديم ومتابعة طلباتك فوراً عبر المنصة.') &&
     !!section.querySelector('[data-action="open-booking"]') && !!section.querySelector('a[href^="https://wa.me/"]');
 });
+check('قسم عن المنصة يعرض التعريف الجديد', () => {
+  const about = site.doc.querySelector('#about');
+  return !!about && ['عن المنصة','منصة مكسب للتوظيف','حلول التوظيف الشاملة','نربط بين أصحاب العمل والباحثين عن وظائف في كافة المجالات والقطاعات على مستوى العراق.'].every(t=>about.textContent.includes(t)) && !about.textContent.includes('شركة الهدف للتوظيف');
+});
 check('التصفية بالحالة تعمل', () => {
   const sel = site.doc.getElementById('filter-status');
   sel.value = 'available';

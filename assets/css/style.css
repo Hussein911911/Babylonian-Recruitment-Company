@@ -600,6 +600,7 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 .section-about .eyebrow { color: var(--gold-2); }
 .section-about .eyebrow-line::after { background: linear-gradient(90deg, var(--gold-2), transparent); }
 .section-about h2 { color: #fff; text-shadow: 0 0 26px rgba(120, 205, 255, .35); }
+.section-about .about-subtitle { color: var(--gold-2); font-size: 1.12rem; margin: 12px 0; }
 .section-about .about-lede { color: #c6d6f4; font-size: 1.02rem; }
 
 .section-about .feature-list li { color: #d6e2fb; transition: transform .3s ease; }
