@@ -240,7 +240,7 @@ a.hc-item:hover { color: var(--gold-2); }
 .hero { position: relative; color: #fff; isolation: isolate; overflow: hidden; }
 .hero-bg {
   position: absolute; inset: 0; z-index: -2;
-  background-image: url('../img/ishtar-gate.jpg');
+  background-image: url('../img/recruitment-team.webp');
   background-size: cover; background-position: center 32%;
   transform: scale(1.02);
 }
@@ -668,7 +668,7 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 
 .quote-band {
   position: relative; padding: clamp(52px, 7vw, 88px) 0; color: #fff; text-align: center; overflow: hidden;
-  background-image: url('../img/ishtar-gate.jpg'); background-size: cover; background-position: center 40%;
+  background-image: url('../img/recruitment-digital.webp'); background-size: cover; background-position: center 40%;
   background-attachment: fixed;
 }
 .quote-band::before { content: ''; position: absolute; inset: 0; background: rgba(6, 13, 31, .80); }

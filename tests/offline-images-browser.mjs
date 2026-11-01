@@ -30,6 +30,10 @@ try {
     await image.evaluate(img=>{img.loading='eager'; return img.decode()});
     assert.equal(await image.evaluate(img=>img.complete&&img.naturalWidth>0&&/^data:image\/(?:webp|svg\+xml);base64,/.test(img.src)),true);checks++;
    }
+   for(const image of await page.locator('#about .lion-frame img,#verify .lion-frame img').all()){
+    await image.evaluate(img=>{img.loading='eager';return img.decode()});
+    assert.equal(await image.evaluate(img=>img.complete&&img.naturalWidth>0&&img.src.startsWith('data:image/')),true,'recruitment image embedded and decodable offline');checks++;
+   }
    assert.deepEqual(external,[],'Offline demo must not attempt HTTP(S) requests');checks++;
    assert.deepEqual(errors,[],'No runtime errors');checks++;
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);checks++;

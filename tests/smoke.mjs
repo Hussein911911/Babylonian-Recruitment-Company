@@ -143,14 +143,10 @@ check('إحصاءات الواجهة (شريط الأرقام) ظهرت', () => 
 });
 check('أيقونة/شعار الشركة موجود داخل الرموز (Sprite)', () =>
   !!site.doc.getElementById('i-emblem') || 'رمز الشعار غير موجود');
-check('صورة المدينة في الواجهة + صورة أسد بابل في قسم الشركة', () => {
-  /* 2026-10-25: خلفية الواجهة صارت صورة مدينة (hero-skyline) بنمط التطبيق،
-     وأسد بابل بقي صورة قسم «عن الشركة». نتحقق من الاثنين فعلياً على القرص. */
+check('صورة المدينة في الواجهة وصورتا التوظيف والمتابعة في الأقسام', () => {
   const bg = site.window.getComputedStyle(site.doc.querySelector('.hero.hero-app .hero-bg')).backgroundImage || '';
-  const okCity = /hero-skyline\.webp/.test(bg) && existsSync(join(ROOT, 'assets/img/hero-skyline.webp'));
-  const lion = site.doc.querySelector('.lion-frame img');
-  const okLion = !!lion && lion.getAttribute('src').includes('lion-of-babylon');
-  return (okCity && okLion) || ('الخلفية: ' + bg.slice(0, 60) + ' | الأسد: ' + okLion);
+  const imgs = Array.from(site.doc.querySelectorAll('.lion-frame img')).map(img => img.getAttribute('src'));
+  return (/hero-skyline\.webp/.test(bg) && imgs.includes('assets/img/recruitment-team.webp') && imgs.includes('assets/img/recruitment-digital.webp') && imgs.every(p => existsSync(join(ROOT,p)))) || 'صور التوظيف أو الخلفية غير متوفرة';
 });
 check('التصفية بالحالة تعمل', () => {
   const sel = site.doc.getElementById('filter-status');
