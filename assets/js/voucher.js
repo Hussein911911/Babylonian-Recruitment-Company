@@ -107,7 +107,7 @@
       '<div class="mk-steps"><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 1h10a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zm0 2v17h10V3zm4 18h2v1h-2z"/></svg>امسح</div><i>›</i><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="5"/><path d="M4 23c0-7 3-10 8-10s8 3 8 10z"/></svg>سجّل</div><i>›</i><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6a2 2 0 0 1 2 2v1h4a2 2 0 0 1 2 2v4l-9 2v-1h-4v1l-9-2V8a2 2 0 0 1 2-2h4V5a2 2 0 0 1 2-2zm0 3h6V5H9zM1 14l9 2v1h4v-1l9-2v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z"/></svg>اختر وظيفتك</div></div>' +
       '<div class="mk-ribbon">' + esc(count) + '</div>' +
       '<div class="mk-contact"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13v-2a9 9 0 0 1 18 0v2M3 12h3v7H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 1-2zm18 0h-3v7h2a2 2 0 0 0 2-2v-3a2 2 0 0 0-1-2zm-2 7c0 2-2 3-5 3h-2"/></svg><div class="mk-contact-text">خدمة العملاء<b>' + esc(CFG.company.phones[0] || '') + '</b></div><div class="mk-contact-text mk-contact-site">الموقع الإلكتروني<b>' + esc((function(){ try { return new URL(Store.cardUrl(app.serial)).host; } catch(e) { return ''; } })()) + '</b></div></div>' +
-      '<div class="mk-footer"><div class="mk-date">إصدار البطاقة<b>' + (!app.issueDate ? 'أول تقديم' : esc(Store.fmtDate(app.issueDate))) + '</b></div><div class="mk-serial">رقم البطاقة<b>' + esc(app.serial) + '</b></div></div></div>';
+      '<div class="mk-footer"><div class="mk-date">إصدار البطاقة<b>' + (!app.issueDate ? 'أول تقديم' : esc(Store.fmtDate(app.issueDate))) + '</b></div><div class="mk-serial">كود البطاقة<b>' + esc(app.serial) + '</b></div></div></div>';
   }
 
   function backHtml(app, attempts) {
