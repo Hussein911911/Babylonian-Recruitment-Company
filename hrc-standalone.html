@@ -3426,6 +3426,15 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 .app-card .job-image::before { filter: none; }
 /* The cover image already fills public cards; avoid painting a duplicate. */
 .app-card .job-image.has-img::before { background-image: none; }
+/* رقم ترتيب العرض، منفصل عن كود الوظيفة الثابت. */
+.app-card .ac-sequence {
+  position: absolute; inset-inline-start: 10px; inset-block-end: 9px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 2px; direction: ltr;
+  padding: 3px 9px; border-radius: 999px; color: #f8e7bd;
+  background: rgba(11, 26, 58, .9); border: 1px solid rgba(232, 208, 137, .7);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .2); font-size: .7rem; font-weight: 800;
+  line-height: 1.4; pointer-events: none;
+}
 .app-card .ac-top {
   position: absolute; inset-block-start: 10px; inset-inline: 10px; z-index: 2;
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
@@ -22651,7 +22660,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (badge) { badge.textContent = jobs.length > 99 ? '99+' : String(jobs.length); badge.hidden = jobs.length === 0; }
     if (clear) clear.hidden = saved.length === 0;
     if (empty) empty.hidden = jobs.length > 0;
-    host.innerHTML = jobs.map(function (job) { return cardHtml(job, saved); }).join('') +
+    host.innerHTML = jobs.map(function (job, index) { return cardHtml(job, saved, index + 1); }).join('') +
       (gone ? '<div class="fav-note">' + UI.ic('info') + ' ' + gone + ' وظيفة محفوظة لم تعد معروضة (أُغلقت أو حُذفت).</div>' : '');
   }
 
@@ -23045,7 +23054,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       }
     }
     var favorites = favList();
-    host.innerHTML = jobs.map(function (job) { return cardHtml(job, favorites); }).join('');
+    host.innerHTML = jobs.map(function (job, index) { return cardHtml(job, favorites, index + 1); }).join('');
     renderActiveChips();
   }
 
@@ -23111,7 +23120,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     return (j.category ? j.category + ' · ' : '') + (j.gender && j.gender !== 'لا فرق' ? j.gender : 'فرصة متاحة');
   }
 
-  function cardHtml(j, favorites) {
+  function cardHtml(j, favorites, position) {
     var st = CFG.jobStatus[j.status];
     var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : ''));
     var hold = '';
@@ -23124,7 +23133,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
       '<img src="' + UI.esc(imgSrc) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async"' +
         (j.imageUrl ? ' referrerpolicy="no-referrer"' : '') +
-        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.classList.add(\'img-failed\');this.parentNode.setAttribute(\'role\',\'img\');this.parentNode.setAttribute(\'aria-label\',\'تعذّر تحميل صورة الوظيفة\');this.remove()">' + '</div>';
+        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.classList.add(\'img-failed\');this.parentNode.setAttribute(\'role\',\'img\');this.parentNode.setAttribute(\'aria-label\',\'تعذّر تحميل صورة الوظيفة\');this.remove()">' +
+      '<span class="ac-sequence" aria-label="ترتيب الوظيفة ' + position + '"><span aria-hidden="true">#</span>' + position + '</span></div>';
     var b = cardBadge(j);
     var fav = favorites.indexOf(j.code) >= 0;
     var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');

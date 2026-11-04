@@ -547,7 +547,7 @@
     if (badge) { badge.textContent = jobs.length > 99 ? '99+' : String(jobs.length); badge.hidden = jobs.length === 0; }
     if (clear) clear.hidden = saved.length === 0;
     if (empty) empty.hidden = jobs.length > 0;
-    host.innerHTML = jobs.map(function (job) { return cardHtml(job, saved); }).join('') +
+    host.innerHTML = jobs.map(function (job, index) { return cardHtml(job, saved, index + 1); }).join('') +
       (gone ? '<div class="fav-note">' + UI.ic('info') + ' ' + gone + ' وظيفة محفوظة لم تعد معروضة (أُغلقت أو حُذفت).</div>' : '');
   }
 
@@ -941,7 +941,7 @@
       }
     }
     var favorites = favList();
-    host.innerHTML = jobs.map(function (job) { return cardHtml(job, favorites); }).join('');
+    host.innerHTML = jobs.map(function (job, index) { return cardHtml(job, favorites, index + 1); }).join('');
     renderActiveChips();
   }
 
@@ -1007,7 +1007,7 @@
     return (j.category ? j.category + ' · ' : '') + (j.gender && j.gender !== 'لا فرق' ? j.gender : 'فرصة متاحة');
   }
 
-  function cardHtml(j, favorites) {
+  function cardHtml(j, favorites, position) {
     var st = CFG.jobStatus[j.status];
     var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : ''));
     var hold = '';
@@ -1020,7 +1020,8 @@
       '<span class="job-ph" aria-hidden="true"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></span>' +
       '<img src="' + UI.esc(imgSrc) + '" alt="' + UI.esc(j.title) + '" loading="lazy" decoding="async"' +
         (j.imageUrl ? ' referrerpolicy="no-referrer"' : '') +
-        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.classList.add(\'img-failed\');this.parentNode.setAttribute(\'role\',\'img\');this.parentNode.setAttribute(\'aria-label\',\'تعذّر تحميل صورة الوظيفة\');this.remove()">' + '</div>';
+        ' onload="this.parentNode.classList.add(\'has-img\')" onerror="this.parentNode.classList.add(\'img-failed\');this.parentNode.setAttribute(\'role\',\'img\');this.parentNode.setAttribute(\'aria-label\',\'تعذّر تحميل صورة الوظيفة\');this.remove()">' +
+      '<span class="ac-sequence" aria-label="ترتيب الوظيفة ' + position + '"><span aria-hidden="true">#</span>' + position + '</span></div>';
     var b = cardBadge(j);
     var fav = favorites.indexOf(j.code) >= 0;
     var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');

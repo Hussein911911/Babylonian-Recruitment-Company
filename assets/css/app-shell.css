@@ -397,6 +397,15 @@
 .app-card .job-image::before { filter: none; }
 /* The cover image already fills public cards; avoid painting a duplicate. */
 .app-card .job-image.has-img::before { background-image: none; }
+/* رقم ترتيب العرض، منفصل عن كود الوظيفة الثابت. */
+.app-card .ac-sequence {
+  position: absolute; inset-inline-start: 10px; inset-block-end: 9px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 2px; direction: ltr;
+  padding: 3px 9px; border-radius: 999px; color: #f8e7bd;
+  background: rgba(11, 26, 58, .9); border: 1px solid rgba(232, 208, 137, .7);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .2); font-size: .7rem; font-weight: 800;
+  line-height: 1.4; pointer-events: none;
+}
 .app-card .ac-top {
   position: absolute; inset-block-start: 10px; inset-inline: 10px; z-index: 2;
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;

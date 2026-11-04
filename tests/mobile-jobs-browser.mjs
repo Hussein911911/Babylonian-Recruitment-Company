@@ -18,6 +18,8 @@ try {
   await page.waitForFunction(()=>document.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length===7);
   const cards=page.locator('#jobs-grid .job-card');
   assert.equal(await cards.count(),7); assert.equal((await page.locator('#jobs-count').innerText()).trim(),'7');
+  assert.deepEqual(await cards.locator('.ac-sequence').allTextContents(), ['#1','#2','#3','#4','#5','#6','#7']);
+  assert.equal(await cards.first().locator('.ac-sequence').getAttribute('aria-label'),'ترتيب الوظيفة 1');
   for(let i=0;i<7;i++) assert.ok(await cards.nth(i).isVisible(),`card ${i+1} hidden at ${width}`);
   const geometry=await cards.evaluateAll(els=>{
    const rects=els.map(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom}});
@@ -39,6 +41,7 @@ try {
   await page.locator('#filter-q').fill('HRC-9007');
   await page.waitForFunction(()=>document.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length===1);
   assert.ok((await cards.first().innerText()).includes('HRC-9007'));
+  assert.equal(await cards.first().locator('.ac-sequence').textContent(),'#1');
   await ctx.close();console.log(`PASS seven jobs reachable and searchable at ${width}px`);
  }
 }finally{await browser.close()}
