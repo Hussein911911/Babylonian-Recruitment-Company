@@ -98,6 +98,8 @@
     return {
       id: r.id,
       serial: r.serial, archivedAt: r.archived_at || null,
+      /* رقم الإصدار يُقرأ من الخادم فقط؛ لا يُرسل في تحديثات المزامنة. */
+      cardNumber: Number.isSafeInteger(Number(r.card_number)) && Number(r.card_number) > 0 ? Number(r.card_number) : null,
       cardPrintCode: r.card_print_code || null,
       fullName: r.full_name,
       phone: r.phone,
