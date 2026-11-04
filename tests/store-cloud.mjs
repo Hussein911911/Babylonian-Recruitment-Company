@@ -661,6 +661,28 @@ step(6, 'Realtime — تغيير الآخرين لا يتضاعف في الدف�
   check('فشل بيانات العمل لا يفتح اللوحة أو جلسة محلية',!r.ok && r.code==='data_unavailable' && !Store.currentUser());
 }
 
+step('numbered', 'إصدار آمن واسترجاع رد مفقود');
+{
+  const rows=cloudRows(), mock=makeMock({rows});
+  const original=mock.rpc; let calls=[], lost=true;
+  mock.rpc=function(name,args){
+    if(name!=='issue_numbered_cards')return original.call(mock,name,args);
+    calls.push(args);
+    if(lost){lost=false;return Promise.reject(new Error('network lost'));}
+    return Promise.resolve({data:{cards:[{id:'new-card',serial:'7KQ4M9TR2X',card_number:1,full_name:'',phone:'',status:'blank',attempt_limit:2}],attempts:[{id:'a1',serial:'7KQ4M9TR2X',attempt_no:1,slot_status:'empty'},{id:'a2',serial:'7KQ4M9TR2X',attempt_no:2,slot_status:'empty'}]},error:null});
+  };
+  const {Store,sandbox}=bootStore(mock,{enforceAuth:true}); sandbox.crypto={randomUUID:()=> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'};
+  Store.init(); await sleep(120); await Store.signIn('hussein','correct-password');
+  let failed=false;try{await Store.issueNumberedCards(1,'7KQ4M9TR2X','');}catch(e){failed=true;}
+  check('انقطاع الرد لا يعرض بطاقة غير مؤكدة',failed && !Store.getApplicant('7KQ4M9TR2X'));
+  check('الطلب يبقى محفوظاً للاسترجاع',!!Store.pendingCardIssue());
+  const made=await Store.issueNumberedCards(90,null,'different');
+  check('إعادة المحاولة ترسل نفس معرف ومعطيات الطلب',calls.length===2 && JSON.stringify(calls[0])===JSON.stringify(calls[1]));
+  check('التأكيد يضيف الرقم والفرص محلياً',made[0].cardNumber===1 && Store.getAttempts('7KQ4M9TR2X').length===2);
+  check('لا تبقى عملية إدراج مكررة في المزامنة',!Store.diffCloud().some(o=>o.key==='7KQ4M9TR2X' || String(o.key).startsWith('7KQ4M9TR2X:')));
+  check('الطلب يزول بعد الاسترجاع الناجح',!Store.pendingCardIssue());
+}
+
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail ? '❌ ' : '✅ ') + pass + ' ناجح | ' + (fail ? '❌ ' : '') + fail + ' فاشل');
 console.log('═'.repeat(74) + '\n');

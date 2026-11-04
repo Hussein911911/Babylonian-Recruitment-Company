@@ -396,12 +396,21 @@
     if (style) style.textContent = '';
   }
 
+  function numbersReady(apps) {
+    var workspace = Store.db && Store.db().meta && Store.db().meta.workspace;
+    if (workspace && apps.some(function (a) { return a.cardNumberKnown !== true; })) {
+      UI.toast('err', 'تعذّرت الطباعة', 'لم يتم التأكد من رقم البطاقة؛ تحقق من الاتصال وأعد تحميل البيانات قبل الطباعة.');
+      return false;
+    }
+    return true;
+  }
+
   function print(app, opts) {
     opts = opts || {};
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّر الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
-    if (!app) return;
+    if (!app || !numbersReady([app])) return;
     clearFormPrint();
     var attempts = opts.attempts || Store.getAttempts(app.serial);
     var seq = ++printSeq;
@@ -419,6 +428,7 @@
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
     if (!apps || !apps.length) { UI.toast('err', 'تعذّرت الطباعة', 'لا توجد بطاقات بالدفعة'); return; }
+    if (!numbersReady(apps)) return;
     clearFormPrint();
     var seq = ++printSeq;
     setSheetCss(false);
@@ -496,6 +506,7 @@
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
     if (!apps || !apps.length) { UI.toast('err', 'تعذّرت الطباعة', 'لا توجد بطاقات للطباعة'); return; }
+    if (!numbersReady(apps)) return;
     clearFormPrint();
     var seq = ++printSeq;
     setSheetCss(true);

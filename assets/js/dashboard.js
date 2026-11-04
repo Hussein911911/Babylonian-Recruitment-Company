@@ -2714,6 +2714,7 @@
       onMount: function (box, close) {
         var codeInp = box.querySelector('#c-code');
         var errBox = box.querySelector('#c-err');
+        if (Store.pendingCardIssue()) { errBox.textContent='يوجد طلب سابق لم يصل تأكيده؛ الضغط على إضافة يسترجع نفس الطلب أولاً دون إصدار جديد.'; errBox.style.display='block'; }
         codeInp.value = Store.suggestSerial();
         codeInp.addEventListener('input', function () { codeInp.value = codeInp.value.toUpperCase().replace(/\s+/g, ''); });
         box.querySelector('#c-gen').addEventListener('click', function () {
@@ -2725,14 +2726,15 @@
           var notes = box.querySelector('#c-notes').value.trim();
           errBox.style.display = 'none';
           if (!serial) { codeInp.focus(); return; }
-          if(Store.db().meta.workspace&&Store.isCardSerial(serial)&&!Store.getApplicant(Store.normalizeCardSerial(serial))){
-            var btn=box.querySelector('#c-save'),gen=box.querySelector('#c-gen'),owner=sessionKey();btn.disabled=true;codeInp.disabled=true;gen.disabled=true;
-            try{var used=await Store.serialWasIssued(serial);if(!document.contains(box)||owner!==sessionKey())return;if(used){errBox.textContent='هذا الباركود مسجّل سابقاً، بما فيه الأرشيف؛ لا يمكن إصداره مجدداً';errBox.style.display='block';return;}}catch(e){errBox.textContent=e.message;errBox.style.display='block';return;}finally{btn.disabled=false;codeInp.disabled=false;gen.disabled=false;}
-          }
-          var r = Store.createCardWithSerial(serial, notes);
-          if (!r.ok) { errBox.textContent = r.error; errBox.style.display = 'block'; codeInp.focus(); return; }
-          close();
-          cardResultModal(r.card);
+          var btn=box.querySelector('#c-save'); btn.disabled=true; codeInp.disabled=true;
+          try {
+            var cards=await Store.issueNumberedCards(1,Store.normalizeCardSerial(serial),notes);
+            if (!document.contains(box)) return;
+            close();
+            if (cards.length===1) cardResultModal(cards[0]); else batchResultModal(cards);
+          } catch(e) { errBox.textContent=e.message; errBox.style.display='block'; }
+          finally { btn.disabled=false; codeInp.disabled=false; }
+
         });
       }
     });
@@ -2785,6 +2787,7 @@
       onMount: function (box, close) {
         var cnt = box.querySelector('#b-count');
         var est = box.querySelector('#b-est');
+        if (Store.pendingCardIssue()) UI.toast('err','طلب سابق قيد التأكيد','الضغط على إصدار يسترجع الطلب السابق أولاً دون إصدار دفعة جديدة.');
         function refresh() {
           var n = Number(cnt.value) || 0;
           var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 9);
@@ -2797,16 +2800,21 @@
           b.addEventListener('click', function () { cnt.value = b.getAttribute('data-n'); refresh(); });
         });
         refresh();
-        box.querySelector('#b-save').addEventListener('click', function () {
+        box.querySelector('#b-save').addEventListener('click', async function () {
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
           var count = Number(cnt.value) || 0;
           if (!Number.isInteger(count) || count < 1 || count > 90) { UI.toast('err', 'عدد غير صالح', 'أدخل عدداً صحيحاً من ١ إلى ٩٠ بطاقة.'); return; }
           var notes = box.querySelector('#b-notes').value.trim();
-          var made = Store.createCardBatch(count, notes);
-          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (١ إلى ٩٠)'); return; }
-          close();
-          batchResultModal(made);
+          var btn=box.querySelector('#b-save'); btn.disabled=true;
+          try {
+            var made=await Store.issueNumberedCards(count,null,notes);
+            if (!document.contains(box)) return;
+            close();
+            if (made.length===1) cardResultModal(made[0]); else batchResultModal(made);
+          } catch(e) { UI.toast('err','تعذّر تأكيد الإصدار',e.message); }
+          finally { btn.disabled=false; }
+
         });
       }
     });

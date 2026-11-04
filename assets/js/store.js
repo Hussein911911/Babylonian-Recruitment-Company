@@ -2303,6 +2303,61 @@
     });
   }
 
+  // Persist one idempotency key before sending: a lost response is retried with
+  // the SAME request even after reload. Never create a second batch blindly.
+  function pendingCardIssue() {
+    var user = currentUser();
+    if (!user) return null;
+    try { return JSON.parse(localStorage.getItem('hrc-card-issue-' + user.username) || 'null'); }
+    catch (e) { return null; }
+  }
+  async function issueNumberedCards(count, serial, notes) {
+    if (!isAdmin() || !currentUser() || cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client || !cloud.sync)
+      throw new Error('إصدار البطاقات يحتاج اتصالاً وحساب مدير فعالاً');
+    var owner = JSON.stringify(currentUser());
+    var key = 'hrc-card-issue-' + currentUser().username;
+    var req = pendingCardIssue();
+    if (!req) {
+      if (!root.crypto || !root.crypto.randomUUID) throw new Error('المتصفح لا يدعم الإصدار الآمن؛ استخدم متصفحاً حديثاً');
+      req = { id: root.crypto.randomUUID(), count: count, serial: serial || null, notes: notes || '' };
+      try { localStorage.setItem(key, JSON.stringify(req)); if (!localStorage.getItem(key)) throw new Error(); }
+      catch (e) { throw new Error('تعذّر حفظ طلب الإصدار بأمان؛ تحقق من مساحة المتصفح'); }
+    }
+    var response;
+    try { response = await root.HRCCloud.rpcCall(cloud.client, 'issue_numbered_cards', {p_request:req.id,p_count:req.count,p_serial:req.serial,p_notes:req.notes}); }
+    catch (e) { throw new Error('لم يصل تأكيد الإصدار. أعد المحاولة لاسترجاع نفس الطلب دون إصدار مكرر'); }
+    if (response.error) {
+      // A PostgreSQL error response proves the transaction rolled back. Network
+      // and gateway failures are ambiguous, so keep the key for retry.
+      var code=String(response.error.code || '');
+      if (/^(P0001|23505|42501|22023)$/.test(code)) localStorage.removeItem(key);
+      throw new Error(response.error.message || 'لم يصل تأكيد الإصدار؛ أعد المحاولة لاسترجاع الطلب نفسه');
+    }
+    if (owner !== JSON.stringify(currentUser())) throw new Error('تغيرت الجلسة؛ أعد الدخول لاسترجاع طلب الإصدار');
+    var data=response.data;
+    if (!data || !Array.isArray(data.cards) || data.cards.length !== req.count || !Array.isArray(data.attempts) || data.cards.some(function(r){return !Number.isSafeInteger(Number(r.card_number)) || Number(r.card_number)<1;}))
+      throw new Error('تأكيد الإصدار غير مكتمل؛ أعد المحاولة لاسترجاع الطلب نفسه');
+    var cards=data.cards.map(root.HRCCloud.applicantFromDb);
+    var jobsById={},jobsByCode={},staffById={};
+    db.jobs.forEach(function(j){jobsById[j.id]=j;jobsByCode[j.code]=j;});
+    db.staff.forEach(function(st){staffById[st.id]=st;});
+    var attempts=data.attempts.map(function(t){return root.HRCCloud.attemptFromDb(t,jobsById,jobsByCode,staffById);});
+    var snap=cloud.sync.getSnapshot();
+    cards.forEach(function(c){
+      var i=db.applicants.findIndex(function(a){return a.serial===c.serial;});
+      if(i<0) db.applicants.unshift(c); else db.applicants[i]=c;
+      root.HRCSync.advanceSnapshot(snap,{table:'applicants',op:'update',key:c.serial,local:c});
+    });
+    attempts.forEach(function(t){
+      var i=db.attempts.findIndex(function(a){return a.serial===t.serial && a.no===t.no;});
+      if(i<0) db.attempts.push(t); else db.attempts[i]=t;
+      root.HRCSync.advanceSnapshot(snap,{table:'job_attempts',op:'update',key:t.serial+':'+t.no,local:t});
+    });
+    saveLocal(); emit();
+    localStorage.removeItem(key);
+    return cards;
+  }
+
   function serialWasIssued(serial) {
     if(!currentUser()||cloud.state!=='on'||cloud.role!=='staff')return Promise.reject(new Error('تعذر التحقق من الباركود في السجل الكامل'));
     return root.HRCCloud.rpcCall(cloud.client,'staff_issuance_registry',{p_serial:normalizeCardSerial(serial)}).then(function(r){if(r.error||!r.data||typeof r.data.used!=='boolean')throw new Error('تعذر التحقق من الباركود؛ أعد المحاولة');return r.data.used;});
@@ -2319,6 +2374,20 @@
     if (cloud.unsubscribe || !root.HRCCloud.subscribeAll) return;
     cloud.unsubscribe = root.HRCCloud.subscribeAll(cloud.client, db, function (table, payload) {
       try { absorbRealtime(table, payload); } catch (e) { console.warn('[HRC/realtime] ' + (e && e.message || e)); }
+      // Realtime sends base-table rows, not the joined working view. Resolve a
+      // newly observed card's permanent number without overwriting later edits.
+      if (table==='applicants' && payload.new && payload.new.serial && !payload.new.archived_at) {
+        var liveSerial=payload.new.serial, liveOwner=JSON.stringify(currentUser());
+        var existing=findLocal(db.applicants,function(a){return a.serial===liveSerial;});
+        if (existing && !existing.cardNumberKnown && cloud.client) {
+          root.HRCCloud.rpcCall(cloud.client,'card_number_for',{p_serial:liveSerial}).then(function(r){
+            if(liveOwner!==JSON.stringify(currentUser()) || r.error) return;
+            var card=findLocal(db.applicants,function(a){return a.serial===liveSerial;});
+            var n=Number(r.data); if(card && (r.data === null || (Number.isSafeInteger(n) && n>0))){card.cardNumber=n>0?n:null;card.cardNumberKnown=true;saveLocal();emit();}
+          }).catch(function(){});
+        }
+      }
+
       if(table==='applicants'&&payload.new&&payload.new.archived_at){
         clearTimeout(cloud.archiveTimer);var owner=JSON.stringify(currentUser());cloud.archiveTimer=setTimeout(function(){if(owner===JSON.stringify(currentUser())){saveLocal();emit();}},100);return;
       }
@@ -2654,7 +2723,7 @@
     staffAdmin: staffAdmin, recoveryRPC: recoveryRPC,
     recoveryScheduleGet: recoveryScheduleGet, recoveryScheduleSet: recoveryScheduleSet,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
-    serialWasIssued:serialWasIssued, cardReport:cardReport, searchCardHistory:searchCardHistory, reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
+    issueNumberedCards:issueNumberedCards, pendingCardIssue:pendingCardIssue, serialWasIssued:serialWasIssued, cardReport:cardReport, searchCardHistory:searchCardHistory, reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,
     waitForCloud: function () { return cloud.bootPromise || Promise.resolve(cloudStatus()); },
     /* العمليات المعلّقة الآن (للتشخيص والعرض) — لا تُرسل شيئاً */

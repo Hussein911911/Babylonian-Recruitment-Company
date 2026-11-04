@@ -29,7 +29,7 @@ try{
  await page.evaluate(()=>navigator.serviceWorker.ready);await page.reload();
  await page.waitForFunction(()=>navigator.serviceWorker.controller);
  const load=async url=>page.evaluate(url=>new Promise(resolve=>{const img=new Image();img.onload=()=>resolve(true);img.onerror=()=>resolve(false);img.src=url;document.body.appendChild(img)}),url);
- assert.equal(await page.evaluate(async()=>{const c=await caches.open('hrc-cache-v142');return !!(await c.match('/dashboard.html') || await c.match('/apply.html'))}),false,'public visitors should not download the staff shell');
+ assert.equal(await page.evaluate(async()=>{const c=await caches.open('hrc-cache-v143');return !!(await c.match('/dashboard.html') || await c.match('/apply.html'))}),false,'public visitors should not download the staff shell');
  const local=origin+'/assets/img/jobs/demo.png',pub=other+'/storage/v1/object/public/jobs/demo.png';
  assert.equal(await load(local),true);assert.equal(await load(pub),true);
  let keys=await page.evaluate(async()=>{const c=await caches.open('hrc-public-job-images-v1');return (await c.keys()).map(x=>x.url)});
@@ -55,7 +55,7 @@ try{
  assert.ok(sizes.images<=64 && sizes.meta<=64,JSON.stringify(sizes));
  await page.goto(origin+'/dashboard.html');await page.waitForFunction(()=>navigator.serviceWorker.controller);
  await page.evaluate(()=>navigator.serviceWorker.controller.postMessage({type:'WARM_STAFF_SHELL'}));
- await page.waitForFunction(async()=>{const c=await caches.open('hrc-cache-v142');return !!await c.match('/apply.html')});
+ await page.waitForFunction(async()=>{const c=await caches.open('hrc-cache-v143');return !!await c.match('/apply.html')});
  console.log('PASS real Service Worker: public local and CORS storage images cached/offline, no-store and signed/private/query URLs excluded, stale offline fallback, bounded storage and staff-only warmup.');
  await context.close();
 }finally{await browser.close();await new Promise(r=>server.close(r));await new Promise(r=>remote.close(r))}
