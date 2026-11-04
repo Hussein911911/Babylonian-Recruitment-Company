@@ -19332,6 +19332,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var key = 'hrc-card-issue-' + currentUser().username;
     var req = pendingCardIssue();
     if (!req) {
+      if (!Number.isInteger(count) || count < 1 || count > 90 || (serial && (count !== 1 || !isCardSerial(serial))) || String(notes || '').length > 1000)
+        throw new Error('صيغة الباركود غير صحيحة أو بيانات الإصدار غير صالحة');
       if (!root.crypto || !root.crypto.randomUUID) throw new Error('المتصفح لا يدعم الإصدار الآمن؛ استخدم متصفحاً حديثاً');
       req = { id: root.crypto.randomUUID(), count: count, serial: serial || null, notes: notes || '' };
       try { localStorage.setItem(key, JSON.stringify(req)); if (!localStorage.getItem(key)) throw new Error(); }
@@ -19341,10 +19343,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     try { response = await root.HRCCloud.rpcCall(cloud.client, 'issue_numbered_cards', {p_request:req.id,p_count:req.count,p_serial:req.serial,p_notes:req.notes}); }
     catch (e) { throw new Error('لم يصل تأكيد الإصدار. أعد المحاولة لاسترجاع نفس الطلب دون إصدار مكرر'); }
     if (response.error) {
-      // A PostgreSQL error response proves the transaction rolled back. Network
-      // and gateway failures are ambiguous, so keep the key for retry.
+      // Only a duplicate-code error is known to arise while creating a NEW
+      // request. Other errors can occur while recovering a committed request
+      // (e.g. after restore), so retain the key rather than risk duplication.
       var code=String(response.error.code || '');
-      if (/^(P0001|23505|42501|22023)$/.test(code)) localStorage.removeItem(key);
+      if (code === '23505') localStorage.removeItem(key);
       throw new Error(response.error.message || 'لم يصل تأكيد الإصدار؛ أعد المحاولة لاسترجاع الطلب نفسه');
     }
     if (owner !== JSON.stringify(currentUser())) throw new Error('تغيرت الجلسة؛ أعد الدخول لاسترجاع طلب الإصدار');
