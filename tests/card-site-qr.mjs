@@ -15,6 +15,7 @@ for (const n of [1,2,9,90]){
  assert.equal(front.querySelector('.mk-card-number b').textContent,String(n));
  assert.ok(!front.textContent.includes('الموقع الإلكتروني'));
  assert.ok(front.querySelector('.mk-qr svg') && back.querySelector('.mb-site-qr svg'));
+ assert.equal(back.querySelector('.mb-art g'),null,'no artwork silhouettes behind the website QR');
  assert.deepEqual(encoded.splice(0),['https://example.test/apply.html?form=A1B2C3D4E5','https://babylonian-recruitment-company.pages.dev/']);
 }
 const old=JSDOM.fragment(w.HRCVoucher.buildHtml({serial:'OLD',status:'blank'},[]));

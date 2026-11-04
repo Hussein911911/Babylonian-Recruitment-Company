@@ -49,7 +49,7 @@
 /* رقم الإصدار يُعرض فقط عند وجود رقم محفوظ فعلياً؛ لا نختلق رقماً للبطاقات القديمة. */
 .mk-card-number{position:absolute;left:7%;bottom:1.1%;width:24%;height:6.4%;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2mm;color:#f8e7bd;font-size:4pt;font-weight:800;line-height:1.1}
 .mk-card-number b{display:block;min-width:8mm;padding:.5mm 1.5mm;border:.25mm solid #d5aa55;border-radius:1.5mm;background:#f7e2aa;color:#092744;font:900 7pt Arial,sans-serif;direction:ltr}
-.mb-site-qr{position:absolute;left:5%;bottom:1%;width:11mm;z-index:2;text-align:center;font-size:3.4pt;font-weight:800;color:#fff;line-height:1.1;text-shadow:0 1px 2px #052a4b}
+.mb-site-qr{position:absolute;left:5%;bottom:1%;width:11mm;z-index:2;display:flex;flex-direction:column;align-items:center;gap:.35mm;text-align:center;font-size:3.4pt;font-weight:800;color:#fff;line-height:1.1;text-shadow:0 1px 2px #052a4b}
 .mb-site-qr .mb-site-qr-image{width:10mm;height:10mm;margin:auto;background:#fff;border:.25mm solid #d0b16b;border-radius:.7mm;padding:.3mm}
 .mb-site-qr svg{display:block;width:100%;height:100%}
 /* الوجه الخلفي مبني بعناصر قابلة للتعديل، وليس صورة مطبوعة. */
@@ -122,7 +122,7 @@
     var terms = TERMS;
     var websiteUrl = String(CFG.verifyBase || '').replace(/verify\/?(?:[?#].*)?$/, '');
     return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف">' +
-      '<svg class="mb-art" viewBox="0 0 540 860" preserveAspectRatio="none" aria-hidden="true"><path d="M0 795C135 852 407 860 540 817V860H0Z" fill="#062d50"/><path d="M0 795C135 852 407 860 540 817" fill="none" stroke="#d4ab51" stroke-width="7"/><g fill="#bed0de" opacity=".8"><circle cx="42" cy="744" r="14"/><path d="M17 807l8-42q17-12 34 0l9 52z"/><circle cx="99" cy="756" r="13"/><path d="M72 820l10-44q17-10 33 0l9 49z"/><circle cx="155" cy="771" r="12"/><path d="M129 827l9-39q17-9 32 0l10 42z"/></g></svg>' +
+      '<svg class="mb-art" viewBox="0 0 540 860" preserveAspectRatio="none" aria-hidden="true"><path d="M0 795C135 852 407 860 540 817V860H0Z" fill="#062d50"/><path d="M0 795C135 852 407 860 540 817" fill="none" stroke="#d4ab51" stroke-width="7"/></svg>' +
       '<svg class="mb-hole" viewBox="0 0 150 42" aria-hidden="true"><path d="M17 11h33C58 11 58 2 75 2s17 9 25 9h33c22 0 22 29 0 29H17C-5 40-5 11 17 11Z" fill="#e0e3e5"/></svg>' +
       '<div class="mb-slogan">معاً .. نحو مستقبل أفضل</div><div class="mb-heading"><b>معلومات مهمة</b></div>' +
       '<div class="mb-rules">' +
