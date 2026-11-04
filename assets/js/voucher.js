@@ -45,7 +45,13 @@
 .mk-ribbon{position:absolute;top:77.6%;left:17%;width:66%;height:5%;display:flex;align-items:center;justify-content:center;background:#d5a943;color:#092744;clip-path:polygon(4% 0,96% 0,100% 25%,97% 50%,100% 75%,96% 100%,4% 100%,0 75%,3% 50%,0 25%);font-size:6.1pt;font-weight:900;white-space:nowrap;z-index:1}
 .mk-contact{position:absolute;top:84%;left:8%;width:84%;height:6%;display:flex;direction:ltr;align-items:center;justify-content:center;gap:1.2mm;z-index:1;color:#091f3b}
 .mk-contact svg{width:4mm;height:4mm;fill:none;stroke:currentColor;stroke-width:2;flex:none}.mk-contact-text{direction:rtl;text-align:center;line-height:1.15;font-size:4.5pt;font-weight:900;white-space:nowrap}.mk-contact-text b{display:block;direction:ltr;font-family:Arial,sans-serif;font-size:5.5pt}.mk-contact-site{border-left:.25mm solid #c8a65b;padding-left:1.2mm}.mk-contact-site b{font-size:4.2pt;max-width:20mm;white-space:normal;overflow-wrap:anywhere}
-.mk-footer{position:absolute;bottom:1.6%;left:36%;width:58%;height:7%;display:flex;align-items:center;justify-content:space-around;gap:1mm;color:#fff;z-index:1;font-size:4pt;line-height:1.3;white-space:nowrap}.mk-footer b{display:block;direction:ltr;font:700 5pt Arial,sans-serif}.mk-footer .mk-serial b{border:.2mm solid #d6c7a6;border-radius:1mm;padding:.6mm 1mm}.mk-footer .mk-date{border-right:.2mm solid #e4e7e9;padding-right:1.5mm}
+.mk-footer{position:absolute;bottom:.8%;left:36%;width:58%;height:7%;background:#052a4b;border-radius:1mm;display:flex;align-items:center;justify-content:space-around;gap:1mm;color:#fff;z-index:1;font-size:4pt;line-height:1.3;white-space:nowrap}.mk-footer b{display:block;direction:ltr;font:700 5pt Arial,sans-serif}.mk-footer .mk-serial b{border:.2mm solid #d6c7a6;border-radius:1mm;padding:.6mm 1mm}.mk-footer .mk-date{border-right:.2mm solid #e4e7e9;padding-right:1.5mm}
+/* رقم الإصدار يُعرض فقط عند وجود رقم محفوظ فعلياً؛ لا نختلق رقماً للبطاقات القديمة. */
+.mk-card-number{position:absolute;left:7%;bottom:1.1%;width:24%;height:6.4%;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2mm;color:#f8e7bd;font-size:4pt;font-weight:800;line-height:1.1}
+.mk-card-number b{display:block;min-width:8mm;padding:.5mm 1.5mm;border:.25mm solid #d5aa55;border-radius:1.5mm;background:#f7e2aa;color:#092744;font:900 7pt Arial,sans-serif;direction:ltr}
+.mb-site-qr{position:absolute;left:5%;bottom:1%;width:11mm;z-index:2;text-align:center;font-size:3.4pt;font-weight:800;color:#fff;line-height:1.1;text-shadow:0 1px 2px #052a4b}
+.mb-site-qr .mb-site-qr-image{width:10mm;height:10mm;margin:auto;background:#fff;border:.25mm solid #d0b16b;border-radius:.7mm;padding:.3mm}
+.mb-site-qr svg{display:block;width:100%;height:100%}
 /* الوجه الخلفي مبني بعناصر قابلة للتعديل، وليس صورة مطبوعة. */
 .hrc-card[aria-label*=الخلفي]{padding:0;background:#f5f1e6;color:#092847}
 .mb-art{position:absolute;inset:0;width:100%;height:100%}
@@ -106,13 +112,15 @@
       '<div class="mk-caption"><span>امسح الباركود للوصول إلى<br><b>منصة مكسب</b></span><svg viewBox="0 0 24 32" fill="none" aria-hidden="true"><rect x="3" y="1" width="18" height="30" rx="3" stroke="currentColor" stroke-width="2"/><path d="M9 4h6M11 27h2" stroke="currentColor" stroke-width="2"/></svg></div>' +
       '<div class="mk-steps"><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 1h10a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zm0 2v17h10V3zm4 18h2v1h-2z"/></svg>امسح</div><i>›</i><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="5"/><path d="M4 23c0-7 3-10 8-10s8 3 8 10z"/></svg>سجّل</div><i>›</i><div class="mk-step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6a2 2 0 0 1 2 2v1h4a2 2 0 0 1 2 2v4l-9 2v-1h-4v1l-9-2V8a2 2 0 0 1 2-2h4V5a2 2 0 0 1 2-2zm0 3h6V5H9zM1 14l9 2v1h4v-1l9-2v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z"/></svg>اختر وظيفتك</div></div>' +
       '<div class="mk-ribbon">' + esc(count) + '</div>' +
-      '<div class="mk-contact"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13v-2a9 9 0 0 1 18 0v2M3 12h3v7H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 1-2zm18 0h-3v7h2a2 2 0 0 0 2-2v-3a2 2 0 0 0-1-2zm-2 7c0 2-2 3-5 3h-2"/></svg><div class="mk-contact-text">خدمة العملاء<b>' + esc(CFG.company.phones[0] || '') + '</b></div><div class="mk-contact-text mk-contact-site">الموقع الإلكتروني<b>' + esc((function(){ try { return new URL(Store.cardUrl(app.serial)).host; } catch(e) { return ''; } })()) + '</b></div></div>' +
+      '<div class="mk-contact"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13v-2a9 9 0 0 1 18 0v2M3 12h3v7H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 1-2zm18 0h-3v7h2a2 2 0 0 0 2-2v-3a2 2 0 0 0-1-2zm-2 7c0 2-2 3-5 3h-2"/></svg><div class="mk-contact-text">خدمة العملاء<b>' + esc(CFG.company.phones[0] || '') + '</b></div></div>' +
+      (Number.isSafeInteger(app.cardNumber) && app.cardNumber > 0 ? '<div class="mk-card-number">رقم البطاقة<b>' + esc(app.cardNumber) + '</b></div>' : '') +
       '<div class="mk-footer"><div class="mk-date">إصدار البطاقة<b>' + (!app.issueDate ? 'أول تقديم' : esc(Store.fmtDate(app.issueDate))) + '</b></div><div class="mk-serial">كود البطاقة<b>' + esc(app.serial) + '</b></div></div></div>';
   }
 
   function backHtml(app, attempts) {
     var printed = app.cardPrintCode ? (app.cardPrintCode.match(/.{1,4}/g) || []).join('-') : '';
     var terms = TERMS;
+    var websiteUrl = String(CFG.verifyBase || '').replace(/verify\/?(?:[?#].*)?$/, '');
     return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف">' +
       '<svg class="mb-art" viewBox="0 0 540 860" preserveAspectRatio="none" aria-hidden="true"><path d="M0 795C135 852 407 860 540 817V860H0Z" fill="#062d50"/><path d="M0 795C135 852 407 860 540 817" fill="none" stroke="#d4ab51" stroke-width="7"/><g fill="#bed0de" opacity=".8"><circle cx="42" cy="744" r="14"/><path d="M17 807l8-42q17-12 34 0l9 52z"/><circle cx="99" cy="756" r="13"/><path d="M72 820l10-44q17-10 33 0l9 49z"/><circle cx="155" cy="771" r="12"/><path d="M129 827l9-39q17-9 32 0l10 42z"/></g></svg>' +
       '<svg class="mb-hole" viewBox="0 0 150 42" aria-hidden="true"><path d="M17 11h33C58 11 58 2 75 2s17 9 25 9h33c22 0 22 29 0 29H17C-5 40-5 11 17 11Z" fill="#e0e3e5"/></svg>' +
@@ -125,7 +133,7 @@
       (printed ? '<div class="mb-code"><span>رمز إعادة الطباعة<br>احتفظ به ولا تشاركه</span><span class="code">' + esc(printed) + '</span></div>' : '') +
       '<div class="mb-notice"><svg viewBox="0 0 24 28" aria-hidden="true"><path d="M12 1L23 5v8c0 7-4 11-11 14C5 24 1 20 1 13V5z"/><path d="M7 14l3 3 6-7" fill="none"/></svg><span><b>ملاحظة نهائية:</b><br>هذه البطاقة غير قابلة للاسترجاع.</span></div>' +
       '<div class="mb-phone"><span>خدمة العملاء</span><b>' + esc(CFG.company.phones[0] || '') + '</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2l4 5-2 3c1 3 3 5 6 6l3-2 5 4-2 4C11 22 2 13 2 4z"/></svg></div>' +
-      '<div class="mb-bottom-slogan">خطوتك نحو غد أفضل</div><div class="mb-logo">' + mksebLogo(true, 'mb-brand-icon') + '<div>مكسب<small>منصة مكسب للتوظيف</small></div></div></div>';
+      '<div class="mb-site-qr"><div class="mb-site-qr-image" aria-label="رمز الموقع الإلكتروني">' + qrSvg(websiteUrl, 120) + '</div><span>الموقع الإلكتروني</span></div><div class="mb-logo">' + mksebLogo(true, 'mb-brand-icon') + '<div>مكسب<small>منصة مكسب للتوظيف</small></div></div></div>';
   }
 
   /* ==========================================================================
