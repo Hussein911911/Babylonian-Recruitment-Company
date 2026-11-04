@@ -3390,21 +3390,24 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 .jobs-all .ic { width: 14px; height: 14px; }
 .jobs-sub { margin: 6px 0 12px; color: var(--muted); font-size: .74rem; line-height: 1.9; }
 
-/* ── 6ب) شبكة الوظائف: ثلاثة كروت بصفّ واحد كما في الموك-أب ── */
-@media screen and (min-width: 861px) {
-  .app-section #jobs-grid.jobs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+/* ── 6ب) شبكة الوظائف: بطاقتان في كل صف مع تمرير عمودي طبيعي ── */
+.app-section #jobs-grid.jobs-grid,
+.app-section #fav-grid.jobs-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
-.app-section #jobs-grid.jobs-grid { gap: 14px; }
 @media screen and (max-width: 860px) {
-  /* على الجوال: جميع الوظائف في شريط أفقي يُمرَّر بالأصبع. */
-  .app-section #jobs-grid.jobs-grid {
-    display: grid; grid-auto-flow: column; grid-auto-columns: 78%;
-    overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px;
-    scrollbar-width: none;
-  }
-  .app-section #jobs-grid.jobs-grid::-webkit-scrollbar { display: none; }
-  .app-section #jobs-grid .job-card { scroll-snap-align: start; }
+  .app-section #jobs-grid.jobs-grid,
+  .app-section #fav-grid.jobs-grid { gap: 10px; }
   .jobs-head, .jobs-sub { padding-inline: 2px; }
+  .app-section .job-card.app-card { min-width: 0; border-radius: 14px; }
+  .app-section .app-card .ac-body { padding: 10px 9px 0; gap: 5px; }
+  .app-section .app-card .job-title { font-size: .88rem; line-height: 1.5; overflow-wrap: anywhere; }
+  .app-section .app-card .ac-row { flex-wrap: wrap; gap: 3px 5px; font-size: .71rem; }
+  .app-section .app-card .ac-row span,
+  .app-section .app-card .ac-row b { min-width: 0; overflow-wrap: anywhere; }
+  .app-section .app-card .ac-foot { padding: 10px 9px 10px; }
+  .app-section .app-card .ac-foot .btn { padding-inline: 5px; font-size: .76rem; }
 }
 
 /* ── 7) كرت الوظيفة ── */
@@ -3881,6 +3884,10 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
    treatment more specific without touching the loaded image or skeleton card. */
 .app-card:not(.skeleton) .job-image:not(.has-img):not(.img-failed){background:#142b47;animation:none}
 @media(prefers-reduced-motion:reduce){.app-card .job-image:not(.has-img){animation:none!important}}
+/* Keep the mobile loading placeholders close to the height of real cards. */
+@media screen and (max-width: 400px) {
+  .app-section .job-card.app-card.skeleton { min-height: 360px; }
+}
 
 /* Staff activity drawer — no public payload and no printed UI. */
 .notification-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:44px;min-width:44px;border:1px solid #c8a24a66;background:linear-gradient(135deg,#fffdf7,#f7eedb);color:#17335a;border-radius:13px;padding:8px 12px;font:inherit;font-size:13px;font-weight:700;line-height:1.5;cursor:pointer}
