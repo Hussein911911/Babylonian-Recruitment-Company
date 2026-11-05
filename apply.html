@@ -76,7 +76,14 @@ body{
 
 /* البنر المرفق لصفحة وظائف البطاقة؛ الزر المرسوم فوقه منطقة تفاعلية حقيقية. */
 .card-job-banner{position:relative;width:100%;margin:0 0 18px;border-radius:16px;overflow:hidden;background:#092a4c;box-shadow:0 10px 26px #061a3240}
-.card-job-banner>img{display:block;width:100%;height:auto;aspect-ratio:1569/457;object-fit:cover}
+.card-job-banner-stage{position:relative;width:100%;aspect-ratio:1569/457}
+.card-job-banner-stage>img{display:block;width:100%;height:100%;object-fit:cover}
+.card-job-banner-pager{position:absolute;left:50%;bottom:0;transform:translateX(-50%);z-index:3;display:flex;direction:ltr;align-items:center}
+.card-job-banner-dot{display:grid;place-items:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:transparent;cursor:pointer}
+.card-job-banner-dot::after{content:'';width:10px;height:10px;border:1px solid #18334d;border-radius:50%;background:#fff;box-shadow:0 1px 4px #061a3280}
+.card-job-banner-dot[aria-pressed="true"]::after{background:#e9c66d}
+.card-job-banner-dot:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+.card-job-banner-info[hidden]{display:none!important}
 .card-job-banner-info>summary{position:absolute;left:4.5%;top:0;margin-top:19.4%;width:25%;aspect-ratio:4/1;min-height:32px;cursor:pointer;list-style:none;border-radius:999px}
 .card-job-banner-info>summary::-webkit-details-marker{display:none}
 .card-job-banner-info>summary:focus-visible{outline:3px solid #fff;outline-offset:2px}
@@ -4833,9 +4840,15 @@ body.job-modal-open .app{
 
     <!-- ═══ 7 — الوظائف ═══ -->
     <div class="page" id="pg-jobs">
-      <section class="card-job-banner" aria-label="بطاقة مكسب جسرك إلى الوظيفة">
-        <img src="assets/img/makseb-card-banner.webp" width="1569" height="457" alt="بطاقة مكسب، جسرك إلى الوظيفة. صورة توضيحية للبطاقة" decoding="async">
-        <details class="card-job-banner-info">
+      <section class="card-job-banner" aria-label="صور بطاقة مكسب">
+        <div class="card-job-banner-stage">
+          <img id="card-banner-image" src="assets/img/makseb-card-banner.webp" width="1569" height="457" alt="بطاقة مكسب، جسرك إلى الوظيفة. صورة توضيحية للبطاقة" decoding="async">
+          <div class="card-job-banner-pager" role="group" aria-label="صور البنر">
+            <button type="button" class="card-job-banner-dot" aria-label="عرض الصورة الأولى" aria-pressed="true" onclick="G.showCardBanner(0)"></button>
+            <button type="button" class="card-job-banner-dot" aria-label="عرض الصورة الثانية" aria-pressed="false" onclick="G.showCardBanner(1)"></button>
+          </div>
+        </div>
+        <details class="card-job-banner-info" id="card-banner-info">
           <summary aria-label="معرفة المزيد عن بطاقة مكسب"><span class="card-job-banner-sr">معرفة المزيد عن بطاقة مكسب</span></summary>
           <div class="card-job-banner-copy">بطاقة مكسب تمنحك فرصاً للتقديم على الوظائف المتاحة. اختر الوظيفة المناسبة وأكمل بياناتك لإرسال طلبك. رمز البطاقة في الصورة توضيحي؛ استخدم باركود بطاقتك الخاصة.</div>
         </details>
@@ -5264,6 +5277,17 @@ var G={
   cardDetailsStart:function(){
     G.closeCardDetails();
     G.start();
+  },
+
+  showCardBanner:function(index){
+    if(index!==0 && index!==1)return;
+    var image=$('card-banner-image'),info=$('card-banner-info');
+    if(!image || !info)return;
+    image.src=index===0?'assets/img/makseb-card-banner.webp':'assets/img/makseb-card-banner-2.webp';
+    image.alt=index===0?'بطاقة مكسب، جسرك إلى الوظيفة. صورة توضيحية للبطاقة':'منصة مكسب، وظيفتك أقرب إليك. صورة توضيحية للبطاقة';
+    if(index!==0) info.open=false;
+    info.hidden=index!==0;
+    document.querySelectorAll('.card-job-banner-dot').forEach(function(dot,i){dot.setAttribute('aria-pressed',i===index?'true':'false');});
   },
 
   start:function(){
