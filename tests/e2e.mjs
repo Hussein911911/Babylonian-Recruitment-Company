@@ -186,6 +186,12 @@ check('بلا جلسة موظف: شاشة الدخول تحجب المنظومة
 /* بجلسة الإدارة: إصدار دفعة بطاقات فارغة (باركودات عشوائية فريدة) */
 const dash = await open('dashboard.html', undefined, { session: 'admin' });
 const D = dash.w.HRCStore;
+/* Fake confirmed server result for this local print-flow fixture; real RPC and
+   idempotent retry are separately exercised by store-cloud/card-number-sql. */
+D.issueNumberedCards = async (count, serial, notes) => {
+  if (serial) { const r=D.createCardWithSerial(serial,notes); if(!r.ok) throw new Error(r.error); return [Object.assign(r.card,{cardNumber:6})]; }
+  return D.createCardBatch(count, notes).map((card, i) => Object.assign(card, {cardNumber:i+1}));
+};
 check('المدير داخل المنظومة', !!D.currentUser() && D.currentUser().role === 'admin' &&
   !dash.doc.getElementById('app-shell').classList.contains('hidden'));
 

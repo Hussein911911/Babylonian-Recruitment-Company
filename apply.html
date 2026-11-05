@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<link rel="preconnect" href="https://vqsvztudvfukyuerzcgx.supabase.co" crossorigin>
+<link rel="dns-prefetch" href="//vqsvztudvfukyuerzcgx.supabase.co">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script data-phone-viewport>
@@ -5248,8 +5250,13 @@ var G={
   },
 
   start:function(){
-    if(!dataReady){$('welcome-status').textContent='جارٍ التحقق من البطاقة وتحميل الوظائف…';return;}
+    if(!cardReady){$('welcome-status').textContent='جارٍ التحقق من البطاقة…';return;}
     if(chancesLeft<=0){return;}
+    if(lockedProfile && !dataReady){
+      $('welcome-status').textContent=jobsError?'تعذّر تحميل الوظائف، جارٍ إعادة المحاولة…':'جارٍ تحميل الوظائف…';
+      if(jobsError) loadJobs();
+      return;
+    }
     if(lockedProfile){G.go(6);return;}
     G.go(1);
   },
@@ -5381,6 +5388,7 @@ var G={
   next:function(){
     /* في صفحة الجنس (آخر خطوة قبل الوظائف) — تأكد من تحميل البيانات */
     if(curPage===5 && !dataReady){
+      if(jobsError) loadJobs();
       var waitBtn=document.activeElement;
       if(waitBtn&&waitBtn.classList.contains('btn'))btnLoading(waitBtn,true);
       var w=0;var iv=setInterval(function(){
@@ -6419,7 +6427,7 @@ function fatal(msg,hintHtml){
     box.textContent=msg;
     if(hintHtml){
       var h=document.createElement('div');
-      h.style.cssText='margin-top:12px;font-size:16px;color:#F7ECC8;line-height:2;text-align:right;max-width:none;width:100%';
+      h.style.cssText='margin-top:12px;font-size:16px;color:#4a5362;line-height:2;text-align:right;max-width:none;width:100%';
       h.innerHTML=hintHtml;
       box.parentNode.insertBefore(h,box.nextSibling);
     }
@@ -6466,6 +6474,34 @@ var DB_UPDATE_HINT='للإدارة: طبّق الهجرات الحديثة من 
 /* ═══════════════════════════════════════════════════════════════
    تحميل البيانات
    ═══════════════════════════════════════════════════════════════ */
+// Card and jobs are independent. Card details/blank-card form become usable
+// as soon as the card is verified; choosing a job still requires fresh data.
+var cardReady=false, jobsLoading=false, jobsError=false;
+function updateJobStatus(){
+  if(!cardReady || chancesLeft<=0) return;
+  var ws=$('welcome-status'); if(!ws) return;
+  if(jobsError) { ws.textContent='تعذّر تحميل الوظائف حالياً؛ سنعيد المحاولة عند اختيارها.'; return; }
+  if(G.preJobCode && dataReady){
+    var preJob=jobs.filter(function(j){return j.code===G.preJobCode;})[0];
+    ws.textContent=preJob?'الوظيفة المختارة: '+preJob.title+' ('+preJob.code+')':'';
+  } else if(ws.textContent.indexOf('جارٍ')>=0 || ws.textContent.indexOf('تعذّر تحميل الوظائف')>=0) ws.textContent='';
+}
+function loadJobs(){
+  if(jobsLoading || dataReady || !client) return;
+  jobsLoading=true; jobsError=false;
+  Promise.resolve(client.from('public_jobs').select('*')).then(function(jr){
+    if(!jr || jr.error) throw new Error('jobs unavailable');
+    jobs=(jr.data||[]).map(function(r){
+      return{id:r.id,code:r.code,title:r.title,category:r.category||'خدمات',region:r.region||'',governorate:jobProvince(r.governorate||''),createdAt:r.created_at||'',
+        salaryMin:r.salary_min||0,salaryMax:r.salary_max||0,shift:r.shift||'صباحي',description:r.description||'',
+        requirements:Array.isArray(r.requirements)?r.requirements:[],vacancies:r.available_vacancies!=null?r.available_vacancies:r.vacancies||1,imageUrl:r.image_url||'',
+        gender:r.gender||'لا فرق',employer:{name:r.employer_name||'',phone:r.employer_phone||'',address:r.employer_address||''},
+        interviewLocation:r.interview_location||'',status:r.status||'available'};
+    }).filter(function(j){return j.status==='available';});
+    dataReady=true; jobsLoading=false; jobsError=false; updateJobStatus();
+  }).catch(function(){jobsLoading=false;jobsError=true;updateJobStatus();});
+}
+
 function loadData(){
   dataLoading=true;
   var p=new URLSearchParams(window.location.search);
@@ -6480,13 +6516,8 @@ function loadData(){
   }
   cardSerial=serial.trim().toUpperCase();
 
-  Promise.all([
-    /* قرار الإدارة 2026-10-06: قراءة الباركود لا تطلب أي رمز — لا نافذة
-       رمز البطاقة ولا رمز صاحب العمل (حيازة البطاقة = التحكم). */
-    client.rpc('self_service_card',{p_serial:cardSerial}),
-    client.from('public_jobs').select('*')
-  ]).then(function(res){
-    var cr=res[0];
+  loadJobs(); // Independent of card verification; no stale job data is used.
+  client.rpc('self_service_card',{p_serial:cardSerial}).then(function(cr){
     if(cr.error){
       if(isMissingFunction(cr.error)){
         fatal('قاعدة الشركة تحتاج تحديثاً بسيطاً: دالة التقديم الذاتي (self_service_card) غير مثبّتة فيها بعد، فباركود بطاقتك لا يجدها.',
@@ -6530,10 +6561,11 @@ function loadData(){
       if(ch.slotStatus!=='empty'&&ch.jobCode){appliedJobs.push({jobCode:ch.jobCode,jobTitle:ch.jobTitle||''});}
     });
 
-    // A used card remains a valid employer entry, even if the public jobs feed fails.
-    // Do not render applicant identity/jobs or offer another application here.
+    cardReady=true;
+    dataLoading=false;
+    clearFatal();
+    // A used card can show its existing details without waiting for jobs.
     if(chancesLeft<=0&&appliedJobs.length>0){
-      dataReady=true;dataLoading=false;clearFatal();
       $('btn-start').disabled=true;$('btn-start').style.display='none';
       $('btn-start').parentNode.style.display='none';
       $('welcome-title').textContent='اكتمل التقديم على البطاقة';
@@ -6541,36 +6573,7 @@ function loadData(){
       $('welcome-status').textContent='استُخدمت فرص البطاقة بالكامل — تابع نتيجتك لدى الشركة، فالقرار النهائي لها.';
       return;
     }
-
-    var jr=res[1];
-    if(jr.error){
-      if(isMissingFunction(jr.error)){
-        fatal('قاعدة الشركة تحتاج تحديثاً بسيطاً: واجهة الوظائف العامة غير مثبّتة فيها بعد، فالصفحة لا تجدها.',DB_UPDATE_HINT);
-      }else{
-        fatal('تعذّر تحميل قائمة الوظائف من قاعدة الشركة.', 'تحقق من الإنترنت ثم اضغط «إعادة المحاولة».');
-      }
-      return;
-    }
-    jobs=(jr.data||[]).map(function(r){
-      return{id:r.id,code:r.code,title:r.title,category:r.category||'خدمات',region:r.region||'',governorate:jobProvince(r.governorate||''),createdAt:r.created_at||'',
-        salaryMin:r.salary_min||0,salaryMax:r.salary_max||0,shift:r.shift||'صباحي',description:r.description||'',
-        requirements:Array.isArray(r.requirements)?r.requirements:[],vacancies:r.available_vacancies!=null?r.available_vacancies:r.vacancies||1,imageUrl:r.image_url||'',
-        gender:r.gender||'لا فرق',employer:{name:r.employer_name||'',phone:r.employer_phone||'',address:r.employer_address||''},
-        interviewLocation:r.interview_location||'',status:r.status||'available'};
-    }).filter(function(j){return j.status==='available';});
-
-    dataReady=true;
-    dataLoading=false;
-    clearFatal();   /* كان الخطأ معروضاً وتأخّرت الشبكة: نعرض الترحيب الآن */
-
-    /* تعريف الزبون بالوظيفة التي جاء من أجلها من الموقع (تُعيَّن في خطوة الوظائف) */
-    if(G.preJobCode&&chancesLeft>0){
-      var preJob=jobs.filter(function(j){return j.code===G.preJobCode;})[0];
-      var ws=$('welcome-status');
-      if(preJob&&ws&&!ws.textContent){
-        ws.textContent='الوظيفة المختارة: '+preJob.title+' ('+preJob.code+')';
-      }
-    }
+    updateJobStatus();
 
     /* فرص البطاقة مستنفدة: لا معنى لمسار الإدخال — رسالة واضحة للزبون */
     if(chancesLeft<=0){
@@ -6639,7 +6642,7 @@ function startApp(){
 }
 
 function tryLoad(){
-  if(dataLoading||dataReady)return;
+  if(dataLoading||cardReady)return;
   if(ensureClient()){loadData();}
   else{setTimeout(tryLoad,800);}
 }
@@ -6649,7 +6652,7 @@ function tryLoad(){
    لأنه لا يقول له شنو صار ولا شنو يسوي. */
 function startWatchdog(){
   setTimeout(function(){
-    if(dataReady||fatalShown)return;
+    if(cardReady||fatalShown)return;
     if(!client&&!(window.HRCHttp&&window.HRCHttp.createClient)){
       fatal('تعذّر تحميل عميل الاتصال من الموقع (ملف cloud-http.js لم يصل).',
         'افتح الرابط بشبكة سليمة ثم اضغط «إعادة المحاولة».');
@@ -6675,8 +6678,8 @@ document.addEventListener('keydown',function(e){
   }
 });
 
-if(document.readyState==='complete')startApp();
-else window.addEventListener('load',startApp);
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',startApp,{once:true});
+else startApp();
 
 /* ═══════════════════════════════════════════════════════════════════════
    ظهور متتالٍ لبطاقات «لماذا مكسب؟» عند الوصول إليها

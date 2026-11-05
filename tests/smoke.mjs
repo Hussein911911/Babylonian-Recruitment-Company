@@ -636,7 +636,7 @@ check('قالب البطاقة يحوي الوجهين وكل بياناتها �
     'منصة مكسب', 'فرصتك تبدأ من هنا',
     '07760058007',
     'HRC-BC-000120',
-    'رقم البطاقة',
+    'كود البطاقة',
     'hrc-card', '<svg', 'فرص للتقديم'
   ];
   const missing = needed.filter((x) => !html.includes(x));
@@ -994,7 +994,7 @@ check('جدول البطاقات يعرض الفرص المتبقية', () => {
 });
 check('إزالة زر بيع وتعبئة البطاقة وإجراء التعبئة من القائمة', () =>
   !dash.doc.getElementById('btn-new-app') && !dash.doc.querySelector('[data-app-fill]'));
-check('إصدار دفعة بطاقات فارغة: باركودات عشوائية فريدة لا تتشابه', () => {
+check('إصدار الدفعة يقبل ١–٩٠ ولا يُنشئ بطاقات محلياً قبل تأكيد الخادم', () => {
   closeAllModals(dash.doc);
   dash.window.HRCStore.login('admin', 'admin123');   /* إصدار الدفعات للمدير فقط */
   const btn = dash.doc.getElementById('btn-new-batch');
@@ -1013,24 +1013,7 @@ check('إصدار دفعة بطاقات فارغة: باركودات عشوائ�
   cnt.value = '9';
   box.querySelector('#b-notes').value = 'دفعة اختبار';
   box.querySelector('#b-save').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
-  const made = dash.window.HRCStore.listBlankCards().length - before;
-  if (made !== 9) return 'الدفعة: قبل ' + before + ' بعد +' + made;
-  const blanks = dash.window.HRCStore.listBlankCards().slice(0, 9);
-  const serials = blanks.map((b) => b.serial);
-  const uniq = new Set(serials);
-  if (uniq.size !== 9) return 'باركودات مكررة بالدفعة: ' + serials.join(',');
-  if (!serials.every((x) => /^[2-9A-HJKMNP-Z]{10}$/.test(x))) return 'صيغة باركود خاطئة: ' + serials.join(',');
-  /* مختلط: أرقام وأحرف معاً في كل باركود، بلا شرطة ولا بادئة */
-  if (!serials.every((x) => /[2-9]/.test(x) && /[A-Z]/.test(x))) return 'باركود غير مختلط: ' + serials.join(',');
-  /* عشوائية لا تسلسل: لا يجوز أن تكون الأرقام متتالية أو متشابهة الترتيب */
-  const nums = serials.map((x) => parseInt(x, 36));
-  const sorted = [...nums].sort((a, b) => a - b);
-  const sequential = sorted.every((v, i) => i === 0 || v - sorted[i - 1] === 1);
-  if (sequential) return 'الباركودات متسلسلة (قابلة للتخمين): ' + serials.join(',');
-  if (!blanks.every((b) => b.status === 'blank' && !b.fullName && !b.issueDate && !b.expiryDate))
-    return 'بطاقة فارغة ببيانات زبون أو تواريخ';
-  const codes = blanks.flatMap((b) => dash.window.HRCStore.getAttempts(b.serial).map((t) => t.code));
-  if (codes.some(Boolean)) return 'ما زالت الدفعة تُولّد رموز فرص';
+  if (dash.window.HRCStore.listBlankCards().length !== before) return 'أُصدرت بطاقة قبل تأكيد الخادم';
   return true;
 });
 check('إضافة البطاقات للمدير فقط: الموظف مرفوض في المتجر نفسه', () => {

@@ -39,6 +39,10 @@ console.log('  HRC — اختبار طبقة الربط بـ Supabase (التح�
 console.log('═'.repeat(74));
 
 check('الوحدة تُحمّل وتُصدّر HRCCloud', !!C);
+check('رقم البطاقة يُقرأ من الخادم للعرض وإعادة الطباعة', C.applicantFromDb({card_number: 123}).cardNumber === 123);
+check('البطاقة القديمة بلا رقم', C.applicantFromDb({}).cardNumber === null);
+check('لا يمكن لمزامنة المتصفح كتابة رقم البطاقة', !('card_number' in C.applicantToDb({cardNumber: 123})));
+
 
 /* ---------------------------------------------------------------------------
  *  أعمدة مطابقة لما تُرجعه PostgREST فعلاً (snake_case، تواريخ ISO، jsonb)

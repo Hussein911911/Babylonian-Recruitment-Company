@@ -98,6 +98,9 @@
     return {
       id: r.id,
       serial: r.serial, archivedAt: r.archived_at || null,
+      /* رقم الإصدار يُقرأ من الخادم فقط؛ لا يُرسل في تحديثات المزامنة. */
+      cardNumber: Number.isSafeInteger(Number(r.card_number)) && Number(r.card_number) > 0 ? Number(r.card_number) : null,
+      cardNumberKnown: Object.prototype.hasOwnProperty.call(r, 'card_number'),
       cardPrintCode: r.card_print_code || null,
       fullName: r.full_name,
       phone: r.phone,
@@ -756,7 +759,12 @@
     if (table === 'applicants') {
       if(db.meta&&db.meta.workspace&&row&&row.archived_at){removeFrom(db.applicants,row.serial,function(x){return x.serial;});db.attempts=db.attempts.filter(function(t){if(t.serial===row.serial){rememberChance(t.code);return false;}return true;});if(Array.isArray(db.usedSerials))db.usedSerials=db.usedSerials.filter(function(s){return s!==row.serial;});return db;}
       if (type === 'DELETE') removeFrom(db.applicants, old.serial, function (x) { return x.serial; });
-      else replaceIn(db.applicants, applicantFromDb(row), function (x) { return x.serial; });
+      else {
+        var existing = (db.applicants || []).find(function (x) { return x.serial === row.serial; });
+        var updated = applicantFromDb(row);
+        if (existing && !updated.cardNumberKnown) { updated.cardNumber = existing.cardNumber || null; updated.cardNumberKnown = !!existing.cardNumberKnown; }
+        replaceIn(db.applicants, updated, function (x) { return x.serial; });
+      }
       return db;
     }
 
