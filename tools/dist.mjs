@@ -62,7 +62,7 @@ async function main() {
   for (const p of pages) {
     const html = await readFile(join(OUT, p), 'utf8');
     const refs = new Set();
-    for (const m of html.matchAll(/(?:src|href)="((?!https?:|#|data:|mailto:|tel:)[^"]+)"/g)) refs.add(m[1]);
+    for (const m of html.matchAll(/(?:src|href)="((?!https?:|\/\/|#|data:|mailto:|tel:)[^"]+)"/g)) refs.add(m[1]);
     for (const m of html.matchAll(/url\(['"]?((?!https?:|data:)[^'")]+)['"]?\)/g)) refs.add(m[1]);
     for (const r of refs) {
       const clean = r.split('?')[0].split('#')[0];

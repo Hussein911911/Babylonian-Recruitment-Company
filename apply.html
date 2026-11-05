@@ -74,6 +74,16 @@ body{
 .step-label b{color:#F7ECC8}
 .step-label .pct{color:#5ee8a0;font-weight:900}
 
+/* البنر المرفق لصفحة وظائف البطاقة؛ الزر المرسوم فوقه منطقة تفاعلية حقيقية. */
+.card-job-banner{position:relative;width:100%;margin:0 0 18px;border-radius:16px;overflow:hidden;background:#092a4c;box-shadow:0 10px 26px #061a3240}
+.card-job-banner>img{display:block;width:100%;height:auto;aspect-ratio:1569/457;object-fit:cover}
+.card-job-banner-info>summary{position:absolute;left:4.5%;top:0;margin-top:19.4%;width:25%;aspect-ratio:4/1;min-height:32px;cursor:pointer;list-style:none;border-radius:999px}
+.card-job-banner-info>summary::-webkit-details-marker{display:none}
+.card-job-banner-info>summary:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.card-job-banner-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.card-job-banner-copy{padding:12px 16px;color:#fff;font-size:14px;line-height:1.8;text-align:right;background:#102e4e;border-top:1px solid #d2ad6080}
+@media(max-width:480px){.card-job-banner{border-radius:12px;margin-bottom:14px}.card-job-banner-copy{font-size:13px}}
+
 /* ── نظام الصفحات ── */
 .pages-wrap{position:relative;overflow:hidden}
 .page{
@@ -4823,6 +4833,13 @@ body.job-modal-open .app{
 
     <!-- ═══ 7 — الوظائف ═══ -->
     <div class="page" id="pg-jobs">
+      <section class="card-job-banner" aria-label="بطاقة مكسب جسرك إلى الوظيفة">
+        <img src="assets/img/makseb-card-banner.webp" width="1569" height="457" alt="بطاقة مكسب، جسرك إلى الوظيفة. صورة توضيحية للبطاقة" decoding="async">
+        <details class="card-job-banner-info">
+          <summary aria-label="معرفة المزيد عن بطاقة مكسب"><span class="card-job-banner-sr">معرفة المزيد عن بطاقة مكسب</span></summary>
+          <div class="card-job-banner-copy">بطاقة مكسب تمنحك فرصاً للتقديم على الوظائف المتاحة. اختر الوظيفة المناسبة وأكمل بياناتك لإرسال طلبك. رمز البطاقة في الصورة توضيحي؛ استخدم باركود بطاقتك الخاصة.</div>
+        </details>
+      </section>
       <div id="chances-bar" class="chances-bar has2"></div>
       <div class="section-title">اختر الوظيفة المناسبة لك</div>
       <section class="job-filters jf-compact" aria-label="فلترة الوظائف">
