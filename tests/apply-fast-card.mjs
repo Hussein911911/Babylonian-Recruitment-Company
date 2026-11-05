@@ -30,6 +30,16 @@ assert.equal(info.hidden,true);assert.equal(info.open,false);
 w.G.showCardBanner(0);
 assert.match(img.getAttribute('src'),/banner\.webp$/,'first control restores first image');
 assert.equal(dots[0].getAttribute('aria-pressed'),'true');assert.equal(info.hidden,false);
+const stage=w.document.querySelector('.card-job-banner-stage');
+function pointer(type,x,y){const e=new w.Event(type,{bubbles:true});Object.assign(e,{pointerType:'touch',pointerId:1,clientX:x,clientY:y});img.dispatchEvent(e);}
+pointer('pointerdown',220,45);pointer('pointerup',80,48);
+assert.match(img.getAttribute('src'),/banner-2\.webp$/,'swipe left selects second image');
+pointer('pointerdown',80,45);pointer('pointerup',220,48);
+assert.match(img.getAttribute('src'),/banner\.webp$/,'swipe right selects first image');
+pointer('pointerdown',160,10);pointer('pointerup',145,110);
+assert.match(img.getAttribute('src'),/banner\.webp$/,'vertical scrolling does not change slide');
+assert.equal(dots[0].getAttribute('aria-pressed'),'true');
+
 assert.equal(calls,1);
 dom.window.close();
 console.log('PASS card starts independently of delayed fresh jobs and watchdog');
