@@ -88,8 +88,24 @@ body{
 .card-job-banner-info>summary::-webkit-details-marker{display:none}
 .card-job-banner-info>summary:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .card-job-banner-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
-.card-job-banner-copy{padding:12px 16px;color:#fff;font-size:14px;line-height:1.8;text-align:right;background:#102e4e;border-top:1px solid #d2ad6080}
-@media(max-width:480px){.card-job-banner{border-radius:12px;margin-bottom:14px}.card-job-banner-copy{font-size:13px}}
+/* موشن قصير عند فتح التفاصيل، لا يعيق استخدام الصفحة أو الفلاتر. */
+.card-job-banner-info[open]>summary{box-shadow:0 0 0 3px #fff8,0 0 20px #f4c85eaa;animation:banner-button-glow .6s ease-out both}
+.card-job-banner-copy{position:relative;display:flex;align-items:center;gap:14px;padding:16px 18px;color:#f4f7fb;font-size:14px;line-height:1.8;text-align:right;background:linear-gradient(120deg,#153b60,#0a2644);border-top:1px solid #d2ad6080;overflow:hidden;transform-origin:top}
+.card-job-banner-info[open] .card-job-banner-copy{animation:banner-reveal .48s cubic-bezier(.2,.75,.25,1) both}
+.card-job-banner-copy::before{content:'';position:absolute;top:0;right:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,#e8c56d,transparent);transform-origin:right}
+.card-job-banner-info[open] .card-job-banner-copy::before{animation:banner-line .65s ease-out both}
+.card-job-banner-motion-icon{flex:none;width:44px;height:44px;display:grid;place-items:center;color:#f0cc77;border:1px solid #e8c56d77;border-radius:14px;background:#ffffff10;box-shadow:0 5px 16px #00162944}
+.card-job-banner-motion-icon svg{width:25px;height:25px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.card-job-banner-info[open] .card-job-banner-motion-icon{animation:banner-icon .65s cubic-bezier(.18,.8,.25,1) both}
+.card-job-banner-copy-text{flex:1;min-width:0}
+.card-job-banner-copy-text strong{display:block;color:#f3ce79;font-size:15px;margin-bottom:2px}
+.card-job-banner-copy-text p{margin:0}
+@keyframes banner-reveal{from{opacity:0;transform:translateY(-12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes banner-icon{from{opacity:0;transform:translateY(9px) rotate(-12deg) scale(.8)}to{opacity:1;transform:translateY(0) rotate(0) scale(1)}}
+@keyframes banner-line{from{transform:scaleX(0);opacity:0}to{transform:scaleX(1);opacity:1}}
+@keyframes banner-button-glow{from{box-shadow:0 0 0 0 #f9df9c99}to{box-shadow:0 0 0 3px #fff8,0 0 20px #f4c85eaa}}
+@media(max-width:480px){.card-job-banner{border-radius:12px;margin-bottom:14px}.card-job-banner-copy{font-size:13px;gap:10px;padding:13px 14px}.card-job-banner-copy-text strong{font-size:14px}.card-job-banner-motion-icon{width:38px;height:38px;border-radius:12px}}
+@media(prefers-reduced-motion:reduce){.card-job-banner-info[open]>summary,.card-job-banner-info[open] .card-job-banner-copy,.card-job-banner-info[open] .card-job-banner-copy::before,.card-job-banner-info[open] .card-job-banner-motion-icon{animation:none!important}}
 
 /* ── نظام الصفحات ── */
 .pages-wrap{position:relative;overflow:hidden}
@@ -4850,7 +4866,10 @@ body.job-modal-open .app{
         </div>
         <details class="card-job-banner-info" id="card-banner-info">
           <summary aria-label="معرفة المزيد عن بطاقة مكسب"><span class="card-job-banner-sr">معرفة المزيد عن بطاقة مكسب</span></summary>
-          <div class="card-job-banner-copy">بطاقة مكسب تمنحك فرصاً للتقديم على الوظائف المتاحة. اختر الوظيفة المناسبة وأكمل بياناتك لإرسال طلبك. رمز البطاقة في الصورة توضيحي؛ استخدم باركود بطاقتك الخاصة.</div>
+          <div class="card-job-banner-copy">
+            <span class="card-job-banner-motion-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="M2.5 9h19M6.5 14h5M6.5 17h3"/></svg></span>
+            <div class="card-job-banner-copy-text"><strong>بطاقتك.. طريقك للفرصة</strong><p>بطاقة مكسب تمنحك فرصاً للتقديم على الوظائف المتاحة. اختر الوظيفة المناسبة وأكمل بياناتك لإرسال طلبك. رمز البطاقة في الصورة توضيحي؛ استخدم باركود بطاقتك الخاصة.</p></div>
+          </div>
         </details>
       </section>
       <div id="chances-bar" class="chances-bar has2"></div>

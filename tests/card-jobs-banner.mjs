@@ -10,6 +10,8 @@ assert.equal(banner.querySelector('img').getAttribute('width'),'1569');
 const details=banner.querySelector('details');
 assert.ok(details.querySelector('summary').getAttribute('aria-label'));
 assert.equal(details.open,false);details.open=true;assert.equal(details.open,true,'more information can be opened');
+assert.ok(details.querySelector('.card-job-banner-motion-icon svg'),'motion graphic exists');
+assert.match(readFileSync('apply.html','utf8'),/prefers-reduced-motion:reduce/,'reduced motion supported');
 assert.match(details.textContent,/توضيحي/,'sample QR is explicitly identified as illustrative');
 assert.ok(jobs.querySelector('#jf-query')&&jobs.querySelector('#jobs-list'),'job search and list remain intact');
 dom.window.close();
