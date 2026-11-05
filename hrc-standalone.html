@@ -20395,11 +20395,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 /* تصميم البطاقة قابل للتعديل: الأشكال والنصوص والباركود منفصلة. */
 .hrc-card[aria-label*=الأمامي]{padding:0;background:#f3f0e7;color:#071e39;text-align:center}
 .mk-art{position:absolute;inset:0;width:100%;height:100%;z-index:0}
-.mk-hole{position:absolute;top:1.5%;left:35.5%;width:29%;height:5%;z-index:1}
 .mk-brand{position:absolute;top:9%;left:9%;width:83%;height:11%;display:flex;direction:ltr;align-items:center;justify-content:center;gap:1.5mm;color:#fff;z-index:1}
 .mk-logo{position:relative;display:flex;direction:rtl;align-items:center;white-space:nowrap;font-size:23pt;line-height:1;font-weight:900;letter-spacing:-.45mm}
 .mk-brand-icon{width:10mm;height:10mm;flex:none;margin-right:-.7mm}
-.mk-brand-label{direction:rtl;border-left:.2mm solid #c6d0d9;padding-left:1.5mm;font-size:6.2pt;font-weight:900;line-height:1.35;text-align:center;white-space:nowrap}
+.mk-brand-label{direction:rtl;border-left:.25mm solid #d2ad60;padding-left:1.5mm;color:#e7c77e;font-size:8pt;font-weight:900;line-height:1.2;text-align:center;white-space:nowrap}
 .mk-slogan{position:absolute;top:22%;left:2%;width:96%;color:#d2ad60;font-weight:900;font-size:13.5pt;line-height:1.15;z-index:1;white-space:nowrap}
 .mk-slogan:after{content:'';display:block;margin:.5mm auto 0;width:23%;height:.5mm;border-top:.35mm solid #c9a75d;border-radius:50%;transform:rotate(-3deg)}
 .mk-qr{position:absolute;left:30%;top:32.5%;width:40%;aspect-ratio:1;background:#fff;border:.65mm solid #c2a264;border-radius:1.7mm;padding:.3mm;z-index:1}
@@ -20421,7 +20420,6 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 /* الوجه الخلفي مبني بعناصر قابلة للتعديل، وليس صورة مطبوعة. */
 .hrc-card[aria-label*=الخلفي]{padding:0;background:#f5f1e6;color:#092847}
 .mb-art{position:absolute;inset:0;width:100%;height:100%}
-.mb-hole{position:absolute;top:1.5%;left:35.5%;width:29%;height:5%}
 .mb-slogan{position:absolute;top:7%;right:6%;font-size:9pt;line-height:1.2;font-weight:800;color:#0b3154;transform:rotate(-5deg)}
 .mb-slogan:after{content:'';display:block;border-top:.45mm solid #c9a354;width:55%;margin:.7mm 0 0 auto;transform:rotate(-4deg)}
 .mb-heading{position:absolute;top:15%;left:5%;right:5%;height:5%;display:flex;align-items:center;gap:1mm}
@@ -20471,8 +20469,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var count = 'بطاقة واحدة .. ' + attempts.length + (attempts.length === 1 ? ' فرصة للتقديم' : ' فرص للتقديم');
     return '<div class="hrc-card" aria-label="الوجه الأمامي لبطاقة التوظيف">' +
       '<svg class="mk-art" viewBox="0 0 540 860" preserveAspectRatio="none" aria-hidden="true"><rect width="540" height="860" fill="#f3f0e7"/><path d="M0 0H540V372C408 449 131 459 0 379Z" fill="#052a4b"/><path d="M0 379C131 459 408 449 540 372" fill="none" stroke="#c7a255" stroke-width="6"/><path d="M0 766C151 813 383 803 540 756V860H0Z" fill="#052a4b"/><path d="M0 766C151 813 383 803 540 756" fill="none" stroke="#c7a255" stroke-width="5"/></svg>' +
-      '<svg class="mk-hole" viewBox="0 0 150 42" aria-hidden="true"><path d="M17 11h33C58 11 58 2 75 2s17 9 25 9h33c22 0 22 29 0 29H17C-5 40-5 11 17 11Z" fill="#f8f8f6"/></svg>' +
-      '<div class="mk-brand"><div class="mk-logo"><span>مكسب</span>' + mksebLogo(false, 'mk-brand-icon') + '</div><div class="mk-brand-label">منصة مكسب<br>للتوظيف</div></div>' +
+      '<div class="mk-brand"><div class="mk-logo"><span>مكسب</span>' + mksebLogo(false, 'mk-brand-icon') + '</div><div class="mk-brand-label">منصة</div></div>' +
       '<div class="mk-slogan">فرصتك تبدأ من هنا</div>' +
       '<div class="mk-qr hrc-qr-slot">' + qrSvg(Store.cardUrl(app.serial), 200) + '</div>' +
       '<div class="mk-caption"><span>امسح الباركود للوصول إلى<br><b>منصة مكسب</b></span><svg viewBox="0 0 24 32" fill="none" aria-hidden="true"><rect x="3" y="1" width="18" height="30" rx="3" stroke="currentColor" stroke-width="2"/><path d="M9 4h6M11 27h2" stroke="currentColor" stroke-width="2"/></svg></div>' +
@@ -20489,7 +20486,6 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var websiteUrl = String(CFG.verifyBase || '').replace(/verify\/?(?:[?#].*)?$/, '');
     return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف">' +
       '<svg class="mb-art" viewBox="0 0 540 860" preserveAspectRatio="none" aria-hidden="true"><path d="M0 795C135 852 407 860 540 817V860H0Z" fill="#062d50"/><path d="M0 795C135 852 407 860 540 817" fill="none" stroke="#d4ab51" stroke-width="7"/></svg>' +
-      '<svg class="mb-hole" viewBox="0 0 150 42" aria-hidden="true"><path d="M17 11h33C58 11 58 2 75 2s17 9 25 9h33c22 0 22 29 0 29H17C-5 40-5 11 17 11Z" fill="#e0e3e5"/></svg>' +
       '<div class="mb-slogan">معاً .. نحو مستقبل أفضل</div><div class="mb-heading"><b>معلومات مهمة</b></div>' +
       '<div class="mb-rules">' +
       '<div class="mb-rule"><span class="mb-icon"><svg viewBox="0 0 24 24"><path d="M4 3h16v18H4zM8 7h8M8 11h8M8 15h5"/></svg></span><p>' + terms[0] + '</p></div>' +

@@ -19317,6 +19317,64 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     });
   }
 
+  // Persist one idempotency key before sending: a lost response is retried with
+  // the SAME request even after reload. Never create a second batch blindly.
+  function pendingCardIssue() {
+    var user = currentUser();
+    if (!user) return null;
+    try { return JSON.parse(localStorage.getItem('hrc-card-issue-' + user.username) || 'null'); }
+    catch (e) { return null; }
+  }
+  async function issueNumberedCards(count, serial, notes) {
+    if (!isAdmin() || !currentUser() || cloud.state !== 'on' || cloud.role !== 'staff' || !cloud.client || !cloud.sync)
+      throw new Error('إصدار البطاقات يحتاج اتصالاً وحساب مدير فعالاً');
+    var owner = JSON.stringify(currentUser());
+    var key = 'hrc-card-issue-' + currentUser().username;
+    var req = pendingCardIssue();
+    if (!req) {
+      if (!Number.isInteger(count) || count < 1 || count > 90 || (serial && (count !== 1 || !isCardSerial(serial))) || String(notes || '').length > 1000)
+        throw new Error('صيغة الباركود غير صحيحة أو بيانات الإصدار غير صالحة');
+      if (!root.crypto || !root.crypto.randomUUID) throw new Error('المتصفح لا يدعم الإصدار الآمن؛ استخدم متصفحاً حديثاً');
+      req = { id: root.crypto.randomUUID(), count: count, serial: serial || null, notes: notes || '' };
+      try { localStorage.setItem(key, JSON.stringify(req)); if (!localStorage.getItem(key)) throw new Error(); }
+      catch (e) { throw new Error('تعذّر حفظ طلب الإصدار بأمان؛ تحقق من مساحة المتصفح'); }
+    }
+    var response;
+    try { response = await root.HRCCloud.rpcCall(cloud.client, 'issue_numbered_cards', {p_request:req.id,p_count:req.count,p_serial:req.serial,p_notes:req.notes}); }
+    catch (e) { throw new Error('لم يصل تأكيد الإصدار. أعد المحاولة لاسترجاع نفس الطلب دون إصدار مكرر'); }
+    if (response.error) {
+      // Only a duplicate-code error is known to arise while creating a NEW
+      // request. Other errors can occur while recovering a committed request
+      // (e.g. after restore), so retain the key rather than risk duplication.
+      var code=String(response.error.code || '');
+      if (code === '23505') localStorage.removeItem(key);
+      throw new Error(response.error.message || 'لم يصل تأكيد الإصدار؛ أعد المحاولة لاسترجاع الطلب نفسه');
+    }
+    if (owner !== JSON.stringify(currentUser())) throw new Error('تغيرت الجلسة؛ أعد الدخول لاسترجاع طلب الإصدار');
+    var data=response.data;
+    if (!data || !Array.isArray(data.cards) || data.cards.length !== req.count || !Array.isArray(data.attempts) || data.cards.some(function(r){return !Number.isSafeInteger(Number(r.card_number)) || Number(r.card_number)<1;}))
+      throw new Error('تأكيد الإصدار غير مكتمل؛ أعد المحاولة لاسترجاع الطلب نفسه');
+    var cards=data.cards.map(root.HRCCloud.applicantFromDb);
+    var jobsById={},jobsByCode={},staffById={};
+    db.jobs.forEach(function(j){jobsById[j.id]=j;jobsByCode[j.code]=j;});
+    db.staff.forEach(function(st){staffById[st.id]=st;});
+    var attempts=data.attempts.map(function(t){return root.HRCCloud.attemptFromDb(t,jobsById,jobsByCode,staffById);});
+    var snap=cloud.sync.getSnapshot();
+    cards.forEach(function(c){
+      var i=db.applicants.findIndex(function(a){return a.serial===c.serial;});
+      if(i<0) db.applicants.unshift(c); else db.applicants[i]=c;
+      root.HRCSync.advanceSnapshot(snap,{table:'applicants',op:'update',key:c.serial,local:c});
+    });
+    attempts.forEach(function(t){
+      var i=db.attempts.findIndex(function(a){return a.serial===t.serial && a.no===t.no;});
+      if(i<0) db.attempts.push(t); else db.attempts[i]=t;
+      root.HRCSync.advanceSnapshot(snap,{table:'job_attempts',op:'update',key:t.serial+':'+t.no,local:t});
+    });
+    saveLocal(); emit();
+    localStorage.removeItem(key);
+    return cards;
+  }
+
   function serialWasIssued(serial) {
     if(!currentUser()||cloud.state!=='on'||cloud.role!=='staff')return Promise.reject(new Error('تعذر التحقق من الباركود في السجل الكامل'));
     return root.HRCCloud.rpcCall(cloud.client,'staff_issuance_registry',{p_serial:normalizeCardSerial(serial)}).then(function(r){if(r.error||!r.data||typeof r.data.used!=='boolean')throw new Error('تعذر التحقق من الباركود؛ أعد المحاولة');return r.data.used;});
@@ -19333,6 +19391,20 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (cloud.unsubscribe || !root.HRCCloud.subscribeAll) return;
     cloud.unsubscribe = root.HRCCloud.subscribeAll(cloud.client, db, function (table, payload) {
       try { absorbRealtime(table, payload); } catch (e) { console.warn('[HRC/realtime] ' + (e && e.message || e)); }
+      // Realtime sends base-table rows, not the joined working view. Resolve a
+      // newly observed card's permanent number without overwriting later edits.
+      if (table==='applicants' && payload.new && payload.new.serial && !payload.new.archived_at) {
+        var liveSerial=payload.new.serial, liveOwner=JSON.stringify(currentUser());
+        var existing=findLocal(db.applicants,function(a){return a.serial===liveSerial;});
+        if (existing && !existing.cardNumberKnown && cloud.client) {
+          root.HRCCloud.rpcCall(cloud.client,'card_number_for',{p_serial:liveSerial}).then(function(r){
+            if(liveOwner!==JSON.stringify(currentUser()) || r.error) return;
+            var card=findLocal(db.applicants,function(a){return a.serial===liveSerial;});
+            var n=Number(r.data); if(card && (r.data === null || (Number.isSafeInteger(n) && n>0))){card.cardNumber=n>0?n:null;card.cardNumberKnown=true;saveLocal();emit();}
+          }).catch(function(){});
+        }
+      }
+
       if(table==='applicants'&&payload.new&&payload.new.archived_at){
         clearTimeout(cloud.archiveTimer);var owner=JSON.stringify(currentUser());cloud.archiveTimer=setTimeout(function(){if(owner===JSON.stringify(currentUser())){saveLocal();emit();}},100);return;
       }
@@ -19668,7 +19740,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     staffAdmin: staffAdmin, recoveryRPC: recoveryRPC,
     recoveryScheduleGet: recoveryScheduleGet, recoveryScheduleSet: recoveryScheduleSet,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
-    serialWasIssued:serialWasIssued, cardReport:cardReport, searchCardHistory:searchCardHistory, reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
+    issueNumberedCards:issueNumberedCards, pendingCardIssue:pendingCardIssue, serialWasIssued:serialWasIssued, cardReport:cardReport, searchCardHistory:searchCardHistory, reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,
     waitForCloud: function () { return cloud.bootPromise || Promise.resolve(cloudStatus()); },
     /* العمليات المعلّقة الآن (للتشخيص والعرض) — لا تُرسل شيئاً */
@@ -20323,11 +20395,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 /* تصميم البطاقة قابل للتعديل: الأشكال والنصوص والباركود منفصلة. */
 .hrc-card[aria-label*=الأمامي]{padding:0;background:#f3f0e7;color:#071e39;text-align:center}
 .mk-art{position:absolute;inset:0;width:100%;height:100%;z-index:0}
-.mk-hole{position:absolute;top:1.5%;left:35.5%;width:29%;height:5%;z-index:1}
 .mk-brand{position:absolute;top:9%;left:9%;width:83%;height:11%;display:flex;direction:ltr;align-items:center;justify-content:center;gap:1.5mm;color:#fff;z-index:1}
 .mk-logo{position:relative;display:flex;direction:rtl;align-items:center;white-space:nowrap;font-size:23pt;line-height:1;font-weight:900;letter-spacing:-.45mm}
 .mk-brand-icon{width:10mm;height:10mm;flex:none;margin-right:-.7mm}
-.mk-brand-label{direction:rtl;border-left:.2mm solid #c6d0d9;padding-left:1.5mm;font-size:6.2pt;font-weight:900;line-height:1.35;text-align:center;white-space:nowrap}
+.mk-brand-label{direction:rtl;border-left:.25mm solid #d2ad60;padding-left:1.5mm;color:#e7c77e;font-size:8pt;font-weight:900;line-height:1.2;text-align:center;white-space:nowrap}
 .mk-slogan{position:absolute;top:22%;left:2%;width:96%;color:#d2ad60;font-weight:900;font-size:13.5pt;line-height:1.15;z-index:1;white-space:nowrap}
 .mk-slogan:after{content:'';display:block;margin:.5mm auto 0;width:23%;height:.5mm;border-top:.35mm solid #c9a75d;border-radius:50%;transform:rotate(-3deg)}
 .mk-qr{position:absolute;left:30%;top:32.5%;width:40%;aspect-ratio:1;background:#fff;border:.65mm solid #c2a264;border-radius:1.7mm;padding:.3mm;z-index:1}
@@ -20349,7 +20420,6 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 /* الوجه الخلفي مبني بعناصر قابلة للتعديل، وليس صورة مطبوعة. */
 .hrc-card[aria-label*=الخلفي]{padding:0;background:#f5f1e6;color:#092847}
 .mb-art{position:absolute;inset:0;width:100%;height:100%}
-.mb-hole{position:absolute;top:1.5%;left:35.5%;width:29%;height:5%}
 .mb-slogan{position:absolute;top:7%;right:6%;font-size:9pt;line-height:1.2;font-weight:800;color:#0b3154;transform:rotate(-5deg)}
 .mb-slogan:after{content:'';display:block;border-top:.45mm solid #c9a354;width:55%;margin:.7mm 0 0 auto;transform:rotate(-4deg)}
 .mb-heading{position:absolute;top:15%;left:5%;right:5%;height:5%;display:flex;align-items:center;gap:1mm}
@@ -20399,8 +20469,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var count = 'بطاقة واحدة .. ' + attempts.length + (attempts.length === 1 ? ' فرصة للتقديم' : ' فرص للتقديم');
     return '<div class="hrc-card" aria-label="الوجه الأمامي لبطاقة التوظيف">' +
       '<svg class="mk-art" viewBox="0 0 540 860" preserveAspectRatio="none" aria-hidden="true"><rect width="540" height="860" fill="#f3f0e7"/><path d="M0 0H540V372C408 449 131 459 0 379Z" fill="#052a4b"/><path d="M0 379C131 459 408 449 540 372" fill="none" stroke="#c7a255" stroke-width="6"/><path d="M0 766C151 813 383 803 540 756V860H0Z" fill="#052a4b"/><path d="M0 766C151 813 383 803 540 756" fill="none" stroke="#c7a255" stroke-width="5"/></svg>' +
-      '<svg class="mk-hole" viewBox="0 0 150 42" aria-hidden="true"><path d="M17 11h33C58 11 58 2 75 2s17 9 25 9h33c22 0 22 29 0 29H17C-5 40-5 11 17 11Z" fill="#f8f8f6"/></svg>' +
-      '<div class="mk-brand"><div class="mk-logo"><span>مكسب</span>' + mksebLogo(false, 'mk-brand-icon') + '</div><div class="mk-brand-label">منصة مكسب<br>للتوظيف</div></div>' +
+      '<div class="mk-brand"><div class="mk-logo"><span>مكسب</span>' + mksebLogo(false, 'mk-brand-icon') + '</div><div class="mk-brand-label">منصة</div></div>' +
       '<div class="mk-slogan">فرصتك تبدأ من هنا</div>' +
       '<div class="mk-qr hrc-qr-slot">' + qrSvg(Store.cardUrl(app.serial), 200) + '</div>' +
       '<div class="mk-caption"><span>امسح الباركود للوصول إلى<br><b>منصة مكسب</b></span><svg viewBox="0 0 24 32" fill="none" aria-hidden="true"><rect x="3" y="1" width="18" height="30" rx="3" stroke="currentColor" stroke-width="2"/><path d="M9 4h6M11 27h2" stroke="currentColor" stroke-width="2"/></svg></div>' +
@@ -20417,7 +20486,6 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var websiteUrl = String(CFG.verifyBase || '').replace(/verify\/?(?:[?#].*)?$/, '');
     return '<div class="hrc-card" aria-label="الوجه الخلفي لبطاقة التوظيف">' +
       '<svg class="mb-art" viewBox="0 0 540 860" preserveAspectRatio="none" aria-hidden="true"><path d="M0 795C135 852 407 860 540 817V860H0Z" fill="#062d50"/><path d="M0 795C135 852 407 860 540 817" fill="none" stroke="#d4ab51" stroke-width="7"/></svg>' +
-      '<svg class="mb-hole" viewBox="0 0 150 42" aria-hidden="true"><path d="M17 11h33C58 11 58 2 75 2s17 9 25 9h33c22 0 22 29 0 29H17C-5 40-5 11 17 11Z" fill="#e0e3e5"/></svg>' +
       '<div class="mb-slogan">معاً .. نحو مستقبل أفضل</div><div class="mb-heading"><b>معلومات مهمة</b></div>' +
       '<div class="mb-rules">' +
       '<div class="mb-rule"><span class="mb-icon"><svg viewBox="0 0 24 24"><path d="M4 3h16v18H4zM8 7h8M8 11h8M8 15h5"/></svg></span><p>' + terms[0] + '</p></div>' +
@@ -20690,12 +20758,21 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (style) style.textContent = '';
   }
 
+  function numbersReady(apps) {
+    var workspace = Store.db && Store.db().meta && Store.db().meta.workspace;
+    if (workspace && apps.some(function (a) { return a.cardNumberKnown !== true; })) {
+      UI.toast('err', 'تعذّرت الطباعة', 'لم يتم التأكد من رقم البطاقة؛ تحقق من الاتصال وأعد تحميل البيانات قبل الطباعة.');
+      return false;
+    }
+    return true;
+  }
+
   function print(app, opts) {
     opts = opts || {};
     ensureStyle();
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّر الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
-    if (!app) return;
+    if (!app || !numbersReady([app])) return;
     clearFormPrint();
     var attempts = opts.attempts || Store.getAttempts(app.serial);
     var seq = ++printSeq;
@@ -20713,6 +20790,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
     if (!apps || !apps.length) { UI.toast('err', 'تعذّرت الطباعة', 'لا توجد بطاقات بالدفعة'); return; }
+    if (!numbersReady(apps)) return;
     clearFormPrint();
     var seq = ++printSeq;
     setSheetCss(false);
@@ -20790,6 +20868,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var rootEl = document.getElementById('print-root');
     if (!rootEl) { UI.toast('err', 'تعذّرت الطباعة', 'حاوية الطباعة غير متوفرة'); return; }
     if (!apps || !apps.length) { UI.toast('err', 'تعذّرت الطباعة', 'لا توجد بطاقات للطباعة'); return; }
+    if (!numbersReady(apps)) return;
     clearFormPrint();
     var seq = ++printSeq;
     setSheetCss(true);
@@ -26341,6 +26420,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       onMount: function (box, close) {
         var codeInp = box.querySelector('#c-code');
         var errBox = box.querySelector('#c-err');
+        if (Store.pendingCardIssue()) { errBox.textContent='يوجد طلب سابق لم يصل تأكيده؛ الضغط على إضافة يسترجع نفس الطلب أولاً دون إصدار جديد.'; errBox.style.display='block'; }
         codeInp.value = Store.suggestSerial();
         codeInp.addEventListener('input', function () { codeInp.value = codeInp.value.toUpperCase().replace(/\s+/g, ''); });
         box.querySelector('#c-gen').addEventListener('click', function () {
@@ -26352,14 +26432,15 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           var notes = box.querySelector('#c-notes').value.trim();
           errBox.style.display = 'none';
           if (!serial) { codeInp.focus(); return; }
-          if(Store.db().meta.workspace&&Store.isCardSerial(serial)&&!Store.getApplicant(Store.normalizeCardSerial(serial))){
-            var btn=box.querySelector('#c-save'),gen=box.querySelector('#c-gen'),owner=sessionKey();btn.disabled=true;codeInp.disabled=true;gen.disabled=true;
-            try{var used=await Store.serialWasIssued(serial);if(!document.contains(box)||owner!==sessionKey())return;if(used){errBox.textContent='هذا الباركود مسجّل سابقاً، بما فيه الأرشيف؛ لا يمكن إصداره مجدداً';errBox.style.display='block';return;}}catch(e){errBox.textContent=e.message;errBox.style.display='block';return;}finally{btn.disabled=false;codeInp.disabled=false;gen.disabled=false;}
-          }
-          var r = Store.createCardWithSerial(serial, notes);
-          if (!r.ok) { errBox.textContent = r.error; errBox.style.display = 'block'; codeInp.focus(); return; }
-          close();
-          cardResultModal(r.card);
+          var btn=box.querySelector('#c-save'); btn.disabled=true; codeInp.disabled=true;
+          try {
+            var cards=await Store.issueNumberedCards(1,Store.normalizeCardSerial(serial),notes);
+            if (!document.contains(box)) return;
+            close();
+            if (cards.length===1) cardResultModal(cards[0]); else batchResultModal(cards);
+          } catch(e) { errBox.textContent=e.message; errBox.style.display='block'; }
+          finally { btn.disabled=false; codeInp.disabled=false; }
+
         });
       }
     });
@@ -26412,6 +26493,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       onMount: function (box, close) {
         var cnt = box.querySelector('#b-count');
         var est = box.querySelector('#b-est');
+        if (Store.pendingCardIssue()) UI.toast('err','طلب سابق قيد التأكيد','الضغط على إصدار يسترجع الطلب السابق أولاً دون إصدار دفعة جديدة.');
         function refresh() {
           var n = Number(cnt.value) || 0;
           var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 9);
@@ -26424,16 +26506,21 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           b.addEventListener('click', function () { cnt.value = b.getAttribute('data-n'); refresh(); });
         });
         refresh();
-        box.querySelector('#b-save').addEventListener('click', function () {
+        box.querySelector('#b-save').addEventListener('click', async function () {
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
           var count = Number(cnt.value) || 0;
           if (!Number.isInteger(count) || count < 1 || count > 90) { UI.toast('err', 'عدد غير صالح', 'أدخل عدداً صحيحاً من ١ إلى ٩٠ بطاقة.'); return; }
           var notes = box.querySelector('#b-notes').value.trim();
-          var made = Store.createCardBatch(count, notes);
-          if (!made.length) { UI.toast('err', 'تعذّر الإصدار', 'لم تُصدر أي بطاقة — تحقق من العدد (١ إلى ٩٠)'); return; }
-          close();
-          batchResultModal(made);
+          var btn=box.querySelector('#b-save'); btn.disabled=true;
+          try {
+            var made=await Store.issueNumberedCards(count,null,notes);
+            if (!document.contains(box)) return;
+            close();
+            if (made.length===1) cardResultModal(made[0]); else batchResultModal(made);
+          } catch(e) { UI.toast('err','تعذّر تأكيد الإصدار',e.message); }
+          finally { btn.disabled=false; }
+
         });
       }
     });

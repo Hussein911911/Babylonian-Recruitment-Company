@@ -11,6 +11,9 @@ w.HRCStore={cardUrl:s=>'https://example.test/apply.html?form='+encodeURIComponen
 for (const n of [1,2,9,90]){
  const html=w.HRCVoucher.buildHtml({serial:'A1B2C3D4E5',status:'blank',cardNumber:n},[]);
  const fragment=JSDOM.fragment(html),front=fragment.querySelector('[aria-label="الوجه الأمامي لبطاقة التوظيف"]'),back=fragment.querySelector('[aria-label="الوجه الخلفي لبطاقة التوظيف"]');
+ assert.equal(front.querySelector('.mk-brand-label').textContent,'منصة');
+ assert.equal(front.querySelector('.mk-hole'),null,'no badge slot on front');
+ assert.equal(back.querySelector('.mb-hole'),null,'no badge slot on back');
  assert.ok(front.querySelector('.mk-serial').textContent.includes('كود البطاقة'));
  assert.equal(front.querySelector('.mk-card-number b').textContent,String(n));
  assert.ok(!front.textContent.includes('الموقع الإلكتروني'));
