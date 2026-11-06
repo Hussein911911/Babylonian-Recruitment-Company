@@ -231,15 +231,9 @@
       }
     });
 
-    // قائمة الجوال
-    var toggle = document.getElementById('nav-toggle');
-    var nav = document.getElementById('main-nav');
-    if (toggle && nav) toggle.addEventListener('click', function () {
-      nav.classList.toggle('open');
-      toggle.setAttribute('aria-expanded', nav.classList.contains('open') ? 'true' : 'false');
-    });
-    if (nav) nav.addEventListener('click', function (e) { if (e.target.tagName === 'A') nav.classList.remove('open'); });
-
+    /* قائمة الجوال: لا زر هامبرغر في الترويسة (حُذف 2026-11-07). الموقع العام
+       يستعمل شريط التبويب السفلي على الجوال، والترويسة تُخفى هناك أصلاً، فلا
+       يوجد ما يفتح #main-nav. تُترك الروابط نفسها لسطح المكتب وللقارئات. */
     // تمييز الرابط النشط حسب موضع التمرير
     window.addEventListener('scroll', UI.debounce(function () {
       var y = window.scrollY + 120, current = '';

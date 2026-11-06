@@ -175,10 +175,8 @@
     if (scrollToId(id, true) && root.history && root.history.pushState) {
       root.history.pushState(null, '', '#' + id);
     }
-    var nav = doc.getElementById('main-nav');
-    if (nav) nav.classList.remove('open');
-    var toggle = doc.getElementById('nav-toggle');
-    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    /* لا زر هامبرغر في الترويسة منذ 2026-11-07 — لم يبقَ ما يُغلَق هنا.
+       تبقى الروابط نفسها لسطح المكتب وللقارئات (انظر src/partials/header.html). */
   }
 
   /* الوصول إلى الصفحة برابط فيه مرساة: نصحّح الموضع بعد رسم التخطيط */
