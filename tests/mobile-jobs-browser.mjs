@@ -17,7 +17,7 @@ try {
   await page.goto(base+'index.html');
   await page.waitForFunction(()=>document.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length===7);
   const cards=page.locator('#jobs-grid .job-card');
-  assert.equal(await cards.count(),7); assert.equal((await page.locator('#jobs-count').innerText()).trim(),'7');
+  assert.equal(await cards.count(),7); assert.equal(await page.locator('#jobs-count').count(),0); assert.equal(await page.locator('#jobs-more').isVisible(),false);
   assert.deepEqual(await cards.locator('.ac-sequence').allTextContents(), ['#1','#2','#3','#4','#5','#6','#7']);
   assert.equal(await cards.first().locator('.ac-sequence').getAttribute('aria-label'),'ترتيب الوظيفة 1');
   for(let i=0;i<7;i++) assert.ok(await cards.nth(i).isVisible(),`card ${i+1} hidden at ${width}`);

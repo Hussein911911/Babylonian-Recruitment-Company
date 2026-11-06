@@ -3410,6 +3410,17 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
   .app-section .app-card .ac-foot .btn { padding-inline: 5px; font-size: .76rem; }
 }
 
+/* زر دفعة الوظائف التالية — ظاهر فقط عند وجود وظائف أخرى. */
+.jobs-more-wrap { display:flex; justify-content:center; margin:22px 0 10px; }
+.jobs-more-wrap[hidden] { display:none; }
+.jobs-more { display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:48px; padding:11px 25px; border:1px solid #c9ab60; border-radius:14px; background:linear-gradient(135deg,#1e4877,#0c294b); color:#fff; font:inherit; font-weight:800; box-shadow:0 8px 20px #102b4c30; cursor:pointer; transition:transform .2s,box-shadow .2s; }
+.jobs-more[hidden] { display:none; }
+.jobs-more:hover { transform:translateY(-2px); box-shadow:0 11px 24px #102b4c45; }
+.jobs-more:focus-visible { outline:3px solid #b38d36; outline-offset:3px; }
+.jobs-more .ic { width:17px; height:17px; transform:rotate(90deg); color:#f0d486; }
+.jobs-more-status { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+@media(prefers-reduced-motion:reduce) { .jobs-more { transition:none; } .jobs-more:hover { transform:none; } }
+
 /* ── 7) كرت الوظيفة ── */
 .job-card.app-card {
   position: relative; display: flex; flex-direction: column; padding: 0;
@@ -4642,7 +4653,6 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
     </div>
 
     <div class="flex-between mb-2">
-      <p class="mb-0 muted small">عدد النتائج: <b id="jobs-count">0</b> وظيفة</p>
       <p class="mb-0 tiny muted">
         <svg class="ic" style="width:14px;height:14px;vertical-align:-2px"><use href="#i-clock" xlink:href="#i-clock"/></svg>
         آخر تحديث للحالات: <span id="jobs-updated">—</span>
@@ -4653,6 +4663,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
     <svg width="0" height="0" aria-hidden="true" style="position:absolute;opacity:0"><use href="#i-bag" xlink:href="#i-bag"/><use href="#i-list" xlink:href="#i-list"/><use href="#i-chart" xlink:href="#i-chart"/><use href="#i-server" xlink:href="#i-server"/><use href="#i-sparkle" xlink:href="#i-sparkle"/></svg>
     <p id="jobs-loading-status" class="jobs-loading-status" role="status" aria-live="polite"></p>
     <div class="jobs-grid" id="jobs-grid" aria-busy="false"></div>
+    <div class="jobs-more-wrap" hidden><button type="button" id="jobs-more" class="jobs-more" aria-controls="jobs-grid" hidden><span>عرض المزيد من الوظائف</span><svg class="ic" aria-hidden="true"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg></button></div><span class="jobs-more-status" id="jobs-more-status" role="status" aria-live="polite"></span>
     <div class="empty-state hidden" id="jobs-empty">
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
       <h3>لا توجد وظائف مطابقة</h3>
@@ -22214,6 +22225,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
   /* الفلاتر: المحافظة وحدها للموقع الجغرافي — لا فلتر مناطق (قرار 2026-10-24) */
   var filters = { q: '', governorate: 'all', shift: 'all', status: 'all', category: 'all' };
+  var JOBS_BATCH = 20, jobsVisible = JOBS_BATCH, lastJobFilters = null;
 
   /* مفضلة الزائر: تُحفظ على جهازه وحده (لا تُرسل للشركة ولا تُسجَّل بسجل) */
   var FAV_KEY = 'hrc_fav_jobs_v1';
@@ -22350,9 +22362,12 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (governorate) governorate.addEventListener('change', function () { filters.governorate = governorate.value; renderJobs(); });
     if (shift) shift.addEventListener('change', function () { filters.shift = shift.value; renderJobs(); });
     if (status) status.addEventListener('change', function () { filters.status = status.value; renderJobs(); });
+    var more = document.getElementById('jobs-more');
+    if (more) more.addEventListener('click', function () { jobsVisible += JOBS_BATCH; renderJobs(true); });
     var reset = document.getElementById('filter-reset');
     if (reset) reset.addEventListener('click', function () {
       filters = { q: '', governorate: 'all', shift: 'all', status: 'all', category: 'all' };
+      jobsVisible = JOBS_BATCH;
       if (q) q.value = '';
       if (governorate) governorate.value = 'all';
       var qsGov = document.getElementById('qs-governorate');
@@ -23040,6 +23055,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   function renderSkeleton() {
     var host = document.getElementById('jobs-grid');
     setJobsLoading(true);
+    var more = document.getElementById('jobs-more'); if (more) { more.hidden = true; more.parentElement.hidden = true; }
     if (host && !host.querySelector('.job-card.skeleton')) host.innerHTML = skeletonCard().repeat(6);
     var empty = document.getElementById('jobs-empty');
     if (empty) empty.classList.add('hidden');
@@ -23056,6 +23072,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
   function renderCloudError() {
     setJobsLoading(false);
+    var more = document.getElementById('jobs-more'); if (more) { more.hidden = true; more.parentElement.hidden = true; }
     var host = document.getElementById('jobs-grid');
     if (host) {
       host.innerHTML =
@@ -23112,11 +23129,13 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
   /* ── شريط التصنيفات: يُبنى من تصنيفات الوظائف المعروضة فعلاً ── */
 
-  function renderJobs() {
+  function renderJobs(append) {
     var host = document.getElementById('jobs-grid');
     if (!host) return;
     if (cloudBlocked()) { if (!cloudSettled) renderSkeleton(); else renderCloudError(); return; }
     setJobsLoading(false);
+    var signature = JSON.stringify(filters);
+    if (signature !== lastJobFilters) { jobsVisible = JOBS_BATCH; append = false; lastJobFilters = signature; }
     var jobs = Store.listJobs(filters);
     if (filters.category && filters.category !== 'all') {
       jobs = jobs.filter(function (j) { return (j.category || '') === filters.category; });
@@ -23141,7 +23160,23 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       }
     }
     var favorites = favList();
-    host.innerHTML = jobs.map(function (job, index) { return cardHtml(job, favorites, index + 1); }).join('');
+    var visible = jobs.slice(0, jobsVisible);
+    var previous = append ? host.querySelectorAll('.job-card:not(.skeleton)').length : 0;
+    if (append && previous <= visible.length) {
+      host.insertAdjacentHTML('beforeend', visible.slice(previous).map(function (job, index) { return cardHtml(job, favorites, previous + index + 1); }).join(''));
+    } else {
+      host.innerHTML = visible.map(function (job, index) { return cardHtml(job, favorites, index + 1); }).join('');
+    }
+    var more = document.getElementById('jobs-more'), status = document.getElementById('jobs-more-status');
+    if (more) {
+      more.hidden = visible.length >= jobs.length;
+      more.parentElement.hidden = more.hidden;
+      if (append && more.hidden && visible.length > previous) {
+        var target = host.querySelectorAll('[data-action="job-details"][role="button"]')[previous];
+        if (target) { try { target.focus({preventScroll:true}); } catch (e) { target.focus(); } }
+      }
+    }
+    if (status) status.textContent = append && visible.length > previous ? 'تم عرض وظائف إضافية' : '';
     renderActiveChips();
   }
 

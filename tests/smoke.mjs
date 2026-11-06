@@ -163,8 +163,7 @@ check('التصفية بالحالة تعمل', () => {
   sel.value = 'available';
   sel.dispatchEvent(new site.window.Event('change'));
   const n = site.doc.querySelectorAll('#jobs-grid .job-card').length;
-  const shown = Number(site.doc.getElementById('jobs-count').textContent);
-  return (n === shown && n > 0 && n < 8) || ('بطاقات ' + n + ' / عدّاد ' + shown);
+  return (n > 0 && n < 8 && !site.doc.getElementById('jobs-count')) || ('بطاقات ' + n);
 });
 const fq = site.doc.getElementById('filter-q');
 fq.value = 'HRC-1042';

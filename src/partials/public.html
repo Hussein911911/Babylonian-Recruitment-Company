@@ -109,7 +109,6 @@
     </div>
 
     <div class="flex-between mb-2">
-      <p class="mb-0 muted small">عدد النتائج: <b id="jobs-count">0</b> وظيفة</p>
       <p class="mb-0 tiny muted">
         <svg class="ic" style="width:14px;height:14px;vertical-align:-2px"><use href="#i-clock" xlink:href="#i-clock"/></svg>
         آخر تحديث للحالات: <span id="jobs-updated">—</span>
@@ -120,6 +119,7 @@
     <svg width="0" height="0" aria-hidden="true" style="position:absolute;opacity:0"><use href="#i-bag" xlink:href="#i-bag"/><use href="#i-list" xlink:href="#i-list"/><use href="#i-chart" xlink:href="#i-chart"/><use href="#i-server" xlink:href="#i-server"/><use href="#i-sparkle" xlink:href="#i-sparkle"/></svg>
     <p id="jobs-loading-status" class="jobs-loading-status" role="status" aria-live="polite"></p>
     <div class="jobs-grid" id="jobs-grid" aria-busy="false"></div>
+    <div class="jobs-more-wrap" hidden><button type="button" id="jobs-more" class="jobs-more" aria-controls="jobs-grid" hidden><span>عرض المزيد من الوظائف</span><svg class="ic" aria-hidden="true"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg></button></div><span class="jobs-more-status" id="jobs-more-status" role="status" aria-live="polite"></span>
     <div class="empty-state hidden" id="jobs-empty">
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
       <h3>لا توجد وظائف مطابقة</h3>

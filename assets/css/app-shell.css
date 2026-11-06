@@ -381,6 +381,17 @@
   .app-section .app-card .ac-foot .btn { padding-inline: 5px; font-size: .76rem; }
 }
 
+/* زر دفعة الوظائف التالية — ظاهر فقط عند وجود وظائف أخرى. */
+.jobs-more-wrap { display:flex; justify-content:center; margin:22px 0 10px; }
+.jobs-more-wrap[hidden] { display:none; }
+.jobs-more { display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:48px; padding:11px 25px; border:1px solid #c9ab60; border-radius:14px; background:linear-gradient(135deg,#1e4877,#0c294b); color:#fff; font:inherit; font-weight:800; box-shadow:0 8px 20px #102b4c30; cursor:pointer; transition:transform .2s,box-shadow .2s; }
+.jobs-more[hidden] { display:none; }
+.jobs-more:hover { transform:translateY(-2px); box-shadow:0 11px 24px #102b4c45; }
+.jobs-more:focus-visible { outline:3px solid #b38d36; outline-offset:3px; }
+.jobs-more .ic { width:17px; height:17px; transform:rotate(90deg); color:#f0d486; }
+.jobs-more-status { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+@media(prefers-reduced-motion:reduce) { .jobs-more { transition:none; } .jobs-more:hover { transform:none; } }
+
 /* ── 7) كرت الوظيفة ── */
 .job-card.app-card {
   position: relative; display: flex; flex-direction: column; padding: 0;

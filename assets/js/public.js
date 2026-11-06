@@ -14,6 +14,7 @@
 
   /* الفلاتر: المحافظة وحدها للموقع الجغرافي — لا فلتر مناطق (قرار 2026-10-24) */
   var filters = { q: '', governorate: 'all', shift: 'all', status: 'all', category: 'all' };
+  var JOBS_BATCH = 20, jobsVisible = JOBS_BATCH, lastJobFilters = null;
 
   /* مفضلة الزائر: تُحفظ على جهازه وحده (لا تُرسل للشركة ولا تُسجَّل بسجل) */
   var FAV_KEY = 'hrc_fav_jobs_v1';
@@ -150,9 +151,12 @@
     if (governorate) governorate.addEventListener('change', function () { filters.governorate = governorate.value; renderJobs(); });
     if (shift) shift.addEventListener('change', function () { filters.shift = shift.value; renderJobs(); });
     if (status) status.addEventListener('change', function () { filters.status = status.value; renderJobs(); });
+    var more = document.getElementById('jobs-more');
+    if (more) more.addEventListener('click', function () { jobsVisible += JOBS_BATCH; renderJobs(true); });
     var reset = document.getElementById('filter-reset');
     if (reset) reset.addEventListener('click', function () {
       filters = { q: '', governorate: 'all', shift: 'all', status: 'all', category: 'all' };
+      jobsVisible = JOBS_BATCH;
       if (q) q.value = '';
       if (governorate) governorate.value = 'all';
       var qsGov = document.getElementById('qs-governorate');
@@ -840,6 +844,7 @@
   function renderSkeleton() {
     var host = document.getElementById('jobs-grid');
     setJobsLoading(true);
+    var more = document.getElementById('jobs-more'); if (more) { more.hidden = true; more.parentElement.hidden = true; }
     if (host && !host.querySelector('.job-card.skeleton')) host.innerHTML = skeletonCard().repeat(6);
     var empty = document.getElementById('jobs-empty');
     if (empty) empty.classList.add('hidden');
@@ -856,6 +861,7 @@
   /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
   function renderCloudError() {
     setJobsLoading(false);
+    var more = document.getElementById('jobs-more'); if (more) { more.hidden = true; more.parentElement.hidden = true; }
     var host = document.getElementById('jobs-grid');
     if (host) {
       host.innerHTML =
@@ -912,11 +918,13 @@
 
   /* ── شريط التصنيفات: يُبنى من تصنيفات الوظائف المعروضة فعلاً ── */
 
-  function renderJobs() {
+  function renderJobs(append) {
     var host = document.getElementById('jobs-grid');
     if (!host) return;
     if (cloudBlocked()) { if (!cloudSettled) renderSkeleton(); else renderCloudError(); return; }
     setJobsLoading(false);
+    var signature = JSON.stringify(filters);
+    if (signature !== lastJobFilters) { jobsVisible = JOBS_BATCH; append = false; lastJobFilters = signature; }
     var jobs = Store.listJobs(filters);
     if (filters.category && filters.category !== 'all') {
       jobs = jobs.filter(function (j) { return (j.category || '') === filters.category; });
@@ -941,7 +949,23 @@
       }
     }
     var favorites = favList();
-    host.innerHTML = jobs.map(function (job, index) { return cardHtml(job, favorites, index + 1); }).join('');
+    var visible = jobs.slice(0, jobsVisible);
+    var previous = append ? host.querySelectorAll('.job-card:not(.skeleton)').length : 0;
+    if (append && previous <= visible.length) {
+      host.insertAdjacentHTML('beforeend', visible.slice(previous).map(function (job, index) { return cardHtml(job, favorites, previous + index + 1); }).join(''));
+    } else {
+      host.innerHTML = visible.map(function (job, index) { return cardHtml(job, favorites, index + 1); }).join('');
+    }
+    var more = document.getElementById('jobs-more'), status = document.getElementById('jobs-more-status');
+    if (more) {
+      more.hidden = visible.length >= jobs.length;
+      more.parentElement.hidden = more.hidden;
+      if (append && more.hidden && visible.length > previous) {
+        var target = host.querySelectorAll('[data-action="job-details"][role="button"]')[previous];
+        if (target) { try { target.focus({preventScroll:true}); } catch (e) { target.focus(); } }
+      }
+    }
+    if (status) status.textContent = append && visible.length > previous ? 'تم عرض وظائف إضافية' : '';
     renderActiveChips();
   }
 
