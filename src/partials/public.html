@@ -74,7 +74,7 @@
   <div class="container">
     <div class="jobs-head">
       <h2><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> أحدث الوظائف</h2>
-      <a class="jobs-all" href="#jobs">عرض الكل <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg></a>
+      <button type="button" class="jobs-all" id="jobs-show-all" aria-controls="jobs-grid">عرض الكل <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg></button>
     </div>
     <p class="jobs-sub">حجز الوظيفة 24 ساعة؛ بعدها تصبح حرجة بانتظار قرار الشركة، ولا تعود متاحة تلقائياً.</p>
 
@@ -124,6 +124,15 @@
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
       <h3>لا توجد وظائف مطابقة</h3>
       <p class="mb-0">غيّر البحث أو صفّر الفلاتر لعرض الوظائف المتاحة.</p>
+    </div>
+    <!-- عرض تدريجي: أول 10 وظائف فقط، ثم «عرض المزيد» يُظهر الباقي و«عرض أقل» يُعيدها.
+         يُخفى تلقائياً حين لا تتجاوز النتائج 10 أو أثناء التحميل/فشل الاتصال. -->
+    <div class="jobs-more-wrap" id="jobs-more-wrap" hidden>
+      <p class="jobs-more-note" id="jobs-more-note" aria-live="polite"></p>
+      <button type="button" class="btn btn-outline btn-sm jobs-more-btn" id="jobs-more" aria-expanded="false" aria-controls="jobs-grid">
+        <svg class="ic" aria-hidden="true"><use href="#i-plus" xlink:href="#i-plus"/></svg>
+        <span>عرض المزيد</span>
+      </button>
     </div>
   </div>
 </section>

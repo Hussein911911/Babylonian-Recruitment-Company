@@ -19,7 +19,13 @@ try {
    window.fetch=url=>String(url).includes('/rest/v1/public_jobs')?Promise.resolve(new Response(JSON.stringify(Array.from({length:120},(_,i)=>({code:'HRC-'+(9001+i),title:'وظيفة '+(i+1),category:i%2?'تقني':'خدمات',region:'الحلة',shift:'صباحي',salary_min:700000,status:'available',vacancies:1,requirements:[]}))),{status:200,headers:{'Content-Type':'application/json'}})):Promise.reject(new Error('blocked'));
   });
   await page.route('**/*',r=>r.request().url().startsWith(base)?r.continue():r.abort());
-  await page.goto(base+'index.html');await page.waitForFunction(()=>document.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length===120);
+  await page.goto(base+'index.html');
+  /* العرض التدريجي: 10 بطاقات أولاً، ثم «عرض المزيد» يُظهر الـ120 في قياس الأداء */
+  await page.waitForFunction(()=>document.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length===10);
+  assert.equal((await page.locator('#jobs-more').innerText()).trim(),'عرض المزيد');
+  await page.locator('#jobs-more').click();
+  await page.waitForFunction(()=>document.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length===120);
+  assert.equal((await page.locator('#jobs-more').innerText()).trim(),'عرض أقل');
   const initialReads=await page.evaluate(()=>window.__favReads);
   await page.evaluate(()=>{window.__favReads=0});await page.locator('#filter-reset').click();
   const reads=await page.evaluate(()=>window.__favReads);

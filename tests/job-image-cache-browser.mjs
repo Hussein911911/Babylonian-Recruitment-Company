@@ -15,6 +15,8 @@ const remote=createServer((req,res)=>{counts.set(req.url,(counts.get(req.url)||0
 await new Promise(r=>remote.listen(0,'127.0.0.1',r));
 const other=`http://127.0.0.1:${remote.address().port}`;
 const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8').replace('https://vqsvztudvfukyuerzcgx.supabase.co',other);
+/* اسم الكاش يُقرأ من sw.js نفسه، فرفع جيله لا يكسر هذا الفحص */
+const CACHE=(sw.match(/const CACHE_NAME = '([^']+)'/)||[])[1];
 const server=createServer((req,res)=>{
  if(req.url==='/sw.js'){res.setHeader('Content-Type','application/javascript');return res.end(sw)}
  if(req.url.startsWith('/assets/img/jobs/')){counts.set(req.url,(counts.get(req.url)||0)+1);res.setHeader('Content-Type','image/png');res.setHeader('Cache-Control','public, max-age=60');return res.end(png)}
@@ -29,7 +31,7 @@ try{
  await page.evaluate(()=>navigator.serviceWorker.ready);await page.reload();
  await page.waitForFunction(()=>navigator.serviceWorker.controller);
  const load=async url=>page.evaluate(url=>new Promise(resolve=>{const img=new Image();img.onload=()=>resolve(true);img.onerror=()=>resolve(false);img.src=url;document.body.appendChild(img)}),url);
- assert.equal(await page.evaluate(async()=>{const c=await caches.open('hrc-cache-v151');return !!(await c.match('/dashboard.html') || await c.match('/apply.html'))}),false,'public visitors should not download the staff shell');
+ assert.equal(await page.evaluate(async(name)=>{const c=await caches.open(name);return !!(await c.match('/dashboard.html') || await c.match('/apply.html'))},CACHE),false,'public visitors should not download the staff shell');
  const local=origin+'/assets/img/jobs/demo.png',pub=other+'/storage/v1/object/public/jobs/demo.png';
  assert.equal(await load(local),true);assert.equal(await load(pub),true);
  let keys=await page.evaluate(async()=>{const c=await caches.open('hrc-public-job-images-v1');return (await c.keys()).map(x=>x.url)});
@@ -55,7 +57,7 @@ try{
  assert.ok(sizes.images<=64 && sizes.meta<=64,JSON.stringify(sizes));
  await page.goto(origin+'/dashboard.html');await page.waitForFunction(()=>navigator.serviceWorker.controller);
  await page.evaluate(()=>navigator.serviceWorker.controller.postMessage({type:'WARM_STAFF_SHELL'}));
- await page.waitForFunction(async()=>{const c=await caches.open('hrc-cache-v151');return !!await c.match('/apply.html')});
+ await page.waitForFunction(async(name)=>{const c=await caches.open(name);return !!await c.match('/apply.html')},CACHE);
  console.log('PASS real Service Worker: public local and CORS storage images cached/offline, no-store and signed/private/query URLs excluded, stale offline fallback, bounded storage and staff-only warmup.');
  await context.close();
 }finally{await browser.close();await new Promise(r=>server.close(r));await new Promise(r=>remote.close(r))}
