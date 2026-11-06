@@ -22,10 +22,10 @@ try {
   await page.goto(base+'index.html');
   /* العرض التدريجي: 10 بطاقات أولاً، ثم «عرض المزيد» يُظهر الـ120 في قياس الأداء */
   await page.waitForFunction(()=>document.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length===10);
-  assert.equal((await page.locator('#jobs-more').innerText()).trim(),'عرض المزيد');
+  assert.equal((await page.locator('#jobs-more .jobs-more-label').innerText()).trim(),'عرض المزيد');
   await page.locator('#jobs-more').click();
   await page.waitForFunction(()=>document.querySelectorAll('#jobs-grid .job-card:not(.skeleton)').length===120);
-  assert.equal((await page.locator('#jobs-more').innerText()).trim(),'عرض أقل');
+  assert.equal((await page.locator('#jobs-more .jobs-more-label').innerText()).trim(),'عرض أقل');
   const initialReads=await page.evaluate(()=>window.__favReads);
   await page.evaluate(()=>{window.__favReads=0});await page.locator('#filter-reset').click();
   const reads=await page.evaluate(()=>window.__favReads);

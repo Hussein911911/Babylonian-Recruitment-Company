@@ -84,7 +84,10 @@ await new Promise((r) => {
 const $ = (id) => doc.getElementById(id);
 const cards = () => [...doc.querySelectorAll('#jobs-grid .job-card')];
 const codes = () => cards().map((c) => c.querySelector('.job-code').textContent.trim());
-const label = () => $('jobs-more').querySelector('span').textContent.trim();
+const label = () => $('jobs-more').querySelector('.jobs-more-label').textContent.trim();
+const badge = () => $('jobs-more').querySelector('.jobs-more-count');
+const progress = () => $('jobs-more-wrap').style.getPropertyValue('--jobs-progress');
+const revealed = () => [...doc.querySelectorAll('#jobs-grid .job-card.is-revealed')];
 const click = (el) => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
 const setSelect = (id, value) => { const el = $(id); el.value = value; el.dispatchEvent(new w.Event('change', { bubbles: true })); };
 /* البحث Immediate-ish: الواجهة تؤجّله 220ms (UI.debounce) فننتظره */
@@ -111,6 +114,13 @@ try {
     $('jobs-more').getAttribute('aria-expanded') === 'false' &&
     $('jobs-more').getAttribute('aria-controls') === 'jobs-grid' &&
     $('jobs-more-note').getAttribute('aria-live') === 'polite');
+  check('ستايل الموقع: زر حبّة كحلي-ذهبي مع أيقونة وعدّاد',
+    $('jobs-more').classList.contains('jobs-more-btn') &&
+    !!$('jobs-more').querySelector('.jobs-more-ic .ic') &&
+    !!$('jobs-more-wrap').querySelector('.jobs-more-meter-fill') &&
+    badge().textContent === '+12' && !badge().hidden);
+  check('شريط التقدّم يعكس نسبة المعروض (10 من 22)', progress() === '45%');
+  check('المجموعة تدخل بحركة ظهور عند أول ظهور', $('jobs-more-wrap').classList.contains('is-in'));
 
   /* 2) عرض المزيد */
   click($('jobs-more'));
@@ -121,6 +131,12 @@ try {
     $('jobs-more').classList.contains('is-expanded'));
   check('ملاحظة العرض تُعلن أن كل النتائج ظاهرة', /كل النتائج: 22/.test($('jobs-more-note').textContent));
   check('رابط «عرض الكل» يُخفى حين تكون كل الوظائف ظاهرة', $('jobs-show-all').hidden === true);
+  check('عدّاد «+N» يُخفى عند «عرض أقل» وشريط التقدّم يكتمل', badge().hidden === true && progress() === '100%');
+  check('البطاقات الجديدة وحدها تظهر بتتابع متدرّج',
+    revealed().length === 12 && !cards()[9].classList.contains('is-revealed') &&
+    cards()[10].classList.contains('is-revealed') &&
+    /\d+ms/.test(cards()[10].getAttribute('style')) &&
+    cards()[21].getAttribute('style').includes('360ms'));
 
   /* 3) عرض أقل */
   click($('jobs-more'));
@@ -128,6 +144,8 @@ try {
   check('الطيّ يعيد نفس الوظائف ونفس الترتيب', codes().join(',') === FIRST_TEN.join(','));
   check('الزر يعود إلى «عرض المزيد»', label() === 'عرض المزيد' && $('jobs-more').getAttribute('aria-expanded') === 'false');
   check('رابط «عرض الكل» يعود للظهور', $('jobs-show-all').hidden === false);
+  check('الطيّ يُعيد عدّاد «+12» ونسبة التقدّم ولا حركة على البطاقات',
+    !badge().hidden && badge().textContent === '+12' && progress() === '45%' && revealed().length === 0);
 
   /* 4) رابط رأس القسم صار فعّالاً */
   click($('jobs-show-all'));
@@ -157,6 +175,7 @@ try {
   click($('jobs-more'));
   w.HRCStore.emit();
   check('تحديث بيانات بلا تغيير فلتر يُبقي القائمة موسّعة', cards().length === 22 && label() === 'عرض أقل');
+  check('تحديث البيانات لا يُعيد تشغيل حركة ظهور البطاقات', revealed().length === 0);
 
   /* 7) الملفات المبنية متزامنة مع المصدر (index + النسخة المستقلة + الخفيفة) */
   const pubJs = read('assets/js/public.js');
@@ -168,10 +187,17 @@ try {
       /id="jobs-more"/.test(html) && /id="jobs-more-wrap"/.test(html) && /id="jobs-show-all"/.test(html));
     if (f !== 'index.html') {
       check(f + ' يحمل المنطق والأنماط المدمجة (عرض أقل + حد 10)',
-        /JOBS_PAGE_SIZE = 10/.test(html) && /عرض أقل/.test(html) && /\.jobs-more-wrap\[hidden\]/.test(html));
+        /JOBS_PAGE_SIZE = 10/.test(html) && /عرض أقل/.test(html) &&
+        /\.jobs-more-wrap\[hidden\]/.test(html) && /@keyframes jobsMoreIn/.test(html));
     }
   });
-  check('أنماط الزر موجودة في CSS الموقع', /\.jobs-more-wrap\[hidden\]/.test(read('assets/css/app-shell.css')));
+  const appCss = read('assets/css/app-shell.css');
+  check('ستايل الموقع + حركات احترافية في CSS (لمعان/نبض/تتابع/تقدّم)',
+    /\.jobs-more-wrap\[hidden\]/.test(appCss) && /@keyframes jobsMoreIn/.test(appCss) &&
+    /@keyframes jobsCardIn/.test(appCss) && /@keyframes jobsMorePulse/.test(appCss) &&
+    /\.jobs-more-btn::after/.test(appCss) && /\.jobs-more-meter-fill/.test(appCss));
+  check('تقليل الحركة يُلغي كل الانتقالات صراحةً',
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,500}animation: none !important/.test(appCss));
   check('هيكل التحميل ورسالة فشل الاتصال يُخفيان زر العرض التدريجي',
     /function renderSkeleton\(\)[\s\S]{0,160}hideJobsMore\(\)/.test(pubJs) &&
     /function renderCloudError\(\)[\s\S]{0,160}hideJobsMore\(\)/.test(pubJs));

@@ -26,6 +26,9 @@
   var JOBS_PAGE_SIZE = 10;
   var jobsExpanded = false;
   var jobsFilterKey = null;
+  /* يُفعَّل لضغطة «عرض المزيد» وحدها كي تظهر البطاقات الجديدة بتتابع بصري،
+     ولا يُفعَّل عند تحديث البيانات أو تغيير الفلاتر فلا تتكرّر الحركة بلا سبب. */
+  var revealNewCards = false;
 
   /* مفضلة الزائر: تُحفظ على جهازه وحده (لا تُرسل للشركة ولا تُسجَّل بسجل) */
   var FAV_KEY = 'hrc_fav_jobs_v1';
@@ -962,14 +965,17 @@
   }
 
   function setJobsExpanded(value) {
-    jobsExpanded = !!value;
+    var next = !!value;
+    revealNewCards = next && !jobsExpanded;
+    jobsExpanded = next;
     renderJobs();
+    revealNewCards = false;
   }
 
   /* أثناء التحميل أو فشل الاتصال لا توجد قائمة أصلاً — فلا يظهر زر ولا ملاحظة */
   function hideJobsMore() {
     var wrap = document.getElementById('jobs-more-wrap');
-    if (wrap) wrap.hidden = true;
+    if (wrap) { wrap.hidden = true; wrap.classList.remove('is-in'); }
     var btn = document.getElementById('jobs-more');
     if (btn) btn.hidden = true;
     var showAll = document.getElementById('jobs-show-all');
@@ -979,21 +985,37 @@
   function renderJobsMore(total, shown) {
     var wrap = document.getElementById('jobs-more-wrap');
     var btn = document.getElementById('jobs-more');
-    var note = document.getElementById('jobs-more-note');
     if (!wrap || !btn) return;
+    var note = document.getElementById('jobs-more-note');
+    var label = btn.querySelector('.jobs-more-label');
+    var badge = btn.querySelector('.jobs-more-count');
+    var wasHidden = wrap.hidden;
     var hasMore = total > JOBS_PAGE_SIZE;
     if (!hasMore) jobsExpanded = false;   /* قائمة قصيرة = لا حالة موسّعة بلا معنى */
     wrap.hidden = !hasMore;
     btn.hidden = !hasMore;
     btn.setAttribute('aria-expanded', jobsExpanded ? 'true' : 'false');
     btn.classList.toggle('is-expanded', jobsExpanded);
-    btn.innerHTML = UI.ic('plus') + '<span>' + (jobsExpanded ? 'عرض أقل' : 'عرض المزيد') + '</span>';
+    if (label) label.textContent = jobsExpanded ? 'عرض أقل' : 'عرض المزيد';
+    if (badge) {
+      badge.hidden = jobsExpanded;
+      badge.textContent = '+' + Math.max(0, total - JOBS_PAGE_SIZE);
+    }
     btn.setAttribute('aria-label', jobsExpanded
       ? 'عرض أقل — الرجوع إلى أول ' + JOBS_PAGE_SIZE + ' وظائف'
       : 'عرض المزيد — إظهار ' + (total - JOBS_PAGE_SIZE) + ' وظيفة إضافية');
     if (note) note.textContent = jobsExpanded
       ? 'تعرض الآن كل النتائج: ' + total + ' وظيفة'
       : 'تعرض ' + shown + ' من ' + total + ' وظيفة';
+    /* شريط التقدّم + حركة ظهور المجموعة عند أول ظهور لها فقط */
+    wrap.style.setProperty('--jobs-progress', (total ? Math.round(shown / total * 100) : 0) + '%');
+    if (hasMore && wasHidden) {
+      wrap.classList.remove('is-in');
+      void wrap.offsetWidth;              /* إعادة تشغيل الحركة عند الظهور مجدداً */
+      wrap.classList.add('is-in');
+    } else if (!hasMore) {
+      wrap.classList.remove('is-in');
+    }
     var showAll = document.getElementById('jobs-show-all');
     if (showAll) showAll.hidden = hasMore && jobsExpanded;
   }
@@ -1036,8 +1058,13 @@
       }
     }
     var favorites = favList();
-    /* الترقيم يبدأ من 1 للبطاقات المعروضة فقط، فيبقى صحيحاً قبل التوسيع وبعده */
-    host.innerHTML = shown.map(function (job, index) { return cardHtml(job, favorites, index + 1); }).join('');
+    /* الترقيم يبدأ من 1 للبطاقات المعروضة فقط، فيبقى صحيحاً قبل التوسيع وبعده.
+       البطاقات الجديدة وحدها تأخذ تأخيراً متدرّجاً (بحد 360ms) عند «عرض المزيد». */
+    host.innerHTML = shown.map(function (job, index) {
+      var delay = (revealNewCards && index >= JOBS_PAGE_SIZE)
+        ? Math.min((index - JOBS_PAGE_SIZE) * 45, 360) : null;
+      return cardHtml(job, favorites, index + 1, delay);
+    }).join('');
     renderJobsMore(total, shown.length);
     renderActiveChips();
   }
@@ -1104,9 +1131,11 @@
     return (j.category ? j.category + ' · ' : '') + (j.gender && j.gender !== 'لا فرق' ? j.gender : 'فرصة متاحة');
   }
 
-  function cardHtml(j, favorites, position) {
+  function cardHtml(j, favorites, position, revealDelay) {
     var st = CFG.jobStatus[j.status];
-    var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : ''));
+    var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : '')) +
+      (revealDelay != null ? ' is-revealed' : '');
+    var revealAttr = revealDelay != null ? ' style="--reveal-delay:' + revealDelay + 'ms"' : '';
     var hold = '';
     if (j.status === 'reserved' && j.holdExpiresAt) {
       var h = Store.diffHours(j.holdExpiresAt, new Date());
@@ -1123,7 +1152,7 @@
     var fav = favorites.indexOf(j.code) >= 0;
     var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');
     return '' +
-      '<article class="job-card ' + cls + '">' +
+      '<article class="job-card ' + cls + '"' + revealAttr + '>' +
         imageHtml +
         '<div class="ac-top">' +
           '<span class="ac-badge ' + b.cls + '">' + UI.esc(b.t) + '</span>' +

@@ -363,28 +363,108 @@
 .jobs-all[hidden] { display: none !important; }
 .jobs-sub { margin: 6px 0 12px; color: var(--muted); font-size: .74rem; line-height: 1.9; }
 
-/* ── 6أ) العرض التدريجي للوظائف: 10 أولاً ← «عرض المزيد» / «عرض أقل» ──
+/* ── 6أ) العرض التدريجي للوظائف: 10 أولاً ← «عرض المزيد» / «عرض أقل» ──────
+   هوية الموقع: كحلي ليلي بتدرّج + ذهبي، زر حبّة (pill)، لمعان عند المرور، هالة
+   نابضة خفيفة حول الأيقونة، وشريط تقدّم يُظهر نسبة المعروض من النتائج.
    الزر خارج #jobs-grid كي يحتفظ بتركيز لوحة المفاتيح عند إعادة الرسم،
    ويُخفى بلا أثر في التخطيط حين لا يوجد ما يُعرض أكثر. */
 .jobs-more-wrap {
-  display: flex; flex-direction: column; align-items: center; gap: 9px;
-  margin: 18px auto 2px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  margin: 20px auto 2px; text-align: center;
 }
 .jobs-more-wrap[hidden] { display: none !important; }
+.jobs-more-wrap.is-in { animation: jobsMoreIn .45s cubic-bezier(.22,.8,.24,1) both; }
+@keyframes jobsMoreIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
 .jobs-more-note { margin: 0; color: var(--muted); font-size: .76rem; font-weight: 700; }
+
+/* شريط التقدّم: عرضه = المعروض ÷ الكل، ينتقل بسلاسة عند التوسيع/الطيّ */
+.jobs-more-meter {
+  width: min(260px, 78%); height: 4px; border-radius: 999px;
+  background: rgba(15, 36, 68, .10); overflow: hidden;
+}
+.jobs-more-meter-fill {
+  display: block; height: 100%; width: var(--jobs-progress, 0%);
+  border-radius: inherit; background: linear-gradient(90deg, var(--gold), var(--gold-2));
+  transition: width .55s cubic-bezier(.22,.8,.24,1);
+}
+
 .jobs-more-btn {
-  min-width: 190px; min-height: 44px; padding-inline: 22px;
-  border-color: var(--lapis-3); color: var(--lapis-2); font-weight: 900;
+  position: relative; isolation: isolate; overflow: hidden;
+  min-height: 52px; min-width: 214px; padding: 0 18px; gap: 10px;
+  border-radius: 999px; border: 1px solid rgba(227,196,121,.55);
+  background: linear-gradient(135deg, var(--lapis-3), var(--lapis-2) 58%, var(--night));
+  color: #fff; font-weight: 900; font-size: .9rem;
+  box-shadow: 0 12px 28px rgba(6,13,31,.24), inset 0 1px 0 rgba(255,255,255,.09);
+  transition: transform .25s cubic-bezier(.22,.8,.24,1), box-shadow .25s ease, border-color .25s ease;
 }
 .jobs-more-btn[hidden] { display: none !important; }
-.jobs-more-btn .ic { transition: transform .2s ease; }
-.jobs-more-btn.is-expanded .ic { transform: rotate(45deg); }  /* «+» يصير «×» عند «عرض أقل» */
-.jobs-more-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
-@media (max-width: 480px) {
-  .jobs-more-btn { width: 100%; max-width: 320px; }
+.jobs-more-btn::before {           /* حلقة ذهبية داخلية خفيفة */
+  content: ''; position: absolute; inset: 3px; border-radius: inherit;
+  border: 1px solid rgba(227,196,121,.14); pointer-events: none;
 }
+.jobs-more-btn::after {            /* لمعان يمرّ مرة عند المرور (مثل أزرار الواجهة) */
+  content: ''; position: absolute; top: -50%; left: -60%; width: 40%; height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+  transform: rotate(25deg); pointer-events: none; z-index: 0;
+  transition: left .75s ease;
+}
+.jobs-more-btn > * { position: relative; z-index: 1; }
+.jobs-more-btn:hover {
+  transform: translateY(-3px); border-color: var(--gold-2);
+  box-shadow: 0 18px 38px rgba(6,13,31,.32), 0 0 0 4px rgba(200,162,74,.12);
+}
+.jobs-more-btn:hover::after { left: 120%; }
+.jobs-more-btn:active { transform: translateY(-1px) scale(.985); }
+.jobs-more-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+
+.jobs-more-ic {
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(227,196,121,.14); color: var(--gold-2);
+  border: 1px solid rgba(227,196,121,.35);
+  transition: background .3s ease;
+}
+.jobs-more-ic .ic { width: 16px; height: 16px; transition: transform .4s cubic-bezier(.22,.8,.24,1); }
+.jobs-more-btn.is-expanded .jobs-more-ic { background: rgba(227,196,121,.24); }
+.jobs-more-btn.is-expanded .jobs-more-ic .ic { transform: rotate(45deg); }  /* «+» ⟶ «×» */
+.jobs-more-label { line-height: 1; }
+.jobs-more-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 34px; height: 24px; padding: 0 8px; border-radius: 999px;
+  background: var(--gold-2); color: var(--lapis-2);
+  font-size: .72rem; font-weight: 900; line-height: 1;
+}
+.jobs-more-count[hidden] { display: none !important; }
+
+/* البطاقات الجديدة تظهر بتتابع خفيف عند «عرض المزيد» فقط، لا عند كل تحديث بيانات.
+   fill-mode=backwards حتى لا تعلق قيمة transform بعد الانتهاء فتكسر hover الكرت. */
+.job-card.is-revealed {
+  animation: jobsCardIn .5s cubic-bezier(.22,.8,.24,1) backwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+@keyframes jobsCardIn {
+  from { opacity: 0; transform: translateY(20px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .jobs-more-btn:not(.is-expanded) .jobs-more-ic { animation: jobsMorePulse 2.8s ease-in-out infinite; }
+  @keyframes jobsMorePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(227,196,121,.30); }
+    50%      { box-shadow: 0 0 0 7px rgba(227,196,121,0); }
+  }
+}
+@media (max-width: 480px) {
+  .jobs-more-btn { width: min(100%, 320px); }
+}
+/* تقليل الحركة: لا لمعان، لا نبض، لا تتابع، ولا انتقالات — الحالة تُقرأ من النص */
 @media (prefers-reduced-motion: reduce) {
-  .jobs-more-btn .ic { transition: none; }
+  .jobs-more-wrap.is-in, .job-card.is-revealed,
+  .jobs-more-btn:not(.is-expanded) .jobs-more-ic { animation: none !important; }
+  .jobs-more-meter-fill, .jobs-more-btn, .jobs-more-ic, .jobs-more-ic .ic,
+  .jobs-more-btn::after { transition: none !important; }
 }
 
 /* ── 6ب) شبكة الوظائف: بطاقتان في كل صف مع تمرير عمودي طبيعي ── */
