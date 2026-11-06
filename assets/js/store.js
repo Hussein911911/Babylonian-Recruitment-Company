@@ -513,6 +513,14 @@
     if (db.audit.length > 2000) db.audit.length = 2000;
   }
 
+  /* تسميات العرض المعرَّبة (تُسجَّلها لوحة الموظفين) تُضاف إلى نص البحث فقط،
+     كي يجد الباحث بـ«بطاقة» سطراً خاماً فيه «applicants». القيم الأصلية لا
+     تُمسّ: لا في القاعدة ولا في التصدير ولا في الفلاتر. */
+  var auditDisplayLabels = null;
+  function setAuditDisplayLabels(fn) {
+    auditDisplayLabels = typeof fn === 'function' ? fn : null;
+  }
+
   // Arabic-friendly search without changing the original audit evidence.
   function auditSearchText(value) {
     return String(value == null ? '' : value).toLowerCase()
@@ -534,7 +542,12 @@
     if (f.entity && f.entity !== 'all') rows = rows.filter(function (r) { return r.entity === f.entity; });
     var words = auditSearchText(f.q || '').trim().split(/\s+/).filter(Boolean);
     if (words.length) rows = rows.filter(function (r) {
-      var text = auditSearchText([r.action, r.details, r.entityId, r.entity, r.user, r.name, r.ip].join(' '));
+      var display = '';
+      if (auditDisplayLabels) {
+        try { display = auditDisplayLabels(r) || ''; } catch (e) { display = ''; }
+      }
+      var text = auditSearchText([r.action, r.details, r.entityId, r.entity,
+        r.user, r.name, r.ip, display].join(' '));
       return words.every(function (word) { return text.indexOf(word) >= 0; });
     });
     // Inclusive calendar-day filters use Baghdad, independent of device zone.
@@ -2757,7 +2770,8 @@
     stats: stats, financials: financials, financialTotals: financialTotals,
     markPrinted: markPrinted, setFeePaid: setFeePaid,
     // تدقيق
-    audit: audit, listAudit: listAudit, loadAuditLog: loadAuditLog, syncOfflineChanges: syncOfflineChanges,
+    audit: audit, listAudit: listAudit, setAuditDisplayLabels: setAuditDisplayLabels,
+    loadAuditLog: loadAuditLog, syncOfflineChanges: syncOfflineChanges,
     getScheduledBackups: getScheduledBackups, listBackupMeta: listBackupMeta,
     saveScheduledBackup: saveScheduledBackup, deleteScheduledBackup: deleteScheduledBackup,
     restoreScheduledBackup: restoreScheduledBackup, exportScheduledBackup: exportScheduledBackup,

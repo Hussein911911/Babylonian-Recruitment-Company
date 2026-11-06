@@ -1072,7 +1072,8 @@
             '<div class="ov-log-dot"></div>' +
             '<div class="ov-log-time">' + UI.esc(Store.fmtDateTime(l.ts)) + '</div>' +
             '<div class="ov-log-user">' + UI.esc(l.name || l.user) + '</div>' +
-            '<div class="ov-log-action">' + UI.esc(l.action) + (l.details ? ' — ' + UI.esc(l.details) : '') + '</div>' +
+            '<div class="ov-log-action">' + UI.esc(auditActionLabel(l.action)) +
+              (l.details ? ' — ' + UI.esc(auditDetailsLabel(l.details)) : '') + '</div>' +
           '</div>';
         }).join('')
         : '<div style="text-align:center;padding:32px;color:var(--muted)">' + UI.ic('list') + '<div style="margin-top:8px">لا سجلات بعد</div></div>';
@@ -2237,17 +2238,107 @@
     'restore': 'استرجاع', 'backup': 'نسخ احتياطي', 'export': 'تصدير',
     'print': 'طباعة', 'view': 'عرض', 'read': 'عرض'
   };
+  /* ── تعريب نصوص السجل (2026-11-07 بطلب المالك) ─────────────────────────────
+     مشغّل التدقيق في القاعدة (brc.trg_audit) يكتب حقولاً مختلطة:
+       action  = «تعديل/إضافة/حذف» + اسم الجدول   ← «تعديل applicants»
+       details = «تغيير في »        + اسم الجدول   ← «تغيير في applicants»
+     كما أن بعض سجلات المتجر المحلي تحمل تفاصيل JSON بحقول إنكليزية
+     (تعديل مستخدم / تعديل وظيفة). القيم الخام تبقى في القاعدة والتصدير كما هي
+     لأنها دليل تدقيق، ونُعرّبها هنا عند العرض فقط: جدول السجل، قوائم الفلاتر،
+     و«آخر العمليات». الأكواد المطبوعة (HRC-1042، الرقم التسلسلي، عنوان الشبكة)
+     معرّفات لا كلمات فتبقى كما هي وباتجاه ltr. */
+  var AUDIT_WORD = {
+    applicant: 'بطاقة', applicants: 'بطاقة', card: 'بطاقة', cards: 'بطاقة',
+    job: 'وظيفة', jobs: 'وظيفة', vacancy: 'وظيفة', vacancies: 'وظيفة',
+    public_jobs: 'وظيفة معلنة', working_jobs: 'وظيفة قيد العمل',
+    working_applicants: 'بطاقة', working_job_attempts: 'فرصة',
+    attempt: 'فرصة', attempts: 'فرصة', chance: 'فرصة', chances: 'فرصة',
+    job_attempts: 'فرصة',
+    staff: 'موظف', user: 'موظف', users: 'موظف', employee: 'موظف', employees: 'موظف',
+    settings: 'إعدادات', setting: 'إعدادات', config: 'إعدادات',
+    audit_log: 'سجل', audit: 'سجل', log: 'سجل', logs: 'سجل',
+    backup: 'نسخة احتياطية', backups: 'نسخة احتياطية', recovery: 'استرجاع',
+    hold: 'حجز', holds: 'حجز', print: 'طباعة', finance: 'المالية',
+    application: 'استمارة', applications: 'استمارة', form: 'استمارة', forms: 'استمارة',
+    login: 'دخول', logout: 'خروج', create: 'إضافة', insert: 'إضافة', add: 'إضافة',
+    update: 'تعديل', edit: 'تعديل', delete: 'حذف', remove: 'حذف',
+    restore: 'استرجاع', export: 'تصدير', view: 'عرض', read: 'عرض',
+    system: 'النظام', session: 'جلسة', public: 'زائر', admin: 'مدير عام',
+    name: 'الاسم', username: 'اسم المستخدم', role: 'الرتبة', title: 'العنوان',
+    status: 'الحالة', code: 'الكود', serial: 'الرقم التسلسلي', active: 'مفعّل',
+    governorate: 'المحافظة', shift: 'الدوام', salary: 'الأجر',
+    available: 'متاحة', reserved: 'محجوزة', closed: 'مغلقة', expired: 'منتهية',
+    critical: 'حرجة', succeeded: 'تم التوظيف', rejected: 'مرفوضة'
+  };
+  /* جمل كاملة من مشغّل القاعدة: تُكتب بصيغة عربية سليمة لا بترجمة كلمة بكلمة */
+  var AUDIT_PHRASE = {
+    'تغيير في applicants': 'تعديل بيانات البطاقة',
+    'تغيير في jobs': 'تعديل بيانات الوظيفة',
+    'تغيير في job_attempts': 'تعديل بيانات الفرصة',
+    'تغيير في staff': 'تعديل بيانات الموظف',
+    'تغيير في settings': 'تعديل الإعدادات',
+    'تغيير في audit_log': 'تحديث السجل'
+  };
+  /* مفاتيح JSON داخل «التفاصيل» — تُقرأ بحروف صغيرة */
+  var AUDIT_FIELD = {
+    t: 'العنوان', g: 'المحافظة', s: 'الحالة', n: 'الاسم',
+    name: 'الاسم', fullname: 'الاسم الكامل', username: 'اسم المستخدم',
+    password: 'كلمة المرور', role: 'الرتبة', title: 'المسمى الوظيفي',
+    active: 'مفعّل', status: 'الحالة', code: 'الكود', serial: 'الرقم التسلسلي',
+    governorate: 'المحافظة', shift: 'الدوام',
+    salarymin: 'أقل أجر', salarymax: 'أعلى أجر',
+    before: 'قبل التعديل', after: 'بعد التعديل', diff: 'الفرق'
+  };
+  var AUDIT_SECRET_KEY = /password|secret|token|card_print_code|chance_code|pin/i;
+
   /* أي قيمة إنجليزية غير معروفة لا تُعرض كما هي: تُوصف عربياً بدل تسريب كلمة أجنبية */
   var LATIN_ONLY = /^[A-Za-z0-9 _\-\.]+$/;
-  function auditEntityLabel(v) {
-    if (!v) return '—';
-    var key = String(v).trim().toLowerCase();
-    return AUDIT_ENTITY[key] || (LATIN_ONLY.test(v) ? 'سجل' : v);
+  function auditTranslateWords(text) {
+    return String(text).replace(/[A-Za-z][A-Za-z0-9_]*/g, function (token) {
+      return AUDIT_WORD[token.toLowerCase()] || token;
+    });
   }
-  function auditActionLabel(v) {
-    if (!v) return '—';
-    var key = String(v).trim().toLowerCase();
-    return AUDIT_ACTION[key] || (LATIN_ONLY.test(v) ? 'عملية' : v);
+  /* تفاصيل JSON → سطر عربي مقروء: «الاسم: … · الرتبة: …» مع حجب الأسرار */
+  function auditJsonFragments(text) {
+    return String(text).replace(/\{[^{}]*\}/g, function (frag) {
+      var obj;
+      try { obj = JSON.parse(frag); } catch (e) { return frag; }
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return frag;
+      var parts = Object.keys(obj).map(function (k) {
+        var label = AUDIT_FIELD[k.toLowerCase()] || auditTranslateWords(k);
+        var val = obj[k];
+        if (val && typeof val === 'object') val = JSON.stringify(val);
+        if (AUDIT_SECRET_KEY.test(k)) val = 'محجوب';   /* كلمة عربية: لا رموز تربك اتجاه النص */
+        return label + ': ' + String(val == null ? '—' : val);
+      });
+      return parts.length ? parts.join(' · ') : frag;
+    });
+  }
+  function auditText(v, kind) {
+    if (v == null) return '—';
+    var s = String(v).trim();
+    if (!s) return '—';
+    if (AUDIT_PHRASE[s]) return AUDIT_PHRASE[s];
+    var key = s.toLowerCase();
+    if (kind === 'entity' && AUDIT_ENTITY[key]) return AUDIT_ENTITY[key];
+    if (kind === 'action' && AUDIT_ACTION[key]) return AUDIT_ACTION[key];
+    var out = auditTranslateWords(auditJsonFragments(s));
+    if (LATIN_ONLY.test(s) && !/[\u0600-\u06FF]/.test(out)) {
+      return kind === 'entity' ? 'سجل' : (kind === 'action' ? 'عملية' : out);
+    }
+    return out;
+  }
+  function auditEntityLabel(v) { return auditText(v, 'entity'); }
+  function auditActionLabel(v) { return auditText(v, 'action'); }
+  function auditDetailsLabel(v) { return auditText(v, 'details'); }
+
+  /* البحث يطابق التسمية المعروضة أيضاً: «بطاقة» يجد سطر «تعديل applicants».
+     التسجيل هنا لا يغيّر القيم الخام ولا التصدير ولا القاعدة — نص البحث فقط. */
+  if (Store.setAuditDisplayLabels) {
+    Store.setAuditDisplayLabels(function (r) {
+      return [auditActionLabel(r.action), auditEntityLabel(r.entity),
+        auditDetailsLabel(r.details)].join(' ');
+    });
   }
 
   /* عرض التاريخ بالعربية داخل حقل «من/إلى تاريخ» (السجل).
@@ -2338,7 +2429,7 @@
         '<td class="at-entity">' + UI.esc(auditEntityLabel(l.entity)) +
           (l.entityId ? ' <span class="tiny muted mono" dir="ltr">' + UI.esc(l.entityId) + '</span>' : '') + '</td>' +
         '<td class="at-action"><b>' + UI.esc(auditActionLabel(l.action)) + '</b></td>' +
-        '<td class="at-details">' + UI.esc(l.details || '—') + '</td>' +
+        '<td class="at-details">' + UI.esc(auditDetailsLabel(l.details)) + '</td>' +
       '</tr>';
     }).join('') || '<tr><td colspan="6" class="table-empty">لا سجلات مطابقة</td></tr>';
   }
@@ -2669,7 +2760,10 @@
       if (state.log.from && state.log.to && state.log.from > state.log.to) { renderAudit(); return; }
       var rows = Store.listAudit(state.log);
       var csv = 'ts,user,name,role,ip,action,entity,entityId,details\n' + rows.map(function (l) {
-        return [Store.fmtDateTime(l.ts), l.user, l.name, l.role, l.ip, l.action, l.entity, l.entityId, l.details || '']
+        /* التصدير بالعربية أيضاً، والقيمة الخام محفوظة في القاعدة كدليل تدقيق */
+        return [Store.fmtDateTime(l.ts), l.user, l.name, l.role, l.ip,
+          auditActionLabel(l.action), auditEntityLabel(l.entity), l.entityId,
+          l.details ? auditDetailsLabel(l.details) : '']
           .map(function (x) {
             var value = String(x == null ? '' : x);
             if (/^[\s]*[=+@-]/.test(value) || /^[\t\r\n]/.test(value)) value = "'" + value;
