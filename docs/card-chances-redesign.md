@@ -95,7 +95,11 @@ npm run test:chances-summary-browser  # 78 / 0 (Chromium 320 · 375 · 1440)
 npm start        # ثم /apply.html?form=<رقم البطاقة>
 ```
 
-لقطة المراجعة: `tests/.tmp/chances-summary-375.png` (يولّدها فحص المتصفح).
+لقطات المراجعة:
+- `docs/preview/shots/cf60-jobs-390.png` — شاشة الوظائف كاملة على 390px بعد الاختيار.
+- `docs/preview/shots/cf60-jobs-320.png` — أصغر عرض مدعوم (320px) بلا تمرير أفقي.
+- `docs/preview/shots/cf60-chances-card.png` — بطاقة الفرص ولوحة الاختيارات مفتوحة.
+- `tests/.tmp/chances-summary-375.png` — يولّدها فحص المتصفح عند كل تشغيل.
 
 > دمج بقية فرع `arena/8466057b` قرار منفصل: فيه «دفعات من ٢٠» تتعارض مع
 > «أول ١٠ + عرض المزيد/أقل» الحالية، ويحتاج تسوية قبل أي دمج.
