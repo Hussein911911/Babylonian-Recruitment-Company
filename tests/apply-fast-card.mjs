@@ -61,12 +61,25 @@ assert.equal(used.window.document.querySelector('#pg-error').classList.contains(
 assert.match(used.window.document.querySelector('#welcome-title').textContent,/اكتمل/);
 used.window.close();
 let jobCalls=0;
-const retry=await setup({data:{ok:true,card:{serial:'7KQ4M9TR2X',status:'active',profile:{fullName:'Test'},profileLocked:true,chancesLeft:1,chances:[{no:1,slotStatus:'empty'}]}},error:null},()=>{jobCalls++;return Promise.resolve(jobCalls===1?{error:{message:'offline'}}:{data:[{code:'HRC-1042',title:'Test',status:'available'}],error:null});});
+const retry=await setup({data:{ok:true,card:{serial:'7KQ4M9TR2X',status:'active',profile:{fullName:'Test'},profileLocked:true,chancesLeft:1,chances:[{no:1,slotStatus:'reserved',jobCode:'HRC-OLD',jobTitle:'وظيفة سابقة'},{no:2,slotStatus:'empty'}]}},error:null},()=>{jobCalls++;return Promise.resolve(jobCalls===1?{error:{message:'offline'}}:{data:[{code:'HRC-1042',title:'Test',status:'available'}],error:null});});
 assert.equal(retry.window.G.currentJobs().length,0);
 retry.window.G.start(); await wait(20);
 assert.equal(jobCalls,2,'locked profile retries unavailable jobs on start');
 assert.equal(retry.window.G.currentJobs().length,1);
 retry.window.G.start();
 assert.equal(retry.window.document.body.getAttribute('data-step'),'6');
+const rw=retry.window, bar=rw.document.querySelector('#chances-bar'), chosen=rw.document.querySelector('#chosen-jobs'), list=rw.document.querySelector('#chosen-jobs-list');
+assert.match(bar.textContent,/فرصة واحدة فقط/);assert.match(bar.textContent,/١ مستخدمة/);assert.match(bar.textContent,/١ متبقية من ٢/);
+assert.equal(bar.querySelectorAll('.chance-segment').length,2);assert.equal(bar.querySelectorAll('.chance-segment.is-used').length,1);
+assert.match(list.textContent,/HRC-OLD/);assert.match(list.textContent,/تم التقديم/);
+chosen.open=true;rw.G.pickJob('HRC-1042');
+assert.match(list.textContent,/HRC-1042/);assert.match(list.textContent,/مختارة للمراجعة/);
+assert.match(bar.textContent,/١ متبقية من ٢/,'selection alone must not consume an opportunity');
+rw.G.removePickedJob(0);assert.doesNotMatch(list.textContent,/HRC-1042/);assert.equal(chosen.open,true);
+for(const total of [1,3,5,10]){
+ const d=await setup({data:{ok:true,card:{serial:'7KQ4M9TR2X',status:'active',profile:{},chancesLeft:total-1,chances:Array.from({length:total},(_,i)=>({no:i+1,slotStatus:i?'empty':'reserved',jobCode:i?'':'OLD'}))}},error:null},()=>Promise.resolve({data:[],error:null}));
+ d.window.G.renderChances();const b=d.window.document.querySelector('#chances-bar');assert.equal(b.querySelectorAll('.chance-segment').length,total);assert.equal(b.querySelectorAll('.chance-segment.is-used').length,1);d.window.close();
+}
+
 retry.window.close();
 console.log('PASS card errors, used cards, and locked-profile job retry');

@@ -63,9 +63,10 @@
   تغيّر بصمة الأصول `?v=` في بقية الصفحات تلقائياً مع أي تعديل على JS/CSS.
 - `sw.js` — رُفع `CACHE_NAME` إلى `hrc-cache-v153` وفق سياسة المشروع، كي لا
   يحتفظ زائر قديم بنسخة مخزَّنة من الصفحة أو `public.js` أو أنماط الزر.
-  (رُفعت لاحقاً إلى `hrc-cache-v154` مع تحديث الترويسة ثم إلى `hrc-cache-v155`
-  مع تعريب سجل التدقيق — انظر `docs/header-hamburger-removal.md`
-  و`docs/audit-arabic-labels.md`).
+  (رُفعت لاحقاً إلى `hrc-cache-v154` مع تحديث الترويسة، ثم `v155` مع تعريب
+  سجل التدقيق، ثم `v156` مع استعادة تصميم وظائف البطاقة — انظر
+  `docs/header-hamburger-removal.md` و`docs/audit-arabic-labels.md`
+  و`docs/card-chances-redesign.md`).
 
 ## المعاينة المحلية
 

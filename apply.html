@@ -4574,6 +4574,14 @@ body.job-modal-open .app{
     .card-sheet-box{animation:none!important}
   }
 }
+
+/* بطاقة رصيد الفرص وملخص الاختيارات — القيم من البطاقة الفعلية. */
+body[data-step="6"] #chances-bar.chances-bar{display:block!important;margin:0 0 12px!important;padding:16px 17px 13px!important;border:1px solid #d7bb6c!important;border-radius:18px!important;background:linear-gradient(145deg,#1e4778,#09264c 70%,#071e3f)!important;color:#fff!important;box-shadow:0 7px 18px #061a3260,inset 0 1px #ffffff1c;font-weight:700}
+.chance-summary{display:flex;align-items:center;gap:14px}.chance-count{flex:none;width:64px;height:64px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#fff0a2,#e5b94f);color:#102e52;font-size:32px;font-weight:900;line-height:1;border:5px solid #ae9860;box-shadow:0 4px 10px #0004}.chance-heading{min-width:0;flex:1;line-height:1.45}.chance-heading small{display:block;color:#e8edf5;font-size:13px}.chance-heading strong{display:block;color:#f3d278;font-size:clamp(20px,5vw,26px);font-weight:900}.chance-heading p{margin:2px 0 0;font-size:13px;color:#fff}.chance-progress{display:flex;direction:rtl;gap:6px;margin-top:14px}.chance-segment{height:9px;flex:1;min-width:0;border-radius:99px;background:linear-gradient(90deg,#e9b849,#f9db7b);box-shadow:0 1px 4px #0005}.chance-segment.is-used{background:linear-gradient(90deg,#26a58f,#5dd6bd)}.chance-totals{display:flex;justify-content:space-between;gap:8px;margin-top:7px;color:#e5eaf2;font-size:12px}.chance-picked-note{margin:7px 0 0;color:#f6df9e;font-size:12px}.chance-recheck{margin-top:10px}
+.chosen-jobs{margin:0 0 14px;border:1px solid #d4b86b;border-radius:15px;background:linear-gradient(145deg,#214a78,#092447);color:#fff;box-shadow:0 5px 14px #061a3255;overflow:hidden}.chosen-jobs summary{min-height:48px;display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;list-style:none;font-size:14px;font-weight:900}.chosen-jobs summary::-webkit-details-marker{display:none}.chosen-jobs summary:focus-visible{outline:3px solid #fff;outline-offset:-4px}.chosen-icon{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}.chosen-title{flex:1}.chosen-chevron{color:#edce78;font-size:22px;line-height:1;transition:transform .2s}.chosen-jobs[open] .chosen-chevron{transform:rotate(-90deg)}.chosen-list{padding:0 14px 12px;border-top:1px solid #ffffff25;font-size:13px}.chosen-empty{margin:12px 0 2px;color:#dce5f0}.chosen-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid #ffffff1c}.chosen-item:last-child{border-bottom:0}.chosen-item-name{flex:1;min-width:100px;overflow-wrap:anywhere}.chosen-status{font-size:11px;color:#f1d483}.chosen-remove{border:1px solid #edcf8199;border-radius:8px;padding:5px 9px;background:#ffffff10;color:#fff;cursor:pointer;font:inherit;font-size:12px}.chosen-remove:focus-visible{outline:2px solid #fff}
+@media(max-width:360px){.chance-count{width:56px;height:56px;font-size:28px}.chance-summary{gap:10px}.chance-heading strong{font-size:19px}.chance-segment{height:8px}}
+@media(prefers-reduced-motion:reduce){.chosen-chevron{transition:none}}
+
 </style>
 </head>
 <body>
@@ -4893,6 +4901,10 @@ body.job-modal-open .app{
         </details>
       </section>
       <div id="chances-bar" class="chances-bar has2"></div>
+      <details class="chosen-jobs" id="chosen-jobs">
+        <summary><svg class="chosen-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/></svg><span class="chosen-title">الوظائف التي قمت باختيارها</span><span class="chosen-chevron" aria-hidden="true">‹</span></summary>
+        <div class="chosen-list" id="chosen-jobs-list"></div>
+      </details>
       <div class="section-title">اختر الوظيفة المناسبة لك</div>
       <section class="job-filters jf-compact" aria-label="فلترة الوظائف">
         <!-- شريط الأدوات: بحث + محافظة + دوام + حالة + فلاتر + تصفير -->
@@ -5617,23 +5629,16 @@ var G={
 
   renderChances:function(){
     var bar=$('chances-bar');
-    var max=G.maxPick();
-    var cls=pickedJobs.length>=2?'has2':((pickedJobs.length===1||chancesLeft===1)?'has1':'has2');
-    var dots='';
-    for(var i=0;i<(cardData&&cardData.chances||[]).length;i++) dots+='<span class="chip-dot '+((i<chancesLeft||i<pickedJobs.length)?'on':'off')+'"></span>';
-    var label;
-    if(chancesLeft<=0) label='لا توجد فرصة متاحة — انتهت فرصك';
-    else if(pickedJobs.length){
-      var left=Math.max(0,max-pickedJobs.length);
-      label='وظائفك المختارة: '+ar(pickedJobs.length)+' من '+ar(max)+
-        (left>0?(' — يمكنك اختيار '+(left===1?'وظيفة أخرى':'وظيفة أخرى')):' — اضغط «التالي» للتقديم');
-    }
-    else label='متبقي لك: '+ar(chancesLeft)+' '+(chancesLeft===1?'فرصة':'فرص')+' — اختر وظيفة لكل فرصة';
-    bar.className='chances-bar '+cls;
-    bar.innerHTML=dots+'<span>'+label+'</span>'+
-      (chancesLeft<=0
-        ? '<button type="button" class="btn btn-outline btn-sm" id="btn-recheck" style="margin-inline-start:auto">'+AICO.refresh+'إعادة فحص البطاقة</button>'
-        : '');
+    var slots=(cardData&&cardData.chances)||[];
+    var total=slots.length, remaining=Math.max(0,chancesLeft), used=Math.max(0,total-remaining);
+    var segments=slots.map(function(ch){return '<span class="chance-segment'+(ch.slotStatus!=='empty'?' is-used':'')+'"></span>';}).join('');
+    var title=remaining===0?'لا توجد فرصة متاحة':(remaining===1?'فرصة واحدة فقط':ar(remaining)+' فرص');
+    bar.className='chances-bar '+(remaining===0?'has0':remaining===1?'has1':'has2');
+    bar.innerHTML='<div class="chance-summary"><span class="chance-count" aria-hidden="true">'+ar(remaining)+'</span><div class="chance-heading"><small>متبقي لك</small><strong>'+title+'</strong><p>'+(remaining?'اختر وظيفة لكل فرصة':'انتهت فرصك المتاحة')+'</p></div></div>'+
+      '<div class="chance-progress" aria-hidden="true">'+segments+'</div><div class="chance-totals"><span>'+ar(used)+' مستخدمة</span><span>'+ar(remaining)+' متبقية من '+ar(total)+'</span></div>'+
+      (pickedJobs.length?'<p class="chance-picked-note">'+ar(pickedJobs.length)+' مختارة للمراجعة — لا تُستهلك الفرصة حتى إتمام التقديم</p>':'')+
+      (remaining===0?'<button type="button" class="btn btn-outline btn-sm chance-recheck" id="btn-recheck">'+AICO.refresh+'إعادة فحص البطاقة</button>':'');
+    G.renderChosenJobs();
     var rc=$('btn-recheck');
     if(rc) rc.addEventListener('click',function(){
       /* إعادة قراءة البطاقة من القاعدة: الدالة تُرمّم أي خانات فرص ناقصة
@@ -5967,6 +5972,12 @@ var G={
     G.next();
   },
 
+  renderChosenJobs:function(){
+    var list=$('chosen-jobs-list');if(!list)return;
+    var rows=appliedJobs.map(function(j){return '<div class="chosen-item"><span class="chosen-item-name">'+esc(j.jobTitle||'وظيفة سابقة')+' <span dir="ltr">('+esc(j.jobCode)+')</span></span><span class="chosen-status">تم التقديم</span></div>';});
+    pickedJobs.forEach(function(j,i){rows.push('<div class="chosen-item"><span class="chosen-item-name">'+esc(j.title)+' <span dir="ltr">('+esc(j.code)+')</span></span><span class="chosen-status">مختارة للمراجعة</span><button type="button" class="chosen-remove" onclick="G.removePickedJob('+i+')" aria-label="إلغاء اختيار الوظيفة '+esc(j.title)+'">إلغاء الاختيار</button></div>');});
+    list.innerHTML=rows.length?rows.join(''):'<p class="chosen-empty">لم تختر وظيفة بعد. اختر وظيفة من القائمة أدناه.</p>';
+  },
   /* تعيين وظيفة لفرصة (أو إلغاء تعيينها بالضغط عليها مرة ثانية) */
   pickJob:function(code){
     if(chancesLeft<=0)return;

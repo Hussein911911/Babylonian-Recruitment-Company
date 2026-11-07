@@ -26,7 +26,7 @@ case tg_op when 'INSERT' then 'إضافة' when 'UPDATE' then 'تعديل' else 
 | `assets/js/dashboard.js` | `auditEntityLabel` / `auditActionLabel` / **`auditDetailsLabel`** الجديدة تُطبَّق على: جدول السجل، خيارات فلاتر «العملية/القسم»، ودائرة «آخر العمليات» في الصفحة الرئيسية. |
 | `assets/js/dashboard.js` | **تصدير CSV** صار بالتسميات العربية أيضاً (القيم الخام تبقى في القاعدة). |
 | `assets/js/store.js` | خطاف `setAuditDisplayLabels()` يُضاف إلى **نص البحث فقط**: البحث بـ«بطاقة» يجد سطراً خاماً فيه `applicants`، والبحث بالكلمة الخام يبقى عاملاً. لا يمسّ الفلاتر ولا التصدير ولا البيانات. |
-| `sw.js` | `hrc-cache-v155` كي لا يعلق زائر على نسخة قديمة من `dashboard.js` / `store.js`. |
+| `sw.js` | `hrc-cache-v155` كي لا يعلق زائر على نسخة قديمة من `dashboard.js` / `store.js`. (رُفعت لاحقاً إلى `hrc-cache-v156` مع استعادة تصميم وظائف البطاقة — انظر `docs/card-chances-redesign.md`). |
 | صفحات مبنية | `index.html`، `verify.html`، `dashboard.html`، `404.html`، `hrc-standalone.html`، `hrc-light.html` أُعيد بناؤها. |
 
 **ما بقي كما هو:** `docs/schema.sql` والمشغّل (القيم الخام)، بيانات Supabase والإنتاج، الفلاتر ومنطق الصلاحيات، أعمدة الجدول الستة، الأكواد المطبوعة (`HRC-1042` / `4SC` / عناوين الشبكة) لأنها معرّفات لا كلمات، واتجاه `dir="ltr"` لها.
