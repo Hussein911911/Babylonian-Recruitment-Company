@@ -105,6 +105,37 @@ const server = createServer(async (req, res) => {
       res.end();
       return;
     }
+    /* تفاصيل الفرصة بعد التقديم: تُعيد بيانات صاحب العمل — كما تفعل الدالة
+       الحقيقية brc.customer_application_details. بيانات وهمية بالكامل. */
+    if (bare.startsWith('/rest/v1') && bare.includes('/rpc/customer_application_details') && req.method === 'POST') {
+      let body = '';
+      for await (const chunk of req) body += chunk;
+      let p = {};
+      try { p = JSON.parse(body || '{}'); } catch { p = {}; }
+      const no = Number(p.p_attempt_no);
+      const slot = DEMO_CARD.card.chances.find(c => Number(c.no) === no && c.slotStatus !== 'empty');
+      if (!slot || String(p.p_serial || '').toUpperCase() !== DEMO_CARD.card.serial) {
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ ok: false, error: 'لا يوجد تقديم مسجل لهذه الفرصة' }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({
+        ok: true,
+        app: { serial: DEMO_CARD.card.serial, fullName: DEMO_CARD.card.profile.fullName,
+          phone: DEMO_CARD.card.profile.phone, address: DEMO_CARD.card.profile.address,
+          gender: DEMO_CARD.card.profile.gender, dob: DEMO_CARD.card.profile.dob },
+        attempt: {
+          no: slot.no, slotStatus: slot.slotStatus, jobCode: slot.jobCode, jobTitle: slot.jobTitle,
+          location: 'بابل', shift: 'صباحي', salaryMin: 600000, salaryMax: 750000,
+          employerName: 'شركة الرافدين للصناعات الغذائية',
+          employerPhone: '07801112233', employerAddress: 'بابل — الحلة — شارع ٤٠ — مجمع الصناعات',
+          interviewLocation: 'مقر الشركة — الطابق الثاني — مكتب الموارد البشرية',
+          selectedAt: '2026-11-06T09:20:00Z', holdExpiresAt: '2026-11-07T09:20:00Z'
+        }
+      }));
+      return;
+    }
     if (bare.startsWith('/rest/v1')) {
       if (bare.includes('/rpc/self_service_card')) {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
