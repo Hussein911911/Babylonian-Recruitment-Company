@@ -156,6 +156,29 @@ try {
       console.log(`PASS ${at} — ${checks} فحص تراكمي`);
     }
   }
+  /* (ج) مسار المراجعة البصرية /demo-card: بطاقة وهمية ووظائف وهمية، بلا أي
+     اتصال بقاعدة. يتحقّق أنّ المعاينة التي يفتحها المالك تعمل فعلاً. */
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 900 }, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', e => errors.push(String(e.message || e).split('\n')[0]));
+    await page.goto(base + 'demo-card', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.G && document.querySelector('#btn-start'), { timeout: 15000 });
+    await page.evaluate(() => window.G.start());
+    await page.waitForFunction(() => document.body.dataset.step === '6');
+    check('/demo-card: بطاقة وهمية بأربع فرص وثلاثة متبقية',
+      (await page.locator('#chances-bar').innerText()).includes('٣ متبقية من ٤') &&
+      await page.locator('.chance-segment').count() === 4);
+    check('/demo-card: الوظائف الوهمية تظهر', await page.locator('.job-card').count() === 4);
+    await page.evaluate(() => window.G.pickJob('HRC-9001'));
+    check('/demo-card: الاختيار يُعلَّم بلا استهلاك',
+      await page.locator('.chance-segment.is-picked').count() === 1 &&
+      (await page.locator('#chances-bar').innerText()).includes('٣ متبقية من ٤'));
+    check('/demo-card: صفر أخطاء', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+    console.log('PASS /demo-card — معاينة بصرية ببيانات وهمية');
+  }
 } finally {
   await browser.close();
 }

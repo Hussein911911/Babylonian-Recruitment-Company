@@ -668,6 +668,21 @@ section('8.5) النشر — منصّة واحدة (Cloudflare Pages) بلا ر�
   else if (!swNoCache) bad('منع تخزين sw.js مؤقتاً', 'غير موجود في _headers');
   else ok('ترويسات الأمان كاملة + sw.js بلا كاش (يُجبر الأجهزة على النسخة الجديدة)');
 
+  /* /demo و/demo-card أدوات مراجعة بصرية: بياناتها وهمية داخل tools/serve.mjs
+     وحده، ولا يجوز أن تتسرّب إلى مجلد النشر أو إلى خدمة Supabase الحقيقية. */
+  {
+    const serve = readFileSync(join(ROOT, 'tools', 'serve.mjs'), 'utf8');
+    const dist = readFileSync(join(ROOT, 'tools', 'dist.mjs'), 'utf8');
+    const leaks = [];
+    if (/DEMO-CARD-01|HRC-9001|demo-card/.test(dist)) leaks.push('بيانات العرض داخل tools/dist.mjs');
+    const realHost = /vqsvztudvfukyuerzcgx\.supabase\.co/;
+    const demoBlock = serve.slice(serve.indexOf('DEMO_CARD'), serve.indexOf('const DEMO_CARD_JOBS'));
+    if (realHost.test(demoBlock)) leaks.push('عنوان القاعدة الحقيقي داخل كتلة العرض');
+    if (!/demo=1/.test(serve)) leaks.push('apply.html لا يُحوَّل في وضع /demo-card');
+    if (leaks.length) bad('معاينة /demo-card معزولة ببيانات وهمية', leaks.join(' | '));
+    else ok('معاينة /demo-card معزولة: بيانات وهمية في serve.mjs وحده ولا تصل النشر');
+  }
+
   /* رابط التحقق المطبوع يجب أن يبقى نظيفاً (بلا .html) لأنه يتغيّر إلى النطاق الرسمي */
   const vurl = loaded['index.html'].window.HRCStore.verifyLocalUrl('HRC-BC-000120');
   if (!/^verify\.html\?/.test(vurl)) bad('رابط التحقق المحلي', vurl);

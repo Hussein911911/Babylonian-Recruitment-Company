@@ -32,6 +32,32 @@ function demoPage(html) {
     .replace(/(<script src="assets\/js\/supabase-config\.js[^"]*"><\/script>)/, '$1' + offline);
 }
 
+/* ── معاينة "/demo-card" لشاشة «وظائف البطاقة» بلا قاعدة بيانات ────────────────
+ *  نفس نمط /demo: تُخدَم نسخة apply.html داخل الذاكرة مع بطاقة ووظائف وهمية،
+ *  ويُحوَّل منفذ Supabase إلى المسار المحلي نفسه الذي يجيب بالبيانات الوهمية.
+ *  الغرض مراجعة بطاقة الفرص ولوحة «الوظائف التي قمت باختيارها» بصرياً فقط.
+ *  ⚠️ لا يُنشر شيء من هذا: لا ملف، ولا dist، ولا اتصال بأي قاعدة. */
+const DEMO_CARD = {
+  ok: true,
+  card: {
+    serial: 'DEMO-CARD-01', status: 'active', profileLocked: true, chancesLeft: 3,
+    profile: { fullName: 'أحمد محمد علي جاسم', phone: '07712345678', address: 'بابل — الحلة', gender: 'ذكر', dob: '1999-05-04' },
+    chances: [
+      { no: 1, slotStatus: 'reserved', jobCode: 'HRC-0900', jobTitle: 'سائق توصيل' },
+      { no: 2, slotStatus: 'empty' }, { no: 3, slotStatus: 'empty' }, { no: 4, slotStatus: 'empty' }
+    ]
+  }
+};
+const DEMO_CARD_JOBS = [
+  { id: 'd1', code: 'HRC-9001', title: 'عامل إنتاج خطوط', status: 'available', governorate: 'بابل', region: 'الحلة', shift: 'صباحي', salary_min: 600000, salary_max: 750000, vacancies: 2, gender: 'لا فرق', category: 'صناعة' },
+  { id: 'd2', code: 'HRC-9002', title: 'محاسب', status: 'available', governorate: 'بغداد', region: 'الكرادة', shift: 'صباحي', salary_min: 900000, salary_max: 1100000, vacancies: 1, gender: 'لا فرق', category: 'إدارة' },
+  { id: 'd3', code: 'HRC-9003', title: 'فني كهرباء', status: 'available', governorate: 'بابل', region: 'الهاشمية', shift: 'مسائي', salary_min: 700000, salary_max: 900000, vacancies: 1, gender: 'لا فرق', category: 'هندسي' },
+  { id: 'd4', code: 'HRC-9004', title: 'موظف استقبال', status: 'available', governorate: 'كربلاء', region: 'المركز', shift: 'مسائي', salary_min: 550000, salary_max: 700000, vacancies: 1, gender: 'أنثى', category: 'خدمات' }
+];
+function demoCardPage(html) {
+  return html.replace("var SUPA_URL='https://vqsvztudvfukyuerzcgx.supabase.co'", "var SUPA_URL=''");
+}
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.argv[2] || process.env.PORT || 4173);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -71,6 +97,29 @@ const server = createServer(async (req, res) => {
     const SECTION_ROUTES = ['home', 'jobs', 'how', 'services', 'about', 'contact'];
     const bare = pathname.replace(/\/+$/, '') || pathname;
     const isDemo = bare === '/demo';
+    const isDemoCard = bare === '/demo-card';
+
+    /* /demo-card: شاشة «وظائف البطاقة» ببطاقة وهمية — أداة مراجعة بصرية فقط */
+    if (isDemoCard) {
+      res.writeHead(302, { Location: '/apply.html?form=DEMO-CARD-01&demo=1' });
+      res.end();
+      return;
+    }
+    if (bare.startsWith('/rest/v1')) {
+      if (bare.includes('/rpc/self_service_card')) {
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify(DEMO_CARD));
+        return;
+      }
+      if (bare.includes('/public_jobs')) {
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify(DEMO_CARD_JOBS));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end('{}');
+      return;
+    }
 
     if (SECTION_ROUTES.includes(bare.slice(1))) {
       res.writeHead(301, { Location: '/#' + bare.slice(1) });
@@ -97,6 +146,9 @@ const server = createServer(async (req, res) => {
     let data = await readFile(filePath);
     if (isDemo && extname(filePath).toLowerCase() === '.html') {
       data = Buffer.from(demoPage(data.toString('utf8')), 'utf8');
+    }
+    if (url.searchParams.get('demo') === '1' && /[\\/]apply\.html$/.test(filePath)) {
+      data = Buffer.from(demoCardPage(data.toString('utf8')), 'utf8');
     }
     const type = MIME[extname(filePath).toLowerCase()] || 'application/octet-stream';
     res.writeHead(200, {
@@ -135,4 +187,5 @@ server.listen(PORT, HOST, () => {
   console.log('  الملف المستقل  : http://localhost:' + PORT + '/hrc-standalone.html');
   console.log('  مسارات نظيفة   : /verify  ·  /dashboard  ·  /standalone  ·  /light   (مثل Render)');
   console.log('  معاينة بلا قاعدة: /demo  (20 وظيفة وهمية — للمراجعة البصرية فقط، لا تُستخدم في الإنتاج)');
+  console.log('  معاينة شاشة الوظائف: /demo-card  (بطاقة وهمية بأربع فرص — للمراجعة البصرية فقط)');
 });

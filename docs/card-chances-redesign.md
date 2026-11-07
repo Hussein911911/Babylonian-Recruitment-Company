@@ -92,8 +92,14 @@ npm run test:chances-summary-browser  # 78 / 0 (Chromium 320 · 375 · 1440)
 ## معاينة
 
 ```bash
-npm start        # ثم /apply.html?form=<رقم البطاقة>
+npm start          # ثم /apply.html?form=<رقم البطاقة>
+npm start          # أو /demo-card — شاشة الوظائف ببطاقة وهمية (أربع فرص) بلا قاعدة
 ```
+
+`/demo-card` مسار تطوير داخل `tools/serve.mjs` وحده على نمط `/demo` القائم:
+يخدم نسخة `apply.html` من الذاكرة مع تحويل قاعدة Supabase إلى مسار محلي يجيب
+ببيانات وهمية. **لا يُكتب ملف، ولا يُنسخ إلى `dist/`، ولا يتصل بأي قاعدة** —
+وفحص `npm run audit` يمنع تسرّبه إلى النشر.
 
 لقطات المراجعة:
 - `docs/preview/shots/cf60-jobs-390.png` — شاشة الوظائف كاملة على 390px بعد الاختيار.
