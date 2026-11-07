@@ -19,7 +19,7 @@
 3. `assets/css/style.css` — حُذفت قواعد `.nav-toggle` و`.main-nav.open` و`.header-actions`، وبقيت `.main-nav { display:none }` على الجوال بلا زر يفتحها.
 3ب. `src/partials/sprite.html` — حُذف رمز `i-menu` الذي لم يبقَ له مستخدم، كي يظلّ فحص «الأيقونات غير المستخدمة» في `npm run audit` نظيفاً (147/4/0 كما في الأساس).
 4. أُعيد بناء الصفحات المُولَّدة: `index.html`، `verify.html`، `dashboard.html`، `404.html`، `hrc-standalone.html`، `hrc-light.html` — بصمة الأصول `55a1d0cf8b`.
-5. `sw.js` → `hrc-cache-v154` حتى لا يحتفظ زائر سابق بنسخة قديمة من الترويسة أو `style.css` في الكاش. (رُفعت لاحقاً إلى `hrc-cache-v155` مع تعريب سجل التدقيق — انظر `docs/audit-arabic-labels.md`).
+5. `sw.js` → `hrc-cache-v154` حتى لا يحتفظ زائر سابق بنسخة قديمة من الترويسة أو `style.css` في الكاش. (رُفعت لاحقاً إلى `hrc-cache-v155` مع تعريب سجل التدقيق ثم إلى `hrc-cache-v156` و`v157` مع استعادة تصميم وظائف البطاقة وإحكام بطاقة الفرص — انظر `docs/audit-arabic-labels.md` و`docs/card-chances-redesign.md`).
 6. **لم يُلمس** شيء من Supabase أو بيانات الإنتاج أو التقديم على الوظائف أو المفضلة أو اللوحة بعد الدخول.
 
 ## الفحوص
@@ -38,4 +38,4 @@ npm run test:header-nav-browser            # 56 / 0  (جديد، Chromium)
 
 ## ملاحظة النشر
 
-الصفحات المُولَّدة مشمولة في Git كالمعتاد؛ بعد رفع التغيير إلى `main` ينشر Cloudflare Pages تلقائياً. إن نُشر يدوياً عبر `npm run dist` فارفع `CACHE_NAME` (وهو `hrc-cache-v155` الآن) مع الملفات.
+الصفحات المُولَّدة مشمولة في Git كالمعتاد؛ بعد رفع التغيير إلى `main` ينشر Cloudflare Pages تلقائياً. إن نُشر يدوياً عبر `npm run dist` فارفع `CACHE_NAME` (وهو `hrc-cache-v157` الآن) مع الملفات.
