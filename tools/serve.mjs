@@ -10,6 +10,28 @@ import { readFile, stat } from 'node:fs/promises';
 import { join, extname, normalize, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/* ── معاينة "/demo" بلا قاعدة بيانات (أداة تطوير فقط) ───────────────────────
+ * تُحقن 20 وظيفة وهمية في نسخة index.html داخل الذاكرة عند الطلب، ويُعطَّل
+ * الاتصال بـ Supabase، لمراجعة ميزات الواجهة (مثل «عرض المزيد») حتى بلا إنترنت
+ * أو مفاتيح. لا تُكتب في أي ملف، ولا تُنسخ إلى dist، ولا تصل للإنتاج أبداً.
+ * ⚠️ بيانات العرض هذه وهمية بالكامل ولا تمثّل وظائف الشركة الحقيقية. */
+const DEMO_JOBS = Array.from({ length: 20 }, (_, i) => ({
+  code: 'HRC-' + (9001 + i), title: 'وظيفة عرض ' + (i + 1),
+  category: ['صناعي', 'خدمات', 'صحي', 'هندسي', 'إداري'][i % 5],
+  region: 'الحلة', governorate: 'بابل', shift: i % 2 ? 'مسائي' : 'صباحي',
+  salaryMin: 600000 + i * 10000, salaryMax: 850000 + i * 10000,
+  gender: 'لا فرق', requirements: ['خبرة مناسبة', 'الالتزام بالدوام'],
+  vacancies: i % 3 === 0 ? 2 : 1, imageUrl: ''
+}));
+function demoPage(html) {
+  const seed = '<script>window.__HRC_TEST_SEED__=' + JSON.stringify({
+    jobs: DEMO_JOBS, jobsExtras: {}, applicants: [], attempts: []
+  }) + ';</script>';
+  const offline = '<script>window.HRCSupabaseConfig.enabled=false;</script>';
+  return html.replace('</head>', seed + '\n</head>')
+    .replace(/(<script src="assets\/js\/supabase-config\.js[^"]*"><\/script>)/, '$1' + offline);
+}
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.argv[2] || process.env.PORT || 4173);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -48,6 +70,7 @@ const server = createServer(async (req, res) => {
     /* أقسام الصفحة الرئيسية: /jobs → /#jobs (تحويل 301 مطابق لـ _redirects) */
     const SECTION_ROUTES = ['home', 'jobs', 'how', 'services', 'about', 'contact'];
     const bare = pathname.replace(/\/+$/, '') || pathname;
+    const isDemo = bare === '/demo';
 
     if (SECTION_ROUTES.includes(bare.slice(1))) {
       res.writeHead(301, { Location: '/#' + bare.slice(1) });
@@ -60,6 +83,7 @@ const server = createServer(async (req, res) => {
        nav.js على جانب العميل حيث لا حلقة. */
     const clean = CLEAN_ROUTES[bare];
     if (clean) pathname = clean;
+    if (isDemo) pathname = '/index.html';
     if (pathname === '/' || pathname === '') pathname = '/index.html';
     const safe = normalize(pathname).replace(/^(\.\.[/\\])+/, '');
     let filePath = join(ROOT, safe);
@@ -70,7 +94,10 @@ const server = createServer(async (req, res) => {
       if (st.isDirectory()) filePath = join(filePath, 'index.html');
     } catch { /* غير موجود */ }
 
-    const data = await readFile(filePath);
+    let data = await readFile(filePath);
+    if (isDemo && extname(filePath).toLowerCase() === '.html') {
+      data = Buffer.from(demoPage(data.toString('utf8')), 'utf8');
+    }
     const type = MIME[extname(filePath).toLowerCase()] || 'application/octet-stream';
     res.writeHead(200, {
       'Content-Type': type,
@@ -107,4 +134,5 @@ server.listen(PORT, HOST, () => {
   console.log('  لوحة الموظفين  : http://localhost:' + PORT + '/dashboard.html');
   console.log('  الملف المستقل  : http://localhost:' + PORT + '/hrc-standalone.html');
   console.log('  مسارات نظيفة   : /verify  ·  /dashboard  ·  /standalone  ·  /light   (مثل Render)');
+  console.log('  معاينة بلا قاعدة: /demo  (20 وظيفة وهمية — للمراجعة البصرية فقط، لا تُستخدم في الإنتاج)');
 });

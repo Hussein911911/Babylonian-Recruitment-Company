@@ -127,7 +127,6 @@ a.hc-item { color: #dbe3f5; text-decoration: none; }
 a.hc-item:hover { color: var(--gold-2); }
 .hc-phones { display: inline-flex; align-items: center; gap: 8px; }
 .hc-phones a { color: var(--gold-2); font-weight: 700; }
-.header-actions { display: flex; align-items: center; gap: 10px; flex: none; }
 /* بوابة الموظفين: لا زر ظاهر. الدخول بضغطة مطوّلة على اسم الشركة (nav.js).
    نمنع تحديد النص وقائمة اللمس على الاسم حتى لا تقطع نافذةُ «نسخ/مشاركة»
    في أندرويد الإيماءةَ بعد نصف ثانية. */
@@ -171,7 +170,8 @@ a.hc-item:hover { color: var(--gold-2); }
 }
 .main-nav a:hover { background: rgba(200, 162, 74, .14); color: #fff; }
 .main-nav a.active { color: var(--gold-2); background: rgba(200, 162, 74, .16); }
-.nav-toggle { display: none; background: transparent; border: 1px solid var(--line); color: #fff; border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+/* لا زر هامبرغر: الترويسة تُخفى على الجوال في الموقع العام، وبقية الصفحات
+   لا تحتاج قائمة موقع (انظر src/partials/header.html). */
 .site-header .main-nav { border-top: 1px solid var(--line); padding-top: 8px; justify-content: center; }
 
 /* ===================== الأيقونات (القاعدة الأساسية) =====================
@@ -1320,10 +1320,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .hc-address, .hc-email, .hc-hours { display: none; }
   .hc-phones-item { width: 100%; }
   .header-contact .hc-item { gap: 6px; }
-  .main-nav { display: none; position: absolute; inset-inline: 0; top: 100%; background: #08132b; flex-direction: column; padding: 12px; border-bottom: 1px solid var(--line); }
-  .main-nav.open { display: flex; }
-  .main-nav a { width: 100%; }
-  .nav-toggle { display: inline-flex; }
+  /* قائمة الموقع مخفية على الجوال بلا زر يفتحها: الموقع العام يستعمل شريط
+     التبويب السفلي، وبقية الصفحات تكتفي بروابطها الخاصة. */
+  .main-nav { display: none; }
   .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .f-field.f-search { flex: 1 1 100%; }
   .qs-field.qs-main { flex: 1 1 100%; }
@@ -1337,7 +1336,6 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
   .header-contact { order: 3; flex: 1 1 100%; }
   /* على الموبايل تُبقى أرقام الواتساب فقط (أهم ما يحتاجه الباحث) */
   .hc-email, .hc-hours, .hc-address { display: none; }
-  .site-header .main-nav { border-top: 0; padding-top: 0; justify-content: initial; }
 }
 /* خط زخرفي ذهبي بجانب العنوان الفرعي (يمتدّ في اتجاه القراءة) */
 .eyebrow-line {
@@ -3386,9 +3384,115 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 .jobs-all {
   display: inline-flex; align-items: center; gap: 4px; text-decoration: none;
   font-size: .78rem; font-weight: 800; color: var(--lapis-3);
+  background: transparent; border: 0; padding: 0; font-family: inherit; cursor: pointer;
 }
 .jobs-all .ic { width: 14px; height: 14px; }
+.jobs-all[hidden] { display: none !important; }
 .jobs-sub { margin: 6px 0 12px; color: var(--muted); font-size: .74rem; line-height: 1.9; }
+
+/* ── 6أ) العرض التدريجي للوظائف: 10 أولاً ← «عرض المزيد» / «عرض أقل» ──────
+   هوية الموقع: كحلي ليلي بتدرّج + ذهبي، زر حبّة (pill)، لمعان عند المرور، هالة
+   نابضة خفيفة حول الأيقونة، وشريط تقدّم يُظهر نسبة المعروض من النتائج.
+   الزر خارج #jobs-grid كي يحتفظ بتركيز لوحة المفاتيح عند إعادة الرسم،
+   ويُخفى بلا أثر في التخطيط حين لا يوجد ما يُعرض أكثر. */
+.jobs-more-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  margin: 20px auto 2px; text-align: center;
+}
+.jobs-more-wrap[hidden] { display: none !important; }
+.jobs-more-wrap.is-in { animation: jobsMoreIn .45s cubic-bezier(.22,.8,.24,1) both; }
+@keyframes jobsMoreIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+.jobs-more-note { margin: 0; color: var(--muted); font-size: .76rem; font-weight: 700; }
+
+/* شريط التقدّم: عرضه = المعروض ÷ الكل، ينتقل بسلاسة عند التوسيع/الطيّ */
+.jobs-more-meter {
+  width: min(260px, 78%); height: 4px; border-radius: 999px;
+  background: rgba(15, 36, 68, .10); overflow: hidden;
+}
+.jobs-more-meter-fill {
+  display: block; height: 100%; width: var(--jobs-progress, 0%);
+  border-radius: inherit; background: linear-gradient(90deg, var(--gold), var(--gold-2));
+  transition: width .55s cubic-bezier(.22,.8,.24,1);
+}
+
+.jobs-more-btn {
+  position: relative; isolation: isolate; overflow: hidden;
+  min-height: 52px; min-width: 214px; padding: 0 18px; gap: 10px;
+  border-radius: 999px; border: 1px solid rgba(227,196,121,.55);
+  background: linear-gradient(135deg, var(--lapis-3), var(--lapis-2) 58%, var(--night));
+  color: #fff; font-weight: 900; font-size: .9rem;
+  box-shadow: 0 12px 28px rgba(6,13,31,.24), inset 0 1px 0 rgba(255,255,255,.09);
+  transition: transform .25s cubic-bezier(.22,.8,.24,1), box-shadow .25s ease, border-color .25s ease;
+}
+.jobs-more-btn[hidden] { display: none !important; }
+.jobs-more-btn::before {           /* حلقة ذهبية داخلية خفيفة */
+  content: ''; position: absolute; inset: 3px; border-radius: inherit;
+  border: 1px solid rgba(227,196,121,.14); pointer-events: none;
+}
+.jobs-more-btn::after {            /* لمعان يمرّ مرة عند المرور (مثل أزرار الواجهة) */
+  content: ''; position: absolute; top: -50%; left: -60%; width: 40%; height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+  transform: rotate(25deg); pointer-events: none; z-index: 0;
+  transition: left .75s ease;
+}
+.jobs-more-btn > * { position: relative; z-index: 1; }
+.jobs-more-btn:hover {
+  transform: translateY(-3px); border-color: var(--gold-2);
+  box-shadow: 0 18px 38px rgba(6,13,31,.32), 0 0 0 4px rgba(200,162,74,.12);
+}
+.jobs-more-btn:hover::after { left: 120%; }
+.jobs-more-btn:active { transform: translateY(-1px) scale(.985); }
+.jobs-more-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+
+.jobs-more-ic {
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(227,196,121,.14); color: var(--gold-2);
+  border: 1px solid rgba(227,196,121,.35);
+  transition: background .3s ease;
+}
+.jobs-more-ic .ic { width: 16px; height: 16px; transition: transform .4s cubic-bezier(.22,.8,.24,1); }
+.jobs-more-btn.is-expanded .jobs-more-ic { background: rgba(227,196,121,.24); }
+.jobs-more-btn.is-expanded .jobs-more-ic .ic { transform: rotate(45deg); }  /* «+» ⟶ «×» */
+.jobs-more-label { line-height: 1; }
+.jobs-more-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 34px; height: 24px; padding: 0 8px; border-radius: 999px;
+  background: var(--gold-2); color: var(--lapis-2);
+  font-size: .72rem; font-weight: 900; line-height: 1;
+}
+.jobs-more-count[hidden] { display: none !important; }
+
+/* البطاقات الجديدة تظهر بتتابع خفيف عند «عرض المزيد» فقط، لا عند كل تحديث بيانات.
+   fill-mode=backwards حتى لا تعلق قيمة transform بعد الانتهاء فتكسر hover الكرت. */
+.job-card.is-revealed {
+  animation: jobsCardIn .5s cubic-bezier(.22,.8,.24,1) backwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+@keyframes jobsCardIn {
+  from { opacity: 0; transform: translateY(20px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .jobs-more-btn:not(.is-expanded) .jobs-more-ic { animation: jobsMorePulse 2.8s ease-in-out infinite; }
+  @keyframes jobsMorePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(227,196,121,.30); }
+    50%      { box-shadow: 0 0 0 7px rgba(227,196,121,0); }
+  }
+}
+@media (max-width: 480px) {
+  .jobs-more-btn { width: min(100%, 320px); }
+}
+/* تقليل الحركة: لا لمعان، لا نبض، لا تتابع، ولا انتقالات — الحالة تُقرأ من النص */
+@media (prefers-reduced-motion: reduce) {
+  .jobs-more-wrap.is-in, .job-card.is-revealed,
+  .jobs-more-btn:not(.is-expanded) .jobs-more-ic { animation: none !important; }
+  .jobs-more-meter-fill, .jobs-more-btn, .jobs-more-ic, .jobs-more-ic .ic,
+  .jobs-more-btn::after { transition: none !important; }
+}
 
 /* ── 6ب) شبكة الوظائف: بطاقتان في كل صف مع تمرير عمودي طبيعي ── */
 .app-section #jobs-grid.jobs-grid,
@@ -4408,9 +4512,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
   <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>
   </symbol>
-  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-    <path d="M4 7h16M4 12h16M4 17h16"/>
-  </symbol>
+  <!-- حُذفت أيقونة i-menu مع زر «الهامبرغر» الميت (2026-11-07) — لم يبقَ مستخدم لها. -->
   <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
     <path d="M6 6l12 12M18 6L6 18"/>
   </symbol>
@@ -4501,16 +4603,17 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
         </span>
       </div>
 
-      <div class="header-actions">
-        <!-- بوابة الموظفين: لا زر ظاهر (طلب الإدارة 2026-09-19).
-             الدخول يتم بـ«ضغطة مطوّلة على اسم الشركة» في الترويسة — انظر
-             assets/js/nav.js (longPress). السبب: الموقع واجهة للباحثين عن عمل،
-             ووجود زر دخول ظاهر يعرّف كل زائر بعنوان المنظومة الداخلية.
-             الوصول المباشر عبر /dashboard يبقى متاحاً لمن يعرفه من الموظفين. -->
-        <button class="nav-toggle" id="nav-toggle" aria-label="إظهار القائمة" aria-expanded="false">
-          <svg class="ic" style="width:20px;height:20px"><use href="#i-menu" xlink:href="#i-menu"/></svg>
-        </button>
-      </div>
+      <!-- بوابة الموظفين: لا زر ظاهر (طلب الإدارة 2026-09-19).
+           الدخول يتم بـ«ضغطة مطوّلة على اسم الشركة» في الترويسة — انظر
+           assets/js/nav.js (longPress). الوصول المباشر عبر /dashboard يبقى
+           متاحاً لمن يعرفه من الموظفين.
+
+           ⛔ لا زر «هامبرغر» هنا (2026-11-07 بطلب المالك): كان الزر يظهر على
+           الجوال في /dashboard و/verify و/404 بلا أي معالج — معالجه الوحيد كان
+           في public.js التي تُحمَّل في index.html وحدها، والترويسة هناك تُخفى
+           أصلاً على الجوال (app-shell.css) ويستعمل الزائر شريط التبويب السفلي.
+           فالزر نقرة ميتة لا تُظهر شيئاً؛ حُذف مع غلافه header-actions. زر
+           «هامبرغر» الآخر (#hamburger-btn) يخص اللوحة بعد الدخول ويعمل كما هو. -->
     </div>
 
     <nav class="main-nav" id="main-nav" aria-label="التنقل الرئيسي">
@@ -4607,7 +4710,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
   <div class="container">
     <div class="jobs-head">
       <h2><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> أحدث الوظائف</h2>
-      <a class="jobs-all" href="#jobs">عرض الكل <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg></a>
+      <button type="button" class="jobs-all" id="jobs-show-all" aria-controls="jobs-grid">عرض الكل <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg></button>
     </div>
     <p class="jobs-sub">حجز الوظيفة 24 ساعة؛ بعدها تصبح حرجة بانتظار قرار الشركة، ولا تعود متاحة تلقائياً.</p>
 
@@ -4657,6 +4760,19 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
       <svg class="ic"><use href="#i-search" xlink:href="#i-search"/></svg>
       <h3>لا توجد وظائف مطابقة</h3>
       <p class="mb-0">غيّر البحث أو صفّر الفلاتر لعرض الوظائف المتاحة.</p>
+    </div>
+    <!-- عرض تدريجي: أول 10 وظائف فقط، ثم «عرض المزيد» يُظهر الباقي و«عرض أقل» يُعيدها.
+         يُخفى تلقائياً حين لا تتجاوز النتائج 10 أو أثناء التحميل/فشل الاتصال.
+         شريط التقدّم وعدّاد «+N» وحركة الظهور كلها زخارف بصرية: النص الحقيقي
+         للحالة في #jobs-more-note (aria-live) وخصائص aria على الزر. -->
+    <div class="jobs-more-wrap" id="jobs-more-wrap" hidden>
+      <p class="jobs-more-note" id="jobs-more-note" aria-live="polite"></p>
+      <div class="jobs-more-meter" aria-hidden="true"><span class="jobs-more-meter-fill"></span></div>
+      <button type="button" class="btn jobs-more-btn" id="jobs-more" aria-expanded="false" aria-controls="jobs-grid">
+        <span class="jobs-more-ic" aria-hidden="true"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg></span>
+        <span class="jobs-more-label">عرض المزيد</span>
+        <b class="jobs-more-count" dir="ltr" aria-hidden="true"></b>
+      </button>
     </div>
   </div>
 </section>
@@ -17527,6 +17643,14 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (db.audit.length > 2000) db.audit.length = 2000;
   }
 
+  /* تسميات العرض المعرَّبة (تُسجَّلها لوحة الموظفين) تُضاف إلى نص البحث فقط،
+     كي يجد الباحث بـ«بطاقة» سطراً خاماً فيه «applicants». القيم الأصلية لا
+     تُمسّ: لا في القاعدة ولا في التصدير ولا في الفلاتر. */
+  var auditDisplayLabels = null;
+  function setAuditDisplayLabels(fn) {
+    auditDisplayLabels = typeof fn === 'function' ? fn : null;
+  }
+
   // Arabic-friendly search without changing the original audit evidence.
   function auditSearchText(value) {
     return String(value == null ? '' : value).toLowerCase()
@@ -17548,7 +17672,12 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (f.entity && f.entity !== 'all') rows = rows.filter(function (r) { return r.entity === f.entity; });
     var words = auditSearchText(f.q || '').trim().split(/\s+/).filter(Boolean);
     if (words.length) rows = rows.filter(function (r) {
-      var text = auditSearchText([r.action, r.details, r.entityId, r.entity, r.user, r.name, r.ip].join(' '));
+      var display = '';
+      if (auditDisplayLabels) {
+        try { display = auditDisplayLabels(r) || ''; } catch (e) { display = ''; }
+      }
+      var text = auditSearchText([r.action, r.details, r.entityId, r.entity,
+        r.user, r.name, r.ip, display].join(' '));
       return words.every(function (word) { return text.indexOf(word) >= 0; });
     });
     // Inclusive calendar-day filters use Baghdad, independent of device zone.
@@ -19771,7 +19900,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     stats: stats, financials: financials, financialTotals: financialTotals,
     markPrinted: markPrinted, setFeePaid: setFeePaid,
     // تدقيق
-    audit: audit, listAudit: listAudit, loadAuditLog: loadAuditLog, syncOfflineChanges: syncOfflineChanges,
+    audit: audit, listAudit: listAudit, setAuditDisplayLabels: setAuditDisplayLabels,
+    loadAuditLog: loadAuditLog, syncOfflineChanges: syncOfflineChanges,
     getScheduledBackups: getScheduledBackups, listBackupMeta: listBackupMeta,
     saveScheduledBackup: saveScheduledBackup, deleteScheduledBackup: deleteScheduledBackup,
     restoreScheduledBackup: restoreScheduledBackup, exportScheduledBackup: exportScheduledBackup,
@@ -20216,10 +20346,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (scrollToId(id, true) && root.history && root.history.pushState) {
       root.history.pushState(null, '', '#' + id);
     }
-    var nav = doc.getElementById('main-nav');
-    if (nav) nav.classList.remove('open');
-    var toggle = doc.getElementById('nav-toggle');
-    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    /* لا زر هامبرغر في الترويسة منذ 2026-11-07 — لم يبقَ ما يُغلَق هنا.
+       تبقى الروابط نفسها لسطح المكتب وللقارئات (انظر src/partials/header.html). */
   }
 
   /* الوصول إلى الصفحة برابط فيه مرساة: نصحّح الموضع بعد رسم التخطيط */
@@ -22215,6 +22343,21 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   /* الفلاتر: المحافظة وحدها للموقع الجغرافي — لا فلتر مناطق (قرار 2026-10-24) */
   var filters = { q: '', governorate: 'all', shift: 'all', status: 'all', category: 'all' };
 
+  /* ── العرض التدريجي للوظائف ──────────────────────────────────────────────
+   * تظهر أول JOBS_PAGE_SIZE وظائف فقط، وزر «عرض المزيد» يُظهر بقية النتائج،
+   * ثم يتحوّل إلى «عرض أقل» فيعيد أول JOBS_PAGE_SIZE. العدّاد (#jobs-count)
+   * يبقى عدد النتائج الكلي بعد الفلاتر، و«ملاحظة العرض» توضّح المعروض منه.
+   * أي تغيير في الفلاتر يُعيد القائمة إلى حالتها المطويّة تلقائياً (عبر بصمة
+   * الفلاتر) حتى لا يبقى الزائر أمام قائمة موسّعة لا تناسب بحثه الجديد.
+   * ⚠️ الحالة في الذاكرة فقط: لا تُخزَّن، ولا تُرسَل للقاعدة، ولا تؤثر على
+   *    ترتيب/عدد الوظائف القادمة من Supabase. العرض وحده هو المقصود. */
+  var JOBS_PAGE_SIZE = 10;
+  var jobsExpanded = false;
+  var jobsFilterKey = null;
+  /* يُفعَّل لضغطة «عرض المزيد» وحدها كي تظهر البطاقات الجديدة بتتابع بصري،
+     ولا يُفعَّل عند تحديث البيانات أو تغيير الفلاتر فلا تتكرّر الحركة بلا سبب. */
+  var revealNewCards = false;
+
   /* مفضلة الزائر: تُحفظ على جهازه وحده (لا تُرسل للشركة ولا تُسجَّل بسجل) */
   var FAV_KEY = 'hrc_fav_jobs_v1';
   var catColor = {};          /* لون كل تخصص (يُبنى في renderCategories) */
@@ -22362,6 +22505,26 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       renderJobs();
     });
 
+    /* «عرض المزيد / عرض أقل»: نفس الزر يتبدّل نصه وحالته، والزر خارج الشبكة
+       كي لا يفقد تركيز لوحة المفاتيح عند إعادة رسم البطاقات. */
+    var more = document.getElementById('jobs-more');
+    if (more) more.addEventListener('click', function () {
+      var collapsing = jobsExpanded;
+      setJobsExpanded(!jobsExpanded);
+      /* عند الطيّ نعود إلى أعلى الشبكة بدل ترك الزائر في فراغ أسفل قائمة
+         اختفت من تحته — مع احترام تفضيل تقليل الحركة. */
+      if (collapsing) scrollToJobsGrid();
+    });
+
+    /* رابط «عرض الكل» في رأس القسم صار زراً فعّالاً: يُظهر كل النتائج وينتقل
+       إلى الشبكة، بدل أن يكون مرساةً إلى نفس القسم بلا أثر. */
+    var showAll = document.getElementById('jobs-show-all');
+    if (showAll) showAll.addEventListener('click', function (e) {
+      e.preventDefault();
+      setJobsExpanded(true);
+      scrollToJobsGrid();
+    });
+
     // البحث السريع
     var qsForm = document.getElementById('qs-form');
     if (qsForm) qsForm.addEventListener('submit', function (e) {
@@ -22396,15 +22559,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       }
     });
 
-    // قائمة الجوال
-    var toggle = document.getElementById('nav-toggle');
-    var nav = document.getElementById('main-nav');
-    if (toggle && nav) toggle.addEventListener('click', function () {
-      nav.classList.toggle('open');
-      toggle.setAttribute('aria-expanded', nav.classList.contains('open') ? 'true' : 'false');
-    });
-    if (nav) nav.addEventListener('click', function (e) { if (e.target.tagName === 'A') nav.classList.remove('open'); });
-
+    /* قائمة الجوال: لا زر هامبرغر في الترويسة (حُذف 2026-11-07). الموقع العام
+       يستعمل شريط التبويب السفلي على الجوال، والترويسة تُخفى هناك أصلاً، فلا
+       يوجد ما يفتح #main-nav. تُترك الروابط نفسها لسطح المكتب وللقارئات. */
     // تمييز الرابط النشط حسب موضع التمرير
     window.addEventListener('scroll', UI.debounce(function () {
       var y = window.scrollY + 120, current = '';
@@ -23040,6 +23197,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   function renderSkeleton() {
     var host = document.getElementById('jobs-grid');
     setJobsLoading(true);
+    hideJobsMore();
     if (host && !host.querySelector('.job-card.skeleton')) host.innerHTML = skeletonCard().repeat(6);
     var empty = document.getElementById('jobs-empty');
     if (empty) empty.classList.add('hidden');
@@ -23056,6 +23214,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
   function renderCloudError() {
     setJobsLoading(false);
+    hideJobsMore();
     var host = document.getElementById('jobs-grid');
     if (host) {
       host.innerHTML =
@@ -23112,22 +23271,102 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
   /* ── شريط التصنيفات: يُبنى من تصنيفات الوظائف المعروضة فعلاً ── */
 
+  /* ── أدوات العرض التدريجي (أول 10 ← الكل ← أول 10) ────────────────────── */
+  function currentJobsFilterKey() {
+    return [filters.q, filters.governorate, filters.shift, filters.status, filters.category].join('\u0001');
+  }
+
+  function scrollBehavior() {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return reduce ? 'auto' : 'smooth';
+  }
+
+  function scrollToJobsGrid() {
+    var grid = document.getElementById('jobs-grid');
+    if (grid && grid.scrollIntoView) grid.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
+  }
+
+  function setJobsExpanded(value) {
+    var next = !!value;
+    revealNewCards = next && !jobsExpanded;
+    jobsExpanded = next;
+    renderJobs();
+    revealNewCards = false;
+  }
+
+  /* أثناء التحميل أو فشل الاتصال لا توجد قائمة أصلاً — فلا يظهر زر ولا ملاحظة */
+  function hideJobsMore() {
+    var wrap = document.getElementById('jobs-more-wrap');
+    if (wrap) { wrap.hidden = true; wrap.classList.remove('is-in'); }
+    var btn = document.getElementById('jobs-more');
+    if (btn) btn.hidden = true;
+    var showAll = document.getElementById('jobs-show-all');
+    if (showAll) showAll.hidden = false;
+  }
+
+  function renderJobsMore(total, shown) {
+    var wrap = document.getElementById('jobs-more-wrap');
+    var btn = document.getElementById('jobs-more');
+    if (!wrap || !btn) return;
+    var note = document.getElementById('jobs-more-note');
+    var label = btn.querySelector('.jobs-more-label');
+    var badge = btn.querySelector('.jobs-more-count');
+    var wasHidden = wrap.hidden;
+    var hasMore = total > JOBS_PAGE_SIZE;
+    if (!hasMore) jobsExpanded = false;   /* قائمة قصيرة = لا حالة موسّعة بلا معنى */
+    wrap.hidden = !hasMore;
+    btn.hidden = !hasMore;
+    btn.setAttribute('aria-expanded', jobsExpanded ? 'true' : 'false');
+    btn.classList.toggle('is-expanded', jobsExpanded);
+    if (label) label.textContent = jobsExpanded ? 'عرض أقل' : 'عرض المزيد';
+    if (badge) {
+      badge.hidden = jobsExpanded;
+      badge.textContent = '+' + Math.max(0, total - JOBS_PAGE_SIZE);
+    }
+    btn.setAttribute('aria-label', jobsExpanded
+      ? 'عرض أقل — الرجوع إلى أول ' + JOBS_PAGE_SIZE + ' وظائف'
+      : 'عرض المزيد — إظهار ' + (total - JOBS_PAGE_SIZE) + ' وظيفة إضافية');
+    if (note) note.textContent = jobsExpanded
+      ? 'تعرض الآن كل النتائج: ' + total + ' وظيفة'
+      : 'تعرض ' + shown + ' من ' + total + ' وظيفة';
+    /* شريط التقدّم + حركة ظهور المجموعة عند أول ظهور لها فقط */
+    wrap.style.setProperty('--jobs-progress', (total ? Math.round(shown / total * 100) : 0) + '%');
+    if (hasMore && wasHidden) {
+      wrap.classList.remove('is-in');
+      void wrap.offsetWidth;              /* إعادة تشغيل الحركة عند الظهور مجدداً */
+      wrap.classList.add('is-in');
+    } else if (!hasMore) {
+      wrap.classList.remove('is-in');
+    }
+    var showAll = document.getElementById('jobs-show-all');
+    if (showAll) showAll.hidden = hasMore && jobsExpanded;
+  }
+
   function renderJobs() {
     var host = document.getElementById('jobs-grid');
     if (!host) return;
     if (cloudBlocked()) { if (!cloudSettled) renderSkeleton(); else renderCloudError(); return; }
     setJobsLoading(false);
+
+    /* بصمة الفلاتر: تغيّرها يعيد القائمة إلى الطيّ، وتحديث البيانات وحده
+       (Realtime/صيانة) يُبقي حالة «عرض المزيد» كما اختارها الزائر. */
+    var key = currentJobsFilterKey();
+    if (key !== jobsFilterKey) { jobsExpanded = false; jobsFilterKey = key; }
+
     var jobs = Store.listJobs(filters);
     if (filters.category && filters.category !== 'all') {
       jobs = jobs.filter(function (j) { return (j.category || '') === filters.category; });
     }
+    var total = jobs.length;
+    var shown = jobsExpanded ? jobs : jobs.slice(0, JOBS_PAGE_SIZE);
+
     var count = document.getElementById('jobs-count');
-    if (count) count.textContent = jobs.length;
+    if (count) count.textContent = total;   /* كل النتائج المطابقة، لا المعروض منها فقط */
     var upd = document.getElementById('jobs-updated');
     if (upd) upd.textContent = Store.fmtDateTime(new Date());
     var empty = document.getElementById('jobs-empty');
     if (empty) {
-      var showEmpty = jobs.length === 0;
+      var showEmpty = total === 0;
       empty.classList.toggle('hidden', !showEmpty);
       if (showEmpty) {
         /* رسالتان مختلفتان: قاعدة بلا وظائف معلنة ≠ تصفية بلا نتائج */
@@ -23141,7 +23380,14 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       }
     }
     var favorites = favList();
-    host.innerHTML = jobs.map(function (job, index) { return cardHtml(job, favorites, index + 1); }).join('');
+    /* الترقيم يبدأ من 1 للبطاقات المعروضة فقط، فيبقى صحيحاً قبل التوسيع وبعده.
+       البطاقات الجديدة وحدها تأخذ تأخيراً متدرّجاً (بحد 360ms) عند «عرض المزيد». */
+    host.innerHTML = shown.map(function (job, index) {
+      var delay = (revealNewCards && index >= JOBS_PAGE_SIZE)
+        ? Math.min((index - JOBS_PAGE_SIZE) * 45, 360) : null;
+      return cardHtml(job, favorites, index + 1, delay);
+    }).join('');
+    renderJobsMore(total, shown.length);
     renderActiveChips();
   }
 
@@ -23207,9 +23453,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     return (j.category ? j.category + ' · ' : '') + (j.gender && j.gender !== 'لا فرق' ? j.gender : 'فرصة متاحة');
   }
 
-  function cardHtml(j, favorites, position) {
+  function cardHtml(j, favorites, position, revealDelay) {
     var st = CFG.jobStatus[j.status];
-    var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : ''));
+    var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : '')) +
+      (revealDelay != null ? ' is-revealed' : '');
+    var revealAttr = revealDelay != null ? ' style="--reveal-delay:' + revealDelay + 'ms"' : '';
     var hold = '';
     if (j.status === 'reserved' && j.holdExpiresAt) {
       var h = Store.diffHours(j.holdExpiresAt, new Date());
@@ -23226,7 +23474,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     var fav = favorites.indexOf(j.code) >= 0;
     var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');
     return '' +
-      '<article class="job-card ' + cls + '">' +
+      '<article class="job-card ' + cls + '"' + revealAttr + '>' +
         imageHtml +
         '<div class="ac-top">' +
           '<span class="ac-badge ' + b.cls + '">' + UI.esc(b.t) + '</span>' +
@@ -24778,7 +25026,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
             '<div class="ov-log-dot"></div>' +
             '<div class="ov-log-time">' + UI.esc(Store.fmtDateTime(l.ts)) + '</div>' +
             '<div class="ov-log-user">' + UI.esc(l.name || l.user) + '</div>' +
-            '<div class="ov-log-action">' + UI.esc(l.action) + (l.details ? ' — ' + UI.esc(l.details) : '') + '</div>' +
+            '<div class="ov-log-action">' + UI.esc(auditActionLabel(l.action)) +
+              (l.details ? ' — ' + UI.esc(auditDetailsLabel(l.details)) : '') + '</div>' +
           '</div>';
         }).join('')
         : '<div style="text-align:center;padding:32px;color:var(--muted)">' + UI.ic('list') + '<div style="margin-top:8px">لا سجلات بعد</div></div>';
@@ -25943,17 +26192,107 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     'restore': 'استرجاع', 'backup': 'نسخ احتياطي', 'export': 'تصدير',
     'print': 'طباعة', 'view': 'عرض', 'read': 'عرض'
   };
+  /* ── تعريب نصوص السجل (2026-11-07 بطلب المالك) ─────────────────────────────
+     مشغّل التدقيق في القاعدة (brc.trg_audit) يكتب حقولاً مختلطة:
+       action  = «تعديل/إضافة/حذف» + اسم الجدول   ← «تعديل applicants»
+       details = «تغيير في »        + اسم الجدول   ← «تغيير في applicants»
+     كما أن بعض سجلات المتجر المحلي تحمل تفاصيل JSON بحقول إنكليزية
+     (تعديل مستخدم / تعديل وظيفة). القيم الخام تبقى في القاعدة والتصدير كما هي
+     لأنها دليل تدقيق، ونُعرّبها هنا عند العرض فقط: جدول السجل، قوائم الفلاتر،
+     و«آخر العمليات». الأكواد المطبوعة (HRC-1042، الرقم التسلسلي، عنوان الشبكة)
+     معرّفات لا كلمات فتبقى كما هي وباتجاه ltr. */
+  var AUDIT_WORD = {
+    applicant: 'بطاقة', applicants: 'بطاقة', card: 'بطاقة', cards: 'بطاقة',
+    job: 'وظيفة', jobs: 'وظيفة', vacancy: 'وظيفة', vacancies: 'وظيفة',
+    public_jobs: 'وظيفة معلنة', working_jobs: 'وظيفة قيد العمل',
+    working_applicants: 'بطاقة', working_job_attempts: 'فرصة',
+    attempt: 'فرصة', attempts: 'فرصة', chance: 'فرصة', chances: 'فرصة',
+    job_attempts: 'فرصة',
+    staff: 'موظف', user: 'موظف', users: 'موظف', employee: 'موظف', employees: 'موظف',
+    settings: 'إعدادات', setting: 'إعدادات', config: 'إعدادات',
+    audit_log: 'سجل', audit: 'سجل', log: 'سجل', logs: 'سجل',
+    backup: 'نسخة احتياطية', backups: 'نسخة احتياطية', recovery: 'استرجاع',
+    hold: 'حجز', holds: 'حجز', print: 'طباعة', finance: 'المالية',
+    application: 'استمارة', applications: 'استمارة', form: 'استمارة', forms: 'استمارة',
+    login: 'دخول', logout: 'خروج', create: 'إضافة', insert: 'إضافة', add: 'إضافة',
+    update: 'تعديل', edit: 'تعديل', delete: 'حذف', remove: 'حذف',
+    restore: 'استرجاع', export: 'تصدير', view: 'عرض', read: 'عرض',
+    system: 'النظام', session: 'جلسة', public: 'زائر', admin: 'مدير عام',
+    name: 'الاسم', username: 'اسم المستخدم', role: 'الرتبة', title: 'العنوان',
+    status: 'الحالة', code: 'الكود', serial: 'الرقم التسلسلي', active: 'مفعّل',
+    governorate: 'المحافظة', shift: 'الدوام', salary: 'الأجر',
+    available: 'متاحة', reserved: 'محجوزة', closed: 'مغلقة', expired: 'منتهية',
+    critical: 'حرجة', succeeded: 'تم التوظيف', rejected: 'مرفوضة'
+  };
+  /* جمل كاملة من مشغّل القاعدة: تُكتب بصيغة عربية سليمة لا بترجمة كلمة بكلمة */
+  var AUDIT_PHRASE = {
+    'تغيير في applicants': 'تعديل بيانات البطاقة',
+    'تغيير في jobs': 'تعديل بيانات الوظيفة',
+    'تغيير في job_attempts': 'تعديل بيانات الفرصة',
+    'تغيير في staff': 'تعديل بيانات الموظف',
+    'تغيير في settings': 'تعديل الإعدادات',
+    'تغيير في audit_log': 'تحديث السجل'
+  };
+  /* مفاتيح JSON داخل «التفاصيل» — تُقرأ بحروف صغيرة */
+  var AUDIT_FIELD = {
+    t: 'العنوان', g: 'المحافظة', s: 'الحالة', n: 'الاسم',
+    name: 'الاسم', fullname: 'الاسم الكامل', username: 'اسم المستخدم',
+    password: 'كلمة المرور', role: 'الرتبة', title: 'المسمى الوظيفي',
+    active: 'مفعّل', status: 'الحالة', code: 'الكود', serial: 'الرقم التسلسلي',
+    governorate: 'المحافظة', shift: 'الدوام',
+    salarymin: 'أقل أجر', salarymax: 'أعلى أجر',
+    before: 'قبل التعديل', after: 'بعد التعديل', diff: 'الفرق'
+  };
+  var AUDIT_SECRET_KEY = /password|secret|token|card_print_code|chance_code|pin/i;
+
   /* أي قيمة إنجليزية غير معروفة لا تُعرض كما هي: تُوصف عربياً بدل تسريب كلمة أجنبية */
   var LATIN_ONLY = /^[A-Za-z0-9 _\-\.]+$/;
-  function auditEntityLabel(v) {
-    if (!v) return '—';
-    var key = String(v).trim().toLowerCase();
-    return AUDIT_ENTITY[key] || (LATIN_ONLY.test(v) ? 'سجل' : v);
+  function auditTranslateWords(text) {
+    return String(text).replace(/[A-Za-z][A-Za-z0-9_]*/g, function (token) {
+      return AUDIT_WORD[token.toLowerCase()] || token;
+    });
   }
-  function auditActionLabel(v) {
-    if (!v) return '—';
-    var key = String(v).trim().toLowerCase();
-    return AUDIT_ACTION[key] || (LATIN_ONLY.test(v) ? 'عملية' : v);
+  /* تفاصيل JSON → سطر عربي مقروء: «الاسم: … · الرتبة: …» مع حجب الأسرار */
+  function auditJsonFragments(text) {
+    return String(text).replace(/\{[^{}]*\}/g, function (frag) {
+      var obj;
+      try { obj = JSON.parse(frag); } catch (e) { return frag; }
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return frag;
+      var parts = Object.keys(obj).map(function (k) {
+        var label = AUDIT_FIELD[k.toLowerCase()] || auditTranslateWords(k);
+        var val = obj[k];
+        if (val && typeof val === 'object') val = JSON.stringify(val);
+        if (AUDIT_SECRET_KEY.test(k)) val = 'محجوب';   /* كلمة عربية: لا رموز تربك اتجاه النص */
+        return label + ': ' + String(val == null ? '—' : val);
+      });
+      return parts.length ? parts.join(' · ') : frag;
+    });
+  }
+  function auditText(v, kind) {
+    if (v == null) return '—';
+    var s = String(v).trim();
+    if (!s) return '—';
+    if (AUDIT_PHRASE[s]) return AUDIT_PHRASE[s];
+    var key = s.toLowerCase();
+    if (kind === 'entity' && AUDIT_ENTITY[key]) return AUDIT_ENTITY[key];
+    if (kind === 'action' && AUDIT_ACTION[key]) return AUDIT_ACTION[key];
+    var out = auditTranslateWords(auditJsonFragments(s));
+    if (LATIN_ONLY.test(s) && !/[\u0600-\u06FF]/.test(out)) {
+      return kind === 'entity' ? 'سجل' : (kind === 'action' ? 'عملية' : out);
+    }
+    return out;
+  }
+  function auditEntityLabel(v) { return auditText(v, 'entity'); }
+  function auditActionLabel(v) { return auditText(v, 'action'); }
+  function auditDetailsLabel(v) { return auditText(v, 'details'); }
+
+  /* البحث يطابق التسمية المعروضة أيضاً: «بطاقة» يجد سطر «تعديل applicants».
+     التسجيل هنا لا يغيّر القيم الخام ولا التصدير ولا القاعدة — نص البحث فقط. */
+  if (Store.setAuditDisplayLabels) {
+    Store.setAuditDisplayLabels(function (r) {
+      return [auditActionLabel(r.action), auditEntityLabel(r.entity),
+        auditDetailsLabel(r.details)].join(' ');
+    });
   }
 
   /* عرض التاريخ بالعربية داخل حقل «من/إلى تاريخ» (السجل).
@@ -26044,7 +26383,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         '<td class="at-entity">' + UI.esc(auditEntityLabel(l.entity)) +
           (l.entityId ? ' <span class="tiny muted mono" dir="ltr">' + UI.esc(l.entityId) + '</span>' : '') + '</td>' +
         '<td class="at-action"><b>' + UI.esc(auditActionLabel(l.action)) + '</b></td>' +
-        '<td class="at-details">' + UI.esc(l.details || '—') + '</td>' +
+        '<td class="at-details">' + UI.esc(auditDetailsLabel(l.details)) + '</td>' +
       '</tr>';
     }).join('') || '<tr><td colspan="6" class="table-empty">لا سجلات مطابقة</td></tr>';
   }
@@ -26375,7 +26714,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       if (state.log.from && state.log.to && state.log.from > state.log.to) { renderAudit(); return; }
       var rows = Store.listAudit(state.log);
       var csv = 'ts,user,name,role,ip,action,entity,entityId,details\n' + rows.map(function (l) {
-        return [Store.fmtDateTime(l.ts), l.user, l.name, l.role, l.ip, l.action, l.entity, l.entityId, l.details || '']
+        /* التصدير بالعربية أيضاً، والقيمة الخام محفوظة في القاعدة كدليل تدقيق */
+        return [Store.fmtDateTime(l.ts), l.user, l.name, l.role, l.ip,
+          auditActionLabel(l.action), auditEntityLabel(l.entity), l.entityId,
+          l.details ? auditDetailsLabel(l.details) : '']
           .map(function (x) {
             var value = String(x == null ? '' : x);
             if (/^[\s]*[=+@-]/.test(value) || /^[\t\r\n]/.test(value)) value = "'" + value;

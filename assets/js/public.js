@@ -15,6 +15,21 @@
   /* الفلاتر: المحافظة وحدها للموقع الجغرافي — لا فلتر مناطق (قرار 2026-10-24) */
   var filters = { q: '', governorate: 'all', shift: 'all', status: 'all', category: 'all' };
 
+  /* ── العرض التدريجي للوظائف ──────────────────────────────────────────────
+   * تظهر أول JOBS_PAGE_SIZE وظائف فقط، وزر «عرض المزيد» يُظهر بقية النتائج،
+   * ثم يتحوّل إلى «عرض أقل» فيعيد أول JOBS_PAGE_SIZE. العدّاد (#jobs-count)
+   * يبقى عدد النتائج الكلي بعد الفلاتر، و«ملاحظة العرض» توضّح المعروض منه.
+   * أي تغيير في الفلاتر يُعيد القائمة إلى حالتها المطويّة تلقائياً (عبر بصمة
+   * الفلاتر) حتى لا يبقى الزائر أمام قائمة موسّعة لا تناسب بحثه الجديد.
+   * ⚠️ الحالة في الذاكرة فقط: لا تُخزَّن، ولا تُرسَل للقاعدة، ولا تؤثر على
+   *    ترتيب/عدد الوظائف القادمة من Supabase. العرض وحده هو المقصود. */
+  var JOBS_PAGE_SIZE = 10;
+  var jobsExpanded = false;
+  var jobsFilterKey = null;
+  /* يُفعَّل لضغطة «عرض المزيد» وحدها كي تظهر البطاقات الجديدة بتتابع بصري،
+     ولا يُفعَّل عند تحديث البيانات أو تغيير الفلاتر فلا تتكرّر الحركة بلا سبب. */
+  var revealNewCards = false;
+
   /* مفضلة الزائر: تُحفظ على جهازه وحده (لا تُرسل للشركة ولا تُسجَّل بسجل) */
   var FAV_KEY = 'hrc_fav_jobs_v1';
   var catColor = {};          /* لون كل تخصص (يُبنى في renderCategories) */
@@ -162,6 +177,26 @@
       renderJobs();
     });
 
+    /* «عرض المزيد / عرض أقل»: نفس الزر يتبدّل نصه وحالته، والزر خارج الشبكة
+       كي لا يفقد تركيز لوحة المفاتيح عند إعادة رسم البطاقات. */
+    var more = document.getElementById('jobs-more');
+    if (more) more.addEventListener('click', function () {
+      var collapsing = jobsExpanded;
+      setJobsExpanded(!jobsExpanded);
+      /* عند الطيّ نعود إلى أعلى الشبكة بدل ترك الزائر في فراغ أسفل قائمة
+         اختفت من تحته — مع احترام تفضيل تقليل الحركة. */
+      if (collapsing) scrollToJobsGrid();
+    });
+
+    /* رابط «عرض الكل» في رأس القسم صار زراً فعّالاً: يُظهر كل النتائج وينتقل
+       إلى الشبكة، بدل أن يكون مرساةً إلى نفس القسم بلا أثر. */
+    var showAll = document.getElementById('jobs-show-all');
+    if (showAll) showAll.addEventListener('click', function (e) {
+      e.preventDefault();
+      setJobsExpanded(true);
+      scrollToJobsGrid();
+    });
+
     // البحث السريع
     var qsForm = document.getElementById('qs-form');
     if (qsForm) qsForm.addEventListener('submit', function (e) {
@@ -196,15 +231,9 @@
       }
     });
 
-    // قائمة الجوال
-    var toggle = document.getElementById('nav-toggle');
-    var nav = document.getElementById('main-nav');
-    if (toggle && nav) toggle.addEventListener('click', function () {
-      nav.classList.toggle('open');
-      toggle.setAttribute('aria-expanded', nav.classList.contains('open') ? 'true' : 'false');
-    });
-    if (nav) nav.addEventListener('click', function (e) { if (e.target.tagName === 'A') nav.classList.remove('open'); });
-
+    /* قائمة الجوال: لا زر هامبرغر في الترويسة (حُذف 2026-11-07). الموقع العام
+       يستعمل شريط التبويب السفلي على الجوال، والترويسة تُخفى هناك أصلاً، فلا
+       يوجد ما يفتح #main-nav. تُترك الروابط نفسها لسطح المكتب وللقارئات. */
     // تمييز الرابط النشط حسب موضع التمرير
     window.addEventListener('scroll', UI.debounce(function () {
       var y = window.scrollY + 120, current = '';
@@ -840,6 +869,7 @@
   function renderSkeleton() {
     var host = document.getElementById('jobs-grid');
     setJobsLoading(true);
+    hideJobsMore();
     if (host && !host.querySelector('.job-card.skeleton')) host.innerHTML = skeletonCard().repeat(6);
     var empty = document.getElementById('jobs-empty');
     if (empty) empty.classList.add('hidden');
@@ -856,6 +886,7 @@
   /* فشل الاتصال بالقاعدة: رسالة واضحة + إعادة محاولة — لا نسقوط لبيانات المتصفح */
   function renderCloudError() {
     setJobsLoading(false);
+    hideJobsMore();
     var host = document.getElementById('jobs-grid');
     if (host) {
       host.innerHTML =
@@ -912,22 +943,102 @@
 
   /* ── شريط التصنيفات: يُبنى من تصنيفات الوظائف المعروضة فعلاً ── */
 
+  /* ── أدوات العرض التدريجي (أول 10 ← الكل ← أول 10) ────────────────────── */
+  function currentJobsFilterKey() {
+    return [filters.q, filters.governorate, filters.shift, filters.status, filters.category].join('\u0001');
+  }
+
+  function scrollBehavior() {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return reduce ? 'auto' : 'smooth';
+  }
+
+  function scrollToJobsGrid() {
+    var grid = document.getElementById('jobs-grid');
+    if (grid && grid.scrollIntoView) grid.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
+  }
+
+  function setJobsExpanded(value) {
+    var next = !!value;
+    revealNewCards = next && !jobsExpanded;
+    jobsExpanded = next;
+    renderJobs();
+    revealNewCards = false;
+  }
+
+  /* أثناء التحميل أو فشل الاتصال لا توجد قائمة أصلاً — فلا يظهر زر ولا ملاحظة */
+  function hideJobsMore() {
+    var wrap = document.getElementById('jobs-more-wrap');
+    if (wrap) { wrap.hidden = true; wrap.classList.remove('is-in'); }
+    var btn = document.getElementById('jobs-more');
+    if (btn) btn.hidden = true;
+    var showAll = document.getElementById('jobs-show-all');
+    if (showAll) showAll.hidden = false;
+  }
+
+  function renderJobsMore(total, shown) {
+    var wrap = document.getElementById('jobs-more-wrap');
+    var btn = document.getElementById('jobs-more');
+    if (!wrap || !btn) return;
+    var note = document.getElementById('jobs-more-note');
+    var label = btn.querySelector('.jobs-more-label');
+    var badge = btn.querySelector('.jobs-more-count');
+    var wasHidden = wrap.hidden;
+    var hasMore = total > JOBS_PAGE_SIZE;
+    if (!hasMore) jobsExpanded = false;   /* قائمة قصيرة = لا حالة موسّعة بلا معنى */
+    wrap.hidden = !hasMore;
+    btn.hidden = !hasMore;
+    btn.setAttribute('aria-expanded', jobsExpanded ? 'true' : 'false');
+    btn.classList.toggle('is-expanded', jobsExpanded);
+    if (label) label.textContent = jobsExpanded ? 'عرض أقل' : 'عرض المزيد';
+    if (badge) {
+      badge.hidden = jobsExpanded;
+      badge.textContent = '+' + Math.max(0, total - JOBS_PAGE_SIZE);
+    }
+    btn.setAttribute('aria-label', jobsExpanded
+      ? 'عرض أقل — الرجوع إلى أول ' + JOBS_PAGE_SIZE + ' وظائف'
+      : 'عرض المزيد — إظهار ' + (total - JOBS_PAGE_SIZE) + ' وظيفة إضافية');
+    if (note) note.textContent = jobsExpanded
+      ? 'تعرض الآن كل النتائج: ' + total + ' وظيفة'
+      : 'تعرض ' + shown + ' من ' + total + ' وظيفة';
+    /* شريط التقدّم + حركة ظهور المجموعة عند أول ظهور لها فقط */
+    wrap.style.setProperty('--jobs-progress', (total ? Math.round(shown / total * 100) : 0) + '%');
+    if (hasMore && wasHidden) {
+      wrap.classList.remove('is-in');
+      void wrap.offsetWidth;              /* إعادة تشغيل الحركة عند الظهور مجدداً */
+      wrap.classList.add('is-in');
+    } else if (!hasMore) {
+      wrap.classList.remove('is-in');
+    }
+    var showAll = document.getElementById('jobs-show-all');
+    if (showAll) showAll.hidden = hasMore && jobsExpanded;
+  }
+
   function renderJobs() {
     var host = document.getElementById('jobs-grid');
     if (!host) return;
     if (cloudBlocked()) { if (!cloudSettled) renderSkeleton(); else renderCloudError(); return; }
     setJobsLoading(false);
+
+    /* بصمة الفلاتر: تغيّرها يعيد القائمة إلى الطيّ، وتحديث البيانات وحده
+       (Realtime/صيانة) يُبقي حالة «عرض المزيد» كما اختارها الزائر. */
+    var key = currentJobsFilterKey();
+    if (key !== jobsFilterKey) { jobsExpanded = false; jobsFilterKey = key; }
+
     var jobs = Store.listJobs(filters);
     if (filters.category && filters.category !== 'all') {
       jobs = jobs.filter(function (j) { return (j.category || '') === filters.category; });
     }
+    var total = jobs.length;
+    var shown = jobsExpanded ? jobs : jobs.slice(0, JOBS_PAGE_SIZE);
+
     var count = document.getElementById('jobs-count');
-    if (count) count.textContent = jobs.length;
+    if (count) count.textContent = total;   /* كل النتائج المطابقة، لا المعروض منها فقط */
     var upd = document.getElementById('jobs-updated');
     if (upd) upd.textContent = Store.fmtDateTime(new Date());
     var empty = document.getElementById('jobs-empty');
     if (empty) {
-      var showEmpty = jobs.length === 0;
+      var showEmpty = total === 0;
       empty.classList.toggle('hidden', !showEmpty);
       if (showEmpty) {
         /* رسالتان مختلفتان: قاعدة بلا وظائف معلنة ≠ تصفية بلا نتائج */
@@ -941,7 +1052,14 @@
       }
     }
     var favorites = favList();
-    host.innerHTML = jobs.map(function (job, index) { return cardHtml(job, favorites, index + 1); }).join('');
+    /* الترقيم يبدأ من 1 للبطاقات المعروضة فقط، فيبقى صحيحاً قبل التوسيع وبعده.
+       البطاقات الجديدة وحدها تأخذ تأخيراً متدرّجاً (بحد 360ms) عند «عرض المزيد». */
+    host.innerHTML = shown.map(function (job, index) {
+      var delay = (revealNewCards && index >= JOBS_PAGE_SIZE)
+        ? Math.min((index - JOBS_PAGE_SIZE) * 45, 360) : null;
+      return cardHtml(job, favorites, index + 1, delay);
+    }).join('');
+    renderJobsMore(total, shown.length);
     renderActiveChips();
   }
 
@@ -1007,9 +1125,11 @@
     return (j.category ? j.category + ' · ' : '') + (j.gender && j.gender !== 'لا فرق' ? j.gender : 'فرصة متاحة');
   }
 
-  function cardHtml(j, favorites, position) {
+  function cardHtml(j, favorites, position, revealDelay) {
     var st = CFG.jobStatus[j.status];
-    var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : ''));
+    var cls = 'app-card' + (j.status === 'reserved' ? ' is-reserved' : (j.status === 'closed' ? ' is-closed' : '')) +
+      (revealDelay != null ? ' is-revealed' : '');
+    var revealAttr = revealDelay != null ? ' style="--reveal-delay:' + revealDelay + 'ms"' : '';
     var hold = '';
     if (j.status === 'reserved' && j.holdExpiresAt) {
       var h = Store.diffHours(j.holdExpiresAt, new Date());
@@ -1026,7 +1146,7 @@
     var fav = favorites.indexOf(j.code) >= 0;
     var salary = Store.money(j.salaryMin) + (j.salaryMax && j.salaryMax !== j.salaryMin ? ' – ' + Store.money(j.salaryMax) : '');
     return '' +
-      '<article class="job-card ' + cls + '">' +
+      '<article class="job-card ' + cls + '"' + revealAttr + '>' +
         imageHtml +
         '<div class="ac-top">' +
           '<span class="ac-badge ' + b.cls + '">' + UI.esc(b.t) + '</span>' +
