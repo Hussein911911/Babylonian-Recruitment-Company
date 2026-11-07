@@ -1390,6 +1390,46 @@ step(39, 'تفاصيل البطاقة: نص داكن على أبيض · تاري
     /@media\(max-width:360px\)\{\s*\.cs-grid\{grid-template-columns:1fr!important\}/.test(ap));
 }
 
+/* ── 2026-11-07 (ن): «الوظائف التي قمت باختيارها» — تفاصيل الوظيفة وصاحب العمل ── */
+step(40, 'اللوحة: كل صف يفتح تفاصيل الوظيفة وصاحب العمل · بلا اختلاق بيانات');
+{
+  const ap = readFileSync(join(ROOT, 'apply.html'), 'utf8');
+
+  check('كل صف في اللوحة قابل للفتح (role=button + data-chosen-kind)',
+    /data-chosen-kind="applied"/.test(ap) && /data-chosen-kind="picked"/.test(ap) &&
+    /role="button" tabindex="0"/.test(ap) && /class="chosen-item is-tappable"/.test(ap));
+  check('زر داخل الصف (إلغاء الاختيار) لا يفتح النافذة',
+    /closest\('button,a'\)\)return/.test(ap));
+  check('لوحة المفاتيح: Enter/المسافة على الصف يفتحان النافذة',
+    /chosenRowKey:function\(ev,kind,key\)/.test(ap) && /onkeydown="G\.chosenRowKey\(/.test(ap));
+  check('نافذة مستقلة بمعرّف chosen-modal وأربعة أجزاء (رأس · مراحل · جسم · أزرار)',
+    /id="chosen-modal"/.test(ap) && /id="cdt-steps"/.test(ap) &&
+    /id="chosen-modal-body"/.test(ap) && /id="chosen-modal-foot"/.test(ap));
+  check('بيانات صاحب العمل تُجلب من customer_application_details وحدها',
+    /client\.rpc\('customer_application_details',\{p_serial:cardSerial,p_attempt_no:no\}\)/.test(ap) &&
+    !/public_jobs[\s\S]{0,200}employer_name/.test(ap.split('loadChosenEmployer')[1]?.slice(0, 1200) || ''));
+  check('تحقق صارم: رقم البطاقة + رقم الفرصة + كود الوظيفة قبل العرض',
+    /String\(d\.app\.serial\)\.toUpperCase\(\)!==String\(cardSerial\)\.toUpperCase\(\)/.test(ap) &&
+    /Number\(d\.attempt\.no\)!==no/.test(ap) && /d\.attempt\.jobCode!==st\.code/.test(ap));
+  check('«مختارة للمراجعة»: لا يُختلق صاحب عمل — رسالة صريحة بدلاً منه',
+    /is-locked/.test(ap) && /تظهر بعد التقديم/.test(ap) && /لا تعرض الشركة اسم صاحب العمل/.test(ap));
+  check('بلا نداء تفاصيل لصف لم يُقدَّم (loadChosenEmployer للصفوف المقدَّمة فقط)',
+    /if\(st\.loading\)G\.loadChosenEmployer\(st,seq\)/.test(ap) && /st\.loading=!!\(st\.slotNo&&!st\.attempt\)/.test(ap));
+  check('تعذّر التحميل: رسالة + إعادة محاولة (لا بيانات وهمية)',
+    /تعذّر تحميل بيانات صاحب العمل/.test(ap) && /retryChosenEmployer:function\(\)/.test(ap));
+  check('حركة دخول احترافية: صندوق · ستارة · أقسام متتالية (--i) · لمعة الرأس',
+    /@keyframes cdtSheetIn/.test(ap) && /@keyframes cdtVeilIn/.test(ap) &&
+    /@keyframes cdtUp/.test(ap) && /@keyframes cdtSheen/.test(ap) &&
+    /animation-delay:calc\(var\(--i,0\) \* 55ms\)/.test(ap));
+  check('تغبيش ما وراء النافذة وESC يغلقها',
+    /body\.chosen-modal-open \.app\{[\s\S]{0,120}filter:blur\(7px\)/.test(ap) &&
+    /key==='Escape'\|\|key===27\)&&document\.body\.classList\.contains\('chosen-modal-open'\)/.test(ap));
+  check('كل الحركات تتوقف عند prefers-reduced-motion',
+    /prefers-reduced-motion:reduce\)\{[\s\S]{0,260}\.chosen-modal-box,\.chosen-modal-veil,\.cdt-anim/.test(ap));
+  check('تصميم ٣٢٠px: أزرار بعرض كامل وخطوط أصغر',
+    /@media\(max-width:360px\)\{[\s\S]{0,400}\.cdt-foot \.btn\{flex:1 1 100%!important\}/.test(ap));
+}
+
 /* ---------------------------------- الخلاصة ---------------------------------- */
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail === 0 ? '✅' : '❌') + ' ' + pass + ' ناجح | ' + fail + ' فاشل');

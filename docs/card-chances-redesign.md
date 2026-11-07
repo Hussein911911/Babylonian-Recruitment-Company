@@ -109,3 +109,62 @@ npm start          # أو /demo-card — شاشة الوظائف ببطاقة و
 
 > دمج بقية فرع `arena/8466057b` قرار منفصل: فيه «دفعات من ٢٠» تتعارض مع
 > «أول ١٠ + عرض المزيد/أقل» الحالية، ويحتاج تسوية قبل أي دمج.
+
+---
+
+# إضافة 2026-11-07 — نافذة «تفاصيل الوظيفة وصاحب العمل»
+
+الضغط على **أي صف** في لوحة «الوظائف التي قمت باختيارها» يفتح نافذة واحدة
+فيها تفاصيل الوظيفة **وتفاصيل صاحب العمل**، بستايل وهوية مكسب وحركة دخول
+احترافية (شيت يصعد + ستارة تُغبّش + لمعة ذهبية تمرّ على الرأس + أقسام تدخل
+متتالية).
+
+## السلوك
+
+| الصف | المحتوى | صاحب العمل |
+|---|---|---|
+| **تم التقديم** (`applied`) | الفرصة · حالة الطلب · الوظيفة · المحافظة · الدوام · الشواغر · الجنس · الأجر · الوصف · المتطلبات | اسم الجهة · الهاتف (زر `tel:` للاتصال) · العنوان · مكان المقابلة — من `brc.customer_application_details` |
+| **مختارة للمراجعة** (`picked`) | نفس تفاصيل الوظيفة (من قائمة الوظائف الحيّة) | **لا شيء** — بطاقة كريمية مقفلة تشرح أن بيانات صاحب العمل تظهر بعد التقديم؛ لا يُختلق اسم ولا هاتف |
+
+شريط مراحل أعلى النافذة: `اختيار الوظيفة ← التقديم ← قرار صاحب العمل`، ويتلوّن
+حسب حالة الفرصة (`reserved` · `hiring` · `succeeded` · `rejected` · `expired` · `critical`).
+زر «إلغاء الاختيار» داخل الصف **لا** يفتح النافذة (‏`closest('button,a')`).
+لوحة المفاتيح: `Enter`/المسافة على الصف يفتحان، و`ESC` يغلق ويُرجع التركيز للصف.
+
+## الخصوصية (قرار مقصود)
+
+`brc.public_jobs` تُخفي `employer_name/phone/address/interview_location` بالتصميم.
+لذلك بيانات صاحب العمل تُجلب **فقط** من RPC `customer_application_details` بعد
+التحقق من: مطابقة `app.serial` لبطاقة الصفحة، ومطابقة `attempt.no` لرقم الفرصة،
+ومطابقة `attempt.jobCode` لكود الوظيفة. أي انحراف ⇒ رسالة «تعذّر التحميل» +
+زر إعادة محاولة، ولا يُعرض الردّ. الدالة لا تُعيد تفاصيل أي فرصة غير مُقدَّم
+عليها، فلا يمكن لهذه النافذة أن تكشف صاحب عمل لم يُقدَّم عليه.
+
+## الملفات
+
+| الملف | التغيير |
+|---|---|
+| `apply.html` | CSS جديد `@keyframes cdt*` و`.chosen-modal*` و`.cdt-*` قبل `</style>`؛ نافذة `#chosen-modal` بعد نافذة الوظيفة؛ JS: `chosenRow` · `chosenRowKey` · `openChosenDetails` · `closeChosenDetails` · `loadChosenEmployer` · `renderChosenDetails` · `chosenEmployerHtml` · `chosenStepsHtml` · `retryChosenEmployer` · `printChosen` · `chosenSlot` · `chosenJobByCode` · `chosenStateInfo`؛ أيقونات `building` · `phone` · `door` · `info` في `jobIcon`؛ `renderChosenJobs` صار يولّد صفوفاً قابلة للفتح + شارة «التفاصيل وصاحب العمل»؛ `Escape` يغلق النافذة الجديدة قبل نافذة الوظيفة. |
+| `tools/serve.mjs` | `/rest/v1/rpc/customer_application_details` في وضع المعاينة يُعيد بيانات صاحب عمل وهمية (تحقّق من البطاقة والفرصة) حتى تُرى النافذة على `/demo-card`. |
+| `tests/chosen-details-browser.mjs` | **جديد** — ٦٧ فحصاً: ٣٢٠/٣٩٠/٧٦٨px، صف مقدَّم ومختار، إلغاء الاختيار، تعذّر الاتصال، ردّ بطاقة أخرى، لوحة مفاتيح، تقليل الحركة. |
+| `tests/schema.mjs` | الخطوة ٤٠ — ١٣ فحصاً نصياً على البنية والحركة والخصوصية. |
+| `sw.js` | `hrc-cache-v158`. |
+| `package.json` | `test:chosen-details-browser`. |
+
+## الفحوص
+
+```bash
+npm run test:chosen-details-browser   # 67 / 0  (Chromium 320 · 390 · 768 + حالات الفشل)
+npm run test:chances-summary-browser  # 82 / 0
+npm run test:apply-fast-card          # PASS
+npm run test:apply-mobile-browser     # 66 / 0
+npm run test:apply-card-details-browser  # PASS (كل الحالات)
+npm run test:schema                   # 315 / 6 (الستة موجودة في الأساس)
+npm test                              # 140 / 0
+```
+
+## لقطات
+
+- `docs/preview/shots/chosen-applied-390.png` — صف «تم التقديم»: وظيفة + صاحب عمل.
+- `docs/preview/shots/chosen-picked-390.png` — صف «مختارة للمراجعة»: لا اختلاق بيانات.
+- `docs/preview/shots/chosen-panel-390.png` — اللوحة وفيها شارة «التفاصيل وصاحب العمل».
