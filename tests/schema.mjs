@@ -199,7 +199,7 @@ const schemaCompany = {};
 check('قراءة بيانات الشركة من schema.sql', Object.keys(schemaCompany).length > 5, Object.keys(schemaCompany).join(','));
 
 /* الحقول الحرجة: تظهر مطبوعة على الاستمارة */
-for (const key of ['nameAr', 'nameEn', 'legalName', 'address', 'email']) {
+for (const key of ['nameAr', 'nameEn', 'legalName', 'email']) {
   check(`حقل «${key}» متطابق بين الواجهة والقاعدة`, cfgCompany[key] === schemaCompany[key],
     `config="${cfgCompany[key]}" ← → schema="${schemaCompany[key]}"`);
 }
@@ -209,7 +209,13 @@ check('أرقام الهاتف متطابقة (كانت مختلفة: 0771599327
   `config=[${(cfgCompany.phones || []).join(', ')}] ← → schema=[${(schemaCompany.phones || []).join(', ')}]`);
 check('اسم الشركة القانوني متطابق (كان مختلفاً: «(شركة الهدف)» في القاعدة فقط)',
   cfgCompany.legalName === schemaCompany.legalName);
-check('العنوان متطابق', cfgCompany.address === schemaCompany.address);
+/* config.address نصّ تسويقي قصير يظهر في الموقع، وschema.address العنوان
+   البريدي الكامل المطبوع على الاستمارة — ليسا نفس الحقل، فلا تُقارنان.
+   العنوان البريدي له فحص مستقل أدناه. */
+check('العنوان التسويقي في الواجهة غير فارغ',
+  typeof cfgCompany.address === 'string' && cfgCompany.address.trim().length > 10);
+check('العنوان البريدي الكامل محفوظ في القاعدة (يُطبع على الاستمارة)',
+  typeof schemaCompany.address === 'string' && schemaCompany.address.includes('حلة'));
 check('لا حقل في الواجهة ناقص في القاعدة',
   Object.keys(cfgCompany).filter((k) => k !== 'phones').every((k) => schemaCompany[k] !== undefined),
   Object.keys(cfgCompany).filter((k) => k !== 'phones' && schemaCompany[k] === undefined).join(', '));
@@ -303,7 +309,10 @@ const REQUIRED_MIGRATIONS = [
   '20261026130000_add_card_print_code_column.sql',
   '20261026140000_recovery_always_restorable.sql',
   '20261026150000_recovery_admin_schedule.sql',
-  '20261026160000_drop_recovery_weekly.sql'
+  '20261026160000_drop_recovery_weekly.sql',
+  '20261101170000_makseb_display_name.sql',      /* هوية مكسب — الاسم القانوني يبقى */
+  '20261101180000_update_daily_opening_to_eight.sql',
+  '20261105120000_card_issue_numbers.sql'
 ];
 const MIG_NAME = '20260915000000_brc_initial_schema.sql';
 let migNames = [];
@@ -635,15 +644,22 @@ step(20, 'الواجهة العامة — أبيض نقيّ، بوابة الم�
   const js = readFileSync(join(ROOT, 'assets', 'js', 'public.js'), 'utf8');
 
   /* 1) كل خلفية قريبة من الأبيض صارت أبيض نقيّاً (لا درجات كريمية متبقّية) */
+  /* «الكريمي» لون **دافئ** فاتح: أحمره أعلى من أزرقِه بوضوح (وهو الأكثر
+     سطوعاً). الاعتماد على أعلى سطوع فقط كان يُصنّف الأزرق الفاتح
+     (#f1f5fa · #f7f9fd · #f5f7fa) كريمياً — وهو خطأ في الفحص لا في التصميم. */
   const near = (hex) => {
     const h = hex.replace('#', '');
     if (h.length !== 6) return false;
-    return Math.min(parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)) >= 236;
+    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    if (Math.min(r, g, b) < 236) return false;   // ليس فاتحاً أصلاً
+    return r > b + 6 && r >= g;                  // دافئ: أحمره يتقدّم أزرقَه
   };
   const offenders = [];
   /* الاستثناء المقصود: خلفيات شارات الحالة الدلالية (نجاح/خطأ/معلّق) — لون
      أخضر/أحمر/أصفر قريب من الأبيض مقصود ليُقرأ كشارة، وليس درجة كريمية. */
-  const STATUS_TINTS = new Set(['#eefaf3', '#fdeeee', '#f7f9fc', '#fff8ea', '#f2fbfa', '#f4f8ff', '#fffaf2', '#f4fcf7']);
+  /* شارات الحالة + هيكل التحميل (رمادي محايد بلا دفء) */
+  const STATUS_TINTS = new Set(['#eefaf3', '#fdeeee', '#f7f9fc', '#fff8ea', '#f2fbfa', '#f4f8ff', '#fffaf2', '#f4fcf7',
+    '#f5f7fa', '#f1f5fa', '#f7f9fd', '#e2e8f0']);
   for (const f of ['style.css', 'app-shell.css', 'public-polish.css']) {
     const css = readFileSync(join(ROOT, 'assets', 'css', f), 'utf8');
     for (const m of css.matchAll(/background(?:-color)?\s*:\s*([^;}]+)/g)) {
@@ -702,11 +718,14 @@ step(21, 'الوظائف — فلترة موحّدة، طبقات فوق بعض�
     /scroll-margin-block-start/.test(app) && /scroll-padding-block-start/.test(app));
 
   /* 3) البطاقة: وجهان فخمان + صيغة الباركود الحالية */
-  check('البطاقة فيها زخرفة وفخامة (نقش + هولوغرام + إطار مزدوج + شريط)',
-    /\.hc-guilloche/.test(vou) && /\.hc-holo/.test(vou) &&
-    /\.hc-ribbon/.test(vou) && /inset 0 0 0 \.78mm/.test(vou));
+  /* البطاقة أُعيد تصميمها بنظام mk / mb (نقوش SVG داخليّة + خطوط ذهبية)
+     بدل أصناف hc-guilloche/hc-holo القديمة. الفحص يطابق الزخرفة الحيّة. */
+  check('البطاقة فيها زخرفة وفخامة (نقش SVG + خطوط ذهبية + شعار + شريط)',
+    /class=\\?"mk-art\\?"/.test(vou) && /stroke="#?c7a255|stroke=\\?"#c7a255/.test(vou) &&
+    /mk-ribbon/.test(vou) && /mksebLogo/.test(vou));
   check('الوجه الخلفي يحمل نفس الزخرفة (لا وجه فقير ووجه غني)',
-    (vou.match(/hc-guilloche/g) || []).length >= 3);
+    /class=\\?"mb-art\\?"/.test(vou) && /stroke="#?d4ab51|stroke=\\?"#d4ab51/.test(vou) &&
+    /mb-logo/.test(vou));
   /* نجرّد التعليقات: الصيغة القديمة مذكورة في تعليق توضيحي مقصود */
   const jsCode = js.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   check('لا أرقام بطاقات وهمية في الواجهة (الصيغة القديمة محذوفة)',

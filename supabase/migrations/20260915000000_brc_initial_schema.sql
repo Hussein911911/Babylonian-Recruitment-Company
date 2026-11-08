@@ -304,8 +304,8 @@ insert into brc.settings (key, value) values
       'form_fee', 10000,
       'auto_release', false)),   -- لا إفراج تلقائي: الحالة الحرجة تُحسم بقرار يدوي
   ('company', jsonb_build_object(
-      'nameAr',      'شركة الهدف للتوظيف',
-      'nameEn',      'Al-Hadaf Recruitment Company',
+      'nameAr',      'منصة مكسب للتوظيف',
+      'nameEn',      'Makseb Employment Platform',
       'legalName',   'شركة الهدف للتوظيف',
       'slogan',      'نوفّر الأيادي العاملة الفنية والتخصصية في بابل والفرات الأوسط',
       'phones',      jsonb_build_array('07760058007', '07715993271'),
