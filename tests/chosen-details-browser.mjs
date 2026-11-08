@@ -145,6 +145,29 @@ try {
     check(at + ': أزرار «طباعة استمارة الفرصة» و«إغلاق»',
       (await page.locator('#chosen-modal-foot').innerText()).includes('طباعة استمارة الفرصة') &&
       (await page.locator('#chosen-modal-foot').innerText()).includes('إغلاق'));
+    /* حرس ضد عطل 2026-11-08: قسم بصندوق تمرير داخل شبكة كان ينكمش إلى
+       حشوته فيُقتطع محتواه (29px لمحتوى 304px) — نقيس كل قسم مقابل محتواه. */
+    const sections = await page.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('#chosen-modal-body > *, #cdt-steps, .cdt-head').forEach(el => {
+        const cs = getComputedStyle(el);
+        const hides = /hidden|clip/.test(cs.overflowY) || /hidden|clip/.test(cs.overflow);
+        out.push({
+          tag: (el.className || el.tagName).toString().split(' ')[0],
+          clientH: Math.round(el.clientHeight), scrollH: Math.round(el.scrollHeight),
+          hides, h: Math.round(el.getBoundingClientRect().height)
+        });
+      });
+      return out;
+    });
+    const crushed = sections.filter(s => s.hides && s.scrollH - s.clientH > 2);
+    check(at + ': لا قسم مقتصّ داخل النافذة (لا محتوى مخفيّ بقصّ)',
+      crushed.length === 0, JSON.stringify(crushed));
+    check(at + ': كارت صاحب العمل يحمل محتواه كاملاً (ارتفاع ≥ ٢٥٠px)',
+      (sections.find(s => s.tag === 'cdt-emp') || {}).h >= 250,
+      JSON.stringify(sections.find(s => s.tag === 'cdt-emp')));
+    check(at + ': رأس النافذة لا ينضغط (≥ ٦٠px مع الشعار والعنوان)',
+      (await page.evaluate(() => Math.round(document.querySelector('.cdt-head').getBoundingClientRect().height))) >= 60);
     check(at + ': بلا تمرير أفقي داخل النافذة',
       await page.evaluate(() => {
         const box = document.querySelector('.chosen-modal-box');
@@ -189,6 +212,11 @@ try {
       body.includes('محاسب') && body.includes('بغداد') && /900,000/.test(body), body.slice(0, 120));
     check('مختارة: شريط المراحل يبيّن «بانتظار التقديم»',
       /بانتظار التقديم/.test(await page.locator('#cdt-steps').innerText()));
+    check('مختارة: بطاقة «تظهر بعد التقديم» غير مقتصّة',
+      await page.evaluate(() => {
+        const el = document.getElementById('cdt-emp-box');
+        return el.getBoundingClientRect().height >= 150 && el.scrollHeight - el.clientHeight <= 2;
+      }));
 
     /* «متابعة للطلب» يغلق النافذة ويذهب لخطوة البيانات */
     await page.locator('#chosen-modal-foot .btn-primary').click();

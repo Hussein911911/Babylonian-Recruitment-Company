@@ -1397,7 +1397,22 @@ step(40, 'اللوحة: كل صف يفتح تفاصيل الوظيفة وصاح�
 
   check('كل صف في اللوحة قابل للفتح (role=button + data-chosen-kind)',
     /data-chosen-kind="applied"/.test(ap) && /data-chosen-kind="picked"/.test(ap) &&
-    /role="button" tabindex="0"/.test(ap) && /class="chosen-item is-tappable"/.test(ap));
+    /role="button" tabindex="0"/.test(ap) && /chosen-item is-tappable is-applied/.test(ap) &&
+    /chosen-item is-tappable is-picked-row/.test(ap));
+  check('تمييز الصفوف: شريط أخضر لـ«تم التقديم» وذهبي لـ«مختارة»',
+    /\.chosen-item\.is-applied\{[^}]*border-inline-start:3px solid #4bc08d/.test(ap) &&
+    /\.chosen-item\.is-picked-row\{[^}]*border-inline-start:3px solid #e8c56d/.test(ap));
+  /* عطل 2026-11-08: كارت صاحب العمل كان 29px لمحتوى 304px لأن overflow:hidden
+     داخل شبكة يجعل العنصر «حاوية تمرير» بارتفاع صفر في Chromium. */
+  check('أقسام النافذة بلا overflow:hidden (حرس ضد انكماش الكارت)',
+    !/\.cdt-emp\{[^}]*overflow:hidden/.test(ap) && !/\.cdt-hero\{[^}]*overflow:hidden/.test(ap));
+  check('أبناء عمود النافذة: رأس ومراحل وقدم flex:none والجسم وحده يتمرّر',
+    /\.cdt-head\{[\s\S]{0,160}flex:none/.test(ap) && /\.cdt-steps\{[\s\S]{0,80}flex:none/.test(ap) &&
+    /\.cdt-foot\{[\s\S]{0,120}flex:none/.test(ap) && /\.cdt-body\{[\s\S]{0,60}flex:1 1 auto;min-height:0/.test(ap));
+  check('نافذة الوظيفة القديمة أُصلحت من نفس العلّة (رأس/قدم ثابتان)',
+    /\.job-modal-head\{[\s\S]{0,140}flex:none/.test(ap) &&
+    /\.job-modal-foot\{[\s\S]{0,120}flex:none/.test(ap) &&
+    /\.job-modal-body\{[\s\S]{0,60}flex:1 1 auto;min-height:0/.test(ap));
   check('زر داخل الصف (إلغاء الاختيار) لا يفتح النافذة',
     /closest\('button,a'\)\)return/.test(ap));
   check('لوحة المفاتيح: Enter/المسافة على الصف يفتحان النافذة',
