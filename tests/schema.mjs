@@ -699,6 +699,8 @@ step(21, 'الوظائف — فلترة موحّدة، طبقات فوق بعض�
   const app = readFileSync(join(ROOT, 'assets', 'css', 'app-shell.css'), 'utf8');
   const ui = readFileSync(join(ROOT, 'assets', 'js', 'ui.js'), 'utf8');
   const vou = readFileSync(join(ROOT, 'assets', 'js', 'voucher.js'), 'utf8');
+  const dash = readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8');
+  const mig = readFileSync(join(ROOT, 'supabase', 'migrations', '20261105120000_card_issue_numbers.sql'), 'utf8');
 
   /* 1) الفلترة والتصنيفات في صندوق واحد + شرائح تصفية نشطة */
   check('صندوق الفلترة مدمج (صفّ واحد) بلا تكرار للتصنيفات داخله',
@@ -735,6 +737,13 @@ step(21, 'الوظائف — فلترة موحّدة، طبقات فوق بعض�
     /column-gap:20mm;row-gap:20mm;/.test(vou) &&
     /align-content:center;justify-content:/.test(vou) &&
     /grid-template-columns:repeat\(2,59\.4mm\)/.test(vou));
+  /* 2026-11-10 (طلب الإدارة): أعداد الدفعة صارت مضاعفات 4 من 4 إلى 60 —
+     الورقة 4 بطاقات، فكل دفعة تملأ أوراقاً كاملة بلا بطاقة يتيمة. */
+  check('أعداد الدفعة مضاعفات ٤ من ٤ إلى ٦٠ (واجهة وقاعدة معاً)',
+    /BATCH_STEP = 4, BATCH_MAX = 60/.test(dash) &&
+    /min="4" max="60" step="4"/.test(dash) &&
+    /p_count<4 or p_count>60 or p_count%4<>0/.test(mig),
+    'أحد الطرفين لا يقيّد بمضاعفات ٤ من ٤ إلى ٦٠');
   check('الدفعة تعرض «4 بطاقات» للموظف لا «9»',
     /4 بطاقات بالصفحة/.test(readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8')) &&
     !/9 بطاقات بالصفحة/.test(readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8')));
