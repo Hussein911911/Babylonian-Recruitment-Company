@@ -8,7 +8,7 @@ function injectFixture(store,json){const db=store.db();for(const k of Object.key
  *  تُشغّل الصفحات فعلياً في DOM حقيقي وتتحقق من:
  *   • عدم وجود أخطاء JavaScript
  *   • عرض الوظائف والفلاتر والبحث السريع في الموقع العام
- *   • إصدار بطاقة توظيف (بيع كاش عند نقطة بيع)، طباعة قالب 86×54مم، الباركود
+ *   • إصدار بطاقة توظيف (بيع كاش عند نقطة بيع)، طباعة قالب 111.8×70.2مم، الباركود
  *   • منطق فرصتي البطاقة، الحجز 24 ساعة، الحالة الحرجة وقراراتها الثلاثة
  *   • صفحة التحقق (QR) والمنظومة الداخلية (دخول، جدولة، سجل تدقيق، مالية)
  *   • عمل النسخة المستقلة بالكامل عبر الرابط الهاشي
@@ -628,7 +628,7 @@ check('رفض طلب قيد المراجعة يعلّم الطلب كمرفوض'
 });
 
 /* ======================= 2) قالب الاستمارة المطبوعة ======================= */
-console.log('\n=== 2) قالب بطاقة التوظيف (86×54مم) + الباركود ===');
+console.log('\n=== 2) قالب بطاقة التوظيف (111.8×70.2مم) + الباركود ===');
 check('قالب البطاقة يحوي الوجهين وكل بياناتها المطلوبة', () => {
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');
   const html = site.window.HRCVoucher.buildHtml(app);
@@ -661,7 +661,9 @@ check('تصميم البطاقة يعرض رمز تحقق واحداً مستق�
     if (!svg || svg.getAttribute('viewBox') !== '0 0 ' + (modules + 8) + ' ' + (modules + 8)) return 'الهامش الأبيض للباركود غير كافٍ';
   }
   const style = site.doc.getElementById('hrc-card-style').textContent;
-  return (/box-sizing:border-box;width:54mm;height:86mm/.test(style) && /size:A4 portrait/.test(style) && /zoom:1\.1/.test(style)) || 'مقاس البطاقة أو تكبيرها للطباعة على A4 غير مضبوط';
+  /* 2026-11-10: البطاقة كُبّرت 30% ⇒ 70.2×111.8مم مباشرةً، فلا حاجة لـ zoom إضافي
+     (كان 1.1 على 54×86 ليعطي 59.4×94.6). */
+  return (/box-sizing:border-box;width:70\.2mm;height:111\.8mm/.test(style) && /size:A4 portrait/.test(style) && /zoom:1(?![.\d])/.test(style)) || 'مقاس البطاقة أو تكبيرها للطباعة على A4 غير مضبوط';
 });
 check('البطاقة الأصلية تُطبع بلا أي رمز فرصة مع حفظ الشروط', () => {
   const app = site.window.HRCStore.getApplicant('HRC-BC-000120');

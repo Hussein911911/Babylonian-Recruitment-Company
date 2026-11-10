@@ -1072,7 +1072,9 @@ table.data .cell-actions { display: flex; gap: 5px; flex-wrap: wrap; }
      ⚠️ حجب الصفحة «عرضاً» لا «إخفاءً»: القاعدة القديمة كانت
      visibility:hidden وتترك المحتوى يحجز مساحته، فتطبع صفحات فاضية قبل
      البطاقة وبعدها (كانت تخرّب ورقة الطباعة). display:none يزيلها كلياً. */
-  @page { size: 86mm 54mm; margin: 0; }
+  /* 2026-11-10: البطاقة كُبّرت إلى 70.2×111.8مم مع إطار ذهبي — صفحة الطباعة
+     المفردة تتبعها وإلا قُصّت البطاقة عند طباعة بطاقة واحدة. */
+  @page { size: 111.8mm 70.2mm; margin: 0; }
   html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
   body > *:not(#print-root) { display: none !important; }
   #print-root { display: block !important; position: static !important; width: auto !important; }
