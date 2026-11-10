@@ -994,7 +994,7 @@ check('جدول البطاقات يعرض الفرص المتبقية', () => {
 });
 check('إزالة زر بيع وتعبئة البطاقة وإجراء التعبئة من القائمة', () =>
   !dash.doc.getElementById('btn-new-app') && !dash.doc.querySelector('[data-app-fill]'));
-check('إصدار الدفعة يقبل ١–٩٠ ولا يُنشئ بطاقات محلياً قبل تأكيد الخادم', () => {
+check('إصدار الدفعة يقبل مضاعفات ٤ (٤–٦٠) ولا يُنشئ بطاقات محلياً قبل تأكيد الخادم', () => {
   closeAllModals(dash.doc);
   dash.window.HRCStore.login('admin', 'admin123');   /* إصدار الدفعات للمدير فقط */
   const btn = dash.doc.getElementById('btn-new-batch');
@@ -1007,10 +1007,11 @@ check('إصدار الدفعة يقبل ١–٩٠ ولا يُنشئ بطاقات
   const box = lastModal(dash.doc);
   if (!box) return 'لم تُفتح نافذة الدفعة';
   const cnt = box.querySelector('#b-count');
-  if (cnt.value !== '9' || cnt.min !== '1' || cnt.max !== '90' || cnt.step !== '1') return 'قيود عدد الدفعة غير صحيحة';
-  for (const n of [0, 1.5, 91]) { cnt.value = String(n); if (cnt.checkValidity()) return 'قُبل عدد غير صالح: ' + n; }
-  for (let n = 1; n <= 90; n++) { cnt.value = String(n); if (!cnt.checkValidity()) return 'رُفض عدد صالح: ' + n; }
-  cnt.value = '9';
+  if (cnt.value !== '4' || cnt.min !== '4' || cnt.max !== '60' || cnt.step !== '4') return 'قيود عدد الدفعة غير صحيحة';
+  /* قرار 2026-11-10: مضاعفات 4 من 4 إلى 60 (الورقة 4 بطاقات) */
+  for (const n of [0, 1.5, 3, 5, 61, 62, 90]) { cnt.value = String(n); if (cnt.checkValidity()) return 'قُبل عدد غير صالح: ' + n; }
+  for (let n = 4; n <= 60; n += 4) { cnt.value = String(n); if (!cnt.checkValidity()) return 'رُفض عدد صالح: ' + n; }
+  cnt.value = '4';
   box.querySelector('#b-notes').value = 'دفعة اختبار';
   box.querySelector('#b-save').dispatchEvent(new dash.window.MouseEvent('click', { bubbles: true }));
   if (dash.window.HRCStore.listBlankCards().length !== before) return 'أُصدرت بطاقة قبل تأكيد الخادم';

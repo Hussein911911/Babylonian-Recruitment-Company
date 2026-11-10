@@ -42,7 +42,9 @@ language plpgsql security definer set search_path=brc,public as $$
 declare actor uuid:=auth.uid(); old_request brc.card_issue_requests%rowtype; args jsonb; codes text[]:='{}'; code text; n integer; j integer; bytes bytea; alphabet constant text:='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; results jsonb;
 begin
  if actor is null or not brc.is_admin() then raise exception 'الإصدار للمدير الفعال فقط' using errcode='42501'; end if;
- if p_request is null or p_count is null or p_count<1 or p_count>90 or length(coalesce(p_notes,''))>1000 then raise exception 'بيانات الإصدار غير صالحة'; end if;
+ -- قرار 2026-11-10: الورقة صارت 4 بطاقات، فالدفعة مضاعفات 4 من 4 إلى 60
+ -- (أوراق كاملة بلا بطاقات يتيمة في آخر ورقة).
+ if p_request is null or p_count is null or p_count<4 or p_count>60 or p_count%4<>0 or length(coalesce(p_notes,''))>1000 then raise exception 'بيانات الإصدار غير صالحة'; end if;
  p_serial:=nullif(upper(btrim(coalesce(p_serial,''))),'');
  if p_serial is not null and (p_count<>1 or p_serial !~ '^([2-9A-HJKMNP-Z]{10}|HRC-BC-[0-9]{6})$') then raise exception 'كود البطاقة غير صالح'; end if;
  args:=jsonb_build_object('count',p_count,'serial',p_serial,'notes',coalesce(p_notes,''));
