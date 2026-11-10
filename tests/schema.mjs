@@ -733,10 +733,16 @@ step(21, 'الوظائف — فلترة موحّدة، طبقات فوق بعض�
   check('ورقة الدفعة: 4 بطاقات (2×2) لا 9 — مساحة قصّ كافية للمقص',
     /var SHEET_COLS = 2, SHEET_ROWS = 2, SHEET_PER = SHEET_COLS \* SHEET_ROWS;/.test(vou) &&
     /SHEET_GUTTER = 20/.test(vou), 'SHEET_PER ≠ 4 أو الفراغ ≠ 20مم');
+  /* 2026-11-10 (طلب الإدارة): البطاقة كُبّرت 30% ⇒ 70.2×111.8مم، مع إطار
+     ذهبي مزدوج. الورقة تحمل 4 فيها، موسّطة، وبفراغ 20مم للقصّ. */
   check('ورقة الدفعة موسّطة في الصفحة بفراغ 20مم بين البطاقات',
     /column-gap:20mm;row-gap:20mm;/.test(vou) &&
-    /align-content:center;justify-content:/.test(vou) &&
-    /grid-template-columns:repeat\(2,59\.4mm\)/.test(vou));
+    /align-content:center;justify-content:safe center/.test(vou) &&
+    /grid-template-columns:repeat\(2,70\.2mm\);grid-auto-rows:111\.8mm/.test(vou));
+  check('البطاقة 70.2×111.8مم (تكبير 30%) بإطار ذهبي مزدوج 2.6مم من الحافة',
+    /width:70\.2mm;height:111\.8mm/.test(vou) &&
+    /\.hrc-card \.frame\{position:absolute;inset:2\.6mm/.test(vou) &&
+    /class="frame"/.test(vou));
   /* 2026-11-10 (طلب الإدارة): أعداد الدفعة صارت مضاعفات 4 من 4 إلى 60 —
      الورقة 4 بطاقات، فكل دفعة تملأ أوراقاً كاملة بلا بطاقة يتيمة. */
   check('أعداد الدفعة مضاعفات ٤ من ٤ إلى ٦٠ (واجهة وقاعدة معاً)',
