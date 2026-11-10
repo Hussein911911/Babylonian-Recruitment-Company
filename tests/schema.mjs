@@ -726,6 +726,18 @@ step(21, 'الوظائف — فلترة موحّدة، طبقات فوق بعض�
   check('الوجه الخلفي يحمل نفس الزخرفة (لا وجه فقير ووجه غني)',
     /class=\\?"mb-art\\?"/.test(vou) && /stroke="#?d4ab51|stroke=\\?"#d4ab51/.test(vou) &&
     /mb-logo/.test(vou));
+  /* 2026-11-07 (طلب الإدارة): 4 بطاقات بالصفحة، موسّطة، وبينها 20مم مساحة
+     قصّ — لا 9 بطاقات بفراغ 3مم يمرّ عليها المقص. */
+  check('ورقة الدفعة: 4 بطاقات (2×2) لا 9 — مساحة قصّ كافية للمقص',
+    /var SHEET_COLS = 2, SHEET_ROWS = 2, SHEET_PER = SHEET_COLS \* SHEET_ROWS;/.test(vou) &&
+    /SHEET_GUTTER = 20/.test(vou), 'SHEET_PER ≠ 4 أو الفراغ ≠ 20مم');
+  check('ورقة الدفعة موسّطة في الصفحة بفراغ 20مم بين البطاقات',
+    /column-gap:20mm;row-gap:20mm;/.test(vou) &&
+    /align-content:center;justify-content:/.test(vou) &&
+    /grid-template-columns:repeat\(2,59\.4mm\)/.test(vou));
+  check('الدفعة تعرض «4 بطاقات» للموظف لا «9»',
+    /4 بطاقات بالصفحة/.test(readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8')) &&
+    !/9 بطاقات بالصفحة/.test(readFileSync(join(ROOT, 'assets', 'js', 'dashboard.js'), 'utf8')));
   /* نجرّد التعليقات: الصيغة القديمة مذكورة في تعليق توضيحي مقصود */
   const jsCode = js.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   check('لا أرقام بطاقات وهمية في الواجهة (الصيغة القديمة محذوفة)',

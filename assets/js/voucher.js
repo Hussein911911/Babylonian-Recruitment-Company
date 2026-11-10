@@ -439,20 +439,35 @@
   }
 
   /* ======================= طباعة الدفعات على ورق A4 ======================= */
-  /* 9 بطاقات بالصفحة (3 أعمدة × 3 صفوف) بمقاسها الفعلي 59.4×94.6مم، والباقي على
-     الصفحات التالية. كل 9 بطاقات = صفحة أمامية ثم صفحة خلفية، والخلفية
-     مُبدَّلة أفقياً (العمود 1↔3) لتتطابق مع الأمامية عند الطباعة على الوجهين
-     بخيار «قلب على الحافة الطويلة» — وإن طُبعت وجهاً واحداً فكل صفحة مستقلة. */
-  var SHEET_COLS = 3, SHEET_ROWS = 3, SHEET_PER = SHEET_COLS * SHEET_ROWS;
+  /* 4 بطاقات بالصفحة (عمودان × صفّان) بمقاس 59.4×94.6مم (54×86 مكبّرة 110%)،
+     والباقي على الصفحات التالية.
+
+     قرار 2026-11-07 (طلب الإدارة): كان 9 بطاقات بفراغ 3مم فقط، فلا يجد المقص
+     مجالاً ويمرّ على البطاقة نفسها. الآن فراغ 20مم بين البطاقات — أي 20مم
+     مساحة قطع حرّة — والكتلة موسّطة أفقياً وعمودياً في وسط الورقة.
+     قياس الورقة A4 (210×297مم): الكتلة 138.8×209.2مم، فتقع بهوامش
+     35.6مم يميناً ويساراً و43.9مم أعلى وأسفل.
+
+     الخانة الفارغة تحجز مكانها (visibility لا display) وإلا انزاحت الباقية
+     وتغيّر ترتيب الصفوف فانفصلت الخلفية عن الأمامية عند القلب.
+
+     كل صفحة = وجه أمامي ثم وجه خلفي، والخلفية مُبدَّلة أفقياً (العمود 1↔2)
+     لتتطابق مع الأمامية عند الطباعة على الوجهين بخيار «قلب على الحافة
+     الطويلة» — وإن طُبعت وجهاً واحداً فكل صفحة مستقلة. */
+  var SHEET_COLS = 2, SHEET_ROWS = 2, SHEET_PER = SHEET_COLS * SHEET_ROWS;
+  var SHEET_GUTTER = 20;   /* مم — مساحة القصّ بين البطاقات (أفقياً وعمودياً) */
   var SHEET_CSS = '@media print{'
     + '@page{size:A4;margin:0;}'
     + '#print-root{display:block !important;}'
-    + '#print-root .hrc-sheet-page{width:210mm;height:297mm;box-sizing:border-box;padding:3.6mm 12.9mm;'
-    +   'display:grid;grid-template-columns:repeat(3,59.4mm);grid-auto-rows:94.6mm;column-gap:3mm;row-gap:3mm;'
-    +   'align-content:start;justify-content:start;overflow:hidden;background:#fff;'
+    + '#print-root .hrc-sheet-page{width:210mm;height:297mm;box-sizing:border-box;padding:0;'
+    +   'display:grid;grid-template-columns:repeat(2,59.4mm);grid-auto-rows:94.6mm;'
+    +   'column-gap:20mm;row-gap:20mm;'
+    +   'align-content:center;justify-content:safe center;overflow:hidden;background:#fff;'
     +   'page-break-after:always;break-after:page;}'
     + '#print-root .hrc-sheet-page:last-child{page-break-after:auto;break-after:auto;}'
-    + '#print-root .hrc-cell{width:59.4mm;height:94.6mm;overflow:hidden;}'
+    + '#print-root .hrc-sheet-page[data-cols=\"1\"]{grid-template-columns:59.4mm;}'
+    + '#print-root .hrc-cell{width:59.4mm;height:94.6mm;overflow:hidden;display:block;}'
+    + '#print-root .hrc-cell.is-empty{visibility:hidden;}'
     + '#print-root .hrc-cell .hrc-card{margin:0 !important;box-shadow:none !important;'
     +   'zoom:1.1 !important;page-break-after:auto !important;break-after:auto !important;}'
     + '}';
@@ -470,12 +485,37 @@
     sheetStyleEl.textContent = on ? SHEET_CSS : '';
   }
 
-  function sheetPage(slots) {
-    var cells = [];
-    for (var i = 0; i < SHEET_PER; i++) {
-      cells.push('<div class=\"hrc-cell\">' + (slots[i] || '') + '</div>');
+  /* تُرسم الصفوف كاملة فقط: صفحة فيها بطاقتان تُنتج صفّاً واحداً (لا صفّين
+     أحدهما فارغ) فتبقى موسّطة عمودياً — والصفوف تبقى مصطفّة مع الوجه الخلفي
+     لأن الطرفين يستخدمان نفس عدد الصفوف. */
+  /* ترسم الخانات كاملة وتحافظ على مواضعها — وهذا شرط سلامة الوجه الخلفي:
+     الخلفية معكوسة أفقياً (خانة 1 ↔ خانة 0)، فلو حُذفت خانة فارغة أو غُيّر
+     عدد الأعمدة لانزاحت الخلفية عن مكانها ولم تعد تطابق الأمامية عند القلب.
+
+     التوسيط يقع على الصفحة كاملة (`align/justify-content: center`) لا على
+     الخانات، فالصفحة ذات البطاقتين تبقى موسّطة بصفٍّ واحد في وسط الورقة. */
+  function sheetPage(slots, count) {
+    var n = (typeof count === 'number') ? count : SHEET_PER;
+    var cols = (n === 1) ? 1 : SHEET_COLS;
+    /* الصفوف المرسومة = صفوف البطاقات الفعلية فقط، حتى تُوسَّط الكتلة
+       عمودياً. الخانات الفارغة تبقى محجوزة كعناصر (display:none) فلا تدخل
+       في الحساب ولا تُزيح شيئاً — ومواضع الخلفية تبقى مطابقة للأمامية. */
+    /* بطاقةٌ واحدة: عمودٌ واحد وبطاقةٌ واحدة في المنتصف تماماً. لا معنى
+       للعكس الأفقي هنا (لا بطاقة ثانية تُزاح)، والخانة الثانية لو رُسمت
+       لأضافت صفّاً كاملاً فأنزلت البطاقة عن المنتصف. */
+    if (n === 1) {
+      var only = '';
+      for (var j = 0; j < slots.length; j++) { if (slots[j]) { only = slots[j]; break; } }
+      return '<div class=\"hrc-sheet-page\" data-cols=\"1\"><div class=\"hrc-cell\">' + only + '</div></div>';
     }
-    return '<div class=\"hrc-sheet-page\">' + cells.join('') + '</div>';
+    var rows = Math.max(1, Math.ceil(n / SHEET_COLS));
+    var need = rows * SHEET_COLS;
+    var cells = [];
+    for (var i = 0; i < need; i++) {
+      var has = !!slots[i];
+      cells.push('<div class=\"hrc-cell' + (has ? '' : ' is-empty') + '\">' + (slots[i] || '') + '</div>');
+    }
+    return '<div class=\"hrc-sheet-page\" data-cols=\"' + cols + '\">' + cells.join('') + '</div>';
   }
 
   function sheetHtml(apps) {
@@ -489,7 +529,7 @@
         front[i] = frontHtml(app, att);
         back[Math.floor(i / SHEET_COLS) * SHEET_COLS + (SHEET_COLS - 1 - i % SHEET_COLS)] = backHtml(app, att);   /* عكس الأعمدة للوجه الخلفي */
       });
-      out += sheetPage(front) + sheetPage(back);
+      out += sheetPage(front, chunk.length) + sheetPage(back, chunk.length);
     }
     return out;
   }

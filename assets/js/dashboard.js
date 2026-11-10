@@ -2875,7 +2875,7 @@
         'وتُعبّأ بيانات الزبون عند البيع — وصلاحية 30 يوماً تبدأ عند أول تقديم ناجح على وظيفة.</p></div></div>';
 
     UI.modal({
-      title: 'إصدار دفعة بطاقات فارغة', subtitle: 'أكواد عشوائية فريدة — تُطبع على ورق A4 (9 بطاقات بالصفحة) وتوزَّع على نقاط البيع', wide: true, body: body,
+      title: 'إصدار دفعة بطاقات فارغة', subtitle: 'أكواد عشوائية فريدة — تُطبع على ورق A4 (4 بطاقات بالصفحة) وتوزَّع على نقاط البيع', wide: true, body: body,
       footer: '<button class="btn btn-outline" data-close>إلغاء</button>' +
         '<button class="btn btn-gold" id="b-save">' + UI.ic('card') + ' إصدار الدفعة</button>',
       onMount: function (box, close) {
@@ -2884,9 +2884,9 @@
         if (Store.pendingCardIssue()) UI.toast('err','طلب سابق قيد التأكيد','الضغط على إصدار يسترجع الطلب السابق أولاً دون إصدار دفعة جديدة.');
         function refresh() {
           var n = Number(cnt.value) || 0;
-          var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 9);
+          var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 4);
           est.textContent = Number.isInteger(n) && n >= 1 && n <= 90
-            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — حتى 9 بطاقات بالورقة الواحدة')
+            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 4 بطاقات بالورقة، بمسافة 20مم للقصّ بين كل بطاقة')
             : 'أدخل عدداً صحيحاً من ١ إلى ٩٠ بطاقة.';
         }
         cnt.addEventListener('input', refresh);
@@ -2924,7 +2924,8 @@
       subtitle: 'أكواد عشوائية فريدة — تُطبع الآن على A4 وتوزَّع على نقاط البيع',
       wide: true,
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
-          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>حتى 9 بطاقات بكل صفحة</b> بمقاسها الفعلي 59.4×94.6مم، ' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>4 بطاقات بكل صفحة</b> بمقاس 59.4×94.6مم، ' +
+          'موسّطة في وسط الورقة وبينها <b>20مم مساحة قطع</b> (10مم حول كل بطاقة) فالقصّ لا يمسّ التصميم. ' +
           'والباقي على الصفحات التالية. للطباعة على الوجهين اختر «قلب على الحافة الطويلة» وخيار «الحجم الفعلي» (100%)، ثم قصّ البطاقات وغلّفها حرارياً بمكتب الاستنساخ.</p></div></div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px;direction:ltr;justify-content:flex-end">' + chips + '</div>',
       footer: '<button class="btn btn-outline" data-close>لاحقاً</button>' +
