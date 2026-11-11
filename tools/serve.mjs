@@ -9,6 +9,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, normalize, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyRequest } from './revalidate-core.mjs';
 
 /* ── معاينة "/demo" بلا قاعدة بيانات (أداة تطوير فقط) ───────────────────────
  * تُحقن 20 وظيفة وهمية في نسخة index.html داخل الذاكرة عند الطلب، ويُعطَّل
@@ -61,6 +62,8 @@ function demoCardPage(html) {
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.argv[2] || process.env.PORT || 4173);
 const HOST = process.env.HOST || '0.0.0.0';
+/* بصمة إبطال كاش البيانات العامة في المعاينة — يرفعها /api/revalidate */
+let PUBLIC_CACHE_EPOCH = 0;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -98,6 +101,47 @@ const server = createServer(async (req, res) => {
     const bare = pathname.replace(/\/+$/, '') || pathname;
     const isDemo = bare === '/demo';
     const isDemoCard = bare === '/demo-card';
+
+    /* ── إعادة التحقق الفوري (On-Demand Revalidation) ───────────────────
+       يحاكي functions/api/revalidate.js بنفس النواة المشتركة، فلا يظهر فرق
+       بين المعاينة والإنتاج. يعمل في المعاينة بلا سرّ (وضع تطوير) فقط إذا
+       لم يُضبط HRC_REVALIDATE_SECRET صراحةً — والإنتاج يرفض بلا سرّ. */
+    if (bare === '/api/revalidate') {
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'content-type, x-hrc-timestamp, x-hrc-signature',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Max-Age': '600'
+        });
+        res.end();
+        return;
+      }
+      if (req.method !== 'POST') {
+        res.writeHead(405, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ ok: false, error: 'POST فقط' }));
+        return;
+      }
+      let raw = '';
+      for await (const chunk of req) raw += chunk;
+      const secret = process.env.HRC_REVALIDATE_SECRET || 'dev-only-revalidate-secret';
+      const verdict = await verifyRequest({ secret: secret, headers: req.headers, payload: raw });
+      if (!verdict.ok) {
+        res.writeHead(verdict.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ ok: false, error: verdict.error }));
+        return;
+      }
+      /* المعاينة لا تملك CDN، فنُبطل كاش البيانات بمفتاح إصدار يقرأه العميل. */
+      PUBLIC_CACHE_EPOCH = Date.now();
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: true, purged: verdict.paths, epoch: PUBLIC_CACHE_EPOCH, at: new Date().toISOString() }));
+      return;
+    }
+    if (bare === '/api/cache-epoch') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ epoch: PUBLIC_CACHE_EPOCH }));
+      return;
+    }
 
     /* /demo-card: شاشة «وظائف البطاقة» ببطاقة وهمية — أداة مراجعة بصرية فقط */
     if (isDemoCard) {

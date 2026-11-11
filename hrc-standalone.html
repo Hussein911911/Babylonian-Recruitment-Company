@@ -5917,6 +5917,17 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
     CONFIG.seed = root.__HRC_TEST_SEED__;
   }
 
+  /* ── إعادة التحقق الفوري (ISR / On-Demand Revalidation) ──────────────────
+     يُبلّغ حافة Cloudflare عند تعديل الوظائف فيُحذف كاش public_jobs فوراً.
+     معطّل في الملف المستقل والقارئ المحلي: لا شبكة ولا حافة هناك.
+     السرّ لا يُوضع هنا أبداً — في الإنتاج يُقرأ من متغيرات Cloudflare. */
+  CONFIG.revalidate = {
+    enabled: !!(root.location && /^https?:$/.test(root.location.protocol || '')),
+    devSecret: null,   /* يُضبط محلياً فقط: window.HRC_CONFIG.revalidate.devSecret = '…' */
+    ttlSeconds: 30,
+    staleWhileRevalidate: 300
+  };
+
   root.HRC_CONFIG = CONFIG;
   if (typeof module === 'object' && module.exports) module.exports = CONFIG;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -17164,6 +17175,111 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 })(typeof window !== 'undefined' ? window : globalThis);
 
 ;
+/* ===================== revalidate.js ===================== */
+/* ===========================================================================
+ *  HRC — إعادة التحقق الفوري من جهة لوحة التحكم (On-Demand Revalidation)
+ *  ---------------------------------------------------------------------------
+ *  عند أي تعديل على الوظائف (إضافة/تعديل/إغلاق/حذف) تنادي اللوحة
+ *  HRCRevalidate.afterJobChange() فتُبلّغ حافة Cloudflare أن بيانات
+ *  public_jobs تغيّرت، فيُحذف كاشها فوراً بدل انتظار انتهاء عمره.
+ *
+ *  لماذا من العميل؟ لأن الكتابة إلى القاعدة تحدث من المتصفح (المفتاح العام
+ *  + سياسات RLS)، ولا خادم وسيط. اللوحة تملك جلسة الموظف، والحافة تملك
+ *  السرّ — والعميل لا يرى السرّ أبداً.
+ *
+ *  ⚠️ السرّ لا يُوضع هنا. الإنتاج يقرأ متغيّرات Cloudflare.
+ *     بلا سرّ مضبوط يبقى الموقع يعمل، ويسقط على كاش الحافة ذي الـ30 ثانية:
+ *     تأخير محدود ومعلوم، لا بيانات قديمة إلى الأبد.
+ *
+ *  الاختبار: كل المنطق صافي وقابل للاستدعاء بلا شبكة (opts.fetch).
+ * =========================================================================== */
+(function (root) {
+  'use strict';
+
+  var ENDPOINT = '/api/revalidate';
+  var lastSent = 0;
+  var MIN_GAP = 2000;        /* لا نُغرق الحافة عند حفظ متتابع */
+  var inFlight = false;
+  var queued = false;
+
+  function cfg() { return (root.HRC_CONFIG && root.HRC_CONFIG.revalidate) || {}; }
+
+  function enabled() {
+    var c = cfg();
+    /* معطّل افتراضياً في القارئ المحلي/الملف المستقل: لا شبكة ولا حافة. */
+    return c.enabled === true;
+  }
+
+  /* نفّذ الطلب فعلياً. تُفصل عن afterJobChange لتُختبر بلا شبكة. */
+  function send(opts) {
+    opts = opts || {};
+    var doFetch = opts.fetch || (typeof root.fetch === 'function' ? root.fetch.bind(root) : null);
+    var secret = opts.secret;            /* للتطوير/الاختبار المحلي فقط */
+    var body = JSON.stringify({ paths: ['/rest/v1/public_jobs'], reason: opts.reason || 'job-change' });
+    var at = Date.now();
+
+    var headers = { 'content-type': 'application/json' };
+
+    /* توقيع HMAC يعمل في المتصفح عبر WebCrypto. السرّ يأتي من opts (تطوير)
+       أو من دالة مزوّد — لا يُكتب في الكود أبداً. */
+    var sign = secret
+      ? signWith(secret, at, body)
+      : Promise.reject(new Error('NO_SECRET'));
+
+    return sign.then(function (sig) {
+      headers['x-hrc-timestamp'] = String(at);
+      headers['x-hrc-signature'] = sig;
+      if (!doFetch) throw new Error('NO_FETCH');
+      return doFetch(ENDPOINT, { method: 'POST', headers: headers, body: body, credentials: 'same-origin' });
+    }).then(function (res) {
+      return res && res.ok ? { ok: true } : { ok: false, status: res && res.status };
+    }).catch(function (e) {
+      /* الفشل لا يكسر شيئاً في الواجهة: الكاش يسقط وحده بعد 30 ثانية. */
+      return { ok: false, error: (e && e.message) || 'FAILED' };
+    });
+  }
+
+  function signWith(secret, at, body) {
+    var subtle = root.crypto && root.crypto.subtle;
+    if (!subtle) return Promise.reject(new Error('NO_CRYPTO'));
+    var enc = new TextEncoder();
+    return subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+      .then(function (key) { return subtle.sign('HMAC', key, enc.encode(at + '.' + body)); })
+      .then(function (buf) {
+        return [].map.call(new Uint8Array(buf), function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+      });
+  }
+
+  /* نقطة الدخول من اللوحة بعد أي تعديل وظيفة. لا تعيد وعداً يُنتظر. */
+  function afterJobChange(reason) {
+    if (!enabled()) return;
+    var now = Date.now();
+    if (inFlight) { queued = true; return; }
+    if (now - lastSent < MIN_GAP) {
+      /* حفظ متتابع: نُرسل مرة واحدة بعد انتهاء الفاصل */
+      setTimeout(function () { afterJobChange(reason); }, MIN_GAP - (now - lastSent));
+      return;
+    }
+    inFlight = true;
+    lastSent = now;
+    send({ reason: reason, secret: cfg().devSecret }).then(function (r) {
+      inFlight = false;
+      if (queued) { queued = false; afterJobChange(reason); }
+      if (!r.ok && root.console && console.warn) console.warn('[HRC/revalidate] ' + (r.error || r.status));
+    });
+  }
+
+  root.HRCRevalidate = {
+    enabled: enabled,
+    send: send,
+    signWith: signWith,
+    afterJobChange: afterJobChange,
+    endpoint: ENDPOINT,
+    _reset: function () { lastSent = 0; inFlight = false; queued = false; }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+;
 /* ===================== store.js ===================== */
 /* HRC data engine. Cloud: official Auth + RLS; office offline drafts use office/.
  * Cards default to two configurable chances; 24h expiry is critical, never
@@ -17439,6 +17555,13 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   function save() {
     saveLocal();
     schedulePush();
+  }
+
+  /* إبلاغ حافة Cloudflare أن إعلانات الوظائف تغيّرت (On-Demand Revalidation).
+     يُستدعى فقط عند كتابة وظيفة — لا عند كل حفظ، كي لا نُغرق الحافة.
+     غياب الوحدة أو تعطيلها لا يغيّر أي سلوك: الكاش يسقط وحده بعد 30 ثانية. */
+  function revalidateJobs(reason) {
+    try { if (root.HRCRevalidate) root.HRCRevalidate.afterJobChange(reason || 'job-change'); } catch (e) { }
   }
 
   // Legacy browser snapshots are NOT an operational outbox. Preserve them for
@@ -17815,7 +17938,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     };
     db.jobs.unshift(job);
     audit('إضافة وظيفة', 'job', job.code, job.title + ' — ' + (job.governorate || '—') + ' — الأجر ' + money(job.salaryMin) + ' إلى ' + money(job.salaryMax));
-    save(); emit();
+    save(); emit(); revalidateJobs('job-create');
     return job;
   }
 
@@ -17836,7 +17959,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (status === 'closed') { job.closedAt = nowISO(); job.reservedBy = null; job.holdExpiresAt = null; }
     refreshVacancies(job);
     audit('تغيير حالة وظيفة', 'job', job.code, 'الحالة: ' + CFG.jobStatus[old].ar + ' ← ' + CFG.jobStatus[job.status].ar + (reason ? ' | السبب: ' + reason : ''));
-    save(); emit();
+    save(); emit(); revalidateJobs('job-status');
     return job;
   }
 
@@ -17864,7 +17987,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if(db.meta&&db.meta.workspace){db.meta.explicitDeletes=db.meta.explicitDeletes||{};db.meta.explicitDeletes.jobs=(db.meta.explicitDeletes.jobs||[]).concat(code);}
     db.jobs = db.jobs.filter(function (j) { return j.code !== code; });
     audit('حذف وظيفة', 'job', code, job.title + ' — ' + (job.governorate || '—'));
-    save(); emit();
+    save(); emit(); revalidateJobs('job-delete');
     return true;
   }
 
@@ -26908,20 +27031,19 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
      تُطبع فارغة وتوزَّع على نقاط البيع، وتُعبّأ كل واحدة عند بيعها. */
   function newBatchModal() {
     if (!Store.isAdmin()) { UI.toast('err', 'صلاحية المدير فقط', 'إصدار الدفعات من صلاحيات المدير العام.'); return; }
-    /* قرار 2026-11-10: الورقة صارت 4 بطاقات (2×2) بعد طلب مساحة القص، فأعداد
-       الدفعات مضاعفات 4 من 4 إلى 60 — كل عدد يملأ أوراقاً كاملة بلا بطاقات
-       يتيمة في آخر ورقة. */
-    var BATCH_STEP = 4, BATCH_MAX = 60;
+    /* قرار 2026-11-11: أي عدد من 1 إلى 60 مسموح — لا قيد المضاعفات. صفوف
+       الأوراق 2×2، فآخر ورقة قد تحمل بطاقة يتيمة واحدة؛ التقسيم في الطباعة
+       يتكفّل بها. أزرار المضاعفات تبقى اختصاراً سريعاً للأعداد الشائعة. */
+    var BATCH_MIN = 1, BATCH_MAX = 60, SHEET = 4;
     var presets = [];
-    for (var pv = BATCH_STEP; pv <= BATCH_MAX; pv += BATCH_STEP) presets.push(pv);
+    for (var pv = SHEET; pv <= BATCH_MAX; pv += SHEET) presets.push(pv);
     var chips = presets.map(function (n) {
       return '<button type="button" class="btn btn-outline btn-sm b-preset" data-n="' + n + '">' + n + '</button>';
     }).join(' ');
     var body = '<form id="batch-form" class="grid grid-2" style="gap:14px">' +
-      '<div class="field" style="grid-column:1/-1"><label for="b-count">عدد البطاقات بالدفعة * (مضاعفات ٤ — من ٤ إلى ٦٠)</label>' +
+      '<div class="field" style="grid-column:1/-1"><label for="b-count">عدد البطاقات بالدفعة * (من ١ إلى ٦٠ — أي عدد)</label>' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
-          '<input type="number" id="b-count" min="4" max="60" step="4" value="4" required style="width:140px" list="b-count-options">' +
-          '<datalist id="b-count-options">' + presets.map(function (n) { return '<option value="' + n + '">'; }).join('') + '</datalist>' +
+          '<input type="number" id="b-count" min="1" max="60" step="1" value="4" required style="width:140px">' +
           '<div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div></div>' +
         '<span class="tiny muted" id="b-est" style="display:block;margin-top:6px"></span></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
@@ -26942,10 +27064,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         function refresh() {
           var n = Number(cnt.value) || 0;
           var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 4);
-          var ok = Number.isInteger(n) && n >= BATCH_STEP && n <= BATCH_MAX && n % BATCH_STEP === 0;
+          var ok = Number.isInteger(n) && n >= BATCH_MIN && n <= BATCH_MAX;
+          var lastSheet = ok && n % SHEET ? ' — آخر ورقة تحمل ' + (n % SHEET) + ' فقط' : '';
           est.textContent = ok
-            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 4 بطاقات بالورقة، بمسافة 20مم للقصّ بين كل بطاقة')
-            : ('أدخل مضاعفاً للعدد ' + BATCH_STEP + ' من ' + BATCH_STEP + ' إلى ' + BATCH_MAX + ' (٤ · ٨ · ١٢ … ٦٠).');
+            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 4 بطاقات بالورقة، بمسافة 20مم للقصّ بين كل بطاقة' + lastSheet)
+            : ('أدخل عدداً صحيحاً من ' + BATCH_MIN + ' إلى ' + BATCH_MAX + '.');
         }
         cnt.addEventListener('input', refresh);
         box.querySelectorAll('.b-preset').forEach(function (b) {
@@ -26956,8 +27079,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
           var count = Number(cnt.value) || 0;
-          if (!Number.isInteger(count) || count < BATCH_STEP || count > BATCH_MAX || count % BATCH_STEP !== 0) {
-            UI.toast('err', 'عدد غير صالح', 'اختر مضاعفاً للعدد ٤ من ٤ إلى ٦٠ — لتُطبع أوراق كاملة بلا بطاقات يتيمة.'); return;
+          if (!Number.isInteger(count) || count < BATCH_MIN || count > BATCH_MAX) {
+            UI.toast('err', 'عدد غير صالح', 'أدخل عدداً صحيحاً من ' + BATCH_MIN + ' إلى ' + BATCH_MAX + '.'); return;
           }
           var notes = box.querySelector('#b-notes').value.trim();
           var btn=box.querySelector('#b-save'); btn.disabled=true;

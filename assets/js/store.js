@@ -274,6 +274,13 @@
     schedulePush();
   }
 
+  /* إبلاغ حافة Cloudflare أن إعلانات الوظائف تغيّرت (On-Demand Revalidation).
+     يُستدعى فقط عند كتابة وظيفة — لا عند كل حفظ، كي لا نُغرق الحافة.
+     غياب الوحدة أو تعطيلها لا يغيّر أي سلوك: الكاش يسقط وحده بعد 30 ثانية. */
+  function revalidateJobs(reason) {
+    try { if (root.HRCRevalidate) root.HRCRevalidate.afterJobChange(reason || 'job-change'); } catch (e) { }
+  }
+
   // Legacy browser snapshots are NOT an operational outbox. Preserve them for
   // review, never clear/replay a stale snapshot as proof of synchronization.
   function syncOfflineChanges() { return pendingQueueLength(); }
@@ -648,7 +655,7 @@
     };
     db.jobs.unshift(job);
     audit('إضافة وظيفة', 'job', job.code, job.title + ' — ' + (job.governorate || '—') + ' — الأجر ' + money(job.salaryMin) + ' إلى ' + money(job.salaryMax));
-    save(); emit();
+    save(); emit(); revalidateJobs('job-create');
     return job;
   }
 
@@ -669,7 +676,7 @@
     if (status === 'closed') { job.closedAt = nowISO(); job.reservedBy = null; job.holdExpiresAt = null; }
     refreshVacancies(job);
     audit('تغيير حالة وظيفة', 'job', job.code, 'الحالة: ' + CFG.jobStatus[old].ar + ' ← ' + CFG.jobStatus[job.status].ar + (reason ? ' | السبب: ' + reason : ''));
-    save(); emit();
+    save(); emit(); revalidateJobs('job-status');
     return job;
   }
 
@@ -697,7 +704,7 @@
     if(db.meta&&db.meta.workspace){db.meta.explicitDeletes=db.meta.explicitDeletes||{};db.meta.explicitDeletes.jobs=(db.meta.explicitDeletes.jobs||[]).concat(code);}
     db.jobs = db.jobs.filter(function (j) { return j.code !== code; });
     audit('حذف وظيفة', 'job', code, job.title + ' — ' + (job.governorate || '—'));
-    save(); emit();
+    save(); emit(); revalidateJobs('job-delete');
     return true;
   }
 

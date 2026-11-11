@@ -42,12 +42,12 @@ language plpgsql security definer set search_path=brc,public as $$
 declare actor uuid:=auth.uid(); old_request brc.card_issue_requests%rowtype; args jsonb; codes text[]:='{}'; code text; n integer; j integer; bytes bytea; alphabet constant text:='23456789ABCDEFGHJKMNPQRSTUVWXYZ'; results jsonb;
 begin
  if actor is null or not brc.is_admin() then raise exception 'الإصدار للمدير الفعال فقط' using errcode='42501'; end if;
- -- قرار 2026-11-10: الورقة صارت 4 بطاقات، فالدفعة مضاعفات 4 من 4 إلى 60
- -- (أوراق كاملة بلا بطاقات يتيمة في آخر ورقة).
- -- استثناء: إصدار بطاقة واحدة بكود محدَّد (p_serial) يبقى p_count=1 — يُستدعى
- -- من مسار البطاقة المفردة، وليس دفعة.
+ -- قرار 2026-11-11: أي عدد من 1 إلى 60 مسموح في الدفعات (لا قيد المضاعفات).
+ -- القيد السابق (مضاعفات 4 فقط) كان يرفض أعداداً يطلبها العمل اليومي.
+ -- البطاقات يتيمة آخر ورقة تُطبع كما هي؛ التقسيم إلى أوراق في الواجهة.
+ -- استثناء قائم: إصدار بطاقة واحدة بكود محدَّد (p_serial) يبقى p_count=1.
  if p_request is null or p_count is null or length(coalesce(p_notes,''))>1000
-    or (p_serial is null and (p_count<4 or p_count>60 or p_count%4<>0))
+    or p_count<1 or p_count>60
     or (p_serial is not null and p_count<>1)
  then raise exception 'بيانات الإصدار غير صالحة'; end if;
  p_serial:=nullif(upper(btrim(coalesce(p_serial,''))),'');

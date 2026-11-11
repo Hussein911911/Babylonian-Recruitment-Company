@@ -143,6 +143,17 @@
     CONFIG.seed = root.__HRC_TEST_SEED__;
   }
 
+  /* ── إعادة التحقق الفوري (ISR / On-Demand Revalidation) ──────────────────
+     يُبلّغ حافة Cloudflare عند تعديل الوظائف فيُحذف كاش public_jobs فوراً.
+     معطّل في الملف المستقل والقارئ المحلي: لا شبكة ولا حافة هناك.
+     السرّ لا يُوضع هنا أبداً — في الإنتاج يُقرأ من متغيرات Cloudflare. */
+  CONFIG.revalidate = {
+    enabled: !!(root.location && /^https?:$/.test(root.location.protocol || '')),
+    devSecret: null,   /* يُضبط محلياً فقط: window.HRC_CONFIG.revalidate.devSecret = '…' */
+    ttlSeconds: 30,
+    staleWhileRevalidate: 300
+  };
+
   root.HRC_CONFIG = CONFIG;
   if (typeof module === 'object' && module.exports) module.exports = CONFIG;
 })(typeof window !== 'undefined' ? window : globalThis);
