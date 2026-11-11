@@ -35,7 +35,7 @@ try{
   check((await page.locator('#finance-scope').textContent()).includes('المؤرشف'),'financial scope explicitly includes archive');
   await page.evaluate(()=>document.querySelector('[data-view="applicants"]').click());
   await page.evaluate(()=>{window.__serialChecks__=[];HRCStore.serialWasIssued=async serial=>{window.__serialChecks__.push(serial);return true;};});
-  await page.locator('#btn-new-card').click();await page.locator('#c-code').fill('7KQ4M9TR2X');await page.locator('#c-save').click();await page.waitForFunction(()=>document.getElementById('c-err').textContent.includes('الأرشيف'));
+  await page.locator('#btn-new-card').click();await page.locator('#c-code').fill('7KQ4M9TR2X');await page.locator('#c-save').click();await page.waitForFunction(()=>/مؤرشفة|صدر وطُبع/.test(document.getElementById('c-err').textContent));
   check(await page.evaluate(()=>!HRCStore.getApplicant('7KQ4M9TR2X')),'manual issuance cannot recreate an archived or deleted printed identifier');
   check(await page.evaluate(()=>window.__serialChecks__[0]==='7KQ4M9TR2X'),'existing uniqueness validation queries server registry without loading history');
   await page.locator('.modal-backdrop').last().locator('[data-close]').first().click();

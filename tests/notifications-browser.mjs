@@ -97,7 +97,12 @@ try {
       document.querySelectorAll('.reveal').forEach(el => el.classList.add('is-visible'));
     });
     await page.waitForTimeout(400);
-    check(await page.locator('.job-title').first().evaluate(el => el.getBoundingClientRect().width >= 160), 'Arabic title has real width');
+    /* قرار المالك: بطاقتان في صف على الجوال (mobile-jobs-browser.mjs يثبّته).
+       فالعنوان يحصل على ~122px عند 320px و~147px عند 375px — هذا تصميم مقصود
+       لا خلل. المقياس الصحيح هنا: ≥100px (نص عربي حقيقي بعرض معتبر، لا صفر
+       ولا عمود منهار)، والقِصّ نفسه يكشفه contentFits أدناه. 160px كان سقفاً
+       لتصميم عمود واحد لم يبقَ. */
+    check(await page.locator('.job-title').first().evaluate(el => el.getBoundingClientRect().width >= 100), 'Arabic title has real width');
     await contentFits(page, '.job-title,.job-meta .mi span,.job-code,.job-foot .salary,.job-statuses .badge,.job-statuses .chip');
     if ([375, 1440].includes(width)) await page.locator('.job-card').first().screenshot({ path: join(output, `job-stress-${width}.png`) });
 

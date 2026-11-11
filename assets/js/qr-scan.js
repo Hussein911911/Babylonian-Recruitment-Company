@@ -12,6 +12,27 @@
   var hasApi = (typeof root.BarcodeDetector !== 'undefined');
   var detector = null, waiting = null;
 
+  /* مكتبة jsQR (251KB) احتياطية فقط: تُطلب عند أول حاجة فعلية للقراءة المحلية،
+     لا عند فتح الصفحة. كروم أندرويد وسفاري الحديثان يقرآن عبر BarcodeDetector
+     أصلاً، فتحميل المكتبة لكل زائر كان يهدر ثلث وزن الصفحة العامة بلا فائدة.
+     المسار المطلوب يبقى كما هو في صفحات التطبيق المستقل (hrc-standalone):
+     إن كانت المكتبة محمّلة مسبقاً نستخدمها فوراً بلا طلب شبكة. */
+  var libPromise = null;
+  function loadLibrary() {
+    if (typeof root.jsQR === 'function') return Promise.resolve(true);
+    if (libPromise) return libPromise;
+    libPromise = new Promise(function (resolve) {
+      if (typeof root.document === 'undefined' || !root.document.createElement) return resolve(false);
+      var s = root.document.createElement('script');
+      s.src = root.HRC_JSQR_SRC || 'assets/vendor/jsqr.js';
+      s.async = true;
+      s.onload = function () { resolve(typeof root.jsQR === 'function'); };
+      s.onerror = function () { resolve(false); };
+      (root.document.head || root.document.body || root.document.documentElement).appendChild(s);
+    });
+    return libPromise;
+  }
+
   function read(codes) {
     var out = [];
     (codes || []).forEach(function (c) { if (c && c.rawValue != null) out.push(String(c.rawValue)); });
@@ -71,8 +92,12 @@
   }
 
   function fallback(source) {
-    if (root.Blob && source instanceof root.Blob) return decodeFile(source);
-    return Promise.resolve(decodePixels(source));
+    /* التحميل المتأخر لا يغيّر النتيجة: ننتظر المكتبة ثم نقرأ كما قبل تماماً. */
+    return loadLibrary().then(function (ok) {
+      if (!ok) return [];
+      if (root.Blob && source instanceof root.Blob) return decodeFile(source);
+      return decodePixels(source);
+    });
   }
 
   function detectImage(source) {
@@ -219,10 +244,16 @@
     return true;
   }
 
-  function supported() { return !!hasApi || typeof root.jsQR === 'function'; }
+  /* المسح مدعوم إن وُجد القارئ الأصلي، أو أمكن تحميل المكتبة الاحتياطية
+     (وجود document كافٍ للحكم — التحميل نفسه عند الضغط). */
+  function supported() {
+    return !!hasApi || typeof root.jsQR === 'function' ||
+      (typeof root.document !== 'undefined' && !!root.document.createElement);
+  }
 
   root.HRCQRScan = {
     supported: supported,
+    loadLibrary: loadLibrary,
     formats: WANTED.slice(),
     detectImage: detectImage,
     detectVideoFrame: detectVideoFrame,
