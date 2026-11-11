@@ -629,13 +629,13 @@ check('قرار الموظف موثّق بالسبب في سجل التدقيق'
     dash3.w.sessionStorage.setItem('hrc_session_v2', JSON.stringify({ username: role, name: role, role: role, cloud: true }));
     D3.reload && D3.reload();
   }
+  /* قرار المالك 2026-11-11: الحذف للمدير **وللموظف** — مطابقةً لسياسة
+     jobs_staff_delete. الزائر المجهول يبقى مرفوضاً (tests/client-authz.mjs). */
   actAs('staff');
   const staffTry = jobExists ? D3.deleteJob('HRC-1047') : 'no-job';
-  actAs('admin');
-  const adminTry = jobExists ? D3.deleteJob('HRC-1047') : 'no-job';
-  check('حذف الوظيفة متاح للمدير فقط (مطابق لسياسة القاعدة)',
-    typeof D3.deleteJob === 'function' && jobExists && staffTry === false && adminTry === true,
-    JSON.stringify({ jobExists, staffTry, adminTry }));
+  check('حذف الوظيفة متاح للموظف (قرار المالك)',
+    typeof D3.deleteJob === 'function' && jobExists && staffTry === true,
+    JSON.stringify({ jobExists, staffTry }));
 }
 check('الوظيفة HRC-1047 حُذفت نهائياً بقرار الموظف', !D3.getJob('HRC-1047'));
 check('كل قرارات الرحلة موثقة بسجل التدقيق (' + D3.listAudit().length + ' قيداً)',

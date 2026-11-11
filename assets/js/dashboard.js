@@ -988,7 +988,7 @@
     (pa.hiring || []).forEach(function (h) {
       actions.push({
         icon: 'hiring', title: 'جاري التوظيف — ' + h.job.code,
-        sub: 'البطاقة ' + (h.serial || '—') + ' · صاحب العمل: ' + h.job.employer.name,
+        sub: 'البطاقة ' + (h.serial || '—') + ' · صاحب العمل: ' + (h.job.employer || {}).name,
         badge: '<span class="badge info">تثبيت مطلوب</span>',
         act: { label: 'قرار', handler: function () { setView('holds'); } }
       });
@@ -1054,7 +1054,7 @@
             '<div class="ov-hc-icon"><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg></div>' +
             '<div class="ov-hc-body">' +
               '<div class="ov-hc-title"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) + '</div>' +
-              '<div class="ov-hc-sub">البطاقة ' + UI.esc(h.serial || '—') + ' · ' + UI.esc(h.job.employer.name) + '</div>' +
+              '<div class="ov-hc-sub">البطاقة ' + UI.esc(h.serial || '—') + ' · ' + UI.esc((h.job.employer || {}).name) + '</div>' +
             '</div>' +
             '<div class="ov-hc-timer">' + UI.holdHtml(h.job.holdExpiresAt) + '</div>' +
           '</div>';
@@ -1142,7 +1142,7 @@
         '<td class="tiny"><span style="background:#eef1f7;padding:3px 8px;border-radius:6px;font-weight:600">' + UI.esc(j.shift) + '</span></td>' +
         '<td>' + UI.jobBadge(j.status) + '</td>' +
         '<td>' + holdCell + '</td>' +
-        '<td class="tiny"><b>' + UI.esc(j.employer.name) + '</b> <span class="mono" dir="ltr">' + UI.esc(j.employer.phone) + '</span></td>' +
+        '<td class="tiny"><b>' + UI.esc((j.employer || {}).name || '—') + '</b> <span class="mono" dir="ltr">' + UI.esc((j.employer || {}).phone || '—') + '</span></td>' +
         '<td><div class="cell-actions">' +
           '<button class="btn btn-outline btn-sm" data-job-edit="' + UI.esc(j.code) + '">' + UI.ic('edit') + ' تعديل</button>' +
           (Number(j.vacancies||1)>1&&v.held
@@ -2002,7 +2002,7 @@
       '<thead><tr><th>الكود</th><th>الوظيفة</th><th>المحافظة</th><th>الأجر</th><th>الدوام</th><th>اختيار</th></tr></thead><tbody>' +
       jobs.map(function (j) {
         return '<tr><td><span class="chip chip-code mono">' + UI.esc(j.code) + '</span></td>' +
-          '<td><b>' + UI.esc(j.title) + '</b><div class="tiny muted">' + UI.esc(j.employer.name) + ' · <span dir="ltr">' + UI.esc(j.employer.phone) + '</span></div></td>' +
+          '<td><b>' + UI.esc(j.title) + '</b><div class="tiny muted">' + UI.esc((j.employer || {}).name || '—') + ' · <span dir="ltr">' + UI.esc((j.employer || {}).phone || '—') + '</span></div></td>' +
           '<td>' + UI.esc(j.governorate || '—') + '</td><td class="tiny nowrap">' + Store.money(j.salaryMin) + '</td>' +
           '<td class="tiny">' + UI.esc(j.shift) + '</td>' +
           '<td><button class="btn btn-gold btn-sm" data-assign-job="' + UI.esc(j.code) + '">ترشيح</button></td></tr>';
@@ -2080,8 +2080,8 @@
         (empReject ? '<div class="data-item" style="grid-column:1/-1;border-color:#f0c3c1;background:#fdf5f4">' +
           '<div class="k">سبب عدم التوظيف المسجَّل من صاحب العمل</div>' +
           '<div class="v" style="font-weight:800;color:#a5342f">' + UI.esc(empReason || '— لم يُسجَّل سبب —') + '</div></div>' : '') +
-        '<div class="data-item"><div class="k">صاحب العمل</div><div class="v">' + UI.esc(job.employer.name) + '</div></div>' +
-        '<div class="data-item"><div class="k">هاتفه</div><div class="v mono" dir="ltr">' + UI.esc(job.employer.phone) + '</div></div>' +
+        '<div class="data-item"><div class="k">صاحب العمل</div><div class="v">' + UI.esc((job.employer || {}).name) + '</div></div>' +
+        '<div class="data-item"><div class="k">هاتفه</div><div class="v mono" dir="ltr">' + UI.esc((job.employer || {}).phone) + '</div></div>' +
         '<div class="data-item" style="grid-column:1/-1"><div class="k">مكان المقابلة</div><div class="v">' + UI.esc(job.interviewLocation) + '</div></div>' +
         '</div></div>' +
         '<p class="tiny muted mb-0">' + UI.ic('hourglass') + (hiring
@@ -2141,7 +2141,7 @@
     var hiringHtml = (pa.hiring || []).length ? pa.hiring.map(function (h) {
       return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;border-color:#bcd0ea;background:#f2f6fc">' +
         '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) +
-        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
+        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc((h.job.employer || {}).name) + ' · <span dir="ltr">' + UI.esc((h.job.employer || {}).phone) + '</span></small></div>' +
         '<div class="tiny muted mt-1">مكان المقابلة: ' + UI.esc(h.job.interviewLocation) + '</div></div>' +
         '<div><div class="tiny muted">البطاقة</div><div class="mono">' + UI.esc(h.serial || '—') + '</div><div class="tiny">الشاغر '+Number(h.vacancyNo||1)+'</div>' +
         '<span class="badge info">' + (h.decision === 'hire' ? 'طلب توظيف ✅ — ثبتّه أو ألغه' : 'طلب عدم توظيف — القرار بيدك') + '</span>' +
@@ -2154,7 +2154,7 @@
     var criticalHtml = (pa.critical || []).length ? pa.critical.map(function (h) {
       return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;border-color:#f0c3c1;background:#fdf5f4">' +
         '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) +
-        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
+        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc((h.job.employer || {}).name) + ' · <span dir="ltr">' + UI.esc((h.job.employer || {}).phone) + '</span></small></div>' +
         '<div class="tiny muted mt-1">مكان المقابلة: ' + UI.esc(h.job.interviewLocation) + '</div></div>' +
         '<div><div class="tiny muted">البطاقة</div><div class="mono">' + UI.esc(h.serial || '—') + '</div><div class="tiny">الشاغر '+Number(h.vacancyNo||1)+'</div>' +
         (h.decidedBy === 'employer'
@@ -2171,7 +2171,7 @@
       return '<div class="attempt-slot" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;' +
         (urgent ? 'border-color:#f0c3c1;background:#fdf5f4' : '') + '">' +
         '<div><div class="job"><span class="mono">' + UI.esc(h.job.code) + '</span> — ' + UI.esc(h.job.title) +
-        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc(h.job.employer.name) + ' · <span dir="ltr">' + UI.esc(h.job.employer.phone) + '</span></small></div>' +
+        '<small>' + UI.esc(h.job.governorate || '—') + ' · صاحب العمل: ' + UI.esc((h.job.employer || {}).name) + ' · <span dir="ltr">' + UI.esc((h.job.employer || {}).phone) + '</span></small></div>' +
         '<div class="tiny muted mt-1">مكان المقابلة: ' + UI.esc(h.job.interviewLocation) + '</div></div>' +
         '<div><div class="tiny muted">البطاقة</div><div class="mono">' + UI.esc(h.serial || '—') + '</div><div class="tiny">الشاغر '+Number(h.vacancyNo||1)+'</div>' +
         UI.holdHtml(h.job.holdExpiresAt) + '</div>' +
@@ -2672,9 +2672,9 @@
       '<div class="data-item"><div class="k">المحافظة</div><div class="v">' + UI.esc(j.governorate || '—') + '</div></div>' +
       '<div class="data-item"><div class="k">الأجر</div><div class="v">' + Store.money(j.salaryMin) + ' - ' + Store.money(j.salaryMax) + '</div></div>' +
       '<div class="data-item"><div class="k">الدوام</div><div class="v">' + UI.esc(j.shift) + '</div></div>' +
-      '<div class="data-item"><div class="k">صاحب العمل (داخلي)</div><div class="v">' + UI.esc(j.employer.name) + '</div></div>' +
-      '<div class="data-item"><div class="k">هاتفه (داخلي)</div><div class="v mono" dir="ltr">' + UI.esc(j.employer.phone) + '</div></div>' +
-      '<div class="data-item" style="grid-column:1/-1"><div class="k">العنوان (داخلي)</div><div class="v">' + UI.esc(j.employer.address) + '</div></div>' +
+      '<div class="data-item"><div class="k">صاحب العمل (داخلي)</div><div class="v">' + UI.esc((j.employer || {}).name || '—') + '</div></div>' +
+      '<div class="data-item"><div class="k">هاتفه (داخلي)</div><div class="v mono" dir="ltr">' + UI.esc((j.employer || {}).phone || '—') + '</div></div>' +
+      '<div class="data-item" style="grid-column:1/-1"><div class="k">العنوان (داخلي)</div><div class="v">' + UI.esc((j.employer || {}).address || '—') + '</div></div>' +
       '<div class="data-item" style="grid-column:1/-1"><div class="k">مكان المقابلة</div><div class="v">' + UI.esc(j.interviewLocation) + '</div></div>' +
       '</div></div>' +
       (j.status === 'reserved' && j.holdExpiresAt

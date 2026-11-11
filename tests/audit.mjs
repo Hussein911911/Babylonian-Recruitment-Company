@@ -1242,4 +1242,23 @@ console.log('═'.repeat(72));
 if (problems.length) { console.log('\n  الإخفاقات:'); problems.forEach((p) => console.log('   • ' + p)); }
 if (warnings.length) { console.log('\n  التحذيرات (غير حرجة):'); warnings.forEach((p) => console.log('   • ' + p)); }
 console.log(fail ? '' : '\n  🎉 المشروع مكتمل وسليم — لا توجد أي مشكلة.\n');
+/* ── 2026-11-11: خطأ «Cannot read properties of undefined (reading 'name')» ──
+   أي وصول غير محمي إلى employer.* يُسقط جدول الوظائف كاملاً في المتصفح
+   (وظيفة واحدة بلا صاحب عمل = شاشة بيضاء). نمنعه على مستوى المصدر. */
+{
+  const files = ['assets/js/dashboard.js', 'assets/js/store.js', 'assets/js/public.js'];
+  const hits = [];
+  for (const f of files) {
+    const src = readFileSync(resolve(ROOT, f), 'utf8');
+    src.split('\n').forEach((line, i) => {
+      /* محمي إذا: (x.employer || {}) أو x.employer ? أو ?. أو ?? */
+      const guarded = /\(\s*[A-Za-z_]+\.employer\s*\|\|/.test(line) ||
+        /[A-Za-z_]+\.employer\s*\?/.test(line) || /\?\./.test(line) || /\?\?/.test(line);
+      if (/\.employer\.\w/.test(line) && !guarded) hits.push(f + ':' + (i + 1));
+    });
+  }
+  if (hits.length === 0) ok('لا وصول غير محمي إلى employer.* (يُسقط الجدول في المتصفح)');
+  else bad('وصول غير محمي إلى employer.* يُسقط الجدول', hits.join(', '));
+}
+
 process.exit(fail ? 1 : 0);
