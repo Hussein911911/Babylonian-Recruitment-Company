@@ -36,11 +36,11 @@ begin
   from (
     values
       ('manager@gmail.com'::text, 'admin'::text, 'المدير العام'::text,
-       'admin'::text, 'الإدارة العامة'::text, '07760058007'::text, true),
+       'admin'::text, 'الإدارة العامة'::text, '07763999907'::text, true),
       ('staff1@gmail.com'::text, 'staff'::text, 'أحمد الموسوي'::text,
-       'staff'::text, 'موظف توظيف'::text, '07715993271'::text, true),
+       'staff'::text, 'موظف توظيف'::text, '07863999907'::text, true),
       ('staff2@gmail.com'::text, 'staff2'::text, 'زينب الحسيني'::text,
-       'staff'::text, 'موظفة توظيف'::text, '07760058007'::text, true)
+       'staff'::text, 'موظفة توظيف'::text, '07763999907'::text, true)
   ) as wanted(email, username, full_name, role, job_title, phone, active)
   join auth.users u on lower(u.email) = lower(wanted.email)
   on conflict (username) do update set

@@ -185,7 +185,7 @@ select jobname, schedule, active from cron.job where jobname = 'hrc-auto-release
 ### ثم اربطهم بالجدول (SQL Editor)
 ```sql
 insert into brc.staff (auth_id, username, full_name, role, job_title, phone)
-select id, 'admin', 'المدير العام', 'admin', 'الإدارة العامة', '07760058007'
+select id, 'admin', 'المدير العام', 'admin', 'الإدارة العامة', '07763999907'
   from auth.users where email = 'admin@hrc-babil.com'
 on conflict (username) do update set auth_id = excluded.auth_id;
 

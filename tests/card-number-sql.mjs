@@ -24,12 +24,12 @@ assert.equal(first.attempts.length,2);
 assert.deepEqual((await q(call(id1,1,"'7KQ4M9TR2X'")))[0].r,first,'retry must return the same cards');
 await assert.rejects(q(call('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',1,"'7KQ4M9TR2X'")),/مستخدم/);
 assert.equal((await q('select last_number from brc.card_number_counter'))[0].last_number,1,'failed issue must roll back number');
-const batch=(await q(call('cccccccc-cccc-4ccc-8ccc-cccccccccccc',3)))[0].r;
-assert.deepEqual(batch.cards.map(c=>c.card_number),[2,3,4]);
-assert.equal(batch.attempts.length,6);
-await assert.rejects(q(call(id1,2)),/لا يطابق/);
+const batch=(await q(call('cccccccc-cccc-4ccc-8ccc-cccccccccccc',8)))[0].r;
+assert.deepEqual(batch.cards.map(c=>c.card_number),[2,3,4,5,6,7,8,9]);
+assert.equal(batch.attempts.length,16);
+await assert.rejects(q(call(id1,4)),/لا يطابق/);
 await d.exec("select set_config('test.uid','33333333-3333-4333-8333-333333333333',false)");
-await assert.rejects(q(call('dddddddd-dddd-4ddd-8ddd-dddddddddddd',1)),/للمدير/);
+await assert.rejects(q(call('dddddddd-dddd-4ddd-8ddd-dddddddddddd',4)),/للمدير/);
 await d.exec("select set_config('test.uid','11111111-1111-4111-8111-111111111111',false)");
 // Mapping is independent of the operational row: restore/reinsert resolves it
 // from the durable registry, and old rows without a mapping stay unnumbered.
@@ -39,13 +39,13 @@ assert.equal((await q("select card_number from brc.working_applicants where seri
 // An error after the first card in a batch rolls back its number and rows too.
 await d.exec(`create function brc.test_fail_second() returns trigger language plpgsql as $$ begin if new.notes='fail' and (select count(*) from brc.applicants where notes='fail')=1 then raise exception 'forced failure'; end if; return new; end $$;
 create trigger zz_test_fail before insert on brc.applicants for each row execute function brc.test_fail_second()`);
-await assert.rejects(q("select brc.issue_numbered_cards('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',3,null,'fail')"),/forced failure/);
+await assert.rejects(q("select brc.issue_numbered_cards('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',4,null,'fail')"),/forced failure/);
 assert.equal((await q("select count(*)::int n from brc.applicants where notes='fail'"))[0].n,0);
-assert.equal((await q('select last_number from brc.card_number_counter'))[0].last_number,4);
+assert.equal((await q('select last_number from brc.card_number_counter'))[0].last_number,9);
 // Recovery re-inserts operational data with user triggers disabled. The durable
 // mapping is still attached by the working view.
 await d.exec("alter table brc.applicants disable trigger user; delete from brc.applicants where serial='7KQ4M9TR2X'; insert into brc.applicants(serial,full_name,phone,status) values('7KQ4M9TR2X','','','blank'); alter table brc.applicants enable trigger user");
 assert.equal((await q("select card_number from brc.working_applicants where serial='7KQ4M9TR2X'"))[0].card_number,1);
-assert.equal((await q('select last_number from brc.card_number_counter'))[0].last_number,4);
+assert.equal((await q('select last_number from brc.card_number_counter'))[0].last_number,9);
 await d.close();
 console.log('card numbers: single, batch, rollback, retry, permissions and old cards passed');
