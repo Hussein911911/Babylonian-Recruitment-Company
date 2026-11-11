@@ -206,15 +206,17 @@ await wait(200);
   const box = lastModal(dash.doc);
   check('نافذة الدفعة: عدد + ملاحظة + تحذير التزوير', !!box.querySelector('#b-count') &&
     /عشوائي فريد/.test(box.textContent) && /لا يتشابه/.test(box.textContent));
-  setVal(dash.w, box.querySelector('#b-count'), '5');
+  /* قرار 2026-11-10: الدفعات مضاعفات ٤ (4..60) لأن الورقة صارت 4 بطاقات.
+     العدد 5 كان يُرفض فتفشل الدفعة كلها. 8 يغطي ورقتين كاملتين. */
+  setVal(dash.w, box.querySelector('#b-count'), '8');
   setVal(dash.w, box.querySelector('#b-notes'), 'دفعة اختبار المسار');
   click(dash.w, box.querySelector('#b-save'));
   await wait(300);
 }
 {
   const box = lastModal(dash.doc);
-  check('صدرت الدفعة (5 بطاقات) ونتيجة الدفعة معروضة', !!box && /5 بطاقة فارغة/.test(box.textContent));
-  /* طباعة الدفعة: 5 بطاقات فارغة بوجهيها — بلا أسماء زبائن */
+  check('صدرت الدفعة (8 بطاقات) ونتيجة الدفعة معروضة', !!box && /8 بطاقة فارغة/.test(box.textContent));
+  /* طباعة الدفعة: 8 بطاقات فارغة بوجهيها — بلا أسماء زبائن */
   const printBtn = box.querySelector('#b-print');
   check('زر طباعة الدفعة ظاهر', !!printBtn);
   if (printBtn) click(dash.w, printBtn);
@@ -222,7 +224,7 @@ await wait(200);
 }
 const BLANKS = D.listBlankCards().slice(0, 5);
 check('المخزون الفارغ زاد (' + stockBefore + ' → ' + D.listBlankCards().length + ')',
-  D.listBlankCards().length === stockBefore + 5);
+  D.listBlankCards().length === stockBefore + 8);
 check('البطاقات الفارغة بلا اسم وبلا تواريخ (بانتظار التعبئة)',
   BLANKS.every((b) => b.status === 'blank' && !b.fullName && !b.phone && !b.issueDate && !b.expiryDate));
 const blankSerials = BLANKS.map((b) => b.serial);
@@ -238,9 +240,14 @@ check('البطاقات الجديدة لا تحمل أي رمز فرصة (أُ�
   blankCodes.length === 0, 'رموز مولّدة: ' + blankCodes.join(','));
 const batchPrintHtml = dash.doc.getElementById('print-root').innerHTML;
 const sheetPrintStyle = dash.doc.getElementById('hrc-sheet-style').textContent;
-check('مقاس الدفعة موحّد مع البطاقة المفردة واستغلال ورقة A4', /repeat\(3,59\.4mm\)/.test(sheetPrintStyle) && /grid-auto-rows:94\.6mm/.test(sheetPrintStyle) && /zoom:1\.1/.test(sheetPrintStyle) && /padding:3\.6mm 12\.9mm/.test(sheetPrintStyle));
-check('ورق الدفعة المطبوع: 5 بطاقات بوجهيها (10 أوجه) بلا أسماء زبائن',
-  (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length === 10 &&
+/* قرار 2026-11-10 (تكبير البطاقة 70.2×111.8مم + الإطار الذهبي المزدوج):
+   الورقة صارت 2×2 لا 3×3، والزوم 1 لا 1.1، والحشو صفراً بعمود واحد متمركز. */
+check('مقاس الدفعة موحّد مع البطاقة المفردة واستغلال ورقة A4',
+  /repeat\(2,70\.2mm\)/.test(sheetPrintStyle) &&
+  /grid-auto-rows:111\.8mm/.test(sheetPrintStyle) &&
+  /zoom:1(?![.\d])/.test(sheetPrintStyle));
+check('ورق الدفعة المطبوع: 8 بطاقات بوجهيها (16 وجهاً) بلا أسماء زبائن',
+  (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length === 16 &&
   blankSerials.every((x) => batchPrintHtml.includes(x)) &&
   !/مرتضى|باحث/.test(batchPrintHtml),
   'أوجه ' + (batchPrintHtml.match(/class="hrc-card[" ]/g) || []).length);
@@ -311,9 +318,9 @@ const initialModal = lastModal(dash.doc);
 click(dash.w, initialModal.querySelector('#m-print-form')); await wait(200);
 const RECORD = D.getApplicant(SERIAL);
 const TOKEN = D.token(SERIAL);
-/* المخزون: 2 قبل الدفعة + 3 دفعة + 1 بطاقة الزر اليدوية − 1 المبيعة = +3 */
+/* المخزون: 2 قبل الدفعة + 8 دفعة + 1 بطاقة الزر اليدوية − 1 المبيعة = +8 */
 check('بيانات الاختبار محفوظة على نفس الباركود (' + SERIAL + ')', !!RECORD && RECORD.status === 'active' &&
-  RECORD.serial === SERIAL && D.listBlankCards().length === stockBefore + 5);
+  RECORD.serial === SERIAL && D.listBlankCards().length === stockBefore + 8);
 check('بيانات البطاقة التجريبية تتضمن نقطة البيع', RECORD.feePaid === true &&
   RECORD.posName === 'مكتب الاستنساخ — الحلة شارع 40');
 check('الصلاحية (30 يوماً) بدأت من لحظة التعبئة لا من إصدار الدفعة',

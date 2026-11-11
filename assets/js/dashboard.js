@@ -2824,10 +2824,20 @@
           try {
             /* حماية من إعادة إصدار كود سبق طبعه: البطاقة المحذوفة/المؤرشفة لا
                تعود إلى التداول بكودها أبداً (قرار المالك). التحقق من السجل
-               الدائم في القاعدة قبل الإصدار — لا من الذاكرة المحلية وحدها،
-               لأن البطاقة قد تكون محذوفة من هذه الجلسة. */
-            if (await Store.serialWasIssued(Store.normalizeCardSerial(serial))) {
-              throw new Error('هذا الكود صدر وطُبع سابقاً (بطاقة مؤرشفة أو محذوفة) ولا يمكن إعادة إصداره — ولّد كوداً جديداً بالزر أعلاه.');
+               الدائم في القاعدة — لا من الذاكرة المحلية وحدها، لأن البطاقة
+               قد تكون محذوفة من هذه الجلسة.
+
+               قاعدة معطّلة/بلا اتصال: لا نُسقط الإصدار كله. الحماية الحقيقية
+               على الخادم (brc.staff_issuance_registry يقابل السجل الدائم)،
+               وissueNumberedCards نفسها تشترط اتصالاً وحساب مدير. نكتفي هنا
+               بالفحص المحلي المتاح حتى لا يتعطّل العمل بلا إنترنت. */
+            try {
+              if (await Store.serialWasIssued(Store.normalizeCardSerial(serial))) {
+                throw new Error('هذا الكود صدر وطُبع سابقاً (بطاقة مؤرشفة أو محذوفة) ولا يمكن إعادة إصداره — ولّد كوداً جديداً بالزر أعلاه.');
+              }
+            } catch (guardErr) {
+              /* رسالة الحماية تُمرَّر؛ أي عطل في التحقق نفسه لا يمنع الإصدار. */
+              if (/صدر وطُبع سابقاً/.test(String(guardErr && guardErr.message))) throw guardErr;
             }
             var cards=await Store.issueNumberedCards(1,Store.normalizeCardSerial(serial),notes);
             if (!document.contains(box)) return;
