@@ -2874,20 +2874,19 @@
      تُطبع فارغة وتوزَّع على نقاط البيع، وتُعبّأ كل واحدة عند بيعها. */
   function newBatchModal() {
     if (!Store.isAdmin()) { UI.toast('err', 'صلاحية المدير فقط', 'إصدار الدفعات من صلاحيات المدير العام.'); return; }
-    /* قرار 2026-11-10: الورقة صارت 4 بطاقات (2×2) بعد طلب مساحة القص، فأعداد
-       الدفعات مضاعفات 4 من 4 إلى 60 — كل عدد يملأ أوراقاً كاملة بلا بطاقات
-       يتيمة في آخر ورقة. */
-    var BATCH_STEP = 4, BATCH_MAX = 60;
+    /* قرار 2026-11-11: أي عدد من 1 إلى 60 مسموح — لا قيد المضاعفات. صفوف
+       الأوراق 2×2، فآخر ورقة قد تحمل بطاقة يتيمة واحدة؛ التقسيم في الطباعة
+       يتكفّل بها. أزرار المضاعفات تبقى اختصاراً سريعاً للأعداد الشائعة. */
+    var BATCH_MIN = 1, BATCH_MAX = 60, SHEET = 4;
     var presets = [];
-    for (var pv = BATCH_STEP; pv <= BATCH_MAX; pv += BATCH_STEP) presets.push(pv);
+    for (var pv = SHEET; pv <= BATCH_MAX; pv += SHEET) presets.push(pv);
     var chips = presets.map(function (n) {
       return '<button type="button" class="btn btn-outline btn-sm b-preset" data-n="' + n + '">' + n + '</button>';
     }).join(' ');
     var body = '<form id="batch-form" class="grid grid-2" style="gap:14px">' +
-      '<div class="field" style="grid-column:1/-1"><label for="b-count">عدد البطاقات بالدفعة * (مضاعفات ٤ — من ٤ إلى ٦٠)</label>' +
+      '<div class="field" style="grid-column:1/-1"><label for="b-count">عدد البطاقات بالدفعة * (من ١ إلى ٦٠ — أي عدد)</label>' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
-          '<input type="number" id="b-count" min="4" max="60" step="4" value="4" required style="width:140px" list="b-count-options">' +
-          '<datalist id="b-count-options">' + presets.map(function (n) { return '<option value="' + n + '">'; }).join('') + '</datalist>' +
+          '<input type="number" id="b-count" min="1" max="60" step="1" value="4" required style="width:140px">' +
           '<div style="display:flex;gap:6px;flex-wrap:wrap">' + chips + '</div></div>' +
         '<span class="tiny muted" id="b-est" style="display:block;margin-top:6px"></span></div>' +
       '<div class="field" style="grid-column:1/-1"><label for="b-notes">ملاحظة الدفعة</label><input type="text" id="b-notes" placeholder="مثال: دفعة شهر تشرين — مكاتب الحلة"></div>' +
@@ -2908,10 +2907,11 @@
         function refresh() {
           var n = Number(cnt.value) || 0;
           var sheets = V.sheetCount ? V.sheetCount(n) : Math.ceil(n / 4);
-          var ok = Number.isInteger(n) && n >= BATCH_STEP && n <= BATCH_MAX && n % BATCH_STEP === 0;
+          var ok = Number.isInteger(n) && n >= BATCH_MIN && n <= BATCH_MAX;
+          var lastSheet = ok && n % SHEET ? ' — آخر ورقة تحمل ' + (n % SHEET) + ' فقط' : '';
           est.textContent = ok
-            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 4 بطاقات بالورقة، بمسافة 20مم للقصّ بين كل بطاقة')
-            : ('أدخل مضاعفاً للعدد ' + BATCH_STEP + ' من ' + BATCH_STEP + ' إلى ' + BATCH_MAX + ' (٤ · ٨ · ١٢ … ٦٠).');
+            ? ('ستُطبع على ' + sheets + ' ورقة A4 بوجهين (' + (sheets * 2) + ' صفحة) — 4 بطاقات بالورقة، بمسافة 20مم للقصّ بين كل بطاقة' + lastSheet)
+            : ('أدخل عدداً صحيحاً من ' + BATCH_MIN + ' إلى ' + BATCH_MAX + '.');
         }
         cnt.addEventListener('input', refresh);
         box.querySelectorAll('.b-preset').forEach(function (b) {
@@ -2922,8 +2922,8 @@
           var f = box.querySelector('#batch-form');
           if (!f.reportValidity()) return;
           var count = Number(cnt.value) || 0;
-          if (!Number.isInteger(count) || count < BATCH_STEP || count > BATCH_MAX || count % BATCH_STEP !== 0) {
-            UI.toast('err', 'عدد غير صالح', 'اختر مضاعفاً للعدد ٤ من ٤ إلى ٦٠ — لتُطبع أوراق كاملة بلا بطاقات يتيمة.'); return;
+          if (!Number.isInteger(count) || count < BATCH_MIN || count > BATCH_MAX) {
+            UI.toast('err', 'عدد غير صالح', 'أدخل عدداً صحيحاً من ' + BATCH_MIN + ' إلى ' + BATCH_MAX + '.'); return;
           }
           var notes = box.querySelector('#b-notes').value.trim();
           var btn=box.querySelector('#b-save'); btn.disabled=true;

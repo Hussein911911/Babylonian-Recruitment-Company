@@ -111,7 +111,7 @@ const DEMO_SEED_JSON = (() => {
   });
 })();
 
-const JS_ORDER = ['config', 'qr', 'vendor/jsqr', 'qr-scan', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard', 'notifications', 'legacy-backup', 'card-archive'];
+const JS_ORDER = ['config', 'qr', 'vendor/jsqr', 'qr-scan', 'revalidate', 'store', 'ui', 'nav', 'voucher', 'booking', 'public', 'verify', 'dashboard', 'notifications', 'legacy-backup', 'card-archive'];
 
 /* ---------------------------------------------------------------------------
  *  طبقة السحابة: تُحمَّل في الصفحات المنشورة **قبل** store.js حتى يكون الإقلاع
@@ -128,9 +128,9 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
 const SCRIPTS = {
   /* jsqr ليس هنا عمداً: 251KB احتياطية تُطلب عند أول مسح فعلي (qr-scan.js)،
      لا عند فتح الصفحة. القارئ الأصلي BarcodeDetector يغطي كروم/سفاري الحديثين. */
-  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
+  public: ['config', 'revalidate', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
   verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
-  dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard', 'notifications']
+  dashboard: ['config', 'revalidate', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard', 'notifications']
 };
 
 /* مسار الأصل من الاسم: 'vendor/x' → assets/vendor/x.js وإلا assets/js/x.js */

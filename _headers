@@ -28,3 +28,30 @@
 
 /assets/img/*
   Cache-Control: public, max-age=604800
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  ISR — طبقة كاش الحافة لبيانات الوظائف العامة (Cloudflare Pages CDN)
+#  ---------------------------------------------------------------------------
+#  بدون هذا السطر يذهب استعلام public_jobs إلى قاعدة البيانات لكل زائر. معه
+#  يخدم CDN النسخة المخزّنة لثوانٍ معدودة لكل العالم، وكل الزوار داخل النافذة
+#  يحصلون على نفس الردّ بلا أي استعلام (stale-while-revalidate: يُقدَّم القديم
+#  فوراً ويُحدَّث في الخلفية).
+#
+#  ⚠️ لا ترفع s-maxage فوق 60 ثانية: التحديث الفوري (On-Demand) يمرّ عبر
+#     /api/revalidate أدناه، لكن النافذة هي أقصى تأخير لو تعذّر الإشعار.
+#
+#  Response headers:  Cache-Control public + s-maxage (الحد) + SWR (الخلفية)
+# ═══════════════════════════════════════════════════════════════════════════
+/rest/v1/public_jobs*
+  Cache-Control: public, s-maxage=30, stale-while-revalidate=300
+  Vary: Accept-Encoding
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  مسار إعادة التحقق الفوري (On-Demand Revalidation)
+#  لا يُخزَّن أبداً، ويُقرأ من متغيّرات البيئة في Cloudflare (لا مفاتيح بالكود).
+# ═══════════════════════════════════════════════════════════════════════════
+/api/revalidate*
+  Cache-Control: no-store
+  Access-Control-Allow-Origin: https://hrc.example
+  Access-Control-Allow-Headers: content-type, x-hrc-signature
+  Access-Control-Allow-Methods: POST, OPTIONS
