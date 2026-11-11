@@ -127,7 +127,11 @@ check('الاختصار يحافظ على شروط الحجز وحقوق الب�
 
 /* ======================= 1) الموقع العام ======================= */
 console.log('\n=== 1) الموقع العام (index.html) ===');
-const site = await load('index.html');
+/* جلسة موظف: الدوال التشغيلية (قبول/رفض/رسوم/طباعة) محمية بحارس صلاحية
+   على مستوى الدالة — وهي عمليات موظف فعلاً. تُحمَّل الصفحة العامة بجلسة
+   موظف كما يفعل الموظف على جهازه، والزائر المجهول يبقى مرفوضاً
+   (انظر tests/client-authz.mjs الذي يثبت الرفض). */
+const site = await load('index.html', { session: { username: 'staff', name: 'موظف اختبار', role: 'staff' } });
 check('لا أخطاء JavaScript في الصفحة العامة', () => site.errors.length === 0 || site.errors.join(' | '));
 check('تم تحميل مكتبة الكيو آر كود والإعدادات والمخزن', () =>
   Boolean(site.window.HRCQR && site.window.HRC_CONFIG && site.window.HRCStore && site.window.HRCVoucher) ||

@@ -141,7 +141,7 @@
           jobId: job ? job.id : null,
           jobCode: job ? job.code : null, jobTitle: job ? job.title : null,
           location: job ? (job.governorate || '') : null,
-          employerName: job ? job.employer.name : null, employerPhone: job ? job.employer.phone : null,
+          employerName: job ? (job.employer || {}).name : null, employerPhone: job ? (job.employer || {}).phone : null,
           slotStatus: t ? t.slotStatus : 'empty',
           selectedAt: t ? selected.toISOString() : null,
           holdExpiresAt: isHold ? addHours(selected, Number(d.settings.holdHours || 24)).toISOString() : null,
@@ -356,6 +356,8 @@
   }
 
   function isAdmin() { var u = currentUser(); return !!(u && u.role === 'admin'); }
+  /* جلسة موظف صالحة (مدير أو موظف) — للحالات التي تُتاح للدورين معاً. */
+  function isStaffSession() { var u = currentUser(); return !!(u && (u.role === 'admin' || u.role === 'staff')); }
 
   /* ======================= إدارة المستخدمين ======================= */
 
@@ -624,7 +626,7 @@
     if (f.q) {
       var q = f.q.trim().toLowerCase();
       rows = rows.filter(function (j) {
-        return (j.code + ' ' + j.title + ' ' + (j.governorate || '') + ' ' + j.category + ' ' + (j.employer ? j.employer.name : ''))
+        return (j.code + ' ' + j.title + ' ' + (j.governorate || '') + ' ' + j.category + ' ' + (j.employer ? (j.employer || {}).name : ''))
           .toLowerCase().indexOf(q) >= 0;
       });
     }
@@ -696,12 +698,11 @@
   }
 
   function deleteJob(code) {
-    /* ⛔ حارس صلاحية: الحذف للمدير فقط — مطابقةً لسياسة القاعدة نفسها
-       (jobs_admin_delete using brc.is_admin()). كان الحذف متاحاً للموظف في
-       الواجهة فقط، فتفشل الكتابة على الخادم بصمت ويظنها الموظف نجحت. الآن
-       الواجهة تمنع ما تمنعه القاعدة، وتخبر الموظف بالسبب.
-       ملاحظة: تعديل/إغلاق/حجز الإعلان يبقى متاحاً للموظف (jobs_staff_update). */
-    if (!isAdmin()) return false;
+    /* ⛔ حارس صلاحية: الحذف للمدير **وللموظف** (قرار المالك 2026-11-11)،
+       ومطابقةً لسياسة القاعدة jobs_staff_delete using brc.is_staff().
+       الزائر المجهول لا يملك جلسة موظف فلا يمرّ من هنا — وهذا ما يمنع
+       زرع/حذف وظائف من الصفحة العامة (انظر tests/client-authz.mjs). */
+    if (!isStaffSession()) return false;
     var job = getJob(code); if (!job) return false;
     /* حذف وظيفة عليها حجز/حرجة يغلق فرصة البطاقة المرتبطة (الفرصة مستهلكة —
        قرار معتمد: لا تعود الفرصة بأي نتيجة) */
@@ -987,6 +988,8 @@
 
   /* قبول طلب بطاقة قيد المراجعة ⇒ تتحول لبطاقة رسمية سارية */
   function approveApplicant(serial) {
+    /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isStaffSession()) return { ok: false, error: 'يتطلب حساب موظف' };
     var app = getApplicant(serial);
     if (!app || app.status !== 'pending') return { ok: false, error: 'الطلب غير موجود أو ليس قيد المراجعة' };
     var issue = new Date();
@@ -1001,6 +1004,8 @@
 
   /* رفض طلب بطاقة قيد المراجعة */
   function rejectApplicant(serial, reason) {
+    /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isStaffSession()) return { ok: false, error: 'يتطلب حساب موظف' };
     var app = getApplicant(serial);
     if (!app || app.status !== 'pending') return { ok: false, error: 'الطلب غير موجود أو ليس قيد المراجعة' };
     app.status = 'rejected';
@@ -1115,7 +1120,7 @@
     if(!freeSeat)return {ok:false,error:'لا يوجد شاغر متاح'};
     slot.vacancyNo=freeSeat;
     slot.jobId = job.id; slot.jobCode = job.code; slot.jobTitle = job.title; slot.jobSnapshot = snapshotJob(job);
-    slot.location = job.governorate || ''; slot.employerName = job.employer.name; slot.employerPhone = job.employer.phone;
+    slot.location = job.governorate || ''; slot.employerName = (job.employer || {}).name; slot.employerPhone = (job.employer || {}).phone;
     slot.slotStatus = 'reserved';
     slot.selectedAt = nowISO();
     if (!app.issueDate && !app.expiryDate) {
@@ -1298,6 +1303,8 @@
      لكن التوظيف لا يُنهي البطاقة: يبقى للزبون حقه في فرصته الأخرى حتى
      نهاية مدة البطاقة (30 يوماً). */
   function setOutcome(serial, no, outcome, note) {
+    /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isStaffSession()) return { ok: false, error: 'يتطلب حساب موظف' };
     if(['succeeded','rejected'].indexOf(outcome)<0)return {ok:false,error:'قرار غير صالح'};
     var slot = getAttempts(serial).filter(function (t) { return t.no === Number(no); })[0];
     if (!slot) return { ok: false, error: 'الفرصة غير موجودة' };
@@ -1326,6 +1333,8 @@
   /* إقرار الموظف بعد الحالة الحرجة: إرجاع الوظيفة متوفرة — الفرصة تبقى
      مستهلكة (قرار معتمد: لا تعود الفرصة بأي نتيجة). */
   function releaseHold(serial, no, reason) {
+    /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isStaffSession()) return { ok: false, error: 'يتطلب حساب موظف' };
     var slot = getAttempts(serial).filter(function (t) { return t.no === Number(no); })[0];
     if (!slot) return { ok: false, error: 'الفرصة غير موجودة' };
     if(['reserved','critical','hiring'].indexOf(slot.slotStatus)<0)return {ok:false,error:'انحسمت هذه الفرصة أو تغيرت؛ حدّث التفاصيل'};
@@ -1558,6 +1567,8 @@
   }
 
   function markPrinted(serial) {
+    /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isStaffSession()) return;
     var app = getApplicant(serial); if (!app) return;
     app.printedCount = Number(app.printedCount || 0) + 1;
     audit('طباعة بطاقة', 'applicant', serial, 'طباعة بطاقة التوظيف 59.4×94.6مم مع باركود QR — العدد الكلي ' + app.printedCount);
@@ -1565,6 +1576,8 @@
   }
 
   function setFeePaid(serial, paid, amount) {
+    /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isStaffSession()) return;
     var app = getApplicant(serial); if (!app) return;
     var fee = Number(app.fee != null ? app.fee : db.settings.formFee);
 
@@ -1638,6 +1651,8 @@
   }
 
   function importJson(text) {
+    /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isAdmin()) throw new Error('الاستيراد يتطلب حساب مدير');
     assertLocalRestore();
     previewBackup(text);
     var parsed = JSON.parse(text);
@@ -2749,7 +2764,7 @@
       save(); emit();
     },
     // جلسة
-    login: login, logout: logout, currentUser: currentUser, isAdmin: isAdmin,
+    login: login, logout: logout, currentUser: currentUser, isAdmin: isAdmin, isStaffSession: isStaffSession,
     listUsers: listUsers, addUser: addUser, updateUser: updateUser, deleteUser: deleteUser, toggleUserActive: toggleUserActive,
     // سحابة
     signIn: signIn, signInFast: signInFast, signOutCloud: signOutCloud, changeCloudPassword: changeCloudPassword,

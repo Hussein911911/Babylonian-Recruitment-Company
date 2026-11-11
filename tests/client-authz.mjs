@@ -70,12 +70,59 @@ step(2, 'الاستغلال: زائر مجهول يحاول زرع/تعديل/ح
   check('deleteJob يُرجع false', S.deleteJob('HRC-1') === false);
 }
 
+step(2.5, 'كل دوال الكتابة التشغيلية محمية (جولة تدقيق 2026-11-11)');
+{
+  const src = readFileSync('assets/js/store.js', 'utf8');
+  /* دوال تكتب بيانات تشغيلية/مالية — يجب أن تحمل حارساً في أول سطورها. */
+  const guarded = {
+    createJob: /function createJob\(data\) \{[\s\S]{0,900}if \(!isAdmin\(\)\) return null;/,
+    setJobStatus: /function setJobStatus\([^)]*\) \{[\s\S]{0,600}if \(!isAdmin\(\)\)/,
+    deleteJob: /function deleteJob\(code\) \{[\s\S]{0,900}if \(!isStaffSession\(\)\)/,
+    approveApplicant: /function approveApplicant\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    rejectApplicant: /function rejectApplicant\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    setFeePaid: /function setFeePaid\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    releaseHold: /function releaseHold\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    setOutcome: /function setOutcome\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    markPrinted: /function markPrinted\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    importJson: /function importJson\([^)]*\) \{[\s\S]{0,700}if \(!isAdmin\(\)\) throw new Error/
+  };
+  for (const [fn, re] of Object.entries(guarded)) {
+    check(fn + ' محمية بحارس صلاحية', re.test(src));
+  }
+
+  /* الاستغلال الفعلي: كلها تُرفض بلا جلسة */
+  const job = { code: 'X', title: 't', category: 'c', shift: 's', employerName: 'e',
+    requirements: [], gender: 'لا فرق', region: 'بابل', governorate: 'بابل',
+    salaryMin: 1, salaryMax: 2, vacancies: 1 };
+  check('approveApplicant مرفوضة للزائر', S.approveApplicant('HRC-BC-000120').ok === false);
+  check('rejectApplicant مرفوضة للزائر', S.rejectApplicant('HRC-BC-000120', 'x').ok === false);
+  check('releaseHold مرفوضة للزائر', S.releaseHold('HRC-BC-000120', 1, 'x').ok === false);
+  check('setOutcome مرفوضة للزائر', S.setOutcome('HRC-BC-000120', 1, 'succeeded').ok === false);
+  let importBlocked = false;
+  try { S.importJson('{}'); } catch (e) { importBlocked = /مدير/.test(e.message); }
+  check('importJson مرفوض للزائر', importBlocked);
+  /* setFeePaid و markPrinted تُرجع undefined بلا جلسة (بلا أثر) */
+  const beforeFee = JSON.stringify(S.getApplicant('HRC-BC-000120') || {});
+  S.setFeePaid('HRC-BC-000120', true, 1000);
+  check('setFeePaid بلا أثر على الزائر', JSON.stringify(S.getApplicant('HRC-BC-000120') || {}) === beforeFee);
+  const beforePrint = (S.getApplicant('HRC-BC-000120') || {}).printedCount;
+  S.markPrinted('HRC-BC-000120');
+  check('markPrinted بلا أثر على الزائر', ((S.getApplicant('HRC-BC-000120') || {}).printedCount) === beforePrint);
+
+  /* useChance مقصودة للزائر: تمرّ إلى RPC القاعدة التي تتحقق من الرمز */
+  check('useChance تبقى متاحة (التحقق في القاعدة لا الواجهة)',
+    /function useChance\([^)]*\) \{[\s\S]{0,400}rpcCall\(client, 'apply_with_card'|function useChance\([^)]*\) \{(?![\s\S]{0,700}isStaffSession)/.test(src) ||
+    /apply_with_card/.test(readFileSync('assets/js/cloud.js', 'utf8')));
+}
+
 step(3, 'الحارس على مستوى الدالة لا الزر (ضد الاستدعاء المباشر)');
 {
   const src = readFileSync('assets/js/store.js', 'utf8');
   check('createJob يبدأ بفحص isAdmin', /function createJob\(data\) \{[\s\S]{0,500}if \(!isAdmin\(\)\) return null;/.test(src));
   check('setJobStatus يبدأ بفحص isAdmin', /function setJobStatus\([^)]*\) \{[\s\S]{0,300}if \(!isAdmin\(\)\) return false;/.test(src));
-  check('deleteJob يبدأ بفحص isAdmin', /function deleteJob\(code\) \{[\s\S]{0,900}if \(!isAdmin\(\)\) return false;/.test(src));
+  /* الحذف: مدير وموظف (jobs_staff_delete) — لكن ليس زائراً مجهولاً. */
+  check('deleteJob يبدأ بفحص جلسة الموظف', /function deleteJob\(code\) \{[\s\S]{0,900}if \(!isStaffSession\(\)\) return false;/.test(src));
+  check('isStaffSession تعرّف المدير والموظف لا الزائر', /function isStaffSession\(\) \{ var u = currentUser\(\); return !!\(u && \(u\.role === 'admin' \|\| u\.role === 'staff'\)\); \}/.test(src));
 }
 
 step(4, 'عدّاد «وظيفة متاحة الآن» لا يُقرأ من بيانات قابلة للتزوير');
