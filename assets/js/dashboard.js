@@ -2822,6 +2822,13 @@
           if (!serial) { codeInp.focus(); return; }
           var btn=box.querySelector('#c-save'); btn.disabled=true; codeInp.disabled=true;
           try {
+            /* حماية من إعادة إصدار كود سبق طبعه: البطاقة المحذوفة/المؤرشفة لا
+               تعود إلى التداول بكودها أبداً (قرار المالك). التحقق من السجل
+               الدائم في القاعدة قبل الإصدار — لا من الذاكرة المحلية وحدها،
+               لأن البطاقة قد تكون محذوفة من هذه الجلسة. */
+            if (await Store.serialWasIssued(Store.normalizeCardSerial(serial))) {
+              throw new Error('هذا الكود صدر وطُبع سابقاً (بطاقة مؤرشفة أو محذوفة) ولا يمكن إعادة إصداره — ولّد كوداً جديداً بالزر أعلاه.');
+            }
             var cards=await Store.issueNumberedCards(1,Store.normalizeCardSerial(serial),notes);
             if (!document.contains(box)) return;
             close();

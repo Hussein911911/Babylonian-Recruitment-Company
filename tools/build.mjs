@@ -126,7 +126,9 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
    ولا اتصالاً لحظياً. قياس الحجم أظهر أن المكتبة الكاملة كانت ثلث ما ينزّله.
    اللوحة تبقى على المكتبة الكاملة لأنها تحتاج Auth و Realtime فعلاً. */
 const SCRIPTS = {
-  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'vendor/jsqr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
+  /* jsqr ليس هنا عمداً: 251KB احتياطية تُطلب عند أول مسح فعلي (qr-scan.js)،
+     لا عند فتح الصفحة. القارئ الأصلي BarcodeDetector يغطي كروم/سفاري الحديثين. */
+  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
   verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
   dashboard: ['config', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard', 'notifications']
 };

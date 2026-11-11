@@ -31,7 +31,13 @@ try {
     const renderMs=performance.now()-t;
     return {role,overviewMs:Math.round(overviewMs),renderMs:Math.round(renderMs),storage,storageError,jsonBytes:new TextEncoder().encode(serialized).length,utf16Bytes:serialized.length*2,cards:target.applicants.length,chances:target.attempts.length,rows:document.querySelectorAll(role==='admin'?'#apps-table-body tr':'#jobs-table-body tr').length,missingIcons:[...document.querySelectorAll('#cards-stats use')].map(n=>n.getAttribute('href')).filter(id=>!document.querySelector(id))};
    },{data:dataset(cards),role});
-   assert.equal(result.cards,cards);assert.equal(result.chances,cards*2);assert.equal(result.rows,role==='admin'?cards:Math.min(cards,1000));assert.deepEqual(result.missingIcons,[]);assert.deepEqual(errors,[]);
+   assert.equal(result.cards,cards);assert.equal(result.chances,cards*2);
+   /* جدول الباحثين مُرقَّم منذ 2026-11: 50 بطاقة للصفحة (والبحث يعبر السجل
+      الكامل). توقُّع «كل الصفوف مرة واحدة» كان يفحص أداءً لم يبقَ قائماً،
+      ويُفشل الفحص على بيانات صحيحة. الترقيم نفسه مغطّى بالكامل في
+      tests/card-retention-browser.mjs (50/50/23 + إعادة التصفير). */
+   assert.equal(result.rows,role==='admin'?Math.min(cards,50):Math.min(cards,1000));
+   assert.deepEqual(result.missingIcons,[]);assert.deepEqual(errors,[]);
    // Real filtering on manager view, not only row generation.
    if(role==='admin'){
     const filter=page.locator('#aq');
