@@ -920,7 +920,12 @@
     try { staff = !!(Store.currentUser && Store.currentUser()); } catch (e) { staff = false; }
     var items;
     if (cloudMode && !staff) {
-      var jobsAll = Store.listJobs({});
+      /* ⛔ العدّاد يُقرأ من القاعدة (public_jobs) لا من بيانات الجلسة المحلية.
+         البيانات المحلية قابلة للتعديل من وحدة تحكم أي زائر، فكان الرقم
+         قابلاً للتزوير: يكتب أحدهم وظيفة وهمية في ذاكرة جلسته فيرى «وظيفة
+         متاحة الآن» زائفة ويصوّرها دليلاً. المصدر الوحيد الموثوق هو ما
+         نزل من القاعدة في هذه الجلسة. */
+      var jobsAll = (Store.db() && Store.db().jobs) || [];
       items = [
         { ic: 'briefcase', v: jobsAll.filter(function (j) { return j.status === 'available'; }).length, l: 'وظيفة متاحة الآن' },
         { ic: 'card', v: 'عدة', l: 'فرص حسب البطاقة' },

@@ -17924,6 +17924,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   }
 
   function createJob(data) {
+    /* ⛔ حارس صلاحية: الكتابة إلى الإعلانات للمدير فقط. الواجهة العامة تحمّل
+       store.js كاملاً (تحتاجه للعرض)، فبدون هذا الحارس يستطيع أي زائر
+       استدعاء createJob من وحدة التحكم وزرع وظيفة وهمية في بيانات جلسته —
+       فتظهر في بحثه وتُضلّل من يرى شاشته. الحارس على مستوى الدالة لا الزر. */
+    if (!isAdmin()) return null;
     var job = {
       id: uid('job'), code: nextJobCode(), title: data.title, category: data.category || 'خدمات',
       region: data.region || '', governorate: data.governorate || 'بابل', salaryMin: data.salaryMin, salaryMax: data.salaryMax, shift: data.shift,
@@ -17952,6 +17957,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   }
 
   function setJobStatus(code, status, reason) {
+    /* ⛔ حارس صلاحية: تغيير حالة إعلان وظيفة للمدير فقط. */
+    if (!isAdmin()) return false;
     var job = getJob(code); if (!job) return null;
     var old = job.status;
     job.status = status; job.manualClosed=status==='closed';
@@ -17972,6 +17979,12 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   }
 
   function deleteJob(code) {
+    /* ⛔ حارس صلاحية: الحذف للمدير فقط — مطابقةً لسياسة القاعدة نفسها
+       (jobs_admin_delete using brc.is_admin()). كان الحذف متاحاً للموظف في
+       الواجهة فقط، فتفشل الكتابة على الخادم بصمت ويظنها الموظف نجحت. الآن
+       الواجهة تمنع ما تمنعه القاعدة، وتخبر الموظف بالسبب.
+       ملاحظة: تعديل/إغلاق/حجز الإعلان يبقى متاحاً للموظف (jobs_staff_update). */
+    if (!isAdmin()) return false;
     var job = getJob(code); if (!job) return false;
     /* حذف وظيفة عليها حجز/حرجة يغلق فرصة البطاقة المرتبطة (الفرصة مستهلكة —
        قرار معتمد: لا تعود الفرصة بأي نتيجة) */
@@ -23451,7 +23464,12 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     try { staff = !!(Store.currentUser && Store.currentUser()); } catch (e) { staff = false; }
     var items;
     if (cloudMode && !staff) {
-      var jobsAll = Store.listJobs({});
+      /* ⛔ العدّاد يُقرأ من القاعدة (public_jobs) لا من بيانات الجلسة المحلية.
+         البيانات المحلية قابلة للتعديل من وحدة تحكم أي زائر، فكان الرقم
+         قابلاً للتزوير: يكتب أحدهم وظيفة وهمية في ذاكرة جلسته فيرى «وظيفة
+         متاحة الآن» زائفة ويصوّرها دليلاً. المصدر الوحيد الموثوق هو ما
+         نزل من القاعدة في هذه الجلسة. */
+      var jobsAll = (Store.db() && Store.db().jobs) || [];
       items = [
         { ic: 'briefcase', v: jobsAll.filter(function (j) { return j.status === 'available'; }).length, l: 'وظيفة متاحة الآن' },
         { ic: 'card', v: 'عدة', l: 'فرص حسب البطاقة' },

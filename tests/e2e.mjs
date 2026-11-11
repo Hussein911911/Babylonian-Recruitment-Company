@@ -617,7 +617,26 @@ check('فرصة البطاقة التي رُفضت لا تعود (بقيت فر�
 check('قرار الموظف موثّق بالسبب في سجل التدقيق',
   D3.listAudit().some((l) => /إرجاع الوظيفة متاحة/.test(l.details || '')));
 /* الخيار الثاني متاح أيضاً: حذف الوظيفة نهائياً من نفس النافذة (يُختبر على وظيفة ثالثة) */
-check('حذف الوظيفة متاح كخيار ثانٍ للموظف', typeof D3.deleteJob === 'function' && D3.deleteJob('HRC-1047') === true);
+/* الحذف للمدير فقط — مطابقةً لسياسة jobs_admin_delete في القاعدة. الموظف
+   يعدّل ويغلق ويحجز، لكن لا يحذف (وإلا يفشل الإرسال على الخادم بصمت). */
+{
+  /* الجلسة تُضبط مباشرة: login() مغلق بـenforceAuth في هذه البيئة، والفحص
+     يحتاج اختبار الدورين. هذا تعديل حالة اختبار، لا مسار مستخدم. */
+  const jobExists = !!D3.getJob('HRC-1047');
+  function actAs(role) {
+    dash3.w.sessionStorage.setItem('hrc_session_v2', JSON.stringify({ username: role, name: role, role: role, cloud: true }));
+    try { D3.logout(); } catch (e) { }
+    dash3.w.sessionStorage.setItem('hrc_session_v2', JSON.stringify({ username: role, name: role, role: role, cloud: true }));
+    D3.reload && D3.reload();
+  }
+  actAs('staff');
+  const staffTry = jobExists ? D3.deleteJob('HRC-1047') : 'no-job';
+  actAs('admin');
+  const adminTry = jobExists ? D3.deleteJob('HRC-1047') : 'no-job';
+  check('حذف الوظيفة متاح للمدير فقط (مطابق لسياسة القاعدة)',
+    typeof D3.deleteJob === 'function' && jobExists && staffTry === false && adminTry === true,
+    JSON.stringify({ jobExists, staffTry, adminTry }));
+}
 check('الوظيفة HRC-1047 حُذفت نهائياً بقرار الموظف', !D3.getJob('HRC-1047'));
 check('كل قرارات الرحلة موثقة بسجل التدقيق (' + D3.listAudit().length + ' قيداً)',
   D3.listAudit().some((l) => /توظيف/.test(l.action)) && D3.listAudit().some((l) => /رفض|إرجاع|حذف/.test(l.action)));

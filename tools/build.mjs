@@ -128,7 +128,9 @@ const CLOUD_ORDER = ['vendor/supabase', 'supabase-config', 'cloud', 'cloud-auth'
 const SCRIPTS = {
   /* jsqr ليس هنا عمداً: 251KB احتياطية تُطلب عند أول مسح فعلي (qr-scan.js)،
      لا عند فتح الصفحة. القارئ الأصلي BarcodeDetector يغطي كروم/سفاري الحديثين. */
-  public: ['config', 'revalidate', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
+  /* revalidate ليس هنا: الوظائف تُعدَّل من اللوحة وحدها، فتحميل وحدة
+     إعادة التحقق لكل زائر في الصفحة العامة 5KB بلا أي فائدة. */
+  public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
   verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
   dashboard: ['config', 'revalidate', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard', 'notifications']
 };

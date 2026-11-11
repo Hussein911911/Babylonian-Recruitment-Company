@@ -641,6 +641,11 @@
   }
 
   function createJob(data) {
+    /* ⛔ حارس صلاحية: الكتابة إلى الإعلانات للمدير فقط. الواجهة العامة تحمّل
+       store.js كاملاً (تحتاجه للعرض)، فبدون هذا الحارس يستطيع أي زائر
+       استدعاء createJob من وحدة التحكم وزرع وظيفة وهمية في بيانات جلسته —
+       فتظهر في بحثه وتُضلّل من يرى شاشته. الحارس على مستوى الدالة لا الزر. */
+    if (!isAdmin()) return null;
     var job = {
       id: uid('job'), code: nextJobCode(), title: data.title, category: data.category || 'خدمات',
       region: data.region || '', governorate: data.governorate || 'بابل', salaryMin: data.salaryMin, salaryMax: data.salaryMax, shift: data.shift,
@@ -669,6 +674,8 @@
   }
 
   function setJobStatus(code, status, reason) {
+    /* ⛔ حارس صلاحية: تغيير حالة إعلان وظيفة للمدير فقط. */
+    if (!isAdmin()) return false;
     var job = getJob(code); if (!job) return null;
     var old = job.status;
     job.status = status; job.manualClosed=status==='closed';
@@ -689,6 +696,12 @@
   }
 
   function deleteJob(code) {
+    /* ⛔ حارس صلاحية: الحذف للمدير فقط — مطابقةً لسياسة القاعدة نفسها
+       (jobs_admin_delete using brc.is_admin()). كان الحذف متاحاً للموظف في
+       الواجهة فقط، فتفشل الكتابة على الخادم بصمت ويظنها الموظف نجحت. الآن
+       الواجهة تمنع ما تمنعه القاعدة، وتخبر الموظف بالسبب.
+       ملاحظة: تعديل/إغلاق/حجز الإعلان يبقى متاحاً للموظف (jobs_staff_update). */
+    if (!isAdmin()) return false;
     var job = getJob(code); if (!job) return false;
     /* حذف وظيفة عليها حجز/حرجة يغلق فرصة البطاقة المرتبطة (الفرصة مستهلكة —
        قرار معتمد: لا تعود الفرصة بأي نتيجة) */
