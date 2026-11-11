@@ -9,6 +9,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, normalize, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomBytes } from 'node:crypto';
 import { verifyRequest } from './revalidate-core.mjs';
 
 /* ── معاينة "/demo" بلا قاعدة بيانات (أداة تطوير فقط) ───────────────────────
@@ -64,6 +65,11 @@ const PORT = Number(process.argv[2] || process.env.PORT || 4173);
 const HOST = process.env.HOST || '0.0.0.0';
 /* بصمة إبطال كاش البيانات العامة في المعاينة — يرفعها /api/revalidate */
 let PUBLIC_CACHE_EPOCH = 0;
+/* سرّ تطوير عشوائي لكل تشغيل — للاختبار على 127.0.0.1 فقط، لا قيمة ثابتة
+   في الكود يمكن استغلالها على نسخة منشورة. يُطبع مرة واحدة كي يستخدمه
+   من يختبر محلياً (وهو ليس سرّ إنتاج). */
+const DEVELOP_SECRET = process.env.HRC_DEV_REVALIDATE_SECRET ||
+  (process.argv.includes('--print-dev-secret') ? randomBytes(24).toString('hex') : '');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -124,7 +130,19 @@ const server = createServer(async (req, res) => {
       }
       let raw = '';
       for await (const chunk of req) raw += chunk;
-      const secret = process.env.HRC_REVALIDATE_SECRET || 'dev-only-revalidate-secret';
+      /* ⛔ لا سرّ افتراضي مكتوب في الكود. السابق كان يُقبل على أي نسخة
+         منشورة من هذا الخادم، فيستطيع أي أحد حذف كاش البيانات. الآن:
+           • محلي على 127.0.0.1 → سرّ تطوير عشوائي جديد كل تشغيل (للاختبار).
+           • غير ذلك → يجب HRC_REVALIDATE_SECRET وإلا 503 كالإنتاج. */
+      const loopback = ['127.0.0.1', '::1', 'localhost'].indexOf(req.socket.remoteAddress) >= 0 ||
+                       ['127.0.0.1', '::1', 'localhost'].indexOf(req.socket.localAddress) >= 0;
+      let secret = process.env.HRC_REVALIDATE_SECRET || '';
+      if (!secret && loopback && DEVELOP_SECRET) secret = DEVELOP_SECRET;
+      if (!secret) {
+        res.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ ok: false, error: 'لم يُضبط HRC_REVALIDATE_SECRET' }));
+        return;
+      }
       const verdict = await verifyRequest({ secret: secret, headers: req.headers, payload: raw });
       if (!verdict.ok) {
         res.writeHead(verdict.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });

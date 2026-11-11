@@ -187,18 +187,19 @@ step(4, 'الربط: تعديل الوظيفة في الحالة يُطلق ال
 
   const build = readFileSync('tools/build.mjs', 'utf8');
   check('revalidate في ترتيب التسلسل', /JS_ORDER = \[[^\]]*'revalidate'/.test(build));
-  check('revalidate محمّل في الصفحة العامة', /public: \['config', 'revalidate'/.test(build));
+  check('revalidate غير محمّل في الصفحة العامة', !/public: \['config', 'revalidate'/.test(build));
   check('revalidate محمّل في اللوحة', /dashboard: \['config', 'revalidate'/.test(build));
 }
 
 /* ───────────────────── 5) الصفحات المبنية فعلاً ───────────────────── */
 step(5, 'الصفحات المبنية تحمل الوحدة');
 {
-  for (const page of ['index.html', 'dashboard.html']) {
-    const html = readFileSync(page, 'utf8');
-    check(page + ' يحمّل revalidate.js', /assets\/js\/revalidate\.js/.test(html));
-    check(page + ' لا يحمّل jsQR أولاً (تحسين سابق قائم)', page === 'index.html' ? !/vendor\/jsqr\.js/.test(html) : true);
-  }
+  /* الوحدة تُحمَّل في اللوحة وحدها — تعديل الوظائف من هناك فقط. */
+  const dashHtml = readFileSync('dashboard.html', 'utf8');
+  check('dashboard.html يحمّل revalidate.js', /assets\/js\/revalidate\.js/.test(dashHtml));
+  const pubHtml = readFileSync('index.html', 'utf8');
+  check('index.html لا يحمّلها (5KB بلا فائدة للزائر)', !/assets\/js\/revalidate\.js/.test(pubHtml));
+  check('index.html لا يحمّل jsQR أولاً (تحسين سابق قائم)', !/vendor\/jsqr\.js/.test(pubHtml));
   const standalone = readFileSync('hrc-standalone.html', 'utf8');
   check('الملف المستقل يحتوي الوحدة لكنها معطّلة (بلا شبكة)', /hrc-cache|HRCRevalidate/.test(standalone));
 }
