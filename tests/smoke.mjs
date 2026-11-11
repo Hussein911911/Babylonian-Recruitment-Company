@@ -634,7 +634,7 @@ check('قالب البطاقة يحوي الوجهين وكل بياناتها �
   const html = site.window.HRCVoucher.buildHtml(app);
   const needed = [
     'منصة مكسب', 'فرصتك تبدأ من هنا',
-    '07760058007',
+    '07763999907',
     'HRC-BC-000120',
     'كود البطاقة',
     'hrc-card', '<svg', 'فرص للتقديم'

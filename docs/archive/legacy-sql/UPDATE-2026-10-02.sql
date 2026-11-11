@@ -1620,7 +1620,7 @@ insert into brc.settings (key, value) values
       'nameEn',      'Al-Hadaf Recruitment Company',
       'legalName',   'شركة الهدف للتوظيف',
       'slogan',      'نوفّر الأيادي العاملة الفنية والتخصصية في بابل والفرات الأوسط',
-      'phones',      jsonb_build_array('07760058007', '07715993271'),
+      'phones',      jsonb_build_array('07763999907', '07863999907'),
       'address',     'حلة - شارع 60 - قرب مدينة حمورابي - قرب مجمع الكرعاوي',
       'addressShort','الحلة – بابل، العراق',
       'email',       'contact@hrc-babil.com',

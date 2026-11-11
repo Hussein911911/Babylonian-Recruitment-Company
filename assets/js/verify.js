@@ -135,7 +135,7 @@
             'الكيو آر كود أو اكتب الرقم التسلسلي هنا. <b>الزبائن الكرام:</b> للحجز أو الاستفسار خابرونا أو راجعوا المكتب.</p>' +
             '<div class="flex flex-wrap" style="gap:10px">' +
               '<a class="btn btn-lapis" href="dashboard.html">' + UI.ic('login') + ' تسجيل دخول الموظفين</a>' +
-              '<a class="btn btn-gold" href="https://wa.me/9647760058007" target="_blank" rel="noopener">' +
+              '<a class="btn btn-gold" href="https://wa.me/9647763999907" target="_blank" rel="noopener">' +
                 UI.ic('whatsapp') + ' خابر الشركة للحجز</a>' +
               '<a class="btn btn-outline" href="index.html">' + UI.ic('arrow-left') + ' العودة للموقع</a>' +
             '</div>' +

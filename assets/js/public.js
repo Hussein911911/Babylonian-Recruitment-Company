@@ -1067,7 +1067,7 @@
      حتى يصل الاستفسار واضحاً لمكتب الشركة مباشرة. */
   function waNumber() {
     var raw = (CFG.company && CFG.company.whatsapp) ||
-      (CFG.company && CFG.company.phones && CFG.company.phones[0]) || '07760058007';
+      (CFG.company && CFG.company.phones && CFG.company.phones[0]) || '07763999907';
     var d = String(raw).replace(/\D/g, '');
     if (d.indexOf('00') === 0) d = d.slice(2);
     else if (d.charAt(0) === '0') d = '964' + d.slice(1);

@@ -44,9 +44,14 @@ begin
  if actor is null or not brc.is_admin() then raise exception 'الإصدار للمدير الفعال فقط' using errcode='42501'; end if;
  -- قرار 2026-11-10: الورقة صارت 4 بطاقات، فالدفعة مضاعفات 4 من 4 إلى 60
  -- (أوراق كاملة بلا بطاقات يتيمة في آخر ورقة).
- if p_request is null or p_count is null or p_count<4 or p_count>60 or p_count%4<>0 or length(coalesce(p_notes,''))>1000 then raise exception 'بيانات الإصدار غير صالحة'; end if;
+ -- استثناء: إصدار بطاقة واحدة بكود محدَّد (p_serial) يبقى p_count=1 — يُستدعى
+ -- من مسار البطاقة المفردة، وليس دفعة.
+ if p_request is null or p_count is null or length(coalesce(p_notes,''))>1000
+    or (p_serial is null and (p_count<4 or p_count>60 or p_count%4<>0))
+    or (p_serial is not null and p_count<>1)
+ then raise exception 'بيانات الإصدار غير صالحة'; end if;
  p_serial:=nullif(upper(btrim(coalesce(p_serial,''))),'');
- if p_serial is not null and (p_count<>1 or p_serial !~ '^([2-9A-HJKMNP-Z]{10}|HRC-BC-[0-9]{6})$') then raise exception 'كود البطاقة غير صالح'; end if;
+ if p_serial is not null and p_serial !~ '^([2-9A-HJKMNP-Z]{10}|HRC-BC-[0-9]{6})$' then raise exception 'كود البطاقة غير صالح'; end if;
  args:=jsonb_build_object('count',p_count,'serial',p_serial,'notes',coalesce(p_notes,''));
  -- Same lock as recovery: neither an issuance nor its retry can overlap restore.
  perform pg_advisory_xact_lock(8310192026);
