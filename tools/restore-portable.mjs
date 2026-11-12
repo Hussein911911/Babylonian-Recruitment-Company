@@ -114,20 +114,62 @@ async function decrypt(envelope, password) {
 /* ── توليد SQL ──────────────────────────────────────────────────────────── */
 const IDENT = (s) => '"' + String(s).replace(/"/g, '""') + '"';
 
+/* تمثيل قيمة SQL.
+   ⚠ عطل حقيقي وجده الفحص على قاعدة PGlite:
+   المصفوفة كانت تُرسل كـ`'[...]'::jsonb`، والقاعدة ترفضها:
+   «column "filled_vacancy_numbers" is of type integer[] but expression is of type jsonb»
+   فتفشل عملية الاسترجاع كلها. المصفوفات الآن تُرسل بصيغة PostgreSQL
+   الحقيقية: `{1,2}` أو `{"نص"}`، بلا ::jsonb. */
+function arrayLit(arr) {
+  const parts = arr.map((x) => {
+    if (x === null || x === undefined) return 'NULL';
+    if (typeof x === 'number') return String(x);
+    if (typeof x === 'boolean') return x ? 'true' : 'false';
+    /* العناصر النصية: تُحاط بعلامات تنصيص دائمًا ونُهرّب \ و " */
+    const t = String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    return '"' + t + '"';
+  });
+  return "'{" + parts.join(',') + "}'";
+}
+
 function lit(v) {
   if (v === null || v === undefined) return 'NULL';
+  if (Array.isArray(v)) return arrayLit(v);
   if (typeof v === 'number') return Number.isFinite(v) ? String(v) : 'NULL';
   if (typeof v === 'boolean') return v ? 'true' : 'false';
   if (typeof v === 'object') return "'" + JSON.stringify(v).replace(/'/g, "''") + "'::jsonb";
   return "'" + String(v).replace(/'/g, "''") + "'";
 }
 
-function insertRows(table, rows, columns) {
+/* ── اختيار الأعمدة: من الصف نفسه، لا من قائمة يدوية ───────────────────────
+   كانت هناك قائمة أعمدة مكتوبة يدوياً لكل جدول، وقد تقادمت بصمت:
+   `available_vacancies` و`company` و`printed` و`chances` و`outcome`
+   و`region` و`job_id` لم تعد موجودة، و`card_print_code` و`archived_at`
+   و`employer_decision` (حقول أمنية) لم تكن مذكورة إطلاقاً.
+   النتيجة: SQL يفشل أو يسترجع بيانات ناقصة بلا تحذير.
+   الحل: نأخذ مفاتيح الصف الفعلية من الحمولة، ونقصّها على الأعمدة
+   الموجودة فعلاً في القاعدة الهدف إن توفّرت لدينا القائمة؛ وإلا نستخدم
+   مفاتيح الصف كما هي. لا قائمة يدوية بعد اليوم. */
+const SAFE_IDENT = /^[a-z_][a-z0-9_]*$/;
+
+function columnsOf(rows, allow) {
+  const seen = new Set();
+  (rows || []).forEach((r) => {
+    if (!r || typeof r !== 'object') return;
+    Object.keys(r).forEach((k) => { if (SAFE_IDENT.test(k)) seen.add(k); });
+  });
+  let cols = [...seen];
+  if (allow && allow.length) cols = cols.filter((c) => allow.includes(c));
+  /* ترتيب ثابت كي يكون الناتج قابلاً للمقارنة بين تشغيلين */
+  return cols.sort();
+}
+
+function insertRows(table, rows, allow) {
   if (!rows || !rows.length) return '';
-  const cols = columns.filter((c) => rows.some((r) => r[c] !== undefined));
-  if (!cols.length) return '';
+  const cols = columnsOf(rows, allow);
+  if (!cols.length) return `-- ⚠ ${table}: لا أعمدة صالحة — تم تخطّي ${rows.length} صفاً\n\n`;
   const values = rows.map((r) => '  (' + cols.map((c) => lit(r[c])).join(', ') + ')').join(',\n');
-  return `-- ${rows.length} صفاً في ${table}\nINSERT INTO brc.${IDENT(table)} (${cols.map(IDENT).join(', ')})\nVALUES\n${values};\n\n`;
+  return `-- ${rows.length} صفاً في ${table} (${cols.length} عموداً)\nINSERT INTO brc.${IDENT(table)} (${cols.map(IDENT).join(', ')})\nVALUES\n${values};\n\n`;
 }
 
 function buildSql(p) {
@@ -139,6 +181,7 @@ function buildSql(p) {
 --
 --  ⚠ لا تُشغّل هذا الملف على قاعدة فيها بيانات — يبدأ بـ TRUNCATE.
 --  ⚠ استرجعه على قاعدة جديدة أولاً، وتحقّق من الأعداد قبل نقلها للإنتاج.
+--  ⚠ يجب أن يكون مخطط brc منشأً قبل التنفيذ (docs/schema.sql أو الهجرات).
 -- ═══════════════════════════════════════════════════════════════════════════
 
 SET client_encoding = 'UTF8';
@@ -152,13 +195,13 @@ TRUNCATE brc.job_attempts, brc.applicants, brc.jobs, brc.employer_job_credential
 `;
 
   let body = '';
-  body += insertRows('jobs', p.jobs, ['id', 'code', 'title', 'category', 'region', 'governorate', 'shift', 'salary_min', 'salary_max', 'gender', 'vacancies', 'requirements', 'status', 'hold_expires_at', 'created_at', 'description', 'image_url', 'available_vacancies', 'company', 'employer_name', 'employer_phone', 'employer_address', 'interview_location', 'created_by', 'updated_at']);
-  body += insertRows('applicants', p.applicants, ['serial', 'full_name', 'phone', 'status', 'fee_paid', 'printed', 'created_at', 'expiry_date', 'notes', 'address', 'gender', 'region', 'job_id', 'chances', 'staff_id', 'updated_at']);
-  body += insertRows('job_attempts', p.job_attempts, ['serial', 'attempt_no', 'slot_status', 'job_id', 'job_code', 'chance_code', 'selected_at', 'hold_expires_at', 'closed_at', 'outcome', 'outcome_note', 'created_at']);
-  body += insertRows('settings', p.settings, ['key', 'value', 'updated_at', 'updated_by']);
-  body += insertRows('employer_job_credentials', p.employer_job_credentials, ['job_id', 'pin_hash', 'failures', 'window_start', 'changed_at']);
-  body += insertRows('issued_serials', p.issued_serials, ['serial', 'issued_at', 'note']);
-  body += insertRows('audit_log', p.audit_log, ['id', 'ts', 'user_id', 'username', 'role', 'ip', 'action', 'entity', 'entity_id', 'details', 'diff']);
+  body += insertRows('jobs', p.jobs);
+  body += insertRows('applicants', p.applicants);
+  body += insertRows('job_attempts', p.job_attempts);
+  body += insertRows('settings', p.settings);
+  body += insertRows('employer_job_credentials', p.employer_job_credentials);
+  body += insertRows('issued_serials', p.issued_serials);
+  body += insertRows('audit_log', p.audit_log);
 
   /* بعد الإدخال: اضبط تسلسلات bigint كي لا تتصادم الصفوف الجديدة. */
   const tail = `
@@ -244,4 +287,8 @@ async function main() {
 `);
 }
 
-main().catch((e) => die(e.message || String(e)));
+/* التصدير للفحص: يسمح باختبار مُولِّد SQL على قاعدة حقيقية بلا كلمة مرور.
+   ولا يغيّر سلوك سطر الأوامر — main() لا تُستدعى عند الاستيراد. */
+export { buildSql, columnsOf };
+const isDirectRun = process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).href;
+if (isDirectRun) main().catch((e) => die(e.message || String(e)));
