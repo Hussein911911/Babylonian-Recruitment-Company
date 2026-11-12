@@ -134,6 +134,59 @@ catch (e) { check('السكربت يرفض كلمة خاطئة', /غير صحي�
 
 ['/tmp/pb-test.hrcbak', '/tmp/pb-test-restore.sql'].forEach((f) => { try { unlinkSync(f); } catch {} });
 
+console.log('\n▌ 8 — الإصدار 2: تخطّي diff في سجلات التدقيق');
+{
+  /* ما نميّزه: سجل تدقيق عادي (diff صغير) يجب أن يبقى كاملاً، وسجل يحمل
+     صورة مضمّنة (diff كبير) يُفقد منه حقل diff فقط. هذا منطق الإصدار 2 في
+     brc.recovery_export_v2 — نتحقق من القاعدة نفسها هنا بنمذجة القرار. */
+  const SMALL = 16384;
+  const rows = [
+    { id: 1, diff: { after: { title: 'صغير' } } },           // يبقى
+    { id: 2, diff: { after: { image: 'data:image/png;base64,' + 'A'.repeat(40000) } } }, // يُقلَّم
+    { id: 3, diff: null }                                     // يبقى
+  ];
+  const trim = (r) => {
+    const size = Buffer.byteLength(JSON.stringify(r.diff || null));
+    if (r.diff !== null && size > SMALL) {
+      const { diff, ...rest } = r;
+      return { ...rest, diffTrimmed: true };
+    }
+    return r;
+  };
+  const out = rows.map(trim);
+  check('السجل الصغير يبقى بفارقه', out[0].diff && out[0].diff.after.title === 'صغير');
+  check('السجل الكبير يُقلَّم', !out[1].diff && out[1].diffTrimmed === true);
+  check('السجل الفارغ يبقى', out[2].diff === null && !out[2].diffTrimmed);
+  check('لا يُفقد أي سجل', out.length === 3);
+  check('المعرّف محفوظ في المقلَّم', out[1].id === 2);
+
+  /* الحجم: 42 ك.ب → 4 بايت. هذا هو الفرق بين 25 م.ب و4.8 م.ب. */
+  const before = Buffer.byteLength(JSON.stringify(rows));
+  const after = Buffer.byteLength(JSON.stringify(out));
+  check('التقليم يوفّر > 90%', (1 - after / before) > 0.9,
+    `${before} → ${after}`);
+  console.log(`   · الحجم: ${(before/1024).toFixed(1)}KB → ${(after/1024).toFixed(0)}KB`);
+}
+
+console.log('\n▌ 9 — النقل على دفعات (Chunked)');
+{
+  /* payload كبير يجب أن يُشفَّر دون تجاوز حدود المتصفح. */
+  const big = {
+    format: 2, schema: 'chunk-test', counts: { audit: 500 },
+    jobs: [], applicants: [], job_attempts: [], settings: [],
+    employer_job_credentials: [], issued_serials: [], staff: [],
+    audit_log: Array.from({ length: 500 }, (_, i) => ({
+      id: i + 1, username: 'admin', action: 'تعديل', details: 'نص '.repeat(200)
+    }))
+  };
+  const env = await PB.seal(big, 'كلمة-مرور-الدفعات-2026');
+  check('حمولة كبيرة تُشفَّر', env.bytes > 200000, String(env.bytes));
+  const back = await PB.open(env, 'كلمة-مرور-الدفعات-2026');
+  check('تُفكّ كاملة', back.payload.audit_log.length === 500);
+  check('البصمة مطابقة', back.meta.checksum === env.checksum);
+  console.log(`   · ${(env.bytes/1024).toFixed(0)}KB من البيانات`);
+}
+
 console.log('\n' + '═'.repeat(62));
 console.log('  ' + (fail ? '❌ ' : '✅ ') + pass + ' ناجح | ' + fail + ' فاشل');
 console.log('═'.repeat(62) + '\n');

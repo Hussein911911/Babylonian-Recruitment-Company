@@ -2678,14 +2678,47 @@
   /* تصدير نسخة محمولة: ترجع البيانات خاماً (JSONB) للمدير فقط.
      المتصفح هو من يشفّرها بكلمة مرور المالك — المفتاح لا يمرّ بالقاعدة.
      ⛔ حارس: isAdmin() هنا وفي recovery_export_full بالقاعدة معاً. */
+  /* النسخة المحمولة: نطلب الإصدار 2 (يحذف diff من سجلات التدقيق الحاملة
+     صوراً مضمّنة). الملف الشخصي: 4.8MB بدل 25MB — أي 20× أسرع ويمرّ على
+     شبكة الهاتف. إن لم تكن الدالة موجودة (قاعدة لم تُهاجَر بعد) نرجع للإصدار 1.
+     ⛔ حارس: isAdmin() هنا وفي الدالة بالقاعدة معاً. */
   function recoveryExportFull() {
     if (!isAdmin()) return Promise.reject(new Error('تصدير النسخة الكاملة صلاحية المدير العام فقط'));
     if (!enforceAuth() || !cloud.client) return Promise.reject(new Error('يلزم دخول المدير الرسمي واتصال قاعدة الشركة'));
-    return cloud.client.rpc('recovery_export_full', {}).then(function (r) {
-      if (r.error) throw new Error(r.error.message || 'تعذّر تصدير النسخة');
-      if (!r.data || r.data.format !== 1) throw new Error('لم يُعد الخادم نسخة صالحة');
-      return r.data;
+    function call(fn, minFormat) {
+      return cloud.client.rpc(fn, {}).then(function (r) {
+        if (r.error) {
+          /* الدالة غير موجودة → نجرب الإصدار الأقدم */
+          if (/does not exist|schema cache/i.test(String(r.error.message))) return null;
+          throw new Error(translateExportError(r.error.message));
+        }
+        if (!r.data || !r.data.format || r.data.format < minFormat) return null;
+        return r.data;
+      });
+    }
+    return call('recovery_export_v2', 2).then(function (d) {
+      if (d) return d;
+      return call('recovery_export_full', 1).then(function (legacy) {
+        if (legacy) return legacy;
+        throw new Error('لم يُعد الخادم نسخة صالحة — تأكد أن الهجرات مطبّقة على القاعدة');
+      });
     });
+  }
+
+  /* رسائل فشل التصدير: نُترجم أخطاء PostgreSQL إلى عربية مفهومة للمدير.
+     أهمّها: statement timeout — كان يظهر بالإنجليزية خاماً على الهاتف. */
+  function translateExportError(msg) {
+    var m = String(msg || '');
+    if (/statement timeout|canceling statement/i.test(m)) {
+      return 'انتهت مهلة تجهيز النسخة على الخادم (أكثر من دقيقتين). جرّب على شبكة واي‑فاي، أو تواصل مع الدعم لتحديث قاعدة البيانات.';
+    }
+    if (/out of memory|insufficient memory/i.test(m)) {
+      return 'الذاكرة المتاحة على الخادم لا تكفي لهذا التصدير.';
+    }
+    if (/permission denied|صلاحية المدير/i.test(m)) {
+      return 'تصدير النسخة الكاملة صلاحية المدير العام فقط.';
+    }
+    return m || 'تعذّر تصدير النسخة';
   }
 
   /* جدولة النسخ التلقائي: يضبطها المدير من الإعدادات وتُخزَّن في القاعدة

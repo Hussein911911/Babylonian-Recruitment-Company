@@ -97,17 +97,30 @@
       var btn=this;err.style.display='none';
       if(p1.value.length<PB.MIN_PASSWORD){err.textContent='كلمة المرور قصيرة — الحد الأدنى '+PB.MIN_PASSWORD+' محارف.';err.style.display='block';return;}
       if(p1.value!==p2.value){err.textContent='كلمتا المرور غير متطابقتين.';err.style.display='block';return;}
-      btn.disabled=true;btn.textContent='جارٍ سحب البيانات وتشفيرها…';
+      btn.disabled=true;err.style.display='none';
+      /* تقدّم حقيقي: نُظهر المرحلة كي لا يظن المدير أن الزر علّق على شبكة بطيئة. */
+      var t0=Date.now();
+      var tick=setInterval(function(){
+       var sec=Math.round((Date.now()-t0)/1000);
+       btn.textContent='جارٍ التجهيز… '+sec+' ث';
+      },1000);
+      btn.textContent='جارٍ سحب البيانات…';
       try{
        var data=await Store.recoveryExportFull();
+       btn.textContent='جارٍ التشفير…';
        var env=await PB.seal(data,p1.value);
+       clearInterval(tick);
        var name=PB.suggestName(new Date());
        UI.download(name,JSON.stringify(env),'application/json;charset=utf-8');
        close();lock(false);
        var c=env.counts||{};
-       portableStatus('نُزِّلت النسخة: '+(c.applicants||0)+' بطاقة و'+(c.audit||0)+' سجل تدقيق — '+name,'ok');
+       var trimmed=Number(c.diffTrimmed||0);
+       var note='نُزِّلت النسخة: '+(c.applicants||0)+' بطاقة و'+(c.audit||0)+' سجل تدقيق — '+name;
+       if(trimmed)note+=' (استُبعد الفرق التفصيلي من '+trimmed+' سجلاً يحمل صوراً مضمّنة)';
+       portableStatus(note,'ok');
        UI.toast('ok','نُزِّلت النسخة المشفّرة',name+' — احفظ كلمة المرور؛ بدونها لا تُفتح.');
       }catch(e){
+       clearInterval(tick);
        err.textContent=e.message||'تعذّر إنشاء النسخة';err.style.display='block';
        btn.disabled=false;btn.textContent='تنزيل';
       }
