@@ -1,0 +1,55 @@
+{
+  "name": "منصة مكسب للتوظيف",
+  "short_name": "مكسب",
+  "description": "منصة مكسب للتوظيف — استمارات التوظيف وبطاقات الفرص في بابل والعراق.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1a3a",
+  "theme_color": "#0b1a3a",
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/assets/img/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/img/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "لوحة الموظفين",
+      "url": "/dashboard",
+      "description": "الوظائف والاستمارات والبطاقات"
+    },
+    {
+      "name": "التحقق من استمارة",
+      "url": "/verify",
+      "description": "التحقق من صحة استمارة برقمها"
+    }
+  ]
+}

@@ -320,6 +320,37 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
   check('التحقق يعمل بالعميل المصغّر ويُرجع «لا توجد بطاقة»', vr.ok === false && /لا توجد استمارة|لا توجد بطاقة/.test(vr.error), JSON.stringify(vr));
   check('لا محاولة تسجيل دخول من صفحة عامة', (await w.HRCStore.signIn('admin', 'x')).code === 'no_auth');
 
+  /* ── ملفات التسليم (PWA + محركات البحث) ───────────────────────────────── */
+  {
+    const { existsSync: ex, readFileSync: rf } = await import('node:fs');
+    check('manifest.webmanifest موجود', ex('manifest.webmanifest'));
+    check('robots.txt موجود', ex('robots.txt'));
+    check('sitemap.xml موجود', ex('sitemap.xml'));
+    check('أيقونة 192 موجودة', ex('assets/img/icon-192.png'));
+    check('أيقونة 512 موجودة', ex('assets/img/icon-512.png'));
+    check('أيقونة maskable موجودة', ex('assets/img/icon-maskable-512.png'));
+
+    const man = JSON.parse(rf('manifest.webmanifest', 'utf8'));
+    check('manifest: الاسم واللغة عربية', man.name && man.lang === 'ar' && man.dir === 'rtl', man.lang);
+    check('manifest: display=standalone', man.display === 'standalone', man.display);
+    check('manifest: start_url موجود', !!man.start_url, man.start_url);
+    check('manifest: ٤ أيقونات أو أكثر', man.icons.length >= 4, String(man.icons.length));
+    check('manifest: أيقونة maskable', man.icons.some((i) => (i.purpose || '').includes('maskable')));
+    check('manifest: theme_color كحلي', man.theme_color === '#0b1a3a', man.theme_color);
+
+    const pages = ['index.html', 'apply.html', '404.html', 'verify.html', 'hrc-standalone.html', 'hrc-light.html'];
+    pages.forEach((f) => {
+      const h = rf(f, 'utf8');
+      check(f + ': مرتبطة بالـmanifest', /rel="manifest"/.test(h));
+      check(f + ': أيقونة iOS', /rel="apple-touch-icon"/.test(h));
+    });
+    check('dashboard.html: بلا manifest (لوحة داخلية)', !/rel="manifest"/.test(rf('dashboard.html', 'utf8')));
+
+    check('robots.txt: يحجب اللوحة', /Disallow: \/dashboard/.test(rf('robots.txt', 'utf8')));
+    check('robots.txt: يشير للـsitemap', /Sitemap: https:\/\/hrc-babil\.com/.test(rf('robots.txt', 'utf8')));
+    check('sitemap.xml: ٤ روابط', (rf('sitemap.xml', 'utf8').match(/<url>/g) || []).length === 4);
+  }
+
   api.close();
   fileServer.kill('SIGTERM');
 }

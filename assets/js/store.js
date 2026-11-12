@@ -823,7 +823,7 @@
      ورمزي فرصتين — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
      والصلاحية (30 يوماً) لا تبدأ إلا عند أول تقديم ناجح. */
   function createCardBatch(count, notes) {
-    /* ⛔ إصدار البطاقات حصرياً للمدير (2026-11-11). */
+    /* ⛔ الإصدار للمدير فقط. */
     if (!isAdmin()) return [];
     count = Math.max(1, Math.min(1000, Number(count) || 0));
     var made = [];
@@ -852,7 +852,7 @@
 
 
   function createCardWithSerial(serial, notes) {
-    /* ⛔ إصدار البطاقات حصرياً للمدير (2026-11-11). */
+    /* ⛔ الإصدار للمدير فقط. */
     if (!isAdmin()) return { ok: false, error: 'إصدار البطاقات صلاحية المدير العام فقط' };
     serial = normalizeCardSerial(serial);
     if (!isCardSerial(serial))
