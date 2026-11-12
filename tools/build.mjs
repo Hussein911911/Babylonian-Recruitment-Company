@@ -133,6 +133,9 @@ const SCRIPTS = {
   public: ['config', 'supabase-config', 'cloud-http', 'qr', 'qr-scan', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'booking', 'public'],
   verify: ['config', 'supabase-config', 'cloud-http', 'qr', 'cloud', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'verify'],
   dashboard: ['config', 'revalidate', 'vendor/supabase', 'supabase-config', 'qr', 'cloud', 'cloud-auth', 'cloud-sync', 'store', 'ui', 'nav', 'voucher', 'dashboard', 'notifications']
+  /* portable-backup ليس هنا عمداً: 9KB تُطلب عند أول تنزيل نسخة فعلي
+     (بنفس نمط jsqr و card-archive). اللوحة على سقف ميزانيتها تماماً،
+     ولا داعي أن يحملها كل من يفتح الشاشة بلا أن ينزّل نسخة. */
 };
 
 /* مسار الأصل من الاسم: 'vendor/x' → assets/vendor/x.js وإلا assets/js/x.js */

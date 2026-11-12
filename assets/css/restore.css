@@ -1,0 +1,263 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   صفحة استرجاع النسخة المحمولة — أنماط مستقلة تماماً
+   ---------------------------------------------------------------------------
+   لا تعتمد على style.css: الصفحة يجب أن تُفتح حتى لو تعطّل الموقع نفسه،
+   فتُقلَّل نقاط الفشل إلى أدنى حد (ملف واحد + خطوط النظام).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --lapis: #16304F;
+  --lapis-2: #0F2444;
+  --night: #0b1a3a;
+  --gold: #C8A24A;
+  --gold-2: #E3C479;
+  --text: #14203a;
+  --muted: #5d6b85;
+  --line: #dbe2ec;
+  --bg: #f4f6fa;
+  --white: #ffffff;
+  --ok: #1f7a4d;
+  --ok-bg: #eaf6ef;
+  --err: #b3261e;
+  --err-bg: #fdeceb;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  background: #eef2f8;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-size: .88em;
+  direction: ltr;
+  display: inline-block;
+}
+
+.rp-wrap { max-width: 820px; margin: 0 auto; padding: 0 20px; }
+
+/* ── الترويسة ─────────────────────────────────────────────────────────── */
+.rp-head {
+  background: var(--night);
+  color: var(--white);
+  border-bottom: 3px solid var(--gold);
+}
+.rp-head .rp-wrap {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; padding-block: 14px; flex-wrap: wrap;
+}
+.rp-brand {
+  display: flex; align-items: center; gap: 11px;
+  color: inherit; text-decoration: none;
+}
+.rp-brand img { border-radius: 9px; display: block; }
+.rp-brand span { display: flex; flex-direction: column; line-height: 1.35; }
+.rp-brand strong { font-size: 1rem; font-weight: 700; }
+.rp-brand small { font-size: .78rem; color: #b9c6dc; }
+
+.rp-offline {
+  font-size: .78rem;
+  background: rgba(200, 162, 74, .16);
+  border: 1px solid rgba(200, 162, 74, .45);
+  color: var(--gold-2);
+  border-radius: 999px;
+  padding: 5px 13px;
+  white-space: nowrap;
+}
+.rp-offline.is-offline {
+  background: rgba(227, 196, 121, .22);
+  border-color: var(--gold-2);
+}
+
+/* ── التمهيد ──────────────────────────────────────────────────────────── */
+.rp-main { padding-block: 30px 52px; }
+
+.rp-intro { margin-bottom: 26px; }
+.rp-intro h1 {
+  font-size: 1.62rem; margin: 0 0 12px; font-weight: 700;
+  color: var(--lapis-2); letter-spacing: 0;
+}
+.rp-intro p { margin: 0 0 10px; color: #33405a; max-width: 68ch; }
+.rp-note {
+  font-size: .87rem; color: var(--muted);
+  border-right: 3px solid var(--gold);
+  padding: 8px 13px; background: #fbf7ee; border-radius: 0 8px 8px 0;
+  margin: 14px 0 0;
+}
+
+/* ── البطاقات ─────────────────────────────────────────────────────────── */
+.rp-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px 24px 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 2px rgba(16, 32, 60, .045);
+}
+.rp-card.is-hidden { display: none; }
+.rp-card h2 {
+  font-size: 1.09rem; margin: 0 0 16px; font-weight: 700;
+  color: var(--lapis-2);
+  display: flex; align-items: center; gap: 10px;
+}
+.rp-num {
+  display: inline-grid; place-items: center;
+  width: 27px; height: 27px; border-radius: 50%;
+  background: var(--lapis); color: var(--gold-2);
+  font-size: .85rem; font-weight: 700; flex: 0 0 auto;
+}
+
+/* ── منطقة السحب ──────────────────────────────────────────────────────── */
+.rp-drop {
+  border: 2px dashed #c3cedd;
+  border-radius: 12px;
+  background: #fafcff;
+  padding: 34px 20px;
+  text-align: center;
+  cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  transition: border-color .15s, background .15s;
+  color: var(--muted);
+}
+.rp-drop:hover, .rp-drop:focus-visible, .rp-drop.is-over {
+  border-color: var(--gold);
+  background: #fdf9ef;
+  outline: none;
+}
+.rp-drop strong { color: var(--lapis-2); font-size: 1rem; }
+.rp-hint { font-size: .84rem; }
+
+/* ── حالة العملية ─────────────────────────────────────────────────────── */
+.rp-status { margin: 12px 0 0; font-size: .89rem; min-height: 1.2em; color: var(--muted); }
+.rp-status.is-ok {
+  color: var(--ok); background: var(--ok-bg);
+  border: 1px solid #bfe3ce; border-radius: 8px; padding: 9px 13px;
+}
+.rp-status.is-error {
+  color: var(--err); background: var(--err-bg);
+  border: 1px solid #f3c3c0; border-radius: 8px; padding: 9px 13px;
+}
+
+/* ── بيانات النسخة ────────────────────────────────────────────────────── */
+.rp-meta {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 12px; margin: 0;
+}
+.rp-meta > div {
+  background: #f7f9fc; border: 1px solid var(--line);
+  border-radius: 10px; padding: 11px 13px;
+}
+.rp-meta dt { font-size: .76rem; color: var(--muted); margin-bottom: 3px; }
+.rp-meta dd { margin: 0; font-weight: 600; font-size: .93rem; word-break: break-word; }
+
+/* ── الحقول والأزرار ──────────────────────────────────────────────────── */
+.rp-field { display: block; margin-bottom: 12px; }
+.rp-field > span { display: block; font-size: .86rem; font-weight: 600; margin-bottom: 6px; }
+.rp-field input {
+  width: 100%; padding: 11px 13px; font: inherit; font-size: .95rem;
+  border: 1px solid #c3cedd; border-radius: 10px; background: var(--white);
+  color: var(--text);
+}
+.rp-field input:focus {
+  outline: none; border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(200, 162, 74, .2);
+}
+.rp-check {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: .86rem; color: var(--muted); margin-bottom: 15px; cursor: pointer;
+}
+.rp-check input { width: 16px; height: 16px; accent-color: var(--lapis); }
+
+.rp-btn {
+  font: inherit; font-size: .93rem; font-weight: 600;
+  padding: 11px 22px; border-radius: 10px; cursor: pointer;
+  border: 1px solid #c3cedd; background: var(--white); color: var(--lapis-2);
+  transition: background .15s, border-color .15s, opacity .15s;
+}
+.rp-btn:hover { background: #f2f6fb; border-color: #a9b8cc; }
+.rp-btn:disabled { opacity: .55; cursor: progress; }
+.rp-btn-gold {
+  background: var(--gold); border-color: var(--gold); color: #1b1405;
+}
+.rp-btn-gold:hover { background: var(--gold-2); border-color: var(--gold-2); }
+
+.rp-warn {
+  font-size: .84rem; color: #8a5a00; background: #fff8e6;
+  border: 1px solid #f0dfae; border-radius: 8px;
+  padding: 9px 13px; margin: 16px 0 0;
+}
+
+/* ── الإجماليات ───────────────────────────────────────────────────────── */
+.rp-totals {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 11px; margin-bottom: 18px;
+}
+.rp-total {
+  background: #f7f9fc; border: 1px solid var(--line);
+  border-radius: 10px; padding: 13px; text-align: center;
+}
+.rp-total b {
+  display: block; font-size: 1.42rem; color: var(--lapis-2);
+  font-weight: 700; line-height: 1.25;
+}
+.rp-total span { font-size: .8rem; color: var(--muted); }
+
+.rp-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 6px; }
+
+.rp-detail { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+.rp-detail summary {
+  cursor: pointer; font-weight: 600; font-size: .9rem;
+  color: var(--lapis-2); padding: 5px 0;
+}
+.rp-detail pre {
+  direction: ltr; text-align: left;
+  background: #0f1b2e; color: #cfe0f5;
+  border-radius: 10px; padding: 14px 16px; overflow: auto;
+  font-size: .8rem; line-height: 1.6; max-height: 380px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+/* ── إعادة البناء ─────────────────────────────────────────────────────── */
+.rp-restore { background: #fbfcfe; border-style: dashed; }
+.rp-restore p { margin: 0 0 10px; color: #33405a; font-size: .94rem; }
+.rp-steps { margin: 12px 0 0; padding-inline-start: 22px; color: #33405a; font-size: .93rem; }
+.rp-steps li { margin-bottom: 7px; }
+
+/* ── التذييل ──────────────────────────────────────────────────────────── */
+.rp-foot {
+  border-top: 1px solid var(--line);
+  background: var(--white);
+  font-size: .81rem; color: var(--muted);
+}
+.rp-foot .rp-wrap {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding-block: 15px; flex-wrap: wrap;
+}
+
+/* ── الجوّال ──────────────────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .rp-wrap { padding-inline: 15px; }
+  .rp-card { padding: 18px 16px 20px; }
+  .rp-intro h1 { font-size: 1.34rem; }
+  .rp-head .rp-wrap { padding-block: 11px; }
+  .rp-brand strong { font-size: .92rem; }
+  .rp-btn { width: 100%; }
+  .rp-actions { flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; scroll-behavior: auto !important; }
+}

@@ -102,7 +102,8 @@ const server = createServer(async (req, res) => {
       '/verify': '/verify.html',
       '/dashboard': '/dashboard.html',
       '/standalone': '/hrc-standalone.html',
-      '/light': '/hrc-light.html'
+      '/light': '/hrc-light.html',
+      '/restore': '/restore.html'
     };
     /* أقسام الصفحة الرئيسية: /jobs → /#jobs (تحويل 301 مطابق لـ _redirects) */
     const SECTION_ROUTES = ['home', 'jobs', 'how', 'services', 'about', 'contact'];
@@ -280,7 +281,7 @@ server.listen(PORT, HOST, () => {
      السبب الذي أوجب حذف الحسابات التجريبية من الشاشة ينطبق على السجل. */
   console.log('  لوحة الموظفين  : http://localhost:' + PORT + '/dashboard.html');
   console.log('  الملف المستقل  : http://localhost:' + PORT + '/hrc-standalone.html');
-  console.log('  مسارات نظيفة   : /verify  ·  /dashboard  ·  /standalone  ·  /light   (مثل Render)');
+  console.log('  مسارات نظيفة   : /verify  ·  /dashboard  ·  /standalone  ·  /light  ·  /restore   (مثل Render)');
   console.log('  معاينة بلا قاعدة: /demo  (20 وظيفة وهمية — للمراجعة البصرية فقط، لا تُستخدم في الإنتاج)');
   console.log('  معاينة شاشة الوظائف: /demo-card  (بطاقة وهمية بأربع فرص — للمراجعة البصرية فقط)');
 });

@@ -44,6 +44,78 @@
   if(!ok)return;lock(true);
   try{await Store.recoveryRPC('remove',copy.id);lock(false);await refresh();UI.toast('ok','حُذفت النسخة','بيانات الموقع لم تتغير.');}catch(e){status(e.message,true);}finally{lock(false);}
  }
+
+ /* ═══ النسخة المحمولة: تنزيل مشفّر بكلمة مرور المالك ═══════════════════════
+    التشفير في المتصفح (Web Crypto) — المفتاح لا يمرّ بالقاعدة، فتبقى النسخة
+    قابلة للاسترجاع بعد فقدان المشروع. المكتبة تُحمَّل عند الطلب (9KB) لأن
+    اللوحة على سقف ميزانيتها.
+    ⛔ حارس: isAdmin() هنا، وStore.recoveryExportFull، وrecovery_export_full. */
+ var portableLoading=false;
+ function loadPortable(){
+  if(root.HRCPortableBackup)return Promise.resolve(root.HRCPortableBackup);
+  if(portableLoading)return new Promise(function(res,rej){
+   var n=0,t=setInterval(function(){n++;if(root.HRCPortableBackup){clearInterval(t);res(root.HRCPortableBackup);}else if(n>60){clearInterval(t);rej(new Error('تعذّر تحميل وحدة التشفير'));}},100);});
+  portableLoading=true;
+  return new Promise(function(resolve,reject){
+   var js=document.createElement('script');js.src='assets/js/portable-backup.js';
+   js.onload=function(){portableLoading=false;resolve(root.HRCPortableBackup);};
+   js.onerror=function(){portableLoading=false;reject(new Error('تعذّر تحميل وحدة التشفير — تحقق من الاتصال'));};
+   document.head.appendChild(js);
+  });
+ }
+ function portableStatus(text,kind){
+  var n=box&&box.querySelector('[data-portable-status]');if(!n)return;
+  n.textContent=text||'';n.className=kind==='error'?'is-error':(kind==='ok'?'is-ok':'');
+ }
+ function portableStrength(pw){
+  var score=0;
+  if(pw.length>=10)score++;if(pw.length>=14)score++;
+  if(/[a-z]/.test(pw)&&/[A-Z]/.test(pw))score++;
+  if(/[0-9]/.test(pw))score++;if(/[^a-zA-Z0-9]/.test(pw))score++;
+  return score;
+ }
+ function portableDownload(){
+  if(!Store.isAdmin()){UI.toast('err','صلاحية المدير فقط','نسخة الجهاز من صلاحيات المدير العام.');return;}
+  loadPortable().then(function(PB){
+   var body='<div class="field"><label for="pb-pass">كلمة مرور النسخة *</label>'+
+     '<input type="password" id="pb-pass" minlength="'+PB.MIN_PASSWORD+'" autocomplete="new-password" placeholder="عشر محارف على الأقل"></div>'+
+     '<div class="field"><label for="pb-pass2">تأكيد كلمة المرور *</label>'+
+     '<input type="password" id="pb-pass2" autocomplete="new-password"></div>'+
+     '<p class="small muted" id="pb-str" role="status">استخدم كلمة طويلة لا تستعملها في موقع آخر. لا يمكن استعادة هذه الكلمة إن نسيتها.</p>'+
+     '<p class="recovery-warning" style="margin-top:12px">الملف يصل إلى <b>كل بيانات الشركة</b> — الوظائف والبطاقات وسجل التدقيق كاملاً. حينها يصبح أي شخص يحصل عليه وكلمةُ مروره قادراً على قراءتها. احفظه في مكان آمن.</p>'+
+     '<p class="small" id="pb-err" style="color:#963f35;display:none"></p>';
+   UI.modal({title:'تنزيل نسخة محمولة',subtitle:'تُشفَّر في متصفحك — المفتاح لا يُرسَل إلى القاعدة.',
+    body:body,footer:'<button class="btn btn-outline" data-close>إلغاء</button><button class="btn btn-gold" id="pb-go">تنزيل</button>',
+    onMount:function(modal,close){
+     var p1=modal.querySelector('#pb-pass'),p2=modal.querySelector('#pb-pass2'),err=modal.querySelector('#pb-err'),str=modal.querySelector('#pb-str');
+     p1.oninput=function(){
+      var sc=portableStrength(p1.value);
+      var label=['ضعيفة جداً','ضعيفة','مقبولة','جيدة','قوية'][Math.min(sc,4)];
+      str.textContent=p1.value?'القوة: '+label+' — استخدم كلمة طويلة لا تستعملها في موقع آخر.':'استخدم كلمة طويلة لا تستعملها في موقع آخر. لا يمكن استعادة هذه الكلمة إن نسيتها.';
+     };
+     modal.querySelector('#pb-go').onclick=async function(){
+      var btn=this;err.style.display='none';
+      if(p1.value.length<PB.MIN_PASSWORD){err.textContent='كلمة المرور قصيرة — الحد الأدنى '+PB.MIN_PASSWORD+' محارف.';err.style.display='block';return;}
+      if(p1.value!==p2.value){err.textContent='كلمتا المرور غير متطابقتين.';err.style.display='block';return;}
+      btn.disabled=true;btn.textContent='جارٍ سحب البيانات وتشفيرها…';
+      try{
+       var data=await Store.recoveryExportFull();
+       var env=await PB.seal(data,p1.value);
+       var name=PB.suggestName(new Date());
+       UI.download(name,JSON.stringify(env),'application/json;charset=utf-8');
+       close();lock(false);
+       var c=env.counts||{};
+       portableStatus('نُزِّلت النسخة: '+(c.applicants||0)+' بطاقة و'+(c.audit||0)+' سجل تدقيق — '+name,'ok');
+       UI.toast('ok','نُزِّلت النسخة المشفّرة',name+' — احفظ كلمة المرور؛ بدونها لا تُفتح.');
+      }catch(e){
+       err.textContent=e.message||'تعذّر إنشاء النسخة';err.style.display='block';
+       btn.disabled=false;btn.textContent='تنزيل';
+      }
+     };
+    }});
+  }).catch(function(e){portableStatus(e.message,'error');});
+ }
+
  function dialog(opts){
   var background=document.getElementById('app-shell'),previous=document.activeElement,wasInert=background&&background.inert,mount=opts.onMount,closed=opts.onClose;
   opts.onMount=function(modal,close){
@@ -176,10 +248,11 @@
   var target=document.getElementById('recovery-tools');if(!target)return;
   if(box!==target||!target.dataset.recoveryReady){box=target;target.dataset.recoveryReady='yes';
    box.className='recovery-console';
-   box.innerHTML='<header class="recovery-head"><div><span class="recovery-eyebrow">حماية بيانات الشركة</span><h3>النسخ الاحتياطي والاسترجاع</h3><p>احفظ نسخة، وارجع لها إذا انحذفت بيانات الموقع بالخطأ.</p></div><button type="button" class="btn btn-gold" id="recovery-create">إنشاء نسخة الآن</button></header><div class="recovery-strip"><span>نسخ مشفرة من القاعدة الفعلية</span><span>استرجاع بصلاحية المدير فقط</span></div><p data-recovery-status role="status">جارٍ الاتصال بخدمة النسخ…</p><section class="recovery-schedule" aria-labelledby="recovery-sched-title"><div class="recovery-schedule-head"><div><h4 id="recovery-sched-title">جدولة النسخ التلقائي</h4><p>يحددها المدير: اختر الأيام والساعة (بتوقيت بغداد)، وتُنفَّذ داخل القاعدة نفسها حتى لو كانت اللوحة مغلقة.</p></div><span class="recovery-sched-badge" data-recovery-sched-badge>جارٍ القراءة…</span></div><div class="recovery-days" data-recovery-days role="group" aria-label="أيام النسخ التلقائي"></div><div class="recovery-sched-foot"><label class="field" for="recovery-sched-time">الساعة<input type="time" id="recovery-sched-time" value="23:00" step="300"></label><button type="button" class="btn btn-gold btn-sm" id="recovery-sched-save">حفظ الجدولة</button><button type="button" class="btn btn-outline btn-sm" id="recovery-sched-off">إيقاف التلقائي</button><span class="recovery-sched-note" data-recovery-sched-note role="status"></span></div></section><div class="recovery-list-head"><h4>النسخ المحفوظة</h4><button type="button" class="btn btn-outline btn-sm" id="recovery-refresh">تحديث القائمة</button></div><div data-recovery-list></div><div class="recovery-scope">الحفظ داخل نفس مشروع القاعدة · Google Drive غير مربوط.<details><summary>نطاق النسخة وملاحظات الأمان</summary><p>استعادة لبيانات التشغيل وروابط الصور، وليست استرداداً لكود الموقع أو ملفات Storage أو حسابات الدخول. الجدولة أعلاه يضبطها المدير وتُنفَّذ داخل القاعدة، لكنها لا تحمي من حذف المشروع بالكامل. لقطات المتصفح القديمة ليست جزءاً من النظام الجديد ولم تُحذف.</p></details></div>';
+   box.innerHTML='<header class="recovery-head"><div><span class="recovery-eyebrow">حماية بيانات الشركة</span><h3>النسخ الاحتياطي والاسترجاع</h3><p>احفظ نسخة، وارجع لها إذا انحذفت بيانات الموقع بالخطأ.</p></div><button type="button" class="btn btn-gold" id="recovery-create">إنشاء نسخة الآن</button></header><div class="recovery-strip"><span>نسخ مشفرة من القاعدة الفعلية</span><span>استرجاع بصلاحية المدير فقط</span></div><p data-recovery-status role="status">جارٍ الاتصال بخدمة النسخ…</p><section class="recovery-schedule" aria-labelledby="recovery-sched-title"><div class="recovery-schedule-head"><div><h4 id="recovery-sched-title">جدولة النسخ التلقائي</h4><p>يحددها المدير: اختر الأيام والساعة (بتوقيت بغداد)، وتُنفَّذ داخل القاعدة نفسها حتى لو كانت اللوحة مغلقة.</p></div><span class="recovery-sched-badge" data-recovery-sched-badge>جارٍ القراءة…</span></div><div class="recovery-days" data-recovery-days role="group" aria-label="أيام النسخ التلقائي"></div><div class="recovery-sched-foot"><label class="field" for="recovery-sched-time">الساعة<input type="time" id="recovery-sched-time" value="23:00" step="300"></label><button type="button" class="btn btn-gold btn-sm" id="recovery-sched-save">حفظ الجدولة</button><button type="button" class="btn btn-outline btn-sm" id="recovery-sched-off">إيقاف التلقائي</button><span class="recovery-sched-note" data-recovery-sched-note role="status"></span></div></section><section class="portable-backup" aria-labelledby="portable-title"><h4 id="portable-title">نسخة محمولة تنزل على جهازك</h4><p>تُشفَّر في متصفحك بكلمة مرور تختارها أنت — المفتاح لا يُخزَّن في القاعدة. لذلك تبقى قابلة للاسترجاع حتى لو ضاع المشروع كله، بخلاف النسخ أعلاه المشفّرة بمفتاح داخل القاعدة نفسها. تختار مسار الحفظ من نافذة المتصفح.</p><div class="portable-row"><button type="button" class="btn btn-gold btn-sm" id="portable-download">تنزيل نسخة إلى الجهاز</button><a class="portable-help" href="restore.html" target="_blank" rel="noopener">أداة الاسترجاع المستقلّة ↗</a></div><p data-portable-status role="status"></p></section><div class="recovery-list-head"><h4>النسخ المحفوظة</h4><button type="button" class="btn btn-outline btn-sm" id="recovery-refresh">تحديث القائمة</button></div><div data-recovery-list></div><div class="recovery-scope">الحفظ داخل نفس مشروع القاعدة · Google Drive غير مربوط.<details><summary>نطاق النسخة وملاحظات الأمان</summary><p>استعادة لبيانات التشغيل وروابط الصور، وليست استرداداً لكود الموقع أو ملفات Storage أو حسابات الدخول. الجدولة أعلاه يضبطها المدير وتُنفَّذ داخل القاعدة، لكنها لا تحمي من حذف المشروع بالكامل. لقطات المتصفح القديمة ليست جزءاً من النظام الجديد ولم تُحذف.</p></details></div>';
    box.querySelector('#recovery-create').onclick=create;box.querySelector('#recovery-refresh').onclick=refresh;
    box.querySelector('#recovery-sched-save').onclick=function(){saveSchedule(false);};
    box.querySelector('#recovery-sched-off').onclick=function(){saveSchedule(true);};
+   var pd=box.querySelector('#portable-download');if(pd)pd.onclick=portableDownload;
    var t=box.querySelector('#recovery-sched-time');if(t)t.onchange=function(){
      var note=box.querySelector('[data-recovery-sched-note]');
      if(note){note.classList.remove('is-error');note.textContent='التالية: '+nextRunText(readScheduleDays(),t.value);}

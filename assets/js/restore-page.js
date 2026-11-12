@@ -1,0 +1,242 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   HRC — صفحة الاسترجاع المستقلّة
+   ---------------------------------------------------------------------------
+   لا اتصال بأي خدمة. كل ما يجري هنا داخل جهاز المستخدم:
+     • قراءة الملف (FileReader)
+     • فحص الغلاف بلا كلمة مرور
+     • فك التشفير وتحقّق البصمة
+     • تنزيل JSON / CSV
+   ⛔ لا fetch ولا XMLHttpRequest ولا أي إرسال للخارج.
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  var PB = window.HRCPortableBackup;
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { envelope: null, payload: null, fileName: '' };
+
+  function setStatus(el, text, kind) {
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'rp-status' + (kind ? ' is-' + kind : '');
+  }
+
+  function fmtNum(n) {
+    return (typeof n === 'number' ? n : 0).toLocaleString('ar-IQ');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('ar-IQ', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch (e) { return String(iso); }
+  }
+
+  function fmtBytes(n) {
+    if (!n) return '—';
+    if (n < 1024) return n + ' بايت';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' ك.ب';
+    return (n / 1024 / 1024).toFixed(1) + ' م.ب';
+  }
+
+  function show(id) { var e = $(id); if (e) e.classList.remove('is-hidden'); }
+  function hide(id) { var e = $(id); if (e) e.classList.add('is-hidden'); }
+
+  /* ═══ ١) الملف ═══════════════════════════════════════════════════════════ */
+  var drop = $('rp-drop'), fileInput = $('rp-file'), fileStatus = $('rp-file-status');
+
+  drop.addEventListener('click', function () { fileInput.click(); });
+  drop.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+  });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('is-over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('is-over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) readFile(f);
+  });
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files && fileInput.files[0]) readFile(fileInput.files[0]);
+  });
+
+  function readFile(file) {
+    state.envelope = null; state.payload = null; state.fileName = file.name;
+    hide('rp-step2'); hide('rp-step3'); hide('rp-step4');
+    setStatus(fileStatus, 'جارٍ قراءة الملف…');
+
+    if (file.size > 200 * 1024 * 1024) {
+      setStatus(fileStatus, 'الملف أكبر من الحد (٢٠٠ م.ب)', 'error'); return;
+    }
+
+    var reader = new FileReader();
+    reader.onload = function () { handleText(String(reader.result || '')); };
+    reader.onerror = function () { setStatus(fileStatus, 'تعذّرت قراءة الملف', 'error'); };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  function handleText(text) {
+    var info = PB.inspect(text);
+    if (!info.ok) {
+      setStatus(fileStatus, info.error + ' — تأكد أنك اخترت ملف النسخة الصحيح', 'error');
+      return;
+    }
+    state.envelope = text;
+    setStatus(fileStatus, 'ملف صالح: ' + state.fileName, 'ok');
+    renderMeta(info);
+    show('rp-step2'); show('rp-step3');
+    $('rp-pass').value = '';
+    $('rp-pass').focus();
+    hide('rp-step4');
+  }
+
+  function renderMeta(info) {
+    var rows = [
+      ['اسم الملف', state.fileName],
+      ['الصيغة', info.format],
+      ['التشفير', info.cipher + ' · ' + info.kdf + ' · ' + fmtNum(info.iterations) + ' دورة'],
+      ['تاريخ الإنشاء', fmtDate(info.sealedAt)],
+      ['حجم البيانات', fmtBytes(info.bytes)]
+    ];
+    if (info.counts) {
+      rows.push(['الوظائف', fmtNum(info.counts.jobs)]);
+      rows.push(['البطاقات', fmtNum(info.counts.applicants)]);
+      rows.push(['الفرص', fmtNum(info.counts.attempts)]);
+      rows.push(['سجل التدقيق', fmtNum(info.counts.audit)]);
+    }
+    $('rp-meta').innerHTML = rows.map(function (r) {
+      return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(String(r[1])) + '</dd></div>';
+    }).join('');
+  }
+
+  /* ═══ ٣) فكّ التشفير ═════════════════════════════════════════════════════ */
+  var unlockForm = $('rp-unlock'), unlockBtn = $('rp-unlock-btn'), unlockStatus = $('rp-unlock-status');
+
+  $('rp-show').addEventListener('change', function () {
+    $('rp-pass').type = this.checked ? 'text' : 'password';
+  });
+
+  unlockForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!state.envelope) { setStatus(unlockStatus, 'اختر الملف أولاً', 'error'); return; }
+    var password = $('rp-pass').value;
+    if (!password) { setStatus(unlockStatus, 'أدخل كلمة المرور', 'error'); return; }
+
+    unlockBtn.disabled = true;
+    setStatus(unlockStatus, 'جارٍ اشتقاق المفتاح وفكّ التشفير… قد يستغرق ثانية أو اثنتين');
+
+    PB.open(state.envelope, password).then(function (res) {
+      state.payload = res.payload;
+      setStatus(unlockStatus, 'نجح الفكّ — البصمة مطابقة', 'ok');
+      renderPayload(res);
+      show('rp-step4');
+      $('rp-pass').value = '';
+      $('rp-step4').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }).catch(function (err) {
+      setStatus(unlockStatus, err.message, 'error');
+    }).then(function () {
+      unlockBtn.disabled = false;
+    });
+  });
+
+  /* ═══ ٤) المحتوى ═════════════════════════════════════════════════════════ */
+  function renderPayload(res) {
+    var p = res.payload || {}, c = p.counts || {};
+    var items = [
+      ['الوظائف', c.jobs != null ? c.jobs : (p.jobs || []).length],
+      ['البطاقات', c.applicants != null ? c.applicants : (p.applicants || []).length],
+      ['الفرص', c.attempts != null ? c.attempts : (p.job_attempts || []).length],
+      ['سجل التدقيق', c.audit != null ? c.audit : (p.audit_log || []).length],
+      ['أرقام مُصدرة', c.serials != null ? c.serials : (p.issued_serials || []).length],
+      ['الحسابات', (p.staff || []).length]
+    ];
+    $('rp-totals').innerHTML = items.map(function (i) {
+      return '<div class="rp-total"><b>' + fmtNum(i[1]) + '</b><span>' + esc(i[0]) + '</span></div>';
+    }).join('');
+
+    var sample = {
+      exportedAt: p.exportedAt || null,
+      schema: p.schema || null,
+      firstJobs: (p.jobs || []).slice(0, 3),
+      firstApplicants: (p.applicants || []).slice(0, 3).map(function (a) {
+        return { serial: a.serial, full_name: a.full_name, phone: a.phone, status: a.status };
+      })
+    };
+    $('rp-preview').innerHTML = '<pre>' + esc(JSON.stringify(sample, null, 2)) + '</pre>';
+  }
+
+  function download(name, text, mime) {
+    var blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  $('rp-dl-json').addEventListener('click', function () {
+    if (!state.payload) return;
+    download('hrc-restored-' + stamp() + '.json',
+      JSON.stringify(state.payload, null, 2), 'application/json;charset=utf-8');
+  });
+
+  $('rp-dl-csv').addEventListener('click', function () {
+    if (!state.payload) return;
+    var rows = state.payload.applicants || [];
+    var cols = ['serial', 'full_name', 'phone', 'status', 'fee_paid', 'printed', 'created_at'];
+    function cell(v) {
+      if (v === null || v === undefined) return '';
+      var s = String(v);
+      return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+    var csv = [cols.join(',')].concat(rows.map(function (r) {
+      return cols.map(function (k) { return cell(r[k]); }).join(',');
+    })).join('\r\n');
+    download('hrc-cards-' + stamp() + '.csv', '\ufeff' + csv, 'text/csv;charset=utf-8');
+  });
+
+  $('rp-lock').addEventListener('click', function () {
+    state.payload = null; state.envelope = null; state.fileName = '';
+    $('rp-pass').value = '';
+    $('rp-preview').innerHTML = ''; $('rp-totals').innerHTML = ''; $('rp-meta').innerHTML = '';
+    ['rp-step2', 'rp-step3', 'rp-step4'].forEach(hide);
+    fileInput.value = '';
+    setStatus(fileStatus, 'أُفرغت الذاكرة — الملف والبيانات لم يبقَ منها شيء في هذه الصفحة', 'ok');
+    setStatus(unlockStatus, '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  function stamp() {
+    var d = new Date(), p = function (n) { return ('0' + n).slice(-2); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+      '-' + p(d.getHours()) + p(d.getMinutes());
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /* ═══ مؤشر الاتصال — للتذكير أنها لا تحتاج شبكة ═════════════════════════ */
+  function netState() {
+    var el = $('rp-net');
+    if (!el) return;
+    el.textContent = navigator.onLine ? 'أداة مستقلّة — تعمل بلا إنترنت' : 'بلا إنترنت — تعمل طبيعياً';
+    el.classList.toggle('is-offline', !navigator.onLine);
+  }
+  window.addEventListener('online', netState);
+  window.addEventListener('offline', netState);
+  netState();
+
+  if (!PB || !PB.available()) {
+    setStatus(fileStatus,
+      'هذا المتصفح لا يوفّر Web Crypto — افتح الصفحة عبر HTTPS أو من localhost', 'error');
+  }
+})();

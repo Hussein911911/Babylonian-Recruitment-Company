@@ -2675,6 +2675,19 @@
     });
   }
 
+  /* تصدير نسخة محمولة: ترجع البيانات خاماً (JSONB) للمدير فقط.
+     المتصفح هو من يشفّرها بكلمة مرور المالك — المفتاح لا يمرّ بالقاعدة.
+     ⛔ حارس: isAdmin() هنا وفي recovery_export_full بالقاعدة معاً. */
+  function recoveryExportFull() {
+    if (!isAdmin()) return Promise.reject(new Error('تصدير النسخة الكاملة صلاحية المدير العام فقط'));
+    if (!enforceAuth() || !cloud.client) return Promise.reject(new Error('يلزم دخول المدير الرسمي واتصال قاعدة الشركة'));
+    return cloud.client.rpc('recovery_export_full', {}).then(function (r) {
+      if (r.error) throw new Error(r.error.message || 'تعذّر تصدير النسخة');
+      if (!r.data || r.data.format !== 1) throw new Error('لم يُعد الخادم نسخة صالحة');
+      return r.data;
+    });
+  }
+
   /* جدولة النسخ التلقائي: يضبطها المدير من الإعدادات وتُخزَّن في القاعدة
      (brc.settings → recovery_schedule) وتُعيد ضبط مهمة pg_cron فوراً. */
   function recoveryScheduleGet() {
@@ -2773,7 +2786,7 @@
     createCloudAccount: createCloudAccount, updateCloudAccount: updateCloudAccount,
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     probeServiceKey: probeServiceKey,
-    staffAdmin: staffAdmin, recoveryRPC: recoveryRPC,
+    staffAdmin: staffAdmin, recoveryRPC: recoveryRPC, recoveryExportFull: recoveryExportFull,
     recoveryScheduleGet: recoveryScheduleGet, recoveryScheduleSet: recoveryScheduleSet,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     issueNumberedCards:issueNumberedCards, pendingCardIssue:pendingCardIssue, serialWasIssued:serialWasIssued, cardReport:cardReport, searchCardHistory:searchCardHistory, reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
