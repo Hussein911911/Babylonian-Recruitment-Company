@@ -116,6 +116,37 @@ step(2.5, 'كل دوال الكتابة التشغيلية محمية (جولة 
     /apply_with_card/.test(readFileSync('assets/js/cloud.js', 'utf8')));
 }
 
+step(2.9, 'كل دالة إنشاء/تعديل بيانات لها حارس (جرد 2026-11-11)');
+{
+  const src = readFileSync('assets/js/store.js', 'utf8');
+  /* الدوال التي تنشئ أو تعدّل بيانات تشغيلية — يجب أن تحمل حارساً.
+     الاختبار الفعلي للرفض أدناه؛ هذا فحص مصدري يمنع العودة للثغرة. */
+  const writers = {
+    createJob: /function createJob\(data\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    updateJob: /function updateJob\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    deleteJob: /function deleteJob\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    setJobStatus: /function setJobStatus\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    createApplicant: /function createApplicant\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    createCardBatch: /function createCardBatch\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    createCardWithSerial: /function createCardWithSerial\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    activateCard: /function activateCard\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    approveApplicant: /function approveApplicant\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    rejectApplicant: /function rejectApplicant\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    setFeePaid: /function setFeePaid\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    markPrinted: /function markPrinted\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    releaseHold: /function releaseHold\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    setOutcome: /function setOutcome\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    importJson: /function importJson\([^)]*\) \{[\s\S]{0,700}if \(!isAdmin\(\)\) throw/
+  };
+  for (const [fn, re] of Object.entries(writers)) {
+    check(fn + ' محمية بحارس صلاحية', re.test(src));
+  }
+
+  /* والاختبار الفعلي: كلها تُرفض بزائر مجهول */
+  check('createApplicant مرفوضة للزائر', !(S.createApplicant({ fullName: 'زائر', phone: '07700000000' }).ok));
+  check('activateCard مرفوضة للزائر', !(S.activateCard('HRC-BC-000120', {}).ok));
+}
+
 step(3, 'الحارس على مستوى الدالة لا الزر (ضد الاستدعاء المباشر)');
 {
   const src = readFileSync('assets/js/store.js', 'utf8');

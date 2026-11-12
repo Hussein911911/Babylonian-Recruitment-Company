@@ -113,6 +113,15 @@ try {
   for (const file of ['config', 'store', 'cloud', 'cloud-sync', 'qr', 'ui', 'voucher', 'booking']) w.eval(read('assets/js/' + file + '.js'));
   await w.HRCStore.init({ cloud: false });
   const S = w.HRCStore;
+  /* إنشاء الاستمارات صار محمياً بجلسة موظف (2026-11-11) — نزرع جلسة
+     كما يفعل الموظف على جهازه. رفض الزائر يُثبَت في client-authz. */
+  const sess = { username: 'staff', name: 'موظف', role: 'staff', cloud: true };
+  S.login && S.login('staff', 'staff123');
+  try {
+    w.sessionStorage.setItem('hrc_session_v2', JSON.stringify(sess));
+  } catch (e) {
+    Object.defineProperty(w, 'sessionStorage', { configurable: true, value: new Map() });
+  }
   const app = S.createApplicant({ fullName: 'اسم خاص للاختبار', phone: '07700000002' });
   const other = S.createApplicant({ fullName: 'اسم آخر للاختبار', phone: '07700000003' });
   app.cardPrintCode = '7A2C9E4B1D8F6C03'; other.cardPrintCode = '8B3DAF5C2E906D14'; // Already-printed transition cards.
