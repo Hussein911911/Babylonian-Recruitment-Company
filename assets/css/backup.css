@@ -13,3 +13,4 @@
 .portable-backup [data-portable-status].is-error{color:#963f35}
 .portable-backup [data-portable-status].is-ok{color:#2f6b50}
 @media(max-width:760px){.portable-backup{margin-inline:14px;padding:14px}.portable-backup .portable-row .btn{flex:1 1 auto}}
+.recovery-stuck-actions{display:flex;flex-wrap:wrap;gap:8px;padding:0 23px 15px;margin-top:-4px}.recovery-stuck-actions .btn{flex:0 1 auto}@media(max-width:760px){.recovery-stuck-actions{padding-inline:16px}.recovery-stuck-actions .btn{flex:1 1 auto;justify-content:center}}

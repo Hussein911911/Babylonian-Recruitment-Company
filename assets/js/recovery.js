@@ -6,10 +6,101 @@
  function status(text,error){var node=box.querySelector('[data-recovery-status]');node.textContent=text;node.classList.toggle('recovery-error',!!error);}
  function countText(c){return (c.jobs||0)+' وظيفة · '+(c.applicants||0)+' بطاقة · '+(c.attempts||0)+' فرصة';}
  function lock(value){busy=value;box.setAttribute('aria-busy',String(value));box.querySelectorAll('button').forEach(function(b){b.disabled=value;});}
+
+ /* ── إصلاح المزامنة العالقة ────────────────────────────────────────────────
+  * الحالة الشائعة: تغيير من جهاز/جلسة سابقة بقي في localStorage ولم يُرفع
+  * (انقطعت الشبكة أثناء الحفظ)، فيمنع النظام النسخ — وهذا صحيح أمنياً،
+  * لأن النسخة يجب أن تعكس القاعدة لا نسخة نصف-مرحّلة. لكن المدير كان
+  * يقف عاجزاً بلا زر.
+  * الخياران هنا صريحان: (أ) أكمل الرفع — الأصح، يحفظ ما لم يُرفع.
+  *                      (ب) تجاهل العالق — للطوارئ فقط، يفقد تلك التغييرات.
+  * ──────────────────────────────────────────────────────────────────────── */
+ async function retrySync(){
+  var note=box.querySelector('[data-recovery-status]');
+  if(note){note.classList.remove('recovery-error');note.textContent='جارٍ إكمال المزامنة…';}
+  try{
+   var res=await Store.pushCloud();
+   var failed=res&&(res.failed||res.error||res.skipped);
+   var left=Store.cloudQueueLength()+Store.diffCloud().length;
+   if(failed||left){
+    var why=pendingOf();
+    throw new Error('لم تكتمل المزامنة: '+why.join(' · '));
+   }
+   await refresh();
+   UI.toast('ok','اكتملت المزامنة','صار بوسعك إنشاء نسخة الآن.');
+  }catch(e){
+   if(note){note.classList.add('recovery-error');note.textContent='تعذّرت المزامنة: '+e.message+' — يمكنك «تجاهل التغييرات العالقة» أدناه إن كانت مكرّرة أو غير مهمّة.';}
+   showDiscardButton();
+  }
+ }
+
+ /* زر إعادة المحاولة — الإجراء الأصح أولاً: ارفع ما لم يُرفع */
+ function showRetryButton(){
+  var note=box.querySelector('[data-recovery-status]');
+  if(!note||box.querySelector('#recovery-retry'))return;
+  var wrap=el('div',undefined,'recovery-stuck-actions');
+  var b=el('button','أكمل المزامنة الآن',undefined);b.type='button';b.id='recovery-retry';b.className='btn btn-gold btn-sm';
+  b.onclick=function(){retrySync();};
+  wrap.append(b);note.after(wrap);
+ }
+
+ /* إظهار زر التجاهل تحت رسالة الحالة مباشرة عند الفشل */
+ function showDiscardButton(){
+  var note=box.querySelector('[data-recovery-status]');
+  if(!note||box.querySelector('#recovery-discard'))return;
+  var wrap=el('div',undefined,'recovery-stuck-actions');
+  var b=el('button','تجاهل التغييرات العالقة',undefined);b.type='button';b.id='recovery-discard';b.className='btn btn-outline btn-sm';
+  b.title='يحذف طابور الرفع المحلي (localStorage) ويعيد قراءة القاعدة. التغييرات التي لم تُرفع ستُفقد.';
+  b.onclick=function(){discardStuck();};
+  wrap.append(b);note.after(wrap);
+ }
+
+ function discardStuck(){
+  if(!root.confirm)return;
+  var ok=root.confirm('سيُحذف ما لم يُرفع من هذا المتصفح (طابور الرفع + الفروق المحلية) وتُعاد قراءة القاعدة.\n\nهل أنت متأكد؟ البيانات الموجودة في القاعدة لا تتأثر إطلاقاً.');
+  if(!ok)return;
+  try{
+   root.localStorage.removeItem(root.HRCSync.QUEUE_KEY);
+   root.localStorage.removeItem('hrc-cloud-snapshot');
+   /* مسح ذاكرة الجلسة المحلية يجبر إعادة سحب كامل من القاعدة */
+   try{Store.discardLocalDraft&&Store.discardLocalDraft();}catch(e){}
+   UI.toast('ok','تم التجاهل','أُعيد تحميل الصفحة لقراءة الحالة الحقيقية من القاعدة.');
+   setTimeout(function(){root.location.reload();},600);
+  }catch(e){UI.toast('err','تعذّر التجاهل',String(e&&e.message||e));}
+ }
+ /* ── تشخيص سبب تعذّر المزامنة ───────────────────────────────────────────
+  * كان: رسالة واحدة عامة «توجد تغييرات لم تكتمل مزامنتها» — تقول للمدير
+  * تعذّر، ولا تقول **ماذا** عالق ولا **لماذا**. فيقف عاجزاً.
+  * الآن: نفحص الحالات الثلاث مستقلةً ونقول أين المشكلة بالتحديد،
+  * ونُرفق آخر خطأ دفع سجّلته المتصفح إن وُجد.
+  * ──────────────────────────────────────────────────────────────────── */
+ function pendingOf(){
+  /* ما العالق؟ نفحص كل مصدر على حدة بدل شرط واحد مدموج. */
+  var st=Store.cloudStatus(), issues=[];
+  if(st.state!=='on'||st.role!=='staff') issues.push('الاتصال بالقاعدة غير مكتمل');
+  if(st.lastError) issues.push(st.lastError);
+  var q=Store.cloudQueueLength();
+  if(q>0) issues.push(q+' عملية في طابور الإرسال');
+  var d=Store.diffCloud().length;
+  if(d>0) issues.push(d+' تغيير في هذا الجهاز لم يُرفع');
+  return issues;
+ }
  async function flush(){
-  if(Store.cloudStatus().state!=='on'||Store.cloudStatus().role!=='staff')throw new Error('انتظر اكتمال الاتصال والمزامنة مع القاعدة');
+  var st=Store.cloudStatus();
+  if(st.state!=='on'||st.role!=='staff'){
+   throw new Error('انتظر اكتمال الاتصال والمزامنة مع القاعدة ثم أعد المحاولة');
+  }
   var result=await Store.pushCloud();
-  if(result&&(result.failed||result.error||result.skipped)||Store.cloudQueueLength()>0||Store.diffCloud().length>0)throw new Error('توجد تغييرات لم تكتمل مزامنتها؛ أكمل المزامنة قبل إنشاء النسخة أو معاينتها');
+  var bad=result&&(result.failed||result.error||result.skipped);
+  if(!bad&&Store.cloudQueueLength()===0&&Store.diffCloud().length===0) return;
+  /* فشل — نجمع الأسباب ونعرضها في سطر واحد يشرح الحالة */
+  var why=pendingOf();
+  var t='تعذّر إكمال المزامنة قبل النسخ: '+why.join(' · ');
+  /* «skipped» وحدها تعني أن الدفع لم يبدأ أصلاً — نوضّحها */
+  if(result&&result.skipped&&!Store.cloudStatus().lastError){
+   t='لم تُجرَ المزامنة: الجلسة ليست موظفاً متصلاً بالقاعدة. أعد تحميل اللوحة وسجّل الدخول.';
+  }
+  throw new Error(t+' — اضغط «معاينة واسترجاع» أو أعد تحميل الصفحة، ثم حاول مجدداً.');
  }
  async function refresh(){
   if(busy)return;lock(true);
@@ -146,14 +237,16 @@
    modal.querySelector('#recovery-save').onclick=async function(){
     var button=this;button.disabled=true;lock(true);status('جارٍ إكمال المزامنة وحفظ نسخة مشفرة من القاعدة…');
     try{await flush();await Store.recoveryRPC('create',null,modal.querySelector('#recovery-copy-name').value);close();lock(false);await refresh();UI.toast('ok','حُفظت نسخة الموقع','النسخة مأخوذة من القاعدة الفعلية ومحفوظة مشفرة داخل المشروع.');}
-    catch(e){status(e.message,true);button.disabled=false;lock(false);}
+    catch(e){status(e.message,true);button.disabled=false;lock(false);
+      /* زر إصلاح فوري بدل رسالة صمّاء: يعيد الرفع، وإن فشل يعرض التجاهل */
+      if(box.querySelector('[data-recovery-status]'))showRetryButton();}
    };
   }});
  }
  async function preview(copy){
   if(busy)return;lock(true);status('جارٍ التحقق من النسخة ومقارنتها بالبيانات الحالية…');
   try{await flush();var plan=await Store.recoveryRPC('preview',copy.id);showPlan(copy,plan);status('اكتملت المعاينة؛ لم تبدأ الاستعادة.');}
-  catch(e){status(e.message,true);}
+  catch(e){status(e.message,true);showRetryButton();}
   finally{lock(false);}
  }
  function showPlan(copy,plan){
