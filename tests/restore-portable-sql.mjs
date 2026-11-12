@@ -55,6 +55,10 @@ create table brc.job_attempts(
 create table brc.settings(key text primary key, value jsonb, updated_at timestamptz, updated_by uuid);
 create table brc.employer_job_credentials(job_id uuid primary key, pin_hash text, failures integer, window_start timestamptz, changed_at timestamptz);
 create table brc.issued_serials(serial text primary key, issued_at timestamptz, note text);
+create table brc.staff(
+  id uuid primary key default gen_random_uuid(), auth_id uuid unique, username text not null unique,
+  full_name text not null, role text not null default 'staff', job_title text default '', phone text default '',
+  active boolean not null default true, created_at timestamptz not null default now());
 create table brc.audit_log(id bigserial primary key, ts timestamptz, user_id uuid, username text, role text, ip text, action text, entity text, entity_id text, details text, diff jsonb);
 `;
 

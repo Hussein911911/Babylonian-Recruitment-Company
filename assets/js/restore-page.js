@@ -21,8 +21,10 @@
     el.className = 'rp-status' + (kind ? ' is-' + kind : '');
   }
 
+  /* أرقام لاتينية بفواصل الآلاف — نفس أسلوب لوحة الموقع (store.js).
+     الأرقام الهندية (٠١٢) كانت تُلبس على القارئ: «٥» تُقرأ «٠» في الحجم الصغير. */
   function fmtNum(n) {
-    return (typeof n === 'number' ? n : 0).toLocaleString('ar-IQ');
+    return (typeof n === 'number' ? n : 0).toLocaleString('en-US');
   }
 
   function fmtDate(iso) {
@@ -136,6 +138,12 @@
       setStatus(unlockStatus, 'نجح الفكّ — البصمة مطابقة', 'ok');
       renderPayload(res);
       show('rp-step4');
+      /* ٥) التفاصيل المرتبة — كل صف في كل جدول، مع بحث وتصدير CSV */
+      if (window.HRCRestoreView) {
+        window.HRCRestoreView.mount(state.payload);
+        show('rp-step5');
+        show('rp-step6');
+      }
       $('rp-pass').value = '';
       $('rp-step4').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }).catch(function (err) {
@@ -201,11 +209,33 @@
     download('hrc-cards-' + stamp() + '.csv', '\ufeff' + csv, 'text/csv;charset=utf-8');
   });
 
+  /* ═══ تنزيل SQL جاهز للّصق في Supabase ═════════════════════════════════
+     هذا ما طلبه المالك: «أبني موقعاً جديداً وأصعّد لهذه النسخة عليه».
+     الملف يبدأ بـ TRUNCATE — للقواعد الجديدة فقط، والتحذير ظاهر في الصفحة. */
+  var sqlBtn = $('rp-dl-sql');
+  if (sqlBtn) sqlBtn.addEventListener('click', function () {
+    if (!state.payload || !window.HRCRestoreSql) return;
+    var sql = window.HRCRestoreSql.buildSql(state.payload);
+    window.HRCRestoreView.download('restore-' + window.HRCRestoreView.stamp() + '.sql',
+      sql, 'application/sql;charset=utf-8');
+    setStatus(unlockStatus, 'نُزّل restore.sql — الصقه في Supabase → SQL Editor → Run على قاعدة جديدة', 'ok');
+  });
+
+  var allCsvBtn = $('rp-dl-all-csv');
+  if (allCsvBtn) allCsvBtn.addEventListener('click', function () {
+    if (!state.payload || !window.HRCRestoreView) return;
+    window.HRCRestoreView.exportAll();
+  });
+
   $('rp-lock').addEventListener('click', function () {
     state.payload = null; state.envelope = null; state.fileName = '';
     $('rp-pass').value = '';
     $('rp-preview').innerHTML = ''; $('rp-totals').innerHTML = ''; $('rp-meta').innerHTML = '';
-    ['rp-step2', 'rp-step3', 'rp-step4'].forEach(hide);
+    /* تفريغ العرض المرتّب — لا يبقى أي صف في الذاكرة */
+    if (window.HRCRestoreView) window.HRCRestoreView.unmount();
+    /* ⚠ كانت ٥ و٦ تُنسيان: تُمسح الجداول وتبقى ظاهرة أعين المستخدم —
+       يظنّ أن البيانات لم تُحذف. الآن تُخفى كل الخطوات معاً. */
+    ['rp-step2', 'rp-step3', 'rp-step4', 'rp-step5', 'rp-step6'].forEach(hide);
     fileInput.value = '';
     setStatus(fileStatus, 'أُفرغت الذاكرة — الملف والبيانات لم يبقَ منها شيء في هذه الصفحة', 'ok');
     setStatus(unlockStatus, '');
