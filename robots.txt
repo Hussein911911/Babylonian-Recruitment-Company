@@ -1,0 +1,26 @@
+# منصة مكسب للتوظيف — robots.txt
+User-agent: *
+Allow: /
+Allow: /jobs
+Allow: /apply
+Allow: /verify
+Allow: /demo-card
+
+# لوحة الموظفين ومناطق العمل الداخلية — لا تُفهرس
+Disallow: /dashboard
+Disallow: /dashboard.html
+Disallow: /hrc-standalone.html
+Disallow: /hrc-light.html
+Disallow: /light
+Disallow: /standalone
+Disallow: /demo
+Disallow: /api/
+
+# ملفات النظام — لا فائدة منها في نتائج البحث
+Disallow: /assets/js/
+Disallow: /supabase/
+Disallow: /tests/
+Disallow: /tools/
+Disallow: /docs/
+
+Sitemap: https://hrc-babil.com/sitemap.xml

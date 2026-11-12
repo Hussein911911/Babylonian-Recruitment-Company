@@ -157,7 +157,7 @@ const META = {
   keywords: 'توظيف, بابل, الحلة, وظائف العراق, شركة توظيف, بطاقة توظيف, HRC, عمالة فنية'
 };
 
-function docHead({ title, desc, css = null, icon = 'assets/img/favicon.svg', extra = '' }) {
+function docHead({ title, desc, css = null, icon = 'assets/img/favicon.svg', extra = '', pwa = true }) {
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -173,6 +173,11 @@ function docHead({ title, desc, css = null, icon = 'assets/img/favicon.svg', ext
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_IQ">
 <link rel="icon" type="image/svg+xml" href="${icon}">
+<link rel="apple-touch-icon" href="/assets/img/icon-192.png">
+${pwa ? `<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="مكسب">` : ''}
 ${SUPABASE_HINTS}
 ${css ? `<link rel="stylesheet" href="${verQ(css)}">` : ''}
 ${extra}</head>
@@ -181,8 +186,8 @@ ${extra}</head>
 }
 
 /* ---------------- الصفحات المنفصلة ---------------- */
-function buildPage({ title, desc, body, scripts, publicStyle = false, staffStyle = false, cardStyle = false }) {
-  return docHead({ title, desc, css: 'assets/css/style.css',
+function buildPage({ title, desc, body, scripts, publicStyle = false, staffStyle = false, cardStyle = false, pwa = true }) {
+  return docHead({ title, desc, css: 'assets/css/style.css', pwa: pwa,
     extra: (publicStyle ? '<link rel="preload" href="assets/img/hero-skyline.webp" as="image" fetchpriority="high">\n' : '') +
       (cardStyle ? `<link rel="stylesheet" href="${verQ('assets/css/card-entry.css')}">` : '') +
       (publicStyle ? `<link rel="stylesheet" href="${verQ('assets/css/public-polish.css')}"><link rel="stylesheet" href="${verQ('assets/css/app-shell.css')}">` : '') +
@@ -224,7 +229,9 @@ writeFileSync(P('verify.html'), buildPage({
 writeFileSync(P('dashboard.html'), buildPage({
   title: 'المنظومة الداخلية | منصة مكسب للتوظيف',
   desc: 'لوحة الموظفين والإدارة لمنصة مكسب للتوظيف: إدارة الوظائف، إصدار الاستمارات، متابعة الحجوزات، سجل التدقيق، واللوحة المالية.',
-  body: partials.dashboard, scripts: SCRIPTS.dashboard, staffStyle: true
+  body: partials.dashboard, scripts: SCRIPTS.dashboard, staffStyle: true,
+  /* لوحة الموظفين لا تُثبَّت كتطبيق: تُفتح داخل المتصفح فقط. */
+  pwa: false
 }));
 
 /* ---------------- النسخة المستقلة (ملف واحد) ---------------- */
