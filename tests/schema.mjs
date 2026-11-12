@@ -314,7 +314,8 @@ const REQUIRED_MIGRATIONS = [
   '20261101180000_update_daily_opening_to_eight.sql',
   '20261105120000_card_issue_numbers.sql',
   '20261110150000_company_phone_numbers.sql'      /* أرقام خدمة العملاء الجديدة */,
-  '20261111120000_jobs_staff_delete.sql'
+  '20261111120000_jobs_staff_delete.sql',
+  '20261111235000_cards_insert_admin_only.sql'
 ];
 const MIG_NAME = '20260915000000_brc_initial_schema.sql';
 let migNames = [];

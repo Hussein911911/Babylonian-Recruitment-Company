@@ -127,8 +127,8 @@ step(2.9, 'كل دالة إنشاء/تعديل بيانات لها حارس (ج�
     deleteJob: /function deleteJob\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
     setJobStatus: /function setJobStatus\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
     createApplicant: /function createApplicant\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
-    createCardBatch: /function createCardBatch\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
-    createCardWithSerial: /function createCardWithSerial\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
+    createCardBatch: /function createCardBatch\([^)]*\) \{[\s\S]{0,700}if \(!isAdmin\(\)\) return \[\];/,
+    createCardWithSerial: /function createCardWithSerial\([^)]*\) \{[\s\S]{0,700}if \(!isAdmin\(\)\)/,
     activateCard: /function activateCard\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
     approveApplicant: /function approveApplicant\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
     rejectApplicant: /function rejectApplicant\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
@@ -155,8 +155,7 @@ step(3, 'الحارس على مستوى الدالة لا الزر (ضد الا�
   check('createJob يبدأ بفحص جلسة الموظف', /function createJob\(data\) \{[\s\S]{0,900}if \(!isStaffSession\(\)\) return null;/.test(src));
   check('setJobStatus يبدأ بفحص جلسة الموظف', /function setJobStatus\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\) return false;/.test(src));
   check('updateJob محمية بحارس جلسة الموظف', /function updateJob\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\) return null;/.test(src));
-  check('createCardBatch محمية بحارس جلسة الموظف', /function createCardBatch\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\) return \[\];/.test(src));
-  check('createCardWithSerial محمية بحارس جلسة الموظف', /function createCardWithSerial\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/.test(src));
+  /* إصدار البطاقات حصرياً للمدير (قرار المالك 2026-11-11) — الفحص في writers أعلاه. */
   /* الحذف: مدير وموظف (jobs_staff_delete) — لكن ليس زائراً مجهولاً. */
   check('deleteJob يبدأ بفحص جلسة الموظف', /function deleteJob\(code\) \{[\s\S]{0,900}if \(!isStaffSession\(\)\) return false;/.test(src));
   check('isStaffSession تعرّف المدير والموظف لا الزائر', /function isStaffSession\(\) \{ var u = currentUser\(\); return !!\(u && \(u\.role === 'admin' \|\| u\.role === 'staff'\)\); \}/.test(src));

@@ -98,20 +98,32 @@ console.log('\n▌ 1 — الموظف والوظائف\n');
   await ctx.close();
 }
 
-/* ── 2) الموظف: البطاقات ────────────────────────────────────────────────── */
-console.log('\n▌ 2 — الموظف والبطاقات\n');
+/* ── 2) البطاقات: الإصدار حصرياً للمدير (قرار المالك 2026-11-11) ─────────── */
+console.log('\n▌ 2 — إصدار البطاقات: مدير فقط\n');
 {
-  const { ctx, p } = await rolePage('staff');
-  const r = await p.evaluate(() => {
+  /* الموظف: يُرفض */
+  const ws = await rolePage('staff');
+  const rs = await ws.p.evaluate(() => {
     const S = window.HRCStore;
-    const b0 = S.listBlankCards().length;
     const one = S.createCardWithSerial('7KQ4M9TR5A', 'اختبار موظف');
     const batch = S.createCardBatch(2, 'دفعة موظف');
-    return { oneOk: one && one.ok === true, batchLen: batch.length, b0, b1: S.listBlankCards().length };
+    return { oneOk: one && one.ok === true, batchLen: batch.length };
   });
-  check('الموظف ينشئ بطاقة بكودها', r.oneOk === true, JSON.stringify(r));
-  check('الموظف يصدر دفعة بطاقات', r.batchLen === 2, String(r.batchLen));
-  await ctx.close();
+  check('الموظف لا ينشئ بطاقة بكودها', rs.oneOk === false, JSON.stringify(rs));
+  check('الموظف لا يصدر دفعة بطاقات', rs.batchLen === 0, String(rs.batchLen));
+  await ws.ctx.close();
+
+  /* المدير: ينجح */
+  const wa = await rolePage('admin');
+  const ra = await wa.p.evaluate(() => {
+    const S = window.HRCStore;
+    const one = S.createCardWithSerial('7KQ4M9TR5B', 'بطاقة مدير');
+    const batch = S.createCardBatch(2, 'دفعة مدير');
+    return { oneOk: one && one.ok === true, batchLen: batch.length };
+  });
+  check('المدير ينشئ بطاقة بكودها', ra.oneOk === true, JSON.stringify(ra));
+  check('المدير يصدر دفعة بطاقات', ra.batchLen === 2, String(ra.batchLen));
+  await wa.ctx.close();
 }
 
 /* ── 3) الموظف: اعتماد ورفض الطلبات ─────────────────────────────────────── */
@@ -209,8 +221,9 @@ console.log('\n▌ 6 — المدير ⊇ الموظف\n');
   const missingForAdmin = st.nav.filter((v) => !ad.nav.includes(v));
   check('المدير يرى كل شاشات الموظف', missingForAdmin.length === 0, 'ناقص: ' + missingForAdmin.join(', '));
   check('الموظف يرى شاشة البطاقات', st.nav.includes('applicants'), st.nav.join(','));
-  check('الموظف يرى زر إضافة بطاقة', st.newCard === true);
-  check('الموظف يرى زر إصدار دفعة', st.newBatch === true);
+  /* قرار المالك: إصدار البطاقات حصرياً للمدير العام. */
+  check('زر إضافة بطاقة مخفي عن الموظف (إصدار مدير فقط)', st.newCard === false);
+  check('زر إصدار دفعة مخفي عن الموظف (إصدار مدير فقط)', st.newBatch === false);
   check('المدير يرى زر إضافة بطاقة', ad.newCard === true);
   check('المدير يرى زر إصدار دفعة', ad.newBatch === true);
   check('المدير وحده يرى سجل التدقيق والمالية والإعدادات',
