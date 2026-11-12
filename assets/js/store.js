@@ -643,11 +643,8 @@
   }
 
   function createJob(data) {
-    /* ⛔ حارس صلاحية: الكتابة إلى الإعلانات للمدير فقط. الواجهة العامة تحمّل
-       store.js كاملاً (تحتاجه للعرض)، فبدون هذا الحارس يستطيع أي زائر
-       استدعاء createJob من وحدة التحكم وزرع وظيفة وهمية في بيانات جلسته —
-       فتظهر في بحثه وتُضلّل من يرى شاشته. الحارس على مستوى الدالة لا الزر. */
-    if (!isAdmin()) return null;
+    /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isStaffSession()) return null;
     var job = {
       id: uid('job'), code: nextJobCode(), title: data.title, category: data.category || 'خدمات',
       region: data.region || '', governorate: data.governorate || 'بابل', salaryMin: data.salaryMin, salaryMax: data.salaryMax, shift: data.shift,
@@ -667,6 +664,8 @@
   }
 
   function updateJob(code, patch) {
+    /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isStaffSession()) return null;
     var job = getJob(code); if (!job) return null;
     var before = JSON.stringify({ t: job.title, g: job.governorate, s: job.status });
     Object.keys(patch).forEach(function (k) { if (patch[k] !== undefined) job[k] = patch[k]; });
@@ -676,8 +675,8 @@
   }
 
   function setJobStatus(code, status, reason) {
-    /* ⛔ حارس صلاحية: تغيير حالة إعلان وظيفة للمدير فقط. */
-    if (!isAdmin()) return false;
+        /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isStaffSession()) return false;
     var job = getJob(code); if (!job) return null;
     var old = job.status;
     job.status = status; job.manualClosed=status==='closed';
@@ -698,10 +697,7 @@
   }
 
   function deleteJob(code) {
-    /* ⛔ حارس صلاحية: الحذف للمدير **وللموظف** (قرار المالك 2026-11-11)،
-       ومطابقةً لسياسة القاعدة jobs_staff_delete using brc.is_staff().
-       الزائر المجهول لا يملك جلسة موظف فلا يمرّ من هنا — وهذا ما يمنع
-       زرع/حذف وظائف من الصفحة العامة (انظر tests/client-authz.mjs). */
+    /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
     if (!isStaffSession()) return false;
     var job = getJob(code); if (!job) return false;
     /* حذف وظيفة عليها حجز/حرجة يغلق فرصة البطاقة المرتبطة (الفرصة مستهلكة —
@@ -825,7 +821,8 @@
      ورمزي فرصتين — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
      والصلاحية (30 يوماً) لا تبدأ إلا عند أول تقديم ناجح. */
   function createCardBatch(count, notes) {
-    if (!isAdmin()) return [];           /* إصدار الدفعات للمدير فقط */
+        /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isStaffSession()) return [];
     count = Math.max(1, Math.min(1000, Number(count) || 0));
     var made = [];
     for (var i = 0; i < count; i++) {
@@ -853,7 +850,8 @@
 
 
   function createCardWithSerial(serial, notes) {
-    if (!isAdmin()) return { ok: false, error: 'إضافة البطاقات صلاحية للمدير العام فقط' };
+        /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
+    if (!isStaffSession()) return { ok: false, error: 'إضافة البطاقات تتطلب حساب موظف' };
     serial = normalizeCardSerial(serial);
     if (!isCardSerial(serial))
       return { ok: false, error: 'صيغة الباركود غير صحيحة — 10 خانات من حروف وأرقام بلا شرطة (مثال: 7KQ4M9TR2X)، أو اتركه فارغاً ليُولَّد تلقائياً' };

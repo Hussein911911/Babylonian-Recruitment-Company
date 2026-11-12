@@ -75,9 +75,10 @@ step(2.5, 'كل دوال الكتابة التشغيلية محمية (جولة 
   const src = readFileSync('assets/js/store.js', 'utf8');
   /* دوال تكتب بيانات تشغيلية/مالية — يجب أن تحمل حارساً في أول سطورها. */
   const guarded = {
-    createJob: /function createJob\(data\) \{[\s\S]{0,900}if \(!isAdmin\(\)\) return null;/,
-    setJobStatus: /function setJobStatus\([^)]*\) \{[\s\S]{0,600}if \(!isAdmin\(\)\)/,
+    createJob: /function createJob\(data\) \{[\s\S]{0,900}if \(!isStaffSession\(\)\) return null;/,
+    setJobStatus: /function setJobStatus\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
     deleteJob: /function deleteJob\(code\) \{[\s\S]{0,900}if \(!isStaffSession\(\)\)/,
+    updateJob: /function updateJob\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
     approveApplicant: /function approveApplicant\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
     rejectApplicant: /function rejectApplicant\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
     setFeePaid: /function setFeePaid\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/,
@@ -118,8 +119,13 @@ step(2.5, 'كل دوال الكتابة التشغيلية محمية (جولة 
 step(3, 'الحارس على مستوى الدالة لا الزر (ضد الاستدعاء المباشر)');
 {
   const src = readFileSync('assets/js/store.js', 'utf8');
-  check('createJob يبدأ بفحص isAdmin', /function createJob\(data\) \{[\s\S]{0,500}if \(!isAdmin\(\)\) return null;/.test(src));
-  check('setJobStatus يبدأ بفحص isAdmin', /function setJobStatus\([^)]*\) \{[\s\S]{0,300}if \(!isAdmin\(\)\) return false;/.test(src));
+  /* قرار المالك 2026-11-11: إدارة الوظائف والبطاقات للموظف والمدير معاً،
+     مطابقةً لسياسات القاعدة (كلها is_staff). الزائر يبقى مرفوضاً. */
+  check('createJob يبدأ بفحص جلسة الموظف', /function createJob\(data\) \{[\s\S]{0,900}if \(!isStaffSession\(\)\) return null;/.test(src));
+  check('setJobStatus يبدأ بفحص جلسة الموظف', /function setJobStatus\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\) return false;/.test(src));
+  check('updateJob محمية بحارس جلسة الموظف', /function updateJob\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\) return null;/.test(src));
+  check('createCardBatch محمية بحارس جلسة الموظف', /function createCardBatch\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\) return \[\];/.test(src));
+  check('createCardWithSerial محمية بحارس جلسة الموظف', /function createCardWithSerial\([^)]*\) \{[\s\S]{0,700}if \(!isStaffSession\(\)\)/.test(src));
   /* الحذف: مدير وموظف (jobs_staff_delete) — لكن ليس زائراً مجهولاً. */
   check('deleteJob يبدأ بفحص جلسة الموظف', /function deleteJob\(code\) \{[\s\S]{0,900}if \(!isStaffSession\(\)\) return false;/.test(src));
   check('isStaffSession تعرّف المدير والموظف لا الزائر', /function isStaffSession\(\) \{ var u = currentUser\(\); return !!\(u && \(u\.role === 'admin' \|\| u\.role === 'staff'\)\); \}/.test(src));
