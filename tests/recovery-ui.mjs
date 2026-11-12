@@ -42,5 +42,31 @@ try{
  restoreReject=true;d.querySelector('.recovery-copy button').click();await tick();d.getElementById('recovery-ack').checked=true;d.getElementById('recovery-ack').dispatchEvent(new w.Event('change'));d.getElementById('recovery-phrase').value='استرجاع';d.getElementById('recovery-phrase').dispatchEvent(new w.Event('input'));click('recovery-restore');await tick();
  check('lost response is ambiguous, never falsely declared rolled back',d.querySelector('[data-recovery-status]').textContent.includes('قد تكون العملية اكتملت'));
  check('no automatic destructive retry after uncertain response',restoreCount===2);
+ /* ── سلوك المزامنة العالقة (2026-11-12) ──────────────────────────────────
+  * المدير بلّغ: ضغط «إنشاء نسخة» فظهر «توجد تغييرات لم تكتمل مزامنتها»
+  * بلا أي تفسير ولا مخرج. الفحص يضمن أن الرسالة صارت تشخيصية وأن
+  * للإصلاح زرّين مرتّبين: المحاولة أولاً، ثم التجاهل الصريح.
+  * ──────────────────────────────────────────────────────────────────────── */
+ let stuckDiff=3, pushedSucceed=false;
+ fake.diffCloud=()=>new Array(stuckDiff).fill({table:'jobs'});
+ fake.pushCloud=async()=>{calls.push({action:'flush'});if(pushedSucceed){stuckDiff=0;return {failed:0};}return {failed:stuckDiff};};
+ badFlush=false;
+ click('recovery-create');click('recovery-save');await tick();
+ const stuckText=d.querySelector('[data-recovery-status]').textContent;
+ check('stuck-sync message names the exact count, not a vague sentence',/\d+\s*تغيير/.test(stuckText),'النص: '+stuckText);
+ check('offers an explicit retry button instead of a dead end',!!d.getElementById('recovery-retry'));
+ d.getElementById('recovery-retry').click();await tick();
+ check('a failing retry explains why and offers the discard path',!!d.getElementById('recovery-discard')&&d.querySelector('.recovery-stuck-actions'));
+ pushedSucceed=true;d.getElementById('recovery-retry').click();await tick();
+ check('a successful retry clears the error state',!d.querySelector('[data-recovery-status].recovery-error'));
+ /* التجاهل: لا يمسّ شيئاً قبل موافقة صريحة، وبالرفض لا يُحذف الطابور */
+ w.localStorage.setItem('hrc-cloud-queue','[{"table":"jobs"}]');
+ let asked=0;w.confirm=()=>{asked++;return false;};
+ const disc=d.getElementById('recovery-discard');
+ if(disc){disc.click();}
+ check('discard asks for confirmation before touching storage',asked===1);
+ check('refused confirmation leaves the local queue untouched',
+   w.localStorage.getItem('hrc-cloud-queue')==='[{"table":"jobs"}]');
+
  console.log(`Managed recovery UI: ${checks} checks passed.`);
 }finally{dom.window.close();}
