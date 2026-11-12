@@ -189,6 +189,52 @@ console.log('\n▌ 5 — الأزرار في الواجهة\n');
   await ctx.close();
 }
 
+/* ── 6) المدير يملك كل صلاحيات الموظف + الخاصة به ──────────────────────── */
+console.log('\n▌ 6 — المدير ⊇ الموظف\n');
+{
+  const staffCtx = await rolePage('staff');
+  const adminCtx = await rolePage('admin');
+  const read = async (p) => p.evaluate(() => {
+    const nav = [...document.querySelectorAll('#side-nav button[data-view]')]
+      .filter((b) => !b.classList.contains('hidden')).map((b) => b.getAttribute('data-view'));
+    return {
+      nav,
+      newCard: !!document.getElementById('btn-new-card') && !document.getElementById('btn-new-card').classList.contains('hidden'),
+      newBatch: !!document.getElementById('btn-new-batch') && !document.getElementById('btn-new-batch').classList.contains('hidden')
+    };
+  });
+  const st = await read(staffCtx.p);
+  const ad = await read(adminCtx.p);
+
+  const missingForAdmin = st.nav.filter((v) => !ad.nav.includes(v));
+  check('المدير يرى كل شاشات الموظف', missingForAdmin.length === 0, 'ناقص: ' + missingForAdmin.join(', '));
+  check('الموظف يرى شاشة البطاقات', st.nav.includes('applicants'), st.nav.join(','));
+  check('الموظف يرى زر إضافة بطاقة', st.newCard === true);
+  check('الموظف يرى زر إصدار دفعة', st.newBatch === true);
+  check('المدير يرى زر إضافة بطاقة', ad.newCard === true);
+  check('المدير يرى زر إصدار دفعة', ad.newBatch === true);
+  check('المدير وحده يرى سجل التدقيق والمالية والإعدادات',
+    ad.nav.includes('audit') && ad.nav.includes('finance') && ad.nav.includes('settings') &&
+    !st.nav.includes('audit') && !st.nav.includes('finance') && !st.nav.includes('settings'),
+    'موظف: ' + st.nav.join(',') + ' | مدير: ' + ad.nav.join(','));
+
+  /* وعلى مستوى الدوال: الأدوار تحقّق isStaffSession للمدير أيضاً */
+  const fnLevel = await adminCtx.p.evaluate(() => {
+    const S = window.HRCStore;
+    const u = S.currentUser();
+    return {
+      role: u && u.role,
+      isStaffSession: S.isStaffSession ? S.isStaffSession() : null,
+      isAdmin: S.isAdmin ? S.isAdmin() : null,
+      canDeleteJob: typeof S.deleteJob === 'function'
+    };
+  });
+  check('المدير يمرّ من حارس isStaffSession', fnLevel.isStaffSession === true && fnLevel.isAdmin === true, JSON.stringify(fnLevel));
+
+  await staffCtx.ctx.close();
+  await adminCtx.ctx.close();
+}
+
 await browser.close();
 console.log('\n' + '═'.repeat(74));
 console.log(`  النتيجة: ✅ ${pass} ناجح | ❌ ${fail} فاشل`);

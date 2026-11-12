@@ -70,7 +70,8 @@
         document.getElementById('jq').value = n.jobCode;
         ['j-status', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });
         setView('jobs');
-      } else if (n.view === 'applicants' && Store.isAdmin()) {
+      } else if (n.view === 'applicants' && Store.isStaffSession()) {
+        /* البطاقات للموظف والمدير (2026-11-11). */
         state.a = { q: n.serial || '', status: 'all', user: 'all' };
         document.getElementById('aq').value = state.a.q;
         document.getElementById('a-status').value = 'all'; document.getElementById('a-user').value = 'all';
