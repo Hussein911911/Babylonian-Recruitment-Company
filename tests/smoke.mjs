@@ -1023,13 +1023,18 @@ check('إصدار الدفعة يقبل أي عدد ١–٦٠ ولا يُنشئ 
   if (dash.window.HRCStore.listBlankCards().length !== before) return 'أُصدرت بطاقة قبل تأكيد الخادم';
   return true;
 });
-check('إضافة البطاقات للمدير فقط: الموظف مرفوض في المتجر نفسه', () => {
-  dash.window.HRCStore.login('staff', 'staff123');
-  const r1 = dash.window.HRCStore.createCardWithSerial('', 'محاولة موظف');
-  const batch = dash.window.HRCStore.createCardBatch(3, 'محاولة موظف');
-  dash.window.HRCStore.login('admin', 'admin123');
-  if (r1.ok) return 'الموظف أضاف بطاقة بكودها';
-  if (batch.length) return 'الموظف أصدر دفعة';
+/* قرار المالك 2026-11-11: إضافة البطاقات للموظف والمدير معاً — مطابقةً
+   لسياسة القاعدة applicants_staff_insert using brc.is_staff().
+   الزائر المجهول يبقى مرفوضاً (tests/client-authz.mjs يثبت ذلك). */
+check('إضافة البطاقات متاحة للموظف (قرار المالك) والزائر مرفوض', () => {
+  const S = dash.window.HRCStore;
+  S.login('staff', 'staff123');
+  const r1 = S.createCardWithSerial('7KQ4M9TR9X', 'بطاقة موظف');
+  const batch = S.createCardBatch(3, 'دفعة موظف');
+  /* رفض الزائر يُثبَت في tests/client-authz.mjs (سياق بلا جلسة إطلاقاً) —
+     هنا نتحقق من مسار الموظف فقط بلا كسر جلسة بقية الفحوص. */
+  if (!r1.ok) return 'الموظف لم يُضف بطاقة بكودها: ' + JSON.stringify(r1);
+  if (!batch.length) return 'الموظف لم يُصدر دفعة';
   return true;
 });
 check('صيغة الباركود: الجديدة (10 خانات) والقديمة (HRC-BC-######) مقبولتان، والمرفوضة مرفوضة', () => {

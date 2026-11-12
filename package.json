@@ -78,7 +78,8 @@
     "test:apply-card-details-browser": "node tests/apply-card-details-browser.mjs",
     "test:chosen-details-browser": "node tests/chosen-details-browser.mjs",
     "test:smoke": "node tests/smoke.mjs",
-    "test:browser-delete-staff": "node tests/browser-delete-staff.mjs"
+    "test:browser-delete-staff": "node tests/browser-delete-staff.mjs",
+    "test:browser-staff-permissions": "node tests/browser-staff-permissions.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",
