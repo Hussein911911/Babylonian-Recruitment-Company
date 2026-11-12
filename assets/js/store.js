@@ -823,8 +823,8 @@
      ورمزي فرصتين — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
      والصلاحية (30 يوماً) لا تبدأ إلا عند أول تقديم ناجح. */
   function createCardBatch(count, notes) {
-        /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
-    if (!isStaffSession()) return [];
+    /* ⛔ إصدار البطاقات حصرياً للمدير (2026-11-11). */
+    if (!isAdmin()) return [];
     count = Math.max(1, Math.min(1000, Number(count) || 0));
     var made = [];
     for (var i = 0; i < count; i++) {
@@ -852,8 +852,8 @@
 
 
   function createCardWithSerial(serial, notes) {
-        /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
-    if (!isStaffSession()) return { ok: false, error: 'إضافة البطاقات تتطلب حساب موظف' };
+    /* ⛔ إصدار البطاقات حصرياً للمدير (2026-11-11). */
+    if (!isAdmin()) return { ok: false, error: 'إصدار البطاقات صلاحية المدير العام فقط' };
     serial = normalizeCardSerial(serial);
     if (!isCardSerial(serial))
       return { ok: false, error: 'صيغة الباركود غير صحيحة — 10 خانات من حروف وأرقام بلا شرطة (مثال: 7KQ4M9TR2X)، أو اتركه فارغاً ليُولَّد تلقائياً' };

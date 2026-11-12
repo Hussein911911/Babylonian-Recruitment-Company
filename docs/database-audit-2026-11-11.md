@@ -144,3 +144,40 @@
 2. **م٢** — `customer_application_details`: هل نضيف بصمة ظهر البطاقة، أم نبقيها مفتوحة (الزائر يحتاجها للمقابلة)؟
 
 الباقي (م٣، م٤، م٥) لا يحتاج إجراءً للتسليم.
+
+---
+
+## ١٠) تحديث 2026-11-11 (ثانٍ) — إصدار البطاقات حصرياً للمدير
+
+**قرار المالك:** «اريد اصدار البطاقات فقط حصريا من المدير».
+
+### عدم تطابق وُجد وأُصلح
+
+| الطبقة | قبل | بعد |
+|---|---|---|
+| `newCardModal` / `newBatchModal` | `isStaffSession()` | ✅ `isAdmin()` |
+| `createCardBatch` / `createCardWithSerial` | `isStaffSession()` | ✅ `isAdmin()` |
+| زرّا الإصدار في الواجهة | ظاهران للموظف | ✅ `data-admin-only` |
+| **`applicants_staff_insert` (القاعدة)** | **`is_staff()`** | ✅ **`applicants_admin_insert using is_admin()`** |
+
+**الإثبات على القاعدة الحقيقية** بدور محمد (`is_admin=false`):
+```sql
+insert into brc.applicants(serial,full_name,phone,status) values ('ZZ-CARD-01',…);
+→ inserted_by_staff = 1     ← نجح قبل الإصلاح ⚠️
+rollback;
+```
+بعد الـmigration: `ERROR 42501: new row violates row-level security policy`. وبدور المدير: نجح ✅.
+
+### ما بقي للموظف (لم يتغيّر)
+
+`SELECT` · `UPDATE` (اعتماد/رفض/رسوم/طباعة) · `DELETE` — كلها `is_staff()`.
+**الفرق الوحيد: لا يستطيع إصدار بطاقة جديدة.**
+
+### الحالة النهائية لسياسات `applicants`
+
+| العملية | السياسة | الطبقة |
+|---|---|---|
+| SELECT | `applicants_staff_read` | `is_staff()` — موظف + مدير |
+| INSERT | `applicants_admin_insert` | **`is_admin()` — مدير فقط** |
+| UPDATE | `applicants_staff_update` | `is_staff()` — موظف + مدير |
+| DELETE | `applicants_staff_delete` | `is_staff()` — موظف + مدير |

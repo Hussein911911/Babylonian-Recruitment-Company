@@ -5249,8 +5249,8 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           <input type="text" id="quick-code" placeholder="بحث سريع بكود الوظيفة (HRC-1042)" aria-label="بحث بكود الوظيفة">
         </form>
         <button class="btn btn-outline btn-sm" id="btn-card-history">بحث السجل الكامل والأرشيف</button>
-        <button class="btn btn-outline btn-sm" id="btn-new-batch"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
-        <button class="btn btn-outline btn-sm" id="btn-new-card" title="بطاقة واحدة فارغة بكودها — للموظف والمدير"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
+        <button class="btn btn-outline btn-sm" id="btn-new-batch" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
+        <button class="btn btn-outline btn-sm" id="btn-new-card" data-admin-only="true" title="بطاقة واحدة فارغة بكودها — للمدير فقط"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
         <button class="btn btn-gold btn-sm" id="btn-new-job"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة وظيفة</button>
         <button class="btn btn-outline btn-sm" id="btn-run-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تحديث</button>
       </div>
@@ -18106,8 +18106,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
      ورمزي فرصتين — بلا اسم وبلا هاتف. تُطبع فارغة وتوزَّع على نقاط البيع،
      والصلاحية (30 يوماً) لا تبدأ إلا عند أول تقديم ناجح. */
   function createCardBatch(count, notes) {
-        /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
-    if (!isStaffSession()) return [];
+    /* ⛔ إصدار البطاقات حصرياً للمدير (2026-11-11). */
+    if (!isAdmin()) return [];
     count = Math.max(1, Math.min(1000, Number(count) || 0));
     var made = [];
     for (var i = 0; i < count; i++) {
@@ -18135,8 +18135,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
 
   function createCardWithSerial(serial, notes) {
-        /* ⛔ حارس صلاحية (الفحص هنا لا في الزر) */
-    if (!isStaffSession()) return { ok: false, error: 'إضافة البطاقات تتطلب حساب موظف' };
+    /* ⛔ إصدار البطاقات حصرياً للمدير (2026-11-11). */
+    if (!isAdmin()) return { ok: false, error: 'إصدار البطاقات صلاحية المدير العام فقط' };
     serial = normalizeCardSerial(serial);
     if (!isCardSerial(serial))
       return { ok: false, error: 'صيغة الباركود غير صحيحة — 10 خانات من حروف وأرقام بلا شرطة (مثال: 7KQ4M9TR2X)، أو اتركه فارغاً ليُولَّد تلقائياً' };
@@ -26976,8 +26976,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   /* إضافة بطاقة مفردة بكودها (الإدارة): بطاقة واحدة فارغة بباركود يكتبه
      المستخدم أو يولّده — لطباعة بطاقة خاصة فوراً دون إصدار دفعة كاملة. */
   function newCardModal() {
-    /* قرار المالك 2026-11-11: إضافة البطاقات للموظف والمدير معاً. */
-    if (!Store.isStaffSession()) { UI.toast('err', 'غير مسموح', 'إضافة البطاقات تتطلب حساب موظف.'); return; }
+    /* إصدار البطاقات حصرياً للمدير (2026-11-11). */
+    if (!Store.isAdmin()) { UI.toast('err', 'صلاحية المدير فقط', 'إصدار البطاقات من صلاحيات المدير العام.'); return; }
     var body = '<form id="card1-form" onsubmit="return false">' +
       '<div class="field"><label for="c-code">كود البطاقة (الباركود) *</label>' +
         '<div style="display:flex;gap:8px;align-items:stretch">' +
@@ -27067,8 +27067,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   /* إصدار دفعة بطاقات فارغة (الإدارة): باركودات عشوائية فريدة لا تتشابه —
      تُطبع فارغة وتوزَّع على نقاط البيع، وتُعبّأ كل واحدة عند بيعها. */
   function newBatchModal() {
-    /* قرار المالك 2026-11-11: إصدار الدفعات للموظف والمدير معاً. */
-    if (!Store.isStaffSession()) { UI.toast('err', 'غير مسموح', 'إصدار الدفعات يتطلب حساب موظف.'); return; }
+    /* إصدار البطاقات حصرياً للمدير (2026-11-11). */
+    if (!Store.isAdmin()) { UI.toast('err', 'صلاحية المدير فقط', 'إصدار البطاقات من صلاحيات المدير العام.'); return; }
     /* قرار 2026-11-11: أي عدد من 1 إلى 60 مسموح — لا قيد المضاعفات. صفوف
        الأوراق 2×2، فآخر ورقة قد تحمل بطاقة يتيمة واحدة؛ التقسيم في الطباعة
        يتكفّل بها. أزرار المضاعفات تبقى اختصاراً سريعاً للأعداد الشائعة. */

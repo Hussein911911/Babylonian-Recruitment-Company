@@ -1023,14 +1023,18 @@ check('إصدار الدفعة يقبل أي عدد ١–٦٠ ولا يُنشئ 
   if (dash.window.HRCStore.listBlankCards().length !== before) return 'أُصدرت بطاقة قبل تأكيد الخادم';
   return true;
 });
-/* قرار المالك 2026-11-11: إضافة البطاقات للموظف والمدير معاً — مطابقةً
-   لسياسة القاعدة applicants_staff_insert using brc.is_staff().
-   الزائر المجهول يبقى مرفوضاً (tests/client-authz.mjs يثبت ذلك). */
-check('إضافة البطاقات متاحة للموظف (قرار المالك) والزائر مرفوض', () => {
+/* قرار المالك 2026-11-11 (نهائي): إصدار البطاقات حصرياً للمدير العام.
+   الموظف يقرأ البطاقات ويعمل عليها، لكن لا يُصدر. */
+check('إصدار البطاقات حصرياً للمدير', () => {
   const S = dash.window.HRCStore;
   S.login('staff', 'staff123');
-  const r1 = S.createCardWithSerial('7KQ4M9TR9X', 'بطاقة موظف');
-  const batch = S.createCardBatch(3, 'دفعة موظف');
+  const staffCard = S.createCardWithSerial('7KQ4M9TR9X', 'محاولة موظف');
+  const staffBatch = S.createCardBatch(3, 'محاولة موظف');
+  S.login('admin', 'admin123');
+  const r1 = S.createCardWithSerial('7KQ4M9TR9X', 'بطاقة مدير');
+  const batch = S.createCardBatch(3, 'دفعة مدير');
+  if (staffCard.ok) return 'الموظف أصدر بطاقة بكودها';
+  if (staffBatch.length) return 'الموظف أصدر دفعة';
   /* رفض الزائر يُثبَت في tests/client-authz.mjs (سياق بلا جلسة إطلاقاً) —
      هنا نتحقق من مسار الموظف فقط بلا كسر جلسة بقية الفحوص. */
   if (!r1.ok) return 'الموظف لم يُضف بطاقة بكودها: ' + JSON.stringify(r1);

@@ -489,11 +489,11 @@ const D2 = dash2.w.HRCStore;
 injectFixture(D2,DB2B);
 dash2.w.HRCRefresh && dash2.w.HRCRefresh();
 await wait(250);
-/* قرار المالك 2026-11-11: إضافة البطاقات وإصدار الدفعات للموظف والمدير
-   معاً — مطابقةً لسياسة القاعدة applicants_staff_insert using is_staff(). */
-check('زرا «إضافة بطاقة» و«إصدار دفعة» ظاهران للموظف (قرار المالك)',
-  !dash2.doc.getElementById('btn-new-card').classList.contains('hidden') &&
-  !dash2.doc.getElementById('btn-new-batch').classList.contains('hidden'));
+/* قرار المالك 2026-11-11 (نهائي): إصدار البطاقات حصرياً للمدير العام.
+   الموظف يرى شاشة البطاقات ويعمل عليها، لكن لا زر إصدار لديه. */
+check('زرا «إضافة بطاقة» و«إصدار دفعة» مخفيان عن الموظف (إصدار حصري للمدير)',
+  dash2.doc.getElementById('btn-new-card').classList.contains('hidden') &&
+  dash2.doc.getElementById('btn-new-batch').classList.contains('hidden'));
 check('شاشة البطاقات ظاهرة للموظف',
   !dash2.doc.querySelector('#side-nav button[data-view="applicants"]').classList.contains('hidden'));
 /* ما يبقى للمدير وحده: سجل التدقيق والمالية والإعدادات */
