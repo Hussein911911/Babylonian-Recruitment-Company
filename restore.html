@@ -95,21 +95,58 @@
     </details>
   </section>
 
+  <!-- ═══ ٥) تفاصيل مرتبة + تصعيد ═══ -->
+  <section class="rp-card is-hidden" id="rp-step5">
+    <h2><span class="rp-num">٥</span> التفاصيل كاملة</h2>
+    <p class="rp-lead">
+      كل صف في كل جدول — الوظائف والبطاقات والفرص وسجل التدقيق.
+      بحث فوري داخل كل جدول، وتصدير CSV لكل واحد.
+    </p>
+    <div id="rv-root" hidden></div>
+  </section>
+
+  <!-- ═══ ٦) بناء موقع جديد من هذه النسخة ═══ -->
+  <section class="rp-card is-hidden" id="rp-step6">
+    <h2><span class="rp-num">٦</span> بناء موقع جديد من هذه النسخة</h2>
+    <p class="rp-lead">
+      تضغط الزر فتنزل ملف <code>restore.sql</code> فيه كل بياناتك جاهزة.
+      ثم تفتح مشروع Supabase جديد وتلصق الملف في <strong>SQL Editor</strong> وتضغط
+      <strong>Run</strong> — فترجع البيانات كاملة.
+    </p>
+    <div class="rp-actions">
+      <button type="button" class="rp-btn rp-btn-gold" id="rp-dl-sql">تنزيل restore.sql</button>
+      <button type="button" class="rp-btn" id="rp-dl-all-csv">تصدير كل الجداول CSV</button>
+    </div>
+    <ol class="rp-steps">
+      <li>أنشئ مشروع Supabase جديداً، وطبّق مخطط <code>brc</code> (الهجرات في المستودع).</li>
+      <li>نزّل <code>restore.sql</code> من الزر أعلاه.</li>
+      <li>افتح <strong>SQL Editor</strong> في المشروع الجديد، والصق الملف، واضغط <strong>Run</strong>.</li>
+      <li>حدّث رابط المشروع في <code>assets/js/supabase-config.js</code> وانشر الموقع.</li>
+      <li>سجّل دخول المدير وتحقق من الأعداد في اللوحة.</li>
+    </ol>
+    <p class="rp-warn">
+      الملف يبدأ بـ <code>TRUNCATE</code> — لا تُشغّله على قاعدة فيها بيانات.
+      استخدمه على قاعدة جديدة فقط.
+    </p>
+  </section>
+
   <!-- ═══ إعادة البناء ═══ -->
   <section class="rp-card rp-restore" id="rp-step5">
-    <h2>كيف تسترجع البيانات فعلياً؟</h2>
+    <h2>ماذا تفعل هذه الصفحة بالضبط؟</h2>
     <p>
-      هذه الأداة <strong>تفكّ وتستخرج</strong> للفحص والتحقق. إعادة البيانات إلى قاعدة جديدة
-      تتم عبر ملف SQL الذي تولّده المنصة، أو بإعادة الإدخال من ملف JSON المفتوح.
+      تفتح النسخة على جهازك بلا إنترنت، تعرض لك <strong>كل صف في كل جدول</strong>،
+      وتصنع لك ملف <code>restore.sql</code> يُعيد بناء قاعدة جديدة بالكامل —
+      بلا سطر أوامر ولا برنامج يُثبَّت.
     </p>
-    <ol class="rp-steps">
-      <li>افتح الملف هنا وتأكد أن الأعداد والبصمة صحيحة (الخطوات ١–٤ أعلاه).</li>
-      <li>نزّل «JSON مفتوح» — هذا محتوى النسخة كاملاً بلا تشفير.</li>
-      <li>لسحب البيانات إلى قاعدة PostgreSQL جديدة، استخدم سكربت الاسترجاع في المستودع على مسار <code>tools/restore-portable.mjs</code>.</li>
-    </ol>
+    <ul class="rp-steps">
+      <li><strong>تقرأ:</strong> الوظائف · البطاقات · الفرص · سجل التدقيق · الإعدادات · الأرقام المُصدرة · الحسابات.</li>
+      <li><strong>تصدّر:</strong> CSV لكل جدول (يفتح في Excel)، أو ملف SQL واحد للقاعدة كلها.</li>
+      <li><strong>لا ترسل شيئاً:</strong> لا شبكة ولا خادم. كلمة المرور والبيانات تبقى في هذا الجهاز.</li>
+    </ul>
     <p class="rp-note">
-      إن أردت أن تكون هذه الصفحة <em>تكتب</em> إلى قاعدة بنفسها، فهذا يحتاج مفتاح اتصال
-      بقاعدة فارغة — قرار منفصل يحتاج موافقتك قبل تنفيذه.
+      الأداة سطر أوامر أيضاً — لمن يفضّل الطرفية:
+      <code>node tools/restore-portable.mjs ملف.hrcbak --out bk.sql</code>.
+      الاثنان يستخدمان <strong>نفس منطق التوليد</strong>، فلا يختلف ناتج أحدهما عن الآخر.
     </p>
   </section>
 
@@ -123,6 +160,8 @@
 </footer>
 
 <script src="assets/js/portable-backup.js"></script>
+<script src="assets/js/restore-sql.js"></script>
+<script src="assets/js/restore-view.js"></script>
 <script src="assets/js/restore-page.js"></script>
 </body>
 </html>

@@ -261,3 +261,80 @@ code {
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* ═══ ٥) العرض المرتّب: جداول + بحث + ترقيم ═══════════════════════════════
+   البيانات قد تكون آلاف الصفوف (٦٥٨ بطاقة · ٣٥١٣ سجل تدقيق). نعرض ٥٠ صفاً
+   لكل صفحة كي لا يتجمّد المتصفح على الأجهزة الضعيفة. */
+.rp-lead { font-size: .93rem; line-height: 2; color: #43566d; margin: 0 0 16px; }
+
+.rv-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.rv-tab {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  border: 1px solid #dbe3ee; background: #fff; color: #24405f;
+  border-radius: 999px; padding: 8px 14px; font-size: .82rem; font-weight: 700;
+  font-family: inherit; transition: background .15s ease, border-color .15s ease;
+}
+.rv-tab:hover { border-color: #c2a25c; background: #fdf9ef; }
+.rv-tab.is-on { background: #142b46; border-color: #142b46; color: #fff; }
+.rv-tab b { font-weight: 800; opacity: .75; font-size: .75rem; }
+
+.rv-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; align-items: center; }
+.rv-search {
+  flex: 1 1 240px; min-width: 0; font-family: inherit; font-size: .88rem;
+  padding: 10px 14px; border: 1px solid #d5dfeb; border-radius: 10px;
+  background: #fff; color: #1d3350;
+}
+.rv-search:focus { outline: 2px solid #b98f34; outline-offset: 1px; }
+
+.rv-table-wrap { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.rv-table { width: 100%; border-collapse: collapse; font-size: .8rem; min-width: 520px; }
+.rv-table th {
+  text-align: start; padding: 11px 12px; background: #f4f7fb; color: #3d5675;
+  font-weight: 800; font-size: .74rem; white-space: nowrap;
+  border-bottom: 1px solid #e2e8f0; position: sticky; top: 0;
+}
+.rv-table td {
+  padding: 10px 12px; border-bottom: 1px solid #eef2f7; color: #1f3450;
+  line-height: 1.7; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rv-table tbody tr:nth-child(even) { background: #fafcfe; }
+.rv-table tbody tr:hover { background: #fdf9ef; }
+.rv-table tbody tr:last-child td { border-bottom: 0; }
+
+.rv-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.rv-pager span { font-size: .78rem; color: #536a83; }
+.rv-empty { padding: 28px 16px; text-align: center; color: #66768c; font-size: .86rem; }
+
+.rp-btn-sm { padding: 9px 14px; font-size: .8rem; }
+
+/* ═══ الهاتف: الجدول يصير بطاقات ══════════════════════════════════════════
+   كان الجدول يُمرَّر أفقياً فيُقصّ عمود «الحالة» — وهو أهم عمود. الآن كل صف
+   بطاقة مسمّاة الحقول، بلا تمرير ولا قصّ. */
+@media (max-width: 760px) {
+  .rv-tab { padding: 7px 11px; font-size: .76rem; }
+  .rv-bar .rp-btn-sm { flex: 0 0 auto; align-self: stretch; }
+
+  .rv-table-wrap { border: 0; background: transparent; overflow: visible; }
+  .rv-table { min-width: 0; display: block; font-size: .82rem; }
+  .rv-table thead { display: none; }
+  .rv-table tbody, .rv-table tr { display: block; }
+  .rv-table tr {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 6px 12px; margin-bottom: 10px;
+  }
+  .rv-table tbody tr:nth-child(even) { background: #fff; }
+  .rv-table td {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    padding: 7px 0; border-bottom: 1px solid #f1f5f9;
+    max-width: none; white-space: normal; text-align: end;
+  }
+  .rv-table td:last-child { border-bottom: 0; }
+  .rv-table td::before {
+    content: attr(data-l); color: #7186a0; font-size: .72rem; font-weight: 700;
+    text-align: start; flex: 0 0 auto;
+  }
+  /* أول خلية (المعرّف) تتصدّر البطاقة */
+  .rv-table td:first-child {
+    font-weight: 800; color: #142b46; border-bottom: 1px solid #e2e8f0;
+  }
+}
