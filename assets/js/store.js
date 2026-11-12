@@ -2675,6 +2675,39 @@
     });
   }
 
+  /* رفع صورة وظيفة إلى Storage بدل تضمينها base64 في الصف.
+     لماذا: الصورة المضمّنة تُنسخ كاملة في audit_log.diff مع كل تعديل على
+     الوظيفة، فتنمو القاعدة بلا سقف (صورة واحدة 542KB تكرّرت 38 مرة = 20MB).
+     الرابط لا ينسخ شيئاً.
+
+     ⛔ ترجع base64 كما هي لو فشل الرفع — لا نُفقد صورة الموظف أبداً.
+     ⛔ الحارس: isStaffSession() (الموظف والمدير يعدّلان الوظائف). */
+  function uploadJobImage(dataUrl, code) {
+    if (!dataUrl || dataUrl.indexOf('data:image/') !== 0) return Promise.resolve(dataUrl);
+    if (!isStaffSession() || !enforceAuth() || !cloud.client || !cloud.client.storage) return Promise.resolve(dataUrl);
+    var m = /^data:image\/([a-z+]+);base64,/.exec(dataUrl);
+    if (!m) return Promise.resolve(dataUrl);
+    var ext = m[1] === 'jpeg' ? 'jpg' : m[1];
+    var path = 'jobs/' + String(code || 'new').toLowerCase().replace(/[^a-z0-9-]/g, '') + '.' + ext;
+    var bin;
+    try {
+      var b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+      var raw = root.atob(b64);
+      bin = new Uint8Array(raw.length);
+      for (var i = 0; i < raw.length; i++) bin[i] = raw.charCodeAt(i);
+    } catch (e) { return Promise.resolve(dataUrl); }
+
+    return cloud.client.storage.from('job-images').upload(path, bin, {
+      contentType: 'image/' + m[1],
+      upsert: true
+    }).then(function (res) {
+      if (res && res.error) return dataUrl;                 /* فشل → base64 */
+      var pub = cloud.client.storage.from('job-images').getPublicUrl(path);
+      var url = pub && pub.data && pub.data.publicUrl;
+      return url && /^https:\/\//.test(url) ? url : dataUrl;
+    }).catch(function () { return dataUrl; });
+  }
+
   /* تصدير نسخة محمولة: ترجع البيانات خاماً (JSONB) للمدير فقط.
      المتصفح هو من يشفّرها بكلمة مرور المالك — المفتاح لا يمرّ بالقاعدة.
      ⛔ حارس: isAdmin() هنا وفي recovery_export_full بالقاعدة معاً. */
@@ -2819,7 +2852,7 @@
     createCloudAccount: createCloudAccount, updateCloudAccount: updateCloudAccount,
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     probeServiceKey: probeServiceKey,
-    staffAdmin: staffAdmin, recoveryRPC: recoveryRPC, recoveryExportFull: recoveryExportFull,
+    staffAdmin: staffAdmin, recoveryRPC: recoveryRPC, recoveryExportFull: recoveryExportFull, uploadJobImage: uploadJobImage,
     recoveryScheduleGet: recoveryScheduleGet, recoveryScheduleSet: recoveryScheduleSet,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     issueNumberedCards:issueNumberedCards, pendingCardIssue:pendingCardIssue, serialWasIssued:serialWasIssued, cardReport:cardReport, searchCardHistory:searchCardHistory, reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
