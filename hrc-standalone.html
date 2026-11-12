@@ -5209,7 +5209,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
     <nav class="side-nav" id="side-nav">
       <button data-view="overview" class="active"><svg class="ic"><use href="#i-grid" xlink:href="#i-grid"/></svg> نظرة عامة</button>
       <button data-view="jobs"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> الوظائف <span class="badge-count hidden" id="nav-jobs-count">0</span></button>
-      <button data-view="applicants" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> البطاقات <span class="badge-count hidden" id="nav-apps-count">0</span></button>
+      <button data-view="applicants"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> البطاقات <span class="badge-count hidden" id="nav-apps-count">0</span></button>
       <button data-view="holds"><svg class="ic"><use href="#i-hourglass" xlink:href="#i-hourglass"/></svg> متابعة الحجوزات (24 ساعة) <span class="badge-count hidden" id="nav-holds-count">0</span></button>
       <button data-view="audit" data-admin-only="true"><svg class="ic"><use href="#i-list" xlink:href="#i-list"/></svg> سجل التدقيق</button>
       <button data-view="finance" data-admin-only="true"><svg class="ic"><use href="#i-chart" xlink:href="#i-chart"/></svg> اللوحة المالية</button>
@@ -5249,8 +5249,8 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
           <input type="text" id="quick-code" placeholder="بحث سريع بكود الوظيفة (HRC-1042)" aria-label="بحث بكود الوظيفة">
         </form>
         <button class="btn btn-outline btn-sm" id="btn-card-history">بحث السجل الكامل والأرشيف</button>
-        <button class="btn btn-outline btn-sm" id="btn-new-batch" data-admin-only="true"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
-        <button class="btn btn-outline btn-sm" id="btn-new-card" data-admin-only="true" title="بطاقة واحدة فارغة بكودها — للمدير فقط"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
+        <button class="btn btn-outline btn-sm" id="btn-new-batch"><svg class="ic"><use href="#i-card" xlink:href="#i-card"/></svg> إصدار دفعة فارغة</button>
+        <button class="btn btn-outline btn-sm" id="btn-new-card" title="بطاقة واحدة فارغة بكودها — للموظف والمدير"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة بطاقة</button>
         <button class="btn btn-gold btn-sm" id="btn-new-job"><svg class="ic"><use href="#i-plus" xlink:href="#i-plus"/></svg> إضافة وظيفة</button>
         <button class="btn btn-outline btn-sm" id="btn-run-maintenance"><svg class="ic"><use href="#i-refresh" xlink:href="#i-refresh"/></svg> تحديث</button>
       </div>
@@ -24262,7 +24262,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         document.getElementById('jq').value = n.jobCode;
         ['j-status', 'j-governorate', 'j-shift'].forEach(function (id) { document.getElementById(id).value = 'all'; });
         setView('jobs');
-      } else if (n.view === 'applicants' && Store.isAdmin()) {
+      } else if (n.view === 'applicants' && Store.isStaffSession()) {
+        /* البطاقات للموظف والمدير (2026-11-11). */
         state.a = { q: n.serial || '', status: 'all', user: 'all' };
         document.getElementById('aq').value = state.a.q;
         document.getElementById('a-status').value = 'all'; document.getElementById('a-user').value = 'all';
