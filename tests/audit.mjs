@@ -58,6 +58,23 @@ async function loadPage(file) {
       /* بذرة العرض للاختبارات فقط — الإنتاج ببذرة فارغة (انظر
          tests/fixtures/demo-seed.mjs). تُوضع قبل تنفيذ config.js. */
       window.__HRC_TEST_SEED__ = JSON.parse(JSON.stringify(DEMO_SEED));
+      /* جلسة موظف لعمليات التدقيق التشغيلية (إنشاء/فحص استمارات).
+         jsdom لا يوفّر sessionStorage لأصول file:// — نزرع بديلاً قبل
+         تنفيذ store.js حتى يقرأها currentUser. رفض الزائر يُثبته
+         tests/client-authz.mjs في سياق بلا جلسة إطلاقاً. */
+      const bag = new Map([['hrc_session_v2', JSON.stringify(
+        { username: 'staff', name: 'موظف تدقيق', role: 'staff', cloud: true, authId: null })]])
+      Object.defineProperty(window, 'sessionStorage', {
+        configurable: true,
+        value: {
+          getItem: (k) => (bag.has(String(k)) ? bag.get(String(k)) : null),
+          setItem: (k, v) => bag.set(String(k), String(v)),
+          removeItem: (k) => bag.delete(String(k)),
+          clear: () => bag.clear(),
+          key: (i) => Array.from(bag.keys())[i] || null,
+          get length() { return bag.size; }
+        }
+      });
       Object.defineProperty(window, 'print', { configurable: true, writable: true, value: () => { } });
       window.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 16);
       window.cancelAnimationFrame = (id) => clearTimeout(id);
@@ -781,7 +798,8 @@ section('9) سلامة البيانات — البيانات التجريبية 
   const dupSer = serials.filter((c, i) => serials.indexOf(c) !== i);
   if (dupSer.length) bad('الأرقام التسلسلية فريدة', dupSer.join(', ')); else ok('الأرقام التسلسلية فريدة: ' + serials[serials.length - 1] + ' حتى ' + serials[0]);
 
-  // توليد جديد بلا تصادم
+  // توليد جديد بلا تصادم — إنشاء الاستمارات محمي بجلسة موظف (2026-11-11)
+
   const n1 = S.createApplicant({ fullName: 'فحص التدقيق', phone: '07700000000' });
   const n2 = S.createApplicant({ fullName: 'فحص التدقيق 2', phone: '07700000001' });
   if (serials.includes(n1.serial) || n1.serial === n2.serial) bad('التسلسل الجديد لا يتصادم', n1.serial + ' / ' + n2.serial);

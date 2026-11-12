@@ -543,7 +543,9 @@ const DB4 = JSON.stringify(D2.db());
    This is not an assertion that the deleted sale interface still exists. */
 step(6, 'متابعة قرار الموظف على بطاقة تجريبية');
 const SERIAL2 = blankSerials[1];
-const pub2 = await open('index.html');
+/* تفعيل البطاقة صار محمياً بجلسة موظف (2026-11-11) — نفتح بجلسة موظف
+   كما يفعل الموظف على جهازه. رفض الزائر يُثبته client-authz. */
+const pub2 = await open('index.html', null, { session: { username: 'staff', name: 'موظف', role: 'staff' } });
 injectFixture(pub2.w.HRCStore, DB4);
 const secondFixture = pub2.w.HRCStore.activateCard(SERIAL2, {fullName:'سجاد حسن الموسوي', phone:'07709876543', posName:'بيانات اختبار', jobCode:'HRC-1046'});
 if (!secondFixture.ok) throw new Error('إعداد البطاقة الثانية: ' + secondFixture.error);

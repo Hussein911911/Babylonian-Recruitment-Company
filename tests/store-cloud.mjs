@@ -494,6 +494,12 @@ step(5, 'الزائر — RPC للطلب والتحقق (الجدول محجوب
   {
     const local = bootStore(makeMock({ rows: cloudRows() }), { noVendor: true });
     local.Store.init(); await sleep(30);
+    /* إنشاء الاستمارات محمي بجلسة موظف (2026-11-11) — نزرع جلسة كما
+       يفعل الموظف، ثم نتحقق من مسار «بطاقتي» للزائر على البطاقة نفسها. */
+    try {
+      local.sandbox.sessionStorage.setItem('hrc_session_v2',
+        JSON.stringify({ username: 'staff', name: 'موظف', role: 'staff', cloud: true }));
+    } catch (e) { }
     const app = local.Store.createApplicant({ fullName: 'سالم', phone: '07701111111', address: 'بابل', gender: 'ذكر', posName: 'مكتب فحص' });
     const r = await local.Store.cardLookup(app.serial);
     const masked = r.ok && r.card.fullName !== 'سالم' && /•/.test(r.card.fullName);

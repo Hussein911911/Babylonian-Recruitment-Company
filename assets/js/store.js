@@ -790,6 +790,8 @@
   function chanceCode() { return ''; }
 
   function createApplicant(data) {
+    /* ⛔ حارس: كانت بلا حارس — زائر أنشأ استمارة كاملة. */
+    if (!isStaffSession()) return { ok: false, error: 'إنشاء الاستمارات يتطلب حساب موظف' };
     var issue = new Date();
     var pending = !!data.pending;
     var app = {
@@ -895,6 +897,8 @@
   /* تعبئة بطاقة فارغة عند البيع (نقطة البيع): بيانات الزبون تُسجَّل على نفس
      الباركود المطبوع على الورقة، والصلاحية تبدأ عند أول تقديم ناجح. */
   function activateCard(serial, data) {
+    /* ⛔ حارس احتياطي: التفعيل الحقيقي عبر apply_with_card في القاعدة. */
+    if (!isStaffSession()) return { ok: false, error: 'تفعيل البطاقات يتطلب حساب موظف' };
     serial = String(serial || '').trim().toUpperCase();
     data = data || {};
     var app = getApplicant(serial);
