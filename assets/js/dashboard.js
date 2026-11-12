@@ -1435,9 +1435,22 @@
           }
         }
         
-        box.querySelector('#job-save').addEventListener('click', function () {
+        box.querySelector('#job-save').addEventListener('click', async function () {
+          var saveBtn = this;
           var f = box.querySelector('#job-form');
           if (!f.reportValidity()) return;
+          /* ارفع الصورة إلى Storage قبل الكتابة كي لا تُخزَّن base64 في الصف.
+             لو فشل الرفع ترجع base64 كما هي — لا تُفقد الصورة. */
+          var bakedImage = bakeImage();
+          if (bakedImage && bakedImage.indexOf('data:image/') === 0 && Store.uploadJobImage) {
+            saveBtn.disabled = true;
+            var prevText = saveBtn.textContent;
+            saveBtn.textContent = 'جارٍ رفع الصورة…';
+            try { bakedImage = await Store.uploadJobImage(bakedImage, j ? j.code : ''); }
+            catch (e) { /* نبقي base64 */ }
+            saveBtn.textContent = prevText;
+            saveBtn.disabled = false;
+          }
           var data = {
             title: box.querySelector('#f-title').value.trim(),
             category: box.querySelector('#f-cat').value,
@@ -1452,7 +1465,7 @@
             employerPhone: box.querySelector('#f-ephone').value.trim(),
             employerAddress: box.querySelector('#f-eaddr').value.trim(),
             interviewLocation: box.querySelector('#f-interview').value.trim(),
-            imageUrl: bakeImage()
+            imageUrl: bakedImage
           };
           if (j) {
             Store.updateJob(j.code, {

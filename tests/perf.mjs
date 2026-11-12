@@ -99,7 +99,8 @@ const BUDGET = {
   'index.html': { raw: 780, requests: 20 },
   /* 2026-11-07: القياس 532KB (كان 512). النمو من سمات البطاقة المشتركة
      (voucher.js) وصفحة التحقق الموحّدة. jsQR لا يُحمَّل هنا أصلاً. */
-  'verify.html': { raw: 540, requests: 20 },
+  /* 2026-11-12: +1KB من uploadJobImage المشتركة في store.js. */
+  'verify.html': { raw: 542, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */
   /* 2026-10-24: +8KB لمحرّر صورة الوظيفة (معاينة + تكبير/تصغير + سحب +
@@ -115,7 +116,9 @@ const BUDGET = {
      شرح + رابط أداة الاسترجاع). وحدة التشفير نفسها (9KB) **ليست** في
      الميزانية لأنها تُحمَّل عند الطلب فقط — على نفس نمط jsqr و card-archive.
      القياس: 1052KB. لا طلب شبكة جديد عند فتح الشاشة. */
-  'dashboard.html': { raw: 1054, requests: 20 }
+  /* 2026-11-12 (ج): +2KB من رفع الصور إلى Storage (uploadJobImage في store.js
+     تُحمَّل مع اللوحة لأنها جزء من دالة الحفظ). القياس: 1056KB. */
+  'dashboard.html': { raw: 1057, requests: 20 }
 };
 
 function payloadOf(page) {
