@@ -55,3 +55,9 @@ create table if not exists brc.jobs_image_url_rollback_20261112 as
 
 comment on table brc.jobs_image_url_rollback_20261112 is
   'نسخة الروابط المضمّنة قبل نقلها إلى Storage — للرجوع لو فشل أي رابط.';
+
+-- ── ٤) تأمين جدول الرجوع (أُضيف بعد فحص الجاهزية 2026-11-12) ─────────────
+-- وُجد بلا RLS عند الجولة النهائية. الزائر كان محجوباً بالصلاحيات فقط
+-- (طبقة واحدة)، والمطلوب طبقتان: صلاحيات + RLS.
+alter table brc.jobs_image_url_rollback_20261112 enable row level security;
+revoke all on brc.jobs_image_url_rollback_20261112 from anon, authenticated;

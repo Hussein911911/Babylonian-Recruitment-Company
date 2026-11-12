@@ -35,6 +35,35 @@ const STRUCTURE = RAW.replace(DOLLAR, (m, tag, body) => { BODIES.push(body); ret
 const ALL_BODIES = BODIES.join('\n');
 const stripped = (s) => s.replace(/--[^\n]*/g, '');
 
+/* ── كل جدول في brc عليه RLS — من **ملفات الهجرة**.
+   يتجاهل الجداول المحذوفة صراحةً (drop table) والجداول المؤقتة. */
+{
+  const dir = 'supabase/migrations';
+  const files = readdirSync(dir).filter(f => f.endsWith('.sql')).sort();
+  const created = new Map();
+  const enabled = new Set();
+  const dropped = new Set();
+
+  for (const f of files) {
+    const sql = readFileSync(join(dir, f), 'utf8');
+    for (const m of sql.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?brc\.([a-z0-9_]+)/gi)) {
+      created.set(m[1], f);
+    }
+    for (const m of sql.matchAll(/alter\s+table\s+brc\.([a-z0-9_]+)\s+enable\s+row\s+level\s+security/gi)) {
+      enabled.add(m[1]);
+    }
+    for (const m of sql.matchAll(/drop\s+table\s+(?:if\s+exists\s+)?brc\.([a-z0-9_]+)/gi)) {
+      dropped.add(m[1]);
+    }
+  }
+
+  const live = [...created.keys()].filter(t => !dropped.has(t));
+  const missing = live.filter(t => !enabled.has(t));
+  check('كل جدول brc حيّ له enable row level security', missing.length === 0,
+    missing.length ? 'بلا RLS: ' + missing.join(', ') : '');
+  console.log(`   · أُنشئ: ${created.size} · محذوف: ${dropped.size} · حيّ: ${live.length} · عليه RLS: ${enabled.size}`);
+}
+
 console.log('\n' + '═'.repeat(74));
 console.log('  HRC — فحص سلامة مخطط قاعدة البيانات (docs/schema.sql)');
 console.log('═'.repeat(74));
