@@ -122,9 +122,14 @@ a.hc-item:hover { color: var(--gold-2); }
 }
 
 .site-header {
-  position: sticky; top: 0; z-index: 60; background: rgba(9, 18, 40, .92);
-  backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 60;
+  /* خلفية معتمة بدل التمويه: التمويه فوق محتوى متحرك يُجبر المتصفح على
+     إعادة حساب المنطقة خلف الهيدر في كل فريم — أغلى عملية أثناء السحب،
+     وبلا فائدة بصرية على خلفية معتمة .92 أصلاً. */
+  background: rgb(9, 18, 40); border-bottom: 1px solid var(--line);
   box-shadow: 0 8px 30px rgba(0, 0, 0, .25);
+  /* عزل طبقة الهيدر حتى لا يعيد المتصفح رسم الصفحة كاملة عند التمرير */
+  contain: layout style;
 }
 .site-header .container { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }
 .brand { display: flex; align-items: center; gap: 12px; color: #fff; }
@@ -461,11 +466,17 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
   border-radius: 0;
   --img: none;                     /* تُملأ من جافاسكربت برابط صورة الوظيفة */
 }
+/* الحشوة الخلفية للصورة (blur fill).
+   كان filter: blur(16px) — وأغلى ما في الصفحة أثناء السحب: ٦٠ بطاقة
+   تعني ٦٠ طبقة تمويه على صورة، تُعاد رسمها في كل فريم. النتيجة البصرية
+   المطلوبة (خلفية داكنة ممتلئة خلف الصورة) تُحقَّق بالتموّيه نفسه الذي
+   يولّده المتصفح عند تكبير صورة صغيرة بـ background-size: cover —
+   بلا فلتر. أُبقي brightness فقط لأنها عملية رخيصة تُحسب مرة واحدة.
+   الحشوة الداكنة أدناه تضمن ألا يظهر إطار فاتح إن كانت الصورة صغيرة جداً. */
 .job-image::before {
   content: ''; position: absolute; inset: -6%; z-index: 0; pointer-events: none;
   background-image: none;
   background-size: cover; background-position: center;
-  filter: blur(16px) saturate(1.15) brightness(.85);
   opacity: .85;
   transform: scale(1.08);
 }
@@ -563,14 +574,24 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 #how .section-head p, #services .section-head p { color: #2a2d36; }
 
 /* ---------------- حركات الظهور عند التمرير (Scroll Reveal) ---------------- */
+/* ── الظهور عند التمرير ────────────────────────────────────────────────
+   كان: opacity:0 → 1 مع translateY(28px) وانتقال .7s.
+   المشكلة أثناء السحب السريع: الكتلة تكون داخل الشاشة وما زالت شفافة
+   (لا IntersectionObserver بعد) فيرى المستخدم «فراغاً» ثم قفزة.
+   الآن: الإزاحة 12px فقط، والمدة .38s، والشفافية تبدأ من .6 لا 0 —
+   فالكتلة مقروءة إن وصلت الشاشة قبل المراقب.
+   لا نغيّر الشكل النهائي: الحالة المنتهية هي نفسها تماماً. */
 .reveal {
-  opacity: 0; transform: translateY(28px);
-  transition:
-    opacity .7s cubic-bezier(.22, .61, .36, 1),
-    transform .7s cubic-bezier(.22, .61, .36, 1),
-    box-shadow .3s ease, border-color .3s ease, background .3s ease;
+  opacity: .6; transform: translateY(12px);
+  transition: opacity .38s cubic-bezier(.22, .61, .36, 1),
+              transform .38s cubic-bezier(.22, .61, .36, 1);
+  will-change: opacity, transform;
 }
-.reveal.is-visible { opacity: 1; transform: none; }
+.reveal.is-visible {
+  opacity: 1; transform: none;
+  /* بعد الانتهاء لا نُبقي طبقة GPU — توفير ذاكرة على الأجهزة الضعيفة */
+  will-change: auto;
+}
 .step:hover, .service:hover {
   border-color: rgba(255, 208, 96, .75);
   box-shadow:
@@ -673,7 +694,9 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
 .quote-band {
   position: relative; padding: clamp(52px, 7vw, 88px) 0; color: #fff; text-align: center; overflow: hidden;
   background-image: url('../img/recruitment-digital.webp'); background-size: cover; background-position: center 40%;
-  background-attachment: fixed;
+  /* كان background-attachment: fixed — وهو أغلى نمط سكرول: يجبر المتصفح
+     على إعادة رسم الصورة كاملة كل فريم. النتيجة المنظورة مطابقة تقريباً
+     لأنه مغطّى بطبقة .80، فالكلفة بلا مقابل بصري. */
 }
 .quote-band::before { content: ''; position: absolute; inset: 0; background: rgba(6, 13, 31, .80); }
 .quote-band > * { position: relative; z-index: 1; }
@@ -2437,9 +2460,9 @@ table.data tbody tr:hover { background: #fff; }
 /* === تحسين حركة التمرير السلسة === */
 @media (prefers-reduced-motion: no-preference) {
   .reveal {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1);
+    opacity: .6;
+    transform: translateY(12px);
+    transition: opacity .38s cubic-bezier(.22,.61,.36,1), transform .38s cubic-bezier(.22,.61,.36,1);
   }
   .reveal.is-visible { opacity: 1; transform: none; }
 }
@@ -2587,7 +2610,6 @@ to{opacity:1;transform:none}
   content: ''; position: absolute; inset: -6%; z-index: 0; pointer-events: none;
   background-image: var(--img, none);
   background-size: cover; background-position: center;
-  filter: blur(18px) saturate(1.15) brightness(.85);
   opacity: .85; transform: scale(1.08);
 }
 .job-detail-image img {

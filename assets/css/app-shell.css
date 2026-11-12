@@ -15,7 +15,11 @@
   background-position: center 34%;
   background-size: cover;
 }
-.hero-app .hero-bg { background-blend-mode: normal; filter: saturate(1.05) contrast(1.03); }
+/* كان على صورة الواجهة الكاملة filter: saturate(1.05) contrast(1.03).
+   الفرق البصري غير محسوس (‎+5% تشبّع)، لكن الكلفة كبيرة: المتصفح يعيد
+   تشغيل الفلتر على صورة بعرض الشاشة كل فريم أثناء السحب، وطبقة الفلتر
+   تمنع تسريع الطبقة في الـGPU. حُذف الفلتر. */
+.hero-app .hero-bg { background-blend-mode: normal; }
 .hero-app::before { content: none; }              /* لا طبقة إضافية فوق الصورة */
 .hero-app .hero-veil {
   background: linear-gradient(180deg, rgba(6,13,31,.58) 0%, rgba(6,13,31,.22) 26%,
@@ -472,7 +476,16 @@
 .app-section #fav-grid.jobs-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  /* حد أقصى لعرض الشبكة على الشاشات العريضة.
+     بلا حد، بطاقة ١٤٤٠px كانت تصير ٦٠٢×٤٩٨ — أي ٣.٥× مساحة بطاقة
+     الموبايل، وصورة الوظيفة تُرسم بعرض ٦٠٢px في كل بطاقة. وبما أن
+     الشبكة بطاقتان في كل صف (تصميم يملكه المستخدم)، فالحد على عرض
+     الشبكة نفسها لا على عدد الأعمدة. ٩٦٠px = بطاقة ٤٧٢px، وهي مقاس
+     البطاقة في المواقع المهنية على الشاشات الكبيرة. */
+  max-width: 960px;
+  margin-inline: auto;
 }
+
 @media screen and (max-width: 860px) {
   .app-section #jobs-grid.jobs-grid,
   .app-section #fav-grid.jobs-grid { gap: 10px; }
@@ -491,7 +504,12 @@
 .job-card.app-card {
   position: relative; display: flex; flex-direction: column; padding: 0;
   overflow: hidden; border-radius: 18px; background: #fff;
-  border: 1px solid #e9edf4; box-shadow: 0 10px 26px rgba(6, 13, 31, .08);
+  /* كان box-shadow: 0 10px 26px — تمويه ٢٦px يُحسب لكل بطاقة على حِدة،
+     و٦٠ بطاقة تعني ٦٠ منطقة تمويه تُعاد أثناء السحب.
+     البديل: حافة قصيرة ٢px + حدّ أوضح قليلاً. الكلفة ثابتة ومنخفضة،
+     ويبقى الفصل البصري عن الخلفية واضحاً (الحدّ يرفع التباين). */
+  border: 1px solid #dde4ef;
+  box-shadow: 0 2px 4px rgba(6, 13, 31, .07);
 }
 .app-card::after {
   content: ''; position: absolute; inset-block-start: 0; inset-inline: 0; height: 3px;
@@ -537,10 +555,15 @@
 }
 .ac-badge.is-reserved { color: #3F2E08; background: linear-gradient(135deg, #F7ECC8, #C8A24A); }
 .ac-badge.is-closed { color: #fff; background: linear-gradient(135deg, #6B7280, #4B5563); border-color: rgba(255,255,255,.2); }
+/* زر المفضلة فوق صورة البطاقة.
+   كان backdrop-filter: blur(6px) — وكل بطاقة فيها زر، فصفحة فيها ٦٠ بطاقة
+   تعني ٦٠ طبقة تمويه تُعاد رسمها في كل فريم أثناء السحب.
+   البديل: خلفية داكنة بلا تمويه — التباين أعلى من السابق (‎.35 → .62)
+   فالأيقونة أوضح، والكلفة صفر. */
 .ac-fav {
   width: 30px; height: 30px; border-radius: 999px; border: 0; cursor: pointer;
   display: grid; place-items: center; color: #fff;
-  background: rgba(8, 17, 36, .35); backdrop-filter: blur(6px); transition: .18s ease;
+  background: rgba(8, 17, 36, .62); transition: background .18s ease, color .18s ease;
 }
 .ac-fav .ic { width: 16px; height: 16px; }
 .ac-fav.is-on { color: #e2453c; background: rgba(255, 255, 255, .95); }
@@ -586,8 +609,12 @@
   display: flex; align-items: flex-end; justify-content: space-around; gap: 2px;
   max-width: 100%;
   padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
-  background: rgba(255, 255, 255, .98); border-top: 1px solid #eceff4;
-  box-shadow: 0 -10px 30px rgba(6, 13, 31, .1); backdrop-filter: blur(10px);
+  /* كان backdrop-filter: blur(10px) — شريط ثابت فوق كل صفحة، فكل سحب
+     يكلّف المتصفح إعادة تمويه المنطقة خلفه. الخلفية .98 معتمة أصلاً،
+     فالتمويه غير مرئي عملياً. صارت صلبة معتمة. */
+  background: #fff; border-top: 1px solid #eceff4;
+  box-shadow: 0 -10px 30px rgba(6, 13, 31, .1);
+  contain: layout style;
 }
 /* لا إطار تركيز على أزرار التطبيق (الحالة النشطة تُبرز التبويب).
    إتاحة الوصول: نُظهر إطاراً رفيعاً فقط عند التنقّل بلوحة المفاتيح
@@ -639,6 +666,8 @@ body.kbd .tabbar a:focus-visible { outline: 2px solid var(--gold); outline-offse
   /* التصنيفات شرائح أفقية بتمرير — لا ضغط ولا قصّ */
   .cat-rail { gap: 7px; justify-content: flex-start; }
 }
+
+
 
 @media print {
   .tabbar, .cat-rail, .page-bar { display: none !important; }
