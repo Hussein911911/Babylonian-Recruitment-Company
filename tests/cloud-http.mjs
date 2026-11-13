@@ -135,9 +135,18 @@ try {
     },
     rest: { headers: { set: function (k, v) { headerSets.push([k, v]); } } }
   };
-  const ar = await C.activateCard(fullClient, 'HRC-BC-000001', { fullName: 'ت', phone: '07', posName: 'ن', jobCode: 'HRC-1046' });
-  check('activateCard عبر عميل كامل: يضبط Accept-Profile: brc قبل نداء rpc نفسه',
-    ar.ok === true && hadHeaderAtRpc === true &&
+  /* ⚠️ كان هذا الاختبار يتأكد أن `activateCard` ينادي rpc مضبوطاً — وهذا
+     بالضبط الخطأ: `brc.activate_card` **منزوعة** من anon/authenticated منذ
+     20261030100000_remove_direct_card_sale.sql، فالنداء كان يُرفض دائماً ثم
+     يسقط المسار للمحلي. الآن الدالة محذوفة من HRCCloud عمداً، والاختبار
+     يثبت الغياب كي لا تعود. */
+  check('activateCard لم تعد تُصدَّر في HRCCloud (الدالة منزوعة في القاعدة)',
+    typeof C.activateCard !== 'function',
+    typeof C.activateCard);
+  /* ونفس الترويسة تُفحص على دالة حيّة فعلاً — كي لا يسقط الفحص الأصلي بلا بديل */
+  await C.customerApplication(fullClient, 'HRC-BC-000001', 1);
+  check('نداء rpc حيّ يضبط Accept-Profile: brc قبل النداء نفسه',
+    hadHeaderAtRpc === true &&
     headerSets.some(function (p) { return p[0] === 'Accept-Profile' && p[1] === 'brc'; }));
 
   /* عميل بلا rest (كالعميل المصغّر): لا ينكسر — ترسل الترويسة من عنده */
