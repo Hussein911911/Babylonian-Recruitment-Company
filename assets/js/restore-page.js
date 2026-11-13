@@ -344,4 +344,23 @@
     setStatus(fileStatus,
       'هذا المتصفح لا يوفّر Web Crypto — افتح الصفحة عبر HTTPS أو من localhost', 'error');
   }
+
+  /* ═══ بوابة المدير (2026-11-13) ═══════════════════════════════════════════
+     الصفحة منشورة على الموقع، وخطواتها تكشف مخطط القاعدة وتفتح أي نسخة
+     احتياطية. البوابة تقفلها ما لم تكن الجلسة جلسة مدير، وتتركها مفتوحة على
+     file:// (شرط عملها عند انقطاع الموقع). ⚠️ نُشغّلها في النهاية كي لا
+     يحجب `return` مبكر بقية التهيئة؛ القفل نفسه يقع فوراً عند التحميل. */
+  if (window.HRCRestoreGate && typeof window.HRCRestoreGate.boot === 'function') {
+    window.HRCRestoreGate.boot();
+    var retry = $('rp-gate-retry');
+    if (retry) retry.addEventListener('click', function () {
+      retry.disabled = true;
+      var old = retry.textContent;
+      retry.textContent = 'جارٍ الفحص…';
+      Promise.resolve(window.HRCRestoreGate.boot()).catch(function () {}).then(function () {
+        retry.disabled = false;
+        retry.textContent = old;
+      });
+    });
+  }
 })();
