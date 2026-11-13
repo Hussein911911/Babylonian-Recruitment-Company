@@ -122,8 +122,10 @@ const BUDGET = {
      القياس: 1052KB. لا طلب شبكة جديد عند فتح الشاشة. */
   /* 2026-11-12 (ج): +2KB من رفع الصور إلى Storage (uploadJobImage في store.js
      تُحمَّل مع اللوحة لأنها جزء من دالة الحفظ). القياس: 1056KB. */
-  /* 2026-11-12 (د): +2KB من قواعد سلاسة السحب في app-shell.css. القياس: 1059KB. */
-  'dashboard.html': { raw: 1059, requests: 20 }
+  /* 2026-11-12 (د): +2KB من قواعد سلاسة السحب في app-shell.css. القياس: 1059KB.
+     2026-11-13: +1KB — p_code صار وسيطاً إلزامياً في lookup_card (cloud.js
+     يُضمَّن كاملاً في اللوحة). القياس: 1060KB. */
+  'dashboard.html': { raw: 1060, requests: 20 }
 };
 
 function payloadOf(page) {

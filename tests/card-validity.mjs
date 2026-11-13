@@ -35,11 +35,11 @@ try {
     insert into brc.jobs(code) values('JOB-1'),('JOB-2'),('JOB-3'),('JOB-4');
     update brc.jobs set vacancies=1 where code='JOB-1';
     insert into brc.applicants(serial) values('SELF'),('SOLD'),('FAIL'),('FULL'),('ONSALE');`);
-  for (const serial of ['SELF', 'SOLD', 'FAIL', 'FULL', 'ONSALE']) await rpc('self_service_card', [serial]);
+  for (const serial of ['SELF', 'SOLD', 'FAIL', 'FULL', 'ONSALE']) await rpc('self_service_card', [serial, null]);
   for (const count of [1,3,5]) {
     const serial='LIMIT'+count;
     await db.query('insert into brc.applicants(serial,attempt_limit) values($1,$2)',[serial,count]);
-    const info=await rpc('self_service_card',[serial]);
+    const info=await rpc('self_service_card',[serial,null]);
     assert.equal(info.card.chances.length,count);assert.equal(info.card.chancesLeft,count);
     assert.equal((await row(serial)).expiry_date,null);
   }

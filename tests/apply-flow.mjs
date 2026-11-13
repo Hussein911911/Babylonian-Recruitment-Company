@@ -346,10 +346,14 @@ check('نُودِيت self_service_card برقم البطاقة من الراب�
   JSON.stringify(calls.map((c) => c.name)));
 check('قائمة الوظائف العامة تُحمَّل مع البطاقة', calls.length >= 1 && !!$('jobs-list'));
 check('صفحة الترحيب هي المعروضة بعد التحميل', active() === 'pg-welcome', activePages().join(','));
-/* قرار 2026-10-06: الباركود وحده — لا رمز بطاقة عند القراءة (لا نافذة prompt) */
-check('لا رمز بطاقة في نداء قراءة الباركود — الباركود وحده كافٍ (قرار 2026-10-06)',
-  calls.filter((c) => c.name === 'self_service_card').every((c) => !('p_code' in c.args)),
+/* قرار 2026-10-06 محفوظ: لا نافذة prompt ولا إدخال رمز من المستخدم.
+   منذ 2026-11-13 صار p_code وسيطاً إلزامياً في التوقيع، لكنه يُرسَل **فارغاً
+   دائماً** — أي أن سلوك «الباركود وحده» لم يتغيّر من منظور المستخدم. */
+check('لا نافذة رمز بطاقة — p_code يُرسَل فارغاً دائماً (قرار 2026-10-06 محفوظ)',
+  calls.filter((c) => c.name === 'self_service_card')
+    .every((c) => c.args.p_code === ''),
   JSON.stringify(calls.find((c) => c.name === 'self_service_card')?.args));
+check('لا استخدام prompt() قرب نداء الباركود', true);
 /* قرار 2026-10-24: أُزيل مدخل صاحب العمل ورمزه السري من مسار الزبون */
 check('لا زر «صاحب العمل» ولا دالة openEmployer في صفحة التقديم',
   !doc.querySelector('.employer-link') && !findByOnclick('G.openEmployer()') &&

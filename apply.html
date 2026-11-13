@@ -7355,7 +7355,11 @@ function loadData(){
   cardSerial=serial.trim().toUpperCase();
 
   loadJobs(); // Independent of card verification; no stale job data is used.
-  client.rpc('self_service_card',{p_serial:cardSerial}).then(function(cr){
+  /* قرار 2026-10-06 محفوظ: الباركود وحده — لا نافذة رمز للمستخدم.
+     p_code يُرسَل فارغاً دائماً لأن الدالة تتطلّبه في توقيعها (2026-11-13):
+     البطاقات التي تحمل card_print_code لا تكشف الاسم/الهاتف بلا رمز، والفارغ
+     يعني «لم يُقدَّم رمز» — فتبقى بطاقات اليوم (بلا رمز مطبوع) كما هي. */
+  client.rpc('self_service_card',{p_serial:cardSerial,p_code:''}).then(function(cr){
     if(cr.error){
       if(isMissingFunction(cr.error)){
         fatal('قاعدة الشركة تحتاج تحديثاً بسيطاً: دالة التقديم الذاتي (self_service_card) غير مثبّتة فيها بعد، فباركود بطاقتك لا يجدها.',
