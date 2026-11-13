@@ -338,3 +338,19 @@ code {
     font-weight: 800; color: #142b46; border-bottom: 1px solid #e2e8f0;
   }
 }
+
+/* ═══ تضمين صور الوظائف ══════════════════════════════════════════════════
+   خطوة اختيارية: تنزيل الصور مرة واحدة فيصير الملف مكتفياً بذاته. */
+.rp-embed {
+  margin-top: 18px; padding: 14px 16px;
+  background: #f7fafd; border: 1px solid #dfe8f2; border-radius: 12px;
+}
+.rp-embed-note { font-size: .82rem; line-height: 1.9; color: #4a5f7a; margin: 0 0 12px; }
+.rp-embed-note strong { color: #24405f; }
+.rp-embed-status { display: inline-block; margin-inline-start: 10px; font-size: .8rem; color: #536a83; }
+.rp-embed-status.is-ok { color: #1a6b3c; font-weight: 700; }
+.rp-embed-status.is-error { color: #9a2f2f; font-weight: 700; }
+
+@media (max-width: 760px) {
+  .rp-embed-status { display: block; margin: 10px 0 0; }
+}

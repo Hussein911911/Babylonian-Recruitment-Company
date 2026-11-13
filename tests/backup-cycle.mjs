@@ -49,6 +49,9 @@ create table brc.staff(id uuid primary key default gen_random_uuid(), auth_id uu
   username text not null unique, full_name text not null, role text not null default 'staff',
   job_title text default '', phone text default '', active boolean not null default true,
   created_at timestamptz not null default now());
+create table brc.card_number_counter (singleton boolean primary key default true check (singleton), last_number bigint not null check (last_number >= 0));
+insert into brc.card_number_counter values (true, 0) on conflict do nothing;
+create table brc.card_number_registry (serial text primary key, card_number bigint not null unique check (card_number > 0));
 create table brc.audit_log(id bigserial primary key, ts timestamptz default now(), user_id uuid,
   username text, role text, ip text, action text, entity text, entity_id text, details text, diff jsonb);
 `;

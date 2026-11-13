@@ -212,6 +212,55 @@
   /* ═══ تنزيل SQL جاهز للّصق في Supabase ═════════════════════════════════
      هذا ما طلبه المالك: «أبني موقعاً جديداً وأصعّد لهذه النسخة عليه».
      الملف يبدأ بـ TRUNCATE — للقواعد الجديدة فقط، والتحذير ظاهر في الصفحة. */
+  /* ═══ تضمين صور الوظائف ═════════════════════════════════════════════════
+     الصور المرتبطة بمشروع Supabase قد تختفي بحذف المشروع. ننزّلها مرة واحدة
+     على الجهاز فيصير الملف مكتفياً بذاته. لا شيء يُرسل للخارج: التنزيل من
+     نفس الروابط التي يعرضها الموقع للعامة. */
+  var embedBtn = $('rp-embed-images'), embedStatus = $('rp-embed-status');
+
+  function setEmbed(text, kind) {
+    if (!embedStatus) return;
+    embedStatus.textContent = text || '';
+    embedStatus.className = 'rp-embed-status' + (kind ? ' is-' + kind : '');
+  }
+
+  if (embedBtn) embedBtn.addEventListener('click', function () {
+    if (!state.payload || !window.HRCImageEmbed) return;
+    var urls = window.HRCImageEmbed.collect(state.payload);
+    if (!urls.length) {
+      setEmbed('كل الصور روابط خارجية — لا شيء يُضمَّن.', 'ok');
+      embedBtn.disabled = true;
+      return;
+    }
+    if (!navigator.onLine) {
+      setEmbed('لا اتصال — يُمكنك تنزيل SQL بالروابط، أو أعد المحاولة مع إنترنت.', 'error');
+      return;
+    }
+    embedBtn.disabled = true;
+    setEmbed('جارٍ تنزيل الصور… ٠ من ' + urls.length);
+
+    window.HRCImageEmbed.embedAll(state.payload, {
+      onProgress: function (done, total) {
+        setEmbed('جارٍ تنزيل الصور… ' + done + ' من ' + total);
+      }
+    }).then(function (r) {
+      state.payload.images = r.images;
+      if (!r.embedded) {
+        setEmbed('تعذّر تنزيل أي صورة (صلاحيات أو انقطاع). الملف يبقى صالحاً — الصور تبقى روابط.', 'error');
+        embedBtn.disabled = false;
+        return;
+      }
+      var size = 0;
+      Object.keys(r.images).forEach(function (k) { size += r.images[k].length; });
+      setEmbed(r.embedded + ' صورة مضمّنة داخل الملف (+' +
+        Math.round(size / 1048576 * 10) / 10 + ' م.ب). نزّل SQL الآن.', 'ok');
+      embedBtn.textContent = 'الصور مضمّنة ✓';
+    }).catch(function (e) {
+      setEmbed(e.message || 'تعذّر التنزيل', 'error');
+      embedBtn.disabled = false;
+    });
+  });
+
   var sqlBtn = $('rp-dl-sql');
   if (sqlBtn) sqlBtn.addEventListener('click', function () {
     if (!state.payload || !window.HRCRestoreSql) return;

@@ -138,6 +138,9 @@ CREATE TABLE brc.staff (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), auth_id u
   username text NOT NULL UNIQUE, full_name text NOT NULL, role brc.user_role NOT NULL DEFAULT 'staff',
   job_title text DEFAULT '', phone text DEFAULT '', active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE brc.card_number_counter (singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton), last_number bigint NOT NULL CHECK (last_number >= 0));
+INSERT INTO brc.card_number_counter VALUES (true, 0) ON CONFLICT DO NOTHING;
+CREATE TABLE brc.card_number_registry (serial text PRIMARY KEY, card_number bigint NOT NULL UNIQUE CHECK (card_number > 0));
 CREATE TABLE brc.audit_log (id bigserial PRIMARY KEY, ts timestamptz DEFAULT now(), user_id uuid, username text,
   role text, ip text, action text, entity text, entity_id text, details text, diff jsonb);
 `);

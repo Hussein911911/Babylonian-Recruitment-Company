@@ -117,6 +117,16 @@
       <button type="button" class="rp-btn rp-btn-gold" id="rp-dl-sql">تنزيل restore.sql</button>
       <button type="button" class="rp-btn" id="rp-dl-all-csv">تصدير كل الجداول CSV</button>
     </div>
+    <div class="rp-embed" id="rp-embed-box">
+      <p class="rp-embed-note">
+        <strong>صور الوظائف:</strong> الملف يحفظ روابط الصور لا الصور نفسها.
+        إذا كانت الصور على مشروع Supabase الحالي، فحذف المشروع يجعلها مكسورة
+        على الموقع الجديد. تضمينها يجعل النسخة مكتفية بذاتها — <em>يحتاج إنترنت</em>
+        ويزيد حجم الملف.
+      </p>
+      <button type="button" class="rp-btn rp-btn-sm" id="rp-embed-images">ضمّن الصور في الملف</button>
+      <span class="rp-embed-status" id="rp-embed-status"></span>
+    </div>
     <ol class="rp-steps">
       <li>أنشئ مشروع Supabase جديداً، وطبّق مخطط <code>brc</code> (الهجرات في المستودع).</li>
       <li>نزّل <code>restore.sql</code> من الزر أعلاه.</li>
@@ -161,6 +171,7 @@
 
 <script src="assets/js/portable-backup.js"></script>
 <script src="assets/js/restore-sql.js"></script>
+<script src="assets/js/image-embed.js"></script>
 <script src="assets/js/restore-view.js"></script>
 <script src="assets/js/restore-page.js"></script>
 </body>

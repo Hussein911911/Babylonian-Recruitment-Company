@@ -58,6 +58,11 @@ begin
     'settings', coalesce((select jsonb_agg(to_jsonb(s) order by s.key) from brc.settings s), '[]'::jsonb),
     'employer_job_credentials', coalesce((select jsonb_agg(to_jsonb(c) order by c.job_id) from brc.employer_job_credentials c), '[]'::jsonb),
     'issued_serials', coalesce((select jsonb_agg(to_jsonb(i) order by i.serial) from brc.issued_serials i), '[]'::jsonb),
+    /* ⚠ أرقام البطاقات: كانت تُسقط من النسخة. فالمشروع الجديد يبدأ العدّاد
+       من صفر، وأول بطاقة جديدة تأخذ رقماً انطبع سابقاً على ورق فعلي —
+       تكرار على وثيقة رسمية. نصدّر السجل والعدّاد معاً. */
+    'card_number_registry', coalesce((select jsonb_agg(to_jsonb(r) order by r.card_number) from brc.card_number_registry r), '[]'::jsonb),
+    'card_number_counter', coalesce((select jsonb_agg(to_jsonb(c)) from brc.card_number_counter c), '[]'::jsonb),
     'audit_log', coalesce((
       select jsonb_agg(
         case when l.diff is not null and pg_column_size(l.diff) > 16384

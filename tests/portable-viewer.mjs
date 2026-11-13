@@ -76,7 +76,12 @@ const payload = {
   staff: [
     { username: 'admin', full_name: 'المدير', role: 'admin', active: true },
     { username: 'AliAhmed919', full_name: 'علي أحمد', role: 'staff', active: true }
-  ]
+  ],
+  card_number_registry: [
+    { serial: 'AAAA111111', card_number: 1 },
+    { serial: 'BBBB222222', card_number: 5 }
+  ],
+  card_number_counter: [{ singleton: true, last_number: 5 }]
 };
 
 /* ٣٠٠ بطاقة لاختبار الترقيم فعلياً (٥٠ لكل صفحة) */
@@ -198,6 +203,17 @@ try {
   /* ── ٩) لا أخطاء ── */
   check('لا أخطاء JavaScript', errs.length, 0);
   check('لا طلبات خارجية حتى بعد كل العمليات', external.length, 0);
+
+  /* ── ٩ب) أرقام البطاقات: العدّاد لا يبدأ من صفر ── */
+  check('SQL يضبط عدّاد الأرقام على ٥ لا صفر', /VALUES \(true, 5\)/.test(sqlText), true);
+  check('SQL يحفظ سجل أرقام البطاقات', /card_number_registry/.test(sqlText), true);
+
+  /* ── ٩ج) صور الوظائف: لا شيء يُضمَّن بلا طلب ── */
+  check('زر تضمين الصور ظاهر', await page.isVisible('#rp-embed-images'), true);
+  await page.click('#rp-embed-images');
+  await page.waitForTimeout(600);
+  const embedMsg = (await page.textContent('#rp-embed-status')) || '';
+  check('بلا صور Supabase يقول لا شيء يُضمَّن', /خارجية|لا شيء/.test(embedMsg), true);
 
   /* ── ١٠) إغلاق الذاكرة ── */
   await page.click('#rp-lock');

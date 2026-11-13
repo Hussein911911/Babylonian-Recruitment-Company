@@ -49,6 +49,38 @@
     return "'" + String(v).replace(/'/g, "''") + "'";
   }
 
+  /* ═══ صور الوظائف: من رابط خارجي إلى بايتات داخل الملف ═══════════════════
+     ⚠ عطل حقيقي: النسخة تحفظ `image_url` فقط. فإن كان الرابط يشير إلى
+     مشروع Supabase القديم (`.../storage/v1/object/public/job-images/...`)،
+     فمجرّد حذف ذلك المشروع — أو انتهاء صلاحيته — يجعل صور الوظائف مكسورة
+     على الموقع الجديد. أي أن «نسخة كاملة» كانت تعتمد على بقاء الشيء الذي
+     ننسخ منه.
+
+     الحل: تُنزّل الصور على الجهاز وتُضمَّن في الحمولة كـ`images`:
+       { "https://.../hrc-1046.jpg": "data:image/jpeg;base64,...." }
+     ثم يُستبدل `image_url` عند توليد SQL بالـdata URL. فيصير الملف
+     مكتفياً بذاته: لا شبكة، ولا مشروع قديم، ولا رابط ينكسر.
+
+     ما لا نلمسه: الصور الخارجية (Unsplash مثلاً) تبقى روابطها — هي ليست
+     جزءاً من ملكية الشركة، وتضمينها يضخّم الملف بلا فائدة. */
+
+  /** يحوّل رابط صورة إلى data URL — يستدعي fetcher من الخارج (DOM/Node) */
+  function imageKey(url) { return String(url || '').trim(); }
+
+  /** يستبدل روابط الصور المضمّنة داخل صفوف الوظائف (لا يغيّر الأصل) */
+  function withEmbeddedImages(jobs, images) {
+    if (!images || !jobs) return jobs;
+    return jobs.map(function (j) {
+      if (!j || !j.image_url) return j;
+      var data = images[imageKey(j.image_url)];
+      if (!data) return j;
+      var copy = {};
+      for (var k in j) if (Object.prototype.hasOwnProperty.call(j, k)) copy[k] = j[k];
+      copy.image_url = data;
+      return copy;
+    });
+  }
+
   /* ═══ اختيار الأعمدة: من الصف نفسه، لا قائمة يدوية ═══════════════════════
      كانت قائمة مكتوبة يدوياً لكل جدول، وتقادمت بصمت:
        أعمدة ترسل ولا وجود لها  → SQL يفشل
@@ -128,7 +160,8 @@
        staff (الجذر) → applicants → jobs → job_attempts → الباقي
      لأن كل الجداول الأخرى تشير إلى الحسابات، والبطاقات تشير إليها الوظائف. */
   var TABLES = ['staff', 'applicants', 'jobs', 'job_attempts', 'settings',
-    'employer_job_credentials', 'issued_serials', 'audit_log'];
+    'employer_job_credentials', 'issued_serials', 'card_number_registry',
+    'card_number_counter', 'audit_log'];
 
   function buildSql(p) {
     p = p || {};
@@ -167,13 +200,47 @@
       '-- ⚠ brc.staff ليست هنا بقصد: تفريغها يحذف حساب المدير الذي ينفّذ هذا\n' +
       '--   السكربت، فيفقد الدخول. الحسابات تُضاف بـ ON CONFLICT DO NOTHING.\n' +
       'TRUNCATE brc.job_attempts, brc.applicants, brc.jobs, brc.employer_job_credentials, ' +
-      'brc.issued_serials, brc.audit_log, brc.settings RESTART IDENTITY CASCADE;\n\n';
+      'brc.issued_serials, brc.card_number_registry, brc.audit_log, brc.settings RESTART IDENTITY CASCADE;\n\n';
+
+    /* ═══ عدّاد أرقام البطاقات ═══════════════════════════════════════════
+       ⚠ عطل حقيقي: النسخة كانت تحفظ البطاقات ولا تحفظ أرقامها، فالعدّاد
+       يبدأ من صفر على المشروع الجديد. أي بطاقة جديدة تأخذ رقماً انطبع
+       سابقاً على ورق فعلي — تكرار على وثيقة رسمية.
+
+       العدّاد جدول صف-واحد (`singleton`)، فلا يُدخل كباقي الصفوف: يُضبط
+       على أكبر رقم في السجل، أو على أكبر رقم محفوظ، أيهما أعلى.
+       `greatest` تحمي حالتين: نسخة قديمة بلا جدول السجل، ونسخة فيها
+       أرقام أُلغيت فبقي العدّاد أعلى من كل السجل. */
+    var registry = p.card_number_registry || [];
+    var maxReg = registry.reduce(function (m, r) {
+      var n = Number(r && r.card_number);
+      return Number.isFinite(n) && n > m ? n : m;
+    }, 0);
+    var savedCounter = (p.card_number_counter || []).reduce(function (m, r) {
+      var n = Number(r && r.last_number);
+      return Number.isFinite(n) && n > m ? n : m;
+    }, 0);
+    var counterValue = Math.max(maxReg, savedCounter, registry.length ? 1 : 0);
 
     var body = '';
     TABLES.forEach(function (t) {
       /* staff لها مسار خاص (uuid + ON CONFLICT) — والباقي إدخال مباشر */
-      body += (t === 'staff') ? insertStaff(p.staff) : insertRows(t, p[t]);
+      if (t === 'staff') { body += insertStaff(p.staff); return; }
+      /* العدّاد يُضبط في النهاية بعد السجل — انظر أدناه */
+      if (t === 'card_number_counter') return;
+      /* الوظائف: استبدل روابط الصور بالبايتات المضمّنة إن وُجدت */
+      if (t === 'jobs') { body += insertRows('jobs', withEmbeddedImages(p.jobs, p.images)); return; }
+      body += insertRows(t, p[t]);
     });
+
+    /* بعد إدخال السجل: اضبط العدّاد على أعلى رقم مستخدم */
+    if (registry.length || savedCounter) {
+      body += '-- ⚠ عدّاد أرقام البطاقات: يبدأ من أعلى رقم مستخدم، لا من صفر.\n' +
+        '--   لو تجاهلناه لأخذت أول بطاقة جديدة رقماً مطبوعاً سابقاً.\n' +
+        'INSERT INTO brc.card_number_counter (singleton, last_number) VALUES (true, ' +
+        counterValue + ')\n' +
+        'ON CONFLICT (singleton) DO UPDATE SET last_number = GREATEST(brc.card_number_counter.last_number, EXCLUDED.last_number);\n\n';
+    }
 
     var tail = '\n-- إعادة ضبط التسلسلات بعد الإدخال بأرقام صريحة\n' +
       "SELECT setval(pg_get_serial_sequence('brc.audit_log', 'id'),\n" +
@@ -215,6 +282,8 @@
     columnsOf: columnsOf,
     insertRows: insertRows,
     insertStaff: insertStaff,
+    withEmbeddedImages: withEmbeddedImages,
+    imageKey: imageKey,
     buildSql: buildSql,
     toCsv: toCsv,
     TABLE_ORDER: TABLES.slice()
