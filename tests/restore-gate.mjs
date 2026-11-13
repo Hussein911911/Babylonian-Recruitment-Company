@@ -45,9 +45,18 @@ const GATE = read('assets/js/restore-gate.js');
 
 /* نقتطع كتلة المخطط الضخمة: الفحص لا يحتاج ٢٠٠ ك.ب من SQL في الذاكرة،
    لكنه يحتاج أن يتأكد أن الكتلة موجودة في الصفحة (وإلا فحصنا صفحة أخرى). */
-const hasEmbed = /<!-- SCHEMA-EMBED:START -->/.test(PAGE) && /__HRC_SCHEMA_SQL__/.test(PAGE);
+/* ⚠️ الشرط انقلب بعد 2026-11-13: وجود `window.__HRC_SCHEMA_SQL__` في HTML
+   صار **علامة خطأ** لا صحة — يعني أن المخطط يُنفَّذ في نافذة كل زائر. الصحيح
+   أن يكون في وسم `type="text/plain" disabled` لا ينفّذه أحد. */
+const hasEmbed = /<!-- SCHEMA-EMBED:START -->/.test(PAGE) &&
+  /<script[^>]+id="hrc-schema-embed"/.test(PAGE);
+const embedInert = /<script[^>]+type="text\/plain"[^>]*id="hrc-schema-embed"[^>]*disabled/.test(PAGE) ||
+  /<script[^>]+id="hrc-schema-embed"[^>]*type="text\/plain"[^>]*disabled/.test(PAGE);
+const schemaGloballyExposed = /window\.__HRC_SCHEMA_SQL__\s*=/.test(PAGE);
+/* نستبدل الكتلة الضخمة بنصّ قصير **بنفس الشكل** (type="text/plain" + disabled)
+   كي يحاكي الفحص ما يُنشر فعلاً، لا شكلاً قديماً يمرّ بلا معنى. */
 const slim = PAGE.replace(/<!-- SCHEMA-EMBED:START -->[\s\S]*?<!-- SCHEMA-EMBED:END -->/,
-  '<!-- SCHEMA-EMBED:START --><script id="hrc-schema-embed">window.__HRC_SCHEMA_SQL__ = "SQL";</script><!-- SCHEMA-EMBED:END -->');
+  '<!-- SCHEMA-EMBED:START --><script type="text/plain" id="hrc-schema-embed" disabled>-- SQL</script><!-- SCHEMA-EMBED:END -->');
 
 /* عميل Supabase مزيف: نتحكم في الجلسة ودور الموظف */
 function fakeSupabase({ session, staffRow, staffError, sessionThrows }) {
@@ -85,13 +94,11 @@ async function run({ protocol, session, staffRow, staffError, sessionThrows }) {
   const w = dom.window;
 
   /* البوابة تفحص وجود التهيئة والمكتبة قبل أي اتصال، فنُهيّئها */
-  /* ⚠️ `runScripts: 'outside-only'` لا ينفّذ السكربت المضمّن في الصفحة، فكتلة
-     المخطط تبقى فارغة رغم وجودها في HTML. ننفّذها يدوياً كي تحاكي البيئة
-     الحقيقية — وإلا فحصنا «المخطط أُفرغ» على متغيّر لم يُملأ أصلاً، فينجح
-     الفحص لأي صفحة ولو بلا مخطط إطلاقاً. */
-  const embed = slim.match(/<script id="hrc-schema-embed">([\s\S]*?)<\/script>/);
-  if (embed) { try { w.eval(embed[1]); } catch (e) { /* المخطط المختصر */ } }
-
+  /* ⚠️ المخطط صار في وسم `type="text/plain"` لا ينفّذه المتصفح أبداً — وهذا
+     مقصود: فوجود `window.__HRC_SCHEMA_SQL__` نفسه صار علامة على الخطأ لا
+     على الصحة. لا ننفّذ شيئاً هنا؛ نفحص فقط أن البوابة تفكّه محلياً ولا تفكّه
+     على الموقع. (كان الاختبار السابق ينفّذ الكتلة يدوياً — وهذا بالضبط ما
+     كان سيُخفي أن المتصفح لا ينفّذها في الواقع.) */
   w.HRCSupabaseConfig = { url: 'https://x.supabase.co', publishableKey: 'sb_publishable_test', schema: 'brc' };
   w.supabase = fakeSupabase({ session, staffRow, staffError, sessionThrows });
 
@@ -120,6 +127,10 @@ console.log('══════════════════════�
 step(0, 'الصفحة تحمل البوابة فعلاً (لا مجرد نيّة في تعليق)');
 
 check('restore.html يحتوي على كتلة تضمين المخطط', hasEmbed);
+check('المخطط في وسم لا ينفّذه المتصفح (type=text/plain + disabled)', embedInert);
+/* أهم فحص في الملف: لو صار المخطط متغيّراً عاماً، أي زائر يقرأه بجملة واحدة
+   من console. الزرّ والبوابة لا يحميان هذا — الشكل نفسه هو الحماية. */
+check('لا يُعرَّف المخطط كمتغيّر عام في الصفحة', !schemaGloballyExposed);
 check('restore.html يحمّل assets/js/restore-gate.js',
   /src="assets\/js\/restore-gate\.js"/.test(PAGE));
 check('restore.html فيه عنصر البوابة #rp-gate', /id="rp-gate"/.test(PAGE));

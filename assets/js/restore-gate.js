@@ -130,14 +130,33 @@
     });
   }
 
+  /* ---------- فكّ المخطط — محلياً فقط ----------
+     المخطط مضمّن في وسم `type="text/plain"` لا ينفّذه المتصفح، فالمتغيّر
+     `window.__HRC_SCHEMA_SQL__` غير موجود في نافذة أي زائر. نفكّه هنا فقط
+     عندما تكون الصفحة مفتوحة من الجهاز (file://) — وهي الحالة الوحيدة التي
+     تحتاجه فيها: انقطاع الموقع أو ضياع المشروع. */
+  function unsealSchema() {
+    if (!doc) return '';
+    try {
+      var tag = doc.getElementById('hrc-schema-embed');
+      if (!tag) return '';
+      var sql = (tag.textContent || '').trim();
+      if (!sql) return '';
+      root.__HRC_SCHEMA_SQL__ = sql;
+      return sql;
+    } catch (e) { return ''; }
+  }
+
   /* ---------- التشغيل ---------- */
   function boot() {
     if (!doc) return Promise.resolve({ state: 'no_dom' });
 
-    /* محلي: نفتح كل شيء فوراً — هذا شرط الأداة */
+    /* محلي: نفتح كل شيء فوراً — هذا شرط الأداة. ونفكّ المخطط هنا وحده. */
     if (isLocal()) {
+      var sql = unsealSchema();
       setState('local');
-      return Promise.resolve({ state: 'local' });
+      if (!sql) showNote('المخطط غير مضمّن في هذه النسخة — نزّله من المستودع: docs/schema.sql', 'warn');
+      return Promise.resolve({ state: 'local', schema: sql.length });
     }
 
     /* منشور: نقفل أولاً ثم نفتح إن ثبت أنه مدير.

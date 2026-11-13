@@ -275,10 +275,14 @@
        • لا يمنح وصولاً: الصلاحيات (RLS + revoke) تُنشأ *بواسطته*، فوجود
          نصّه لا يفتح شيئاً على قاعدة قائمة.
      ما يجب ألا يكون هنا أبداً: مفتاح anon/service_role، أو أي بيانات عملاء. */
-  var SCHEMA_SQL = window.__HRC_SCHEMA_SQL__ || '';
+  /* ⚠️ لا نقرأ المتغيّر مرة واحدة عند التحميل: البوابة تفكّ المخطط **بعد**
+     التحقق (محلياً فقط)، وقيمةٌ مأخوذة الآن تبقى فارغة للأبد. نقرأها لحظة
+     الضغط على الزر. */
+  function schemaSql() { return window.__HRC_SCHEMA_SQL__ || ''; }
 
   var schemaBtn = $('rp-dl-schema');
   if (schemaBtn) schemaBtn.addEventListener('click', function () {
+    var SCHEMA_SQL = schemaSql();
     if (!SCHEMA_SQL) {
       setStatus(unlockStatus, 'ملف الهيكل غير مضمّن في هذه الصفحة — نزّله من المستودع: docs/schema.sql', 'error');
       return;
