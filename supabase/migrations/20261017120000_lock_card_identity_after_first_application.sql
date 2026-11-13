@@ -2,12 +2,16 @@
 -- Residence validation matches the actual UI: province, district and landmark.
 begin;
 
-create or replace function brc.self_service_card(p_serial text)
+create or replace function brc.self_service_card(p_serial text, p_code text)
 returns jsonb
 language plpgsql security definer
 set search_path = brc, public
 as $$
-declare f record;
+declare
+  f record;
+  v_ok boolean;
+  v_stored text;
+  v_code text;
 begin
   select * into f
     from brc.applicants
@@ -23,14 +27,29 @@ begin
     return jsonb_build_object('ok', false, 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
   end if;
 
+  /* 2026-11-13: حيث يوجد card_print_code لا يُكشف الاسم/الهاتف/العنوان/الميلاد
+     بلا الرمز. البطاقات بلا رمز مطبوع (كل بطاقات اليوم) تبقى كما هي تماماً. */
+  v_stored := upper(btrim(coalesce(to_jsonb(f)->>'card_print_code', '')));
+  v_code   := upper(btrim(coalesce(p_code, '')));
+  if v_stored = '' then
+    v_ok := true;
+  else
+    v_ok := (v_stored = v_code)
+         or (replace(replace(v_stored, 'O', '0'), 'I', '1')
+             = replace(replace(v_code, 'O', '0'), 'I', '1'));
+  end if;
+
   return jsonb_build_object(
     'ok', true,
     'card', jsonb_build_object(
       'serial', f.serial,
       'status', f.status::text,
       'chancesLeft', (select count(*) from brc.job_attempts a where a.serial=f.serial and a.slot_status='empty'),
-      'profileLocked', f.status <> 'blank',
-      'profile', case when f.status = 'blank' then coalesce(f.self_application_data, '{}'::jsonb)
+      'requiresCode', (v_stored <> ''),
+      'verified', v_ok,
+      'profileLocked', (f.status <> 'blank') or (not v_ok),
+      'profile', case when not v_ok then '{}'::jsonb
+        when f.status = 'blank' then coalesce(f.self_application_data, '{}'::jsonb)
         else coalesce(f.self_application_data, '{}'::jsonb) || jsonb_build_object(
           'fullName', f.full_name, 'phone', f.phone, 'address', f.address,
           'dob', f.dob, 'gender', f.gender) end,

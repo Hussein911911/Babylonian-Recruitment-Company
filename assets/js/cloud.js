@@ -829,10 +829,17 @@
    *  بطاقتي (الزبون) — دوال عامة آمنة عبر RPC
    *  ------------------------------------------------------------------------ */
 
-  /* عرض آمن للبطاقة بالباركود: بلا رموز فرص وبلا بيانات صاحب العمل */
-  function lookupCardRpc(client, serial) {
+  /* عرض آمن للبطاقة بالباركود: بلا رموز فرص وبلا بيانات صاحب العمل.
+     p_code إلزامي في التوقيع (2026-11-13): البطاقات التي تحمل card_print_code
+     لا تكشف الاسم/الهاتف كاملاً بلا الرمز. الفارغ يعني «بلا رمز» فتبقى
+     البطاقات الحالية (بلا رمز مطبوع) تعمل كما هي. */
+  function lookupCardRpc(client, serial, code) {
     if (!serial) return Promise.resolve({ ok: false, error: 'أدخل باركود البطاقة' });
-    return rpcCall(client, 'lookup_card', { p_serial: String(serial).trim().toUpperCase() })
+    var body = { p_serial: String(serial).trim().toUpperCase() };
+    /* p_code يُرسَل فقط عند وجود رمز فعلي — الباركود وحده يبقى كافياً
+       للبطاقات التي لا تحمل card_print_code (قرار 2026-10-06 محفوظ). */
+    if (code) body.p_code = String(code).trim();
+    return rpcCall(client, 'lookup_card', body)
       .then(function (res) {
         if (res && res.error) {
           return { ok: false, code: res.error.code || 'rpc_error', error: res.error.message || 'تعذّر الاتصال بقاعدة الشركة' };
