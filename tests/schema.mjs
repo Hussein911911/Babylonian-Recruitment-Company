@@ -430,9 +430,14 @@ step(12, 'مسار التحديث — كل دالة يناديها باركود 
   check('صفحة اللصق اليدوي db-update.html محذوفة', !existsSync(join(ROOT, 'db-update.html')));
   check('ملفات التحديث القديمة أُرشفت ولا تُنفَّذ', !existsSync(join(ROOT, 'docs', 'UPDATE-2026-10-06.sql')) &&
     existsSync(join(ROOT, 'docs', 'archive', 'legacy-sql', 'README.md')));
+  /* مخطط SQL المضمَّن في restore.html يذكر الاسم داخل تعليق تاريخي — نبني
+     الحكم على ما يُعرَض فعلاً: نجرّد كتلة التضمين ثم نبحث عن أي إشارة
+     (href/src أو نص) إلى الصفحة المحذوفة. */
+  const stripEmbed = (html) => html.replace(
+    /<!-- SCHEMA-EMBED:START -->[\s\S]*?<!-- SCHEMA-EMBED:END -->/g, '');
   check('لا صفحة منشورة تشير إلى db-update.html', readdirSync(ROOT)
     .filter((f) => f.endsWith('.html'))
-    .every((f) => !/db-update\.html/.test(readFileSync(join(ROOT, f), 'utf8'))));
+    .every((f) => !/db-update\.html/.test(stripEmbed(readFileSync(join(ROOT, f), 'utf8')))));
   check('كل دوال مسار البطاقة موجودة كهجرات قابلة للتطبيق', REQUIRED_MIGRATIONS
     .every((f) => existsSync(join(MIG_DIR, f))), REQUIRED_MIGRATIONS.filter((f) => !existsSync(join(MIG_DIR, f))).join(', '));
 

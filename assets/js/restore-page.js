@@ -261,13 +261,39 @@
     });
   });
 
+  /* ═══ ملف الهيكل (1-schema.sql) ═════════════════════════════════════════
+     ⚠ أمنياً: المخطط مضمّن داخل الصفحة، لا يُجلب بـfetch.
+
+     السبب: `restore.html` يعمل من `file://` بلا شبكة — وهذا شرط المالك
+     («أفتحها بعد انقطاع الموقع»). أي `fetch('docs/schema.sql')` يفشل هناك
+     بسبب سياسة CORS للملفات المحلية.
+
+     ولماذا ليس خطراً أن يكون المخطط في الصفحة؟
+       • المخطط ليس سراً: هو نفسه منشور في مستودع عام أصلاً.
+       • يحتوي صفر مفاتيح — المفتاح الحقيقي `app.brc_secret` يُضبط يدوياً
+         في القاعدة، والمخطط يرفض العمل بدونه (يرفع استثناءً).
+       • لا يمنح وصولاً: الصلاحيات (RLS + revoke) تُنشأ *بواسطته*، فوجود
+         نصّه لا يفتح شيئاً على قاعدة قائمة.
+     ما يجب ألا يكون هنا أبداً: مفتاح anon/service_role، أو أي بيانات عملاء. */
+  var SCHEMA_SQL = window.__HRC_SCHEMA_SQL__ || '';
+
+  var schemaBtn = $('rp-dl-schema');
+  if (schemaBtn) schemaBtn.addEventListener('click', function () {
+    if (!SCHEMA_SQL) {
+      setStatus(unlockStatus, 'ملف الهيكل غير مضمّن في هذه الصفحة — نزّله من المستودع: docs/schema.sql', 'error');
+      return;
+    }
+    window.HRCRestoreView.download('1-schema.sql', SCHEMA_SQL, 'application/sql;charset=utf-8');
+    setStatus(unlockStatus, 'نُزّل 1-schema.sql — شغّله أولاً في SQL Editor، وبعد Success شغّل 2-data.sql', 'ok');
+  });
+
   var sqlBtn = $('rp-dl-sql');
   if (sqlBtn) sqlBtn.addEventListener('click', function () {
     if (!state.payload || !window.HRCRestoreSql) return;
     var sql = window.HRCRestoreSql.buildSql(state.payload);
-    window.HRCRestoreView.download('restore-' + window.HRCRestoreView.stamp() + '.sql',
+    window.HRCRestoreView.download('2-data-' + window.HRCRestoreView.stamp() + '.sql',
       sql, 'application/sql;charset=utf-8');
-    setStatus(unlockStatus, 'نُزّل restore.sql — الصقه في Supabase → SQL Editor → Run على قاعدة جديدة', 'ok');
+    setStatus(unlockStatus, 'نُزّل 2-data.sql — شغّله بعد 1-schema.sql على قاعدة جديدة', 'ok');
   });
 
   var allCsvBtn = $('rp-dl-all-csv');

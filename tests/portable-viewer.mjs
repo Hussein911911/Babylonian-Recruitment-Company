@@ -195,7 +195,7 @@ try {
   await page.click('#rp-dl-sql');
   const sqlDl = await dlSql;
   const sqlText = readFileSync(await sqlDl.path(), 'utf8');
-  check('SQL نُزّل', /^restore-\d{4}-\d{2}-\d{2}\.sql$/.test(sqlDl.suggestedFilename()), true);
+  check('SQL نُزّل', /^2-data-\d{4}-\d{2}-\d{2}\.sql$/.test(sqlDl.suggestedFilename()), true);
   check('SQL فيه الحسابات (كانت تُسقط قبل الإصلاح)', /brc\."staff"/.test(sqlText), true);
   check('SQL فيه أمر إدخال لكل جدول', /INSERT INTO brc\."(jobs|applicants|job_attempts|audit_log|issued_serials|settings)"/.test(sqlText), true);
   check('SQL يحمل البطاقات الـ٣٠٠', (sqlText.match(/PAG1\d{5}/g) || []).length >= 296, true);
