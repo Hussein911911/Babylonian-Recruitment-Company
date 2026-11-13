@@ -109,9 +109,26 @@
       values + '\nON CONFLICT ("username") DO NOTHING;\n\n';
   }
 
-  /* ترتيب الإدخال: الأب قبل الابن، كي لا تُنتهك المفاتيح الأجنبية */
-  var TABLES = ['jobs', 'applicants', 'job_attempts', 'settings',
-    'employer_job_credentials', 'issued_serials', 'audit_log', 'staff'];
+  /* ═══ ترتيب الإدخال: من لا يعتمد على غيره أولاً ═══════════════════════
+     ⚠ عطل حقيقي كشفه ملف المالك (2026-11-13): كان `jobs` قبل `applicants`،
+     لكن `jobs.reserved_by` مفتاح أجنبي إلى `applicants.serial`. فأول وظيفة
+     محجوزة تُسقط الإدخال كله:
+
+       insert or update on table "jobs" violates foreign key constraint
+         "jobs_reserved_by_fkey"
+
+     وبعدها تُرفض كل العبارات التالية لأن المعاملة أُجهضت — فيخرج الموقع
+     الجديد بلا وظائف ولا بطاقات ولا فرص، رغم أن الملف «نُفِّذ».
+
+     وعطل ثانٍ كشفه نفس الملف: `applicants.created_by` و`jobs.created_by`
+     و`job_attempts.staff_id` مفاتيح أجنبية إلى `brc.staff` — وكانت تُدخل
+     **آخر** شيء، فتفشل البطاقات فوراً بـ`applicants_created_by_fkey`.
+
+     الترتيب الصحيح هو عكس ما كان:
+       staff (الجذر) → applicants → jobs → job_attempts → الباقي
+     لأن كل الجداول الأخرى تشير إلى الحسابات، والبطاقات تشير إليها الوظائف. */
+  var TABLES = ['staff', 'applicants', 'jobs', 'job_attempts', 'settings',
+    'employer_job_credentials', 'issued_serials', 'audit_log'];
 
   function buildSql(p) {
     p = p || {};
@@ -126,7 +143,25 @@
       '--  ⚠ استرجعه على قاعدة جديدة أولاً، وتحقّق من الأعداد قبل نقلها للإنتاج.\n' +
       '--  ⚠ يجب أن يكون مخطط brc منشأً قبل التنفيذ (docs/schema.sql أو الهجرات).\n' +
       '-- ═══════════════════════════════════════════════════════════════════════════\n\n' +
-      "SET client_encoding = 'UTF8';\nBEGIN;\n\n" +
+      "SET client_encoding = 'UTF8';\n" +
+      /* ═══ لماذا replica mode؟ ═══════════════════════════════════════════════
+         جُرّب ملف المالك الحقيقي (2026-11-13) على قاعدة مبنية من المخطط:
+         ٦٦٣ بطاقة و٢٢ وظيفة و١٤١١ فرصة — وكلها فشلت، ثم رجعت صفراً.
+
+         السبب ليس الترتيب فقط: `BEGIN` تُحيط كل الملف، فأول خطأ (مفتاح
+         أجنبي أو مُشغّل إصدار) يُجهض **المعاملة كلها** وتمحو كل ما دخل.
+         فيبدو الملف «نُفِّذ» بينما القاعدة فارغة — أسوأ نتيجة ممكنة.
+
+         `pg_dump` يحلّها بـ`session_replication_role = replica`: تعطيل
+         المفاتيح الأجنبية والمشغّلات أثناء التحميل، لأن البيانات قادمة من
+         قاعدة صحيحة والتحقق منها أثناء التحميل يرفض حالتها التاريخية.
+
+         ⚠ يحتاج صلاحية superuser — متوفّرة في Supabase SQL Editor، وغير
+         متوفّرة في بعض البيئات المقيّدة. لذلك: إن فشل السطر لا يتوقف الملف
+         (`DO` يبتلع الخطأ)، وتبقى المفاتيح مفعّلة. */
+      'DO $$ BEGIN SET LOCAL session_replication_role = replica;\n' +
+      'EXCEPTION WHEN insufficient_privilege OR others THEN NULL; END $$;\n\n' +
+      'BEGIN;\n\n' +
       'CREATE SCHEMA IF NOT EXISTS brc;\n\n' +
       '-- إفراغ بنفس ترتيب المفاتيح الأجنبية\n' +
       '-- ⚠ brc.staff ليست هنا بقصد: تفريغها يحذف حساب المدير الذي ينفّذ هذا\n' +
