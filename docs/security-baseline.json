@@ -1,0 +1,493 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-13T20:37:31.285Z",
+  "schemaBytes": 172054,
+  "functionCount": 55,
+  "blanketRevokeInPlace": true,
+  "functions": [
+    {
+      "name": "brc.activate_card(text,jsonb)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.application_job_snapshot(brc.jobs)",
+      "definer": false,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.apply_with_card(text,text,jsonb)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": true,
+      "authenticated": true
+    },
+    {
+      "name": "brc.archive_finished_cards()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.capture_application_job_snapshot()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.card_finished_at(text)",
+      "definer": false,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.chance_code()",
+      "definer": false,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.current_staff_id()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.customer_application_details(text,integer)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": true,
+      "authenticated": true
+    },
+    {
+      "name": "brc.ensure_card_attempts(text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.is_admin()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.is_staff()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.lookup_card(text,text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": true,
+      "authenticated": true
+    },
+    {
+      "name": "brc.mask_name(text)",
+      "definer": false,
+      "searchPath": false,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.mask_phone(text)",
+      "definer": false,
+      "searchPath": false,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.new_card_print_code()",
+      "definer": false,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.next_form_serial()",
+      "definer": false,
+      "searchPath": false,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.next_job_code()",
+      "definer": false,
+      "searchPath": false,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.office_submit(uuid,text,jsonb,jsonb)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.recovery_capture()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.recovery_counts(jsonb)",
+      "definer": false,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.recovery_cron_expr(int[],text)",
+      "definer": false,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.recovery_ensure_fresh()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.recovery_manage(text,uuid,text,text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.recovery_read(uuid)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.recovery_remember()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.recovery_risks(jsonb)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.recovery_run_scheduled()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.recovery_save(text,boolean)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.recovery_schedule_get()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.recovery_schedule_set(int[],text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.recovery_schema_hash()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.recovery_write_fence()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.release_hold(text,smallint,text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.request_form(text,text,text,date,text,text,text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.run_auto_release()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.select_attempt(text,text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.self_service_card(text,text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": true,
+      "authenticated": true
+    },
+    {
+      "name": "brc.set_outcome(text,smallint,text,text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.staff_card_history(text,integer)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.staff_card_report(date,date)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.staff_issuance_registry(text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.trg_archive_readonly()",
+      "definer": false,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.trg_attempt_hold()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.trg_audit()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.trg_defaults()",
+      "definer": false,
+      "searchPath": false,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.trg_job_vacancies()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.trg_log_issued_serial()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.trg_make_attempts()",
+      "definer": false,
+      "searchPath": false,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.trg_no_duplicate_job()",
+      "definer": false,
+      "searchPath": false,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.trg_sync_vacancies()",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.use_chance(text,text,text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": true,
+      "authenticated": true
+    },
+    {
+      "name": "brc.verify_card_code(text,text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": true,
+      "authenticated": true
+    },
+    {
+      "name": "brc.verify_form(text,text)",
+      "definer": true,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": true
+    },
+    {
+      "name": "brc.verify_token(text)",
+      "definer": false,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    }
+  ],
+  "policy": {
+    "anon": [
+      "lookup_card(text,text)",
+      "use_chance(text,text,text)",
+      "verify_card_code(text,text)",
+      "self_service_card(text,text)",
+      "apply_with_card(text,text,jsonb)",
+      "customer_application_details(text,integer)"
+    ],
+    "authenticated": [
+      "is_staff()",
+      "is_admin()",
+      "current_staff_id()",
+      "next_job_code()",
+      "next_form_serial()",
+      "ensure_card_attempts(text)",
+      "run_auto_release()",
+      "verify_form(text,text)",
+      "request_form(text,text,text,date,text,text,text)",
+      "select_attempt(text,text)",
+      "set_outcome(text,smallint,text,text)",
+      "release_hold(text,smallint,text)",
+      "office_submit(uuid,text,jsonb,jsonb)",
+      "staff_card_history(text,integer)",
+      "staff_card_report(date,date)",
+      "staff_issuance_registry(text)",
+      "recovery_manage(text,uuid,text,text)",
+      "recovery_schedule_get()",
+      "recovery_schedule_set(int[],text)"
+    ],
+    "never_client": [
+      "activate_card(text,jsonb)",
+      "card_gate(text,text,text,boolean)",
+      "chance_code()",
+      "new_card_print_code()",
+      "normalize_card_code(text)",
+      "verify_token(text)",
+      "apply_with_card_original(text,text,jsonb)",
+      "self_service_card_original(text)",
+      "employer_view_original(text)",
+      "employer_decide_original(text,text)"
+    ],
+    "requireSearchPathOnDefiner": true
+  }
+}

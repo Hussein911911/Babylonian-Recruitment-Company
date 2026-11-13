@@ -228,6 +228,7 @@ create table if not exists brc.jobs (
 -- رمز فرصة فريد: 4 أرقام + شرطة + حرفان (بلا I/L/O للالتباس البصري)
 create or replace function brc.chance_code() returns text
 language plpgsql
+set search_path = brc, public, pg_temp
 as $$
 declare
   letters text[] := array['A','B','C','D','E','F','G','H','J','K','M','N','P','Q','R','S','T','U','V','W','X','Y','Z'];
@@ -1723,6 +1724,7 @@ create policy settings_admin_write on brc.settings for all using (brc.is_admin()
 -- ===========================================================================
 grant usage on schema brc to anon, authenticated;
 
+
 -- ---------------------------------------------------------------------------
 --  ⚠️ إبطال المنح الافتراضي — كان ثغرة أمنية حقيقية:
 --
@@ -1745,6 +1747,28 @@ grant usage on schema brc to anon, authenticated;
 --  ⚠️ ولا يكفي إبطال verify_form/request_form من anon: anon يورث من PUBLIC —
 --     لذلك تُبطَلان من public أولاً ثم تُمنحان للدور authenticated وحده (أسفل).
 -- ---------------------------------------------------------------------------
+-- ⚠️ 2026-11-13: سحب شامل بدل قائمة يدوية.
+--    القائمة اليدوية أعلاه هي ما سبّب الثغرة: دالة تُضاف لاحقاً وتُنسى فيبقى
+--    EXECUTE لها على PUBLIC. القياس على مخطط نظيف أثبت **17 دالة** يناديها
+--    anon، منها select_attempt/set_outcome/release_hold و6 دوال مشغّلات
+--    ومولّدا الرموز chance_code/new_card_print_code.
+--    السحب التالي يغطي كل دوال brc بلا استثناء، ثم تُعاد المنح صراحةً أسفل.
+do $$
+declare r record;
+begin
+  for r in select p.oid::regprocedure as sig from pg_proc p
+             join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'brc'
+  loop
+    execute format('revoke all on function %s from public', r.sig);
+  end loop;
+end $$;
+-- ويمنع تكرارها: أي دالة تُنشأ لاحقاً في brc تبدأ بلا صلاحية لأحد.
+-- ⚠️ بلا `in schema`: النسخة المحدودة بالمخطط لا تُسجّل شيئاً في PostgreSQL
+--    (الافتراضي المدمج PUBLIC ليس ضمن ACL المخطط) — مجرَّب، ويشهد له الفحص
+--    tests/function-acl-audit.mjs.
+alter default privileges revoke execute on functions from public;
+
 revoke execute on function brc.verify_token(text)    from public;
 revoke execute on function brc.next_job_code()       from public;
 revoke execute on function brc.next_form_serial()    from public;
@@ -1770,7 +1794,7 @@ grant execute on function brc.next_job_code()       to authenticated, service_ro
 grant execute on function brc.next_form_serial()    to authenticated, service_role;
 -- «بطاقتي» للزائر العام: متابعة بطاقته واستخدام فرصته وإعادة طباعتها
 -- (أُعيد كتابة سياسة الزائر 2026-09-30: لا طلب إلكتروني — بطاقة تُشترى كاشاً)
-grant execute on function brc.lookup_card(text)                to anon, authenticated;
+grant execute on function brc.lookup_card(text, text)           to anon, authenticated;
 grant execute on function brc.use_chance(text, text, text)      to anon, authenticated;
 grant execute on function brc.verify_card_code(text, text)      to anon, authenticated;
 /* موديل 2026-10-01: مسح نقطة البيع وصاحب العمل من الموقع العام — بلا جلسة */
@@ -1780,9 +1804,9 @@ revoke all on function brc.activate_card(text, jsonb) from public, anon, authent
    بلا جلسة: الباركود بيان الحيازة، والدالتان لا تكشفان اسماً ولا هاتفاً ولا
    رموز فرص. تُنزعان من PUBLIC أولاً (PostgreSQL يمنح EXECUTE لـ PUBLIC تلقائياً
    لكل دالة جديدة) ثم تُمنحان صراحةً للزائر والموظف. */
-revoke all on function brc.self_service_card(text) from public;
+revoke all on function brc.self_service_card(text, text) from public;
 revoke all on function brc.apply_with_card(text, text, jsonb) from public;
-grant execute on function brc.self_service_card(text)          to anon, authenticated;
+grant execute on function brc.self_service_card(text, text)    to anon, authenticated;
 grant execute on function brc.apply_with_card(text, text, jsonb) to anon, authenticated;
 
 -- الزائر العام: يتصفّح الوظائف ويتابع بطاقته — بلا تحقق داخلي وبلا طلب إلكتروني
@@ -2761,3 +2785,17 @@ drop trigger if exists zz_capture_application_job_snapshot on brc.job_attempts;
 create trigger zz_capture_application_job_snapshot before insert or update on brc.job_attempts
  for each row execute function brc.capture_application_job_snapshot();
 revoke all on function brc.capture_application_job_snapshot() from public,anon,authenticated;
+
+-- ===========================================================================
+--  11) service_role — منح صريح في **آخر** الملف (2026-11-13)
+-- ===========================================================================
+-- ⚠️ كان service_role يعتمد على **وراثة PUBLIC** (Grant تلقائي لكل دالة جديدة).
+--    بعد سحب EXECUTE من PUBLIC صار محروماً — وهذا يكسر النسخ الاحتياطي
+--    والاسترجاع ودوال الحافة، وكلها تعمل بمفتاح الخادم.
+--    ⚠️ موضع السطر مهم: `grant execute on all functions` يشمل ما هو مُعرَّف
+--    **حتى لحظة تنفيذه** فقط. وُضع هنا (آخر الملف) كي يغطي كل الدوال؛ ونسخته
+--    السابقة في قسم الصلاحيات كانت تغطي أول 5 دوال فقط.
+grant usage on schema brc to service_role;
+grant execute on all functions in schema brc to service_role;
+-- وللدوال التي تُنشأ لاحقاً في ترحيلات مستقبلية:
+alter default privileges grant execute on functions to service_role;

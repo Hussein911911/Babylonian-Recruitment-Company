@@ -191,10 +191,26 @@ check('الزائر لا يستطيع تجاوز OTP عبر employer_decide ال
    مسح باركود كل بطاقة خطأً على الزبون. */
 check('الزائر يستطيع نداء brc.self_service_card (باركود البطاقة يقرأ حالته)', /self_service_card/i.test(anonTargets));
 check('الزائر يستطيع نداء brc.apply_with_card (تقديم ذاتي بلا جلسة موظف)', /apply_with_card/i.test(anonTargets));
-/* الباركود بيان الحيازة، ومع ذلك: لا تُمنح هاتان الدالتان لـ public تلقائياً */
+/* الباركود بيان الحيازة، ومع ذلك: لا تُمنح هاتان الدالتان لـ public تلقائياً.
+   ⚠️ 2026-11-13: كانت التوقيعات المفحوصة هنا **غير موجودة** في المخطط
+   (self_service_card(text) وapply_with_card(text,text,jsonb))، والتوقيعان
+   الفعليان هما self_service_card(text,text) وapply_with_card(text,text,text,jsonb).
+   فكان الفحص يمرّ على نصوص لا تطابق أي دالة بينما يظل apply_with_card
+   القديم قابلاً للنداء من الزائر بـ EXECUTE الافتراضي على PUBLIC.
+   صار النمط يغطي أي توقيع للدالتين، وأُضيف فحص السحب الشامل. */
+const SELF_SVC_REVOKE = /revoke\s+all\s+on\s+function\s+brc\.self_service_card\s*\([^)]*\)\s+from\s+public/i;
+const APPLY_REVOKE = /revoke\s+all\s+on\s+function\s+brc\.apply_with_card\s*\([^)]*\)\s+from\s+public/i;
 check('دالتا التقديم الذاتي مُبطَلتان من public قبل المنح',
-  /revoke\s+all\s+on\s+function\s+brc\.self_service_card\(text\)\s+from\s+public/i.test(stripped(RAW)) &&
-  /revoke\s+all\s+on\s+function\s+brc\.apply_with_card\(text,\s*text,\s*jsonb\)\s+from\s+public/i.test(stripped(RAW)));
+  SELF_SVC_REVOKE.test(stripped(RAW)) && APPLY_REVOKE.test(stripped(RAW)));
+/* ⚠️ بلا `in schema`: النسخة المحدودة بالمخطط لا تُسجّل شيئاً في PostgreSQL
+   (الافتراضي المدمج PUBLIC ليس ضمن ACL المخطط) — تحقّقنا منها عملياً. فالسطر
+   الصحيح هو افتراضي الدور الحالي، والفحص يمنع عودة الصيغة العاطلة. */
+check('سحب شامل من public: لا دالة brc تُنشأ بصلاحية افتراضية',
+  /alter\s+default\s+privileges\s+revoke\s+execute\s+on\s+functions\s+from\s+public/i.test(stripped(RAW)));
+check('سحب الافتراضيات ليس بالصيغة العاطلة (in schema … revoke — بلا أثر)',
+  !/alter\s+default\s+privileges\s+in\s+schema[^;]*revoke\s+execute\s+on\s+functions\s+from\s+public/i.test(stripped(RAW)));
+check('السحب الشامل يمرّ على كل دوال brc لا على قائمة يدوية',
+  /for\s+r\s+in[\s\S]{0,300}?pg_proc[\s\S]{0,300}?revoke\s+all\s+on\s+function/i.test(stripped(RAW)));
 check('لا منح لمسار المكتب إلى الزائر', !/office_submit/.test(anonTargets));
 check('سجل إيصالات المكتب معزول بـRLS وسحب المنح', /alter table brc\.office_receipts enable row level security/.test(RAW) && /revoke all on brc\.office_receipts from public,anon,authenticated/.test(RAW));
 const authGrants = grantLines.filter((l) => /\bauthenticated\b/i.test(l)).join(' ');
