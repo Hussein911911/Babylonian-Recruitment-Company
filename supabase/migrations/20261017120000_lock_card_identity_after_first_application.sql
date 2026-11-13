@@ -147,7 +147,7 @@ begin
       from brc.job_attempts
      where serial=f.serial and slot_status='empty'
      order by attempt_no limit 1;
-    if v_code is null then
+    if not found then
       return jsonb_build_object('ok', false, 'error', 'لا توجد فرص متبقية في هذه البطاقة');
     end if;
     v_result := brc.use_chance(f.serial, v_code, upper(btrim(coalesce(p_job_code, ''))));

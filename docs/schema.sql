@@ -2799,3 +2799,35 @@ grant usage on schema brc to service_role;
 grant execute on all functions in schema brc to service_role;
 -- وللدوال التي تُنشأ لاحقاً في ترحيلات مستقبلية:
 alter default privileges grant execute on functions to service_role;
+
+-- ===========================================================================
+--  12) تقنين بيانات الباحثين في المسار العام (2026-11-13)
+-- ===========================================================================
+--  أرقام البطاقات شبه متسلسلة ومطبوعة، والمفتاح العام منشور — فأي زائر
+--  يستطيع تعداد البطاقات. الحل: بلا رمز طباعة صحيح لا تُكشف بيانات تعرّف.
+--  (التفاصيل والقياس في supabase/migrations/20261113170000_card_enumeration_guard.sql)
+create or replace function brc.card_public_name(p_name text, p_verified boolean)
+returns text language sql immutable set search_path = brc, public, pg_temp
+as $$
+  select case
+    when p_verified then coalesce(p_name, '')
+    when coalesce(btrim(p_name), '') = '' then ''
+    else (regexp_split_to_array(btrim(p_name), '\s+'))[1]
+         || coalesce(' ' || left((regexp_split_to_array(btrim(p_name), '\s+'))[2], 1) || '.', '')
+  end
+$$;
+
+create or replace function brc.card_public_phone(p_phone text, p_verified boolean)
+returns text language sql immutable set search_path = brc, public, pg_temp
+as $$
+  select case
+    when p_verified then coalesce(p_phone, '')
+    when coalesce(btrim(p_phone), '') = '' then ''
+    else left(btrim(p_phone), 4) || '••••' || right(btrim(p_phone), 2)
+  end
+$$;
+
+revoke all on function brc.card_public_name(text, boolean) from public, anon, authenticated;
+revoke all on function brc.card_public_phone(text, boolean) from public, anon, authenticated;
+grant execute on function brc.card_public_name(text, boolean) to service_role;
+grant execute on function brc.card_public_phone(text, boolean) to service_role;

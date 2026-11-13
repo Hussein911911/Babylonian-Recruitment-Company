@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-13T20:37:31.285Z",
-  "schemaBytes": 172054,
-  "functionCount": 55,
+  "capturedAt": "2026-11-13T21:18:56.812Z",
+  "schemaBytes": 174891,
+  "functionCount": 57,
   "blanketRevokeInPlace": true,
   "functions": [
     {
@@ -47,6 +47,22 @@
     },
     {
       "name": "brc.card_finished_at(text)",
+      "definer": false,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.card_public_name(text,boolean)",
+      "definer": false,
+      "searchPath": true,
+      "publicExecute": false,
+      "anon": false,
+      "authenticated": false
+    },
+    {
+      "name": "brc.card_public_phone(text,boolean)",
       "definer": false,
       "searchPath": true,
       "publicExecute": false,
