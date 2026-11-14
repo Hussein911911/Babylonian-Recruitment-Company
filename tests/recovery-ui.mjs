@@ -94,6 +94,8 @@ try{
   w2.HRCPortableBackup={MIN_PASSWORD:10,
     seal:async()=>({format:'HRC-PORTABLE-v1',cipher:'AES-GCM',counts:payload}),
     suggestName:()=>'hrc-backup-2026-11-15-0900.hrcbak'};
+  const order=[];
+  w2.HRCStore.recoveryExportFull=async()=>{order.push('export');return payload;};
   let downloaded=0;const realDownload=w2.HRCUI.download;
   w2.HRCUI.download=function(){downloaded++;};
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
@@ -117,7 +119,7 @@ try{
   const readBlob=b=>new Promise(res=>{const fr=new w2.FileReader();
     fr.onload=()=>res(String(fr.result));fr.readAsText(b);});
   w2.isSecureContext=true;
-  w2.showSaveFilePicker=async()=>{picked++;return {
+  w2.showSaveFilePicker=async()=>{picked++;if(picked===1)order.length=0;order.push('picker');return {
     name:'hrc-backup.hrcbak',
     createWritable:async()=>({write:async b=>{wrote=await readBlob(b);},close:async()=>{}}),
     getFile:async()=>({size:new TextEncoder().encode(wrote).length,
@@ -128,6 +130,10 @@ try{
   pass();d2.getElementById('pb-go').click();
   for(let i=0;i<120&&!wrote;i++)await wait(10);
   await wait(120);
+  /* ⚠️ الدروس من تجربة المدير: الملف نزل في Downloads لأن النافذة فُتحت بعد
+     سحب البيانات والتشفير، فانتهى «تفعيل المستخدم» الذي يشترطه المتصفح. */
+  check('opens the save picker BEFORE the slow data fetch, not after',
+    order.indexOf('picker')===0&&order.indexOf('picker')<order.indexOf('export'));
   check('writes the encrypted archive to the chosen USB folder',picked===1&&wrote.length>0&&JSON.parse(wrote).format==='HRC-PORTABLE-v1');
   check('successful USB write does not also dump a copy into Downloads',downloaded===1);
   const st=d2.querySelector('[data-portable-status]').textContent;
@@ -140,6 +146,36 @@ try{
   const errEl=d2.getElementById('pb-err');
   check('cancelled picker never claims success and never silently downloads',
     downloaded===1&&!!errEl&&/لم تُحفظ/.test(errEl.textContent));
+  /* ── اختيار المجلد وتذكّره (طلب المدير: «أي مجلد نريده ويبقى محفوظاً») ── */
+  closeModal();
+  let dirPicked=0,writtenName='';
+  w2.showDirectoryPicker=async()=>{dirPicked++;return {
+    kind:'directory',name:'HRC-Backups',
+    queryPermission:async()=>'granted',requestPermission:async()=>'granted',
+    getFileHandle:async(name)=>{writtenName=name;return {
+      name,kind:'file',
+      createWritable:async()=>({write:async b=>{wrote=await readBlob(b);},close:async()=>{}}),
+      getFile:async()=>({size:new TextEncoder().encode(wrote).length,
+        arrayBuffer:async()=>new TextEncoder().encode(wrote).buffer})};}};};
+  await open();
+  /* نمسح التذكير كي نختبر أول اختيار من جديد */
+  if(!w2.indexedDB){console.log('ℹ️ jsdom بلا IndexedDB — نتجاوز فحص التذكّر فقط');}
+  else await new Promise(r=>{const rq=w2.indexedDB.open('hrc-usb',1);
+    rq.onsuccess=()=>{const db=rq.result;const tx=db.transaction('dirs','readwrite');
+      tx.objectStore('dirs').delete('usbBackupDir');tx.oncomplete=()=>{db.close();r();};};});
+  const changeBtn=d2.getElementById('pb-usb-change');
+  check('offers a button to change the target folder',!!changeBtn);
+  changeBtn.click();
+  for(let i=0;i<60&&!dirPicked;i++)await wait(10);
+  await wait(60);
+  check('picking a folder uses the directory picker',dirPicked===1);
+  if(w2.indexedDB)check('the chosen folder is shown by name',/HRC-Backups/.test(d2.getElementById('pb-usb-where').textContent));
+  pass();d2.getElementById('pb-go').click();
+  for(let i=0;i<120&&!writtenName;i++)await wait(10);
+  await wait(120);
+  check('writes the archive inside the chosen folder, not to Downloads',
+    writtenName==='hrc-backup-2026-11-15-0900.hrcbak'&&downloaded===1&&JSON.parse(wrote).format==='HRC-PORTABLE-v1');
+
   w2.HRCUI.download=realDownload;
   dom2.window.close();
  }

@@ -250,6 +250,31 @@
   }
   return null;
  }
+ /* تغيير المسار: يفتح حافظة **مجلدات** ويحفظ الاختيار.
+  * طلب المدير: «أريد نغيّر المسار مباشر لأي مجلد نريده ويبقى محفوظاً».
+  * نستخدم showDirectoryPicker إن توفّر — أوضح من حافظة ملفات، لأن المدير
+  * يختار مجلداً لا ملفاً. ويبقى الاختيار في IndexedDB للاستعمالات القادمة.
+  * ──────────────────────────────────────────────────────────────────────── */
+ async function usbChooseFolder(){
+  if(root.showDirectoryPicker){
+   var dir=await root.showDirectoryPicker({mode:'readwrite',id:'hrc-usb',startIn:'desktop'});
+   var ok=await usbPermission(dir,true);
+   if(!ok)throw new Error('لم يُمنح الإذن للكتابة في المجلد');
+   await usbRemember(dir);
+   return dir;
+  }
+  /* احتياط: حافظة ملفات — نحفظ أباها كإشارة، لكن نكتب على الملف المختار. */
+  var f=await usbPick();
+  await usbRemember(f);
+  return f;
+ }
+ /* حلّ المقبض إلى ملف قابل للكتابة داخل المجلد (أو الملف نفسه). */
+ async function usbTargetFile(handle,name){
+  if(handle&&handle.kind==='directory'){
+   return await handle.getFileHandle(name,{create:true});
+  }
+  return handle;
+ }
  function portableDownload(){
   if(!Store.isAdmin()){UI.toast('err','صلاحية المدير فقط','نسخة الجهاز من صلاحيات المدير العام.');return;}
   loadPortable().then(function(PB){
@@ -258,13 +283,39 @@
      '<div class="field"><label for="pb-pass2">تأكيد كلمة المرور *</label>'+
      '<input type="password" id="pb-pass2" autocomplete="new-password"></div>'+
      '<p class="small muted" id="pb-str" role="status">استخدم كلمة طويلة لا تستعملها في موقع آخر. لا يمكن استعادة هذه الكلمة إن نسيتها.</p>'+
-     (usbSupported()?'<div class="field" style="margin-top:14px"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="pb-usb" checked style="margin-top:4px"><span><b>حفظ مباشرة على فلاش USB</b><br><span class="small muted">بعد التشفير تفتح نافذة تختار فيها مجلد <code>HRC-Backups</code> على الـUSB. يبقى محفوظاً، فبعدها بضغطة واحدة.</span></span></label></div>':'')+
+     (usbSupported()?'<div class="field" style="margin-top:14px"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="pb-usb" checked style="margin-top:4px"><span><b>حفظ مباشرة في مجلد محدّد</b><br><span class="small muted">تُفتح نافذة تختار فيها المجلد (فلاش USB أو أي مجلد آخر). يبقى محفوظاً، فبعدها بضغطة واحدة.</span></span></label>'+
+ '<div id="pb-usb-where" class="small muted" style="margin:8px 0 0 24px" role="status">جارٍ قراءة المجلد المحفوظ…</div>'+
+ '<button type="button" class="btn btn-outline btn-sm" id="pb-usb-change" style="margin:8px 0 0 24px">تغيير المجلد…</button></div>':'')+
      '<p class="recovery-warning" style="margin-top:12px">الملف يصل إلى <b>كل بيانات الشركة</b> — الوظائف والبطاقات وسجل التدقيق كاملاً. حينها يصبح أي شخص يحصل عليه وكلمةُ مروره قادراً على قراءتها. احفظه في مكان آمن.</p>'+
      '<p class="small" id="pb-err" style="color:#963f35;display:none"></p>';
    UI.modal({title:'تنزيل نسخة محمولة',subtitle:'تُشفَّر في متصفحك — المفتاح لا يُرسَل إلى القاعدة.',
     body:body,footer:'<button class="btn btn-outline" data-close>إلغاء</button><button class="btn btn-gold" id="pb-go">تنزيل</button>',
     onMount:function(modal,close){
      var p1=modal.querySelector('#pb-pass'),p2=modal.querySelector('#pb-pass2'),err=modal.querySelector('#pb-err'),str=modal.querySelector('#pb-str');
+     /* المجلد المحفوظ: نُظهره بالاسم فقط — المتصفح لا يكشف المسار الكامل
+        (هذا قيد متصفح، لا تقصير). المدير يرى أين ستُحفظ النسخة. */
+     var where=modal.querySelector('#pb-usb-where'),changeBtn=modal.querySelector('#pb-usb-change');
+     function paintWhere(){
+      if(!where)return;
+      usbRecall().then(function(h){
+       if(h)where.textContent='المجلد المحفوظ: '+h.name+' — تُحفظ النسخة فيه بضغطة واحدة.';
+       else where.textContent='لم يُحدَّد مجلد بعد — ستُفتح نافذة الاختيار عند أول تنزيل.';
+      });
+     }
+     paintWhere();
+     if(changeBtn)changeBtn.onclick=async function(){
+      var old=changeBtn.textContent;changeBtn.disabled=true;changeBtn.textContent='جارٍ الاختيار…';
+      try{
+       await usbChooseFolder();
+       await paintWhere();
+       changeBtn.textContent='تم — المجلد محفوظ';
+      }catch(e){
+       if(e&&e.name==='AbortError')changeBtn.textContent=old;
+       else changeBtn.textContent='تعذّر الاختيار — أعد المحاولة';
+      }
+      changeBtn.disabled=false;
+      root.setTimeout(function(){changeBtn.textContent=old;},2500);
+     };
      p1.oninput=function(){
       var sc=portableStrength(p1.value);
       var label=['ضعيفة جداً','ضعيفة','مقبولة','جيدة','قوية'][Math.min(sc,4)];
@@ -285,39 +336,46 @@
       },1000);
       btn.textContent='جارٍ سحب البيانات…';
       try{
+       /* ⚠️ ترتيب حرج — نتيجة تجربة المدير الفعلية (2026-11-15):
+          نزل الملف في مجلد التنزيلات بدل الـUSB.
+          السبب: كنا نفتح نافذة الحفظ **بعد** سحب البيانات وتشفيرها.
+          وقد يستغرق ذلك ثوانٍ، فيفقد المتصفح «تفعيل المستخدم» (user activation)
+          الذي تشترطه File System Access API — فيرفض فتح النافذة ويرجع للتنزيل.
+          الحل: نفتح النافذة **أولاً، فوراً بعد الضغط**، ثم نأخذ المقبض
+          ونكتب فيه بعد انتهاء التشفير. النافذة تبقى صالحة. */
+       var handle=null,usbCancelled=false;
+       if(wantUsb&&usbSupported()){
+        var remembered=await usbRecall();
+        if(remembered&&await usbPermission(remembered,false))handle=remembered;
+        if(!handle){
+         try{handle=await usbChooseFolder();}
+         catch(pickErr){
+          if(pickErr&&pickErr.name==='AbortError'){usbCancelled=true;}
+         }
+        }
+       }
+       if(usbCancelled){
+        clearInterval(tick);
+        btn.disabled=false;btn.textContent='تنزيل';
+        err.textContent='لم تُحفظ النسخة — أُلغيت نافذة اختيار المجلد. أعد المحاولة واختر مجلد HRC-Backups على الـUSB.';
+        err.style.display='block';
+        return;
+       }
+       btn.textContent='جارٍ سحب البيانات…';
        var data=await Store.recoveryExportFull();
        btn.textContent='جارٍ التشفير…';
        var env=await PB.seal(data,p1.value);
        clearInterval(tick);
        var name=PB.suggestName(new Date());
        var payload=JSON.stringify(env);
-       /* USB أولاً إن أراده المدير وأمكن — وإلا تنزيل عادي (لا يفشل أبداً). */
        var saved=null,finger=null,fallback=false;
-       if(wantUsb&&usbSupported()){
+       if(handle){
         btn.textContent='جارٍ الكتابة على الـUSB…';
         try{
-         var handle=null;
-         var remembered=await usbRecall();
-         if(remembered&&await usbPermission(remembered,false))handle=remembered;
-         if(!handle){
-          try{handle=await usbPick();}
-          catch(pickErr){
-           if(pickErr&&pickErr.name==='AbortError'){
-            /* المستخدم أغلق النافذة — لا نفترض النجاح، نقولها صراحة. */
-            btn.disabled=false;btn.textContent='تنزيل';
-            err.textContent='لم تُحفظ النسخة — أُلغيت نافذة اختيار المجلد. أعد المحاولة واختر مجلد HRC-Backups على الـUSB.';
-            err.style.display='block';
-            return;
-           }
-           /* المتصفح لا يدعم الكتابة المباشرة: نرجع للتنزيل بلا فشل. */
-           fallback=true;handle=null;
-          }
-         }
-         if(handle){
-          finger=await usbWrite(handle,payload);
-          saved=handle.name||name;
-          await usbRemember(handle);
-         }
+         var fileHandle=await usbTargetFile(handle,name);
+         finger=await usbWrite(fileHandle,payload);
+         saved=(handle.kind==='directory'?(handle.name+'/'):'')+name;
+         await usbRemember(handle);
         }catch(writeErr){
          /* فشل الكتابة أو فشل التحقق: لا ندّعي نجاحاً — نرجع للتنزيل
             العادي كي لا يبقى المدير بلا نسخة أبداً. */
