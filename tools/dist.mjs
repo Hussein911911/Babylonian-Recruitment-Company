@@ -30,6 +30,13 @@ const PAGES = [
   'hrc-light.html',        // النسخة الخفيفة
   'supabase-check.html',   // صفحة فحص الاتصال
   'sw.js',                 // Service Worker (يجب أن يبقى في الجذر ليعمل على كل الموقع)
+  /* ⚠️ كانت الثلاثة غائبة عن هذه القائمة (اكتُشف 2026-11-13): كل صفحة تربط
+     `manifest.webmanifest`، فكان مجلد dist يُنتج موقعاً بلا ملف التطبيق —
+     والفحص الذاتي في هذا الملف كان يُسقط البناء بخطأ «مراجع ناقصة»، أي أن
+     النشر اليدوي للطوارئ كان معطّلاً تماماً لا ناقصاً فقط. */
+  'manifest.webmanifest',  // PWA: يربطه <link rel="manifest"> في كل صفحة
+  'robots.txt',            // يقرأه الزواحف من الجذر
+  'sitemap.xml',           // خريطة الموقع
   '_headers',              // ترويسات Cloudflare Pages
   '_redirects'             // مسارات Cloudflare Pages النظيفة
 ];

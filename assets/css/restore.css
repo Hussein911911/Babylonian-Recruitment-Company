@@ -376,3 +376,27 @@ code {
 @media (max-width: 760px) {
   .rp-build-body .rp-btn { width: 100%; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   بوابة المدير (2026-11-13)
+   ───────────────────────────────────────────────────────────────────────
+   خطوات الاسترجاع الست تكشف مخطط القاعدة كاملاً وتفتح أي نسخة احتياطية،
+   فتُقفل على الموقع ما لم تكن الجلسة جلسة مدير. `hidden` وحدها لا تكفي:
+   بعض المتصفحات القديمة تتجاهلها على عناصر block، ولهذا نضيف صنفاً أيضاً. */
+.rp-gate { border-right: 4px solid var(--gold); }
+.rp-gate h2 { font-size: 1.15rem; margin: 0 0 10px; color: var(--lapis-2); }
+.rp-gate[hidden] { display: none; }
+[data-rp-step].is-locked { display: none !important; }
+/* قبل التحقق: لا شيء من الخطوات يلمع ثم يختفي */
+body[data-rp-access="pending"] [data-rp-step] { visibility: hidden; }
+
+.rp-gate-note {
+  font-size: .87rem; margin: 12px 0 0; padding: 9px 13px; border-radius: 8px;
+  border: 1px solid var(--line); color: #33405a; background: #f6f8fc;
+}
+.rp-gate-note.is-warn {
+  color: #6a4a08; background: #fdf6e7; border-color: rgba(200, 162, 74, .45);
+}
+.rp-gate-note.is-ok {
+  color: #1d4d2c; background: #f1f9f3; border-color: rgba(46, 125, 70, .35);
+}

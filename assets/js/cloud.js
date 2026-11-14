@@ -940,30 +940,19 @@
    *  موديل 2026-10-01: بيع نقطة البيع + صفحة صاحب العمل (مسارات عامة)
    *  ---------------------------------------------------------------------- */
 
-  /* بيع وتعبئة بطاقة فارغة من الموقع العام: بيانات الزبون (+ الوظيفة اختيارية
-     منذ 2026-10-06: بلا وظيفة يختار الزبون وظيفتَي فرصتيه بنفسه). إن اختار
-     موظف النقطة وظيفةً تُستهلك الفرصة الأولى بحجز 24 ساعة. ترجّع {app, attempt, job}
-     بنفس شكل المخزن المحلي كي تعمل الواجهة (booking) بالمسارين دون تفريق. */
-  function activateCardRpc(client, serial, data) {
-    if (!serial) return Promise.resolve({ ok: false, error: 'أدخل باركود البطاقة' });
-    return rpcCall(client, 'activate_card', {
-      p_serial: String(serial).trim().toUpperCase(),
-      p_data: data || {}
-    })
-      .then(function (res) {
-        if (res && res.error) {
-          return { ok: false, error: res.error.message || 'تعذّر إتمام البيع' };
-        }
-        var d = res && res.data;
-        if (!d || typeof d !== 'object') return { ok: false, error: 'لا نتيجة من الخادم' };
-        if (d.ok === false) return { ok: false, error: d.error || 'تعذّر إتمام البيع' };
-        return { ok: true, app: d.app || null, attempt: d.attempt || null, job: d.job || null };
-      })
-      .catch(function (e) {
-        return { ok: false, error: 'تعذّر الاتصال: ' + (e && e.message || e) };
-      });
-  }
+  /* ═══ activate_card: حُذفت من هذا الملف (2026-11-13) ═══
+     كانت `activateCardRpc` تنادي `brc.activate_card` — دالة **منزوعة من
+     anon و authenticated** منذ `20261030100000_remove_direct_card_sale.sql`.
+     فالنداء كان يصطدم برفض صلاحية دائماً متى فُعّلت السحابة، ثم يرجع
+     `store.js` للمسار المحلي فينجح — أي أن الموظف يرى نجاحاً بعد محاولة
+     فاشلة، ويُسجَّل البيع على جهازه لا في القاعدة.
 
+     ⚠️ وهذا هو الفرق الخطير: مسار البيع الحقيقي هو `apply_with_card` (في
+     apply.html، للتقديم) أو إدخال الموظف من اللوحة. أما هذه الدالة فلم
+     تكن تفعل شيئاً في السحابة قط.
+
+     الأثر الآن: `store.js` لا يرى `HRCCloud.activateCard` فيسلك المسار
+     المحلي مباشرة بلا محاولة فاشلة ولا تأخير. (انظر cardActivate هناك.) */
   /* حُذف مسار صاحب العمل من الويب (2026-10-25): لا صفحة ولا رمز سري ولا
      قرار من الويب — طلب صاحب العمل يُسجَّل من لوحة الموظفين. */
   root.HRCCloud = {
@@ -979,7 +968,6 @@
 
     fetchPublicJobs: fetchPublicJobs, readPublicCache: readPublicCache, clearPublicCache: clearPublicCache, verifyForm: verifyForm,
     lookupCard: lookupCardRpc, customerApplication: customerApplicationRpc, useChance: useChanceRpc, verifyCardCode: verifyCardCodeRpc,
-    activateCard: activateCardRpc,
     requestForm: requestForm,
     applyChange: applyChange, subscribeAll: subscribeAll,
     synthId: synthId

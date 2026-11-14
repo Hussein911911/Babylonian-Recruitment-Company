@@ -271,7 +271,17 @@ step(5, 'الترتيب — الترحيل الجديد آخر من يُطبَّ
 {
   const migs = readdirSync(join(ROOT, 'supabase/migrations')).filter((f) => f.endsWith('.sql')).sort();
   const last = migs[migs.length - 1];
-  check('ترحيل تقوية الصلاحيات هو الأحدث (يُطبَّق أخيراً)', last === '20261113160000_harden_function_acls.sql', last);
+  const idxHard = migs.indexOf('20261113160000_harden_function_acls.sql');
+  /* ⚠️ ليس «الأحدث»: قد تُضاف ترحيلات بعده (مثل حارس التعداد). المهم أن يبقى
+     **بعد** كل ترحيل يُنشئ دوالاً (وإلا لم يشملها السحب الشامل)، وأن يبقى هو
+     المصدر الذي يحمل سياسة الصلاحيات. */
+  check('ملف تقوية الصلاحيات موجود ومعروف الترتيب', idxHard >= 0, last);
+  check('لا يُعاد إنشاء دوال brc في ترحيل بعده بلا سياسة صلاحيات جديدة',
+    migs.slice(idxHard + 1).every((f) => {
+      const sql = readFileSync(join(ROOT, 'supabase/migrations', f), 'utf8');
+      return !/create\s+or\s+replace\s+function\s+brc\./i.test(sql) || /(grant|revoke)/i.test(sql);
+    }),
+    migs.slice(idxHard + 1).join(', ') || 'لا ترحيلات بعده');
 }
 
 /* ═══ 6) التشغيل الفعلي — الصلاحية وحدها لا تكفي ═════════════════════════

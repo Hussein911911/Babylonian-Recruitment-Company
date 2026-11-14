@@ -18614,12 +18614,15 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     return Promise.resolve(useChance(serial, code, jobCode));
   }
 
-  /* تفعيل من نقطة البيع عبر الموقع العام: سحابة إن فُعّلت وإلا محلياً */
+  /* تفعيل من نقطة البيع (تعبئة بطاقة فارغة عند البيع).
+     ⚠️ محلي دائماً — عمداً (2026-11-13):
+     `brc.activate_card` منزوعة من anon و authenticated منذ
+     20261030100000_remove_direct_card_sale.sql، فكان هذا الفرع يحاول نداءً
+     مرفوضاً في كل مرة ثم يسقط للمسار المحلي. والنتيجة أن الموظف يرى نجاحاً
+     بعد محاولة فاشلة، والبيع يُسجَّل على جهازه لا في القاعدة.
+     والمسار الحقيقي في السحابة هو إدخال الموظف من اللوحة (apply_with_card
+     للتقديم لا للبيع). لذلك لا نحاول ما نعرف أنه مرفوض. */
   function cardActivate(serial, data) {
-    var st = cloudStatus();
-    if (st.configured && st.state === 'on' && root.HRCCloud && root.HRCCloud.activateCard && cloud.client) {
-      return root.HRCCloud.activateCard(cloud.client, serial, data);
-    }
     return Promise.resolve(activateCard(serial, data));
   }
 

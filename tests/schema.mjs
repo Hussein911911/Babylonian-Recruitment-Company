@@ -114,12 +114,19 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
 /* 2026-10-25 (لاحقاً): +5 دوال لجدولة النسخ التي يضبطها المدير
    (recovery_cron_expr · _schedule_get · _schedule_set · _run_scheduled ·
    recovery_ensure_fresh) ⇒ 54 تعريفاً و52 دالة فعلية. */
-check('تعريفات الدوال: 57 تعريفاً، 55 دالة فعلية (تحديثان مقصودان)',
-  funcs.length === 57 && new Set(funcs.map(x=>x.name)).size === 55,
+/* 2026-11-13: +2 دالتا تقنين البيانات العامة (card_public_name · card_public_phone)
+   ⇒ 59 تعريفاً و57 دالة فعلية. أُضيفتا لإغلاق تعداد البطاقات (انظر
+   tests/card-enumeration.mjs) وليستا مجرّد عدّ: بدونهما يُرجَع الاسم والهاتف
+   كاملين لأي حامل باركود. */
+check('تعريفات الدوال: 59 تعريفاً، 57 دالة فعلية (تحديثان مقصودان)',
+  funcs.length === 59 && new Set(funcs.map(x=>x.name)).size === 57,
+  funcs.length + ' تعريفاً · ' + new Set(funcs.map(x=>x.name)).size + ' دالة');
+check('دالتا التقنين موجودتان (شرط إغلاق تعداد البطاقات)',
+  funcs.some(x=>x.name==='brc.card_public_name') && funcs.some(x=>x.name==='brc.card_public_phone'),
   funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));
 /* كل دالة جديدة تُذكر هنا بالاسم: العدد وحده لا يكشف خطأً في الاسم أو حذفاً
    لدالة قديمة، والأسماء هي ما يُنادى فعلاً من الواجهة. */
-const EXPECTED_FUNCS = ['brc.recovery_manage', 'brc.office_submit', 'brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
+const EXPECTED_FUNCS = ['brc.card_public_name', 'brc.card_public_phone', 'brc.recovery_manage', 'brc.office_submit', 'brc.next_job_code', 'brc.next_form_serial', 'brc.verify_token',
   'brc.trg_defaults', 'brc.trg_attempt_hold', 'brc.trg_no_duplicate_job', 'brc.trg_audit',
   'brc.run_auto_release', 'brc.is_staff', 'brc.is_admin', 'brc.current_staff_id',
   'brc.verify_form', 'brc.request_form', 'brc.mask_name', 'brc.mask_phone',

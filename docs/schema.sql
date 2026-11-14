@@ -2799,3 +2799,46 @@ grant usage on schema brc to service_role;
 grant execute on all functions in schema brc to service_role;
 -- وللدوال التي تُنشأ لاحقاً في ترحيلات مستقبلية:
 alter default privileges grant execute on functions to service_role;
+
+-- ===========================================================================
+--  12) مساعدا العرض العام + إغلاق تعداد البطاقات (2026-11-13)
+-- ===========================================================================
+--  أرقام البطاقات تُطبع على ورق، والمفتاح العام منشور — فأي زائر يستطيع
+--  تعداد البطاقات. الحماية **ميزانية طلبات** في card_lookup_guard (١٥ عرضاً/
+--  ساعة لكل بطاقة، ٤٠ بطاقة مختلفة/ساعة لكل مصدر) — لا تقنين شخصي.
+--
+--  ⚠️ التقنين أُلغي 2026-11-13 بعد توضيح صاحب العمل لدورة العمل: المكتب
+--     يُصدر بطاقات **فارغة** ويبيعها كاشاً، والمفعّلة بياناتها كتبها صاحبها.
+--     و`card_print_code` غير مستعمل فيها (فارغ في 723/723 بطاقة)، فاشتراطه
+--     كان يُقنّع كل زبون عن نفسه ويقفل حقوله بلا مقابل.
+--     ما يحمي فعلاً: من يقدّم ببطاقة غيره **يكتب اسمه فوقها** (apply_with_card)،
+--     فيقارن صاحب العمل الاسم بالهوية الوطنية ويكشفه.
+--
+--  الدالتان أدناه باقيتان للاستخدام الداخلي/المستقبلي، ولا يُنادى بهما من
+--  lookup_card بعد الآن.
+--  (التفاصيل والقياس في supabase/migrations/20261113170000_card_enumeration_guard.sql)
+create or replace function brc.card_public_name(p_name text, p_verified boolean)
+returns text language sql immutable set search_path = brc, public, pg_temp
+as $$
+  select case
+    when p_verified then coalesce(p_name, '')
+    when coalesce(btrim(p_name), '') = '' then ''
+    else (regexp_split_to_array(btrim(p_name), '\s+'))[1]
+         || coalesce(' ' || left((regexp_split_to_array(btrim(p_name), '\s+'))[2], 1) || '.', '')
+  end
+$$;
+
+create or replace function brc.card_public_phone(p_phone text, p_verified boolean)
+returns text language sql immutable set search_path = brc, public, pg_temp
+as $$
+  select case
+    when p_verified then coalesce(p_phone, '')
+    when coalesce(btrim(p_phone), '') = '' then ''
+    else left(btrim(p_phone), 4) || '••••' || right(btrim(p_phone), 2)
+  end
+$$;
+
+revoke all on function brc.card_public_name(text, boolean) from public, anon, authenticated;
+revoke all on function brc.card_public_phone(text, boolean) from public, anon, authenticated;
+grant execute on function brc.card_public_name(text, boolean) to service_role;
+grant execute on function brc.card_public_phone(text, boolean) to service_role;
