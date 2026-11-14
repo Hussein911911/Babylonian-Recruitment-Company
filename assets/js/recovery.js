@@ -283,7 +283,7 @@
      '<div class="field"><label for="pb-pass2">تأكيد كلمة المرور *</label>'+
      '<input type="password" id="pb-pass2" autocomplete="new-password"></div>'+
      '<p class="small muted" id="pb-str" role="status">استخدم كلمة طويلة لا تستعملها في موقع آخر. لا يمكن استعادة هذه الكلمة إن نسيتها.</p>'+
-     (usbSupported()?'<div class="field" style="margin-top:14px"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="pb-usb" checked style="margin-top:4px"><span><b>حفظ مباشرة في مجلد محدّد</b><br><span class="small muted">تُفتح نافذة تختار فيها المجلد (فلاش USB أو أي مجلد آخر). يبقى محفوظاً، فبعدها بضغطة واحدة.</span></span></label>'+
+     (usbSupported()?'<div class="field" style="margin-top:14px"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="pb-usb" checked style="margin-top:4px"><span><b>حفظ مباشرة في المجلد المحدّد</b><br><span class="small muted">إن لم يكن هناك مجلد محفوظ ستُفتح نافذة اختيار. بعد ذلك يُحفظ الاختيار، وقد يطلب Chrome تأكيداً صغيراً فقط.</span></span></label>'+
  '<div id="pb-usb-where" class="small muted" style="margin:8px 0 0 24px" role="status">جارٍ قراءة المجلد المحفوظ…</div>'+
  '<button type="button" class="btn btn-outline btn-sm" id="pb-usb-change" style="margin:8px 0 0 24px">تغيير المجلد…</button></div>':'')+
      '<p class="recovery-warning" style="margin-top:12px">الملف يصل إلى <b>كل بيانات الشركة</b> — الوظائف والبطاقات وسجل التدقيق كاملاً. حينها يصبح أي شخص يحصل عليه وكلمةُ مروره قادراً على قراءتها. احفظه في مكان آمن.</p>'+
@@ -297,9 +297,17 @@
      var where=modal.querySelector('#pb-usb-where'),changeBtn=modal.querySelector('#pb-usb-change');
      function paintWhere(){
       if(!where)return;
-      usbRecall().then(function(h){
-       if(h)where.textContent='المجلد المحفوظ: '+h.name+' — تُحفظ النسخة فيه بضغطة واحدة.';
-       else where.textContent='لم يُحدَّد مجلد بعد — ستُفتح نافذة الاختيار عند أول تنزيل.';
+      usbRecall().then(async function(h){
+       if(!h){
+        where.textContent='لم يُحدَّد مجلد بعد — ستُفتح نافذة الاختيار عند أول تنزيل.';
+        return;
+       }
+       var state='unknown';
+       try{state=await h.queryPermission({mode:'readwrite'});}catch(e){}
+       if(state==='granted')
+        where.textContent='✓ المجلد: '+h.name+' — جاهز، تُحفظ بلا أي سؤال.';
+       else
+        where.textContent='المجلد: '+h.name+' — قد يطلب Chrome تأكيداً صغيراً («السماح») قبل كل تنزيل. هذا قيد متصفح؛ لا نستطيع إلغاءه.';
       });
      }
      paintWhere();
@@ -345,8 +353,15 @@
           ونكتب فيه بعد انتهاء التشفير. النافذة تبقى صالحة. */
        var handle=null,usbCancelled=false;
        if(wantUsb&&usbSupported()){
+        /* ⚠️ باگ أصلحه (بلاغ المدير 2026-11-15): «اختار المجلد، أنطي حفظ،
+           أريد أنطي تنزيل — يرجع يطلب اختيار ملف».
+           السبب: كنا نستعلم عن الإذن بـrequest=false فقط. حين يرجع 'prompt'
+           (وهو الحال بعد إغلاق المتصفح أو انقضاء مدة) كان الكود يظنّ أنه لا
+           مقبض، فيفتح الحافظة من الصفر رغم أن الاختيار محفوظ.
+           الصحيح: request=true — يُظهر شريط إذن صغيراً («السماح») ويُبقي
+           المجلد المحفوظ، بدل إجباره على إعادة الاختيار بأكمله. */
         var remembered=await usbRecall();
-        if(remembered&&await usbPermission(remembered,false))handle=remembered;
+        if(remembered&&await usbPermission(remembered,true))handle=remembered;
         if(!handle){
          try{handle=await usbChooseFolder();}
          catch(pickErr){

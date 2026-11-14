@@ -78,6 +78,28 @@ try{
   * نختبره في DOM مستقل: مسار الحفظ لا علاقة له بحالة الاسترجاع أعلاه،
   * وخلطهما يجعل الاختبار يعتمد على ترتيب التنفيذ لا على السلوك.
   * ──────────────────────────────────────────────────────────────────────── */
+ /* ── بديل IndexedDB مبسّط ──────────────────────────────────────────────────
+  * jsdom لا يوفّر IndexedDB، ومسار «تذكّر المجلد» هو **بالضبط** ما أبلغ عنه
+  * المدير. تجاوز الفحص كان سيترك الباگ بلا حارس. هذا بديل صغير يغطي ما
+  * يستخدمه الكود فقط: open/get/put/delete.
+  * ──────────────────────────────────────────────────────────────────────── */
+ function makeIdb(){
+  const dbs={};
+  return {open(name){
+   if(!dbs[name])dbs[name]={};
+   const data=dbs[name];
+   const rq={result:{close(){},transaction(store,mode){const tx={oncomplete:null,onerror:null,
+     objectStore(){return {
+      get:k=>{const r={onsuccess:null,onerror:null,result:data[k]};setTimeout(()=>r.onsuccess&&r.onsuccess(),0);return r;},
+      put:(v,k)=>{data[k]=v;setTimeout(()=>tx.oncomplete&&tx.oncomplete(),0);return {};},
+      delete:k=>{delete data[k];setTimeout(()=>tx.oncomplete&&tx.oncomplete(),0);return {};}};}};
+     return tx;}}};
+   setTimeout(()=>rq.onupgradeneeded&&rq.onupgradeneeded(),0);
+   setTimeout(()=>rq.onsuccess&&rq.onsuccess(),0);
+   return rq;
+  }};
+ }
+
  async function usbSuite(){
   const dom2=new JSDOM('<main id="recovery-tools"></main><div id="modal-root"></div><div id="toast-root"></div>',
     {url:'https://fixture.test',runScripts:'outside-only'}),w2=dom2.window,d2=w2.document;
@@ -87,6 +109,7 @@ try{
     pushCloud:async()=>({failed:0}),recoveryRPC:async(a)=>a==='list'?{ok:true,copies:[]}:{ok:true},
     recoveryExportFull:async()=>payload,db:()=>{throw new Error('no browser db');},exportJson:()=>{throw new Error('no json');}};
   const win_timer=w2.setTimeout.bind(w2);w2.setTimeout=(fn,ms)=>ms===1500?0:win_timer(fn,ms);
+  w2.indexedDB=makeIdb();
   w2.eval(read('assets/js/ui.js'));w2.eval(read('assets/js/recovery.js'));
   await new Promise(r=>setTimeout(r,60));
   /* نُثبّت وحدة التشفير: jsdom بلا Web Crypto حقيقي، والغرض اختبار مسار
@@ -159,8 +182,7 @@ try{
         arrayBuffer:async()=>new TextEncoder().encode(wrote).buffer})};}};};
   await open();
   /* نمسح التذكير كي نختبر أول اختيار من جديد */
-  if(!w2.indexedDB){console.log('ℹ️ jsdom بلا IndexedDB — نتجاوز فحص التذكّر فقط');}
-  else await new Promise(r=>{const rq=w2.indexedDB.open('hrc-usb',1);
+  await new Promise(r=>{const rq=w2.indexedDB.open('hrc-usb',1);
     rq.onsuccess=()=>{const db=rq.result;const tx=db.transaction('dirs','readwrite');
       tx.objectStore('dirs').delete('usbBackupDir');tx.oncomplete=()=>{db.close();r();};};});
   const changeBtn=d2.getElementById('pb-usb-change');
@@ -169,13 +191,45 @@ try{
   for(let i=0;i<60&&!dirPicked;i++)await wait(10);
   await wait(60);
   check('picking a folder uses the directory picker',dirPicked===1);
-  if(w2.indexedDB)check('the chosen folder is shown by name',/HRC-Backups/.test(d2.getElementById('pb-usb-where').textContent));
+  check('the chosen folder is shown by name',/HRC-Backups/.test(d2.getElementById('pb-usb-where').textContent));
   pass();d2.getElementById('pb-go').click();
   for(let i=0;i<120&&!writtenName;i++)await wait(10);
   await wait(120);
   check('writes the archive inside the chosen folder, not to Downloads',
     writtenName==='hrc-backup-2026-11-15-0900.hrcbak'&&downloaded===1&&JSON.parse(wrote).format==='HRC-PORTABLE-v1');
 
+  /* ── باگ المدير: «اختار المجلد، أنطي حفظ، أنطي تنزيل — يرجع يطلب اختيار» ──
+   * السبب كان: الاستعلام بـrequest=false فقط، فحين يعود 'prompt' يُفتح
+   * الاختيار من الصفر رغم أن المقبض محفوظ. الصحيح request=true.
+   * هذا الفحص يثبّت أن المقبض المحفوظ **يُستعمل** ولا يُطلب اختيار جديد. */
+  {
+   let pickerAfterRemember=0,permAsked=[];
+   w2.showDirectoryPicker=async()=>{pickerAfterRemember++;throw Object.assign(new Error('x'),{name:'AbortError'});};
+   w2.showSaveFilePicker=async()=>{pickerAfterRemember++;throw Object.assign(new Error('x'),{name:'AbortError'});};
+   await open();
+   /* نحقن مقبضاً محفوظاً يرجع 'prompt' — تماماً كحال المتصفح بعد إعادة التشغيل */
+   let granted=false;
+   const fakeDir={kind:'directory',name:'HRC-Backups',
+     queryPermission:async()=>granted?'granted':'prompt',
+     requestPermission:async()=>{permAsked.push(1);granted=true;return 'granted';},
+     getFileHandle:async(n)=>({name:n,kind:'file',
+       createWritable:async()=>({write:async b=>{wrote=await readBlob(b);},close:async()=>{}}),
+       getFile:async()=>({size:new TextEncoder().encode(wrote).length,
+         arrayBuffer:async()=>new TextEncoder().encode(wrote).buffer})})};
+   {
+    await new Promise(r=>{const rq=w2.indexedDB.open('hrc-usb',1);
+      rq.onsuccess=()=>{const db=rq.result;const tx=db.transaction('dirs','readwrite');
+        tx.objectStore('dirs').put(fakeDir,'usbBackupDir');tx.oncomplete=()=>{db.close();r();};};});
+    closeModal();await open();
+    pass();d2.getElementById('pb-go').click();
+    for(let i=0;i<120&&!permAsked.length;i++)await wait(10);
+    await wait(120);
+    check('a remembered folder asking for a small permission grant is NOT a full re-pick',
+      permAsked.length===1&&pickerAfterRemember===0);
+    check('writes to the remembered folder after the grant',downloaded===1&&JSON.parse(wrote).format==='HRC-PORTABLE-v1');
+   }
+  }
+  closeModal();
   w2.HRCUI.download=realDownload;
   dom2.window.close();
  }
