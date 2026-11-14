@@ -52,6 +52,30 @@ export function targetAvailable(path) {
   } catch { return false; }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * فحص «هل هذا مجلد Drive مُزامَن فعلاً؟»
+ * ---------------------------------------------------------------------------
+ * ⚠️ الخطر الصامت: إن كان Google Drive مضبوطاً على **Stream** لا Mirror،
+ * فقد يظهر المجلد على القرص لكن الملفات فيه ليست على القرص — بل في السحابة.
+ * فينجح النسخ ظاهرياً، ثم لا يكون هناك ملف حقيقي عند الحاجة.
+ *
+ * لا نستطيع إثبات الرفع للسحابة (هذا عمل Google)، لكن نستطيع إثبات أن
+ * الملف **موجود فعلياً على القرص** بعد الكتابة — وهذا ما يهمنا.
+ * =========================================================================== */
+export function verifyOnDisk(filePath) {
+  try {
+    const st = statSync(filePath);
+    if (!st.isFile() || st.size === 0) return { ok: false, reason: 'الملف غير موجود على القرص أو فارغ' };
+    /* نقرأ أول بايت: ملف «افتراضي» في Stream قد يفشل عند القراءة بلا إنترنت */
+    const fd = readFileSync(filePath);
+    if (fd.length !== st.size) return { ok: false, reason: 'حجم الملف على القرص لا يطابق ما تقوله السحابة' };
+    return { ok: true, bytes: st.size };
+  } catch (e) {
+    return { ok: false, reason: 'تعذّرت قراءة الملف من القرص: ' + (e.message || e) };
+  }
+}
+
 /* ينسخ (لا ينقل) زوج الأرشيف + البيان إلى هدف واحد، ويتحقق من البصمة */
 export function mirrorPairTo(pairFile, manifestFile, targetDir, { keep = 3 } = {}) {
   const dest = resolve(targetDir);
@@ -70,6 +94,15 @@ export function mirrorPairTo(pairFile, manifestFile, targetDir, { keep = 3 } = {
     throw new Error('بصمة النسخة المنقولة لا تطابق الأصل — أُلغيت النسخة على هذا الهدف');
   }
   copyFileSync(manifestFile, join(dest, manifestName));
+
+  /* ⚠️ نتأكد أن الملف **على القرص فعلاً** لا مجرد إشارة إلى السحابة.
+     مع Drive على وضع Stream قد يبدو الملف موجوداً وهو ليس كذلك. */
+  const onDisk = verifyOnDisk(destArchive);
+  if (!onDisk.ok) {
+    try { unlinkSync(destArchive); } catch { /* لا شيء */ }
+    throw new Error('الملف لم يُكتب على القرص فعلياً — ' + onDisk.reason +
+      ' (تأكد أن Google Drive مضبوط على Mirror لا Stream)');
+  }
 
   /* بيان الوجهة — يُثبت ماذا وصل ومتى، بلا أي بيانات تشغيلية */
   const targetManifest = {

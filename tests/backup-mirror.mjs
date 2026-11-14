@@ -17,7 +17,7 @@
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { mirrorPair, mirrorPairTo, sha256File, targetAvailable } from '../office/mirror.mjs';
+import { mirrorPair, mirrorPairTo, sha256File, targetAvailable, verifyOnDisk } from '../office/mirror.mjs';
 
 let pass = 0, fail = 0;
 const problems = [];
@@ -121,6 +121,18 @@ const badResults = mirrorPair(p8.file, p8.manifest, [{ name: 'مستحيل', pat
 check('فشل كل الأهداف مُميَّز', badResults.every((r) => r.ok === false));
 check('⚠️ نسخ Drive لم تُمسّ بعد فشل هدف آخر',
   readdirSync(drive).filter((f) => /^hrc-[\dTZ.-]+\.hrcdb$/.test(f)).length === before);
+
+console.log('\n▌ 7ب — ⚠️ الملف على القرص فعلاً (Stream مقابل Mirror)');
+const p9 = makePair('2026-11-19T09-00-00Z');
+const r9 = mirrorPairTo(p9.file, p9.manifest, drive, { keep: 3 });
+const onDisk = verifyOnDisk(join(drive, p9.name));
+check('الملف موجود وقابل للقراءة من القرص', onDisk.ok === true, JSON.stringify(onDisk));
+check('الحجم يطابق ما على القرص', onDisk.bytes === Buffer.byteLength(readFileSync(p9.file)), String(onDisk.bytes));
+check('ملف غير موجود يُكتشف', verifyOnDisk(join(drive, 'لا-يوجد.hrcdb')).ok === false);
+check('ملف فارغ يُكتشف', verifyOnDisk(join(drive, 'empty.tmp')) .ok === false ||
+  (writeFileSync(join(drive, 'empty.tmp'), ''), verifyOnDisk(join(drive, 'empty.tmp')).ok === false));
+check('الرسالة تذكر Mirror وStream عند الفشل',
+  /Mirror/.test(readFileSync(join(import.meta.dirname, '..', 'office', 'mirror.mjs'), 'utf8')));
 
 console.log('\n▌ 8 — الربط بالوكيل الحقيقي');
 const agent = readFileSync(join(import.meta.dirname, '..', 'office', 'backup-agent.mjs'), 'utf8');
