@@ -118,9 +118,23 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
    ⇒ 59 تعريفاً و57 دالة فعلية. أُضيفتا لإغلاق تعداد البطاقات (انظر
    tests/card-enumeration.mjs) وليستا مجرّد عدّ: بدونهما يُرجَع الاسم والهاتف
    كاملين لأي حامل باركود. */
-check('تعريفات الدوال: 59 تعريفاً، 57 دالة فعلية (تحديثان مقصودان)',
-  funcs.length === 59 && new Set(funcs.map(x=>x.name)).size === 57,
+/* 2026-11-14: +4 تعريفات لدعم الجدولة المرنة والاحتفاظ بآخر ٣ نسخ:
+     recovery_cron_expr(text,int,int[],text)         — نمط «كل N ساعة»
+     recovery_schedule_set(text,int,int[],text)      — حفظ النمط
+     recovery_retention_keep()                       — عدد النسخ المحفوظة
+     recovery_prune(int)                             — التقليم الآمن
+   ⇒ 65 تعريفاً و60 دالة فعلية (٥ توقيعات توافق + recovery_due_now الجديدة). */
+check('تعريفات الدوال: 65 تعريفاً، 60 دالة فعلية (توقيعات توافق مقصودة)',
+  funcs.length === 65 && new Set(funcs.map(x=>x.name)).size === 60,
   funcs.length + ' تعريفاً · ' + new Set(funcs.map(x=>x.name)).size + ' دالة');
+check('دوال الجدولة المرنة والتقليم موجودة',
+  ['brc.recovery_retention_keep','brc.recovery_prune','brc.recovery_cron_expr','brc.recovery_schedule_set']
+    .every(n=>funcs.some(x=>x.name===n)));
+check('التقليم لا يمسّ نسخ الأمان (safety=true)',
+  /recovery_prune[\s\S]{0,700}safety\s*=\s*false/i.test(RAW));
+check('النسخة المجدولة تُبقي آخر N ولا تحذف كل ما قبلها',
+  !/delete from brc\.recovery_copies where id<>result/.test(RAW) &&
+  /perform brc\.recovery_prune\(\)/.test(RAW));
 check('دالتا التقنين موجودتان (شرط إغلاق تعداد البطاقات)',
   funcs.some(x=>x.name==='brc.card_public_name') && funcs.some(x=>x.name==='brc.card_public_phone'),
   funcs.length + ' — ' + funcs.map((x) => x.name).join(', '));

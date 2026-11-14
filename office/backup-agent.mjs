@@ -8,6 +8,7 @@ import {pipeline} from 'node:stream/promises';
 import {join,resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {atomicWrite,acquireLock} from './state.mjs';
+import {mirrorPair} from './mirror.mjs';
 const MAGIC=Buffer.from('HRCDB1');
 export function validateSource(url){const u=new URL(url);if(!['postgres:','postgresql:'].includes(u.protocol)||u.password||u.searchParams.has('password')||u.searchParams.get('sslmode')!=='verify-full')throw new Error('Source requires password-free PostgreSQL URL and sslmode=verify-full');return u;}
 export function validateTarget(url,confirmation){const u=new URL(url);if(!['postgres:','postgresql:'].includes(u.protocol)||!['localhost','127.0.0.1','[::1]'].includes(u.hostname)||!/^\/brc_restore_drill_[a-zA-Z0-9_]+$/.test(u.pathname)||u.password||u.search)throw new Error('Only password-free loopback brc_restore_drill_* targets allowed');if(confirmation!=='ISOLATED-ONLY')throw new Error('Explicit isolated restore confirmation required');return u;}
@@ -45,6 +46,17 @@ export async function backup(cfg,{clock=()=>new Date(),spawnChild=child}={}){
   atomicWrite(final+'.json',JSON.stringify(manifest,null,2));
   // Retain the latest successful manifest+archive pair by default; never purge a failed
   // job's previous successes. Retention runs only after a new verified archive.
+  /* ── نسخة إلى Google Drive / USB ───────────────────────────────────────
+     ⚠️ بعد نجاح النسخة الأصلية وقبل التقليم: إن فشل هدف خارجي، النسخة
+     الأصلية سليمة ونُسجّل الفشل في البيان بدل إسقاط النسخة كلها.
+     keep للأهداف الخارجية مستقل: قد يريد المدير ٣ على Drive ونسخة واحدة هنا. */
+  let mirrors=[];
+  if(Array.isArray(cfg.mirrorTargets)&&cfg.mirrorTargets.length){
+   try{mirrors=mirrorPair(final,final+'.json',cfg.mirrorTargets,{keep:Number(cfg.mirrorKeep)||3});}
+   catch(e){mirrors=[{ok:false,reason:e.message||String(e)}];}
+   manifest.mirrors=mirrors.map(m=>({name:m.name||m.target,ok:m.ok===true,absent:m.absent===true,reason:m.reason||null,sha256:m.sha256||null}));
+   atomicWrite(final+'.json',JSON.stringify(manifest,null,2));
+  }
   const keep=Math.max(1,Math.min(365,Number(cfg.keep)||1));
   const manifests=readdirSync(dest).filter(f=>/^hrc-[\dTZ.-]+\.hrcdb\.json$/.test(f)).sort();
   for(const old of manifests.slice(0,-keep)){const p=join(dest,old),m=JSON.parse(readFileSync(p));if(m.format==='HRC-DATABASE-ARCHIVE-v1'&&m.validation==='full-archive-decoded-without-database-writes'&&m.file===old.slice(0,-5)){unlinkSync(p.slice(0,-5));unlinkSync(p);}}
@@ -96,8 +108,20 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
    const next=new Date(process.argv[3]);if(!Number.isFinite(next.getTime())||next.getTime()<=Date.now())throw new Error('Valid future Windows NextRunTime required');
    let status={};try{status=JSON.parse(readFileSync(statusFile));}catch{}
    atomicWrite(statusFile,JSON.stringify({...status,nextPlanned:next.toISOString(),scheduleObservedAt:new Date().toISOString()}));
+  }else if(command==='mirror-status'){
+   /* يفحص أهداف Drive/USB بلا نسخ — يعرض ما هو موصول الآن.
+      مفيد لصاحب العمل: يشغّله قبل أن يغادر للتأكد أن USB موصول. */
+   const targets=Array.isArray(cfg.mirrorTargets)?cfg.mirrorTargets:[];
+   if(!targets.length){console.log('لا أهداف خارجية مضبوطة. أضف mirrorTargets في backup-config.json');}
+   else{for(const t of targets){
+     const dir=typeof t==='string'?t:t.path,name=t.name||dir;
+     const available=targetAvailable(dir);
+     let files=0,latest=null;
+     if(available){try{const list=readdirSync(resolve(dir)).filter(f=>/^hrc-[\dTZ.-]+\.hrcdb$/.test(f)).sort();files=list.length;latest=list.at(-1)||null;}catch{}}
+     console.log((available?'✓ موصول  ':'✗ مفصول  ')+name+'  →  '+dir+(available?'  ('+files+' نسخة'+(latest?', الأحدث '+latest:'')+')':''));
+   }}
   }else if(command==='verify'){console.log(JSON.stringify(await verify(process.argv[3],cfg)));}
   else if(command==='restore-drill'){const result=await restoreDrill(process.argv[3],cfg,process.argv[4]);atomicWrite(join(home,'last-restore-drill.json'),JSON.stringify(result));console.log('Disposable local database restore completed. Production was not targeted.');}
-  else throw new Error('Commands: keygen | backup | verify <archive> | restore-drill <archive> ISOLATED-ONLY');
+  else throw new Error('Commands: keygen | backup | mirror-status | verify <archive> | restore-drill <archive> ISOLATED-ONLY');
  }catch(e){console.error(e.message);process.exitCode=1;}
 }
