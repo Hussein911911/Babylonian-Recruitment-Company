@@ -290,6 +290,19 @@
   });
   var time=box.querySelector('#recovery-sched-time');
   if(time&&s&&s.time)time.value=s.time;
+  /* النمط (2026-11-14): interval = كل عدد ساعات · days = أيام محدّدة */
+  var mode=(s&&MODES.indexOf(s.mode)>=0)?s.mode:'days';
+  var rb=box.querySelector('#recovery-mode-'+mode);
+  if(rb)rb.checked=true;
+  if(mode==='interval'){
+    var hoursSel=box.querySelector('#recovery-sched-hours');
+    if(hoursSel&&s&&s.hours)hoursSel.value=String(s.hours);
+  }
+  if(mode==='every_days'){
+    var nSel=box.querySelector('#recovery-sched-days-n');
+    if(nSel&&s&&s.hours)nSel.value=String(s.hours);
+  }
+  paintMode(mode);
   var on=!!(s&&s.enabled);
   var badge=box.querySelector('[data-recovery-sched-badge]');
   if(badge){badge.textContent=on?'مُفعّلة':'موقوفة';badge.classList.toggle('is-off',!on);}
@@ -300,8 +313,58 @@
    else note.textContent='التالية: '+(s.nextRunText||'')+(s.lastRunText?' · آخر نسخة: '+s.lastRunText:'');
   }
  }
+ /* إظهار/إخفاء الحقول حسب النمط المختار — لا نُخفي عنصراً عن قارئ الشاشة
+    بلا سبب: days يخصّ «أيام محدّدة» فقط، hours يخصّ «كل عدد ساعات» فقط. */
+ function paintMode(mode){
+  /* كل نمط يُظهر حقوله فقط — ونطفي القراءة عن الحقول المخفيّة كي لا يقرأها
+     قارئ الشاشة ولا يجمعها الكود بالخطأ. */
+  var show={interval:mode==='interval',every_days:mode==='every_days',days:mode==='days'};
+  var iv=box.querySelector('[data-recovery-interval]');
+  var ed=box.querySelector('[data-recovery-everydays]');
+  var dd=box.querySelector('[data-recovery-days]');
+  if(iv)iv.hidden=!show.interval;
+  if(ed)ed.hidden=!show.every_days;
+  if(dd)dd.hidden=!show.days;
+  /* «كل يوم» و«أيام محدّدة» و«كل N يوم» تحتاج كلّها خانة الساعة */
+  var note=box.querySelector('[data-recovery-sched-note]');
+  if(note)note.classList.remove('is-error');
+ }
+ var MODES=['interval','daily','every_days','days'];
+ function readScheduleMode(){
+  var r=box.querySelector('[data-recovery-mode] input:checked');
+  return r&&MODES.indexOf(r.value)>=0?r.value:'days';
+ }
  function readScheduleDays(){
   return [].slice.call(box.querySelectorAll('[data-recovery-days] input:checked')).map(function(i){return Number(i.value);});
+ }
+ /* الحساب التالي — للنمط الدوري.
+    القاعدة في SQL تُنتج `utc_h/N` أي «ابدأ من utc_h ثم كل N ساعة»، إذن أول
+    تشغيل هو الساعة المختارة نفسها (بتوقيت بغداد) ثم تتكرر كل N.
+    نُظهر التاريخ مع الساعة للمدير ليتأكد بنفسه. */
+ /* موعد التشغيل القادم بوقت بغداد. للأنماط الثلاثة (interval/daily/every_days)
+    الموعد هو «الساعة المختارة، اليوم أو غداً» — لأن الكرون يفحص عندها.
+    ⚠️ في نمط «كل N يوم» هذه لحظة **الفحص** لا لحظة النسخة: النسخة تُؤخذ فقط
+    إن مضى N يوم. نقولها للمدير صراحةً بدل إيهامه بموعد نسخة. */
+ function nextRunText2(time){
+  var parts=String(time||'23:00').split(':'),hh=Number(parts[0])||0,mm=Number(parts[1])||0;
+  var now=new Date();
+  var start=new Date(now.getFullYear(),now.getMonth(),now.getDate(),hh,mm,0,0);
+  if(start.getTime()<=now.getTime())start=new Date(start.getTime()+86400000);
+  return new Intl.DateTimeFormat('ar-IQ',{weekday:'long',day:'numeric',month:'long',
+    hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Baghdad'}).format(start);
+ }
+ function nextRunIntervalText(hours,time,daysN){
+  if(daysN&&daysN>1)return 'الفحص '+nextRunText2(time)+' — والنسخة كل '+daysN+' يوم';
+  return nextRunText2(time);
+ }
+ /* الموعد القادم لكل نمط — مكان واحد كي لا تتناقض النصوص بين الأزرار */
+ function computeNext(s){
+  if(!s)return '';
+  var mode=s.mode,hrs=Number(s.hours)||0;
+  if(mode==='interval')return nextRunIntervalText(hrs||24,s.time);
+  if(mode==='daily')return nextRunText2(s.time);
+  if(mode==='every_days')return nextRunIntervalText(0,s.time,hrs||1);
+  return nextRunText((s.days||[]).map(Number),s.time);
  }
  function nextRunText(days,time){
   if(!days.length)return '';
@@ -320,7 +383,7 @@
   if(!box)return;
   try{
    var s=await Store.recoveryScheduleGet();
-   s.nextRunText=nextRunText((s.days||[]).map(Number),s.time);
+   s.nextRunText=computeNext(s);
    s.lastRunText=s.lastRun?Store.fmtDateTime(s.lastRun):'';
    paintSchedule(s);
   }catch(e){
@@ -333,14 +396,24 @@
  async function saveSchedule(off){
   var note=box.querySelector('[data-recovery-sched-note]');
   var btn=box.querySelector('#recovery-sched-save');
+  var mode=readScheduleMode();
   var days=off?[]:readScheduleDays();
   var time=(box.querySelector('#recovery-sched-time')||{}).value||'23:00';
-  if(!off&&!days.length){if(note){note.textContent='اختر يوماً واحداً على الأقل، أو اضغط «إيقاف التلقائي».';note.classList.add('is-error');}return;}
+  var hours=0;
+  if(!off){
+    if(mode==='interval')hours=Number((box.querySelector('#recovery-sched-hours')||{}).value)||4;
+    else if(mode==='every_days')hours=Number((box.querySelector('#recovery-sched-days-n')||{}).value)||7;
+    else if(mode==='daily')hours=1;
+  }
+  if(!off&&mode==='days'&&!days.length){if(note){note.textContent='اختر يوماً واحداً على الأقل، أو اضغط «إيقاف التلقائي».';note.classList.add('is-error');}return;}
+  if(!off&&mode==='interval'&&!hours){if(note){note.textContent='اختر عدد الساعات.';note.classList.add('is-error');}return;}
+  if(!off&&mode==='every_days'&&!hours){if(note){note.textContent='اختر عدد الأيام.';note.classList.add('is-error');}return;}
   if(note){note.classList.remove('is-error');note.textContent='جارٍ الحفظ…';}
   if(btn)btn.disabled=true;
   try{
-   var s=await Store.recoveryScheduleSet(days,time);
-   s.nextRunText=nextRunText((s.days||[]).map(Number),s.time);
+   var s=off?await Store.recoveryScheduleOff()
+             :await Store.recoveryScheduleSet({mode:mode,hours:hours,days:days,time:time});
+   s.nextRunText=computeNext(s);
    s.lastRunText=s.lastRun?Store.fmtDateTime(s.lastRun):'';
    paintSchedule(s);
    UI.toast('ok',off?'أُوقفت الجدولة':'حُفظت الجدولة',off?'لا نسخة تلقائية حتى تعيد التفعيل.':'تسري من اللحظة داخل القاعدة.');
@@ -354,15 +427,38 @@
   var target=document.getElementById('recovery-tools');if(!target)return;
   if(box!==target||!target.dataset.recoveryReady){box=target;target.dataset.recoveryReady='yes';
    box.className='recovery-console';
-   box.innerHTML='<header class="recovery-head"><div><span class="recovery-eyebrow">حماية بيانات الشركة</span><h3>النسخ الاحتياطي والاسترجاع</h3><p>احفظ نسخة، وارجع لها إذا انحذفت بيانات الموقع بالخطأ.</p></div><button type="button" class="btn btn-gold" id="recovery-create">إنشاء نسخة الآن</button></header><div class="recovery-strip"><span>نسخ مشفرة من القاعدة الفعلية</span><span>استرجاع بصلاحية المدير فقط</span></div><p data-recovery-status role="status">جارٍ الاتصال بخدمة النسخ…</p><section class="recovery-schedule" aria-labelledby="recovery-sched-title"><div class="recovery-schedule-head"><div><h4 id="recovery-sched-title">جدولة النسخ التلقائي</h4><p>يحددها المدير: اختر الأيام والساعة (بتوقيت بغداد)، وتُنفَّذ داخل القاعدة نفسها حتى لو كانت اللوحة مغلقة.</p></div><span class="recovery-sched-badge" data-recovery-sched-badge>جارٍ القراءة…</span></div><div class="recovery-days" data-recovery-days role="group" aria-label="أيام النسخ التلقائي"></div><div class="recovery-sched-foot"><label class="field" for="recovery-sched-time">الساعة<input type="time" id="recovery-sched-time" value="23:00" step="300"></label><button type="button" class="btn btn-gold btn-sm" id="recovery-sched-save">حفظ الجدولة</button><button type="button" class="btn btn-outline btn-sm" id="recovery-sched-off">إيقاف التلقائي</button><span class="recovery-sched-note" data-recovery-sched-note role="status"></span></div></section><section class="portable-backup" aria-labelledby="portable-title"><h4 id="portable-title">نسخة محمولة تنزل على جهازك</h4><p>تُشفَّر في متصفحك بكلمة مرور تختارها أنت — المفتاح لا يُخزَّن في القاعدة. لذلك تبقى قابلة للاسترجاع حتى لو ضاع المشروع كله، بخلاف النسخ أعلاه المشفّرة بمفتاح داخل القاعدة نفسها. تختار مسار الحفظ من نافذة المتصفح.</p><div class="portable-row"><button type="button" class="btn btn-gold btn-sm" id="portable-download">تنزيل نسخة إلى الجهاز</button><a class="portable-help" href="restore.html" target="_blank" rel="noopener">أداة الاسترجاع المستقلّة ↗</a></div><p data-portable-status role="status"></p></section><div class="recovery-list-head"><h4>النسخ المحفوظة</h4><button type="button" class="btn btn-outline btn-sm" id="recovery-refresh">تحديث القائمة</button></div><div data-recovery-list></div><div class="recovery-scope">الحفظ داخل نفس مشروع القاعدة · Google Drive غير مربوط.<details><summary>نطاق النسخة وملاحظات الأمان</summary><p>استعادة لبيانات التشغيل وروابط الصور، وليست استرداداً لكود الموقع أو ملفات Storage أو حسابات الدخول. الجدولة أعلاه يضبطها المدير وتُنفَّذ داخل القاعدة، لكنها لا تحمي من حذف المشروع بالكامل. لقطات المتصفح القديمة ليست جزءاً من النظام الجديد ولم تُحذف.</p></details></div>';
+   box.innerHTML='<header class="recovery-head"><div><span class="recovery-eyebrow">حماية بيانات الشركة</span><h3>النسخ الاحتياطي والاسترجاع</h3><p>احفظ نسخة، وارجع لها إذا انحذفت بيانات الموقع بالخطأ.</p></div><button type="button" class="btn btn-gold" id="recovery-create">إنشاء نسخة الآن</button></header><div class="recovery-strip"><span>نسخ مشفرة من القاعدة الفعلية</span><span>استرجاع بصلاحية المدير فقط</span></div><p data-recovery-status role="status">جارٍ الاتصال بخدمة النسخ…</p><section class="recovery-schedule" aria-labelledby="recovery-sched-title"><div class="recovery-schedule-head"><div><h4 id="recovery-sched-title">جدولة النسخ التلقائي</h4><p>يحددها المدير: كل عدد ساعات أو أيام محدّدة — بتوقيت بغداد، وتُنفَّذ داخل القاعدة نفسها حتى لو كانت اللوحة مغلقة.</p></div><span class="recovery-sched-badge" data-recovery-sched-badge>جارٍ القراءة…</span></div><div class="recovery-mode" data-recovery-mode role="radiogroup" aria-label="نمط الجدولة"><label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="interval" id="recovery-mode-interval"><span>كل عدد ساعات</span></label><label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="daily" id="recovery-mode-daily"><span>كل يوم</span></label><label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="every_days" id="recovery-mode-every_days"><span>كل عدد أيام</span></label><label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="days" id="recovery-mode-days"><span>أيام محدّدة</span></label></div><div class="recovery-interval" data-recovery-interval hidden><label class="field" for="recovery-sched-hours">كل</label><select id="recovery-sched-hours" aria-describedby="recovery-hours-hint"><option value="1">ساعة</option><option value="2">ساعتين</option><option value="3">٣ ساعات</option><option value="4">٤ ساعات</option><option value="6">٦ ساعات</option><option value="8">٨ ساعات</option><option value="12">١٢ ساعة</option><option value="24">٢٤ ساعة</option></select><span id="recovery-hours-hint" class="recovery-hours-hint">تبدأ من الساعة أدناه بتوقيت بغداد، ثم تتكرر كل المدة المختارة.</span></div><div class="recovery-everydays" data-recovery-everydays hidden><label class="field" for="recovery-sched-days-n">كل</label><select id="recovery-sched-days-n" aria-describedby="recovery-days-n-hint"><option value="1">يوم</option><option value="2">يومين</option><option value="3">٣ أيام</option><option value="5">٥ أيام</option><option value="7">٧ أيام</option><option value="14">١٤ يوم</option><option value="30">٣٠ يوم</option><option value="60">٦٠ يوم</option><option value="90">٩٠ يوم</option></select><span id="recovery-days-n-hint" class="recovery-hours-hint">نفحص كل يوم في الساعة أدناه، ولا تُؤخذ النسخة إلا عند حلول الموعد.</span></div><div class="recovery-days" data-recovery-days role="group" aria-label="أيام النسخ التلقائي"></div><div class="recovery-sched-foot"><label class="field" for="recovery-sched-time">الساعة<input type="time" id="recovery-sched-time" value="23:00" step="300"></label><button type="button" class="btn btn-gold btn-sm" id="recovery-sched-save">حفظ الجدولة</button><button type="button" class="btn btn-outline btn-sm" id="recovery-sched-off">إيقاف التلقائي</button><span class="recovery-sched-note" data-recovery-sched-note role="status"></span></div></section><section class="portable-backup" aria-labelledby="portable-title"><h4 id="portable-title">نسخة محمولة تنزل على جهازك</h4><p>تُشفَّر في متصفحك بكلمة مرور تختارها أنت — المفتاح لا يُخزَّن في القاعدة. لذلك تبقى قابلة للاسترجاع حتى لو ضاع المشروع كله، بخلاف النسخ أعلاه المشفّرة بمفتاح داخل القاعدة نفسها. تختار مسار الحفظ من نافذة المتصفح.</p><div class="portable-row"><button type="button" class="btn btn-gold btn-sm" id="portable-download">تنزيل نسخة إلى الجهاز</button><a class="portable-help" href="restore.html" target="_blank" rel="noopener">أداة الاسترجاع المستقلّة ↗</a></div><p data-portable-status role="status"></p></section><div class="recovery-list-head"><h4>النسخ المحفوظة</h4><p class="recovery-keep-note" data-recovery-keep-note>تُحفظ آخر ٣ نسخ مجدولة تلقائياً؛ الأقدم يُحذف عند إنشاء نسخة جديدة. نسخ الأمان لا تُحذف أبداً.</p><button type="button" class="btn btn-outline btn-sm" id="recovery-refresh">تحديث القائمة</button></div><div data-recovery-list></div><div class="recovery-scope">الحفظ داخل نفس مشروع القاعدة · Google Drive غير مربوط.<details><summary>نطاق النسخة وملاحظات الأمان</summary><p>استعادة لبيانات التشغيل وروابط الصور، وليست استرداداً لكود الموقع أو ملفات Storage أو حسابات الدخول. الجدولة أعلاه يضبطها المدير وتُنفَّذ داخل القاعدة، لكنها لا تحمي من حذف المشروع بالكامل. لقطات المتصفح القديمة ليست جزءاً من النظام الجديد ولم تُحذف.</p></details></div>';
    box.querySelector('#recovery-create').onclick=create;box.querySelector('#recovery-refresh').onclick=refresh;
    box.querySelector('#recovery-sched-save').onclick=function(){saveSchedule(false);};
    box.querySelector('#recovery-sched-off').onclick=function(){saveSchedule(true);};
    var pd=box.querySelector('#portable-download');if(pd)pd.onclick=portableDownload;
-   var t=box.querySelector('#recovery-sched-time');if(t)t.onchange=function(){
+   /* ربط النمط: التغيير يُظهر الحقول المناسبة فوراً بلا حفظ */
+   box.querySelectorAll('[data-recovery-mode] input').forEach(function(r){
+     r.onchange=function(){paintMode(readScheduleMode());refreshNext();};
+   });
+   var t=box.querySelector('#recovery-sched-time');
+   /* كل مغيّر يُعيد حساب «التالية» فوراً — بلا حفظ */
+   function refreshNext(){
      var note=box.querySelector('[data-recovery-sched-note]');
-     if(note){note.classList.remove('is-error');note.textContent='التالية: '+nextRunText(readScheduleDays(),t.value);}
-   };
+     if(!note)return;
+     note.classList.remove('is-error');
+     var m=readScheduleMode(),tv=t?t.value:'23:00';
+     if(m==='interval'){
+       var h=Number((box.querySelector('#recovery-sched-hours')||{}).value)||4;
+       note.textContent='التالية: '+nextRunIntervalText(h,tv);
+     }else if(m==='every_days'){
+       var n=Number((box.querySelector('#recovery-sched-days-n')||{}).value)||7;
+       note.textContent='التالية: '+nextRunIntervalText(0,tv,n);
+     }else if(m==='daily'){
+       note.textContent='التالية: '+nextRunText2(tv);
+     }else{
+       note.textContent='التالية: '+nextRunText(readScheduleDays(),tv);
+     }
+   }
+   var hs=box.querySelector('#recovery-sched-hours');
+   if(hs)hs.onchange=refreshNext;
+   var dn=box.querySelector('#recovery-sched-days-n');
+   if(dn)dn.onchange=refreshNext;
    paintSchedule(null);
    loaded=false;
   }

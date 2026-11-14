@@ -29,7 +29,10 @@ try{
  alter table brc.job_attempts add column staff_id uuid references brc.staff(id);
  alter table brc.jobs add foreign key(reserved_by) references brc.applicants(serial);
  alter table brc.job_attempts add primary key(id),add foreign key(serial) references brc.applicants(serial) on delete cascade,add foreign key(job_id) references brc.jobs(id) on delete set null;
- alter table brc.settings add column updated_by uuid references brc.staff(id);
+ alter table brc.settings add column updated_by uuid references brc.staff(id),add column updated_at timestamptz default now();
+ /* المخطط الحقيقي فيه primary key على key — النموذج المصغّر لم يكن، فأُضيف
+    لأن recovery_run_scheduled يسجّل وقت آخر نسخة بـON CONFLICT (key). */
+ alter table brc.settings add primary key(key);
  insert into brc.applicants(serial,status,full_name,phone) values('CARD','active','عميل وهمي','07700000000');
  insert into brc.issued_serials values('CARD');
  insert into brc.jobs(code,title) values('J-1','وظيفة أولى'),('J-2','وظيفة ثانية');
@@ -102,21 +105,61 @@ try{
     من المصدر docs/schema.sql نفسه حتى يُفحص ما سيُنشر فعلاً. */
  const scheduledSrc=(read('docs/schema.sql').match(/create or replace function brc\.recovery_run_scheduled\(\)[\s\S]*?\nend \$\$;/)||[''])[0];
  check('تعريف recovery_run_scheduled موجود في المصدر',scheduledSrc.length>100);
- await db.exec('create role service_role;grant usage on schema brc to service_role');await db.exec(scheduledSrc);await db.exec(scheduledSrc);
+ /* 2026-11-14: النسخة المجدولة صارت تستدعي brc.recovery_prune() لإبقاء آخر N
+    نسخة بدل حذف كل ما قبلها. نُنشئ دالتَي التقليم من المصدر نفسه (لا نسخة
+    يدوية هنا) حتى يُفحص ما سيُنشر فعلاً. */
+ const keepSrc=(read('docs/schema.sql').match(/create or replace function brc\.recovery_retention_keep\(\)[\s\S]*?\n\$\$;/)||[''])[0];
+ const pruneSrc=(read('docs/schema.sql').match(/create or replace function brc\.recovery_prune\(p_keep int\)[\s\S]*?\nend \$\$;/)||[''])[0];
+ const pruneNoArgSrc=(read('docs/schema.sql').match(/create or replace function brc\.recovery_prune\(\) returns integer[\s\S]*?\$\$;/)||[''])[0];
+ check('دالتا التقليم موجودتان في المصدر',keepSrc.length>50&&pruneSrc.length>100&&pruneNoArgSrc.length>50);
+ await db.exec('create role service_role;grant usage on schema brc to service_role');
+ /* recovery_run_scheduled تستدعي recovery_due_now («كل N يوم») — يجب تعريفها قبله */
+ const dueSrc=(read('docs/schema.sql').match(/create or replace function brc\.recovery_due_now\(\)[\s\S]*?\nend \$\$;/)||[''])[0];
+ check('تعريف recovery_due_now موجود في المصدر',dueSrc.length>300);
+ await db.exec(dueSrc);
+ await db.exec(keepSrc);await db.exec(pruneSrc);await db.exec(pruneNoArgSrc);
+ await db.exec(scheduledSrc);await db.exec(scheduledSrc);
  await db.exec('revoke all on function brc.recovery_run_scheduled() from public,anon,authenticated,service_role');
  const weeklyCall=async()=>(await db.query('select brc.recovery_run_scheduled() id')).rows[0].id;
  before=await fingerprint();let weeklyId=await weeklyCall();
- check('scheduled copy authenticates and retains only latest snapshot',await count('recovery_copies')===1&&(await db.query('select brc.recovery_read($1) p',[weeklyId])).rows[0].p.format===1&&await fingerprint()===before);
+ /* 2026-11-14: الاحتفاظ صار آخر ٣ نسخ (قرار صاحب العمل) بدل واحدة. */
+ /* 2026-11-14: الاحتفاظ صار آخر ٣ **نسخ مجدولة** (safety=false)، ونسخ الأمان
+    (safety=true) محميّة من التقليم. فالعدّ الكلي ليس ١ — نتحقق من الصحة والحدّ. */
+ {const rd=(await db.query('select brc.recovery_read($1) p',[weeklyId])).rows[0].p;
+  const fp=await fingerprint();
+  const keep=Number((await db.query('select brc.recovery_retention_keep() k')).rows[0].k);
+  const sched=Number((await db.query("select count(*)::int n from brc.recovery_copies where safety=false")).rows[0].n);
+  const safetyKept=Number((await db.query("select count(*)::int n from brc.recovery_copies where safety=true")).rows[0].n);
+  check('النسخة المجدولة تُقرأ بنجاح (format=1) ولا تمسّ البيانات التشغيلية',
+    !!rd&&rd.format===1&&fp===before);
+  check('عدد النسخ المجدولة لا يتجاوز حدّ الاحتفاظ',sched<=keep,'مجدولة='+sched+' حدّ='+keep);
+  check('نسخ الأمان محميّة من التقليم',safetyKept>0,'أمان='+safetyKept);}
  for(const role of ['anon','authenticated','service_role']) {await db.exec('set role '+role);await assert.rejects(weeklyCall);await db.exec('reset role');check('scheduled private runner denies '+role,true);}
  await db.exec("create function brc.fixture_backup_failure() returns trigger language plpgsql as $$begin raise exception 'synthetic failure';end$$; create trigger fixture_backup_failure before insert on brc.recovery_copies for each row execute function brc.fixture_backup_failure()");
- await assert.rejects(weeklyCall);check('failed scheduled insertion retains the prior copy and business state',await count('recovery_copies')===1&&(await db.query('select id from brc.recovery_copies')).rows[0].id===weeklyId&&await fingerprint()===before);
+ /* عدد النسخ المجدولة قبل الفشل — الفشل يجب ألّا يغيّره */
+ {const beforeN=Number((await db.query("select count(*)::int n from brc.recovery_copies where safety=false")).rows[0].n);
+  await assert.rejects(weeklyCall);
+  check('failed scheduled insertion retains the prior copy and business state',
+    await Number((await db.query("select count(*)::int n from brc.recovery_copies where safety=false")).rows[0].n)===beforeN
+    &&await fingerprint()===before,'قبل='+beforeN);}
  await db.exec('drop trigger fixture_backup_failure on brc.recovery_copies');
  await db.exec("create function brc.fixture_backup_corrupt() returns trigger language plpgsql as $$begin NEW.ciphertext:=decode('000102','hex');return NEW;end$$;create trigger fixture_backup_corrupt before insert on brc.recovery_copies for each row execute function brc.fixture_backup_corrupt()");
- await assert.rejects(weeklyCall);check('failed new-copy authentication rolls back insertion and retains prior copy',await count('recovery_copies')===1&&(await db.query('select id from brc.recovery_copies')).rows[0].id===weeklyId);
+ {const bN=Number((await db.query("select count(*)::int n from brc.recovery_copies where safety=false")).rows[0].n);
+  await assert.rejects(weeklyCall);
+  check('failed new-copy authentication rolls back insertion and retains prior copy',
+    Number((await db.query("select count(*)::int n from brc.recovery_copies where safety=false")).rows[0].n)===bN,'قبل='+bN);}
  await db.exec('drop trigger fixture_backup_corrupt on brc.recovery_copies');
  await db.exec("create trigger fixture_backup_failure before delete on brc.recovery_copies for each row execute function brc.fixture_backup_failure()");
- await assert.rejects(weeklyCall);check('failed old-copy prune rolls back entire scheduled replacement',await count('recovery_copies')===1&&(await db.query('select id from brc.recovery_copies')).rows[0].id===weeklyId);
+ {const bN=Number((await db.query("select count(*)::int n from brc.recovery_copies where safety=false")).rows[0].n);
+  const bIds=(await db.query("select id from brc.recovery_copies where safety=false order by id")).rows.map(r=>r.id).join(',');
+  await assert.rejects(weeklyCall);
+  const aIds=(await db.query("select id from brc.recovery_copies where safety=false order by id")).rows.map(r=>r.id).join(',');
+  check('failed old-copy prune rolls back entire scheduled replacement',aIds===bIds && Number((await db.query("select count(*)::int n from brc.recovery_copies where safety=false")).rows[0].n)===bN);}
  await db.exec('drop trigger fixture_backup_failure on brc.recovery_copies');
- const nextWeekly=await weeklyCall();check('next scheduled success replaces last copy atomically',await count('recovery_copies')===1&&nextWeekly!==weeklyId&&await fingerprint()===before);
+ const nextWeekly=await weeklyCall();/* النسخة التالية تُضاف ما دام العدد دون الحدّ — ولا تتجاوزه أبداً */
+ {const n=Number((await db.query("select count(*)::int n from brc.recovery_copies where safety=false")).rows[0].n);
+  const keep=Number((await db.query('select brc.recovery_retention_keep() k')).rows[0].k);
+  check('next scheduled success appends and stays within retention',
+    n<=keep&&nextWeekly!==weeklyId&&await fingerprint()===before,'مجدولة='+n+' حدّ='+keep);}
  console.log(`Managed recovery SQL: ${n} checks passed. No production restore executed.`);
 }finally{await db.close();}

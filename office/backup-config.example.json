@@ -7,5 +7,16 @@
   "recipientPrivateKey": "E:/HRC-Recovery/backup.private.pem",
   "privateKeyPasswordFile": "F:/HRC-Recovery/recovery-password.txt",
   "restoreUrl": "postgresql://DRILL_USER@127.0.0.1:5434/brc_restore_drill_20261019",
-  "keep": 1
+  "keep": 1,
+  "mirrorTargets": [
+    {
+      "name": "Google Drive",
+      "path": "C:/Users/YOU/Google Drive/HRC-Backups"
+    },
+    {
+      "name": "USB",
+      "path": "E:/HRC-Backups"
+    }
+  ],
+  "mirrorKeep": 3
 }

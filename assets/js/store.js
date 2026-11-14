@@ -2768,14 +2768,43 @@
     });
   }
 
-  function recoveryScheduleSet(days, time) {
+  /* جدولة النسخ — نمطان (2026-11-14):
+       { mode:'interval', hours:N }  كل N ساعة  (1..24)
+       { mode:'days', days:[0..6], time:'HH:MM' }  أيام محدّدة
+     التوقيع القديم recoveryScheduleSet(days, time) محفوظ للتوافق. */
+  function recoveryScheduleSet(opt) {
     if (!isAdmin() || !enforceAuth() || !cloud.client) return Promise.reject(new Error('يلزم دخول المدير الرسمي واتصال قاعدة الشركة'));
-    var list = (days || []).map(Number).filter(function (n) { return n >= 0 && n <= 6; });
-    return cloud.client.rpc('recovery_schedule_set', { p_days: list, p_time: String(time || '23:00') }).then(function (r) {
+    var o = (Array.isArray(opt) ? { mode: 'days', days: opt, time: arguments[1] } : (opt || {}));
+    var MODES = ['interval', 'daily', 'every_days', 'days'];
+    var mode = MODES.indexOf(o.mode) >= 0 ? o.mode : 'days';
+    var list = (o.days || []).map(Number).filter(function (n) { return n >= 0 && n <= 6; });
+    var hours = Number(o.hours) || 0;
+    if (mode === 'interval' && (hours < 1 || hours > 24)) return Promise.reject(new Error('عدد الساعات يجب أن يكون بين ١ و٢٤'));
+    if (mode === 'every_days' && (hours < 1 || hours > 365)) return Promise.reject(new Error('عدد الأيام يجب أن يكون بين ١ و٣٦٥'));
+    if (mode === 'days' && !list.length) return Promise.reject(new Error('اختر يوماً واحداً على الأقل'));
+    var time = String(o.time || '23:00');
+    return cloud.client.rpc('recovery_schedule_set', {
+      p_mode: mode, p_hours: mode === 'interval' ? hours : null,
+      p_days: mode === 'days' ? list : [], p_time: time
+    }).then(function (r) {
       if (r.error) throw new Error(r.error.message || 'تعذر حفظ الجدولة');
       if (!r.data || !r.data.ok) throw new Error((r.data && r.data.error) || 'تعذر حفظ الجدولة');
-      audit(list.length ? 'ضبط جدولة النسخ الاحتياطي' : 'إيقاف جدولة النسخ الاحتياطي', 'recovery', 'recovery_schedule',
-        list.length ? 'الأيام: ' + list.join(',') + ' — الساعة ' + time + ' (بتوقيت بغداد)' : 'أُوقفت الجدولة');
+      audit('ضبط جدولة النسخ الاحتياطي', 'recovery', 'recovery_schedule',
+        mode === 'interval' ? 'كل ' + hours + ' ساعة من الساعة ' + time + ' (بتوقيت بغداد)'
+        : mode === 'daily' ? 'كل يوم — الساعة ' + time + ' (بتوقيت بغداد)'
+        : mode === 'every_days' ? 'كل ' + hours + ' يوم — الساعة ' + time + ' (بتوقيت بغداد)'
+        : 'الأيام: ' + list.join(',') + ' — الساعة ' + time + ' (بتوقيت بغداد)');
+      return r.data;
+    });
+  }
+
+  /* إيقاف الجدولة — لا يُرسل أياماً ولا ساعات */
+  function recoveryScheduleOff() {
+    if (!isAdmin() || !enforceAuth() || !cloud.client) return Promise.reject(new Error('يلزم دخول المدير الرسمي واتصال قاعدة الشركة'));
+    return cloud.client.rpc('recovery_schedule_set', { p_mode: 'days', p_hours: null, p_days: [], p_time: '23:00' }).then(function (r) {
+      if (r.error) throw new Error(r.error.message || 'تعذر إيقاف الجدولة');
+      if (!r.data || !r.data.ok) throw new Error((r.data && r.data.error) || 'تعذر إيقاف الجدولة');
+      audit('إيقاف جدولة النسخ الاحتياطي', 'recovery', 'recovery_schedule', 'أُوقفت الجدولة');
       return r.data;
     });
   }
@@ -2856,7 +2885,7 @@
     deleteCloudAccount: deleteCloudAccount, setCloudUserPassword: setCloudUserPassword,
     probeServiceKey: probeServiceKey,
     staffAdmin: staffAdmin, recoveryRPC: recoveryRPC, recoveryExportFull: recoveryExportFull, uploadJobImage: uploadJobImage,
-    recoveryScheduleGet: recoveryScheduleGet, recoveryScheduleSet: recoveryScheduleSet,
+    recoveryScheduleGet: recoveryScheduleGet, recoveryScheduleSet: recoveryScheduleSet, recoveryScheduleOff: recoveryScheduleOff,
     cloudStatus: cloudStatus, onCloudStatus: onCloudStatus, pushCloud: pushCloud,
     issueNumberedCards:issueNumberedCards, pendingCardIssue:pendingCardIssue, serialWasIssued:serialWasIssued, cardReport:cardReport, searchCardHistory:searchCardHistory, reloadCloud: reloadFromCloud, verifyCloud: verifyCloud,
     cloudQueueLength: pendingQueueLength,
