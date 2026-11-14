@@ -5,18 +5,23 @@
  *  ⚠ لماذا هذا الملف؟
  *
  *  لأن الثغرة التي يمنعها **لم تكن خطأً في الكود**: كل سطر كان يعمل كما صُمّم.
- *  `lookup_card` تُرجع الاسم والهاتف كاملين، و`card_gate` فيها حدّ طلبات لكنها
- *  لم تُستدعَ، و`mask_name` مكتوبة لكن شرط تفعيلها لا يتحقق. فحص نصّي لا يرى
- *  هذا إطلاقاً — لا بدّ من تنفيذ الهجوم.
+ *  `card_gate` فيها حدّ طلبات لكنها لم تُستدعَ إطلاقاً. فحص نصّي لا يرى هذا —
+ *  لا بدّ من تنفيذ الهجوم.
  *
  *  هذا الملف ينفّذ الهجوم الحقيقي بدور `anon` وبلا جلسة:
- *      أ) يقرأ بطاقة واحدة بلا رمز → يجب ألّا يرى الاسم والهاتف كاملين.
- *      ب) يعدّد 40 بطاقة متتالية → يجب أن يُحجب قبل استنفادها.
- *      ج) يحاول ضخّ بصمة في السجل التدقيقي → يجب أن تُرفض.
+ *      أ) يعدّد البطاقات → يجب أن يُحجب قبل استنفاد النطاق.
+ *      ب) يحاول ضخّ بصمة في السجل التدقيقي → يجب أن تُرفض.
  *
- *  ويُثبت أيضاً أن **صاحب البطاقة الحقيقي لم يخسر شيئاً**:
- *      د) بالرمز الصحيح → الاسم والهاتف كاملان كما قبل الترحيل.
- *      هـ) بطاقة فارغة → تُعرض لصاحبها بلا تغيير.
+ *  ويُثبت أن **دورة العمل كما يريدها صاحب العمل سليمة**:
+ *      ج) البطاقة المفعّلة → بيانات صاحبها كاملة (لا تقنين ولا إقفال).
+ *      د) بيانات صاحب العمل → معروضة للزبون ليتصل به.
+ *      هـ) بطاقة فارغة → تُعرض بلا بيانات (لا يوجد ما يُسرَّب).
+ *
+ *  ⚠️ سياسة التقنين أُلغيت 2026-11-13 بعد توضيح صاحب العمل لدورة العمل:
+ *     المكتب يُصدر بطاقات فارغة ويبيعها كاشاً، و`card_print_code` غير مستعمل
+ *     فيها (فارغ في 723/723 بطاقة). اشتراطه كان يُقنّع كل زبون عن نفسه ويقفل
+ *     حقوله بلا مقابل. ما يحمي فعلاً: من يقدّم ببطاقة غيره يكتب اسمه فوقها
+ *     (apply_with_card)، فيقارن صاحب العمل بالهوية الوطنية ويكشفه.
  *
  *  التشغيل:  node tests/card-enumeration.mjs   أو   npm run test:enumeration
  *  لا يحتاج قاعدة Supabase ولا شبكة ولا أسراراً.
@@ -88,56 +93,54 @@ if (ready) {
   /* ── بيانات واقعية: 40 بطاقة برقم متسلسل (كما في الإنتاج) ─────────────── */
   for (let i = 1; i <= 40; i++) {
     await db.query(
-      `insert into brc.applicants (serial, full_name, phone, status, fee_amount, fee_paid, card_print_code)
-       values ($1, $2, $3, 'active', 10000, true, $4)`,
+      `insert into brc.applicants (serial, full_name, phone, address, dob, gender, status, fee_amount, fee_paid, card_print_code)
+       values ($1, $2, $3, $5, '1995-04-12', 'ذكر', 'active', 10000, true, $4)`,
       [`HRC-BC-9000${String(i).padStart(2, '0')}`, FULL_NAME, FULL_PHONE,
-       i === 1 ? 'ABCD1234EFGH5678' : null]
+       i === 1 ? 'ABCD1234EFGH5678' : null, 'بابل — الحلة — المركز — قرب الجامعة']
     );
   }
   await db.query(`insert into brc.applicants (serial, full_name, phone, status, fee_amount, fee_paid)
     values ('HRC-BC-999999', '', '', 'blank', 10000, true)`);
 
-  /* ═══ 1) البطاقة الواحدة بلا رمز ═══════════════════════════════════════ */
-  step(1, 'بطاقة واحدة بلا رمز — الزائر لا يرى اسم الباحث ولا هاتفه');
+  /* ═══ 1) البطاقة المفعّلة تُعرض لصاحبها كاملة ═══════════════════════════
+     دورة العمل (كما وصفها صاحب العمل): المكتب يُصدر بطاقات فارغة ويبيعها
+     كاشاً. من يمسك الباركود هو من دفع ثمنه، وبياناته كتبها بنفسه. و
+     card_print_code غير مستعمل في هذه الدورة (فارغ في 723/723 بطاقة)،
+     فاشتراطه كان يُقنّع كل زبون عن نفسه ويقفل حقوله بلا مقابل.
+     ما يحمي فعلاً: من يقدّم ببطاقة غيره يكتب اسمه فوقها (apply_with_card)،
+     وصاحب العمل يقارن بالهوية الوطنية. والتعداد يوقفه الحارس (القسم ٢). */
+  step(1, 'البطاقة المفعّلة — بيانات صاحبها كاملة (بياناته ووظائفه)');
 
   const one = await asAnon(`select brc.lookup_card($1::text, null::text) d`, ['HRC-BC-900002']);
-  const j1 = JSON.stringify(one.d || {});
   check('lookup_card تعمل وتُرجع البطاقة', one.ok && one.d?.ok === true, one.e || '');
-  check('لا اسم كامل', !j1.includes('عبد الصاحب'), j1.slice(0, 120));
-  check('لا هاتف كامل', !j1.includes(FULL_PHONE), j1.slice(0, 120));
-  check('الاسم مقنّع بصيغة «الأول + حرف الأب»', one.d?.fullName === 'غيث ح.', one.d?.fullName);
-  check('الهاتف مقنّع (أول ٤ وآخر رقمين)', one.d?.phone === '0780••••48', one.d?.phone);
-  check('العلم masked=true و verified=false', one.d?.masked === true && one.d?.verified === false);
+  check('الاسم الكامل يُعرض (لا تقنين)', one.d?.fullName === FULL_NAME, one.d?.fullName);
+  check('الهاتف الكامل يُعرض', one.d?.phone === FULL_PHONE, one.d?.phone);
+  check('masked=false و verified=true', one.d?.masked === false && one.d?.verified === true,
+    'masked=' + one.d?.masked + ' verified=' + one.d?.verified);
 
   const svc = await asAnon(`select brc.self_service_card($1::text, null::text) d`, ['HRC-BC-900003']);
-  const j2 = JSON.stringify(svc.d || {});
-  check('self_service_card لا تسرّب الاسم أو الهاتف (في أي حقل)', !j2.includes('عبد الصاحب') && !j2.includes(FULL_PHONE), j2.slice(0, 140));
-  /* ⚠️ الملف **لا** يُفرَّغ: apply.html يفتح الحقول عند profileLocked=false
-     فيعبّئها المستخدم باسمه فوق بيانات بطاقة غيره. المطلوب إقفالها. */
-  check('self_service_card تقفل الملف بلا رمز (profileLocked=true)', svc.d?.card?.profileLocked === true,
+  check('self_service_card تُرجع الاسم الكامل', svc.d?.card?.profile?.fullName === FULL_NAME,
+    String(svc.d?.card?.profile?.fullName));
+  check('الملف غير مقفل (الزبون يصحّح بياناته)', svc.d?.card?.profileLocked === false,
     String(svc.d?.card?.profileLocked));
-  check('الملف (card.profile) مقنّع هو الآخر', 
-    (svc.d?.card?.profile?.fullName ?? '') === 'غيث ح.' &&
-    (svc.d?.card?.profile?.phone ?? '') === '0780••••48',
-    JSON.stringify(svc.d?.card?.profile || {}).slice(0, 120));
-  check('العنوان والميلاد محجوبان (بيانات تعرّف)', 
-    (svc.d?.card?.profile?.address ?? '') === '' && (svc.d?.card?.profile?.dob ?? null) === null,
+  check('masked=false في self_service_card', svc.d?.card?.masked === false, String(svc.d?.card?.masked));
+  check('العنوان والميلاد معروضان', (svc.d?.card?.profile?.address ?? '') !== '' && !!svc.d?.card?.profile?.dob,
     JSON.stringify(svc.d?.card?.profile || {}).slice(0, 120));
 
   /* ═══ 2) التعداد — الهجوم الحقيقي ═════════════════════════════════════ */
   step(2, 'تعداد 40 بطاقة متتالية — يُحجب قبل استنفادها');
 
-  let leaked = 0, masked = 0, blocked = 0;
-  for (let i = 10; i <= 40; i++) {
-    const r = await asAnon(`select brc.lookup_card($1::text, null::text) d`,
-      [`HRC-BC-9000${String(i).padStart(2, '0')}`]);
-    const j = JSON.stringify(r.d || {});
-    if (j.includes(FULL_PHONE)) leaked++;
-    else if (r.d?.ok === false) blocked++;
-    else masked++;
+  /* الأرقام العشوائية 100000–999999 في الإنتاج (لا متسلسلة)، فالتعداد يحتاج
+     ~777 ألف محاولة. الميزانية تخنقه عند 40 بطاقة مختلفة لكل مصدر/ساعة.
+     نحاكي 60 محاولة ونثبت أنه يتوقف قبل إتمامها. */
+  let blocked = 0, firstBlockAt = 0;
+  for (let i = 1; i <= 60; i++) {
+    const g = (await db.query(`select brc.card_lookup_guard($1::text, $2::text) d`,
+      ['HRC-BC-8' + String(10000 + i), 'attacker-fingerprint-2'])).rows[0].d;
+    if (g?.ok === false) { blocked++; if (!firstBlockAt) firstBlockAt = i; }
   }
-  check('صفر تسريب في 40 محاولة تعداد', leaked === 0, leaked + '/40 تسرّبت');
-  check('كل المحاولات إمّا مقنّعة أو محجوبة — لا شيء بينهما', masked + blocked === 31, masked + ' مقنّعة · ' + blocked + ' محجوبة');
+  check('التعداد يتوقف: يُحجب بعد 40 بطاقة من مصدر واحد', blocked === 20, blocked + ' محجوبة من 60');
+  check('الحجب يبدأ عند البطاقة 41 لا قبلها', firstBlockAt === 41, 'أول حجب عند ' + firstBlockAt);
 
   /* ⚠️ في Supabase يصل المصدر من ترويسات الطلب (brc.card_request_source).
      PGlite لا يوفّر تلك الترويسات، فنختبر الحارس بمصدر صريح كما يفعل الغلاف. */
@@ -155,16 +158,27 @@ if (ready) {
   const rawKeys = await db.query(`select count(*)::int n from brc.card_lookup_budget where budget_key !~ '^(card|source):[0-9a-f]{32}$'`);
   check('كل مفتاح بصمة md5 لا قيمة خام', rawKeys.rows[0].n === 0, rawKeys.rows[0].n + ' مفتاح غير مطابق');
 
-  /* ═══ 3) صاحب البطاقة لم يخسر شيئاً ════════════════════════════════════ */
-  step(3, 'صاحب البطاقة بالرمز الصحيح — بياناته كاملة كما قبل الترحيل');
+  /* ═══ 3) بيانات صاحب العمل متاحة بعد التقديم ═══════════════════════════
+     هذا هو جوهر دورة العمل: الزبون يمسح الباركود ثانياً ليرى وظائفه وبيانات
+     صاحب العمل لكل وظيفة كي يتصل به. */
+  step(3, 'بيانات صاحب العمل متاحة للزبون بعد التقديم');
 
-  const owner = await asAnon(`select brc.lookup_card($1::text, $2::text) d`, ['HRC-BC-900001', 'ABCD1234EFGH5678']);
-  check('الرمز الصحيح يُرجع الاسم الكامل', owner.d?.fullName === FULL_NAME, owner.d?.fullName);
-  check('الرمز الصحيح يُرجع الهاتف الكامل', owner.d?.phone === FULL_PHONE, owner.d?.phone);
-  check('verified=true و masked=false', owner.d?.verified === true && owner.d?.masked === false);
+  /* جهّز تقديماً مسجلاً ببيانات صاحب عمل كما في الإنتاج */
+  await db.query(`insert into brc.jobs (code, title, governorate, shift, employer_name, employer_phone, employer_address, salary_min, salary_max)
+    values ('HRC-9101','فني كهرباء','بابل','صباحي','شركة الفرات','07701234567','الحلة — مركز المدينة',600000,900000)`);
+  /* job_id يلزم: customer_application_details تقرأ job_snapshot أو job_id.
+     المشغّل zz_capture_application_job_snapshot يملأ اللقطة تلقائياً. */
+  await db.query(`update brc.job_attempts t
+      set job_id = j.id, job_code='HRC-9101',
+          slot_status='hiring', selected_at=now()
+     from brc.jobs j
+    where j.code='HRC-9101' and t.serial='HRC-BC-900001' and t.attempt_no=1`);
 
-  const wrong = await asAnon(`select brc.lookup_card($1::text, $2::text) d`, ['HRC-BC-900001', 'WRONGCODE123456']);
-  check('الرمز الخاطئ لا يكشف شيئاً', wrong.d?.verified === false && wrong.d?.phone === '0780••••48', wrong.d?.phone);
+  const det = await asAnon(`select brc.customer_application_details($1::text, $2::int) d`,
+    ['HRC-BC-900001', 1]);
+  check('customer_application_details تعمل', det.d?.ok === true, JSON.stringify(det.d).slice(0, 120));
+  check('بيانات صاحب العمل معروضة', !!(det.d?.attempt?.employerName || det.d?.attempt?.employerPhone),
+    JSON.stringify(det.d?.attempt || {}).slice(0, 120));
 
   /* ═══ 4) البطاقة الفارغة ══════════════════════════════════════════════ */
   step(4, 'البطاقة الفارغة — تُعرض لكن بلا بيانات (لا يوجد ما يُسرَّب)');
@@ -189,7 +203,7 @@ if (ready) {
     ok('التطبيق الثاني نجح');
   } catch (e) { bad('التطبيق الثاني نجح', (e.message || '').slice(0, 120)); }
   const again = await asAnon(`select brc.lookup_card($1::text, null::text) d`, ['HRC-BC-900005']);
-  check('التقنين باقٍ بعد إعادة التطبيق', again.d?.phone === '0780••••48', again.d?.phone);
+  check('العرض الكامل باقٍ بعد إعادة التطبيق', again.d?.masked === false, String(again.d?.masked));
   check('التوقيع ما زال واحداً بعد إعادة التطبيق',
     (await db.query(`select count(*)::int n from pg_proc p join pg_namespace n on n.oid=p.pronamespace
        where n.nspname='brc' and p.proname='lookup_card'`)).rows[0].n === 1);
@@ -211,7 +225,7 @@ if (ready) {
 console.log('\n' + '═'.repeat(74));
 if (fail === 0) {
   console.log('  النتيجة: ✅ ' + pass + ' فحصاً ناجحاً | 0 فاشل');
-  console.log('  تعداد البطاقات مسدود · بيانات الباحثين مقنّنة · صاحب البطاقة لم يخسر شيئاً.');
+  console.log('  تعداد البطاقات مسدود بالميزانية · صاحب البطاقة يرى بياناته ووظائفه وبيانات صاحب العمل.');
 } else {
   console.log('  النتيجة: ❌ ' + pass + ' ناجح | ' + fail + ' فاشل');
   console.log('\n  المشاكل:');

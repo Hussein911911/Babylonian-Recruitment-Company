@@ -500,14 +500,6 @@ body{
 }
 .jobs-hint.picked{color:#F7ECC8;background:rgba(200,162,74,.08);border-style:solid;border-color:rgba(200,162,74,.4)}
 .jobs-hint .warn{color:#f0c060}
-/* بيانات مقنّعة: الخادم لا يرسل الاسم/العنوان كاملين لمن لا يملك رمز البطاقة
-   (إغلاق ثغرة تعداد 2026-11-13). التنبيه يطمئن الزبون أن بياناته محفوظة. */
-.masked-note{
-  font-size:8.5pt;line-height:1.7;color:rgba(249,246,239,.62);text-align:center;
-  padding:9px 12px;border-radius:10px;background:rgba(200,162,74,.07);
-  border:1px solid rgba(200,162,74,.28);margin-bottom:10px;
-}
-.masked-note b{color:#F7ECC8;font-weight:700}
 .jobs-hint b{color:#F7ECC8}
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -7405,26 +7397,6 @@ function loadData(){
     }
     if(cardData.profile.fullName)G.fillProfile(cardData.profile);
     if(c.profileLocked===true||(c.status&&c.status!=='blank')||(c.chances||[]).some(function(ch){return ch.slotStatus!=='empty'&&!!ch.jobCode;}))G.lockProfile(cardData.profile);
-
-    /* ═══ تنبيه المقنّع (2026-11-13) ═══
-       الخادم لم يعد يرسل الاسم والعنوان كاملين لمن لا يملك رمز البطاقة (كان
-       أي زائر يعدّد الأرقام المتتالية فيقرأ أسماء الباحثين وهواتفهم). الزبون
-       نفسه قد يقع في هذا: يمسح بطاقته فلا يرى اسمه كاملاً. بلا هذا التنبيه
-       يظن أن بياناته تلفت فيعيد كتابتها — وهذا أسوأ من الثغرة نفسها. */
-    (function(){
-      var old=$('masked-note'); if(old)old.parentNode.removeChild(old);
-      if(c.masked!==true)return;
-      var host=$('welcome-details-wrap')||$('card-zone')||$('step-card');
-      if(!host)return;
-      var note=document.createElement('p');
-      note.id='masked-note';
-      note.className='masked-note';
-      note.setAttribute('role','status');
-      note.innerHTML='بياناتك <b>محفوظة كاملة لدى الشركة</b> ولا حاجة لإعادة كتابتها. '
-        +'نعرض هنا جزءاً منها فقط حمايةً لبيانات الباحثين؛ موظّف الشركة يراها كاملة، '
-        +'ويمكنك مراجعتها في مقرّ الشركة.';
-      host.insertBefore(note, host.firstChild);
-    })();
 
     /* إذا البطاقة فيها تقديم سابق — نعّرف الوظائف المقدّم عليها */
     cardData.chances.forEach(function(ch){

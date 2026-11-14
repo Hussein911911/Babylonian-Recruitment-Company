@@ -32,16 +32,23 @@
 --   ١) حارس تعداد: ١٥ عرضاً/ساعة لكل بطاقة + ٤٠ بطاقة مختلفة/ساعة لكل مصدر.
 --      المصدر يُقرأ من ترويسات الطلب (PostgREST) ويُخزَّن **بصمة md5 فقط** —
 --      لا IP خام، ولا معرّف جهاز.
---   ٢) تقنين شخصي بلا رمز: «غيث ح.» و«0780••••48» بدل الاسم والهاتف الكاملين،
---      وإقفال الملف (profileLocked=true) كي لا يكتب زائر بياناته فوق بيانات
---      بطاقة غيره.
+--   ٢) **لا تقنين**. البطاقة المفعّلة تُعرض كاملة لصاحبها: بياناته ووظائفه
+--      وبيانات صاحب العمل لكل وظيفة كي يتصل به. البطاقة الفارغة تُعرض بلا
+--      بيانات أصلاً (لا شيء فيها).
+--      ⚠️ كان هنا تقنين «غيث ح.» وإقفال الحقول (profileLocked=true)، وقد أُلغي
+--      بعد توضيح صاحب العمل لدورة العمل: المكتب يُصدر بطاقات **فارغة** ويبيعها
+--      كاشاً، و`card_print_code` غير مستعمل فيها (فارغ في 723/723 بطاقة).
+--      فاشتراطه كان يُقنّع كل زبون عن نفسه ويقفل حقوله — فيعيد كتابة بياناته
+--      أو يظن أنها ضاعت، ولا يستطيع تصحيح رقم هاتفه.
+--      ما يحمي فعلاً: من يقدّم ببطاقة غيره يكتب **اسمه** فوقها
+--      (apply_with_card)، فيقارن صاحب العمل الاسم بالهوية الوطنية ويكشفه.
 --   ٣) حماية السجل التدقيقي من حفظ البصمة.
 --
 --  ═══ ما لا يفعله ═══
 --   لا DELETE · لا UPDATE على أي صف موجود · use_chance وapply_with_card
 --   وcustomer_application_details لم تُمسّ · الرموز القديمة صالحة كما هي.
 --
---  ⚠️ ولا نغيّر `v_ok := true` في docs/schema.sql للبطاقات بلا رمز: ذلك يُفرغ
+--  ⚠️ ولا نلمس `v_ok := true` في docs/schema.sql للبطاقات بلا رمز: ذلك يُفرغ
 --     card.profile في الاستمارة فيرى الزبون «غيث ح.» بدل اسمه فيكتب فوق
 --     بياناته — تخريب بيانات حقيقي. الضمانة هي الحارس، لا إفساد مسار العرض.
 --     (وقد قِيس هذا: جعلها false أسقط tests/card-identity.mjs فوراً.)
@@ -195,8 +202,7 @@ language plpgsql security definer
 set search_path = brc, public, pg_temp
 as $$
 declare
-  v_guard jsonb; v_body jsonb; v_ok boolean; v_stored text; v_code text;
-  v_name text; v_phone text;
+  v_guard jsonb; v_body jsonb; v_name text; v_phone text; v_stored text;
 begin
   v_guard := brc.card_lookup_guard(p_serial, null);
   if coalesce((v_guard->>'ok')::boolean, false) is not true then return v_guard; end if;
@@ -209,28 +215,29 @@ begin
 
   /* ⚠️ نقرأ الاسم والهاتف من الجدول، لا من ردّ الجسم القديم: ذاك الرد يطبّق
      mask_name مسبقاً («غ••••••») فيصير تقنينه تقنيناً لنصٍّ مقنّع. */
-  select upper(btrim(coalesce(card_print_code, ''))), full_name, phone
-    into v_stored, v_name, v_phone
+  select full_name, phone into v_name, v_phone
     from brc.applicants where serial = upper(btrim(coalesce(p_serial, '')));
-  v_stored := coalesce(v_stored, '');
-  v_code   := upper(btrim(coalesce(p_code, '')));
-  v_ok := (v_stored <> '') and (
-            v_stored = v_code
-            or replace(replace(v_stored, 'O', '0'), 'I', '1')
-             = replace(replace(v_code, 'O', '0'), 'I', '1'));
 
-  if v_ok then
-    /* صاحب البطاقة برمزها: بياناته كاملة كما كانت قبل هذا الترحيل */
-    v_body := jsonb_set(v_body, '{fullName}', to_jsonb(coalesce(v_name, '')),   true);
-    v_body := jsonb_set(v_body, '{phone}',    to_jsonb(coalesce(v_phone, '')),  true);
-    v_body := jsonb_set(v_body, '{masked}',   'false'::jsonb, true);
-    v_body := jsonb_set(v_body, '{verified}', 'true'::jsonb,  true);
-  else
-    v_body := jsonb_set(v_body, '{fullName}', to_jsonb(brc.card_public_name(v_name, false)),  true);
-    v_body := jsonb_set(v_body, '{phone}',    to_jsonb(brc.card_public_phone(v_phone, false)), true);
-    v_body := jsonb_set(v_body, '{masked}',   'true'::jsonb,  true);
-    v_body := jsonb_set(v_body, '{verified}', 'false'::jsonb, true);
-  end if;
+  /* ═══ سياسة العرض (2026-11-13، بعد توضيح صاحب العمل) ═══════════════════
+     دورة العمل الفعلية: المكتب يُصدر بطاقات **فارغة** ويبيعها كاشاً. البطاقة
+     الفارغة لا تحمل أي بيانات تعرّف، فلا شيء يُسرَّب منها. والمفعّلة بياناتها
+     كتبها صاحبها بنفسه، و`card_print_code` غير مستعمل في هذه الدورة (فارغ في
+     كل البطاقات) — فاشتراط رمز مطبوع كان يُقنّع كل زبون عن نفسه بلا مقابل.
+
+     ما يحمي البيانات فعلاً ليس الرمز، بل ترابط الدورة:
+       • من يقدّم ببطاقة غيره **يكتب اسمه فوقها** (apply_with_card)، فيقارن
+         صاحب العمل الاسم بالهوية الوطنية ويرفض ويكشف الأمر.
+       • التعداد (مسح أرقام متتالية) يوقفه `card_lookup_guard` أعلاه بالميزانية،
+         لا بالتقنين — فالميزانية تحمي الجميع بلا أن تمسّ أحداً.
+
+     لذلك: البطاقة المفعّلة تُعرض كاملة (بياناتها + وظائفها + بيانات صاحب العمل
+     لكل وظيفة، كي يتصل به). والبطاقة الفارغة تُعرض بلا بيانات أصلاً.
+     نُبقي `masked=false, verified=true` صراحةً كي لا تعتمد الواجهة على قيم
+     افتراضية. */
+  v_body := jsonb_set(v_body, '{fullName}', to_jsonb(coalesce(v_name, '')),   true);
+  v_body := jsonb_set(v_body, '{phone}',    to_jsonb(coalesce(v_phone, '')),  true);
+  v_body := jsonb_set(v_body, '{masked}',   'false'::jsonb, true);
+  v_body := jsonb_set(v_body, '{verified}', 'true'::jsonb,  true);
   return v_body;
 end $$;
 
@@ -257,7 +264,7 @@ language plpgsql security definer
 set search_path = brc, public, pg_temp
 as $$
 declare
-  v_guard jsonb; v_body jsonb; v_ok boolean; v_stored text; v_code text; v_code_ref text;
+  v_guard jsonb; v_body jsonb;
 begin
   v_guard := brc.card_lookup_guard(p_serial, null);
   if coalesce((v_guard->>'ok')::boolean, false) is not true then return v_guard; end if;
@@ -267,41 +274,13 @@ begin
     return v_body;
   end if;
 
-  select upper(btrim(coalesce(card_print_code, ''))) into v_stored
-    from brc.applicants where serial = upper(btrim(coalesce(p_serial, '')));
-  v_stored := coalesce(v_stored, '');
-  v_code   := upper(btrim(coalesce(p_code, '')));
-  /* لا رمز مطبوع ⇒ لا إثبات ⇒ لا بيانات تعرّف. البطاقة الفارغة لا تحمل
-     بيانات أصلاً، والبطاقة المستعملة ملفّها مقفل على الخادم (الهوية تُحفظ من
-     أول تقديم فقط)، فالتقنين لا يُفسد شيئاً — يمنع فقط أن يقرأ زائرٌ بيانات
-     زبونٍ آخر بمسح أرقام متتالية. */
-  v_ok := (v_stored <> '') and (
-            v_stored = v_code
-            or replace(replace(v_stored, 'O', '0'), 'I', '1')
-             = replace(replace(v_code, 'O', '0'), 'I', '1'));
-
-  if not v_ok then
-    /* بيانات تعرّف لا تخرج لزائر لا يملك الرمز — والملف يُعرض في الاستمارة.
-       الإقفال يمنع الكتابة فوقها، والشيفرة في apply.html تعرض تنبيهاً يشرح
-       أن البيانات محفوظة لدى الشركة عند `masked`. */
-    v_body := jsonb_set(v_body, '{card,masked}',        'true'::jsonb,  true);
-    v_body := jsonb_set(v_body, '{card,verified}',      'false'::jsonb, true);
-    v_body := jsonb_set(v_body, '{card,profileLocked}', 'true'::jsonb,  true);
-    if v_body #> '{card,profile,fullName}' is not null then
-      v_body := jsonb_set(v_body, '{card,profile,fullName}', to_jsonb(
-        brc.card_public_name(v_body #>> '{card,profile,fullName}', false)), true);
-    end if;
-    if v_body #> '{card,profile,phone}' is not null then
-      v_body := jsonb_set(v_body, '{card,profile,phone}', to_jsonb(
-        brc.card_public_phone(v_body #>> '{card,profile,phone}', false)), true);
-    end if;
-    if v_body #> '{card,profile,address}' is not null then
-      v_body := jsonb_set(v_body, '{card,profile,address}', '""'::jsonb, true);
-    end if;
-    if v_body #> '{card,profile,dob}' is not null then
-      v_body := jsonb_set(v_body, '{card,profile,dob}', 'null'::jsonb, true);
-    end if;
-  end if;
+  /* لا تقنين ولا إقفال — لنفس سبب lookup_card أعلاه. البطاقة الفارغة لا تحمل
+     بيانات، والمفعّلة بياناتها يراها صاحبها (من يمسك الباركود هو من دفع ثمنها).
+     كان هذا الفرع يُقنّع كل زبون عن نفسه ويقفل حقوله، فيعيد كتابة بياناته أو
+     يظن أنها ضاعت. والإقفال كان يمنع الزبون من تصحيح رقم هاتفه عند تغييره. */
+  v_body := jsonb_set(v_body, '{card,masked}',        'false'::jsonb, true);
+  v_body := jsonb_set(v_body, '{card,verified}',      'true'::jsonb,  true);
+  v_body := jsonb_set(v_body, '{card,profileLocked}', 'false'::jsonb, true);
   return v_body;
 end $$;
 
