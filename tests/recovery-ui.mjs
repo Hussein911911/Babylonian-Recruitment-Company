@@ -72,5 +72,77 @@ try{
  check('refused confirmation leaves the local queue untouched',
    w.localStorage.getItem('hrc-cloud-queue')==='[{"table":"jobs"}]');
 
+
+ /* ── الحفظ المباشر على USB (2026-11-15) ────────────────────────────────────
+  * طلب المدير: «مسار مباشر بضغطة زر» إلى الفلاش.
+  * نختبره في DOM مستقل: مسار الحفظ لا علاقة له بحالة الاسترجاع أعلاه،
+  * وخلطهما يجعل الاختبار يعتمد على ترتيب التنفيذ لا على السلوك.
+  * ──────────────────────────────────────────────────────────────────────── */
+ async function usbSuite(){
+  const dom2=new JSDOM('<main id="recovery-tools"></main><div id="modal-root"></div><div id="toast-root"></div>',
+    {url:'https://fixture.test',runScripts:'outside-only'}),w2=dom2.window,d2=w2.document;
+  const payload={applicants:400,audit:7};
+  w2.HRCStore={isAdmin:()=>true,cloudStatus:()=>({enforceAuth:true,state:'on',role:'staff'}),
+    fmtDateTime:x=>new Date(x).toISOString(),diffCloud:()=>[],cloudQueueLength:()=>0,
+    pushCloud:async()=>({failed:0}),recoveryRPC:async(a)=>a==='list'?{ok:true,copies:[]}:{ok:true},
+    recoveryExportFull:async()=>payload,db:()=>{throw new Error('no browser db');},exportJson:()=>{throw new Error('no json');}};
+  const win_timer=w2.setTimeout.bind(w2);w2.setTimeout=(fn,ms)=>ms===1500?0:win_timer(fn,ms);
+  w2.eval(read('assets/js/ui.js'));w2.eval(read('assets/js/recovery.js'));
+  await new Promise(r=>setTimeout(r,60));
+  /* نُثبّت وحدة التشفير: jsdom بلا Web Crypto حقيقي، والغرض اختبار مسار
+     الحفظ لا التشفير (للتشفير اختباراته المستقلّة في tests/portable-*). */
+  w2.HRCPortableBackup={MIN_PASSWORD:10,
+    seal:async()=>({format:'HRC-PORTABLE-v1',cipher:'AES-GCM',counts:payload}),
+    suggestName:()=>'hrc-backup-2026-11-15-0900.hrcbak'};
+  let downloaded=0;const realDownload=w2.HRCUI.download;
+  w2.HRCUI.download=function(){downloaded++;};
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  const open=async()=>{d2.getElementById('portable-download').click();
+    for(let i=0;i<80&&!d2.getElementById('pb-pass');i++)await wait(10);
+    if(!d2.getElementById('pb-pass'))throw new Error('نافذة التنزيل لم تُفتح');};
+  const pass=()=>{d2.getElementById('pb-pass').value='correct horse battery staple';
+    d2.getElementById('pb-pass2').value='correct horse battery staple';};
+  const closeModal=()=>{const b=d2.querySelector('#modal-root [data-close]');if(b)b.click();};
+
+  /* (ج) متصفح بلا File System Access → تنزيل عادي، لا فشل */
+  await open();
+  check('USB checkbox hidden when the browser cannot write directly',!d2.getElementById('pb-usb'));
+  pass();d2.getElementById('pb-go').click();await wait(90);
+  check('no File System Access support → normal download, never a failure',downloaded===1);
+  check('fallback reports the Downloads folder, never claims the USB',/مجلد التنزيلات/.test(d2.querySelector('[data-portable-status]').textContent));
+  closeModal();
+
+  /* (أ) دعم كامل: يُكتب على الـUSB ويُتحقق */
+  let wrote='',picked=0;
+  const readBlob=b=>new Promise(res=>{const fr=new w2.FileReader();
+    fr.onload=()=>res(String(fr.result));fr.readAsText(b);});
+  w2.isSecureContext=true;
+  w2.showSaveFilePicker=async()=>{picked++;return {
+    name:'hrc-backup.hrcbak',
+    createWritable:async()=>({write:async b=>{wrote=await readBlob(b);},close:async()=>{}}),
+    getFile:async()=>({size:new TextEncoder().encode(wrote).length,
+      arrayBuffer:async()=>new TextEncoder().encode(wrote).buffer})};};
+  await open();
+  check('USB option is offered in Chrome/Edge, and ticked by default',
+    !!d2.getElementById('pb-usb')&&d2.getElementById('pb-usb').checked);
+  pass();d2.getElementById('pb-go').click();
+  for(let i=0;i<120&&!wrote;i++)await wait(10);
+  await wait(120);
+  check('writes the encrypted archive to the chosen USB folder',picked===1&&wrote.length>0&&JSON.parse(wrote).format==='HRC-PORTABLE-v1');
+  check('successful USB write does not also dump a copy into Downloads',downloaded===1);
+  const st=d2.querySelector('[data-portable-status]').textContent;
+  check('reports the USB write and that the file was re-read and verified',/الـUSB/.test(st)&&/تحقّقت/.test(st));
+  closeModal();
+
+  /* (ب) المستخدم يُلغي النافذة → لا ادّعاء نجاح ولا تنزيل صامت */
+  w2.showSaveFilePicker=async()=>{const e=new Error('cancelled');e.name='AbortError';throw e;};
+  await open();pass();d2.getElementById('pb-go').click();await wait(120);
+  const errEl=d2.getElementById('pb-err');
+  check('cancelled picker never claims success and never silently downloads',
+    downloaded===1&&!!errEl&&/لم تُحفظ/.test(errEl.textContent));
+  w2.HRCUI.download=realDownload;
+  dom2.window.close();
+ }
+ await usbSuite();
  console.log(`Managed recovery UI: ${checks} checks passed.`);
 }finally{dom.window.close();}

@@ -165,6 +165,91 @@
   if(/[0-9]/.test(pw))score++;if(/[^a-zA-Z0-9]/.test(pw))score++;
   return score;
  }
+ /* ── الحفظ المباشر على USB ────────────────────────────────────────────────
+  * طلب المدير (2026-11-15): «مسار مباشر بضغطة زر» إلى الفلاش.
+  *
+  * الحقيقة التقنية: لا متصفح يسمح لصفحة بكتابة `D:\HRC-Backups` بنفسها —
+  * لو سمح، لأمكن لأي موقع أن يمسح ملفات المستخدم. لذلك نستخدم واجهة
+  * متصفح قياسية (File System Access API، مدعومة في Chrome/Edge):
+  *   • تفتح حافظ الملفات مرة واحدة ويختار المستخدم مجلد الـUSB.
+  *   • الملف يُكتب هناك **مباشرة**، لا في مجلد التنزيلات.
+  *   • يُخزَّن المقبض في IndexedDB، فبعدها يُفتح على نفس المجلد بضغطة.
+  *   • بعد الكتابة نُعيد قراءة الملف ونقارن بصمته — لا نثق برسالة «تم».
+  *
+  * ⚠️ إن لم يتوفر (Firefox/Safari/سياق غير آمن) نرجع للتنزيل العادي،
+  *    والنسخة تبقى سليمة، فقط المسار يدوي.
+  * ──────────────────────────────────────────────────────────────────────── */
+ var USB_DB='hrc-usb',USB_STORE='dirs',USB_KEY='usbBackupDir';
+ function usbSupported(){
+  return !!(root.showSaveFilePicker&&root.isSecureContext);
+ }
+ function usbIdb(){
+  return new Promise(function(resolve,reject){
+   if(!root.indexedDB)return reject(new Error('IndexedDB غير متاح'));
+   var rq=root.indexedDB.open(USB_DB,1);
+   rq.onupgradeneeded=function(){try{rq.result.createObjectStore(USB_STORE);}catch(e){}};
+   rq.onsuccess=function(){resolve(rq.result);};
+   rq.onerror=function(){reject(new Error('تعذّر فتح مخزن تذكّر المجلد'));};
+  });
+ }
+ function usbRemember(handle){
+  return usbIdb().then(function(db){
+   return new Promise(function(resolve){
+    try{
+     var tx=db.transaction(USB_STORE,'readwrite');
+     tx.objectStore(USB_STORE).put(handle,USB_KEY);
+     tx.oncomplete=function(){db.close();resolve(true);};
+     tx.onerror=function(){db.close();resolve(false);};
+    }catch(e){db.close();resolve(false);}
+   });
+  }).catch(function(){return false;});
+ }
+ function usbRecall(){
+  return usbIdb().then(function(db){
+   return new Promise(function(resolve){
+    try{
+     var tx=db.transaction(USB_STORE,'readonly');
+     var rq=tx.objectStore(USB_STORE).get(USB_KEY);
+     rq.onsuccess=function(){db.close();resolve(rq.result||null);};
+     rq.onerror=function(){db.close();resolve(null);};
+    }catch(e){db.close();resolve(null);}
+   });
+  }).catch(function(){return null;});
+ }
+ /* هل بقي الإذن قائماً على المقبض؟ المتصفح قد يبطله بعد إغلاق كامل. */
+ async function usbPermission(handle,request){
+  if(!handle||!handle.queryPermission)return false;
+  try{
+   var opts={mode:'readwrite'};
+   if((await handle.queryPermission(opts))==='granted')return true;
+   if(!request)return false;
+   return (await handle.requestPermission(opts))==='granted';
+  }catch(e){return false;}
+ }
+ function usbPick(){
+  return root.showSaveFilePicker({
+   suggestedName:'hrc-backup.hrcbak',
+   types:[{description:'نسخة احتياطية مشفّرة',accept:{'application/json':['.hrcbak']}}]
+  });
+ }
+ /* يكتب النص ثم **يقرأه من جديد** ويقارن البصمة. لا يكفي onsuccess. */
+ async function usbWrite(handle,text){
+  var w=await handle.createWritable();
+  try{await w.write(new Blob([text],{type:'application/json;charset=utf-8'}));}
+  finally{await w.close();}
+  var back=await handle.getFile();
+  if(back.size!==new Blob([text]).size)throw new Error('حجم الملف على الـUSB لا يطابق الأصل');
+  var buf=await back.arrayBuffer();
+  if(root.crypto&&root.crypto.subtle){
+   var digest=await root.crypto.subtle.digest('SHA-256',buf);
+   var hex=Array.prototype.map.call(new Uint8Array(digest),function(b){return ('0'+b.toString(16)).slice(-2);}).join('');
+   var src=await root.crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+   var srcHex=Array.prototype.map.call(new Uint8Array(src),function(b){return ('0'+b.toString(16)).slice(-2);}).join('');
+   if(hex!==srcHex)throw new Error('بصمة الملف على الـUSB لا تطابق الأصل');
+   return hex.slice(0,16);
+  }
+  return null;
+ }
  function portableDownload(){
   if(!Store.isAdmin()){UI.toast('err','صلاحية المدير فقط','نسخة الجهاز من صلاحيات المدير العام.');return;}
   loadPortable().then(function(PB){
@@ -173,6 +258,7 @@
      '<div class="field"><label for="pb-pass2">تأكيد كلمة المرور *</label>'+
      '<input type="password" id="pb-pass2" autocomplete="new-password"></div>'+
      '<p class="small muted" id="pb-str" role="status">استخدم كلمة طويلة لا تستعملها في موقع آخر. لا يمكن استعادة هذه الكلمة إن نسيتها.</p>'+
+     (usbSupported()?'<div class="field" style="margin-top:14px"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="pb-usb" checked style="margin-top:4px"><span><b>حفظ مباشرة على فلاش USB</b><br><span class="small muted">بعد التشفير تفتح نافذة تختار فيها مجلد <code>HRC-Backups</code> على الـUSB. يبقى محفوظاً، فبعدها بضغطة واحدة.</span></span></label></div>':'')+
      '<p class="recovery-warning" style="margin-top:12px">الملف يصل إلى <b>كل بيانات الشركة</b> — الوظائف والبطاقات وسجل التدقيق كاملاً. حينها يصبح أي شخص يحصل عليه وكلمةُ مروره قادراً على قراءتها. احفظه في مكان آمن.</p>'+
      '<p class="small" id="pb-err" style="color:#963f35;display:none"></p>';
    UI.modal({title:'تنزيل نسخة محمولة',subtitle:'تُشفَّر في متصفحك — المفتاح لا يُرسَل إلى القاعدة.',
@@ -189,6 +275,8 @@
       if(p1.value.length<PB.MIN_PASSWORD){err.textContent='كلمة المرور قصيرة — الحد الأدنى '+PB.MIN_PASSWORD+' محارف.';err.style.display='block';return;}
       if(p1.value!==p2.value){err.textContent='كلمتا المرور غير متطابقتين.';err.style.display='block';return;}
       btn.disabled=true;err.style.display='none';
+      var usbBox=modal.querySelector('#pb-usb');
+      var wantUsb=!!(usbBox&&usbBox.checked);
       /* تقدّم حقيقي: نُظهر المرحلة كي لا يظن المدير أن الزر علّق على شبكة بطيئة. */
       var t0=Date.now();
       var tick=setInterval(function(){
@@ -202,14 +290,54 @@
        var env=await PB.seal(data,p1.value);
        clearInterval(tick);
        var name=PB.suggestName(new Date());
-       UI.download(name,JSON.stringify(env),'application/json;charset=utf-8');
+       var payload=JSON.stringify(env);
+       /* USB أولاً إن أراده المدير وأمكن — وإلا تنزيل عادي (لا يفشل أبداً). */
+       var saved=null,finger=null,fallback=false;
+       if(wantUsb&&usbSupported()){
+        btn.textContent='جارٍ الكتابة على الـUSB…';
+        try{
+         var handle=null;
+         var remembered=await usbRecall();
+         if(remembered&&await usbPermission(remembered,false))handle=remembered;
+         if(!handle){
+          try{handle=await usbPick();}
+          catch(pickErr){
+           if(pickErr&&pickErr.name==='AbortError'){
+            /* المستخدم أغلق النافذة — لا نفترض النجاح، نقولها صراحة. */
+            btn.disabled=false;btn.textContent='تنزيل';
+            err.textContent='لم تُحفظ النسخة — أُلغيت نافذة اختيار المجلد. أعد المحاولة واختر مجلد HRC-Backups على الـUSB.';
+            err.style.display='block';
+            return;
+           }
+           /* المتصفح لا يدعم الكتابة المباشرة: نرجع للتنزيل بلا فشل. */
+           fallback=true;handle=null;
+          }
+         }
+         if(handle){
+          finger=await usbWrite(handle,payload);
+          saved=handle.name||name;
+          await usbRemember(handle);
+         }
+        }catch(writeErr){
+         /* فشل الكتابة أو فشل التحقق: لا ندّعي نجاحاً — نرجع للتنزيل
+            العادي كي لا يبقى المدير بلا نسخة أبداً. */
+         fallback=true;handle=null;
+        }
+       }
+       if(!saved){
+        var savedName=name;
+        UI.download(name,payload,'application/json;charset=utf-8');
+        fallback=true;
+       }
        close();lock(false);
        var c=env.counts||{};
        var trimmed=Number(c.diffTrimmed||0);
-       var note='نُزِّلت النسخة: '+(c.applicants||0)+' بطاقة و'+(c.audit||0)+' سجل تدقيق — '+name;
+       var note;
+       if(saved)note='كُتبت النسخة على الـUSB: '+(c.applicants||0)+' بطاقة و'+(c.audit||0)+' سجل تدقيق — '+saved+(finger?' · بصمة '+finger:'')+' · تحقّقت من الملف بعد الكتابة.';
+       else note='نُزِّلت النسخة إلى مجلد التنزيلات: '+(c.applicants||0)+' بطاقة و'+(c.audit||0)+' سجل تدقيق — '+name;
        if(trimmed)note+=' (استُبعد الفرق التفصيلي من '+trimmed+' سجلاً يحمل صوراً مضمّنة)';
        portableStatus(note,'ok');
-       UI.toast('ok','نُزِّلت النسخة المشفّرة',name+' — احفظ كلمة المرور؛ بدونها لا تُفتح.');
+       UI.toast('ok',saved?'حُفظت على الـUSB':'نُزِّلت النسخة المشفّرة',(saved||name)+' — احفظ كلمة المرور؛ بدونها لا تُفتح.');
       }catch(e){
        clearInterval(tick);
        err.textContent=e.message||'تعذّر إنشاء النسخة';err.style.display='block';
