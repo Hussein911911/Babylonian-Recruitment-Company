@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  HRC — إعداد نسخ Google Drive في خطوة واحدة
+ *  HRC — إعداد مجلد النسخ الخارجي (USB) في خطوة واحدة
  *  ---------------------------------------------------------------------------
  *  ⚠️ لماذا هذه الأداة؟
  *  لأن الإعداد اليدوي فيه ثلاثة أفخاخ صامتة:
  *   ١) JSON يقرأ `\` كرمز خاص، فمسار ويندوز منسوخ كما هو **يُفسد الملف**.
- *      فيفشل الوكيل بخطأ صياغة لا علاقة له بـDrive.
- *   ٢) مجلد Drive قد يكون على وضع Stream، فيبدو موجوداً ولا شيء على القرص.
+ *      فيفشل الوكيل بخطأ صياغة لا علاقة له بالـUSB.
+ *   ٢) القرص قد يكون للقراءة فقط أو غير موصول، فيصمت النسخ.
  *   ٣) الحساب/al حرف القرص قد يتغيّر، فيصمت النسخ بلا أن يعرف أحد.
  *
  *  هذه الأداة تكتب المسار بصيغة صحيحة، وتفحص كل شيء بالكتابة الحقيقية،
  *  وتخبرك بالحقيقة لا بما تتمنى سماعه.
  *
  *  الاستخدام:
- *    node tools/setup-drive.mjs "C:\Users\Hussein\Google Drive\HRC-Backups"
- *    node tools/setup-drive.mjs --check          (يفحص الحالي فقط)
+ *    node tools/setup-usb.mjs "E:\HRC-Backups"
+ *    node tools/setup-usb.mjs --check          (يفحص الحالي فقط)
  * =========================================================================== */
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync, rmSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
@@ -44,14 +44,15 @@ function probe(dir) {
   }
 }
 
-/* يكتشف إن كان المسار داخل مجلد Google Drive */
-function lookLikeDrive(p) {
-  return /google\s*drive|googledrive|my drive|محرّك google|drive/i.test(p);
+/* يكتشف إن كان المسار خارج القرص الرئيسي (USB عادة) */
+function lookLikeUsb(p) {
+  /* USB غالباً على حرف ثانٍ، أو مسار شبكة — لا نتشدد، نكتفي بتنبيه */
+  return /^[A-Za-z]:\\/.test(p) || /^[A-Za-z]:\//.test(p) || /^\\\\/.test(p);
 }
 
 const arg = process.argv[2];
 console.log('\n' + '═'.repeat(72));
-console.log('  فحص إعداد Google Drive للنسخ الاحتياطي');
+console.log('  فحص مجلد النسخ الخارجي (USB)');
 console.log('═'.repeat(72) + '\n');
 
 let cfg = {};
@@ -71,7 +72,7 @@ if (existsSync(CFG)) {
 if (arg === '--check') {
   const targets = Array.isArray(cfg.mirrorTargets) ? cfg.mirrorTargets : [];
   if (!targets.length) {
-    bad('لا أهداف مضبوطة', 'شغّل: node tools/setup-drive.mjs "المسار"');
+    bad('لا أهداف مضبوطة', 'شغّل: node tools/setup-usb.mjs "E:\\HRC-Backups"');
     process.exit(1);
   }
   let fails = 0;
@@ -98,25 +99,25 @@ if (arg === '--check') {
 /* ── الوضع: ضبط هدف جديد ── */
 if (!arg) {
   console.log('الاستخدام:\n');
-  console.log('  node tools/setup-drive.mjs "C:\\Users\\اسمك\\Google Drive\\HRC-Backups"\n');
-  console.log('  node tools/setup-drive.mjs --check\n');
-  console.log('⚠️ ضع المسار بين علامتي تنصيص — المسافة في "Google Drive" تكسر الأمر بلاها.\n');
+  console.log('  node tools/setup-usb.mjs "E:\\HRC-Backups"\n');
+  console.log('  node tools/setup-usb.mjs --check\n');
+  console.log('⚠️ ضع المسار بين علامتي تنصيص. حرف E غيّره لحرف USB عندك (شوف This PC).\n');
   process.exit(0);
 }
 
 const target = resolve(arg);
 console.log('🎯 الهدف: ' + target + '\n');
 
-/* ١) هل يشبه مجلد Drive؟ */
+/* ١) هل المسار معقول؟ */
 console.log('▌ ١ — نوع المسار');
-if (lookLikeDrive(target)) ok('يبدو داخل مجلد Google Drive');
-else warn('لا يبدو داخل Google Drive — تأكد أنك نسخت المسار الصحيح');
+if (lookLikeUsb(target)) ok('مسار قرص صالح');
+else warn('المسار غير معتاد — تأكد أنك نسخته صحيحاً');
 
 /* ٢) موجود؟ */
 console.log('\n▌ ٢ — وجود المجلد');
 if (!existsSync(target)) {
   bad('المجلد غير موجود');
-  console.log('\n  أنشئه أولاً: افتح مستكشف الملفات ← Drive ← مجلد جديد ← HRC-Backups');
+  console.log('\n  أنشئه أولاً: وصّل الـUSB ← افتحه ← نقر يمين ← New Folder ← HRC-Backups');
   console.log('  ثم انسخ مساره من شريط العنوان وشغّل الأمر مرة أخرى.\n');
   process.exit(1);
 }
@@ -127,7 +128,7 @@ console.log('\n▌ ٣ — الكتابة الفعلية (اختبار Mirror م�
 const p = probe(target);
 if (!p.ok) {
   bad('لا يمكن الكتابة أو القراءة هنا', p.why);
-  if (/EACCES/.test(p.why || '')) console.log('\n  جرّب تشغيل PowerShell كمسؤول، أو تأكد أن Drive يعمل.\n');
+  if (/EACCES/.test(p.why || '')) console.log('\n  جرّب تشغيل PowerShell كمسؤول، أو تأكد أن الـUSB غير مقفل/محمي من الكتابة.\n');
   process.exit(1);
 }
 ok('الكتابة والقراءة تعملان — الملف سيكون على القرص فعلاً');
@@ -146,10 +147,10 @@ const targets = Array.isArray(cfg.mirrorTargets) ? cfg.mirrorTargets : [];
 const normalized = target.replace(/\\/g, '/');           /* JSON آمن */
 const idx = targets.findIndex(t => ((typeof t === 'string' ? t : t.path) || '').replace(/\\/g, '/') === normalized);
 if (idx >= 0) {
-  targets[idx] = { name: (targets[idx].name) || 'Google Drive', path: normalized };
+  targets[idx] = { name: (targets[idx].name) || 'USB', path: normalized };
   ok('حُدِّث هدف موجود');
 } else {
-  targets.push({ name: 'Google Drive', path: normalized });
+  targets.push({ name: 'USB', path: normalized });
   ok('أُضيف هدف جديد');
 }
 cfg.mirrorTargets = targets;
@@ -163,7 +164,7 @@ const needed = ['databaseUrl', 'pgpassFile', 'pgBin', 'destination', 'recipientP
 const missing = needed.filter(k => !cfg[k]);
 if (missing.length) {
   warn('ناقص: ' + missing.join(' · '));
-  console.log('     النسخ إلى Drive مضبوط، لكن النسخة الكاملة تحتاج هذه الحقول.');
+  console.log('     هدف USB مضبوط، لكن النسخة الكاملة تحتاج هذه الحقول.');
   console.log('     انسخها من office/backup-config.example.json واملأ قيمها.');
 } else {
   ok('كل حقول النسخ الكامل موجودة');

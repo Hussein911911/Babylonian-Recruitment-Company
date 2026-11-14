@@ -2141,7 +2141,7 @@ begin
  select cutoff into cutoff_value from brc.recovery_control where singleton;
  if cutoff_value>0 and coalesce((auth.jwt()->>'iat')::bigint,0)<=cutoff_value then raise exception 'أعد تسجيل الدخول بعد الاسترجاع' using errcode='42501';end if;
  if p_action='list' then
-  return jsonb_build_object('ok',true,'scope','operational-data-v1','storage','same-project-encrypted','driveConnected',false,'copies',coalesce((select jsonb_agg(jsonb_build_object('id',id,'name',name,'createdAt',created_at,'safety',safety,'counts',counts) order by created_at desc) from brc.recovery_copies),'[]'::jsonb));
+  return jsonb_build_object('ok',true,'scope','operational-data-v1','storage','same-project-encrypted','external','usb-manual','copies',coalesce((select jsonb_agg(jsonb_build_object('id',id,'name',name,'createdAt',created_at,'safety',safety,'counts',counts) order by created_at desc) from brc.recovery_copies),'[]'::jsonb));
  end if;
  if p_action not in ('create','preview','restore','remove') or p_action is null then raise exception 'إجراء غير مدعوم';end if;
  perform set_config('lock_timeout','8s',true);

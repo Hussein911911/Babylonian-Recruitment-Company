@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ===========================================================================
- *  HRC — أداة إعداد Drive (tools/setup-drive.mjs)
+ *  HRC — أداة إعداد Drive (tools/setup-usb.mjs)
  *  ---------------------------------------------------------------------------
  *  ⚠️ ما يثبته هذا الملف بالتنفيذ:
  *
@@ -12,14 +12,14 @@
  *  ٣) **لا يمسح ما ليس له.** نسخ قديمة في المجلد تبقى.
  *  ٤) **الحقول الناقصة تُذكر، لا تُخفى.**
  *
- *  التشغيل: node tests/setup-drive.mjs
+ *  التشغيل: node tests/setup-usb.mjs
  * =========================================================================== */
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const TOOL = join(import.meta.dirname, '..', 'tools', 'setup-drive.mjs');
+const TOOL = join(import.meta.dirname, '..', 'tools', 'setup-usb.mjs');
 let pass = 0, fail = 0;
 const problems = [];
 const ok = (t) => { pass++; console.log('   ✅ ' + t); };
@@ -137,6 +137,6 @@ rmSync(root, { recursive: true, force: true });
 console.log('\n' + '═'.repeat(72));
 console.log(`  النتيجة: ${fail === 0 ? '✅' : '❌'} ${pass} ناجح | ${fail} فاشل`);
 if (fail) { console.log('\n  المشاكل:'); problems.forEach((p) => console.log('   • ' + p)); }
-else console.log('  الأداة تمنع فخّي JSON وStream، ولا تمسح ما ليس لها.');
+else console.log('  الأداة تمنع فخ JSON ومسار القرص، ولا تمسح ما ليس لها.');
 console.log('═'.repeat(72) + '\n');
 process.exit(fail ? 1 : 0);

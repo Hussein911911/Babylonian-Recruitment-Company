@@ -20,7 +20,11 @@ try{
  check('reads server-owned copies, not local storage',calls[0].action==='list'&&w.localStorage.length===0);
  check('renders copy names as text, no stored XSS',!d.querySelector('#recovery-tools img')&&d.querySelector('.recovery-copy h4').textContent===copies[0].name);
  check('no legacy browser JSON/import/schedule/reset controls',!d.querySelector('#btn-import,#btn-export,#btn-reset,#btn-schedule-backup'));
- check('storage scope and disconnected Drive explicitly stated',d.getElementById('recovery-tools').textContent.includes('داخل نفس مشروع القاعدة')&&d.getElementById('recovery-tools').textContent.includes('Google Drive غير مربوط'));
+ /* 2026-11-15: قرار المدير — USB فقط، Google Drive خارج النطاق.
+   الاختبار يضمن أن الواجهة تقول ذلك صراحةً بدل ادّعاء ربط غير موجود. */
+ {const t=d.getElementById('recovery-tools').textContent;
+  check('storage scope stated',t.includes('داخل نفس مشروع القاعدة'));
+  check('external copy points to USB, not Google Drive',t.includes('USB')&&!t.includes('Drive غير مربوط'));}
  check('does not claim full project/code/Storage recovery',d.getElementById('recovery-tools').textContent.includes('ليست استرداداً لكود الموقع'));
  click('recovery-create');d.getElementById('recovery-copy-name').value='نسخة اليوم';click('recovery-save');await tick();
  check('flushes writes before snapshot RPC',calls.findIndex(c=>c.action==='flush')<calls.findIndex(c=>c.action==='create'));
