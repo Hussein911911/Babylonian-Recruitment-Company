@@ -278,14 +278,19 @@
  function portableDownload(){
   if(!Store.isAdmin()){UI.toast('err','صلاحية المدير فقط','نسخة الجهاز من صلاحيات المدير العام.');return;}
   loadPortable().then(function(PB){
-   var body='<div class="field"><label for="pb-pass">كلمة مرور النسخة *</label>'+
+   var body=(usbSupported()?
+     '<div class="pb-dest" id="pb-dest">'+
+      '<div class="pb-dest-head"><b>مجلد الحفظ</b>'+
+      '<button type="button" class="btn btn-outline btn-sm" id="pb-usb-change">تغيير…</button></div>'+
+      '<div class="pb-dest-path" id="pb-usb-where" role="status">جارٍ القراءة…</div>'+
+     '</div>':'')+
+     '<div class="field"><label for="pb-pass">كلمة مرور النسخة *</label>'+
      '<input type="password" id="pb-pass" minlength="'+PB.MIN_PASSWORD+'" autocomplete="new-password" placeholder="عشر محارف على الأقل"></div>'+
      '<div class="field"><label for="pb-pass2">تأكيد كلمة المرور *</label>'+
      '<input type="password" id="pb-pass2" autocomplete="new-password"></div>'+
      '<p class="small muted" id="pb-str" role="status">استخدم كلمة طويلة لا تستعملها في موقع آخر. لا يمكن استعادة هذه الكلمة إن نسيتها.</p>'+
      (usbSupported()?'<div class="field" style="margin-top:14px"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="pb-usb" checked style="margin-top:4px"><span><b>حفظ مباشرة في المجلد المحدّد</b><br><span class="small muted">إن لم يكن هناك مجلد محفوظ ستُفتح نافذة اختيار. بعد ذلك يُحفظ الاختيار، وقد يطلب Chrome تأكيداً صغيراً فقط.</span></span></label>'+
- '<div id="pb-usb-where" class="small muted" style="margin:8px 0 0 24px" role="status">جارٍ قراءة المجلد المحفوظ…</div>'+
- '<button type="button" class="btn btn-outline btn-sm" id="pb-usb-change" style="margin:8px 0 0 24px">تغيير المجلد…</button></div>':'')+
+ '</div>':'')+
      '<p class="recovery-warning" style="margin-top:12px">الملف يصل إلى <b>كل بيانات الشركة</b> — الوظائف والبطاقات وسجل التدقيق كاملاً. حينها يصبح أي شخص يحصل عليه وكلمةُ مروره قادراً على قراءتها. احفظه في مكان آمن.</p>'+
      '<p class="small" id="pb-err" style="color:#963f35;display:none"></p>';
    UI.modal({title:'تنزيل نسخة محمولة',subtitle:'تُشفَّر في متصفحك — المفتاح لا يُرسَل إلى القاعدة.',
@@ -297,32 +302,46 @@
      var where=modal.querySelector('#pb-usb-where'),changeBtn=modal.querySelector('#pb-usb-change');
      function paintWhere(){
       if(!where)return;
+      /* ⚠️ بلاغ المدير (2026-11-15): «عند اختيار مجلد يبقى اسم المجلد
+         مو يختفي». السبب: كان زر التغيير يكتب «جارٍ الاختيار…» ثم
+         «تم — المجلد محفوظ» في **نفس** السطر الذي يحمل الاسم، ثم يمسحه
+         بمؤقّت. النتيجة: اسم المجلد يختفي بعد ثانيتين.
+         القاعدة الآن: سطر المسار يحمل **الاسم فقط**، ولا يكتب فيه أي
+         رسالة مؤقتة. حالات الأزرار لها عنصر مستقلّ. */
       usbRecall().then(async function(h){
        if(!h){
-        where.textContent='لم يُحدَّد مجلد بعد — ستُفتح نافذة الاختيار عند أول تنزيل.';
+        where.textContent='لم يُحدَّد بعد — سيُطلب الاختيار عند أول تنزيل.';
+        where.classList.add('is-unset');
         return;
        }
-       var state='unknown';
-       try{state=await h.queryPermission({mode:'readwrite'});}catch(e){}
-       if(state==='granted')
-        where.textContent='✓ المجلد: '+h.name+' — جاهز، تُحفظ بلا أي سؤال.';
-       else
-        where.textContent='المجلد: '+h.name+' — قد يطلب Chrome تأكيداً صغيراً («السماح») قبل كل تنزيل. هذا قيد متصفح؛ لا نستطيع إلغاءه.';
+       where.classList.remove('is-unset');
+       var granted=false;
+       try{granted=(await h.queryPermission({mode:'readwrite'}))==='granted';}catch(e){}
+       /* الاسم يبقى دائماً — والشارة تُضاف بجانبه لا بدلاً منه. */
+       where.textContent='';
+       var nameEl=document.createElement('span');
+       nameEl.className='pb-dest-name';
+       nameEl.textContent=h.name;
+       var badge=document.createElement('span');
+       badge.className='pb-dest-badge'+(granted?' is-ok':'');
+       badge.textContent=granted?'جاهز':'يطلب تأكيداً';
+       where.appendChild(nameEl);
+       where.appendChild(badge);
       });
      }
      paintWhere();
      if(changeBtn)changeBtn.onclick=async function(){
-      var old=changeBtn.textContent;changeBtn.disabled=true;changeBtn.textContent='جارٍ الاختيار…';
+      var label=changeBtn.textContent;
+      changeBtn.disabled=true;changeBtn.textContent='جارٍ الاختيار…';
       try{
        await usbChooseFolder();
-       await paintWhere();
-       changeBtn.textContent='تم — المجلد محفوظ';
+       await paintWhere();          /* الاسم يُحدَّث فوراً — لا يختفي */
+       changeBtn.textContent='تم';
       }catch(e){
-       if(e&&e.name==='AbortError')changeBtn.textContent=old;
-       else changeBtn.textContent='تعذّر الاختيار — أعد المحاولة';
+       changeBtn.textContent=(e&&e.name==='AbortError')?'أُلغي':'تعذّر';
       }
       changeBtn.disabled=false;
-      root.setTimeout(function(){changeBtn.textContent=old;},2500);
+      root.setTimeout(function(){changeBtn.textContent=label;},1500);
      };
      p1.oninput=function(){
       var sc=portableStrength(p1.value);

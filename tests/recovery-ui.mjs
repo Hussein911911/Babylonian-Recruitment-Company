@@ -192,6 +192,14 @@ try{
   await wait(60);
   check('picking a folder uses the directory picker',dirPicked===1);
   check('the chosen folder is shown by name',/HRC-Backups/.test(d2.getElementById('pb-usb-where').textContent));
+  /* بلاغ المدير: «عند اختيار مجلد يبقى اسم المجلد مو يختفي».
+     كان زر التغيير يكتب «تم — المجلد محفوظ» في نفس السطر ثم يمسحه بمؤقّت. */
+  await wait(1800);
+  check('the folder name SURVIVES the change-button feedback (does not get wiped)',
+    /HRC-Backups/.test(d2.getElementById('pb-usb-where').textContent));
+  check('status is a separate badge, not a replacement for the name',
+    !!d2.querySelector('#pb-usb-where .pb-dest-name')&&
+    d2.querySelector('#pb-usb-where .pb-dest-name').textContent==='HRC-Backups');
   pass();d2.getElementById('pb-go').click();
   for(let i=0;i<120&&!writtenName;i++)await wait(10);
   await wait(120);
