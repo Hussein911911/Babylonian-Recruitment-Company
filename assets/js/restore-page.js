@@ -145,7 +145,12 @@
         show('rp-step6');
       }
       $('rp-pass').value = '';
-      $('rp-step4').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      /* التمرير تمريرُ راحةٍ لا وظيفة: لو غاب (بيئة اختبار أو متصفح قديم)
+         فلا يجوز أن يُسقط فكّ التشفير الناجح. */
+      var s4 = $('rp-step4');
+      if (s4 && typeof s4.scrollIntoView === 'function') {
+        s4.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }).catch(function (err) {
       setStatus(unlockStatus, err.message, 'error');
     }).then(function () {
@@ -176,7 +181,12 @@
         return { serial: a.serial, full_name: a.full_name, phone: a.phone, status: a.status };
       })
     };
-    $('rp-preview').innerHTML = '<pre>' + esc(JSON.stringify(sample, null, 2)) + '</pre>';
+    /* ⚠️ عيّنة JSON كانت في <details> اختياري. حُذف الشرح من الصفحة، فصار
+       العنصر غائباً — وكتابة `$('rp-preview').innerHTML` كانت **ترمي استثناءً
+       يُسقط فكّ التشفير كله** بعد نجاحه، فلا تظهر الخطوات ٤-٦. القاعدة الآن:
+       العرض الاختياري لا يُسقط الوظيفة الأساسية. */
+    var preview = $('rp-preview');
+    if (preview) preview.innerHTML = '<pre>' + esc(JSON.stringify(sample, null, 2)) + '</pre>';
   }
 
   function download(name, text, mime) {
@@ -278,7 +288,19 @@
   /* ⚠️ لا نقرأ المتغيّر مرة واحدة عند التحميل: البوابة تفكّ المخطط **بعد**
      التحقق (محلياً فقط)، وقيمةٌ مأخوذة الآن تبقى فارغة للأبد. نقرأها لحظة
      الضغط على الزر. */
-  function schemaSql() { return window.__HRC_SCHEMA_SQL__ || ''; }
+  /* مصدر مخطط القاعدة في هذه الصفحة هو **الوسم المضمّن** لا متغيّر عام:
+     `restore-gate.js` يفكّ الوسم ويكتب النص في `__HRC_SCHEMA_SQL__` **فقط**
+     عند فتح الصفحة محلياً أو بجلسة مدير. إن لم يفكّه أحد (أو نُفّذت الصفحة
+     بلا البوابة) فالمتغيّر غائب — فنقرأ الوسم مباشرة كي لا يصير الزر ميتاً.
+     ⚠️ لا نعرّفه كمتغيّر عام: فحص restore-gate يمنع ذلك، وهو محقّ. */
+  function schemaSql() {
+    if (window.__HRC_SCHEMA_SQL__) return window.__HRC_SCHEMA_SQL__;
+    var embed = document.getElementById('hrc-schema-embed');
+    if (!embed) return '';
+    var raw = (embed.textContent || '').trim();
+    if (!raw) return '';
+    try { return JSON.parse(raw); } catch (e) { return raw; }
+  }
 
   var schemaBtn = $('rp-dl-schema');
   if (schemaBtn) schemaBtn.addEventListener('click', function () {
@@ -309,7 +331,7 @@
   $('rp-lock').addEventListener('click', function () {
     state.payload = null; state.envelope = null; state.fileName = '';
     $('rp-pass').value = '';
-    $('rp-preview').innerHTML = ''; $('rp-totals').innerHTML = ''; $('rp-meta').innerHTML = '';
+    ['rp-preview','rp-totals','rp-meta'].forEach(function (id) { var e = $(id); if (e) e.innerHTML = ''; });
     /* تفريغ العرض المرتّب — لا يبقى أي صف في الذاكرة */
     if (window.HRCRestoreView) window.HRCRestoreView.unmount();
     /* ⚠ كانت ٥ و٦ تُنسيان: تُمسح الجداول وتبقى ظاهرة أعين المستخدم —
