@@ -302,6 +302,65 @@
     try { return JSON.parse(raw); } catch (e) { return raw; }
   }
 
+  /* ═══ تنزيل الهيكل — أجزاء لا ملفاً واحداً ═══════════════════════════════
+     ⚠️ عطل حقيقي أُصلح 2026-11-15:
+
+     كان الزر ينزّل `1-schema.sql` = ٣١٥٤ سطراً في ملف واحد. ومحرّر Supabase
+     يقصّ اللصق عند ~٢٠٠٠ سطر **ويرفع Success** رغم النقص. فيخرج المالك من
+     صفحة الاسترجاع بملف يفكّ تشفيره وينسخه، ثم يبني قاعدة ناقصة ١١ جدولاً
+     من ١٩ — والخطأ لا يظهر إلا عند أول بطاقة تُطبع.
+
+     فصار الزر يقسّم المخطط المضمّن في المتصفح إلى خمسة أجزاء تحت ٧٠٠ سطر،
+     كلها قابلة للصق. لا شبكة ولا Node — التقسيم يعمل من `file://` أيضاً.
+
+     القاعدة: نفس محرّك `tools/sql-split-core.mjs` المستعمل عند البناء،
+     منسوخ هنا لأن الصفحة تعمل بلا حزمة بناء ولا وحدة ES. */
+  function splitSchema(text) {
+    var LIMIT = 700, LIMIT_BYTES = 180000;
+    var stmts = [], i = 0, n = text.length, start = 0;
+    var inS = false, inD = false, inLC = false, inBC = false, tag = null;
+    while (i < n) {
+      var c = text.charAt(i), two = text.substr(i, 2);
+      if (inLC) { if (c === '\n') inLC = false; i++; continue; }
+      if (inBC) { if (two === '*/') { inBC = false; i += 2; continue; } i++; continue; }
+      if (inS) {
+        if (c === "'") { if (text.charAt(i + 1) === "'") { i += 2; continue; } inS = false; }
+        i++; continue;
+      }
+      if (inD) {
+        if (c === '"') { if (text.charAt(i + 1) === '"') { i += 2; continue; } inD = false; }
+        i++; continue;
+      }
+      if (tag) { if (text.substr(i, tag.length) === tag) { i += tag.length; tag = null; continue; } i++; continue; }
+      if (two === '--') { inLC = true; i += 2; continue; }
+      if (two === '/*') { inBC = true; i += 2; continue; }
+      if (c === "'") { inS = true; i++; continue; }
+      if (c === '"') { inD = true; i++; continue; }
+      if (c === '$') {
+        var m = /^(?:\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$)/.exec(text.slice(i));
+        if (m) { tag = m[0]; i += m[0].length; continue; }
+        i++; continue;
+      }
+      if (c === ';') { stmts.push(text.slice(start, i + 1)); start = i + 1; i++; continue; }
+      i++;
+    }
+    var rest = text.slice(start);
+    if (rest.trim()) stmts.push(rest);
+
+    function lines(s) { return (s.match(/\n/g) || []).length; }
+    var parts = [], cur = '', curL = 0;
+    for (var k = 0; k < stmts.length; k++) {
+      var st = stmts[k], l = lines(st);
+      /* الجملة الواحدة الأكبر من السقف تُترك وحدها — لا تُقطَع */
+      if (curL > 0 && (curL + l > LIMIT || cur.length + st.length > LIMIT_BYTES)) {
+        parts.push(cur); cur = ''; curL = 0;
+      }
+      cur += st; curL += l;
+    }
+    if (cur.trim()) parts.push(cur);
+    return parts;
+  }
+
   var schemaBtn = $('rp-dl-schema');
   if (schemaBtn) schemaBtn.addEventListener('click', function () {
     var SCHEMA_SQL = schemaSql();
@@ -309,8 +368,23 @@
       setStatus(unlockStatus, 'ملف الهيكل غير مضمّن في هذه الصفحة — نزّله من المستودع: docs/schema.sql', 'error');
       return;
     }
-    window.HRCRestoreView.download('1-schema.sql', SCHEMA_SQL, 'application/sql;charset=utf-8');
-    setStatus(unlockStatus, 'نُزّل 1-schema.sql — شغّله أولاً في SQL Editor، وبعد Success شغّل 2-data.sql', 'ok');
+    var parts = splitSchema(SCHEMA_SQL);
+    var total = parts.length;
+    var pad = function (x) { return String(x).padStart(2, '0'); };
+    parts.forEach(function (body, idx) {
+      var head = '--  HRC — هيكل قاعدة البيانات · الجزء ' + pad(idx + 1) + ' من ' + pad(total) + '\n' +
+        '--  ---------------------------------------------------------------------------\n' +
+        '--  ⚠ الصق الأجزاء بالترتيب: ١ ثم ٢ ثم ٣ ثم ٤ ثم ٥، كل واحد في استعلام جديد.\n' +
+        '--  ⚠ لا تلصق جزءاً قبل نجاح الذي قبله — والملف كامل ٣١٥٤ سطراً، لا يدخل\n' +
+        '--     في لصقة واحدة (محرّر Supabase يقصّ عند ~٢٠٠٠ سطر ويرفع Success).\n' +
+        '--  ⚠ قبل البدء: فعّل pgcrypto و pg_cron من Database → Extensions.\n' +
+        '--  ---------------------------------------------------------------------------\n\n';
+      window.HRCRestoreView.download('1-schema-part-' + pad(idx + 1) + '.sql', head + body,
+        'application/sql;charset=utf-8');
+    });
+    setStatus(unlockStatus,
+      'نُزّل ' + total + ' أجزاء للهيكل — الصقها بالترتيب في SQL Editor، استعلام جديد لكل جزء، وبعدها 2-data.sql',
+      'ok');
   });
 
   var sqlBtn = $('rp-dl-sql');

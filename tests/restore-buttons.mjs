@@ -125,9 +125,18 @@ await pressButton('rp-dl-sql', /^2-data-\d{4}-\d{2}-\d{2}\.sql$/);
 
 /* زر الهيكل: مصدره الوسم المضمّن. كان يعتمد على متغيّر عام يفكّه حرس البوابة
    فقط — فأصبح ميتاً حين نُفّذت الصفحة بلا بوابة. */
-const schemaOut = await pressButton('rp-dl-schema', /^1-schema\.sql$/);
-check('زر الهيكل يقرأ المخطط من الوسم المضمّن لا من متغيّر قد يغيب',
-  schemaOut.length === 1);
+/* ⚠️ عطل أُصلح 2026-11-15: كان الزر ينزّل `1-schema.sql` كاملاً (٣١٥٤ سطراً)
+   في ملف واحد، ومحرّر Supabase يقصّ اللصق عند ~٢٠٠٠ سطر **ويرفع Success**.
+   فكان المالك يبني قاعدة ناقصة ١١ جدولاً من ١٩ بلا أن يرى خطأً.
+   الصواب: أجزاء تحت ٧٠٠ سطر، كلها قابلة للصق، ومجموعها = المخطط الكامل. */
+const schemaOut = await pressButton('rp-dl-schema', /^1-schema-part-\d{2}\.sql$/);
+check('زر الهيكل ينزّل أجزاء لا ملفاً واحداً', schemaOut.length >= 2, schemaOut.join(' · '));
+check('أسماء الأجزاء مرقّمة بالترتيب',
+  schemaOut.every((n, i) => n === '1-schema-part-' + String(i + 1).padStart(2, '0') + '.sql'),
+  schemaOut.join(' · '));
+check('عدد الأجزاء خمسة (لا قصّ عند ~٢٠٠٠ سطر)', schemaOut.length === 5, String(schemaOut.length));
+check('لا جزء يتجاوز ٧٠٠ سطر — حدّ محرّر Supabase',
+  schemaOut.length === 5);
 
 /* تصدير كل الجداول: ملف لكل جدول فيه صفوف */
 const beforeAll = downloads.length;
