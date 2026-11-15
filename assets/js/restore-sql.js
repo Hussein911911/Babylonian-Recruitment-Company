@@ -100,12 +100,48 @@
     return cols.sort();
   }
 
+  /* ═══ أعمدة NOT NULL لا تُصدَّر (سرّية) — تُملأ عند الاسترجاع ══════════
+     ⚠️ عطل حقيقي أُصلح 2026-11-15، اكتُشف بدورة كاملة (تصدير → تشفير → فك
+     → استرجاع على قاعدة فاضية):
+
+       brc.recovery_chances.code_hash  و  brc.recovery_prints.code_hash
+       عمودان NOT NULL يحملان بصمة رمز سرّية. فلا يجوز تصديرهما، ولا يجوز
+       تركهما فارغين — والنتيجة كانت فشل الاسترجاع كله على أول صفّ:
+         ERROR 23502: null value in column "code_hash"
+
+       ولا بديل عن قيمة: القاعدة ترفض NULL. فتُكتب بصمة حتمية **غير سرّية**
+       مشتقّة من الرقم التسلسلي — دورها الوحيد أن تمنع تكرار الصفّ، ولا
+       يتحقق منها أي مسار في الموقع (التحقق يحتاج الرمز الأصلي وهو غير منقول).
+       أي أن قيمتها هنا **شكلية لكن ضرورية**، والتوثيق يقول ذلك بصراحة. */
+  /* ⚠️ تُبنى **في JavaScript** لا في SQL: القيمة تُكتب حرفياً في الملف.
+     المحاولة الأولى كتبت تعبير SQL (`'x' || r.serial`) فخرج في الملف نصّ
+     يشير إلى عمود `r` غير موجود → 42P01 عند التنفيذ. */
+  function derivedCodeHash(table, r) {
+    if (table === 'recovery_chances') return 'restored:' + r.serial + ':' + r.attempt_no;
+    if (table === 'recovery_prints') return 'restored:' + r.serial;
+    return 'restored';
+  }
+
+  var DERIVED = { recovery_chances: ['code_hash'], recovery_prints: ['code_hash'] };
+
   function insertRows(table, rows, allow) {
     if (!rows || !rows.length) return '';
+    var derived = DERIVED[table];
+    if (derived) {
+      /* نضمن وجود الأعمدة المشتقّة حتى لو لم تأت في النسخة (نسخة v1/v2) */
+      rows = rows.map(function (r) {
+        var out = Object.assign({}, r);
+        derived.forEach(function (k) { if (out[k] == null) out[k] = '__DERIVED__'; });
+        return out;
+      });
+    }
     var cols = columnsOf(rows, allow);
     if (!cols.length) return '-- ⚠ ' + table + ': لا أعمدة صالحة — تم تخطّي ' + rows.length + ' صفاً\n\n';
     var values = rows.map(function (r) {
-      return '  (' + cols.map(function (c) { return lit(r[c]); }).join(', ') + ')';
+      return '  (' + cols.map(function (c) {
+        if (derived && derived.indexOf(c) >= 0 && r[c] === '__DERIVED__') return lit(derivedCodeHash(table, r));
+        return lit(r[c]);
+      }).join(', ') + ')';
     }).join(',\n');
     return '-- ' + rows.length + ' صفاً في ' + table + ' (' + cols.length + ' عموداً)\n' +
       'INSERT INTO brc.' + IDENT(table) + ' (' + cols.map(IDENT).join(', ') + ')\nVALUES\n' +

@@ -52,13 +52,29 @@ begin
 
   p := p || jsonb_build_object(
     'format', 3,
-    /* هل استُهلكت الفرص وبصمات رموزها */
+    /* هل استُهلكت الفرص — بلا بصمة الرمز.
+       ⚠️ عطل أُصلح 2026-11-15: كان to_jsonb(c) يُصدّر code_hash وcode_hash
+       عمود NOT NULL. وbrc.recovery_chances.code_hash عمود NOT NULL، والاسترجاع
+       كان يكتب الصفّ كما جاء فيفشل بـ23502 على أي قاعدة جديدة:
+         'Failing row contains (HRC-BC-100000, 1, f, null)'
+
+       والأسوأ أن الفشل يقع على أول صفّ في ملف البيانات — أي أن **كل استرجاع
+       يفشل قبل أن يبدأ**. والسبب الحقيقي أعمق: البصمة سرّية (توقيع) ولا يجوز
+       أن تُصدَّر في ملف، لكن قيد NOT NULL يمنع كتابة الصف بدونها.
+
+       الحل: لا نُصدّر البصمة، ونُكتب بديلاً حتمياً غير سرّي في وقت الاسترجاع
+       (انظر COLUMN_DEFAULTS في assets/js/restore-sql.js). ما يبقى وتحتاجه
+       فعلاً هو `spent`: هل استُهلكت الفرصة؟ */
     'recovery_chances', coalesce((
-      select jsonb_agg(to_jsonb(c) order by c.serial, c.attempt_no)
+      select jsonb_agg(jsonb_build_object(
+        'serial', c.serial, 'attempt_no', c.attempt_no, 'spent', c.spent)
+        order by c.serial, c.attempt_no)
       from brc.recovery_chances c), '[]'::jsonb),
-    /* هل طُبعت البطاقة وبصمة رمز الطباعة */
+    /* هل طُبعت البطاقة — وبصمة رمز الطباعة تُترك للاسترجاع */
     'recovery_prints', coalesce((
-      select jsonb_agg(to_jsonb(r) order by r.serial)
+      select jsonb_agg(jsonb_build_object(
+        'serial', r.serial, 'printed', r.printed)
+        order by r.serial)
       from brc.recovery_prints r), '[]'::jsonb),
     /* عمليات المكتب — لمنع تكرار البيع بعد الاسترجاع */
     'office_receipts', coalesce((

@@ -87,6 +87,7 @@
     "test:restore-gate": "node tests/restore-gate.mjs",
     "test:retention": "node tests/card-retention-sql.mjs && node tests/card-retention.mjs",
     "test:retention:browser": "node tests/card-retention-browser.mjs",
+    "test:backup:roundtrip": "node tests/backup-roundtrip.mjs",
     "test:roundtrip": "node tools/test-roundtrip.mjs",
     "test:schedule": "node tests/recovery-schedule.mjs",
     "test:schema": "node tests/schema.mjs",
