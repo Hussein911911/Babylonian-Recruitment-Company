@@ -55,10 +55,12 @@ const run = async (dir, label) => {
   return bad;
 };
 
-const LABELS = ['① السكيما', '② أرقام البطاقات', '③ البيانات'];
-let bad = 0;
+const LABELS = ['① السكيما', '② البيانات'];
+let bad = 0, total = 0;
 for (let i = 0; i < dirs.length; i++) {
+  const before = bad;
   bad += await run(dirs[i], LABELS[i] || dirs[i]);
+  total += readdirSync(dirs[i]).filter((f) => f.endsWith('.sql')).length;
 }
 
 console.log('\n════════ الأعداد النهائية ════════');
@@ -86,5 +88,5 @@ const f = await db.query(`select count(*)::int c from pg_proc p join pg_namespac
 const tt = await db.query(`select count(*)::int c from pg_tables where schemaname='brc'`);
 console.log(`   ℹ️  دوال brc: ${f.rows[0].c} · جداول brc: ${tt.rows[0].c}`);
 if (!checks.length) console.log('   ℹ️  مرّر HRC_EXPECT="jobs=47,applicants=440,…" للمقارنة الآلية');
-console.log(bad === 0 ? '\n✅✅ الإثبات كامل: ١٥ جزءاً نُفِّذت بالترتيب، كل واحد بمعاملة مستقلّة' : `\n❌ ${bad} جزءاً فشل`);
+console.log(bad === 0 ? `\n✅✅ الإثبات كامل: ${total} ملفاً نُفِّذت بالترتيب، كل واحد بمعاملة مستقلّة` : `\n❌ ${bad} ملفاً فشل`);
 await db.close();

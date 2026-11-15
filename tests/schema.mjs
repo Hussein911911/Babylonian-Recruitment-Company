@@ -124,8 +124,13 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
      recovery_retention_keep()                       — عدد النسخ المحفوظة
      recovery_prune(int)                             — التقليم الآمن
    ⇒ 65 تعريفاً و60 دالة فعلية (٥ توقيعات توافق + recovery_due_now الجديدة). */
-check('تعريفات الدوال: 65 تعريفاً، 60 دالة فعلية (توقيعات توافق مقصودة)',
-  funcs.length === 65 && new Set(funcs.map(x=>x.name)).size === 60,
+/* 2026-11-15: +3 تعريفات لتصدير النسخة الكاملة:
+     recovery_export_v3()   — يضيف الجداول الأربعة التي كان v2 يُسقطها
+   والكتلة المدمجة من ترحيل 2026-11-05 (أرقام البطاقات):
+     card_number_for(text) · assign_card_number() · issue_numbered_cards(...)
+   ⇒ 68 تعريفاً و63 دالة فعلية. */
+check('تعريفات الدوال: 68 تعريفاً، 63 دالة فعلية (توقيعات توافق مقصودة)',
+  funcs.length === 68 && new Set(funcs.map(x=>x.name)).size === 63,
   funcs.length + ' تعريفاً · ' + new Set(funcs.map(x=>x.name)).size + ' دالة');
 check('دوال الجدولة المرنة والتقليم موجودة',
   ['brc.recovery_retention_keep','brc.recovery_prune','brc.recovery_cron_expr','brc.recovery_schedule_set']
@@ -359,7 +364,8 @@ for (const [label, re] of [
 ]) check(label, re.test(RAW));
 
 const trigCount = [...stripped(RAW).matchAll(/create\s+trigger\s+\w+/gi)].length;
-check('تعريفات المشغّلات بما فيها حاجز الاسترجاع موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق/سجل الباركودات)', trigCount === 17 && /create\s+trigger\s+zz_capture_application_job_snapshot/i.test(stripped(RAW)), trigCount + '');
+/* 2026-11-15: 18 مشغّلاً — أُضيف trg_assign_card_number مع كتلة أرقام البطاقات. */
+check('تعريفات المشغّلات بما فيها حاجز الاسترجاع موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق/سجل الباركودات)', trigCount === 18 && /create\s+trigger\s+zz_capture_application_job_snapshot/i.test(stripped(RAW)), trigCount + '');
 
 /* ------------------------- 9) مزامنة ملف الـ migration ------------------------- */
 step(9, 'ملف الـ migration — متطابق مع المصدر (تكاملة GitHub في Supabase)');

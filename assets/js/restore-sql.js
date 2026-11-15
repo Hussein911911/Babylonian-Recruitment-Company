@@ -159,9 +159,25 @@
      الترتيب الصحيح هو عكس ما كان:
        staff (الجذر) → applicants → jobs → job_attempts → الباقي
      لأن كل الجداول الأخرى تشير إلى الحسابات، والبطاقات تشير إليها الوظائف. */
+  /* ═══ ترتيب الإدخال — يحترم المفاتيح الأجنبية ═══════════════════════════
+     ⚠️ إضافة 2026-11-15: كان التصدير والاسترجاع يتجاهلان أربعة جداول حقيقية
+     (ليست ذاكرة مؤقتة) فيُفقد محتواها بصمت عند الاسترجاع على مشروع جديد:
+
+       • recovery_chances — هل استُهلكت الفرصة وبصمة رمزها. بدونها تصبح كل
+         الفرص «غير مستهلكة» بعد الاسترجاع، فيُعيد حامل البطاقة استخدام فرصة
+         استهلكها. خطأ مالي مباشر: البطاقة تمنح فرصتين.
+       • recovery_prints  — هل طُبعت البطاقة. بدونها يمكن طباعة بطاقة ثانية.
+       • office_receipts  — سجل عمليات المكتب. بدونه تتكرر عمليات البيع.
+       • card_issue_requests — طلبات الإصدار.
+
+     ⚠️ ولا نضيف عمداً: card_security_attempts · card_lookup_budget ·
+     employer_login_budget · employer_otp — نوافذ حظر مؤقتة، ونسخها يُقفل
+     مستخدمين أبرياء على المشروع الجديد. ولا recovery_tickets/recovery_copies
+     (رموز استرجاع حيّة ولقطات سابقة → تسريب وتضخيم بلا فائدة). */
   var TABLES = ['staff', 'applicants', 'jobs', 'job_attempts', 'settings',
     'employer_job_credentials', 'issued_serials', 'card_number_registry',
-    'card_number_counter', 'audit_log'];
+    'card_number_counter', 'audit_log', 'card_issue_requests',
+    'recovery_chances', 'recovery_prints', 'office_receipts'];
 
   function buildSql(p) {
     p = p || {};
@@ -200,7 +216,11 @@
       '-- ⚠ brc.staff ليست هنا بقصد: تفريغها يحذف حساب المدير الذي ينفّذ هذا\n' +
       '--   السكربت، فيفقد الدخول. الحسابات تُضاف بـ ON CONFLICT DO NOTHING.\n' +
       'TRUNCATE brc.job_attempts, brc.applicants, brc.jobs, brc.employer_job_credentials, ' +
-      'brc.issued_serials, brc.card_number_registry, brc.audit_log, brc.settings RESTART IDENTITY CASCADE;\n\n';
+      'brc.issued_serials, brc.card_number_registry, brc.audit_log, brc.settings, ' +
+      /* الجداول الأربعة أدناه: بلا تفريغ تبقى صفوف المشروع القديم وتتعارض
+         مع الصفوف المستوردة (مفتاح أساسي مكرّر) فيفشل الجزء كله. */
+      'brc.recovery_chances, brc.recovery_prints, brc.card_issue_requests, ' +
+      'brc.office_receipts RESTART IDENTITY CASCADE;\n\n';
 
     /* ═══ عدّاد أرقام البطاقات ═══════════════════════════════════════════
        ⚠ عطل حقيقي: النسخة كانت تحفظ البطاقات ولا تحفظ أرقامها، فالعدّاد
