@@ -36,16 +36,35 @@ await page.waitForTimeout(400);
 ok('زر الهيكل ظاهر', await page.isVisible('#rp-dl-schema'));
 ok('زر البيانات ظاهر', await page.isVisible('#rp-dl-sql'));
 
-const d1 = page.waitForEvent('download');
+/* ⚠️ صار الهيكل يُنزَّل **خمسة أجزاء** لا ملفاً واحداً (2026-11-15).
+   السبب: محرّر Supabase يقصّ اللصق عند ~٢٠٠٠ سطر ويرفع Success، والمخطط
+   ٣١٥٤ سطراً — فكان الملف الواحد يصل ناقصاً بصمت (١١ جدولاً من ١٩).
+   والتنزيلات المتعددة بضغطة واحدة يحجبها المتصفح — فصارت أزراراً منفصلة. */
 await page.click('#rp-dl-schema');
-const f1 = await d1;
-const schemaSql = readFileSync(await f1.path(),'utf8');
-ok('اسم ملف الهيكل', f1.suggestedFilename()==='1-schema.sql', f1.suggestedFilename());
+await page.waitForSelector('#rp-schema-parts button');
+const partBtns = await page.$$('#rp-schema-parts button');
+ok('الهيكل خمسة أزرار', partBtns.length === 5, String(partBtns.length));
+
+const names = [], parts = [];
+for (let i = 0; i < partBtns.length; i++) {
+  const d = page.waitForEvent('download');
+  await partBtns[i].click();
+  const f = await d;
+  names.push(f.suggestedFilename());
+  parts.push(readFileSync(await f.path(), 'utf8'));
+}
+const schemaSql = parts.join('');
+ok('أسماء الأجزاء مرقّمة بالترتيب',
+  names.every((n, i) => n === '1-schema-part-' + String(i + 1).padStart(2, '0') + '.sql'),
+  names.join(' · '));
+ok('كل جزء فيه محتوى', parts.every((p) => p.trim().length > 500));
+ok('لا جزء يتجاوز ٧٠٠ سطر — حدّ محرّر Supabase',
+  parts.every((p) => (p.match(/\n/g) || []).length <= 700),
+  parts.map((p) => (p.match(/\n/g) || []).length).join(' · '));
 ok('الهيكل فيه CREATE TABLE', /create table/i.test(schemaSql));
 ok('الهيكل فيه RLS', /enable row level security/i.test(schemaSql));
 ok('الهيكل بلا مفتاح مسرّب', !/eyJ[A-Za-z0-9_-]{20,}/.test(schemaSql));
 ok('الهيكل بلا كلمة مرور اتصال', !/postgres:\/\/[^:]+:[^@]+@/.test(schemaSql));
-ok('الهيكل يبدأ بـbegin', /^\s*--|^\s*begin/i.test(schemaSql));
 
 const d2 = page.waitForEvent('download');
 await page.click('#rp-dl-sql');

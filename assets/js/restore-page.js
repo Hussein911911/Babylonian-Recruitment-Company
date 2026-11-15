@@ -293,13 +293,28 @@
      عند فتح الصفحة محلياً أو بجلسة مدير. إن لم يفكّه أحد (أو نُفّذت الصفحة
      بلا البوابة) فالمتغيّر غائب — فنقرأ الوسم مباشرة كي لا يصير الزر ميتاً.
      ⚠️ لا نعرّفه كمتغيّر عام: فحص restore-gate يمنع ذلك، وهو محقّ. */
+  /* ⚠️ الوسم يحمل المخطط **مُرمَّزاً بـJSON** (JSON.stringify في أداة البناء)،
+     لأن HTML لا يسمح بـ`</script>` داخل سكربت. و`restore-gate.js` ينسخ
+     `textContent` كما هو إلى المتغيّر — أي النصّ المرمّز لا المخطط.
+     فتقسيمه وهو مرمّز يعطي جزءاً واحداً: كل `\n` حرفان، وكل `\"` يُدخل
+     قارئَنا في حالة نصّ فلا يجد نهاية جملة. فيصل للمالك ملف واحد مشوّه.
+
+     فالفكّ هنا، ومن المصدرين كليهما. */
+  function unseal(raw) {
+    var text = String(raw || '').trim();
+    if (!text) return '';
+    if (text.charAt(0) === '"') {
+      try { return JSON.parse(text); } catch (e) { /* ليس JSON — نُكمِل */ }
+    }
+    return text;
+  }
+
   function schemaSql() {
-    if (window.__HRC_SCHEMA_SQL__) return window.__HRC_SCHEMA_SQL__;
+    var fromVar = unseal(window.__HRC_SCHEMA_SQL__);
+    if (fromVar) return fromVar;
     var embed = document.getElementById('hrc-schema-embed');
     if (!embed) return '';
-    var raw = (embed.textContent || '').trim();
-    if (!raw) return '';
-    try { return JSON.parse(raw); } catch (e) { return raw; }
+    return unseal(embed.textContent);
   }
 
   /* ═══ تنزيل الهيكل — أجزاء لا ملفاً واحداً ═══════════════════════════════
@@ -316,7 +331,7 @@
      القاعدة: نفس محرّك `tools/sql-split-core.mjs` المستعمل عند البناء،
      منسوخ هنا لأن الصفحة تعمل بلا حزمة بناء ولا وحدة ES. */
   function splitSchema(text) {
-    var LIMIT = 700, LIMIT_BYTES = 180000;
+    var LIMIT = 690, LIMIT_BYTES = 180000;
     var stmts = [], i = 0, n = text.length, start = 0;
     var inS = false, inD = false, inLC = false, inBC = false, tag = null;
     while (i < n) {
@@ -371,20 +386,43 @@
     var parts = splitSchema(SCHEMA_SQL);
     var total = parts.length;
     var pad = function (x) { return String(x).padStart(2, '0'); };
-    parts.forEach(function (body, idx) {
-      var head = '--  HRC — هيكل قاعدة البيانات · الجزء ' + pad(idx + 1) + ' من ' + pad(total) + '\n' +
+
+    /* ⚠️ لماذا أزرار منفصلة لا خمسة تنزيلات بضغطة؟
+       جرّبناها: المتصفح **يحجب** التنزيلات المتعددة التلقائية، فيصل ملف
+       واحد فقط ويظنّ المالك أن الباقي نزل. زر لكل جزء = سلوك متوقّع بلا
+       حجب، ويعرف المالك بالضبط أي جزء نزّل وأي جزء لصق. */
+    function partText(idx) {
+      return '--  HRC — هيكل قاعدة البيانات · الجزء ' + pad(idx + 1) + ' من ' + pad(total) + '\n' +
         '--  ---------------------------------------------------------------------------\n' +
         '--  ⚠ الصق الأجزاء بالترتيب: ١ ثم ٢ ثم ٣ ثم ٤ ثم ٥، كل واحد في استعلام جديد.\n' +
         '--  ⚠ لا تلصق جزءاً قبل نجاح الذي قبله — والملف كامل ٣١٥٤ سطراً، لا يدخل\n' +
         '--     في لصقة واحدة (محرّر Supabase يقصّ عند ~٢٠٠٠ سطر ويرفع Success).\n' +
         '--  ⚠ قبل البدء: فعّل pgcrypto و pg_cron من Database → Extensions.\n' +
         '--  ---------------------------------------------------------------------------\n\n';
-      window.HRCRestoreView.download('1-schema-part-' + pad(idx + 1) + '.sql', head + body,
-        'application/sql;charset=utf-8');
+    }
+
+    var box = $('rp-schema-parts');
+    if (!box) return;
+    /* إن كانت الأزرار مبنية سابقاً لا نعيد بناءها */
+    if (box.querySelector('button')) { box.hidden = false; return; }
+    box.replaceChildren();
+    parts.forEach(function (body, idx) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rp-btn rp-btn-gold';
+      b.textContent = 'تنزيل الجزء ' + (idx + 1) + ' من ' + total;
+      b.addEventListener('click', function () {
+        window.HRCRestoreView.download('1-schema-part-' + pad(idx + 1) + '.sql',
+          partText(idx) + body, 'application/sql;charset=utf-8');
+        b.textContent = '✓ الجزء ' + (idx + 1) + ' نُزّل';
+        b.classList.remove('rp-btn-gold');
+        b.classList.add('rp-btn');
+        setStatus(unlockStatus, 'نُزّل الجزء ' + (idx + 1) + ' — الصقه في SQL Editor ثم عُد للجزء ' + (idx + 2), 'ok');
+      });
+      box.appendChild(b);
     });
-    setStatus(unlockStatus,
-      'نُزّل ' + total + ' أجزاء للهيكل — الصقها بالترتيب في SQL Editor، استعلام جديد لكل جزء، وبعدها 2-data.sql',
-      'ok');
+    box.hidden = false;
+    setStatus(unlockStatus, 'الهيكل ' + total + ' أجزاء — نزّلها بالترتيب والصق كل واحد في استعلام جديد', 'ok');
   });
 
   var sqlBtn = $('rp-dl-sql');

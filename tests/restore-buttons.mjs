@@ -129,14 +129,27 @@ await pressButton('rp-dl-sql', /^2-data-\d{4}-\d{2}-\d{2}\.sql$/);
    في ملف واحد، ومحرّر Supabase يقصّ اللصق عند ~٢٠٠٠ سطر **ويرفع Success**.
    فكان المالك يبني قاعدة ناقصة ١١ جدولاً من ١٩ بلا أن يرى خطأً.
    الصواب: أجزاء تحت ٧٠٠ سطر، كلها قابلة للصق، ومجموعها = المخطط الكامل. */
-const schemaOut = await pressButton('rp-dl-schema', /^1-schema-part-\d{2}\.sql$/);
-check('زر الهيكل ينزّل أجزاء لا ملفاً واحداً', schemaOut.length >= 2, schemaOut.join(' · '));
+/* الزر نفسه لا ينزّل: يبني أزرار الأجزاء (التنزيلات المتعددة بضغطة واحدة
+   يحجبها المتصفح، فيصل ملف واحد ويظنّ المالك أن الباقي نزل). */
+d.getElementById('rp-dl-schema').click();
+await wait(400);
+const partBtns = [...d.querySelectorAll('#rp-schema-parts button')];
+check('زر الهيكل يبني خمسة أزرار أجزاء', partBtns.length === 5, String(partBtns.length));
+
+const schemaOut = [];
+for (const b of partBtns) {
+  const before = downloads.length;
+  b.click();
+  await wait(350);
+  const got = downloads.slice(before);
+  check('الجزء ينتج ملفاً', got.length === 1, got[0] || 'لا ملف');
+  if (got[0]) schemaOut.push(got[0]);
+}
 check('أسماء الأجزاء مرقّمة بالترتيب',
   schemaOut.every((n, i) => n === '1-schema-part-' + String(i + 1).padStart(2, '0') + '.sql'),
   schemaOut.join(' · '));
-check('عدد الأجزاء خمسة (لا قصّ عند ~٢٠٠٠ سطر)', schemaOut.length === 5, String(schemaOut.length));
-check('لا جزء يتجاوز ٧٠٠ سطر — حدّ محرّر Supabase',
-  schemaOut.length === 5);
+check('لم يبقَ اسم 1-schema.sql القديم (الملف الواحد الناقص)',
+  !schemaOut.some((n) => n === '1-schema.sql'), schemaOut.join(' · '));
 
 /* تصدير كل الجداول: ملف لكل جدول فيه صفوف */
 const beforeAll = downloads.length;
