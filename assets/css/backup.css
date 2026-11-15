@@ -9,7 +9,7 @@
 .portable-backup p{font-size:11px;line-height:1.95;color:#3f5a48;margin:0 0 12px;max-width:70ch}
 .portable-backup .portable-row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
 .portable-backup a.portable-help{font-size:11px;color:#2e6b46;text-decoration:underline;text-underline-offset:3px}
-.portable-backup [data-portable-status]{font-size:11px;line-height:1.9;color:#2d506d;margin:9px 0 0;min-width:0}
+.portable-backup [data-portable-status]{font-size:11px;line-height:1.9;color:#2d506d;margin:9px 0 0;min-width:0;white-space:pre-line}
 .portable-backup [data-portable-status].is-error{color:#963f35}
 .portable-backup [data-portable-status].is-ok{color:#2f6b50}
 @media(max-width:760px){.portable-backup{margin-inline:14px;padding:14px}.portable-backup .portable-row .btn{flex:1 1 auto}}
@@ -27,3 +27,32 @@
 .pb-dest-name{font-weight:700;direction:ltr;unicode-bidi:isolate;word-break:break-word}
 .pb-dest-badge{font-size:10px;font-weight:700;border-radius:999px;padding:2px 9px;background:#f0e2c4;color:#7a5b14}
 .pb-dest-badge.is-ok{background:#d9ecdd;color:#1f6b35}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   لوحة النسخ الاحتياطي — بنية البطاقات المرقّمة (2026-11-15)
+   ---------------------------------------------------------------------------
+   كانت الأقسام متتالية بلا حدود ولا ترقيم، فالمدير يرى جداراً من النصوص
+   ولا يعرف من أين يبدأ. الآن كل طبقة بطاقة مستقلة بعنوان ورقم وخطوة واضحة.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.recovery-msg{padding:15px 23px;font-size:12px;line-height:1.9;color:#2d506d;margin:0;background:#f4f8fc;border-bottom:1px solid #e4ecf4;white-space:pre-line}
+.recovery-msg.recovery-error{color:#963f35;background:#fff3ef}
+
+.recovery-card{margin:0 23px 16px;border:1px solid #dfe6ef;border-radius:14px;background:#fff;overflow:hidden}
+.recovery-card:first-of-type{margin-top:18px}
+.recovery-card-head{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;background:#fbfcfe;border-bottom:1px solid #eef2f7}
+.recovery-card-head>div{flex:1 1 auto;min-width:0}
+.recovery-card-head h4{font-size:14px;margin:0 0 5px;color:#172e49}
+.recovery-card-head p{font-size:11px;line-height:1.95;color:#536a83;margin:0;max-width:70ch}
+.recovery-card-num{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  width:26px;height:26px;border-radius:50%;background:#f0d99e;color:#5c4413;
+  font-size:13px;font-weight:800;line-height:1}
+.recovery-card-body{padding:16px 18px}
+.recovery-card-body[data-recovery-list]{padding-bottom:4px}
+
+@media(max-width:760px){
+  .recovery-card{margin-inline:14px;border-radius:12px}
+  .recovery-card-head{padding:14px;gap:10px}
+  .recovery-card-body{padding:14px}
+  .recovery-msg{padding:13px 16px}
+  .recovery-card-head>.btn{flex:0 0 auto}
+}

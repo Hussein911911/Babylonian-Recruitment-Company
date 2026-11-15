@@ -23,9 +23,12 @@ try{
  /* 2026-11-15: قرار المدير — USB فقط، Google Drive خارج النطاق.
    الاختبار يضمن أن الواجهة تقول ذلك صراحةً بدل ادّعاء ربط غير موجود. */
  {const t=d.getElementById('recovery-tools').textContent;
-  check('storage scope stated',t.includes('داخل نفس مشروع القاعدة'));
-  check('external copy points to USB, not Google Drive',t.includes('USB')&&!t.includes('Drive غير مربوط'));}
- check('does not claim full project/code/Storage recovery',d.getElementById('recovery-tools').textContent.includes('ليست استرداداً لكود الموقع'));
+  /* الصياغة تغيّرت (بنية بطاقات مرقّمة 2026-11-15) لكن المضمون لازم يبقى:
+     يقول إن النسخ داخل الموقع، ولا يدّعي حماية من حذف المشروع، ويشير لـUSB. */
+  check('storage scope stated',t.includes('داخل الموقع'));
+  check('external copy points to USB, not Google Drive',t.includes('USB')&&!t.includes('Drive غير مربوط'));
+  check('states honestly that the in-site copy does not survive project deletion',t.includes('فلا تحمي من حذف المشروع'));}
+ check('does not claim full project/code/Storage recovery',d.getElementById('recovery-tools').textContent.includes('لا تشمل'));
  click('recovery-create');d.getElementById('recovery-copy-name').value='نسخة اليوم';click('recovery-save');await tick();
  check('flushes writes before snapshot RPC',calls.findIndex(c=>c.action==='flush')<calls.findIndex(c=>c.action==='create'));
  check('create names the server snapshot and refreshes its list',calls.some(c=>c.action==='create'&&c.name==='نسخة اليوم')&&d.querySelectorAll('.recovery-copy').length===2);
@@ -160,7 +163,10 @@ try{
   check('writes the encrypted archive to the chosen USB folder',picked===1&&wrote.length>0&&JSON.parse(wrote).format==='HRC-PORTABLE-v1');
   check('successful USB write does not also dump a copy into Downloads',downloaded===1);
   const st=d2.querySelector('[data-portable-status]').textContent;
-  check('reports the USB write and that the file was re-read and verified',/الـUSB/.test(st)&&/تحقّقت/.test(st));
+  /* بلاغ المدير: الرسالة كانت تقول «تم التنزيل للـUSB» بلا اسم واضح.
+     الآن لازم تذكر **اسم المجلد** و**اسم الملف** معاً، وتُصرّح بالتحقق. */
+  check('success states WHERE the file went (folder or file) and that it was verified',
+    /حُفظت/.test(st)&&/الملف:/.test(st)&&/تحقّقت/.test(st), st);
   closeModal();
 
   /* (ب) المستخدم يُلغي النافذة → لا ادّعاء نجاح ولا تنزيل صامت */
@@ -169,6 +175,40 @@ try{
   const errEl=d2.getElementById('pb-err');
   check('cancelled picker never claims success and never silently downloads',
     downloaded===1&&!!errEl&&/لم تُحفظ/.test(errEl.textContent));
+  /* ── بلاغ المدير: «أنطي تنزيل ينزل لاسم المجلد مو ينكتبلي تم التنزيل للـUSB» ──
+   * السبب: كنا نأخذ handle.name (اسم المجلد) في وضع directory، فلا يظهر اسم
+   * الملف، ولا يوجد تحقق أن الملف موجود فعلاً. الآن: نسمّي الملف صراحةً،
+   * ونقرأ قائمة المجلد بعد الكتابة (values()) ونتأكد أن الاسم موجود.
+   * هذا الفحص يثبت أن التحقق الفعلي يجري — لا مجرد رسالة. */
+  {
+   let listed=0,writeOk=true;
+   /* usbSupported() يشترط وجود showSaveFilePicker — لا نلغيه، فنحن نختبر
+      مسار showDirectoryPicker داخل بيئة تدعم الميزة. */
+   w2.showSaveFilePicker=async()=>{throw Object.assign(new Error('x'),{name:'AbortError'});};
+   w2.showDirectoryPicker=async()=>({
+     kind:'directory',name:'HRC-Backups',
+     queryPermission:async()=>'granted',requestPermission:async()=>'granted',
+     getFileHandle:async(n)=>({name:n,kind:'file',
+       createWritable:async()=>({write:async b=>{wrote=await readBlob(b);},close:async()=>{}}),
+       getFile:async()=>({size:new TextEncoder().encode(wrote).length,
+         arrayBuffer:async()=>new TextEncoder().encode(wrote).buffer})}),
+     values:async function*(){listed++;yield {name:'hrc-backup-2026-11-15-0900.hrcbak'};}
+   });
+   await new Promise(r=>{const rq=w2.indexedDB.open('hrc-usb',1);
+     rq.onsuccess=()=>{const db=rq.result;const tx=db.transaction('dirs','readwrite');
+       tx.objectStore('dirs').delete('usbBackupDir');tx.oncomplete=()=>{db.close();r();};};});
+   closeModal();await open();pass();
+   d2.getElementById('pb-go').click();
+   for(let i=0;i<120&&!listed;i++)await wait(10);
+   await wait(150);
+   check('actually re-lists the folder on disk after writing (not just trusting the browser)',listed===1);
+   const st2=d2.querySelector('[data-portable-status]').textContent;
+   check('success message names the folder and the file separately',
+     /HRC-Backups/.test(st2)&&/hrc-backup-2026-11-15-0900\.hrcbak/.test(st2),st2);
+   check('the message never pretends a plain success without location',!/^تم التنزيل\.?$/.test(st2.trim()));
+   closeModal();
+  }
+
   /* ── اختيار المجلد وتذكّره (طلب المدير: «أي مجلد نريده ويبقى محفوظاً») ── */
   closeModal();
   let dirPicked=0,writtenName='';
