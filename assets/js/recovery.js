@@ -275,6 +275,15 @@
   }
   return handle;
  }
+ /* يتحقق أن الملف موجود فعلاً داخل المجلد بعد الكتابة.
+  * القاعدة: «تم» من المتصفح ليست دليلاً — نقرأ القائمة من القرص. */
+ async function verifyInFolder(dirHandle,name){
+  if(!dirHandle||typeof dirHandle.values!=='function')return;
+  for await (var entry of dirHandle.values()){
+   if(entry&&entry.name===name)return true;
+  }
+  throw new Error('لم أجد الملف داخل المجلد بعد الكتابة — أعد المحاولة');
+ }
  function portableDownload(){
   if(!Store.isAdmin()){UI.toast('err','صلاحية المدير فقط','نسخة الجهاز من صلاحيات المدير العام.');return;}
   loadPortable().then(function(PB){
@@ -402,13 +411,28 @@
        clearInterval(tick);
        var name=PB.suggestName(new Date());
        var payload=JSON.stringify(env);
-       var saved=null,finger=null,fallback=false;
+       var saved=null,finger=null,fallback=false,savedIsFolder=false;
        if(handle){
         btn.textContent='جارٍ الكتابة على الـUSB…';
         try{
          var fileHandle=await usbTargetFile(handle,name);
          finger=await usbWrite(fileHandle,payload);
-         saved=(handle.kind==='directory'?(handle.name+'/'):'')+name;
+         /* ⚠️ بلاغ المدير (2026-11-15): «أنطي تنزيل ينزل لاسم المجلد مو
+            ينكتبلي تم التنزيل للـUSB».
+            السبب: كنا نأخذ `handle.name` — وهو اسم **المجلد** في وضع
+            showDirectoryPicker — لا اسم **الملف** المكتوب. فيظهر السطر
+            كأنه يذكر المجلد فقط، ولا يثبت أن الملف موجود.
+            الصحيح: نسمّي الملف صراحة، ونقرأ قائمة المجلد بعد الكتابة
+            ونتأكد أن الاسم موجود فعلاً. لا نثق بمقبض ولا برسالة متصفح. */
+         if(handle.kind==='directory'){
+          await verifyInFolder(handle,name);
+          saved=handle.name+' / '+name;
+          savedIsFolder=true;
+         }else{
+          /* حافظة ملفات: الاسم الصحيح هو اسم الملف الذي اختاره المستخدم. */
+          saved=fileHandle&&fileHandle.name?fileHandle.name:handle.name||name;
+          savedIsFolder=false;
+         }
          await usbRemember(handle);
         }catch(writeErr){
          /* فشل الكتابة أو فشل التحقق: لا ندّعي نجاحاً — نرجع للتنزيل
@@ -424,12 +448,25 @@
        close();lock(false);
        var c=env.counts||{};
        var trimmed=Number(c.diffTrimmed||0);
-       var note;
-       if(saved)note='كُتبت النسخة على الـUSB: '+(c.applicants||0)+' بطاقة و'+(c.audit||0)+' سجل تدقيق — '+saved+(finger?' · بصمة '+finger:'')+' · تحقّقت من الملف بعد الكتابة.';
-       else note='نُزِّلت النسخة إلى مجلد التنزيلات: '+(c.applicants||0)+' بطاقة و'+(c.audit||0)+' سجل تدقيق — '+name;
-       if(trimmed)note+=' (استُبعد الفرق التفصيلي من '+trimmed+' سجلاً يحمل صوراً مضمّنة)';
-       portableStatus(note,'ok');
-       UI.toast('ok',saved?'حُفظت على الـUSB':'نُزِّلت النسخة المشفّرة',(saved||name)+' — احفظ كلمة المرور؛ بدونها لا تُفتح.');
+       /* الرسالة تقول **أين** و**ماذا** بالضبط — لا «تم» غامضة. */
+       var counts=(c.applicants||0)+' بطاقة و'+(c.audit||0)+' سجل تدقيق';
+       var note,title,detail;
+       if(saved){
+        var whereText=savedIsFolder?('المجلد: '+saved.split(' / ')[0]+'\nالملف: '+saved.split(' / ')[1])
+                                   :('الملف: '+saved);
+        title=savedIsFolder?('حُفظت في '+saved.split(' / ')[0]):'حُفظت النسخة';
+        detail=counts+(finger?' · بصمة '+finger:'')+' · تحقّقت من الملف بعد الكتابة.';
+        portableStatus('✓ حُفظت النسخة\n'+whereText+'\n'+detail,'ok');
+       }else{
+        title='نُزّلت إلى التنزيلات';
+        detail=name+' — '+counts+'\nلم يُستخدم المجلد المحدّد؛ ابحث عن الملف في مجلد التنزيلات (Downloads) وانقله إلى الـUSB.';
+        portableStatus('نُزّلت النسخة إلى مجلد التنزيلات — لم تُكتب في المجلد المحدّد.\n'+detail,'ok');
+       }
+       if(trimmed){
+        var trimmedNote='استُبعد الفرق التفصيلي من '+trimmed+' سجلاً يحمل صوراً مضمّنة.';
+        portableStatus(document.querySelector('.portable-backup [data-portable-status]').textContent+'\n'+trimmedNote,'ok');
+       }
+       UI.toast('ok',title,detail);
       }catch(e){
        clearInterval(tick);
        err.textContent=e.message||'تعذّر إنشاء النسخة';err.style.display='block';
@@ -647,7 +684,108 @@
   var target=document.getElementById('recovery-tools');if(!target)return;
   if(box!==target||!target.dataset.recoveryReady){box=target;target.dataset.recoveryReady='yes';
    box.className='recovery-console';
-   box.innerHTML='<header class="recovery-head"><div><span class="recovery-eyebrow">حماية بيانات الشركة</span><h3>النسخ الاحتياطي والاسترجاع</h3><p>احفظ نسخة، وارجع لها إذا انحذفت بيانات الموقع بالخطأ.</p></div><button type="button" class="btn btn-gold" id="recovery-create">إنشاء نسخة الآن</button></header><div class="recovery-strip"><span>نسخ مشفرة من القاعدة الفعلية</span><span>استرجاع بصلاحية المدير فقط</span></div><p data-recovery-status role="status">جارٍ الاتصال بخدمة النسخ…</p><section class="recovery-schedule" aria-labelledby="recovery-sched-title"><div class="recovery-schedule-head"><div><h4 id="recovery-sched-title">جدولة النسخ التلقائي</h4><p>يحددها المدير: كل عدد ساعات أو أيام محدّدة — بتوقيت بغداد، وتُنفَّذ داخل القاعدة نفسها حتى لو كانت اللوحة مغلقة.</p></div><span class="recovery-sched-badge" data-recovery-sched-badge>جارٍ القراءة…</span></div><div class="recovery-mode" data-recovery-mode role="radiogroup" aria-label="نمط الجدولة"><label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="interval" id="recovery-mode-interval"><span>كل عدد ساعات</span></label><label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="daily" id="recovery-mode-daily"><span>كل يوم</span></label><label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="every_days" id="recovery-mode-every_days"><span>كل عدد أيام</span></label><label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="days" id="recovery-mode-days"><span>أيام محدّدة</span></label></div><div class="recovery-interval" data-recovery-interval hidden><label class="field" for="recovery-sched-hours">كل</label><select id="recovery-sched-hours" aria-describedby="recovery-hours-hint"><option value="1">ساعة</option><option value="2">ساعتين</option><option value="3">٣ ساعات</option><option value="4">٤ ساعات</option><option value="6">٦ ساعات</option><option value="8">٨ ساعات</option><option value="12">١٢ ساعة</option><option value="24">٢٤ ساعة</option></select><span id="recovery-hours-hint" class="recovery-hours-hint">تبدأ من الساعة أدناه بتوقيت بغداد، ثم تتكرر كل المدة المختارة.</span></div><div class="recovery-everydays" data-recovery-everydays hidden><label class="field" for="recovery-sched-days-n">كل</label><select id="recovery-sched-days-n" aria-describedby="recovery-days-n-hint"><option value="1">يوم</option><option value="2">يومين</option><option value="3">٣ أيام</option><option value="5">٥ أيام</option><option value="7">٧ أيام</option><option value="14">١٤ يوم</option><option value="30">٣٠ يوم</option><option value="60">٦٠ يوم</option><option value="90">٩٠ يوم</option></select><span id="recovery-days-n-hint" class="recovery-hours-hint">نفحص كل يوم في الساعة أدناه، ولا تُؤخذ النسخة إلا عند حلول الموعد.</span></div><div class="recovery-days" data-recovery-days role="group" aria-label="أيام النسخ التلقائي"></div><div class="recovery-sched-foot"><label class="field" for="recovery-sched-time">الساعة<input type="time" id="recovery-sched-time" value="23:00" step="300"></label><button type="button" class="btn btn-gold btn-sm" id="recovery-sched-save">حفظ الجدولة</button><button type="button" class="btn btn-outline btn-sm" id="recovery-sched-off">إيقاف التلقائي</button><span class="recovery-sched-note" data-recovery-sched-note role="status"></span></div></section><section class="portable-backup" aria-labelledby="portable-title"><h4 id="portable-title">نسخة محمولة تنزل على جهازك</h4><p>تُشفَّر في متصفحك بكلمة مرور تختارها أنت — المفتاح لا يُخزَّن في القاعدة. لذلك تبقى قابلة للاسترجاع حتى لو ضاع المشروع كله، بخلاف النسخ أعلاه المشفّرة بمفتاح داخل القاعدة نفسها. تختار مسار الحفظ من نافذة المتصفح.</p><div class="portable-row"><button type="button" class="btn btn-gold btn-sm" id="portable-download">تنزيل نسخة إلى الجهاز</button><a class="portable-help" href="restore.html" target="_blank" rel="noopener">أداة الاسترجاع المستقلّة ↗</a></div><p data-portable-status role="status"></p></section><div class="recovery-list-head"><h4>النسخ المحفوظة</h4><p class="recovery-keep-note" data-recovery-keep-note>تُحفظ آخر ٣ نسخ مجدولة تلقائياً؛ الأقدم يُحذف عند إنشاء نسخة جديدة. نسخ الأمان لا تُحذف أبداً.</p><button type="button" class="btn btn-outline btn-sm" id="recovery-refresh">تحديث القائمة</button></div><div data-recovery-list></div><div class="recovery-scope">الحفظ داخل نفس مشروع القاعدة (آخر ٣ نسخ) · وللحفظ الخارجي انسخ النسخة المحمولة إلى USB — انظر docs/backup-usb-2026-11-15.md<details><summary>نطاق النسخة وملاحظات الأمان</summary><p>استعادة لبيانات التشغيل وروابط الصور، وليست استرداداً لكود الموقع أو ملفات Storage أو حسابات الدخول. الجدولة أعلاه يضبطها المدير وتُنفَّذ داخل القاعدة، لكنها لا تحمي من حذف المشروع بالكامل. لقطات المتصفح القديمة ليست جزءاً من النظام الجديد ولم تُحذف.</p></details></div>';
+   /* ═══ بنية اللوحة — مرتّبة في ثلاث طبقات واضحة ═══════════════════════
+     طلب المدير (2026-11-15): «راجع صفحة التنزيل والاسترجاع وترتيبهن بشكل
+     احترافي بلا أخطاء».
+     الترتيب الجديد يتبع **قرار المستخدم** لا ترتيب الكود القديم:
+        ①  نسخة فورية (أهم شي: حماية الآن)
+        ②  جدولة تلقائية (حماية مستمرة)
+        ③  النسخ المحفوظة (مراجعة واسترجاع)
+     كل طبقة في بطاقة مستقلة بترقيم وعنوان وحالة — لا خليط. */
+   box.innerHTML=
+    '<header class="recovery-head">'+
+     '<div><span class="recovery-eyebrow">حماية بيانات الشركة</span>'+
+     '<h3>النسخ الاحتياطي والاسترجاع</h3>'+
+     '<p>نسخة داخل الموقع تلقائياً، ونسخة على جهازك بكلمة مرورك.</p></div>'+
+     '<button type="button" class="btn btn-gold" id="recovery-create">إنشاء نسخة الآن</button>'+
+    '</header>'+
+
+    '<div class="recovery-strip">'+
+     '<span>🔒 نسخ مشفّرة من القاعدة الفعلية</span>'+
+     '<span>👤 استرجاع بصلاحية المدير فقط</span>'+
+     '<span>🗓️ الجدولة تُنفَّذ داخل القاعدة</span>'+
+    '</div>'+
+
+    '<p class="recovery-msg" data-recovery-status role="status">جارٍ الاتصال بخدمة النسخ…</p>'+
+
+    /* ① نسخة على جهازك */
+    '<section class="recovery-card" aria-labelledby="rc-portable">'+
+     '<div class="recovery-card-head">'+
+      '<span class="recovery-card-num">١</span>'+
+      '<div><h4 id="rc-portable">نسخة على جهازك — الآن</h4>'+
+      '<p>تُشفَّر في متصفحك بكلمة مرور تختارها. المفتاح لا يُخزَّن في القاعدة، '+
+      'فتبقى قابلة للاسترجاع حتى لو ضاع المشروع كله. تحفظها في مجلد تحدّده أنت (فلاش USB مثلاً).</p></div>'+
+     '</div>'+
+     '<div class="recovery-card-body">'+
+      '<div class="portable-row">'+
+       '<button type="button" class="btn btn-gold btn-sm" id="portable-download">تنزيل نسخة إلى جهازي</button>'+
+       '<a class="portable-help" href="restore.html" target="_blank" rel="noopener">أداة الاسترجاع المستقلّة ↗</a>'+
+      '</div>'+
+      '<p data-portable-status role="status"></p>'+
+     '</div>'+
+    '</section>'+
+
+    /* ② الجدولة */
+    '<section class="recovery-card" aria-labelledby="rc-sched">'+
+     '<div class="recovery-card-head">'+
+      '<span class="recovery-card-num">٢</span>'+
+      '<div><h4 id="rc-sched">جدولة النسخ التلقائي</h4>'+
+      '<p>يحددها المدير بتوقيت بغداد، وتُنفَّذ داخل القاعدة حتى لو كانت اللوحة مغلقة. '+
+      'تُحفظ آخر ٣ نسخ، والأقدم يُحذف تلقائياً.</p></div>'+
+      '<span class="recovery-sched-badge" data-recovery-sched-badge>جارٍ القراءة…</span>'+
+     '</div>'+
+     '<div class="recovery-card-body">'+
+      '<div class="recovery-mode" data-recovery-mode role="radiogroup" aria-label="نمط الجدولة">'+
+       '<label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="interval" id="recovery-mode-interval"><span>كل عدد ساعات</span></label>'+
+       '<label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="daily" id="recovery-mode-daily"><span>كل يوم</span></label>'+
+       '<label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="every_days" id="recovery-mode-every_days"><span>كل عدد أيام</span></label>'+
+       '<label class="recovery-mode-opt"><input type="radio" name="recovery-mode" value="days" id="recovery-mode-days"><span>أيام محدّدة</span></label>'+
+      '</div>'+
+      '<div class="recovery-interval" data-recovery-interval hidden>'+
+       '<label class="field" for="recovery-sched-hours">كل</label>'+
+       '<select id="recovery-sched-hours"><option value="1">ساعة</option><option value="2">ساعتين</option>'+
+       '<option value="3">٣ ساعات</option><option value="4">٤ ساعات</option><option value="6">٦ ساعات</option>'+
+       '<option value="8">٨ ساعات</option><option value="12">١٢ ساعة</option><option value="24">٢٤ ساعة</option></select>'+
+       '<span class="recovery-hours-hint">تبدأ من الساعة أدناه، ثم تتكرر كل المدة المختارة.</span>'+
+      '</div>'+
+      '<div class="recovery-everydays" data-recovery-everydays hidden>'+
+       '<label class="field" for="recovery-sched-days-n">كل</label>'+
+       '<select id="recovery-sched-days-n"><option value="1">يوم</option><option value="2">يومين</option>'+
+       '<option value="3">٣ أيام</option><option value="5">٥ أيام</option><option value="7">٧ أيام</option>'+
+       '<option value="14">١٤ يوم</option><option value="30">٣٠ يوم</option><option value="60">٦٠ يوم</option>'+
+       '<option value="90">٩٠ يوم</option></select>'+
+       '<span class="recovery-hours-hint">نفحص كل يوم في الساعة أدناه، ولا تُؤخذ النسخة إلا عند حلول الموعد.</span>'+
+      '</div>'+
+      '<div class="recovery-days" data-recovery-days role="group" aria-label="أيام النسخ التلقائي"></div>'+
+      '<div class="recovery-sched-foot">'+
+       '<label class="field" for="recovery-sched-time">الساعة'+
+       '<input type="time" id="recovery-sched-time" value="23:00" step="300"></label>'+
+       '<button type="button" class="btn btn-gold btn-sm" id="recovery-sched-save">حفظ الجدولة</button>'+
+       '<button type="button" class="btn btn-outline btn-sm" id="recovery-sched-off">إيقاف التلقائي</button>'+
+       '<span class="recovery-sched-note" data-recovery-sched-note role="status"></span>'+
+      '</div>'+
+     '</div>'+
+    '</section>'+
+
+    /* ③ المحفوظات */
+    '<section class="recovery-card" aria-labelledby="rc-list">'+
+     '<div class="recovery-card-head">'+
+      '<span class="recovery-card-num">٣</span>'+
+      '<div><h4 id="rc-list">النسخ المحفوظة داخل الموقع</h4>'+
+      '<p>آخر ٣ نسخ مجدولة. نسخ الأمان لا تُحذف أبداً.</p></div>'+
+      '<button type="button" class="btn btn-outline btn-sm" id="recovery-refresh">تحديث</button>'+
+     '</div>'+
+     '<div class="recovery-card-body" data-recovery-list></div>'+
+    '</section>'+
+
+    '<div class="recovery-scope">'+
+     '<details><summary>ما تشمله النسخة وما لا تشمله</summary>'+
+     '<p><b>تشمل:</b> الوظائف · البطاقات · الفرص · سجل التدقيق · الإعدادات · أرقام البطاقات المُصدرة · الحسابات (بلا كلمات مرور).</p>'+
+     '<p><b>لا تشمل:</b> كود الموقع · ملفات الصور في Storage · كلمات مرور الحسابات · إعدادات مشروع Supabase.</p>'+
+     '<p>النسخة داخل الموقع تُشفَّر بمفتاح داخلها، فلا تحمي من حذف المشروع. '+
+     'النسخة المحمولة (١) مفتاحها كلمة مرورك، فتبقى صالحة بعد فقدان المشروع.</p>'+
+     '</details></div>';
+
    box.querySelector('#recovery-create').onclick=create;box.querySelector('#recovery-refresh').onclick=refresh;
    box.querySelector('#recovery-sched-save').onclick=function(){saveSchedule(false);};
    box.querySelector('#recovery-sched-off').onclick=function(){saveSchedule(true);};
