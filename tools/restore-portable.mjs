@@ -175,9 +175,43 @@ async function main() {
     const client = new pg.default.Client({ connectionString: url });
     await client.connect();
     info('متصل — تنفيذ السكربت…');
+
+    /* ═══ لماذا لا نكتفي بـ«اكتمل»؟ ═══════════════════════════════════════
+       لأن الملف يبدأ بـ `BEGIN`، وأي خطأ في وسطه يُجهض المعاملة **كلها**.
+       فيظهر للمستخدم «اكتمل» بينما القاعدة فارغة — وهذا أسوأ ما يمكن أن
+       يحدث في يوم استرجاع حقيقي. لذلك نقرأ الأعداد من القاعدة نفسها بعد
+       التنفيذ ونقارنها بأعداد النسخة. لا ادّعاء بلا إثبات. */
+    const t0 = Date.now();
     await client.query(sql);
+
+    const want = payload.counts || {};
+    const expected = {
+      jobs: want.jobs != null ? want.jobs : (payload.jobs || []).length,
+      applicants: want.applicants != null ? want.applicants : (payload.applicants || []).length,
+      job_attempts: want.attempts != null ? want.attempts : (payload.job_attempts || []).length,
+      audit_log: want.audit != null ? want.audit : (payload.audit_log || []).length
+    };
+    let mismatch = 0;
+    console.log('');
+    for (const [table, exp] of Object.entries(expected)) {
+      if (!exp) continue;
+      let got = null;
+      try {
+        const r = await client.query('select count(*)::int n from brc.' + table);
+        got = r.rows[0].n;
+      } catch (e) {
+        got = 'تعذّر العدّ: ' + (e.message || '').split('\n')[0];
+      }
+      const fine = String(got) === String(exp);
+      if (!fine) mismatch++;
+      console.log(`  ${fine ? '✓' : '✗'} brc.${table}: ${got} (المتوقع ${exp})`);
+    }
     await client.end();
-    ok('اكتمل الاسترجاع');
+
+    if (mismatch) {
+      die(`الاسترجاع لم يكتمل — ${mismatch} جدولاً بأعداد مختلفة. القاعدة لم تُترك فارغة بالكامل، لكن لا تعتمد عليها قبل المعالجة.`);
+    }
+    ok(`اكتمل الاسترجاع وتحقّق — ${((Date.now() - t0) / 1000).toFixed(1)} ثانية`);
     return;
   }
 
