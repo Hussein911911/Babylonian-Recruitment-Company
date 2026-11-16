@@ -30,7 +30,12 @@ try{
   check('only new recovery controls in production '+width,await page.locator('#btn-import,#btn-export,#btn-reset,#btn-schedule-backup,#btn-quick-backup').count()===0);
   check('legacy module never requested in production '+width,!requests.some(u=>u.includes('/legacy-backup.js')));
   check('stored copy names cannot inject HTML '+width,await page.locator('#recovery-tools img').count()===0);
-  check('scope and Drive status honest '+width,(await page.locator('.recovery-scope').textContent()).includes('Google Drive غير مربوط'));
+  /* ⚠ صُحّح 2026-11-16: كان يطلب نصاً يقول «Google Drive غير مربوط».
+     وقد أُلغي مسار Drive بقرار المالك (USB فقط)، فاختفت العبارة من الواجهة —
+     والاختبار بقي يطلبها فصار يفشل على شيفرة سليمة.
+     الصحيح: نتحقق أن القسم **يشرح حدوده بصدق** — وهو المطلوب أصلاً. */
+  check('scope is honest about what the backup excludes '+width,
+    /لا تشمل/.test(await page.locator('.recovery-scope').textContent()));
   check('recovery panel fits viewport '+width,await page.locator('#recovery-tools').evaluate(e=>{const r=e.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1&&e.scrollWidth<=e.clientWidth+1;}));
   await page.locator('#recovery-tools').screenshot({path:new URL('recovery-'+width+'.png',output).pathname});
   await page.locator('.recovery-copy button').first().click();await page.locator('#recovery-restore').waitFor();
