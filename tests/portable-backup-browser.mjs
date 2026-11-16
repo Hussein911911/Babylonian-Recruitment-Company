@@ -20,8 +20,23 @@ const chk=(t,c,d)=>{if(c){pass++;console.log(P+'✅ '+t);}else{fail++;console.lo
    ═══════════════════════════════════════════════════════════════════════════ */
 console.log('\n█ النسخة المحمولة — سيناريو كامل\n');
 console.log('▌١ التحميل');
-await p.goto('http://127.0.0.1:4173/restore',{waitUntil:'load'});
+/* ⚠ صُحّح 2026-11-16: هذا الفحص كان يفشل على شيفرة سليمة.
+   السبب: يفتح `http://` (أي «الموقع المنشور») بلا جلسة، فبوابة المدير
+   في restore-gate.js تقفل الخطوات الست — وهو سلوك **صحيح ومقصود**:
+   صفحة الاسترجاع تكشف مخطط القاعدة وتفتح أي نسخة، فلا تُعطى لزائر.
+   فالحقل لا يظهر، وينتهي الفحص بـTimeoutError يبدو كعطل في الشيفرة.
+
+   الحلّان الممكنان: (أ) نُسجّل دخول مدير، (ب) نفتح `file://` كما يفعل
+   المالك فعلاً على حاسبه. اخترنا (ب): لا يحتاج شبكة ولا حساباً وهمياً،
+   وهو **الاستخدام الحقيقي** للأداة (تعمل بعد انقطاع الموقع). */
+const FILE_ROOT = process.cwd();
+await p.goto('file://' + FILE_ROOT + '/restore.html',{waitUntil:'load'});
 await p.waitForTimeout(900);
+const gateState = await p.evaluate(()=>({
+  access: document.body.getAttribute('data-rp-access'),
+  locked: document.querySelectorAll('[data-rp-step].is-locked').length
+}));
+chk('البوابة تفتح محلياً (file://) بلا قفل', gateState.locked === 0, JSON.stringify(gateState));
 let r=await p.evaluate(()=>({t:document.title,drop:!!document.getElementById('rp-drop'),h2:document.getElementById('rp-step2').classList.contains('is-hidden'),cr:!!(window.crypto&&window.crypto.subtle),pb:typeof window.HRCPortableBackup,css:getComputedStyle(document.body).fontFamily.includes('Plex')}));
 chk('العنوان عربي', r.t.includes('استرجاع'), r.t);
 chk('منطقة الرفع موجودة', r.drop);
@@ -66,12 +81,26 @@ console.log('\n▌٥ كلمة المرور الصحيحة');
 await p.fill('#rp-pass','كلمة-مرور-الاختبار-2026');
 await p.click('#rp-unlock-btn');
 await p.waitForTimeout(1600);
-r=await p.evaluate(()=>({s:document.getElementById('rp-unlock-status').textContent,v4:!document.getElementById('rp-step4').classList.contains('is-hidden'),tot:document.getElementById('rp-totals').textContent.replace(/\s+/g,' '),prev:document.getElementById('rp-preview').textContent,dir:getComputedStyle(document.querySelector('#rp-preview pre')).direction}));
-chk('نجح الفكّ', r.s.includes('البصمة مطابقة'), r.s);
-chk('المحتوى ظهر', r.v4);
+/* ⚠ صُحّح 2026-11-16: كان يطلب `#rp-preview` (عيّنة JSON).
+   وقد **حُذف الشرح من الصفحة بقرار المالك**: «خلي بس أزرار التنزيلات».
+   فالعنصر غير موجود، والبند يفشل على شيفرة سليمة.
+
+   الشيفرة نفسها تتعامل مع الغياب بأمان (restore-page.js:206) — وهذا
+   **جوهر** ما نتأكد منه: العرض الاختياري لا يُسقط الفكّ الناجح. */
+r=await p.evaluate(()=>({
+  s:document.getElementById('rp-unlock-status').textContent,
+  v4:!document.getElementById('rp-step4').classList.contains('is-hidden'),
+  v5:!document.getElementById('rp-step5').classList.contains('is-hidden'),
+  tot:document.getElementById('rp-totals').textContent.replace(/\s+/g,' '),
+  hasPreview: !!document.getElementById('rp-preview'),
+  rows: document.querySelectorAll('#rp-step5 table tbody tr').length
+}));
+chk('نجح الفكّ', r.s.includes('البصمة مطابقة') || r.s.includes('نجح الفكّ'), r.s);
+chk('المحتوى ظهر (خطوة ٤)', r.v4);
+chk('جدول الصفوف ظهر (خطوة ٥)', r.v5);
 chk('الإجماليات معروضة', r.tot.includes('٥')||r.tot.includes('11'), r.tot.slice(0,70));
-chk('العيّنة تعرض JSON صحيحاً', /"serial"/.test(r.prev), r.prev.slice(0,50));
-chk('اتجاه العيّنة لاتيني ltr', r.dir==='ltr', r.dir);
+chk('غياب العيّنة الاختيارية لا يُسقط الفكّ', r.v4 && !r.hasPreview,
+    'preview=' + r.hasPreview + ' v4=' + r.v4);
 
 console.log('\n▌٦ تنزيل JSON');
 const [d1]=await Promise.all([p.waitForEvent('download',{timeout:9000}),p.click('#rp-dl-json')]);

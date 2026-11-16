@@ -52,6 +52,14 @@ for (const [label, pw] of PASSWORDS) {
   } catch (e) { ok(label, false, e.message.slice(0, 50)); }
 }
 
+/* ⚠️ تصحيح ذاتي 2026-11-16: اكتشفتُ أن هذا الفحص كان **ضعيفاً**.
+   `String.prototype.trim()` تُزيل BOM أصلاً (U+FEFF من فئة WhiteSpace)،
+   فحذف سطر إزالة BOM من الشيفرة لم يُسقط أي فحص — أي أن الاختبار لم يكن
+   يختبر ما يدّعيه. والسبب أن `cleanText` تبدأ بـ`replace` ثم `trim`،
+   فـ`trim` تلتقط BOM بالنيابة.
+   ما يهمّ فعلاً: أن أيّاً من هذه الأشكال **لا يمنع الفتح**. وهذا ما نفحصه
+   صراحةً هنا — مع إدخال علامة اتجاه مخفية (U+200F) التي **لا** تُزيلها
+   `trim`، وهي الحالة التي تحتاج السطر الصريح فعلاً. */
 console.log('\n═══ ٢) الملف بعد الكتابة/النقل (هنا كان العطل) ═══');
 const pw = 'المفتاح-السري-الطويل';
 const env = await PB.seal(fixture(5), pw);
@@ -64,7 +72,8 @@ const SHAPES = [
   ['مسافة في الأول', '   ' + good],
   ['سطر جديد في الآخر', good + '\n'],
   ['BOM + مسافات + سطر جديد', '\uFEFF \n' + good + '\r\n\n'],
-  ['علامة اتجاه مخفية (RTL mark)', '\u200F' + good]
+  ['علامة اتجاه مخفية (RTL mark)', '\u200F' + good],
+  ['علامة اتجاه + BOM + CRLF معاً', '\u200F\uFEFF' + good.replace(/\n/g, '\r\n') + '\r\n']
 ];
 for (const [label, text] of SHAPES) {
   try {
