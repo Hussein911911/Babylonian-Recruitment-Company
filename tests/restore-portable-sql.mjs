@@ -63,6 +63,18 @@ create table brc.card_number_counter (singleton boolean primary key default true
 insert into brc.card_number_counter values (true, 0) on conflict do nothing;
 create table brc.card_number_registry (serial text primary key, card_number bigint not null unique check (card_number > 0));
 create table brc.audit_log(id bigserial primary key, ts timestamptz, user_id uuid, username text, role text, ip text, action text, entity text, entity_id text, details text, diff jsonb);
+
+/* ⚠️ الجداول الأربعة التي أضافها التصدير v3 (2026-11-15).
+   كانت الاختبارات تبني هيكلاً مختصراً بلاها، فيفشل TRUNCATE الجديد.
+   تُضاف هنا بنفس أعمدة docs/schema.sql حرفياً. */
+create table brc.recovery_chances (
+  serial text not null, attempt_no smallint not null, spent boolean not null,
+  code_hash text not null, primary key(serial,attempt_no));
+create table brc.recovery_prints (
+  serial text primary key, printed boolean not null, code_hash text);
+create table brc.card_issue_requests (id uuid primary key, actor uuid, params jsonb, serials text[]);
+create table brc.office_receipts (operation_id text primary key, actor uuid, payload jsonb, created_at timestamptz);
+
 `;
 
 const db = new PGlite();

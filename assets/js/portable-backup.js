@@ -120,12 +120,29 @@
 
   /* ── فك التشفير ──────────────────────────────────────────────────────────
      يعيد { payload, meta } أو يرفض برسالة عربية واضحة. */
+  /* ═══ تنظيف النصّ قبل التحليل ═══════════════════════════════════════════
+     ⚠️ عطل حقيقي أُصلح 2026-11-15 (بلاغ المالك: «أكتب نفس رمز النسخة
+     ويفكّ التشفير يقول خطأ» — والسبب ليس الرمز):
+
+       BOM (\uFEFF) في أول الملف يُسقط JSON.parse فوراً برسالة
+       «الملف ليس نسخة صالحة». ويُضاف BOM تلقائياً في حالات واقعية:
+       فتح الملف في Notepad وحفظه، أو نسخه عبر أداة، أو تحريره.
+
+     ولا يحمي منه شيء في المسار الحالي. فالتنظيف هنا — قبل التحليل.
+     كما نتعامل مع مسافات زائدة وأسطر CRLF (Windows) بلا ضرر. */
+  function cleanText(text) {
+    return String(text)
+      .replace(/^\uFEFF/, '')            /* BOM */
+      .replace(/^[\s\u200B\u200E\u200F]+/, '')
+      .trim();
+  }
+
   function open(envelope, password) {
     if (!subtle) return Promise.reject(new Error('فك التشفير يحتاج اتصالاً آمناً (HTTPS) أو localhost'));
 
     var env;
     try {
-      env = typeof envelope === 'string' ? JSON.parse(envelope) : envelope;
+      env = typeof envelope === 'string' ? JSON.parse(cleanText(envelope)) : envelope;
     } catch (e) {
       return Promise.reject(new Error('الملف ليس نسخة صالحة — تعذّرت قراءته'));
     }
@@ -159,9 +176,19 @@
     return deriveKey(password, salt, iterations).then(function (key) {
       return subtle.decrypt({ name: 'AES-GCM', iv: iv, tagLength: 128 }, key, data)
         .catch(function () {
-          /* GCM يرفض أي تعديل. لا نفرّق بين «كلمة مرور خاطئة» و«ملف معدَّل»
-             لأن التفريق يمنح المهاجم إشارة. */
-          throw new Error('كلمة المرور غير صحيحة، أو أن الملف تغيّر بعد تنزيله');
+          /* ⚠️ GCM لا يفرّق بين «كلمة مرور خاطئة» و«ملف تغيّر» — ولا يجوز أن
+             نفرّق أمنياً (التفريق يمنح المهاجم إشارة).
+
+             لكن المالك كان يرى «كلمة المرور غير صحيحة» فيتّهم نفسه، ويكتب
+             الرمز مراراً. والسبب في أغلب الحالات **ليس الرمز** بل الملف:
+             بُتر أثناء الكتابة على USB، أو تغيّر ترميزه، أو حُرّر.
+
+             فنعطي تشخيصاً **بلا كشف**: نذكر الاحتمالين معاً، ونطبع أرقاماً
+             يراها المالك ويقارنها بما في الملف — هذه ليست سرّاً. */
+          var hint = 'الطول ' + password.length + ' محرفاً' +
+            ' · الحمولة ' + data.length + ' بايتاً' +
+            ' · دورات ' + iterations;
+          throw new Error('كلمة المرور غير صحيحة، أو أن الملف تغيّر بعد تنزيله (' + hint + ')');
         })
         .then(function (plainBuf) {
           var bytes = new Uint8Array(plainBuf);
@@ -191,7 +218,7 @@
      يُظهر ما في الملف قبل أن يكتب المستخدم كلمة المرور. لا يفكّ شيئاً. */
   function inspect(envelope) {
     var env;
-    try { env = typeof envelope === 'string' ? JSON.parse(envelope) : envelope; }
+    try { env = typeof envelope === 'string' ? JSON.parse(cleanText(envelope)) : envelope; }
     catch (e) { return { ok: false, error: 'الملف ليس JSON صالحاً' }; }
     if (!env || env.format !== FORMAT) {
       return { ok: false, error: 'ليس ملف نسخة ' + FORMAT };

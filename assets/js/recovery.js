@@ -408,6 +408,39 @@
        var data=await Store.recoveryExportFull();
        btn.textContent='جارٍ التشفير…';
        var env=await PB.seal(data,p1.value);
+
+       /* ═══ فحص ذاتي إلزامي قبل تسليم الملف ════════════════════════════════
+          بلاغ المالك (2026-11-15): «أكتب رمز النسخة وأنزلها، وأجي أقراها
+          وأفكّ التشفير بنفس الرمز يكلي خطأ — مع العلم نفس الرمز».
+
+          درسٌ من تجربة مريرة: أي خلل في التشفير لا يظهر إلا عند الاستعادة،
+          أي بعد أسابيع، وربما في يوم حاجةٍ حقيقية. وذاك أسوأ وقت لاكتشافه.
+
+          فنقلب الفحص: نُفكّ النسخة **الآن، هنا، بنفس الكلمة، قبل أن تُكتب
+          على الـUSB**. إن فشلت — لا نسلّم شيئاً، بل نُظهر خطأً صريحاً.
+          الكلفة: أقل من ثانية. المكسب: يستحيل أن يخرج ملف لا يُفتح. */
+       btn.textContent='جارٍ التحقق من النسخة…';
+       var selfCheck;
+       try{
+        if(typeof PB.open!=='function'){
+         /* لا وحدة فكّ متاحة (بيئة بلا WebCrypto — ولا يمكن أن تُشفّر أصلاً).
+            لا نُسقط التنزيل بسبب حارسٍ عاجز عن الفحص. */
+         throw {skip:true};
+        }
+        var round=await PB.open(JSON.stringify(env),p1.value);
+        var a=(round.payload&&round.payload.applicants||[]).length;
+        var b=(data&&data.applicants||[]).length;
+        if(a!==b){selfCheck='عدد البطاقات بعد الفكّ '+a+' والمتوقع '+b;}
+       }catch(checkErr){
+        selfCheck=checkErr&&checkErr.skip?null:(checkErr&&checkErr.message)||'سبب غير معروف';
+       }
+       if(selfCheck){
+        clearInterval(tick);
+        btn.disabled=false;btn.textContent='تنزيل';
+        err.textContent='⛔ أُوقفت العملية: النسخة التي أُنشئت لا تُفتح بنفس كلمة المرور ('+selfCheck+'). لم تُحفظ أي نسخة — أعد المحاولة، وإن تكرر فأبلغ الدعم.';
+        err.style.display='block';
+        return;
+       }
        clearInterval(tick);
        var name=PB.suggestName(new Date());
        var payload=JSON.stringify(env);

@@ -100,12 +100,48 @@
     return cols.sort();
   }
 
+  /* ═══ أعمدة NOT NULL لا تُصدَّر (سرّية) — تُملأ عند الاسترجاع ══════════
+     ⚠️ عطل حقيقي أُصلح 2026-11-15، اكتُشف بدورة كاملة (تصدير → تشفير → فك
+     → استرجاع على قاعدة فاضية):
+
+       brc.recovery_chances.code_hash  و  brc.recovery_prints.code_hash
+       عمودان NOT NULL يحملان بصمة رمز سرّية. فلا يجوز تصديرهما، ولا يجوز
+       تركهما فارغين — والنتيجة كانت فشل الاسترجاع كله على أول صفّ:
+         ERROR 23502: null value in column "code_hash"
+
+       ولا بديل عن قيمة: القاعدة ترفض NULL. فتُكتب بصمة حتمية **غير سرّية**
+       مشتقّة من الرقم التسلسلي — دورها الوحيد أن تمنع تكرار الصفّ، ولا
+       يتحقق منها أي مسار في الموقع (التحقق يحتاج الرمز الأصلي وهو غير منقول).
+       أي أن قيمتها هنا **شكلية لكن ضرورية**، والتوثيق يقول ذلك بصراحة. */
+  /* ⚠️ تُبنى **في JavaScript** لا في SQL: القيمة تُكتب حرفياً في الملف.
+     المحاولة الأولى كتبت تعبير SQL (`'x' || r.serial`) فخرج في الملف نصّ
+     يشير إلى عمود `r` غير موجود → 42P01 عند التنفيذ. */
+  function derivedCodeHash(table, r) {
+    if (table === 'recovery_chances') return 'restored:' + r.serial + ':' + r.attempt_no;
+    if (table === 'recovery_prints') return 'restored:' + r.serial;
+    return 'restored';
+  }
+
+  var DERIVED = { recovery_chances: ['code_hash'], recovery_prints: ['code_hash'] };
+
   function insertRows(table, rows, allow) {
     if (!rows || !rows.length) return '';
+    var derived = DERIVED[table];
+    if (derived) {
+      /* نضمن وجود الأعمدة المشتقّة حتى لو لم تأت في النسخة (نسخة v1/v2) */
+      rows = rows.map(function (r) {
+        var out = Object.assign({}, r);
+        derived.forEach(function (k) { if (out[k] == null) out[k] = '__DERIVED__'; });
+        return out;
+      });
+    }
     var cols = columnsOf(rows, allow);
     if (!cols.length) return '-- ⚠ ' + table + ': لا أعمدة صالحة — تم تخطّي ' + rows.length + ' صفاً\n\n';
     var values = rows.map(function (r) {
-      return '  (' + cols.map(function (c) { return lit(r[c]); }).join(', ') + ')';
+      return '  (' + cols.map(function (c) {
+        if (derived && derived.indexOf(c) >= 0 && r[c] === '__DERIVED__') return lit(derivedCodeHash(table, r));
+        return lit(r[c]);
+      }).join(', ') + ')';
     }).join(',\n');
     return '-- ' + rows.length + ' صفاً في ' + table + ' (' + cols.length + ' عموداً)\n' +
       'INSERT INTO brc.' + IDENT(table) + ' (' + cols.map(IDENT).join(', ') + ')\nVALUES\n' +
@@ -159,9 +195,25 @@
      الترتيب الصحيح هو عكس ما كان:
        staff (الجذر) → applicants → jobs → job_attempts → الباقي
      لأن كل الجداول الأخرى تشير إلى الحسابات، والبطاقات تشير إليها الوظائف. */
+  /* ═══ ترتيب الإدخال — يحترم المفاتيح الأجنبية ═══════════════════════════
+     ⚠️ إضافة 2026-11-15: كان التصدير والاسترجاع يتجاهلان أربعة جداول حقيقية
+     (ليست ذاكرة مؤقتة) فيُفقد محتواها بصمت عند الاسترجاع على مشروع جديد:
+
+       • recovery_chances — هل استُهلكت الفرصة وبصمة رمزها. بدونها تصبح كل
+         الفرص «غير مستهلكة» بعد الاسترجاع، فيُعيد حامل البطاقة استخدام فرصة
+         استهلكها. خطأ مالي مباشر: البطاقة تمنح فرصتين.
+       • recovery_prints  — هل طُبعت البطاقة. بدونها يمكن طباعة بطاقة ثانية.
+       • office_receipts  — سجل عمليات المكتب. بدونه تتكرر عمليات البيع.
+       • card_issue_requests — طلبات الإصدار.
+
+     ⚠️ ولا نضيف عمداً: card_security_attempts · card_lookup_budget ·
+     employer_login_budget · employer_otp — نوافذ حظر مؤقتة، ونسخها يُقفل
+     مستخدمين أبرياء على المشروع الجديد. ولا recovery_tickets/recovery_copies
+     (رموز استرجاع حيّة ولقطات سابقة → تسريب وتضخيم بلا فائدة). */
   var TABLES = ['staff', 'applicants', 'jobs', 'job_attempts', 'settings',
     'employer_job_credentials', 'issued_serials', 'card_number_registry',
-    'card_number_counter', 'audit_log'];
+    'card_number_counter', 'audit_log', 'card_issue_requests',
+    'recovery_chances', 'recovery_prints', 'office_receipts'];
 
   function buildSql(p) {
     p = p || {};
@@ -200,7 +252,11 @@
       '-- ⚠ brc.staff ليست هنا بقصد: تفريغها يحذف حساب المدير الذي ينفّذ هذا\n' +
       '--   السكربت، فيفقد الدخول. الحسابات تُضاف بـ ON CONFLICT DO NOTHING.\n' +
       'TRUNCATE brc.job_attempts, brc.applicants, brc.jobs, brc.employer_job_credentials, ' +
-      'brc.issued_serials, brc.card_number_registry, brc.audit_log, brc.settings RESTART IDENTITY CASCADE;\n\n';
+      'brc.issued_serials, brc.card_number_registry, brc.audit_log, brc.settings, ' +
+      /* الجداول الأربعة أدناه: بلا تفريغ تبقى صفوف المشروع القديم وتتعارض
+         مع الصفوف المستوردة (مفتاح أساسي مكرّر) فيفشل الجزء كله. */
+      'brc.recovery_chances, brc.recovery_prints, brc.card_issue_requests, ' +
+      'brc.office_receipts RESTART IDENTITY CASCADE;\n\n';
 
     /* ═══ عدّاد أرقام البطاقات ═══════════════════════════════════════════
        ⚠ عطل حقيقي: النسخة كانت تحفظ البطاقات ولا تحفظ أرقامها، فالعدّاد

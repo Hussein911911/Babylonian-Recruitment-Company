@@ -143,6 +143,13 @@ INSERT INTO brc.card_number_counter VALUES (true, 0) ON CONFLICT DO NOTHING;
 CREATE TABLE brc.card_number_registry (serial text PRIMARY KEY, card_number bigint NOT NULL UNIQUE CHECK (card_number > 0));
 CREATE TABLE brc.audit_log (id bigserial PRIMARY KEY, ts timestamptz DEFAULT now(), user_id uuid, username text,
   role text, ip text, action text, entity text, entity_id text, details text, diff jsonb);
+
+/* ⚠️ الجداول الأربعة التي أضافها التصدير v3 (2026-11-15) — تُضاف هنا بنفس أعمدة docs/schema.sql. */
+CREATE TABLE brc.recovery_chances (serial text NOT NULL, attempt_no smallint NOT NULL,
+  spent boolean NOT NULL, code_hash text NOT NULL, PRIMARY KEY(serial,attempt_no));
+CREATE TABLE brc.recovery_prints (serial text PRIMARY KEY, printed boolean NOT NULL, code_hash text);
+CREATE TABLE brc.card_issue_requests (id uuid PRIMARY KEY, actor uuid, params jsonb, serials text[]);
+CREATE TABLE brc.office_receipts (operation_id text PRIMARY KEY, actor uuid, payload jsonb, created_at timestamptz);
 `);
 
 /* المالك أنشأ حسابه على المشروع الجديد قبل الترحيل — يجب ألا يُطمس */

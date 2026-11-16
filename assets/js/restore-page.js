@@ -133,9 +133,27 @@
     unlockBtn.disabled = true;
     setStatus(unlockStatus, 'جارٍ اشتقاق المفتاح وفكّ التشفير… قد يستغرق ثانية أو اثنتين');
 
-    PB.open(state.envelope, password).then(function (res) {
+    /* ═══ لا نُسقط محاولة المستخدم بسبب مسافة عابرة ══════════════════════════
+       بلاغ المالك (2026-11-15): «أفكّ التشفير بنفس الرمز يقول خطأ».
+
+       وأحد أسباب ذلك الواقعية: لوحة المفاتيح تُلحق مسافة سهواً، أو يستخدم
+       النسخ من ملف نصّي فتأتي مسافة نهاية السطر. المسافة محرف كأي محرف.
+
+       فنجرّب أولاً الكلمة كما كُتبت — لا نغيّر سلوك من كتبها بدقّة. ثم لو
+       فشلت نجربها مقصوصة الطرفين، وإن نجحت **نُخبره صراحةً** أنه كان
+       فاصلاً لا خطأً في الرمز، كي لا يظن أن الرمز تلف. */
+    var cleaned = String(password).replace(/^[\s\u200B\u200E\u200F]+|[\s\u200B\u200E\u200F]+$/g, '');
+
+    PB.open(state.envelope, password).catch(function (firstErr) {
+      if (!cleaned || cleaned === password) throw firstErr;
+      return PB.open(state.envelope, cleaned).then(function (r) {
+        r.notes = (r.notes || []).concat(['طُبّق الرمز بعد إزالة مسافات زائدة من طرفيه']);
+        setStatus(unlockStatus, 'نجح الفكّ — كان في طرفَي الرمز مسافة زائدة، وقد أُزيلت');
+        return r;
+      });
+    }).then(function (res) {
       state.payload = res.payload;
-      setStatus(unlockStatus, 'نجح الفكّ — البصمة مطابقة', 'ok');
+      if (!res.notes) setStatus(unlockStatus, 'نجح الفكّ — البصمة مطابقة', 'ok');
       renderPayload(res);
       show('rp-step4');
       /* ٥) التفاصيل المرتبة — كل صف في كل جدول، مع بحث وتصدير CSV */
@@ -293,13 +311,87 @@
      عند فتح الصفحة محلياً أو بجلسة مدير. إن لم يفكّه أحد (أو نُفّذت الصفحة
      بلا البوابة) فالمتغيّر غائب — فنقرأ الوسم مباشرة كي لا يصير الزر ميتاً.
      ⚠️ لا نعرّفه كمتغيّر عام: فحص restore-gate يمنع ذلك، وهو محقّ. */
+  /* ⚠️ الوسم يحمل المخطط **مُرمَّزاً بـJSON** (JSON.stringify في أداة البناء)،
+     لأن HTML لا يسمح بـ`</script>` داخل سكربت. و`restore-gate.js` ينسخ
+     `textContent` كما هو إلى المتغيّر — أي النصّ المرمّز لا المخطط.
+     فتقسيمه وهو مرمّز يعطي جزءاً واحداً: كل `\n` حرفان، وكل `\"` يُدخل
+     قارئَنا في حالة نصّ فلا يجد نهاية جملة. فيصل للمالك ملف واحد مشوّه.
+
+     فالفكّ هنا، ومن المصدرين كليهما. */
+  function unseal(raw) {
+    var text = String(raw || '').trim();
+    if (!text) return '';
+    if (text.charAt(0) === '"') {
+      try { return JSON.parse(text); } catch (e) { /* ليس JSON — نُكمِل */ }
+    }
+    return text;
+  }
+
   function schemaSql() {
-    if (window.__HRC_SCHEMA_SQL__) return window.__HRC_SCHEMA_SQL__;
+    var fromVar = unseal(window.__HRC_SCHEMA_SQL__);
+    if (fromVar) return fromVar;
     var embed = document.getElementById('hrc-schema-embed');
     if (!embed) return '';
-    var raw = (embed.textContent || '').trim();
-    if (!raw) return '';
-    try { return JSON.parse(raw); } catch (e) { return raw; }
+    return unseal(embed.textContent);
+  }
+
+  /* ═══ تنزيل الهيكل — أجزاء لا ملفاً واحداً ═══════════════════════════════
+     ⚠️ عطل حقيقي أُصلح 2026-11-15:
+
+     كان الزر ينزّل `1-schema.sql` = ٣١٥٤ سطراً في ملف واحد. ومحرّر Supabase
+     يقصّ اللصق عند ~٢٠٠٠ سطر **ويرفع Success** رغم النقص. فيخرج المالك من
+     صفحة الاسترجاع بملف يفكّ تشفيره وينسخه، ثم يبني قاعدة ناقصة ١١ جدولاً
+     من ١٩ — والخطأ لا يظهر إلا عند أول بطاقة تُطبع.
+
+     فصار الزر يقسّم المخطط المضمّن في المتصفح إلى خمسة أجزاء تحت ٧٠٠ سطر،
+     كلها قابلة للصق. لا شبكة ولا Node — التقسيم يعمل من `file://` أيضاً.
+
+     القاعدة: نفس محرّك `tools/sql-split-core.mjs` المستعمل عند البناء،
+     منسوخ هنا لأن الصفحة تعمل بلا حزمة بناء ولا وحدة ES. */
+  function splitSchema(text) {
+    var LIMIT = 690, LIMIT_BYTES = 180000;
+    var stmts = [], i = 0, n = text.length, start = 0;
+    var inS = false, inD = false, inLC = false, inBC = false, tag = null;
+    while (i < n) {
+      var c = text.charAt(i), two = text.substr(i, 2);
+      if (inLC) { if (c === '\n') inLC = false; i++; continue; }
+      if (inBC) { if (two === '*/') { inBC = false; i += 2; continue; } i++; continue; }
+      if (inS) {
+        if (c === "'") { if (text.charAt(i + 1) === "'") { i += 2; continue; } inS = false; }
+        i++; continue;
+      }
+      if (inD) {
+        if (c === '"') { if (text.charAt(i + 1) === '"') { i += 2; continue; } inD = false; }
+        i++; continue;
+      }
+      if (tag) { if (text.substr(i, tag.length) === tag) { i += tag.length; tag = null; continue; } i++; continue; }
+      if (two === '--') { inLC = true; i += 2; continue; }
+      if (two === '/*') { inBC = true; i += 2; continue; }
+      if (c === "'") { inS = true; i++; continue; }
+      if (c === '"') { inD = true; i++; continue; }
+      if (c === '$') {
+        var m = /^(?:\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$)/.exec(text.slice(i));
+        if (m) { tag = m[0]; i += m[0].length; continue; }
+        i++; continue;
+      }
+      if (c === ';') { stmts.push(text.slice(start, i + 1)); start = i + 1; i++; continue; }
+      i++;
+    }
+    var rest = text.slice(start);
+    if (rest.trim()) stmts.push(rest);
+
+    function lines(s) { return (s.match(/\n/g) || []).length; }
+    var parts = [], cur = '', curL = 0;
+    for (var k = 0; k < stmts.length; k++) {
+      var st = stmts[k], l = lines(st);
+      /* الجملة الواحدة الأكبر من السقف تُترك وحدها — لا تُقطَع */
+      if (curL > 0 && (curL + l > LIMIT || cur.length + st.length > LIMIT_BYTES)) {
+        parts.push(cur); cur = ''; curL = 0;
+      }
+      cur += st; curL += l;
+    }
+    if (cur.trim()) parts.push(cur);
+    return parts;
   }
 
   var schemaBtn = $('rp-dl-schema');
@@ -309,8 +401,46 @@
       setStatus(unlockStatus, 'ملف الهيكل غير مضمّن في هذه الصفحة — نزّله من المستودع: docs/schema.sql', 'error');
       return;
     }
-    window.HRCRestoreView.download('1-schema.sql', SCHEMA_SQL, 'application/sql;charset=utf-8');
-    setStatus(unlockStatus, 'نُزّل 1-schema.sql — شغّله أولاً في SQL Editor، وبعد Success شغّل 2-data.sql', 'ok');
+    var parts = splitSchema(SCHEMA_SQL);
+    var total = parts.length;
+    var pad = function (x) { return String(x).padStart(2, '0'); };
+
+    /* ⚠️ لماذا أزرار منفصلة لا خمسة تنزيلات بضغطة؟
+       جرّبناها: المتصفح **يحجب** التنزيلات المتعددة التلقائية، فيصل ملف
+       واحد فقط ويظنّ المالك أن الباقي نزل. زر لكل جزء = سلوك متوقّع بلا
+       حجب، ويعرف المالك بالضبط أي جزء نزّل وأي جزء لصق. */
+    function partText(idx) {
+      return '--  HRC — هيكل قاعدة البيانات · الجزء ' + pad(idx + 1) + ' من ' + pad(total) + '\n' +
+        '--  ---------------------------------------------------------------------------\n' +
+        '--  ⚠ الصق الأجزاء بالترتيب: ١ ثم ٢ ثم ٣ ثم ٤ ثم ٥، كل واحد في استعلام جديد.\n' +
+        '--  ⚠ لا تلصق جزءاً قبل نجاح الذي قبله — والملف كامل ٣١٥٤ سطراً، لا يدخل\n' +
+        '--     في لصقة واحدة (محرّر Supabase يقصّ عند ~٢٠٠٠ سطر ويرفع Success).\n' +
+        '--  ⚠ قبل البدء: فعّل pgcrypto و pg_cron من Database → Extensions.\n' +
+        '--  ---------------------------------------------------------------------------\n\n';
+    }
+
+    var box = $('rp-schema-parts');
+    if (!box) return;
+    /* إن كانت الأزرار مبنية سابقاً لا نعيد بناءها */
+    if (box.querySelector('button')) { box.hidden = false; return; }
+    box.replaceChildren();
+    parts.forEach(function (body, idx) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rp-btn rp-btn-gold';
+      b.textContent = 'تنزيل الجزء ' + (idx + 1) + ' من ' + total;
+      b.addEventListener('click', function () {
+        window.HRCRestoreView.download('1-schema-part-' + pad(idx + 1) + '.sql',
+          partText(idx) + body, 'application/sql;charset=utf-8');
+        b.textContent = '✓ الجزء ' + (idx + 1) + ' نُزّل';
+        b.classList.remove('rp-btn-gold');
+        b.classList.add('rp-btn');
+        setStatus(unlockStatus, 'نُزّل الجزء ' + (idx + 1) + ' — الصقه في SQL Editor ثم عُد للجزء ' + (idx + 2), 'ok');
+      });
+      box.appendChild(b);
+    });
+    box.hidden = false;
+    setStatus(unlockStatus, 'الهيكل ' + total + ' أجزاء — نزّلها بالترتيب والصق كل واحد في استعلام جديد', 'ok');
   });
 
   var sqlBtn = $('rp-dl-sql');

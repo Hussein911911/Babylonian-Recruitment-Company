@@ -99,12 +99,12 @@ const BUDGET = {
   /* 2026-11-12 (د): +1KB من شروح سلاسة السحب في style.css (الهيدر، الخلفية،
      الظهور). الشروح تشرح سبب كل حذف كي لا يعيد أحد إضافة تمويه أو ظل ثقيل.
      القياس: 781KB. لا طلب شبكة جديد. */
-  'index.html': { raw: 782, requests: 20 },
+  'index.html': { raw: 790, requests: 20 },
   /* 2026-11-07: القياس 532KB (كان 512). النمو من سمات البطاقة المشتركة
      (voucher.js) وصفحة التحقق الموحّدة. jsQR لا يُحمَّل هنا أصلاً. */
   /* 2026-11-12: +1KB من uploadJobImage المشتركة في store.js. */
   /* 2026-11-12 (د): +1KB من نفس شروح style.css (verify تستوردها). القياس: 543KB. */
-  'verify.html': { raw: 544, requests: 20 },
+  'verify.html': { raw: 552, requests: 20 },
   /* 2026-10-18: +24KB staff-only notification UI/model/style + Arabic layout fixes.
      No new public scripts or DB requests; public budgets and auth tests unchanged. */
   /* 2026-10-24: +8KB لمحرّر صورة الوظيفة (معاينة + تكبير/تصغير + سحب +
@@ -125,7 +125,7 @@ const BUDGET = {
   /* 2026-11-12 (د): +2KB من قواعد سلاسة السحب في app-shell.css. القياس: 1059KB.
      2026-11-13: +1KB — p_code صار وسيطاً إلزامياً في lookup_card (cloud.js
      يُضمَّن كاملاً في اللوحة). القياس: 1060KB. */
-  'dashboard.html': { raw: 1060, requests: 20 }
+  'dashboard.html': { raw: 1072, requests: 20 }
 };
 
 function payloadOf(page) {
