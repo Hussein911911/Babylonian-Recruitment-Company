@@ -133,9 +133,27 @@
     unlockBtn.disabled = true;
     setStatus(unlockStatus, 'جارٍ اشتقاق المفتاح وفكّ التشفير… قد يستغرق ثانية أو اثنتين');
 
-    PB.open(state.envelope, password).then(function (res) {
+    /* ═══ لا نُسقط محاولة المستخدم بسبب مسافة عابرة ══════════════════════════
+       بلاغ المالك (2026-11-15): «أفكّ التشفير بنفس الرمز يقول خطأ».
+
+       وأحد أسباب ذلك الواقعية: لوحة المفاتيح تُلحق مسافة سهواً، أو يستخدم
+       النسخ من ملف نصّي فتأتي مسافة نهاية السطر. المسافة محرف كأي محرف.
+
+       فنجرّب أولاً الكلمة كما كُتبت — لا نغيّر سلوك من كتبها بدقّة. ثم لو
+       فشلت نجربها مقصوصة الطرفين، وإن نجحت **نُخبره صراحةً** أنه كان
+       فاصلاً لا خطأً في الرمز، كي لا يظن أن الرمز تلف. */
+    var cleaned = String(password).replace(/^[\s\u200B\u200E\u200F]+|[\s\u200B\u200E\u200F]+$/g, '');
+
+    PB.open(state.envelope, password).catch(function (firstErr) {
+      if (!cleaned || cleaned === password) throw firstErr;
+      return PB.open(state.envelope, cleaned).then(function (r) {
+        r.notes = (r.notes || []).concat(['طُبّق الرمز بعد إزالة مسافات زائدة من طرفيه']);
+        setStatus(unlockStatus, 'نجح الفكّ — كان في طرفَي الرمز مسافة زائدة، وقد أُزيلت');
+        return r;
+      });
+    }).then(function (res) {
       state.payload = res.payload;
-      setStatus(unlockStatus, 'نجح الفكّ — البصمة مطابقة', 'ok');
+      if (!res.notes) setStatus(unlockStatus, 'نجح الفكّ — البصمة مطابقة', 'ok');
       renderPayload(res);
       show('rp-step4');
       /* ٥) التفاصيل المرتبة — كل صف في كل جدول، مع بحث وتصدير CSV */
