@@ -5,22 +5,13 @@
    طلب المالك (2026-11-17): «أريد أنزّل ملف واحد يحتوي كل شي، وهذا الملف بس
    أنطيه لأداة، والأداة تبني كل شي.»
 
-   ⚠️ لماذا لم نستخدم طريقة اللصق؟
-   محرّر Supabase يقصّ النص عند ~٢٠٠٠ سطر ويقول «Success» رغم النقص. الملف
-   الكامل ~٢٠٥٠٠ سطر، فلو لُصق يدوياً لبُتر بصمت — أسوأ نتيجة ممكنة: يظنّ
-   المالك أن كل شي تمّ بينما ٣٠٠ بطاقة ناقصة.
-
-   فالحل: الملف **يُنفَّذ بأداة** (psql / Supabase CLI / أداة تتصل بالـDB)،
-   لا يُلصق. وهذا الملف مبنيّ لذلك:
-
-     ١. لا يحتوي `BEGIN` يحيط كل شي — لأن أول خطأ كان يُجهض كل ما دخل،
-        فيبدو «نُفِّذ» والقاعدة فارغة.
-     ٢. كل مرحلة في معاملة مستقلة، وتصمد إن فشل ما بعدها.
-     ٣. يفحص نفسه في النهاية ويطبع الأعداد — فإن نقص شي ظهر في السطر الأخير.
+   ⚠️ المنطق كله في assets/js/full-dump.js — نفس الملف الذي يستعمله زر
+   التنزيل في restore.html. فلا يوجد منطقان ينحرفان: ما يجرّبه المالك في
+   المتصفح هو حرفياً ما تنتجه هذه الأداة.
 
    الاستخدام:
      node tools/build-full-dump.mjs --payload <payload.json> [--out <ملف>]
-     node tools/build-full-dump.mjs --schema-only --out full.sql
+     node tools/build-full-dump.mjs --schema-only [--out <ملف>]
    ═══════════════════════════════════════════════════════════════════════════ */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
@@ -36,139 +27,72 @@ const flag = (n) => argv.includes('--' + n);
 
 const outPath = resolve(opt('out', 'HRC-FULL.sql'));
 const payloadPath = opt('payload', '');
+const schemaOnly = flag('schema-only');
 
-/* ── الهيكل: نقرأه من المصدر مباشرة. لا نعتمد على نسخة مضمّنة في صفحة ── */
+/* ── الهيكل من المصدر المباشر ── */
 const schemaPath = resolve(ROOT, 'docs/schema.sql');
 if (!existsSync(schemaPath)) { console.error('❌ لم أجد docs/schema.sql'); process.exit(2); }
 const SCHEMA = readFileSync(schemaPath, 'utf8');
 
-/* نحذف سطور SET search_path وCREATE EXTENSION من الهيكل: الامتدادات تُفعَّل
-   من لوحة Supabase، ومحاولة إنشائها بـSQL قد تفشل بصلاحية غير كافية.
-   (الهيكل نفسه يغلّفها بـDO فيبقى آمناً — لكن نُبقيها كما هي.) */
+/* ── نُحمّل مولّد البيانات ومولّد الملف في نطاق واحد ──
+   كلاهما ملفات متصفح (IIFE تكتب على الجذر) — لا ESM. فنُنشئ نطاقاً نُمرّر
+   له الجذر ونستخرج ما يكتبه. هكذا نستعمل الكود نفسه بلا نسخة ثانية. */
+function loadBrowserScript(relPath, globalName) {
+  const src = readFileSync(resolve(ROOT, relPath), 'utf8');
+  const sandbox = {};
+  const fn = new Function('globalThis', 'module', 'exports', 'console',
+    src + '\nreturn globalThis["' + globalName + '"];');
+  const api = fn(sandbox, undefined, undefined, console);
+  if (!api) throw new Error('تعذّر تحميل ' + relPath + ' (' + globalName + ')');
+  return { api, sandbox };
+}
 
-const HEADER = `-- ═══════════════════════════════════════════════════════════════════════════
---  HRC — ملف كامل: الهيكل + البيانات
---  بُني في: ${new Date().toISOString()}
---
---  ⚠️ هذا الملف **يُنفَّذ بأداة**، لا يُلصق في محرّر SQL.
---     محرّر Supabase يقصّ عند ~٢٠٠٠ سطر ويقول Success رغم النقص، وهذا
---     الملف أكبر من ذلك بكثير — فلو لُصق لبُتر بصمت.
---
---  أدوات تعمل معه:
---     psql "postgresql://..." -f HRC-FULL.sql
---     supabase db push   (بعد وضعه في supabase/migrations/)
---     أي أداة تنفّذ ملف SQL على القاعدة كاملاً
---
---  بلا BEGIN شامل بقصد: كل مرحلة معاملة مستقلة، ففشل مرحلة لا يمحو ما قبلها.
---
---  بعد التنفيذ: اقرأ آخر مخرجات — فيها جدول أعداد لكل جدول.
---  قارنها بأعدادك الحالية. إن اختلف رقم، فالملف لم يُنفَّذ كاملاً.
--- ═══════════════════════════════════════════════════════════════════════════
+/* restore-sql.js أولاً (full-dump يستدعيه)، وبعدها full-dump على **نفس** الجذر */
+const sandbox = {};
+const runner = new Function('globalThis', 'console', `
+  ${readFileSync(resolve(ROOT, 'assets/js/restore-sql.js'), 'utf8')}
+  ${readFileSync(resolve(ROOT, 'assets/js/full-dump.js'), 'utf8')}
+  return globalThis.HRCFullDump;
+`);
+const FullDump = runner(sandbox, console);
+if (!FullDump || !FullDump.build) {
+  console.error('❌ تعذّر تحميل assets/js/full-dump.js');
+  process.exit(3);
+}
 
-SET client_encoding = 'UTF8';
-SET statement_timeout = 0;
-
--- ═══════════════════════════════════════════════════════════════════════════
---  المرحلة ١ — الهيكل (الجداول والدوال والسياسات)
--- ═══════════════════════════════════════════════════════════════════════════
-
-`;
-
-const SCHEMA_END = `
--- ═══════════════════════════════════════════════════════════════════════════
---  انتهى الهيكل. تحقّق أنه أُنشئ قبل متابعة البيانات:
--- ═══════════════════════════════════════════════════════════════════════════
-DO $$
-DECLARE n int;
-BEGIN
-  SELECT count(*) INTO n FROM information_schema.tables
-   WHERE table_schema = 'brc' AND table_type = 'BASE TABLE';
-  IF n < 19 THEN
-    RAISE EXCEPTION 'الهيكل ناقص: % جدولاً فقط (المتوقع 19+) — أوقف التنفيذ فوراً', n;
-  END IF;
-  RAISE NOTICE '✅ الهيكل سليم: % جدولاً', n;
-END $$;
-
-`;
-
-let out = HEADER + SCHEMA + SCHEMA_END;
-
-/* ── البيانات: من payload JSON إن وُجد ── */
-if (payloadPath && existsSync(resolve(payloadPath))) {
-  const payload = JSON.parse(readFileSync(resolve(payloadPath), 'utf8'));
-  /* نستخدم نفس مُولّد SQL المستخدم في الصفحة — لا نكتب منطقاً ثانياً
-     يختلف عنه. نُحمّله كموديول CommonJS-style لأن restor-sql.js ملف متصفح. */
-  const sqlJs = readFileSync(resolve(ROOT, 'assets/js/restore-sql.js'), 'utf8');
-  const sandbox = { window: {}, console };
-  const fn = new Function('window', 'console', sqlJs + '\nreturn window.HRCRestoreSql;');
-  const RestoreSql = fn(sandbox.window, console);
-  if (!RestoreSql || !RestoreSql.buildSql) {
-    console.error('❌ تعذّر تحميل مولّد SQL من assets/js/restore-sql.js');
-    process.exit(3);
+/* ── البيانات ── */
+let payload = null;
+if (payloadPath) {
+  const p = resolve(payloadPath);
+  if (!existsSync(p)) { console.error('❌ لم أجد ملف البيانات: ' + p); process.exit(4); }
+  try {
+    payload = JSON.parse(readFileSync(p, 'utf8'));
+  } catch (e) {
+    console.error('❌ ملف البيانات ليس JSON صالحاً: ' + e.message);
+    process.exit(5);
   }
-  /* ⚠️ خطأ حقيقي وقعتُ فيه 2026-11-17، وأوقف الملف كله.
-     قصصتُ رأس الملف المولّد لأخذ «الجسم فقط»، فسقط معه سطر
-     `session_replication_role = replica` — وهو الذي يعطّل المشغّلات
-     والمفاتيح الأجنبية أثناء التحميل. وبدونه:
-        • trg_applicants_log_serial تُدرج سطور issued_serials بنفسها،
-          فتصل بعدها سطورنا وتصطدم بالمفتاح الأساسي
-        • trg_applicants_attempts تُنشئ المحاولات، فتصطدم بمفتاح (serial, attempt_no)
-        • trg_audit_* تكتب سطر تدقيق، فيصطدم بـaudit_log_pkey
-     وكانت النتيجة: الملف يفشل عند job_attempts، ولا صف واحد يدخل.
-
-     فالصحيح: نأخذ من البداية إلى نهاية SETUP (حتى TRUNCATE) ثم البيانات —
-     لا نقطع عند CREATE SCHEMA. */
-  const dataSql = RestoreSql.buildSql(payload);
-  const cut = dataSql.indexOf('CREATE SCHEMA IF NOT EXISTS brc;');
-  const body = cut >= 0 ? dataSql.slice(cut) : dataSql;
-
-  /* حزام أمان: إن لم يحمل الجسم سطر replica، نُضيفه نحن. بدونه تفشل البيانات
-     كما شرحنا أعلاه (المشغّلات تُنشئ صفوفاً تتعارض مع صفوفنا). */
-  const withReplica = /session_replication_role\s*=\s*replica/i.test(body)
-    ? body
-    : `DO $$ BEGIN SET LOCAL session_replication_role = replica;\n` +
-      `EXCEPTION WHEN insufficient_privilege OR others THEN\n` +
-      `  RAISE NOTICE 'تنبيه: تعذّر تعطيل المشغّلات — قد تتعارض الصفوف المولّدة'\n;\n` +
-      `END $$;\n\n` + body;
-
-  out += `
--- ═══════════════════════════════════════════════════════════════════════════
---  المرحلة ٢ — البيانات
---  ⚠ يبدأ بـ TRUNCATE: لا تُنفّذه على قاعدة فيها بيانات حقيقية.
---  المشغّلات معطّلة أثناء التحميل (replica) — وهذا ضروري: مشغّلات البطاقات
---  تُنشئ سطور issued_serials والمحاولات بنفسها، فتصطدم بصفوفنا وتفشل.
--- ═══════════════════════════════════════════════════════════════════════════
-
-` + withReplica;
-} else if (!flag('schema-only')) {
+  /* تحقّق مبكر: النسخة بلا جداول أساسية تعني ملفاً فارغاً يُنفَّذ بنجاح
+     ويترك القاعدة فارغة — أخطر من خطأ صريح. */
+  if (!Array.isArray(payload.applicants)) {
+    console.error('❌ النسخة لا تحتوي applicants — ليست نسخة صالحة');
+    process.exit(6);
+  }
+} else if (!schemaOnly) {
   console.error('⚠️  لم يُمرَّر --payload: الملف سيحتوي الهيكل فقط.');
 }
 
-/* ── الفحص الأخير: أعداد كل جدول ── */
-out += `
--- ═══════════════════════════════════════════════════════════════════════════
---  الفحص الأخير — اقرأ هذا الجدول وقارنه بأعدادك
--- ═══════════════════════════════════════════════════════════════════════════
-SELECT 'staff' AS "الجدول", count(*) AS "العدد" FROM brc.staff
-UNION ALL SELECT 'applicants', count(*) FROM brc.applicants
-UNION ALL SELECT 'jobs', count(*) FROM brc.jobs
-UNION ALL SELECT 'job_attempts', count(*) FROM brc.job_attempts
-UNION ALL SELECT 'issued_serials', count(*) FROM brc.issued_serials
-UNION ALL SELECT 'card_number_registry', count(*) FROM brc.card_number_registry
-UNION ALL SELECT 'audit_log', count(*) FROM brc.audit_log
-UNION ALL SELECT 'settings', count(*) FROM brc.settings
-UNION ALL SELECT 'recovery_chances', count(*) FROM brc.recovery_chances
-UNION ALL SELECT 'recovery_prints', count(*) FROM brc.recovery_prints
-UNION ALL SELECT 'office_receipts', count(*) FROM brc.office_receipts
-ORDER BY 1;
-
--- ⚠ إن كان أي رقم صفراً أو أقل من المتوقع، فالملف لم يُنفَّذ كاملاً.
---   لا تبدأ العمل على القاعدة الجديدة قبل حلّ ذلك.
-`;
+const out = FullDump.build({ schema: SCHEMA, payload, schemaOnly });
 
 writeFileSync(outPath, out, 'utf8');
+const sum = FullDump.SUMMARY(payload || {});
 const lines = out.split('\n').length;
 const kb = Math.round(Buffer.byteLength(out, 'utf8') / 1024);
+
 console.log(`✅ ${outPath}`);
 console.log(`   ${lines} سطراً · ${kb} ك.ب`);
-console.log(`   ${payloadPath ? 'الهيكل + البيانات' : 'الهيكل فقط'}`);
+if (payload) {
+  console.log('   ' + Object.keys(sum.counts).map(k => sum.counts[k] + ' ' + k).join(' · '));
+  console.log('   عدّاد البطاقات: ' + sum.cardNumberCounter);
+} else {
+  console.log('   الهيكل فقط (بلا بيانات)');
+}

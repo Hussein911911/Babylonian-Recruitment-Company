@@ -452,6 +452,42 @@
     setStatus(unlockStatus, 'نُزّل 2-data.sql — شغّله بعد 1-schema.sql على قاعدة جديدة', 'ok');
   });
 
+  /* ═══ ملف واحد كامل: الهيكل + البيانات ═══
+     طلب المالك (2026-11-17). يستعمل نفس المولّد الذي تستعمله الأداة
+     (assets/js/full-dump.js + restore-sql.js) — فلا منطقان ينحرفان.
+
+     ⚠️ لا نُقسّمه ولا نُعدّه للّصق: هو مبنيّ ليُنفَّذ بأداة. لو قسّمناه
+     لصار نسخة ثانية من الأجزاء الخمسة، وهذا عكس ما طلبه. */
+  var fullBtn = $('rp-dl-full');
+  if (fullBtn) fullBtn.addEventListener('click', function () {
+    if (!state.payload) return;
+    if (!window.HRCFullDump) {
+      setStatus(unlockStatus, 'مولّد الملف الكامل غير محمّل — حدّث الصفحة', 'error');
+      return;
+    }
+    var sql;
+    try {
+      sql = window.HRCFullDump.build({ schema: schemaSql(), payload: state.payload });
+    } catch (e) {
+      setStatus(unlockStatus, 'تعذّر بناء الملف الكامل: ' + (e.message || e), 'error');
+      return;
+    }
+    var sum = window.HRCFullDump.SUMMARY(state.payload);
+    /* فحص أمان قبل التنزيل: ملف بلا بطاقات هو أسوأ من لا ملف — يُنفَّذ
+       بنجاح ويترك القاعدة فارغة. فنمنع تنزيله بدل أن نثق. */
+    if (!sum.counts.applicants) {
+      setStatus(unlockStatus,
+        'النسخة لا تحتوي أي بطاقة — لن يكون هذا ملفاً مفيداً. أوقفتُ التنزيل.', 'error');
+      return;
+    }
+    window.HRCRestoreView.download('HRC-FULL-' + window.HRCRestoreView.stamp() + '.sql',
+      sql, 'application/sql;charset=utf-8');
+    setStatus(unlockStatus,
+      'نُزّل الملف الكامل: ' + sum.counts.applicants + ' بطاقة · ' +
+      sum.counts.jobs + ' وظيفة · ' + sum.counts.job_attempts + ' محاولة · ' +
+      sum.counts.audit_log + ' سجل. لا تلصقه — أعطه للأداة تنفّذه كاملاً.', 'ok');
+  });
+
   var allCsvBtn = $('rp-dl-all-csv');
   if (allCsvBtn) allCsvBtn.addEventListener('click', function () {
     if (!state.payload || !window.HRCRestoreView) return;
