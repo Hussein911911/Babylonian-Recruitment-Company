@@ -327,8 +327,15 @@ on conflict (key) do nothing;
 create sequence if not exists brc.job_code_seq  start 1042;
 create sequence if not exists brc.form_serial_seq start 120;
 
+/* ⚠️ security definer: بدونه يستدعي الموظف `nextval` على تسلسل لا يملك
+   عليه USAGE فيفشل بـ42501 عند إضافة وظيفة من اللوحة — ويظهر له
+   «لا صلاحية كافية» وهو ليس السبب. (أُصلح 2026-11-17.)
+   والمنح على التسلسل أُضيف أدناه كطبقة ثانية — لا نعتمد على واحدة. */
 create or replace function brc.next_job_code() returns text
-language plpgsql as $$
+language plpgsql
+security definer
+set search_path to 'brc', 'public'
+as $$
 declare v text;
 begin
   loop
@@ -1838,7 +1845,24 @@ grant select on brc.audit_log, brc.settings, brc.staff, brc.v_financials_by_staf
 --       • audit_log:    الإضافة باسم صاحب الجلسة أو 'system' (audit_insert)
 --       • delete jobs/applicants: للمدير فقط (jobs_admin_delete …)
 grant insert on brc.audit_log to authenticated;
-grant usage on sequence brc.audit_log_id_seq to authenticated;
+-- ⚠️ عطل حقيقي أُصلح 2026-11-17 (بلاغ المالك: «قبل لا أنسخ أي نسخة يكلّي
+--    لا صلاحية كافية (RLS/منح مفقود) … وهاي تروح من أسوي رفرش»).
+--
+--    السبب لم يكن سياسة ولا منحاً على الجدول — بل **التسلسلات**:
+--    `audit_log.id` من نوع bigserial يولّد رقمه من `audit_log_id_seq`.
+--    وكان المنح على التسلسل لـ`authenticated` مفقوداً على القواعد التي
+--    بُنيت من أجزاء السكيما (الجزء ٣ فيه المنح، لكن الملف الكامل لم يكن
+--    يعيده). فأي `insert into brc.audit_log` يفشل بـ:
+--        ERROR 42501: permission denied for sequence audit_log_id_seq
+--
+--    و`job_code_seq` و`form_serial_seq` لم يكن لهما منح إطلاقاً — فإضافة
+--    وظيفة أو استمارة من اللوحة تفشل بالخطأ نفسه، ويظهر للموظف
+--    «لا صلاحية كافية» وهو ليس السبب.
+--
+--    والمنح على UPDATE مطلوب أيضاً لأن `nextval` يُحدّث حالة التسلسل.
+grant usage, select, update on sequence brc.audit_log_id_seq to authenticated;
+grant usage, select, update on sequence brc.job_code_seq    to authenticated;
+grant usage, select, update on sequence brc.form_serial_seq to authenticated;
 grant insert, update on brc.settings to authenticated;
 grant delete on brc.jobs, brc.applicants to authenticated;
 grant execute on function brc.select_attempt(text, text) to authenticated;

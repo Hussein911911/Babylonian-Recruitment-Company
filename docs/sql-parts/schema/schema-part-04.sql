@@ -1,13 +1,65 @@
 -- ═══════════════════════════════════════════════════════════════════════
 --  schema — الجزء 04 من 05
 --  يفعّل: الجداول · الفهارس · الدوال · المشغّلات · المهام المجدولة · إدخال بيانات · كتل تنفيذية (DO)
---  أسطر: 678 · حجم: 50 ك.ب
+--  أسطر: 676 · حجم: 48 ك.ب
 --  ---------------------------------------------------------------------
 --  ⚠ لا تلصق هذا الجزء قبل تنفيذ الجزء 03 بنجاح.
 --  بعد «Success» انتقل إلى الجزء 05.
 -- ═══════════════════════════════════════════════════════════════════════
 
 
+create or replace function brc.office_submit(p_id uuid,p_kind text,p_data jsonb,p_expected jsonb)
+returns jsonb language plpgsql security definer set search_path=brc,public as $$
+declare actor uuid:=auth.uid(); signature text; receipt record; j record; f record; slot record; result jsonb;
+begin
+ if actor is null or not brc.is_staff() then return jsonb_build_object('ok',false,'code','unauthorized'); end if;
+ if p_id is null or p_kind is null or p_kind not in ('reserve','activate','job_note') or p_data is null or p_expected is null or jsonb_typeof(p_data)<>'object' or jsonb_typeof(p_expected)<>'object' then
+ return jsonb_build_object('ok',false,'code','invalid_request'); end if;
+ signature:=encode(extensions.digest(convert_to(jsonb_build_array(p_kind,p_data,p_expected)::text,'UTF8'),'sha256'),'hex');
+ perform pg_advisory_xact_lock(hashtextextended(p_id::text,0));
+ select * into receipt from brc.office_receipts where operation_id=p_id;
+ if found then
+  if receipt.actor<>actor or receipt.request_hash<>signature then return jsonb_build_object('ok',false,'code','operation_mismatch');end if;
+  return receipt.result;
+ end if;
+ begin
+  if length(coalesce(p_data->>'serial',''))>80 or length(coalesce(p_data->>'jobCode',''))>80 then raise exception 'invalid_request'; end if;
+  -- Match existing public activation lock order: applicant, then job, then slot.
+  if p_kind in ('reserve','activate') then
+   select * into f from brc.applicants where serial=p_data->>'serial' for update;
+   if not found then raise exception 'card_not_found'; end if;
+  end if;
+  select * into j from brc.jobs where code=p_data->>'jobCode' for update;
+  if not found then raise exception 'job_not_found';end if;
+  if p_expected->>'job_updated_at' is null or j.updated_at is distinct from (p_expected->>'job_updated_at')::timestamptz then raise exception 'job_conflict';end if;
+  if p_kind='job_note' then
+   if length(btrim(coalesce(p_data->>'note','')))=0 or length(p_data->>'note')>2000 then raise exception 'invalid_note';end if;
+   update brc.jobs set notes=p_data->>'note',updated_at=now() where id=j.id;
+   insert into brc.audit_log(username,role,action,entity,entity_id,details)
+   select username,role,'تحديث ملاحظة من المكتب','job',j.code,'طلب مكتب متحقق من التعارض' from brc.staff where auth_id=actor and active;
+  else
+   if j.status<>'available' then raise exception 'job_unavailable';end if;
+   if p_kind='activate' then
+    if f.status<>'blank' or p_expected->>'app_updated_at' is null or f.updated_at is distinct from (p_expected->>'app_updated_at')::timestamptz then raise exception 'card_conflict';end if;
+    result:=brc.activate_card(f.serial,p_data);
+   else
+    if f.status<>'active' or (f.expiry_date is not null and f.expiry_date<=now()) then raise exception 'card_unavailable';end if;
+    select * into slot from brc.job_attempts where serial=f.serial and slot_status='empty' order by attempt_no limit 1 for update;
+    if not found or slot.attempt_no is distinct from (p_expected->>'attempt_no')::smallint then raise exception 'chance_conflict';end if;
+    result:=brc.select_attempt(f.serial,j.code);
+   end if;
+   if coalesce((result->>'ok')::boolean,false)=false then raise exception '%',coalesce(result->>'error','operation_rejected');end if;
+  end if;
+  result:=jsonb_build_object('ok',true,'operationId',p_id,'jobCode',j.code,'serial',p_data->>'serial');
+ exception when others then
+  -- This subtransaction rolls back all business writes on any rejection.
+  result:=jsonb_build_object('ok',false,'code','conflict','message',left(sqlerrm,240));
+ end;
+ insert into brc.office_receipts(operation_id,actor,request_hash,result) values(p_id,actor,signature,result);
+ return result;
+end $$;
+revoke all on function brc.office_submit(uuid,text,jsonb,jsonb) from public,anon;
+grant execute on function brc.office_submit(uuid,text,jsonb,jsonb) to authenticated;
 
 notify pgrst, 'reload schema';
 
@@ -632,57 +684,3 @@ end $$;
 with ranked as(select id,row_number() over(partition by job_id order by selected_at nulls last,id)::int n from brc.job_attempts where job_id is not null and slot_status in('reserved','critical','hiring','succeeded'))
 update brc.job_attempts a set vacancy_no=r.n from ranked r where a.id=r.id and a.vacancy_no is null;
 create unique index if not exists job_vacancy_occupied on brc.job_attempts(job_id,vacancy_no) where slot_status in('reserved','critical','hiring','succeeded');
-
-create or replace function brc.trg_job_vacancies() returns trigger language plpgsql security definer set search_path=brc,public as $$
-declare used int[]; pending record; filled int; held int;
-begin
- -- Permanent fill numbers cannot be erased by stale browser mirrors or card deletion.
- select coalesce(array_agg(distinct n order by n),'{}') into new.filled_vacancy_numbers from(
- select unnest(old.filled_vacancy_numbers) n union select vacancy_no from brc.job_attempts where job_id=new.id and slot_status='succeeded' and vacancy_no is not null) s;
- select coalesce(array_agg(distinct n),'{}') into used from(select unnest(new.filled_vacancy_numbers) n union select vacancy_no from brc.job_attempts where job_id=new.id and slot_status in('reserved','critical','hiring') and vacancy_no is not null) s;
- if coalesce((select max(n) from unnest(used) n),0)>new.vacancies then raise exception 'لا يمكن تقليل الشواغر تحت رقم شاغر مشغول';end if;
- select * into pending from brc.job_attempts where job_id=new.id and slot_status in('reserved','critical','hiring') order by vacancy_no limit 1;
- filled:=cardinality(new.filled_vacancy_numbers);held:=cardinality(used)-filled;
- new.status:=case when new.manual_closed then 'closed'::brc.job_status when cardinality(used)<new.vacancies then 'available'::brc.job_status when filled>=new.vacancies then 'closed'::brc.job_status when exists(select 1 from brc.job_attempts where job_id=new.id and slot_status='hiring') then 'hiring'::brc.job_status else 'reserved'::brc.job_status end;
- new.reserved_by:=pending.serial;new.hold_expires_at:=pending.hold_expires_at;
- new.critical:=exists(select 1 from brc.job_attempts where job_id=new.id and slot_status='critical');
- new.closed_at:=case when new.status='closed' then coalesce(new.closed_at,now()) else null end;
- return new;
-end $$;
-drop trigger if exists trg_job_vacancies on brc.jobs;
-create trigger trg_job_vacancies before update on brc.jobs for each row execute function brc.trg_job_vacancies();
-
-create or replace function brc.trg_attempt_hold() returns trigger language plpgsql security definer set search_path=brc,public as $$
-declare j brc.jobs; f brc.applicants; hours int; seat int;
-begin
- if tg_op='UPDATE' and old.job_id is not null and new.job_id is null and old.slot_status in('reserved','critical','hiring') then new.slot_status:='expired';new.closed_at:=now();new.hold_expires_at:=null;new.outcome_note:='حذفت الشركة الإعلان — الفرصة مستهلكة';end if;
- if tg_op='UPDATE' and old.slot_status in('succeeded','rejected','expired') and new.slot_status is distinct from old.slot_status then raise exception 'الفرصة مستهلكة ولا يمكن إعادة استخدامها';end if;
- if new.slot_status='reserved' and (tg_op='INSERT' or old.slot_status is distinct from 'reserved') then
-  if tg_op='UPDATE' and old.slot_status<>'empty' then raise exception 'الفرصة ليست فارغة';end if;
-  select * into f from brc.applicants where serial=new.serial for update;
-  if f.serial is null or f.status in('blank','pending','rejected','expired','exhausted') or f.expiry_date<now() then raise exception 'البطاقة غير صالحة للتقديم';end if;
-  select * into j from brc.jobs where id=new.job_id for update;
-  if j.id is null or j.manual_closed then raise exception 'الوظيفة غير متاحة';end if;
-  select n into seat from generate_series(1,j.vacancies) n where not(n=any(j.filled_vacancy_numbers)) and not exists(select 1 from brc.job_attempts a where a.job_id=j.id and a.vacancy_no=n and a.slot_status in('reserved','critical','hiring','succeeded') and a.id<>new.id) order by n limit 1;
-  if seat is null then raise exception 'لا يوجد شاغر متاح';end if;
-  -- Start validity atomically only on the first successful reservation.
-  if f.issue_date is null and f.expiry_date is null then
-   update brc.applicants set issue_date=now(), expiry_date=now()+make_interval(days=>coalesce((select (value->>'validity_days')::int from brc.settings where key='rules'),30)) where serial=f.serial;
-  end if;
-  select coalesce((value->>'hold_hours')::int,24) into hours from brc.settings where key='rules';
-  new.vacancy_no:=seat;new.job_code:=j.code;new.selected_at:=coalesce(new.selected_at,now());new.hold_expires_at:=coalesce(new.hold_expires_at,now()+make_interval(hours=>coalesce(hours,24)));new.closed_at:=null;
- elsif tg_op='UPDATE' and old.vacancy_no is not null and (new.vacancy_no is distinct from old.vacancy_no or (new.job_id is distinct from old.job_id and new.job_id is not null)) then raise exception 'لا يمكن نقل شاغر فرصة مستخدمة';
- end if;
- if new.slot_status in('succeeded','rejected','expired') and (tg_op='INSERT' or old.slot_status is distinct from new.slot_status) then
-  if tg_op='UPDATE' and old.slot_status not in('reserved','critical','hiring') then raise exception 'لا يوجد حجز قيد القرار';end if;
-  new.closed_at:=coalesce(new.closed_at,now());new.hold_expires_at:=null;
- end if;
- return new;
-end $$;
-drop trigger if exists trg_attempt_hold on brc.job_attempts;
-create trigger trg_attempt_hold before insert or update on brc.job_attempts for each row execute function brc.trg_attempt_hold();
-create or replace function brc.trg_sync_vacancies() returns trigger language plpgsql security definer set search_path=brc,public as $$begin
- update brc.jobs set updated_at=now() where id=coalesce(new.job_id,old.job_id);return coalesce(new,old);
-end $$;
-drop trigger if exists trg_sync_vacancies on brc.job_attempts;
-create trigger trg_sync_vacancies after insert or update or delete on brc.job_attempts for each row execute function brc.trg_sync_vacancies();

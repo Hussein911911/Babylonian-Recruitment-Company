@@ -48,11 +48,27 @@ create trigger trg_archive_readonly before insert or update on brc.applicants fo
 revoke all on function brc.trg_archive_readonly() from public,anon,authenticated;
 
 -- Invoker views retain existing staff RLS. Omitted rows are NOT deleted rows.
-create or replace view brc.working_applicants with(security_invoker=true) as
+--
+-- ⚠️ عطل حقيقي أُصلح 2026-11-17 — وهذا أصل عطل المالك «لا صلاحية كافية».
+--
+--    هنا `select *` (بلا عمود card_number)، بينما 20261105120000 يعرّف
+--    الـview نفسه **بعدّه** card_number. و`create or replace view` لا
+--    يستطيع حذف عمود قائم:
+--        ERROR: cannot change name of view column "card_number" to
+--               "employer_access_code"   /   cannot drop columns from view
+--
+--    فيتوقف التشغيل عند هذا الملف، وكل ترحيلٍ بعده لا يُطبَّق أبداً.
+--
+--    الإصلاح: drop ثم create. الـview ليس جدولاً فلا بيانات تُفقد،
+--    والمنح تُعاد في الأسطر التالية أصلاً. والترتيب: المعتمدون أولاً.
+drop view if exists brc.working_jobs;
+drop view if exists brc.working_job_attempts;
+drop view if exists brc.working_applicants;
+create view brc.working_applicants with(security_invoker=true) as
  select * from brc.applicants where archived_at is null;
-create or replace view brc.working_job_attempts with(security_invoker=true) as
+create view brc.working_job_attempts with(security_invoker=true) as
  select t.* from brc.job_attempts t join brc.working_applicants a on a.serial=t.serial;
-create or replace view brc.working_jobs with(security_invoker=true) as
+create view brc.working_jobs with(security_invoker=true) as
  select j.* from brc.jobs j where j.status<>'closed'
  or coalesce(j.closed_at,j.created_at)>now()-interval '60 days'
  or exists(select 1 from brc.working_job_attempts t where t.job_id=j.id);

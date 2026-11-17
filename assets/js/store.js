@@ -1978,7 +1978,27 @@
       return { text: 'سكيما brc غير مُعرَّضة للمشروع', hint: 'Settings → API → Exposed schemas: أضف brc' };
     }
     if (code === '42501' || /permission denied/i.test(msg)) {
-      return { text: 'لا صلاحية كافية (RLS/منح مفقود)', hint: 'راجع سياسات ومنح §8 و§9 في docs/schema.sql' };
+      /* ⚠️ عطل حقيقي أُصلح 2026-11-17. الرسالة القديمة «راجع سياسات ومنح
+         §8 و§9» كانت **مضلّلة**: المالك راجعها ولم يجد شيئاً، لأن السبب
+         لم يكن سياسة ولا منحاً على الجدول — بل منحاً على **التسلسل**.
+
+         `permission denied for sequence X` خطأ مختلف تماماً عن
+         `permission denied for table X`، وإصلاحه سطر واحد مختلف. ولكل
+         تسلسل اسمه في الرسالة، فنسحبه ونذكر الحلّ الدقيق بدل التوجيه
+         العام. هذا الفرق بين «راجع ٣١٥٤ سطراً» و«نفّذ هذا السطر». */
+      var seq = (/sequence\s+([a-z0-9_.]+)/i.exec(msg) || [])[1];
+      if (seq) {
+        var bare = seq.replace(/^brc\./, '');
+        return {
+          text: 'منح التسلسل مفقود: ' + bare,
+          hint: 'نفّذ في SQL Editor: grant usage, select, update on sequence brc.' + bare +
+                ' to authenticated;'
+        };
+      }
+      return {
+        text: 'لا صلاحية كافية (RLS/منح مفقود)',
+        hint: 'إن كانت الرسالة تذكر sequence فمنح التسلسل ناقص — راجع منح التسلسلات في docs/schema.sql §9'
+      };
     }
 
     if (code === '42703' || /column .* does not exist/i.test(msg)) {
@@ -2279,6 +2299,22 @@
            التالية — انظر advanceSnapshot في cloud-sync.js. */
         cloud.lastError = cloud.lastError || ('تعذّر دفع ' + res.failed + ' عملية — ستُعاد تلقائياً');
         console.warn('[HRC/sync] ' + cloud.lastError + ': ' + (res.pending || []).join(', '));
+      } else if (res && !res.error) {
+        /* ⚠️ عطل حقيقي أُصلح 2026-11-17 (بلاغ المالك: «هاي تروح من أسوي
+           رفرش للموقع»).
+
+           السبب: `lastError` كان يُمسح في **بداية** pushCloud فقط. فإذا
+           نجح الدفع لاحقاً بلا رجوع إلى pushCloud (أو جاء `skipped` من
+           مسار آخر)، بقي الخطأ القديم معلّقاً في الذاكرة. والواجهة تقرأ
+           `cloudStatus().lastError` فتعرض رسالة «تعذّر إكمال المزامنة»
+           على حالة سليمة تماماً.
+
+           وهذا أخطر من خطأ حقيقي: خطأ كاذب يُفقد الثقة في الأداة، ويجعل
+           المدير يظنّ نسخته غير آمنة وهو آمن. فالقاعدة: **النجاح يمحو
+           الخطأ**، لا يبقى أثر لخطأ انتهى. */
+        cloud.lastError = null;
+        cloud.error = null;
+        cloud.detail = '';
       }
       if (cloud.needsReload) { cloud.needsReload = false; return reloadFromCloud(); }
       return res;
