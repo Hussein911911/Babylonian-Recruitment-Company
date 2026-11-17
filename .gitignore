@@ -20,3 +20,6 @@ office/runtime/
 *.pgpass
 state.key
 state.enc
+
+# مخرجات تقسيم SQL — تُولَّد بـnpm run sql:split، والمصدر docs/schema.sql
+out-sql/

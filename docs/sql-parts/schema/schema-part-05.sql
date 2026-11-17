@@ -1,13 +1,67 @@
 -- ═══════════════════════════════════════════════════════════════════════
 --  schema — الجزء 05 من 05
 --  يفعّل: الجداول · الفهارس · الدوال · العروض · المشغّلات · المهام المجدولة · إدخال بيانات · كتل تنفيذية (DO)
---  أسطر: 470 · حجم: 31 ك.ب
+--  أسطر: 524 · حجم: 37 ك.ب
 --  ---------------------------------------------------------------------
 --  ⚠ لا تلصق هذا الجزء قبل تنفيذ الجزء 04 بنجاح.
 --  هذا آخر جزء. بعد «Success» تحقّق من الأعداد في INDEX.md.
 -- ═══════════════════════════════════════════════════════════════════════
 
 
+
+create or replace function brc.trg_job_vacancies() returns trigger language plpgsql security definer set search_path=brc,public as $$
+declare used int[]; pending record; filled int; held int;
+begin
+ -- Permanent fill numbers cannot be erased by stale browser mirrors or card deletion.
+ select coalesce(array_agg(distinct n order by n),'{}') into new.filled_vacancy_numbers from(
+ select unnest(old.filled_vacancy_numbers) n union select vacancy_no from brc.job_attempts where job_id=new.id and slot_status='succeeded' and vacancy_no is not null) s;
+ select coalesce(array_agg(distinct n),'{}') into used from(select unnest(new.filled_vacancy_numbers) n union select vacancy_no from brc.job_attempts where job_id=new.id and slot_status in('reserved','critical','hiring') and vacancy_no is not null) s;
+ if coalesce((select max(n) from unnest(used) n),0)>new.vacancies then raise exception 'لا يمكن تقليل الشواغر تحت رقم شاغر مشغول';end if;
+ select * into pending from brc.job_attempts where job_id=new.id and slot_status in('reserved','critical','hiring') order by vacancy_no limit 1;
+ filled:=cardinality(new.filled_vacancy_numbers);held:=cardinality(used)-filled;
+ new.status:=case when new.manual_closed then 'closed'::brc.job_status when cardinality(used)<new.vacancies then 'available'::brc.job_status when filled>=new.vacancies then 'closed'::brc.job_status when exists(select 1 from brc.job_attempts where job_id=new.id and slot_status='hiring') then 'hiring'::brc.job_status else 'reserved'::brc.job_status end;
+ new.reserved_by:=pending.serial;new.hold_expires_at:=pending.hold_expires_at;
+ new.critical:=exists(select 1 from brc.job_attempts where job_id=new.id and slot_status='critical');
+ new.closed_at:=case when new.status='closed' then coalesce(new.closed_at,now()) else null end;
+ return new;
+end $$;
+drop trigger if exists trg_job_vacancies on brc.jobs;
+create trigger trg_job_vacancies before update on brc.jobs for each row execute function brc.trg_job_vacancies();
+
+create or replace function brc.trg_attempt_hold() returns trigger language plpgsql security definer set search_path=brc,public as $$
+declare j brc.jobs; f brc.applicants; hours int; seat int;
+begin
+ if tg_op='UPDATE' and old.job_id is not null and new.job_id is null and old.slot_status in('reserved','critical','hiring') then new.slot_status:='expired';new.closed_at:=now();new.hold_expires_at:=null;new.outcome_note:='حذفت الشركة الإعلان — الفرصة مستهلكة';end if;
+ if tg_op='UPDATE' and old.slot_status in('succeeded','rejected','expired') and new.slot_status is distinct from old.slot_status then raise exception 'الفرصة مستهلكة ولا يمكن إعادة استخدامها';end if;
+ if new.slot_status='reserved' and (tg_op='INSERT' or old.slot_status is distinct from 'reserved') then
+  if tg_op='UPDATE' and old.slot_status<>'empty' then raise exception 'الفرصة ليست فارغة';end if;
+  select * into f from brc.applicants where serial=new.serial for update;
+  if f.serial is null or f.status in('blank','pending','rejected','expired','exhausted') or f.expiry_date<now() then raise exception 'البطاقة غير صالحة للتقديم';end if;
+  select * into j from brc.jobs where id=new.job_id for update;
+  if j.id is null or j.manual_closed then raise exception 'الوظيفة غير متاحة';end if;
+  select n into seat from generate_series(1,j.vacancies) n where not(n=any(j.filled_vacancy_numbers)) and not exists(select 1 from brc.job_attempts a where a.job_id=j.id and a.vacancy_no=n and a.slot_status in('reserved','critical','hiring','succeeded') and a.id<>new.id) order by n limit 1;
+  if seat is null then raise exception 'لا يوجد شاغر متاح';end if;
+  -- Start validity atomically only on the first successful reservation.
+  if f.issue_date is null and f.expiry_date is null then
+   update brc.applicants set issue_date=now(), expiry_date=now()+make_interval(days=>coalesce((select (value->>'validity_days')::int from brc.settings where key='rules'),30)) where serial=f.serial;
+  end if;
+  select coalesce((value->>'hold_hours')::int,24) into hours from brc.settings where key='rules';
+  new.vacancy_no:=seat;new.job_code:=j.code;new.selected_at:=coalesce(new.selected_at,now());new.hold_expires_at:=coalesce(new.hold_expires_at,now()+make_interval(hours=>coalesce(hours,24)));new.closed_at:=null;
+ elsif tg_op='UPDATE' and old.vacancy_no is not null and (new.vacancy_no is distinct from old.vacancy_no or (new.job_id is distinct from old.job_id and new.job_id is not null)) then raise exception 'لا يمكن نقل شاغر فرصة مستخدمة';
+ end if;
+ if new.slot_status in('succeeded','rejected','expired') and (tg_op='INSERT' or old.slot_status is distinct from new.slot_status) then
+  if tg_op='UPDATE' and old.slot_status not in('reserved','critical','hiring') then raise exception 'لا يوجد حجز قيد القرار';end if;
+  new.closed_at:=coalesce(new.closed_at,now());new.hold_expires_at:=null;
+ end if;
+ return new;
+end $$;
+drop trigger if exists trg_attempt_hold on brc.job_attempts;
+create trigger trg_attempt_hold before insert or update on brc.job_attempts for each row execute function brc.trg_attempt_hold();
+create or replace function brc.trg_sync_vacancies() returns trigger language plpgsql security definer set search_path=brc,public as $$begin
+ update brc.jobs set updated_at=now() where id=coalesce(new.job_id,old.job_id);return coalesce(new,old);
+end $$;
+drop trigger if exists trg_sync_vacancies on brc.job_attempts;
+create trigger trg_sync_vacancies after insert or update or delete on brc.job_attempts for each row execute function brc.trg_sync_vacancies();
 -- Recompute existing jobs; preserve explicitly closed advertisements.
 update brc.jobs set updated_at=updated_at;
 revoke all on function brc.trg_job_vacancies(),brc.trg_sync_vacancies() from public,anon,authenticated;

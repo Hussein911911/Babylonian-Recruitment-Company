@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════
 --  schema — الجزء 01 من 05
 --  يفعّل: إنشاء السكيما · الإضافات · الأنواع · الجداول · الفهارس · الدوال · المشغّلات · المهام المجدولة · إدخال بيانات · كتل تنفيذية (DO)
---  أسطر: 664 · حجم: 35 ك.ب
+--  أسطر: 671 · حجم: 36 ك.ب
 --  ---------------------------------------------------------------------
 --  ابدأ من هنا. هذا أول جزء.
 --  بعد «Success» انتقل إلى الجزء 02.
@@ -336,8 +336,15 @@ on conflict (key) do nothing;
 create sequence if not exists brc.job_code_seq  start 1042;
 create sequence if not exists brc.form_serial_seq start 120;
 
+/* ⚠️ security definer: بدونه يستدعي الموظف `nextval` على تسلسل لا يملك
+   عليه USAGE فيفشل بـ42501 عند إضافة وظيفة من اللوحة — ويظهر له
+   «لا صلاحية كافية» وهو ليس السبب. (أُصلح 2026-11-17.)
+   والمنح على التسلسل أُضيف أدناه كطبقة ثانية — لا نعتمد على واحدة. */
 create or replace function brc.next_job_code() returns text
-language plpgsql as $$
+language plpgsql
+security definer
+set search_path to 'brc', 'public'
+as $$
 declare v text;
 begin
   loop
