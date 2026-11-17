@@ -28,6 +28,32 @@ const FORMAT = 'HRC-BACKUP/1';
 /* ── أدوات ──────────────────────────────────────────────────────────────── */
 const die = (m) => { console.error('\n  ✗ ' + m + '\n'); process.exit(1); };
 const ok = (m) => console.log('  ✓ ' + m);
+const warn = (m) => console.log('  ⚠ ' + m);
+const bad = (m) => console.log('  ✗ ' + m);
+
+/* ═══ سؤال تأكيد تفاعلي ═════════════════════════════════════════════════════
+   ⚠ لماذا هذا الحارس موجود؟ (2026-11-16)
+
+   الملف الذي ننفّذه يبدأ بـ`TRUNCATE` — أي **يمسح كل البيانات** في brc.
+   وكان ذلك يحدث فوراً، بلا سؤال. ولو أخطأ المدير في الرابط (وأشار إلى
+   الإنتاج بدل التجربة) لمسح بيانات ٧٢٤ بطاقة في ثانية واحدة. لا رجعة.
+
+   الحارس لا يكفي أن يقول «هل أنت متأكد؟» — لأن المدير سيقول «نعم» بلا
+   قراءة. فيجب أن يعرف **ماذا** يمسح: نقرأ أعداد القاعدة الهدف ونعرضها
+   قبل المسح. عندها يرى «٧٢٤ بطاقة ستمسح» فيتوقف.
+
+   والقاعدة عندنا: لا مسح بلا كتابة كلمة صريحة. */
+function ask(question) {
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(question, (answer) => { rl.close(); resolve(String(answer || '').trim()); });
+  });
+}
+
+/* متغيّر بيئة يسمح بالتنفيذ غير التفاعلي (سكربت/فحص آلي).
+   ⚠ لا يُقبل إلا بقيمة صريحة — ولو كانت القيمة شائعة كـ`1` لكان أي
+   سكربت يمرّ. نطلب عبارة كاملة لا تُكتب سهواً. */
+const NONINTERACTIVE_PHRASE = 'أوافق على المسح';
 const info = (m) => console.log('  · ' + m);
 
 function fromB64(s) {
@@ -135,6 +161,8 @@ async function main() {
     node tools/restore-portable.mjs <ملف.hrcbak>                  يولّد SQL
     node tools/restore-portable.mjs <ملف.hrcbak> --out bk.sql
     node tools/restore-portable.mjs <ملف.hrcbak> --database URL   ينفّذ مباشرة
+    node tools/restore-portable.mjs <ملف.hrcbak> --database URL --dry-run
+                                                                 معاينة بلا تعديل
     node tools/restore-portable.mjs <ملف.hrcbak> --inspect        يفحص بلا فكّ
 
   كلمة المرور: تُطلب من الطرفية بلا صدى، أو HRC_BACKUP_PASSWORD.
@@ -172,9 +200,111 @@ async function main() {
     let pg;
     try { pg = await import('pg'); }
     catch { die('التنفيذ المباشر يحتاج حزمة pg — شغّل: npm i pg'); }
-    const client = new pg.default.Client({ connectionString: url });
-    await client.connect();
-    info('متصل — تنفيذ السكربت…');
+    /* ═══ ٢) لا اتصال بلا تشفير ═══════════════════════════════════════════
+       بيانات هذا الملف أسماء وهواتف ٧٢٤ شخصاً. و`pg` افتراضياً لا يفرض
+       TLS: لو كان الرابط بلا `sslmode`، فقد تسير البيانات **مكشوفة** على
+       الشبكة. Supabase يعطي الرابط بـ`?sslmode=require` — ولكن من يحذفه
+       (أو يستخدم رابطاً قديماً) لا يُنبَّه.
+       فنفرضه هنا بدل أن نثق بأن المستخدم لاحظ. */
+    let safeUrl = url;
+    if (!/[?&]sslmode=/i.test(safeUrl)) {
+      safeUrl += (safeUrl.includes('?') ? '&' : '?') + 'sslmode=require';
+      warn('الرابط بلا sslmode — فرضنا التشفير (sslmode=require) لحماية البيانات أثناء النقل.');
+    }
+
+    const client = new pg.default.Client({ connectionString: safeUrl });
+    try { await client.connect(); }
+    catch (e) {
+      die('تعذّر الاتصال بالقاعدة: ' + (e.message || e).split('\n')[0] +
+          '\n     تحقّق من الرابط. إن كان مشروع Supabase، استخدم رابط Session pooler (يقبل IPv4).');
+    }
+    info('متصل — تشفير TLS مفعّل');
+
+    /* ═══ ٢.٥) معاينة بلا تعديل — `--dry-run` ═════════════════════════════
+       أهم ميزة للمدير الذي يجرّب أول مرة: يرى الحجم والأعداد والوجهة،
+       ويتأكد أنه يشير إلى المشروع الصحيح — **ولا يُكتب حرف واحد**.
+
+       نتحقق من وجود الهيكل أيضاً: لو لم يُنفَّذ `docs/schema.sql` بعد،
+       فالتنفيذ سيفشل بعد ثوانٍ. الأفضل أن نقول ذلك الآن، لا في منتصف
+       العملية على قاعدة حقيقية. */
+    const dryRun = args.includes('--dry-run') || args.includes('--preview');
+    const hasSchema = await (async () => {
+      try {
+        await client.query('select 1 from brc.applicants limit 0');
+        return true;
+      } catch { return false; }
+    })();
+
+    if (dryRun) {
+      console.log('');
+      info('معاينة فقط — لن يُكتب أي شيء');
+      console.log('');
+      if (!hasSchema) {
+        bad('الهيكل غير موجود في هذه القاعدة (لا جدول brc.applicants).');
+        console.log('     نفّذ الهيكل أولاً: psql "الرابط" -f docs/schema.sql');
+        console.log('     أو أجزاء الهيكل الخمسة من restore.html');
+      } else {
+        ok('الهيكل موجود وجاهز');
+      }
+      const want = payload.counts || {};
+      console.log('');
+      info('سيُنقل من النسخة:');
+      for (const [label, n] of [
+        ['البطاقات', want.applicants != null ? want.applicants : (payload.applicants || []).length],
+        ['الوظائف', want.jobs != null ? want.jobs : (payload.jobs || []).length],
+        ['الفرص', want.attempts != null ? want.attempts : (payload.job_attempts || []).length],
+        ['سجل التدقيق', want.audit != null ? want.audit : (payload.audit_log || []).length]
+      ]) console.log(`       ${Number(n).toLocaleString('en-US')}  ${label}`);
+      await client.end();
+      console.log('');
+      ok('انتهت المعاينة. للتنفيذ: احذف --dry-run');
+      return;
+    }
+
+    /* ═══ ٣) نُظهر ما سيُمسح، قبل أن نمسح ════════════════════════════════
+       قراءة فقط — لا تعدّل شيئاً. المقصود أن يرى المدير ثمن الخطأ قبل
+       أن يدفعه. لو كانت القاعدة فارغة (مشروع جديد) يقول ذلك صراحةً. */
+    const willWipe = {};
+    let anyData = 0;
+    for (const table of ['applicants', 'jobs', 'job_attempts', 'audit_log']) {
+      try {
+        const r = await client.query('select count(*)::int n from brc.' + table);
+        willWipe[table] = r.rows[0].n;
+        anyData += r.rows[0].n;
+      } catch { willWipe[table] = null; }
+    }
+
+    console.log('');
+    if (anyData === 0) {
+      info('القاعدة الهدف فارغة — لن يُفقد شيء بالمسح.');
+    } else {
+      warn('⚠ القاعدة الهدف فيها بيانات! التنفيذ سيمسحها كلها:');
+      for (const [t, n] of Object.entries(willWipe)) {
+        if (n) console.log(`       ${n.toLocaleString('en-US')}  ${t}`);
+      }
+      console.log('');
+      warn('هذه ليست إضافة — بل **استبدال كامل**. ولا رجعة بعدها.');
+    }
+
+    /* ═══ ٤) التأكيد الصريح ══════════════════════════════════════════════ */
+    const auto = process.env.HRC_RESTORE_CONFIRM;
+    if (anyData > 0) {
+      if (auto !== undefined) {
+        if (auto.trim() !== NONINTERACTIVE_PHRASE) {
+          await client.end();
+          die('القاعدة فيها بيانات. للتنفيذ غير التفاعلي يجب ضبط\n' +
+              `     HRC_RESTORE_CONFIRM="${NONINTERACTIVE_PHRASE}"\n` +
+              '     ⚠ اقرأ الأعداد أعلاه قبل ذلك — لا تمرّرها بلا قراءة.');
+        }
+        warn('تأكيد غير تفاعلي مقبول (HRC_RESTORE_CONFIRM).');
+      } else {
+        const typed = await ask(`اكتب «${NONINTERACTIVE_PHRASE}» للمتابعة، أو Enter للإلغاء: `);
+        if (typed !== NONINTERACTIVE_PHRASE) {
+          await client.end();
+          die('أُلغي — لم يُمسح شيء ولم تُكتب أي بيانات.');
+        }
+      }
+    }
 
     /* ═══ لماذا لا نكتفي بـ«اكتمل»؟ ═══════════════════════════════════════
        لأن الملف يبدأ بـ `BEGIN`، وأي خطأ في وسطه يُجهض المعاملة **كلها**.
