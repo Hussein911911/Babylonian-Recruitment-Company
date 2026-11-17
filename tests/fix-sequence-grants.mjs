@@ -34,10 +34,13 @@ async function fresh() {
   return db;
 }
 
-/* نُعيد إنتاج عطل المالك: قاعدة بُنيت من السكيما القديمة، منح التسلسلات فيها ناقص */
+/* نُعيد إنتاج عطل المالك: قاعدة بُنيت من السكيما الحالية، ثم **نُزيل**
+   منح التسلسلات منها — فتلك كانت حالة قاعدة المالك بالضبط.
+   (كنّا نقرأ نسخة قديمة من /tmp/old.sql، وهو مسار مؤقت لا يبقى بين
+   الجلسات فيفشل الفحص عند أول تشغيل على جهاز آخر. الآن مكتفٍ بذاته.) */
 async function broken() {
   const db = await fresh();
-  await db.exec(readFileSync('/tmp/old.sql', 'utf8').replace(/CREATE EXTENSION[^;]*;/gi, '--'));
+  await db.exec(readFileSync('docs/schema.sql', 'utf8').replace(/CREATE EXTENSION[^;]*;/gi, '--'));
   /* نُزيل منح التسلسل عمداً — هكذا كانت قاعدة المالك فعلاً */
   await db.exec(`do $d$ declare r record; begin
     for r in select c.relname from pg_class c
