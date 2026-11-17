@@ -14,6 +14,7 @@
    التشغيل: npm run test:recovery-restore
    ═══════════════════════════════════════════════════════════════════════════ */
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -64,12 +65,22 @@ spawn('node', ['tools/build-full-dump.mjs', '--payload', payPath, '--out', sqlPa
     const big = core.batchStatements(sql, 20000);
     check('سقف الحجم يعمل', big.length > batches.length, 'لم يتغير التقسيم');
 
-    /* ═══ ٣) الخادم الحقيقي عبر HTTP ═══ */
-    const PORT = 7481;
+    /* ═══ ٣) الخادم الحقيقي عبر HTTP ═══
+       ⚠️ لا رقم منفذ ثابت: خادم يتيم من تشغيل انهار سابقاً يبقى ماسكاً للمنفذ،
+       فيفشل كل فحص لاحق برسالة مضلّلة («الخادم لا يطبع رابطاً»). نطلب من
+       النظام منفذاً حرّاً، ونقتل الخادم دائماً — حتى لو انهار الفحص. */
+    const PORT = await new Promise((res, rej) => {
+      const t = net.createServer();
+      t.on('error', rej);
+      t.listen(0, '127.0.0.1', () => { const p = t.address().port; t.close(() => res(p)); });
+    });
     const srv = spawn('node', ['tools/recovery-server.mjs'], {
       env: { ...process.env, HRC_RECOVERY_PORT: String(PORT) },
       stdio: ['ignore', 'pipe', 'pipe']
     });
+    const killSrv = () => { try { srv.kill('SIGKILL'); } catch (e) { /* مات أصلاً */ } };
+    process.on('exit', killSrv);
+    process.on('uncaughtException', (e) => { killSrv(); throw e; });
     let out = '';
     srv.stdout.on('data', (d) => { out += d; });
     srv.stderr.on('data', (d) => { out += d; });
@@ -138,7 +149,7 @@ spawn('node', ['tools/build-full-dump.mjs', '--payload', payPath, '--out', sqlPa
     });
     check('رابط غير صالح يُبلَّغ بلا انهيار', insp.ok === false && !!insp.error);
 
-    srv.kill();
+    killSrv();
     console.log(`\n  ${ok} ناجح / ${bad} فاشل`);
     process.exit(bad ? 1 : 0);
   });
