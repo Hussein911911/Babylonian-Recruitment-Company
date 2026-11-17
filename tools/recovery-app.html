@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>استرجاع قاعدة الشركة — أداة الطوارئ</title>
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     أداة الاسترجاع المحلية — صفحة واحدة، بلا أي اتصال بالإنترنت.
+     تُقدَّم من tools/recovery-server.mjs على 127.0.0.1 فقط.
+     كل الأنماط والمنطق داخل هذا الملف: لا طلبات خارجية، ولا خطوط من CDN،
+     فتعمل حتى لو كان الإنترنت مقطوعاً — وهذا بالضبط شرط الطوارئ.
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<style>
+  :root{
+    --ink:#0f2233; --ink2:#3c5265; --line:#d8e2ec; --bg:#f4f7fa; --card:#fff;
+    --gold:#b8860b; --gold2:#8a6508; --ok:#0f7b4f; --bad:#b3261e; --warn:#8a5a00;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI","Noto Naskh Arabic",Tahoma,Arial,sans-serif;line-height:1.9}
+  header{background:linear-gradient(135deg,#0f2233,#1d3b56);color:#fff;padding:20px 24px}
+  header h1{margin:0 0 4px;font-size:20px}
+  header p{margin:0;font-size:13px;color:#b9cede}
+  main{max-width:900px;margin:0 auto;padding:20px 16px 60px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:18px 20px;margin-bottom:16px}
+  .card h2{margin:0 0 12px;font-size:16px;display:flex;gap:8px;align-items:center}
+  .num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+    border-radius:50%;background:var(--gold);color:#fff;font-size:13px;flex:0 0 auto}
+  label{display:block;font-size:13px;font-weight:600;margin:10px 0 4px;color:var(--ink2)}
+  input[type=text],input[type=password],textarea{width:100%;padding:10px 12px;border:1px solid var(--line);
+    border-radius:8px;font:inherit;font-size:14px;background:#fbfdff;direction:ltr}
+  input[dir=rtl],textarea[dir=rtl]{direction:rtl}
+  .hint{font-size:12px;color:#69808f;margin:4px 0 0}
+  button{font:inherit;font-weight:700;border:0;border-radius:9px;padding:11px 18px;cursor:pointer}
+  .btn{background:var(--gold);color:#fff}
+  .btn:hover{background:var(--gold2)}
+  .btn[disabled]{background:#c9d3dc;color:#7c8b97;cursor:not-allowed}
+  .btn-ghost{background:#eef3f7;color:var(--ink2);border:1px solid var(--line)}
+  .btn-danger{background:var(--bad);color:#fff}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .drop{border:2px dashed #b9cad8;border-radius:10px;padding:22px;text-align:center;background:#fafcfe;
+    cursor:pointer;transition:.15s}
+  .drop:hover,.drop.on{border-color:var(--gold);background:#fffdf5}
+  .drop b{display:block;font-size:14px}
+  .drop span{font-size:12px;color:#69808f}
+  .status{font-size:13px;padding:10px 12px;border-radius:8px;margin-top:12px;display:none}
+  .status.ok{display:block;background:#e8f6ee;color:var(--ok);border:1px solid #b9e3cb}
+  .status.err{display:block;background:#fdeceb;color:var(--bad);border:1px solid #f5c6c2}
+  .status.info{display:block;background:#eef4fb;color:#1c4d7a;border:1px solid #c6dcf1}
+  .status.warn{display:block;background:#fff7e6;color:var(--warn);border:1px solid #f2dca8}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right}
+  th{background:#f4f8fb;font-size:12px;color:var(--ink2)}
+  td.n{font-variant-numeric:tabular-nums;direction:ltr;text-align:left;font-weight:700}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;font-weight:700}
+  .pill.ok{background:#e8f6ee;color:var(--ok)}
+  .pill.bad{background:#fdeceb;color:var(--bad)}
+  .pill.mid{background:#fff7e6;color:var(--warn)}
+  .bar{height:8px;background:#e6eef5;border-radius:99px;overflow:hidden;margin-top:12px;display:none}
+  .bar.on{display:block}
+  .bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .25s}
+  .guard{background:#fff8f0;border:1px solid #f0d9b5;border-radius:10px;padding:14px;margin-top:12px;font-size:13px}
+  .guard b{color:var(--warn)}
+  .hidden{display:none!important}
+  .gapbox{border:1px solid #f2dca8;background:#fffdf5;border-radius:10px;padding:12px 14px;margin-top:12px;font-size:13px}
+  .gapbox h3{margin:0 0 8px;font-size:13px;color:var(--warn)}
+  .gapbox ul{margin:6px 0 12px;padding-inline-start:18px}
+  .gapbox li{margin-bottom:3px}
+  .gapbox code{background:#f6efdc}
+  code{background:#eef3f7;padding:1px 6px;border-radius:5px;direction:ltr;display:inline-block;font-size:12px}
+  ol.steps{margin:8px 0 0;padding-inline-start:20px;font-size:13px}
+  ol.steps li{margin-bottom:6px}
+  footer{text-align:center;font-size:11px;color:#8fa3b1;padding:10px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>استرجاع قاعدة الشركة — أداة الطوارئ</h1>
+  <p>تعمل من جهازك، بلا إنترنت. لا تُلصق أي شيء في محرّر Supabase.</p>
+</header>
+
+<main>
+
+  <!-- ═══ ٠) حالة الأدوات ═══ -->
+  <section class="card">
+    <h2><span class="num">·</span> جاهزية الأداة</h2>
+    <div id="env" class="status info">جارٍ الفحص…</div>
+  </section>
+
+  <!-- ═══ ١) الملف ═══ -->
+  <section class="card">
+    <h2><span class="num">١</span> ملف النسخة الاحتياطية</h2>
+    <div class="drop" id="drop">
+      <b>اسحب ملف <code>HRC-FULL-….sql</code> هنا</b>
+      <span>أو انقر لاختيار الملف — من مجلد HRC-Backups على الفلاش أو الجهاز</span>
+    </div>
+    <input type="file" id="file" accept=".sql,text/plain" hidden>
+    <div id="file-status" class="status"></div>
+  </section>
+
+  <!-- ═══ ٢) القاعدة الهدف ═══ -->
+  <section class="card">
+    <h2><span class="num">٢</span> المشروع الجديد</h2>
+    <label for="conn">رابط الاتصال بقاعدة المشروع الجديد</label>
+    <input type="password" id="conn" placeholder="postgresql://postgres:كلمة-المرور@db.xxxxx.supabase.co:5432/postgres" autocomplete="off" spellcheck="false">
+    <p class="hint">
+      من لوحة المشروع الجديد: <b>Connect</b> ← تبويب <b>Direct connection</b> ← انسخ الرابط
+      واستبدل <code>[YOUR-PASSWORD]</code> بكلمة مرور القاعدة. تبقى في ذاكرة هذه الأداة فقط،
+      ولا تُكتب في أي ملف.
+    </p>
+    <div class="btn-row">
+      <button class="btn-ghost" id="btn-inspect">افحص القاعدة الهدف أولاً</button>
+      <button class="btn-ghost" id="btn-show">إظهار الرابط</button>
+    </div>
+    <div id="inspect-status" class="status"></div>
+  </section>
+
+  <!-- ═══ ٣) التجربة ═══ -->
+  <section class="card">
+    <h2><span class="num">٣</span> جرّب الملف قبل أن تلمس أي قاعدة</h2>
+    <p class="hint" style="margin-bottom:10px">
+      يُنفَّذ الملف على قاعدة داخلية مؤقتة في ذاكرة الأداة، ويُعاد لك جدول الأعداد.
+      إن ظهرت أعدادك صحيحة فالملف سليم — ولم يُلمس مشروعك ولا أي قاعدة حقيقية.
+    </p>
+    <div class="btn-row">
+      <button class="btn-ghost" id="btn-dry" disabled>جرّب على قاعدة داخلية</button>
+    </div>
+    <div id="dry-status" class="status"></div>
+    <div id="dry-body"></div>
+  </section>
+
+  <!-- ═══ ٤) التنفيذ ═══ -->
+  <section class="card">
+    <h2><span class="num">٤</span> الاسترجاع الفعلي</h2>
+    <div class="guard">
+      <b>قبل المتابعة:</b> هذا التنفيذ <b>سيمسح</b> ما في سكيما <code>brc</code> على القاعدة
+      الهدف ويستبدله بمحتوى الملف. نفّذه فقط على <b>مشروع جديد فارغ</b>.
+      إن كان في القاعدة بيانات حقيقية، فهذا الطريق الخاطئ — أوقف واطلب مراجعة.
+    </div>
+    <label for="confirm">اكتب كلمة التأكيد «استرجع» لتفعيل الزر</label>
+    <input type="text" id="confirm" dir="rtl" placeholder="استرجع" autocomplete="off">
+    <div class="btn-row">
+      <button class="btn-danger" id="btn-restore" disabled>استرجع الآن</button>
+    </div>
+    <div class="bar" id="bar"><i></i></div>
+    <div id="restore-status" class="status"></div>
+    <div id="restore-body"></div>
+  </section>
+
+  <!-- ═══ ٥) بعد الاسترجاع ═══ -->
+  <section class="card hidden" id="after">
+    <h2><span class="num">٥</span> الخطوات الباقية — بالترتيب</h2>
+    <ol class="steps">
+      <li><b>الامتدادات:</b> في المشروع الجديد ← <code>Database → Extensions</code> ← فعّل <code>pgcrypto</code> و<code>pg_cron</code>.</li>
+      <li><b>السكيما:</b> <code>Project Settings → API → Exposed schemas</code> ← أضف <code>brc</code>. بدونها يفتح الموقع فارغاً.</li>
+      <li><b>ربط الموقع:</b> في جهازك، من مجلد المشروع:
+        <br><code>node tools/supabase-repoint.mjs &lt;ref-الجديد&gt; &lt;المفتاح-العام&gt;</code>
+        <br>ثم ارفع التغيير — Cloudflare Pages ينشر تلقائياً.</li>
+      <li><b>حسابات الموظفين:</b> تُنشأ من جديد (٣ حسابات) لأن كلمات المرور لا تُنقل في النسخة.</li>
+      <li><b>افحص:</b> افتح الموقع، ابحث عن بطاقة، وطابق الأعداد في الجدول أعلاه.</li>
+    </ol>
+  </section>
+
+</main>
+<footer>أداة محلية — لا ترفعها على الإنترنت ولا ترسلها لأحد.</footer>
+
+<script>
+(function () {
+  'use strict';
+  var TOKEN = '__HRC_TOKEN__';
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { sql: '', fileName: '', env: null };
+
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ 'x-hrc-token': TOKEN, 'content-type': 'application/json' }, opts.headers || {});
+    return fetch(path, opts).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j; });
+    });
+  }
+
+  function say(el, kind, msg) {
+    var n = typeof el === 'string' ? $(el) : el;
+    n.className = 'status ' + kind;
+    n.innerHTML = msg;
+  }
+
+  /* ═══ ٠) الجاهزية ═══ */
+  api('/api/env').then(function (e) {
+    state.env = e;
+    var bits = [];
+    /* ⚠️ لا رموز تعبيرية هنا: بعض إصدارات ويندوز/الخطوط تعرضها مربّعات فارغة.
+       نستعمل علامات نصية بسيطة تُرسم في كل الخطوط. */
+    bits.push(e.pg ? '✓ سائق قاعدة البيانات (pg) موجود' : '✕ سائق <code>pg</code> غير مثبّت — شغّل <code>npm install</code>');
+    bits.push(e.pglite ? '✓ قاعدة التجربة الداخلية متاحة' : '! قاعدة التجربة غير متاحة (لا يمنع التنفيذ)');
+    say('env', e.pg ? 'ok' : 'err', bits.join('<br>'));
+  }).catch(function (e) { say('env', 'err', 'تعذّر فحص الأداة: ' + e.message); });
+
+  /* ═══ ١) الملف ═══ */
+  var drop = $('drop'), fileInput = $('file');
+  drop.addEventListener('click', function () { fileInput.click(); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('on'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('on'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files[0]) loadFile(fileInput.files[0]);
+  });
+
+  function loadFile(f) {
+    if (!/\.sql$/i.test(f.name)) {
+      say('file-status', 'err', 'الملف يجب أن يكون بصيغة <code>.sql</code> — هذا ملف JSON مشفّر.');
+      return;
+    }
+    var rd = new FileReader();
+    rd.onload = function () {
+      var text = String(rd.result || '');
+      /* حزام أمان: ملف استرجاع سليم لا بد أن يحوي إنشاء السكيما وجدول البطاقات */
+      if (text.length < 5000 || !/create\s+schema\s+if\s+not\s+exists\s+brc/i.test(text) ||
+          !/insert\s+into\s+brc\.applicants/i.test(text)) {
+        state.sql = '';
+        $('btn-dry').disabled = $('btn-restore').disabled = true;
+        say('file-status', 'err', 'هذا ليس ملف استرجاع كامل (لا يحوي بناء السكيما أو البطاقات). أوقفتُ التحميل.');
+        return;
+      }
+      state.sql = text; state.fileName = f.name;
+      var lines = text.split('\n').length;
+      say('file-status', 'ok', 'تم تحميل <b>' + f.name + '</b> · ' + lines.toLocaleString('en') +
+        ' سطراً · ' + Math.round(text.length / 1024) + ' ك.ب');
+      $('btn-dry').disabled = false;
+      refreshRestoreBtn();
+    };
+    rd.onerror = function () { say('file-status', 'err', 'تعذّر قراءة الملف.'); };
+    rd.readAsText(f, 'utf-8');
+  }
+
+  /* ═══ ٢) الفحص ═══ */
+  $('btn-show').addEventListener('click', function () {
+    var c = $('conn');
+    c.type = c.type === 'password' ? 'text' : 'password';
+    this.textContent = c.type === 'password' ? 'إظهار الرابط' : 'إخفاء الرابط';
+  });
+
+  $('btn-inspect').addEventListener('click', function () {
+    var cs = $('conn').value.trim();
+    if (!cs) { say('inspect-status', 'err', 'الصق رابط القاعدة أولاً.'); return; }
+    this.disabled = true;
+    say('inspect-status', 'info', 'جارٍ الاتصال…');
+    var btn = this;
+    api('/api/inspect', { method: 'POST', body: JSON.stringify({ connectionString: cs }) })
+      .then(function (r) {
+        btn.disabled = false;
+        if (!r.ok) { say('inspect-status', 'err', 'فشل الاتصال: ' + r.error); return; }
+        if (!r.looksLikeSupabase) {
+          var miss = [];
+          if (!r.prereq.authUid) miss.push('<code>auth.uid()</code>');
+          if (!r.prereq.authJwt) miss.push('<code>auth.jwt()</code>');
+          if (!r.prereq.authUsers) miss.push('<code>auth.users</code>');
+          if (!r.prereq.extensions) miss.push('سكيما <code>extensions</code>');
+          say('inspect-status', 'err',
+            '! هذا الرابط <b>لا يبدو مشروع Supabase</b> — ناقص: ' + miss.join('، ') +
+            '.<br>تأكد أنك نسخت رابط <b>Direct connection</b> من المشروع الجديد نفسه. أوقفتُ الفحص هنا.');
+          return;
+        }
+        if (!r.hasBrc) {
+          say('inspect-status', 'ok', '✓ مشروع Supabase صحيح، وفارغ من سكيما <code>brc</code> — مثالي للاسترجاع.');
+          return;
+        }
+        var rows = Object.keys(r.counts || {}).map(function (k) {
+          var v = r.counts[k];
+          return '<tr><td>' + k + '</td><td class="n">' + (v === null ? '—' : v.toLocaleString('en')) + '</td></tr>';
+        }).join('');
+        var nonZero = Object.keys(r.counts || {}).filter(function (k) { return r.counts[k] > 0; });
+        say('inspect-status', nonZero.length ? 'warn' : 'ok',
+          (nonZero.length ? '! هذه القاعدة <b>فيها بيانات</b> — الاسترجاع سيمسحها.' : 'سكيما موجودة وجداولها فارغة.') +
+          '<table><tr><th>الجدول</th><th>العدد الحالي</th></tr>' + rows + '</table>');
+      })
+      .catch(function (e) { btn.disabled = false; say('inspect-status', 'err', 'خطأ: ' + e.message); });
+  });
+
+  /* ═══ ٣) التجربة الداخلية ═══ */
+  $('btn-dry').addEventListener('click', function () {
+    if (!state.sql) return;
+    var btn = this; btn.disabled = true;
+    say('dry-status', 'info', 'جارٍ التنفيذ على قاعدة داخلية… قد يأخذ دقيقة.');
+    api('/api/dryrun', { method: 'POST', body: JSON.stringify({ sql: state.sql }) })
+      .then(function (r) {
+        btn.disabled = false;
+        if (!r.ok && r.error) { say('dry-status', 'err', r.error); return; }
+        renderCounts('dry-status', 'dry-body', r.report);
+      })
+      .catch(function (e) { btn.disabled = false; say('dry-status', 'err', 'خطأ: ' + e.message); });
+  });
+
+  /* ═══ تقرير الفرق: الحقيقة عن اكتمال النسخة ═══
+     ⚠️ هذا أهم عنصر في الصفحة. «تم» بلا مقارنة كذب مريح. */
+  function renderInventory(report) {
+    var inv = report.inventory;
+    if (!inv || !inv.available) return '';
+    var sect = [['tables','جداول'],['funcs','دوال'],['triggers','مشغّلات'],['indexes','فهارس']];
+    var intentional = inv.intentional || [];
+
+    if (inv.matched) {
+      return '<div class="gapbox" style="border-color:#b9e3cb;background:#f4fbf7">' +
+        '<h3 style="color:var(--ok);margin-bottom:2px">✓ مطابقة لجرد الإنتاج</h3>' +
+        '<div>قارنّت القاعدة الناتجة بسجل كائنات القاعدة الحيّة (' + (inv.capturedAt || '—') + '): ' +
+        'لا فرق في الجداول ولا الدوال ولا المشغّلات ولا الفهارس.</div>' +
+        (intentional.length ? '<div style="margin-top:8px;color:#5a6b80">خارج النسخة بقصد: ' +
+          intentional.map(function(x){ return '<code>' + x.name + '</code> (' + x.why + ')'; }).join('، ') + '</div>' : '') +
+        '</div>';
+    }
+
+    var rows = sect.map(function (sp) {
+      var m = inv.diff[sp[0]].unexpected;
+      if (!m.length) return '';
+      return '<li><b>' + sp[1] + ' ناقصة (' + m.length + '):</b> ' +
+        m.map(function (x) { return '<code>' + x + '</code>'; }).join('، ') + '</li>';
+    }).join('');
+
+    return '<div class="gapbox">' +
+      '<h3>! النسخة تعمل — لكن فيها ' + inv.gaps + ' كائناً ناقصاً عن الإنتاج</h3>' +
+      '<ul>' + rows + '</ul>' +
+      '<div>الناقص أدوات داخلية لا تعطّل التسجيل ولا التقديم ولا الطباعة، لكنها موجودة في الإنتاج. ' +
+      'أبلغ عنها قبل الاعتماد على القاعدة الجديدة.</div>' +
+      (intentional.length ? '<div style="margin-top:8px;color:#5a6b80">خارج النسخة بقصد: ' +
+        intentional.map(function(x){ return '<code>' + x.name + '</code> (' + x.why + ')'; }).join('، ') + '</div>' : '') +
+      '</div>';
+  }
+
+  function renderCounts(statusId, bodyId, report) {
+    var rows = (report.counts || []).map(function (x) {
+      return '<tr><td>' + x.t + '</td><td class="n">' + Number(x.n).toLocaleString('en') + '</td></tr>';
+    }).join('');
+    if (report.failed) {
+      say(statusId, 'err', 'توقّف عند الدفعة ' + report.failed.batch + ' من ' + report.failed.total +
+        ' — ' + report.failed.message);
+    } else {
+      say(statusId, 'ok', '✓ اكتمل بلا أخطاء — ' + report.batches + ' دفعة. هذه أعداد القاعدة بعد التنفيذ:');
+    }
+    $(bodyId).innerHTML = (rows ? '<table><tr><th>الجدول</th><th>العدد</th></tr>' + rows + '</table>' : '') +
+      (report.failed ? '' : renderInventory(report));
+  }
+
+  /* ═══ ٤) الاسترجاع ═══ */
+  function refreshRestoreBtn() {
+    var ok = state.sql && $('conn').value.trim() && $('confirm').value.trim() === 'استرجع';
+    $('btn-restore').disabled = !ok;
+  }
+  $('conn').addEventListener('input', refreshRestoreBtn);
+  $('confirm').addEventListener('input', refreshRestoreBtn);
+
+  $('btn-restore').addEventListener('click', function () {
+    if (!state.sql) return;
+    if (!confirm('سيُمسح ما في سكيما brc على القاعدة الهدف ويُستبدل بمحتوى الملف. متابعة؟')) return;
+    var btn = this; btn.disabled = true;
+    $('bar').classList.add('on'); $('bar').firstElementChild.style.width = '35%';
+    say('restore-status', 'info', 'جارٍ التنفيذ… لا تُغلق هذه الصفحة ولا النافذة السوداء.');
+    api('/api/restore', {
+      method: 'POST',
+      body: JSON.stringify({ connectionString: $('conn').value.trim(), sql: state.sql, confirm: $('confirm').value.trim() })
+    })
+      .then(function (r) {
+        $('bar').firstElementChild.style.width = '100%';
+        btn.disabled = false;
+        if (r.error) { say('restore-status', 'err', r.error); return; }
+        renderCounts('restore-status', 'restore-body', r.report);
+        if (r.report && !r.report.failed) $('after').classList.remove('hidden');
+      })
+      .catch(function (e) {
+        $('bar').firstElementChild.style.width = '100%';
+        btn.disabled = false;
+        say('restore-status', 'err', 'خطأ: ' + e.message);
+      });
+  });
+})();
+</script>
+</body>
+</html>

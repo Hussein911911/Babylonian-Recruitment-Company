@@ -43,7 +43,9 @@ ok('زر البيانات ظاهر', await page.isVisible('#rp-dl-sql'));
 await page.click('#rp-dl-schema');
 await page.waitForSelector('#rp-schema-parts button');
 const partBtns = await page.$$('#rp-schema-parts button');
-ok('الهيكل خمسة أزرار', partBtns.length === 5, String(partBtns.length));
+/* العدد يتبع حجم المخطط لا رقم ثابت: المخطط ينمو، والشرط الحقيقي أن الأجزاء
+   تُغطي المخطط كاملاً (يُفحص أدناه) وأن كل جزء قابل للصق. */
+ok('الهيكل أزرار أجزاء (٥ أو أكثر)', partBtns.length >= 5, String(partBtns.length));
 
 const names = [], parts = [];
 for (let i = 0; i < partBtns.length; i++) {

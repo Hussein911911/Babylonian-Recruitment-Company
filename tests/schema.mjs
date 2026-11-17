@@ -78,8 +78,10 @@ while ((m = tableRe.exec(stripped(STRUCTURE)))) tables.push({ name: m[1].toLower
 const order = {};
 tables.forEach((t, i) => { if (!(t.name in order)) order[t.name] = i; });
 
-/* 8 = الستة + سجل الباركودات issued_serials + جدول التحقق الخاص employer_otp. */
-check('المخطط يعرّف 16 جدولاً بما فيها النسخ الخاصة', tables.length === 16,
+/* 17 = الستة عشر + card_lookup_budget المضافة في 2026-11-17 ضمن سدّ فرق
+   الاسترجاع (كانت في الإنتاج وغير موجودة في المخطط، فكان أي استرجاع يُسقط
+   حراسة تعداد البطاقات بصمت). العدد مقصود ومُوثَّق هنا لا مُرخَّى. */
+check('المخطط يعرّف 17 جدولاً بما فيها النسخ الخاصة', tables.length === 17,
   tables.length + ': ' + tables.map((t) => t.name).join(', '));
 
 const SYSTEM = new Set(['auth.users', 'auth.identities', 'storage.objects']);
@@ -128,9 +130,18 @@ while ((f = funcRe.exec(stripped(RAW)))) funcs.push({ name: f[1], text: f[0] });
      recovery_export_v3()   — يضيف الجداول الأربعة التي كان v2 يُسقطها
    والكتلة المدمجة من ترحيل 2026-11-05 (أرقام البطاقات):
      card_number_for(text) · assign_card_number() · issue_numbered_cards(...)
-   ⇒ 68 تعريفاً و63 دالة فعلية. */
-check('تعريفات الدوال: 68 تعريفاً، 63 دالة فعلية (توقيعات توافق مقصودة)',
-  funcs.length === 68 && new Set(funcs.map(x=>x.name)).size === 63,
+   ⇒ 68 تعريفاً و63 دالة فعلية.
+   2026-11-17: +8 تعريفات لسدّ فرق الاسترجاع مقابل الإنتاج:
+     card_request_source() · card_lookup_guard(text,text) ·
+     lookup_card_unguarded(text,text) · self_service_card_unguarded(text,text) ·
+     trg_block_fingerprint_audit() · relocate_job_images(text,boolean) ·
+     recovery_export_full() · recovery_export_v2()
+   ⇒ 76 تعريفاً و71 دالة فعلية.
+   2026-11-17 (تكملة): +2 تعريفان — غلافا lookup_card و self_service_card
+   بلا تقنين (كانا ما زالا يُقنّعان، والإنتاج لا يُقنّع).
+   ⇒ 78 تعريفاً و71 دالة فعلية. */
+check('تعريفات الدوال: 78 تعريفاً، 71 دالة فعلية (توقيعات توافق مقصودة)',
+  funcs.length === 78 && new Set(funcs.map(x=>x.name)).size === 71,
   funcs.length + ' تعريفاً · ' + new Set(funcs.map(x=>x.name)).size + ' دالة');
 check('دوال الجدولة المرنة والتقليم موجودة',
   ['brc.recovery_retention_keep','brc.recovery_prune','brc.recovery_cron_expr','brc.recovery_schedule_set']
@@ -364,8 +375,9 @@ for (const [label, re] of [
 ]) check(label, re.test(RAW));
 
 const trigCount = [...stripped(RAW).matchAll(/create\s+trigger\s+\w+/gi)].length;
-/* 2026-11-15: 18 مشغّلاً — أُضيف trg_assign_card_number مع كتلة أرقام البطاقات. */
-check('تعريفات المشغّلات بما فيها حاجز الاسترجاع موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق/سجل الباركودات)', trigCount === 18 && /create\s+trigger\s+zz_capture_application_job_snapshot/i.test(stripped(RAW)), trigCount + '');
+/* 2026-11-15: 18 مشغّلاً — أُضيف trg_assign_card_number مع كتلة أرقام البطاقات.
+   2026-11-17: 19 — أُضيف trg_block_fingerprint_audit مع سدّ فرق الاسترجاع. */
+check('تعريفات المشغّلات بما فيها حاجز الاسترجاع موجودة (توليد الأكواد/المحاولات/الحجز/التدقيق/سجل الباركودات)', trigCount === 19 && /create\s+trigger\s+zz_capture_application_job_snapshot/i.test(stripped(RAW)), trigCount + '');
 
 /* ------------------------- 9) مزامنة ملف الـ migration ------------------------- */
 step(9, 'ملف الـ migration — متطابق مع المصدر (تكاملة GitHub في Supabase)');

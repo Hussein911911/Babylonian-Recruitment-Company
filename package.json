@@ -106,14 +106,18 @@
     "test:workspace-layout": "node tests/horizontal-workspace-browser.mjs",
     "verify:qr": "node tests/qr-report.mjs",
     "verify:qr:full": "node tests/qr-crosscheck.mjs",
-    "build:full": "node tools/build-full-dump.mjs"
+    "build:full": "node tools/build-full-dump.mjs",
+    "recovery:serve": "node tools/recovery-server.mjs",
+    "test:recovery-restore": "node tests/recovery-restore.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",
     "jsdom": "^26.1.0",
     "jsqr": "^1.4.0",
     "pdfjs-dist": "^6.4.299",
-    "qrcode-generator": "^1.4.4"
+    "qrcode-generator": "^1.4.4",
+    "pg": "^8.11.5",
+    "@electric-sql/pglite-socket": "^0.2.19"
   },
   "license": "UNLICENSED"
 }
