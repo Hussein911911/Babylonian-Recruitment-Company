@@ -90,11 +90,16 @@ const asRole = async (role, sql, params = []) => {
 };
 
 if (ready) {
-  /* ── بيانات واقعية: 40 بطاقة برقم متسلسل (كما في الإنتاج) ─────────────── */
+  /* ── بيانات واقعية: 40 بطاقة برقم متسلسل (كما في الإنتاج) ───────────────
+     ⚠️ `self_application_data` لم يكن يُملأ هنا، فكان كل ما يقرأ «ملف صاحب
+     البطاقة» يُظهر `{}` — أي أن الاختبار كان يمرّر بطاقة بلا ملف أصلاً.
+     في الإنتاج يُكتب هذا الحقل من `apply_with_card`: بيانات صاحب البطاقة
+     هي ما كتبه بنفسه، لا ما في أعمدة البطاقة (تلك تبقى للتقييد والتقنين). */
   for (let i = 1; i <= 40; i++) {
     await db.query(
-      `insert into brc.applicants (serial, full_name, phone, address, dob, gender, status, fee_amount, fee_paid, card_print_code)
-       values ($1, $2, $3, $5, '1995-04-12', 'ذكر', 'active', 10000, true, $4)`,
+      `insert into brc.applicants (serial, full_name, phone, address, dob, gender, status, fee_amount, fee_paid, card_print_code, self_application_data)
+       values ($1, $2, $3, $5, '1995-04-12', 'ذكر', 'active', 10000, true, $4,
+               jsonb_build_object('fullName', $2::text, 'phone', $3::text, 'address', $5::text, 'dob', '1995-04-12'))`,
       [`HRC-BC-9000${String(i).padStart(2, '0')}`, FULL_NAME, FULL_PHONE,
        i === 1 ? 'ABCD1234EFGH5678' : null, 'بابل — الحلة — المركز — قرب الجامعة']
     );

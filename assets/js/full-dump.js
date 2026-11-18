@@ -151,23 +151,37 @@
         throw new Error('مولّد SQL غير محمّل (assets/js/restore-sql.js)');
       }
       var dataSql = root.HRCRestoreSql.buildSql(payload);
-      /* نأخذ من SETUP (فيه replica + TRUNCATE) حتى النهاية، ونستبدل ذيله
-         (تحقّقه الخاص) بجدول الأعداد الكامل أدناه. */
-      var cut = dataSql.indexOf('CREATE SCHEMA IF NOT EXISTS brc;');
+      /* نأخذ من `BEGIN;` حتى النهاية، ونستبدل ذيله (تحقّقه الخاص) بجدول
+         الأعداد الكامل أدناه.
+
+         ⚠️ كان القصّ عند `CREATE SCHEMA IF NOT EXISTS brc;` — وهذا خطأ حقيقي
+         (2026-11-18): كتلة التجهيز (تعطيل المشغّلات + التفريغ) تقع **قبل**
+         `BEGIN;`، فكان القصّ يرميها كلها ويُبقي التفريغ الثابت القديم الذي
+         يذكر جداول قد لا توجد. النتيجة على مشروع جديد: الملف يفشل فوراً
+         بـ `relation ... does not exist` أو تصطدم المشغّلات بالصفوف
+         المُدخلة فيسقط التحميل بـ `duplicate key`. القصّ من `BEGIN;`
+         يحفظ كتلة التجهيز كما هي، ويجعل ما يجرّبه المالك في المتصفح
+         هو نفسه ما تنتجه هذه الأداة حرفياً. */
+      var cut = dataSql.indexOf('BEGIN;');
       var body = cut >= 0 ? dataSql.slice(cut) : dataSql;
       /* نُزيل التحقّق الصغير في ذيل المولّد — عندنا جدول أعداد أشمل */
       var tailCut = body.lastIndexOf('-- تحقّق');
       if (tailCut > 0) body = body.slice(0, tailCut);
-      /* حزام أمان: إن غاب replica نُضيفه (يكلّف سطراً ويحمي الملف كله) */
-      if (!/session_replication_role\s*=\s*replica/i.test(body)) {
-        body = replicaGuard() + body;
+      /* حزام أمان: لا نُدخل `session_replication_role` من هنا أبداً —
+         التجهيز الصريح (`ALTER TABLE … DISABLE TRIGGER ALL`) في `begin` هو
+         المسار المضمون، وهو لا يحتاج superuser. إضافته فوقه تُوهم بأن
+         التعطيل قد نجح حين يفشل. */
+      if (!/DISABLE TRIGGER ALL/i.test(body)) {
+        throw new Error('كتلة تجهيز المشغّلات غائبة من مولّد SQL — أُوقف البناء');
       }
+      void replicaGuard;
 
       out += "-- ═══════════════════════════════════════════════════════════════════════\n" +
         "--  المرحلة ٢ — البيانات\n" +
         "--  ⚠ يبدأ بـ TRUNCATE: لا تُنفّذه على قاعدة فيها بيانات حقيقية.\n" +
-        "--  المشغّلات معطّلة أثناء التحميل — وهذا ضروري: مشغّلات البطاقات\n" +
-        "--  تُنشئ سطور issued_serials والمحاولات بنفسها فتصطدم بصفوفنا.\n" +
+        "--  المشغّلات معطّلة أثناء التحميل (ALTER TABLE … DISABLE TRIGGER ALL)\n" +
+        "--  ثم تُعاد قبل COMMIT — وهذا ضروري: مشغّلات البطاقات تُنشئ سطور\n" +
+        "--  issued_serials والمحاولات بنفسها فتصطدم بصفوفنا.\n" +
         "-- ═══════════════════════════════════════════════════════════════════════\n\n" +
         body + "\n";
     }

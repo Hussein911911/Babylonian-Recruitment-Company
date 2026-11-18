@@ -134,7 +134,12 @@ await pressButton('rp-dl-sql', /^2-data-\d{4}-\d{2}-\d{2}\.sql$/);
 d.getElementById('rp-dl-schema').click();
 await wait(400);
 const partBtns = [...d.querySelectorAll('#rp-schema-parts button')];
-check('زر الهيكل يبني خمسة أزرار أجزاء', partBtns.length === 5, String(partBtns.length));
+/* العدد ليس ثابتاً: المخطط ينمو. الشرط الحقيقي أن الأجزاء تغطي المخطط كاملاً
+   وكل جزء قابل للصق، لا أن تكون خمسة بالضبط — وهذا ما يُفحص أدناه. */
+check('زر الهيكل يبني أزرار أجزاء (٥ أو أكثر)', partBtns.length >= 5, String(partBtns.length));
+check('نص الزر يذكر العدد الفعلي لا رقماً ثابتاً',
+  new RegExp('\\(' + partBtns.length + '\\)').test(d.getElementById('rp-dl-schema').textContent),
+  d.getElementById('rp-dl-schema').textContent);
 
 const schemaOut = [];
 for (const b of partBtns) {
