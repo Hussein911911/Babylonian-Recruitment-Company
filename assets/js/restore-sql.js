@@ -40,13 +40,42 @@
     return "'{" + parts.join(',') + "}'";
   }
 
-  function lit(v) {
+  /* ═══ عمود jsonb يحمل نصاً — لا رقم ولا كائن ═════════════════════════════
+     ⚠️ عطل حقيقي (2026-11-18) أوقف استرجاع الإنتاج بالكامل:
+
+     `brc.settings.value` عمود **jsonb**، ويسكنه نوعان مختلفان:
+       • كائنات — `company`, `rules`, `recovery_retention`, `recovery_schedule`
+       • نصّ صريح — `recovery_last_scheduled_at` = `"2026-11-17T20:00:00…"`
+         (الترميز: jsonb_typeof = string، لا object)
+
+     `lit()` رأت `typeof v === 'string'` فكتبت `'2026-11-17…'` بلا `::jsonb`.
+     وعند الإدخال يتحوّل النص إلى jsonb بـcast ضمني — فيفشل:
+         ERROR 22P02: invalid input syntax for type json
+     لأن المحرّك يقرأ طابع الزمن كنص JSON مجرّد، لا كنصّ داخل علامتي اقتباس.
+
+     الحلّ: نُعلن مسبقاً أي أعمدة نوعها jsonb، ويُكتب نصّها مُقتبساً داخلياً
+     (`'"…"'::jsonb`) — وهو التمثيل الصحيح لقيمة jsonb من نوع string. */
+  var JSONB_COLUMNS = {
+    settings: ['value'],
+    applicants: ['self_application_data'],
+    jobs: ['requirements_snapshot']
+  };
+
+  function jsonbFix(table, col, v) {
+    var list = JSONB_COLUMNS[table];
+    return !!(list && list.indexOf(col) >= 0 && typeof v === 'string');
+  }
+
+  function lit(v, asJsonbString) {
     if (v === null || v === undefined) return 'NULL';
     if (Array.isArray(v)) return arrayLit(v);
     if (typeof v === 'number') return Number.isFinite(v) ? String(v) : 'NULL';
     if (typeof v === 'boolean') return v ? 'true' : 'false';
     if (typeof v === 'object') return "'" + JSON.stringify(v).replace(/'/g, "''") + "'::jsonb";
-    return "'" + String(v).replace(/'/g, "''") + "'";
+    var s = String(v).replace(/'/g, "''");
+    /* نصّ داخل عمود jsonb = قيمة JSON من نوع string: تُحاط بعلامتي اقتباس */
+    if (asJsonbString) return "'" + '"' + s + '"' + "'::jsonb";
+    return "'" + s + "'";
   }
 
   /* ═══ صور الوظائف: من رابط خارجي إلى بايتات داخل الملف ═══════════════════
@@ -140,7 +169,7 @@
     var values = rows.map(function (r) {
       return '  (' + cols.map(function (c) {
         if (derived && derived.indexOf(c) >= 0 && r[c] === '__DERIVED__') return lit(derivedCodeHash(table, r));
-        return lit(r[c]);
+        return lit(r[c], jsonbFix(table, c, r[c]));
       }).join(', ') + ')';
     }).join(',\n');
     return '-- ' + rows.length + ' صفاً في ' + table + ' (' + cols.length + ' عموداً)\n' +

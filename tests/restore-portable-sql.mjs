@@ -22,7 +22,12 @@ const payload = {
     { id: '55555555-5555-4555-8555-555555555555', serial: 'AAAA111111', attempt_no: 1, job_id: '22222222-2222-4222-8222-222222222222', job_code: 'HRC-1002', slot_status: 'reserved', selected_at: '2026-11-12T00:00:00Z', hold_expires_at: '2026-11-13T00:00:00Z', closed_at: null, outcome_note: '', staff_id: null, chance_code: null, employer_decision: null, decision_at: null, employer_reason: null, vacancy_no: 1, job_snapshot: { code: 'HRC-1002' } },
     { id: '66666666-6666-4666-8666-666666666666', serial: 'AAAA111111', attempt_no: 2, job_id: null, job_code: null, slot_status: 'empty', selected_at: null, hold_expires_at: null, closed_at: null, outcome_note: '', staff_id: null, chance_code: null, employer_decision: null, decision_at: null, employer_reason: null, vacancy_no: null, job_snapshot: null }
   ],
-  settings: [{ key: 'rules', value: { attempt_limit: 3 }, updated_at: '2026-11-01T00:00:00Z', updated_by: null }],
+  /* ⚠️ الحالتان معاً بقصد: `company`/`rules` كائنات، و`recovery_last_scheduled_at`
+     **نصّ** (jsonb_typeof = string). الثانية هي التي أوقفت استرجاع الإنتاج
+     الحقيقي بـ22P02 — كان المولّد يكتبها بلا اقتباس داخلي. */
+  settings: [
+    { key: 'rules', value: { attempt_limit: 3 }, updated_at: '2026-11-01T00:00:00Z', updated_by: null },
+    { key: 'recovery_last_scheduled_at', value: '2026-11-17T20:00:00.039681+00:00', updated_at: '2026-11-17T00:00:00Z', updated_by: null }],
   employer_job_credentials: [{ job_id: '11111111-1111-4111-8111-111111111111', pin_hash: 'h', failures: 0, window_start: null, changed_at: '2026-11-01T00:00:00Z' }],
   issued_serials: [{ serial: 'AAAA111111', issued_at: '2026-11-01T00:00:00Z', note: null }],
   audit_log: [
@@ -100,6 +105,15 @@ try {
   check('عمود قرار صاحب العمل موجود', 'employer_decision' in dev);
   const holder = (await db.query("select status from brc.jobs where code='HRC-1002'")).rows[0].status;
   check('حالة الحجز محفوظة', holder === 'reserved', holder);
+
+  /* ⚠️ هذا الفحص وُلد من عطل حقيقي أوقف استرجاع الإنتاج (2026-11-18):
+     `settings.value` عمود jsonb يسكنه كائنات **ونصوص**. النصّ يُكتب
+     `'"…"'::jsonb`؛ وكتابته `'…'` وحدها تُعطي 22P02 عند التنفيذ. */
+  const sv = (await db.query(
+    "select jsonb_typeof(value) k, value #>> '{}' v from brc.settings where key='recovery_last_scheduled_at'"
+  )).rows[0];
+  check('قيمة settings النصية باقية كنصّ JSON', sv && sv.k === 'string' && sv.v === '2026-11-17T20:00:00.039681+00:00',
+    JSON.stringify(sv));
 
   console.log(`\n  النتيجة: ${passed} فحصاً ناجحاً`);
 } finally { await db.close(); }
