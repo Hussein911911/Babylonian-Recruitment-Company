@@ -108,16 +108,19 @@
     "verify:qr:full": "node tests/qr-crosscheck.mjs",
     "build:full": "node tools/build-full-dump.mjs",
     "recovery:serve": "node tools/recovery-server.mjs",
-    "test:recovery-restore": "node tests/recovery-restore.mjs"
+    "test:recovery-restore": "node tests/recovery-restore.mjs",
+    "rescue:build": "node tools/build-rescue-kit.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",
+    "@electric-sql/pglite-socket": "^0.2.19",
+    "@sparticuz/chromium": "^153.0.0",
     "jsdom": "^26.1.0",
     "jsqr": "^1.4.0",
     "pdfjs-dist": "^6.4.299",
-    "qrcode-generator": "^1.4.4",
     "pg": "^8.11.5",
-    "@electric-sql/pglite-socket": "^0.2.19"
+    "playwright-core": "^1.65.1",
+    "qrcode-generator": "^1.4.4"
   },
   "license": "UNLICENSED"
 }
