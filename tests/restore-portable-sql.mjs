@@ -115,5 +115,49 @@ try {
   check('قيمة settings النصية باقية كنصّ JSON', sv && sv.k === 'string' && sv.v === '2026-11-17T20:00:00.039681+00:00',
     JSON.stringify(sv));
 
+  /* ═══ الحالة الواقعية على الإنتاج (2026-11-18) ═══════════════════════
+     `recovery_export_v2` المطبَّقة **لا تصدّر** card_number_registry ولا
+     card_number_counter. فالحمولة تصل بلا أي منهما — والكود كان يشترط
+     وجود أحدهما ليضبط العدّاد، أي أنه لم يضبطه إطلاقاً. النتيجة: أول
+     بطاقة بعد الاسترجاع تأخذ رقماً موجوداً على ورق مطبوع.
+     نختبر الحالتين معاً: حمولة فقيرة (v2) وحمولة غنية (v4). */
+  {
+    const lean = JSON.parse(JSON.stringify(payload));
+    delete lean.card_number_registry; delete lean.card_number_counter;
+    const leanDb = new PGlite();
+    try {
+      await leanDb.exec(SCHEMA);
+      await leanDb.exec(buildSql(lean));
+      const row = (await leanDb.query('select last_number from brc.card_number_counter')).rows[0];
+      check('حمولة v2 (بلا سجل) ما زالت تضبط العدّاد', !!row, 'لا صف عدّاد — يفشل عند أول بطاقة');
+      /* لا يمكن أن يكون صفراً وأقل من أكبر رقم ظهر فعلاً في issued_serials */
+      const serials = (await leanDb.query('select count(*)::int c from brc.issued_serials')).rows[0].c;
+      /* الأهمّ: لا يبقى على الصفر. الحمولة فيها بطاقتان وسيريال واحد،
+         فالحدّ الآمن = max(سيريالات، بطاقات) = 2 على الأقل. */
+      check('العدّاد فوق صفر (لا تكرار على ورق مطبوع)',
+        row && Number(row.last_number) >= 2, row && String(row.last_number));
+      check('الملف يحمل تحذيراً صريحاً بأن الأرقام مجهولة',
+        /أرقام البطاقات المطبوعة على ورق رسمي غير معروفة/.test(sql), true);
+      void serials;
+    } finally { await leanDb.close(); }
+
+    /* حمولة v4: السجل والفلور صريحان، والعدّاد يجب أن يغلب على الاثنين */
+    const rich = JSON.parse(JSON.stringify(payload));
+    rich.format = 4;
+    rich.card_number_registry = [
+      { serial: 'AAAA111111', card_number: 41 }, { serial: 'BBBB222222', card_number: 42 }];
+    rich.card_number_floor = 175;
+    const richDb = new PGlite();
+    try {
+      await richDb.exec(SCHEMA);
+      await richDb.exec(buildSql(rich));
+      const row = (await richDb.query('select last_number from brc.card_number_counter')).rows[0];
+      check('حمولة v4: العدّاد = card_number_floor (175)', row && Number(row.last_number) === 175,
+        row && String(row.last_number));
+      const reg = (await richDb.query('select count(*)::int c from brc.card_number_registry')).rows[0].c;
+      check('حمولة v4: سجل الأرقام استُورد', reg === 2, 'وجد ' + reg);
+    } finally { await richDb.close(); }
+  }
+
   console.log(`\n  النتيجة: ${passed} فحصاً ناجحاً`);
 } finally { await db.close(); }

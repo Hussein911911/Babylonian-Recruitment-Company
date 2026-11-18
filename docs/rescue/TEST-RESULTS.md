@@ -7,6 +7,65 @@
 
 ---
 
+## ٠. الملف الحقيقي الذي رفعه المالك — النتيجة الفاصلة (2026-11-18)
+
+الملف: `HRC-FULL-2026-11-18 (1).sql` — ٣.٥ م.ب، ١٠٦٩١ سطراً، ٣٩٤ عبارة.
+شُغِّل كاملاً، عبارةً عبارة، على قاعدة مبنية من `docs/schema.sql` في PGlite.
+
+### قبل الإصلاح
+
+| القياس | النتيجة |
+|---|---|
+| العبارات التي فشلت | **٣** |
+| `settings` | ❌ `22P02: invalid input syntax for type json` |
+| `job_attempts` | ❌ `duplicate key value violates unique constraint` |
+| `audit_log` | ❌ `duplicate key value violates unique constraint` |
+| `issued_serials` | ❌ `duplicate key value violates unique constraint` |
+| جداول غائبة تماماً | **٥**: `card_number_registry` · `recovery_chances` · `recovery_prints` · `card_issue_requests` · `office_receipts` |
+
+**الحكم الصريح: الملف لم يكن يُستَرجع.** «بلا خطأ» لم تكن تتحقق، والأسوأ أن
+`BEGIN` الواحد كان يعني أن أول خطأ يمحو كل ما دخل — أي قاعدة فارغة مع رسالة نجاح.
+
+### بعد الإصلاح — `/tmp/HRC-FULL-v2.sql` (٣.٤٧ م.ب، ٣٩٨ عبارة)
+
+```
+فشل: 0
+applicants 725 · jobs 22 · job_attempts 1535 · issued_serials 769
+audit_log 3803 · settings 5 · staff 3 · employer_job_credentials 3
+عدّاد أرقام البطاقات: 770  (البطاقة التالية 771 — لا تكرار على ورق مطبوع)
+مشغّلات معطّلة بعد التنفيذ: 0 ✓
+```
+
+الأعداد مطابقة للإنتاج بالضبط. الفارق الوحيد المقصود: العدّاد يبدأ من ٧٧٠
+بدل ١٧٧، لأن أرقام البطاقات الـ١٧٥ غير موجودة في النسخة (انظر `MISSING-ITEMS.md`).
+
+### الاختبارات الآلية — بعد الإصلاح
+
+| الملف | النتيجة |
+|---|---|
+| `tests/restore-portable-sql.mjs` | ✅ **١٣** فحصاً (كانت ٨) |
+| `tests/full-dump.mjs` | ✅ **٢٠** فحصاً (كانت ١٧) |
+| `tests/export-v3-v4-registry.mjs` | ✅ **٢٠** فحصاً (جديد) |
+| `tests/restore-completeness.mjs` | ✅ **٣٠** فحصاً (كانت ٢٥) |
+| `npm test` | ✅ **exit 0** — ٧٧ ملف اختبار، لا فشل واحد |
+
+**والفحوص الجديدة ليست زخرفة** — أُثبت ذلك بـ`git stash`:
+- فحص «العدّاد = card_number_floor» يظهر **42** على الكود القديم و**175** على الجديد.
+- فحص `jsonb_typeof = 'string'` **ينهار** على الكود القديم.
+- فحص «v3 لا تصدّر السجل» يُثبت التناقض على الإنتاج: العدد ٣ في `counts`، والمفتاح غائب.
+
+### الاختبار الجذري: هل ما زال المولّد ينتج الملف الصحيح؟
+
+بُني ملف من الصفر عبر `tools/build-full-dump.mjs` بعد الإصلاح:
+
+```
+البنية: BEGIN; → CREATE SCHEMA → تفريغ ديناميكي → تعطيل كل المشغّلات
+        → البيانات → إعادة تفعيل المشغّلات → COMMIT;
+396 عبارة · 0 فشل · 0 مشغّلات معطّلة · job_attempts 24 (أنشأتها المشغّلات)
+```
+
+---
+
 ## ١. البناء من الصفر
 
 ```bash

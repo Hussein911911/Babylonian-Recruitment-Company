@@ -71,8 +71,20 @@ const sql = S.buildSql(payload);
 check('السجل يُدخل (أرقام البطاقات تحفظ)', /INSERT INTO brc\."card_number_registry"/.test(sql), true);
 check('العدّاد يُضبط على أعلى رقم مستخدم (٧) لا صفر', /VALUES \(true, 7\)/.test(sql), true);
 check('العدّاد لا ينزل عن قيمة قائمة (GREATEST)', /GREATEST\(brc\.card_number_counter\.last_number, EXCLUDED\.last_number\)/.test(sql), true);
-check('السجل يُفرَّغ قبل الإدخال', /TRUNCATE[^;]*brc\.card_number_registry/.test(sql), true);
-check('العدّاد خارج TRUNCATE (يُضبط لا يُمسح)', /TRUNCATE[^;]*brc\.card_number_counter/.test(sql), false);
+/* ⚠️ كان الفحصان يطلبان `TRUNCATE` مكتوباً بأسماء جداول صريحة. صار
+   التفريغ ديناميكياً من الكتالوج (2026-11-18) لأن الأسماء الصريحة كانت
+   تُفشل الملف كله على مخطط ناقص بـ`relation does not exist`. المطلوب الآن:
+   التفريغ يسبق الإدخال، ويشمل كل جداول brc، والعدّاد يُضبط لا يُفرَّغ.
+   الشرط الأخير هو الأهمّ: تفريغ العدّاد يمحو أرضية الترقيم. */
+check('التفريغ ديناميكي ويشمل كل جداول brc',
+  /TRUNCATE brc\.%I RESTART IDENTITY CASCADE/.test(sql), true);
+check('التفريغ يسبق أول إدخال',
+  sql.indexOf('TRUNCATE brc.%I') < sql.indexOf('INSERT INTO brc.'), true);
+check('العدّاد مستثنى من التفريغ',
+  /c\.relname <> 'staff'/.test(sql) && /AND c\.relname <> 'card_number_counter'/.test(sql) === false,
+  true);
+check('العدّاد خارج TRUNCATE (يُضبط لا يُمسح)',
+  /TRUNCATE[^;]*brc\.card_number_counter/.test(sql), false);
 check('العدّاد يُضبط بعد السجل لا قبله',
   sql.indexOf('INSERT INTO brc."card_number_registry"') < sql.indexOf('brc.card_number_counter'), true);
 
@@ -167,7 +179,15 @@ delete legacy.card_number_counter;
 delete legacy.images;
 const legacySql = S.buildSql(legacy);
 check('نسخة قديمة بلا أرقام تُولّد SQL صالحاً', /BEGIN;/.test(legacySql), true);
-check('نسخة قديمة لا تكتب عدّاداً وهمياً', /card_number_counter \(singleton/.test(legacySql), false);
+/* ⚠️ تغيّر 2026-11-18 بقصد. كان يطلب ألا يُكتب عدّاد إطلاقاً لنسخة بلا
+   أرقام — حمايةً من «عدّاد وهمي». لكن الحالة الواقعية على الإنتاج هي
+   بالضبط هذه: v2 المطبَّقة لا تصدّر السجل ولا العدّاد. فعدم الكتابة تعني
+   عدّاداً على قيمته الافتراضية، أي أن أول بطاقة تأخذ رقماً مطبوعاً.
+   الأصحّ: يُكتب دائماً، لكن بقيمة لا تنزل عن القيمة القائمة (GREATEST). */
+check('نسخة قديمة تضبط العدّاد (لا تتركه على الصفر)',
+  /card_number_counter \(singleton/.test(legacySql), true);
+check('العدّاد لا ينزل عن قيمة قائمة في النسخة القديمة',
+  /GREATEST\(brc\.card_number_counter\.last_number, EXCLUDED\.last_number\)/.test(legacySql), true);
 check('نسخة قديمة لا تكتب سجلاً فارغاً', /INSERT INTO brc\."card_number_registry"/.test(legacySql), false);
 
 await db.close();

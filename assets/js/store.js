@@ -2768,19 +2768,29 @@
         return r.data;
       });
     }
-    /* ⚠️ الترتيب مقصود: v3 أولاً (٣)، ثم v2 (٢)، ثم v1 (١).
+    /* ⚠️ الترتيب مقصود: v4 (٤) ثم v3 (٣) ثم v2 (٢) ثم v1 (١).
        ⚠️ عطل أُصلح 2026-11-15: كان يطلب v2 مباشرة. وv2 لا تصدّر
        recovery_chances ولا recovery_prints ولا card_issue_requests ولا
        office_receipts — بينما assets/js/restore-sql.js يتوقّعها جميعاً في
        الملف. فالنتيجة أن النسخة الصحيحة تُبنى بـ'[]' للفرص: 46 فرصة
-       مستهلكة على 30 بطاقة ترجع متاحة بعد الاسترجاع. v3 يُضيفها فوق v2. */
-    return call('recovery_export_v3', 3).then(function (d) {
+       مستهلكة على 30 بطاقة ترجع متاحة بعد الاسترجاع. v3 يُضيفها فوق v2.
+       ⚠️ و2026-11-18: v3 بدورها تعدّ card_number_registry في `counts` ولا
+       تصدّر صفوفه — فيرى المدير الرقم 175 ويظنّ السجل وصل. v4 يُضيف
+       الصفوف و`card_number_floor` فوق v3.
+       السقوط إلى نسخة أقدم يبقى بقصد: مشروع لم يُهاجَر بعد يجب أن يستطيع
+       تنزيل شيء بدل لا شيء. لكن الحمولة الناقصة لم تعد تُبنى بصمت —
+       assets/js/restore-sql.js يشتقّ أرضية العدّاد من السجل أو من
+       issued_serials، ويرفع تحذيراً في الملف نفسه. */
+    return call('recovery_export_v4', 4).then(function (d) {
       if (d) return d;
-      return call('recovery_export_v2', 2).then(function (d2) {
-        if (d2) return d2;
-        return call('recovery_export_full', 1).then(function (legacy) {
-          if (legacy) return legacy;
-          throw new Error('لم يُعد الخادم نسخة صالحة — تأكد أن الهجرات مطبّقة على القاعدة');
+      return call('recovery_export_v3', 3).then(function (d3) {
+        if (d3) return d3;
+        return call('recovery_export_v2', 2).then(function (d2) {
+          if (d2) return d2;
+          return call('recovery_export_full', 1).then(function (legacy) {
+            if (legacy) return legacy;
+            throw new Error('لم يُعد الخادم نسخة صالحة — تأكد أن الهجرات مطبّقة على القاعدة');
+          });
         });
       });
     });

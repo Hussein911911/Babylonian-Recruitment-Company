@@ -107,12 +107,34 @@ try {
   check('الملف بُني', txt.length > 100000, txt.length + ' بايت');
   check('فيه الهيكل', /create table if not exists brc\.applicants/i.test(txt));
   check('فيه البيانات', /INSERT INTO brc\."applicants"/.test(txt));
-  /* ⚠️ هذا السطر هو العطل الذي وقع: بدونه تفشل البيانات كلها */
-  check('فيه تعطيل المشغّلات (replica)', /session_replication_role\s*=\s*replica/i.test(txt),
+  /* ⚠️ هذا الفحص تغيّر 2026-11-18 بقصد. كان يطلب
+     `session_replication_role = replica` — وهي تحتاج superuser وغير مضمونة
+     على Supabase. البديل المضمون هو تعطيل صريح لكل مشغّلات brc ثم إعادتها.
+     الفحص الآن يطلب الطرفين معاً: تعطيلاً **وإعادة تفعيل**، لأن التعطيل
+     وحده يترك قاعدة الإنتاج بلا تدقيق وبلا إصدار أرقام بطاقات. */
+  check('فيه تعطيل صريح للمشغّلات', /ALTER TABLE brc\.%I DISABLE TRIGGER ALL/.test(txt),
     'غائب — المشغّلات ستُنشئ صفوفاً تتعارض مع صفوفنا');
+  check('تعطيلها ALL لا USER', !/DISABLE TRIGGER USER/.test(txt),
+    'USER يُبقي فحص الفواصل الأجنبية فعّالاً فيفشل التحميل');
+  /* الإعادة يجب أن تكون قبل COMMIT: بعدها تصبح معاملة ثانية، ولو رجع
+     الملف لبقي الإنتاج بمشغّلات معطّلة. */
+  const iDis = txt.indexOf('DISABLE TRIGGER ALL');
+  const iEn = txt.indexOf('ENABLE TRIGGER ALL');
+  const iCom = txt.search(/^COMMIT;$/m);
+  check('تُعاد المشغّلات قبل COMMIT',
+    iDis > 0 && iEn > iDis && iCom > iEn,
+    `disable=${iDis} enable=${iEn} commit=${iCom}`);
   check('فيه فحص الأعداد في النهاية', /الفحص الأخير/.test(txt));
-  check('لا BEGIN شامل يحيط كل شي', !/^BEGIN;$/m.test(txt),
-    'BEGIN شامل يعني أن أول خطأ يمحو كل ما دخل');
+  /* لم يعد «BEGIN واحد» عيباً: التصميم الحالي معاملة واحدة للبيانات،
+     وكل شيء داخلها (تفريغ، تعطيل، إدخال، إعادة تفعيل) — فالتراجع ممكن.
+     المطلوب: BEGIN واحد يُغلق بـ COMMIT واحد، ولا معاملة معلّقة. */
+  const nBegin = (txt.match(/^BEGIN;$/gm) || []).length;
+  const nCommit = (txt.match(/^COMMIT;$/gm) || []).length;
+  check('معاملة واحدة متوازنة', nBegin === 1 && nCommit === 1,
+    `BEGIN=${nBegin} COMMIT=${nCommit}`);
+  check('التفريغ ديناميكي لا بأسماء صريحة',
+    /TRUNCATE brc\.%I RESTART IDENTITY CASCADE/.test(txt),
+    'أسماء صريحة تُفشل الملف على مخطط ناقص');
 } catch (e) {
   check('الملف بُني', false, String(e.stderr || e.message).slice(0, 200));
 }

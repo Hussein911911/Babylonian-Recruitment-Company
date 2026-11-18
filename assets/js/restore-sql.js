@@ -275,17 +275,54 @@
          (`DO` يبتلع الخطأ)، وتبقى المفاتيح مفعّلة. */
       'DO $$ BEGIN SET LOCAL session_replication_role = replica;\n' +
       'EXCEPTION WHEN insufficient_privilege OR others THEN NULL; END $$;\n\n' +
+      /* ⚠️ شبكة أمان ثانية (2026-11-18): في مشروع Supabase جديد قد لا تعمل
+         `session_replication_role` (تحتاج superuser)، وحينها تُدخل كل بطاقة
+         في `applicants` مشغّل `trg_applicants_attempts` فيُنشئ فرصها فوراً.
+         ثم يصل الإدخال الصريح لـ job_attempts فيصطدم بـ
+         `duplicate key value violates unique constraint`. أوقفنا المشغّلات
+         صراحةً — وهذا ما يفعله pg_dump. لا يُفشل الملف إن مُنع: المشغّل
+         يُترك مفعّلاً، ويكفي بعدها أن تعيد ترتيب الإدخال.
+         وكذلك `trg_audit_*` تضيف صفوف تدقيق برقم تسلسلي، فتصطدم بـ audit_log
+         الصريح. تعطيلها أثناء التحميل هو الصواب. */
+      /* ⚠️ كتلة تجهيز — أُضيفت 2026-11-18 بعد فحص ملف إنتاج حقيقي أوقفه
+         خطأ duplicate key ثلاث مرات. السبب: مشغّلات الهيكل تُنشئ صفوفاً
+         (فرص، أرقام بطاقات، تدقيق) فتصطدم بالإدخال الصريح، وترتيب الإدخال
+         ليس ترتيب تبعية (job_attempts قبل applicants). pg_dump يحلّها
+         بـ session_replication_role — وهو غير مضمون على Supabase.
+         الحل هنا لا يعتمد على صلاحيات: تعطيل صريح لكل مشغّلات brc
+         (بيانات وفواصل أجنبية) ثم تفريغ جداول البيانات. تُعاد في النهاية. */
       'BEGIN;\n\n' +
       'CREATE SCHEMA IF NOT EXISTS brc;\n\n' +
-      '-- إفراغ بنفس ترتيب المفاتيح الأجنبية\n' +
-      '-- ⚠ brc.staff ليست هنا بقصد: تفريغها يحذف حساب المدير الذي ينفّذ هذا\n' +
-      '--   السكربت، فيفقد الدخول. الحسابات تُضاف بـ ON CONFLICT DO NOTHING.\n' +
-      'TRUNCATE brc.job_attempts, brc.applicants, brc.jobs, brc.employer_job_credentials, ' +
-      'brc.issued_serials, brc.card_number_registry, brc.audit_log, brc.settings, ' +
-      /* الجداول الأربعة أدناه: بلا تفريغ تبقى صفوف المشروع القديم وتتعارض
-         مع الصفوف المستوردة (مفتاح أساسي مكرّر) فيفشل الجزء كله. */
-      'brc.recovery_chances, brc.recovery_prints, brc.card_issue_requests, ' +
-      'brc.office_receipts RESTART IDENTITY CASCADE;\n\n';
+      /* ═══ كتلة التجهيز — داخل المعاملة، قبل أول صف بيانات ═══════════════
+         ⚠️ عطل حقيقي في ملف إنتاج (2026-11-18) أوقفه `duplicate key` ثلاث
+         مرات. السبب مزدوج:
+           (١) مشغّلات الهيكل تُنشئ صفوفاً من تلقاء نفسها: إدخال بطاقة في
+               `applicants` يُنشئ فرصها في `job_attempts`، ومشغّل التدقيق
+               يُدرج في `audit_log` برقم تسلسلي — فتصطدم بالإدخال الصريح.
+           (٢) ترتيب الإدخال ليس ترتيب تبعية: `job_attempts` يأتي قبل
+               `applicants`، و`employer_job_credentials` قبل `jobs` — فتفشل
+               الفواصل الأجنبية.
+         `session_replication_role = replica` تحلّها لكنها تحتاج superuser
+         وغير مضمونة على Supabase. البديل المضمون: تعطيل صريح لكل مشغّلات
+         `brc` — ALL لا USER، لأن USER يُبقي مشغّلات فحص الفواصل الأجنبية
+         فعّالة فتظل المشكلة (٢) قائمة.
+         التفريغ ديناميكي من الكتالوج: كتابة أسماء جداول صريحة كانت تُفشل
+         الملف كله على أي مخطط ناقص بـ `relation … does not exist`.
+         `staff` مستثناة بقصد: تفريغها يحذف حساب المدير فيفقد الدخول.
+         تُعاد كلها قبل COMMIT في `tail` — وإلا بقي التدقيق وإصدار الأرقام
+         معطّلاً إلى الأبد على قاعدة الإنتاج. */
+      'DO $$ DECLARE t record; BEGIN\n' +
+      "  FOR t IN SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n" +
+      "            WHERE n.nspname = 'brc' AND c.relkind = 'r' AND c.relname <> 'staff' LOOP\n" +
+      "    EXECUTE format('TRUNCATE brc.%I RESTART IDENTITY CASCADE', t.relname);\n" +
+      '  END LOOP;\n' +
+      'END $$;\n\n' +
+      'DO $$ DECLARE t record; BEGIN\n' +
+      "  FOR t IN SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n" +
+      "            WHERE n.nspname = 'brc' AND c.relkind = 'r' LOOP\n" +
+      "    EXECUTE format('ALTER TABLE brc.%I DISABLE TRIGGER ALL', t.relname);\n" +
+      '  END LOOP;\n' +
+      'EXCEPTION WHEN insufficient_privilege OR others THEN NULL; END $$;\n\n';
 
     /* ═══ عدّاد أرقام البطاقات ═══════════════════════════════════════════
        ⚠ عطل حقيقي: النسخة كانت تحفظ البطاقات ولا تحفظ أرقامها، فالعدّاد
@@ -296,6 +333,20 @@
        على أكبر رقم في السجل، أو على أكبر رقم محفوظ، أيهما أعلى.
        `greatest` تحمي حالتين: نسخة قديمة بلا جدول السجل، ونسخة فيها
        أرقام أُلغيت فبقي العدّاد أعلى من كل السجل. */
+    /* ⚠️ 2026-11-18 — عطل حقيقي في الإنتاج، ليس في هذا الملف:
+       `recovery_export_v2` (النسخة المطبَّقة الوحيدة) **لا تصدّر**
+       card_number_registry إطلاقاً، ولا v3 مطبَّقة. فالحمولة تصل بلا سجل
+       الأرقام، والعدّاد يهبط إلى صفر — أي أن أول بطاقة بعد الاسترجاع
+       تحمل رقماً انطبع سابقاً على ورق رسمي.
+
+       لا يمكن اختراع الأرقام. لكن يمكن اشتقاق حدّ أدنى صحيح منها:
+       أكبر رقم ظهر فعلاً في `serial` أو في `card_print_code` أو في سجل
+       المحاولات. العدّاد لا ينخفض عن ذلك أبداً — وهذا يمنع التكرار حتى
+       لو غاب السجل الحقيقي.
+
+       الاشتقاق هنا من الحمولة وحدها (لا نستدعي دالة في القاعدة: الملف
+       يجب أن يعمل على قاعدة جديدة لم تُهاجَر). وحين تُطبَّق v4 يصبح
+       السجل كاملاً و`card_number_floor` صريحاً، فيغلب على الاشتقاق. */
     var registry = p.card_number_registry || [];
     var maxReg = registry.reduce(function (m, r) {
       var n = Number(r && r.card_number);
@@ -305,7 +356,26 @@
       var n = Number(r && r.last_number);
       return Number.isFinite(n) && n > m ? n : m;
     }, 0);
-    var counterValue = Math.max(maxReg, savedCounter, registry.length ? 1 : 0);
+    var derived = Number(p.card_number_floor || 0);
+    /* ⚠️ الحدّ الأخير — والحالة الواقعية اليوم: v2 المطبَّقة لا تصدّر السجل
+       ولا العدّاد، فأرقام البطاقات الـ175 المطبوعة **غير موجودة في النسخة
+       إطلاقاً**. ولا يمكن اشتقاقها: `serial` عشوائي (‎'2272MECVFZ') وليس
+       رقماً متسلسلاً، والرقم يُسنَد من العدّاد وحده عند الإدخال.
+       إذن أي محاولة «اشتقاق دقيق» وهم. البديل الصادق: حدّ أعلى آمن.
+       نأخذ أكبر عدد ممكن من البطاقات التي مرّت بالنظام — عدد السيريالات
+       المُصدَرة وعدد البطاقات — كأرضية. النتيجة تجاوز (يقفز الترقيم من
+       175 إلى 726 مثلاً) بدل تكرار رقم على وثيقة رسمية. التجاوز مرئي
+       وغير ضار؛ التكرار كارثة. ويُصلح جذرياً بتطبيق v4 التي تصدّر
+       `card_number_floor` الصريح. */
+    /* لكنه لا يُطبَّق إلا حين لا توجد أي بيانات حقيقية. لو طُبِّق دائماً
+       لأفسد الحالة السليمة: مشروع فيه ٧٢٥ بطاقة و٥ أرقام مسجّلة يقفز
+       عدّاده إلى ٧٢٥ بلا سبب. البيانات الحقيقية تُقدَّم دائماً. */
+    var hasReal = !!(registry.length || savedCounter || derived);
+    var safeFloor = hasReal ? 0 : Math.max(
+      (p.issued_serials || []).length,
+      (p.applicants || []).length
+    );
+    var counterValue = Math.max(maxReg, savedCounter, registry.length ? 1 : 0, derived, safeFloor);
 
     var body = '';
     TABLES.forEach(function (t) {
@@ -318,16 +388,46 @@
       body += insertRows(t, p[t]);
     });
 
-    /* بعد إدخال السجل: اضبط العدّاد على أعلى رقم مستخدم */
-    if (registry.length || savedCounter) {
-      body += '-- ⚠ عدّاد أرقام البطاقات: يبدأ من أعلى رقم مستخدم، لا من صفر.\n' +
-        '--   لو تجاهلناه لأخذت أول بطاقة جديدة رقماً مطبوعاً سابقاً.\n' +
-        'INSERT INTO brc.card_number_counter (singleton, last_number) VALUES (true, ' +
-        counterValue + ')\n' +
-        'ON CONFLICT (singleton) DO UPDATE SET last_number = GREATEST(brc.card_number_counter.last_number, EXCLUDED.last_number);\n\n';
+    /* بعد إدخال السجل: اضبط العدّاد على أعلى رقم مستخدم.
+       ⚠️ 2026-11-18 — شرط `registry.length || savedCounter` كان يترك
+       العدّاد **بلا ضبط إطلاقاً** حين لا تحمل الحمولة السجل ولا العدّاد —
+       وهي حالة الإنتاج اليوم بالضبط (v2 المطبَّقة لا تصدّر أياً منهما).
+       النتيجة: العدّاد يبقى على قيمته الافتراضية، وأول بطاقة بعد الاسترجاع
+       تأخذ رقماً موجوداً على ورق. نضبطه دائماً، و`EXCLUDED` مع GREATEST
+       تجعل ذلك آمناً حتى لو كان أعلى من اللازم. */
+    if (!hasReal) {
+      body += '-- ═══════════════════════════════════════════════════════════════\n' +
+        '--  ⚠⚠ تحذير: النسخة لا تحمل سجل أرقام البطاقات ولا العدّاد.\n' +
+        '--  أرقام البطاقات المطبوعة على ورق رسمي غير معروفة لهذا الملف.\n' +
+        '--  ضبطنا العدّاد على ' + counterValue + ' (حدّ أعلى آمن) كي لا تتكرّر\n' +
+        '--  الأرقام. الترقيم سيقفز، وهذا مقبول؛ التكرار ليس مقبولاً.\n' +
+        '--  الإصلاح الجذري: طبّق الهجرة portable_backup_v4_registry.\n' +
+        '-- ═══════════════════════════════════════════════════════════════\n';
     }
+    body += '-- ⚠ عدّاد أرقام البطاقات: لا يبدأ من صفر أبداً.\n' +
+      '--   اشتُقّ من أكبر رقم ظاهر في الحمولة (سجل الأرقام، أو العدّاد\n' +
+      '--   المحفوظ، أو card_number_floor من v4). لو بدأ من صفر لأخذت أول\n' +
+      '--   بطاقة جديدة رقماً انطبع سابقاً على وثيقة رسمية.\n' +
+      'INSERT INTO brc.card_number_counter (singleton, last_number) VALUES (true, ' +
+      counterValue + ')\n' +
+      'ON CONFLICT (singleton) DO UPDATE SET last_number = GREATEST(brc.card_number_counter.last_number, EXCLUDED.last_number);\n\n';
 
-    var tail = '\n-- إعادة ضبط التسلسلات بعد الإدخال بأرقام صريحة\n' +
+    /* ⛔ إعادة تفعيل المشغّلات — ليس تكميلاً بل شرط سلامة.
+       عطّلناها في `head` ليمرّ التحميل. لو خرج الملف بلا هذه الكتلة،
+       تبقى قاعدة المشروع الجديد **بلا مشغّلات**: لا تدقيق (trg_audit_*)،
+       ولا إسناد رقم بطاقة (trg_assign_card_number)، ولا فرص تلقائية.
+       أي أن الموقع يعمل ويبدو سليماً، ثم يمنح بطاقة بلا فرص وبلا سجل —
+       والعطل لا يظهر إلا بعد أسابيع. لهذا تُعاد هنا، داخل نفس المعاملة،
+       فإما تُكتب البيانات وتُعاد المشغّلات معاً، أو لا شيء. */
+    var reenable = '\n-- إعادة تفعيل المشغّلات التي أُوقفت أثناء التحميل\n' +
+      'DO $$ DECLARE t record; BEGIN\n' +
+      "  FOR t IN SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n" +
+      "            WHERE n.nspname = 'brc' AND c.relkind = 'r' LOOP\n" +
+      "    EXECUTE format('ALTER TABLE brc.%I ENABLE TRIGGER ALL', t.relname);\n" +
+      '  END LOOP;\n' +
+      'END $$;\n\n';
+
+    var tail = reenable + '\n-- إعادة ضبط التسلسلات بعد الإدخال بأرقام صريحة\n' +
       "SELECT setval(pg_get_serial_sequence('brc.audit_log', 'id'),\n" +
       '              COALESCE((SELECT MAX(id) FROM brc.audit_log), 1), true);\n\n' +
       'COMMIT;\n\n' +
