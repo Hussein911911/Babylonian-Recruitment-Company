@@ -68,22 +68,35 @@ select (select count(*) from brc.recovery_chances) chances,
 
 ---
 
-## توليد SQL
+## توليد SQL — مسار حتمي واحد
 
 ```bash
-python3 tools/rescue-db/build_cards_state.py > cards_state.sql
+ORIG="/path/to/HRC-FULL-2026-11-18 (1).sql" tools/rescue-db/assemble.sh
 ```
 
-يضع الحارس الداخلي: يرفض سيريالاً مطبوعاً غير موجود في الفرص، ويرفض قناعاً
-لا يطابق العدد المعلن. كتلة `card_number_registry` لها مسار آخر — سُحبت
-بصيغة `رقم:سيريال` منفصلة وأُدرجت في الملف مباشرة.
+الاسكربت يربط الخطوات الأربع بلا تدخّل يدوي:
 
-لإعادة إنتاج سجل الأرقام:
+| # | الأداة | ما تفعله |
+|---|---|---|
+| ١ | `repair_dump.py` | يُصلح قيمة `settings.value` النصية (خطأ `22P02`)، ويضيف كتلة تجهيز تُفرّغ ديناميكياً وتُعطّل كل المشغّلات، ثم يُعيد تفعيلها قبل `COMMIT`. يعيد زرع صف العدّاد بعد التفريغ. |
+| ٢ | `build_cards_state.py` | يبني `recovery_prints` (٧٢٥) و`recovery_chances` (١٥٣٥) من الخريطتين. |
+| ٣ | `build_registry_state.py` | يبني `card_number_registry` (١٧٥) و`card_issue_requests`، ويثبّت العدّاد على أعلى رقم، ويتحقّق أن `office_receipts` صفر. |
+| ٤ | الحقن | يضع الكتلتين قبل قسم «الفحص الأخير» في الملف الناتج. |
 
-```sql
-select string_agg(card_number::text || ':' || serial, ',' order by card_number) d
-from brc.card_number_registry;
+**الحارس في كل أداة:** يرفض سيريالاً مطبوعاً غير موجود في الفرص، ويرفض قناعاً
+لا يطابق العدد المعلن، ويرفض سجل أرقام فيه فجوة أو تكرار.
+
+الخرائط الثلاث التي تُغذّي الأدوات (`chances_map.txt`، `printed_map.txt`،
+`registry_map.txt`، `issue_requests.txt`) تُسحب من الإنتاج بالاستعلامات أعلاه.
+
+### التحقّق النهائي
+
+```bash
+node tests/rescue-restore-proof.mjs
 ```
+
+يستورد الملف كاملاً على PGlite (PostgreSQL ١٧) ويقارن ١٤ عدداً + العدّاد +
+حالة كل مشغّل + أن الرقم التالي ١٧٦. ينتهي بـ`exit 0` أو بفشل صريح.
 
 ---
 
