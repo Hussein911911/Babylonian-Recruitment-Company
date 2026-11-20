@@ -20,6 +20,7 @@ let ok = 0, bad = 0;
 const check = (l, c, e) => { c ? ok++ : bad++; console.log(`  ${c ? '✅' : '❌'} ${l}` + (c ? '' : ' — ' + (e || ''))); };
 
 import { SHIM } from './pg-shim.mjs';
+import { headerCounts } from '../tools/dump-header.mjs';
 
 /* ── بيانات تجريبية بالشكل الحقيقي ── */
 const N_CARDS = 12, N_ATT = 20, N_AUDIT = 30;
@@ -110,6 +111,17 @@ try {
     iDis > 0 && iEn > iDis && iCom > iEn,
     `disable=${iDis} enable=${iEn} commit=${iCom}`);
   check('فيه فحص الأعداد في النهاية', /الفحص الأخير/.test(txt));
+  /* الترويسة هي شهادة الملف عن محتواه — أداة الاسترجاع تقرأ منها أعداد
+     النسخ الأحدث. فلو انحرفت الترويسة عن البيانات لصار التحقّق كذباً. */
+  const hdr = headerCounts(txt);
+  check('الترويسة تحمل أعداداً مقروءة', !!hdr);
+  if (hdr) {
+    const want = { staff: 1, applicants: N_CARDS, jobs: 0, job_attempts: N_ATT, audit_log: N_AUDIT,
+      issued_serials: N_CARDS, card_number_registry: N_CARDS, counter: N_CARDS };
+    const bad = Object.entries(want).filter(([k, v]) => hdr[k] !== v);
+    check('أعداد الترويسة تطابق الحمولة', bad.length === 0,
+      bad.map(([k, v]) => `${k}: ترويسة ${hdr[k]} ≠ ${v}`).join(' · '));
+  }
   /* لم يعد «BEGIN واحد» عيباً: التصميم الحالي معاملة واحدة للبيانات،
      وكل شيء داخلها (تفريغ، تعطيل، إدخال، إعادة تفعيل) — فالتراجع ممكن.
      المطلوب: BEGIN واحد يُغلق بـ COMMIT واحد، ولا معاملة معلّقة. */

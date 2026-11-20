@@ -79,7 +79,7 @@ function splitLeadingComments(slice) {
   return { lead: i > 0 ? lines.slice(0, i).join('\n') + '\n' : '', body: lines.slice(i).join('\n') };
 }
 
-export function patchTriggerBlocks(text, blocks = loadBlocks()) {
+export function patchTriggerBlocks(text, blocks = loadBlocks(), { allowNone = false } = {}) {
   const ranges = statementRanges(text);
   const edits = [];
   for (const r of ranges) {
@@ -91,6 +91,12 @@ export function patchTriggerBlocks(text, blocks = loadBlocks()) {
         edits.push({ kind, start: r.start, end: r.end, line, before: r.text, after });
       }
     }
+  }
+  /* allowNone: ملف أنشأه المولّد بعد 2026-11-20 لا يحوي TRIGGER ALL أصلاً —
+     فغياب العبارتين يعني «نظيف»، لا «مرقّع سابقاً». الترقيع الناقص (عبارة
+     واحدة) يبقى خطأً في كل الحالات. */
+  if (allowNone && edits.length === 0) {
+    return { text, replaced: [], statements: ranges.length, clean: true };
   }
   if (edits.length !== TARGETS.length) {
     throw new Error(
@@ -112,6 +118,7 @@ export function patchTriggerBlocks(text, blocks = loadBlocks()) {
     text: out,
     replaced: edits.sort((a, b) => a.line - b.line).map(({ kind, line, before, after }) => ({ kind, line, before, after })),
     statements: afterCount,
+    clean: false,
   };
 }
 
