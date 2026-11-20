@@ -106,16 +106,26 @@ update cron.job set active = false where jobname in
 Dashboard → **Project Settings → API → Exposed schemas** → أضف `brc`
 (‏القيمة الحالية لا تحتويها، والكود يستعلم `schema:'brc'`).
 
-### ٣) `app.brc_secret` — قرارك قبل الضبط
+### ٣) `app.brc_secret` — سطر واحد، بلا تذكرة دعم
 
-* بلا مفتاح: `lookup_card`/`verify_form` ترمي `22023` (المفتاح إلزامي).
-* بمفتاح جديد: البيانات والبطاقات سليمة، لكن **بصمة كيو-آر المطبوعة على
-  بطاقات سابقة لن تُطابق**.
-* بمفتاح الإنتاج نفسه: البصمات القديمة تبقى صالحة (الأفضل إن كانت البطاقات
-  المطبوعة ما زالت تُستخدم).
-* الضبط: Dashboard → **Database → Custom Postgres Config** (`app.brc_secret = …`)
-  ثم إعادة تحميل الإعداد. **لا يمكن** ضبطه بـ`ALTER DATABASE` من دور `postgres`
-  (‏42501 — مُثبت).
+`ALTER DATABASE … SET app.brc_secret` **لا يعمل** على هذا المشروع (‏42501: دور `postgres`
+ليس superuser). لذلك أُضيف بديل داخل القاعدة: جدول `brc.app_secrets` محمي بـRLS وبلا
+سياسة، و`verify_token` تقرأ الإعداد أولاً ثم الجدول (نفس البصمة تماماً).
+
+```sql
+-- في SQL Editor لمشروع الهدف، بعد الاسترجاع:
+insert into brc.app_secrets (name, value)
+values ('brc_secret', '<مفتاح الإنتاج نفسه>')
+on conflict (name) do update set value = excluded.value, updated_at = now();
+
+-- تحقّق (يجب 64):
+select length(brc.verify_token('HRC-BC-000120'));
+```
+
+* المفتاح نفسه (لا مفتاح جديد) ⇒ **بصمات البطاقات المطبوعة سابقاً تبقى صالحة**.
+* تقرأه من الإنتاج بـ`select current_setting('app.brc_secret');` — قراءة فقط، ولا ترسله لأحد.
+* إن أردت لاحقاً ضبط الإعداد على مستوى القاعدة (‏Custom Postgres Config)، سيأخذ
+  `verify_token` الإعداد ويتجاهل الجدول تلقائياً — بلا أي تغيير في السلوك.
 
 ### ٤) الحسابات الثلاثة + الربط
 

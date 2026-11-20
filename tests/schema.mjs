@@ -81,7 +81,7 @@ tables.forEach((t, i) => { if (!(t.name in order)) order[t.name] = i; });
 /* 17 = الستة عشر + card_lookup_budget المضافة في 2026-11-17 ضمن سدّ فرق
    الاسترجاع (كانت في الإنتاج وغير موجودة في المخطط، فكان أي استرجاع يُسقط
    حراسة تعداد البطاقات بصمت). العدد مقصود ومُوثَّق هنا لا مُرخَّى. */
-check('المخطط يعرّف 17 جدولاً بما فيها النسخ الخاصة', tables.length === 17,
+check('المخطط يعرّف 18 جدولاً بما فيها النسخ الخاصة وأسرار التشغيل', tables.length === 18,
   tables.length + ': ' + tables.map((t) => t.name).join(', '));
 
 const SYSTEM = new Set(['auth.users', 'auth.identities', 'storage.objects']);
