@@ -31,6 +31,7 @@
 npm install pg --no-save
 
 # 2) الاسترجاع + التحقّق (ضع كلمة المرور مكان PASSWORD — لا ترسلها لأحد)
+# ملف منزّل قبل 2026-11-20 (البصمة معروفة):
 node tools/restore-full-file.mjs "C:\path\to\HRC-FULL-2026-11-19.sql" `
   --dsn "postgresql://postgres.tkxbmopxcftxpcoczweq:PASSWORD@aws-0-eu-west-1.pooler.supabase.com:5432/postgres" `
   --driver pg --yes
@@ -45,6 +46,22 @@ node tools/restore-full-file.mjs "C:\path\to\HRC-FULL-2026-11-19.sql" `
 4. تشغّل استعلامات التحقّق وتطبع **16 قيمة** مقابل المتوقّع، و`✅ PASS` أو `❌ FAIL`
    مع رمز خروج غير صفري عند أي اختلاف.
 5. تحفظ سجلاً `restore-<التاريخ>.log` (بلا كلمة مرور — تُقنَّع).
+
+### إذا نزّلت نسخة **جديدة** بعد 2026-11-20
+
+المولّد أُصلح: يُصدر `DISABLE/ENABLE TRIGGER <اسم>` بلا `TRIGGER ALL`، فتُنفَّذ بلا ترقيع.
+لكن بصمتها مختلفة وأعدادها أحدث، فأضف `--allow-new`:
+
+```bash
+node tools/restore-full-file.mjs "C:\path\to\HRC-FULL-<الجديد>.sql" --dsn "..." --allow-new --yes
+```
+
+| بلا `--allow-new` | مع `--allow-new` |
+|---|---|
+| تتوقّف وتطلب تأكيداً صريحاً — لا تنفّذ ملفاً مجهول البصمة بصمت | تُقرأ الأعداد المتوقّعة من **ترويسة الملف** (`--  الأعداد : …`) بدل أرقام 2026-11-19 |
+| | `printed` و`spent` تُعرض معلوماتية (الترويسة لا تذكرهما) |
+
+وإن كان الملف نظيفاً أصلاً تطبع: «ترقيع: لا حاجة — الملف لا يحوي TRIGGER ALL».
 
 ### البديل: psql (الأدق، عبارة عبارة)
 

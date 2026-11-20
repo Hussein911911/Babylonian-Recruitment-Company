@@ -80,6 +80,15 @@ ok('الترقيع مرّة ثانية يُرفض (لا ترقيع مزدوج ب
   assert.throws(() => patchTriggerBlocks(once), /المتوقع ترقيع 2 عبارة/);
 });
 
+ok('ملف نظيف (مولّد مُصلَح) لا يُرفض عند allowNone، ويُرفض بلا هذا العلم', () => {
+  const clean = '-- رأس\nselect 1;';
+  assert.throws(() => patchTriggerBlocks(clean), /المتوقع ترقيع 2 عبارة/, 'قبل الإصلاح كان الرفض إلزامياً');
+  const res = patchTriggerBlocks(clean, undefined, { allowNone: true });
+  assert.equal(res.clean, true);
+  assert.equal(res.replaced.length, 0);
+  assert.equal(res.text, clean, 'لم يتغيّر بايت');
+});
+
 ok('ملف الإصلاح نفسه سليم الترميز (UTF-8 بلا BOM) وCRLF غير مطلوب له', () => {
   const buf = readFileSync(new URL('../docs/sql-parts/fixes/03-restore-trigger-blocks.sql', import.meta.url));
   assert.notEqual(buf[0], 0xef, 'يبدأ بـ BOM — psql لا يحبّه');

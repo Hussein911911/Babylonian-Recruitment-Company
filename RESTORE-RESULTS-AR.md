@@ -349,6 +349,8 @@ on conflict (name) do update set value = excluded.value, updated_at = now();
 | `node tests/patch-restore-triggers.mjs` | **6/6 ناجحة** |
 | `node tests/full-dump.mjs` (بناء الملف وتنفيذه من أوله لآخره) | **21/21 ناجحة** |
 | تنفيذ مخرَج المولّد الجديد بدور غير superuser، بلا ترقيع | **PASS** — 16/16 مطابقة |
+| `tools/restore-full-file.mjs --allow-new` — ملف ببصمة مجهولة على قاعدة محلية | **PASS**: بلا العلم يرفض بوضوح (exit 2)، ومعه يرقّع وينفّذ ويتحقّق (14 قيمة + `printed`/`spent` معلوماتية) |
+| ملف **نظيف** من المولّد الجديد (لا `TRIGGER ALL`) | **PASS**: «ترقيع: لا حاجة» ثم تنفيذ كامل وPASS |
 | `tests/schema.mjs` · `tests/brc-secret-fallback.mjs` · 15 اختبار استرجاع/نسخ | **338/338 · 7/7 · كلها exit 0** |
 | تنفيذ كامل على قاعدة تأهيل بدور مالك غير superuser (سائق `psql`) | **PASS** — 16/16 |
 | تنفيذ كامل بالسائق `pg` (‏بديل psql على ويندوز) | **PASS** — 16/16 |

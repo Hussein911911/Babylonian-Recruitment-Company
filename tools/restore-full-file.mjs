@@ -13,6 +13,9 @@
      # بـ psql (الأفضل: عبارة عبارة، سجل كامل)
      node tools/restore-full-file.mjs <file.sql> --dsn "<dsn>" --yes
 
+     # نسخة أحدث نُزّلت من صفحة النسخ الاحتياطي بعد 2026-11-20 (بصمتها غير معروفة):
+     node tools/restore-full-file.mjs <file.sql> --dsn "<dsn>" --allow-new --yes
+
      # بلا psql (على ويندوز مثلاً): سائق pg من npm — الملف كله في معاملة واحدة
      npm i pg --no-save
      node tools/restore-full-file.mjs <file.sql> --dsn "<dsn>" --driver pg --yes
@@ -30,6 +33,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { splitStatements } from './sql-split-core.mjs';
 import { patchTriggerBlocks } from './patch-restore-triggers.mjs';
+import { headerCounts } from './dump-header.mjs';
 
 const FORBIDDEN_REF = 'vqsvztudvfukyuerzcgx';   // مشروع الإنتاج — محظور نهائياً
 
@@ -69,6 +73,7 @@ const psql = arg('psql') || process.env.PSQL || 'psql';
 const logPath = arg('log') || path.join(process.cwd(), `restore-${new Date().toISOString().replace(/[:.]/g, '-')}.log`);
 const doPatch = !arg('no-patch', false);
 const yes = !!arg('yes', false);
+const allowNew = !!arg('allow-new', false);
 
 /* ── ١) فحص الملف ──────────────────────────────────────────────────────── */
 const raw = readFileSync(file);
@@ -88,14 +93,47 @@ say(`الملف      : ${path.resolve(file)}`);
 say(`الحجم      : ${raw.length.toLocaleString('en-US')} بايت`);
 say(`SHAsum     : ${sha}`);
 say(`العبارات   : ${stmts.length} مقطع (منها ${realStatements} عبارة فعلية + ${stmts.length - realStatements} ذيل تعليقات)`);
-if (known) say(`النسخة     : ${known.label} — مطابقة للبصمة المعروفة ✔`);
-else say('⚠ البصمة غير معروفة لهذه الأداة — تحقّق أنك تستخدم الملف الصحيح قبل المتابعة.');
+/* ── الأعداد المتوقّعة ─────────────────────────────────────────────────────
+   للنسخة المعروفة (2026-11-19) تبقى الأرقام المثبّتة هي المرجع — طلب المالك.
+   ولنسخة أحدث نُزّلت بعد إصلاح المولّد، تُقرأ الأعداد من ترويسة الملف نفسه
+   (يكتبها المولّد من القاعدة، فهي شهادة الملف عن محتواه) بدل تثبيت أرقام
+   نسخة قديمة يُفشل التحقّق ظلماً. */
+let expected = { ...EXPECTED };
+let extra = { ...EXPECTED_EXTRA };
+let informational = null;
+
+if (known) {
+  say(`النسخة     : ${known.label} — مطابقة للبصمة المعروفة ✔`);
+} else {
+  const hdr = headerCounts(text);
+  if (!allowNew) {
+    die(
+      `البصمة غير معروفة: ${sha.slice(0, 16)}…\n` +
+      '  إن كان الملف نسخة أحدث نزّلتها من صفحة النسخ الاحتياطي بعد إصلاح 2026-11-20\n' +
+      '  فمرّر --allow-new: تُقرأ الأعداد المتوقّعة من ترويسة الملف بدل تثبيتها.\n' +
+      '  وإن لم تكن متأكّداً من الملف فلا تمرّرها — التوقّف هنا أأمن.'
+    );
+  }
+  if (!hdr) die('الملف لا يحمل ترويسة أعداد («--  الأعداد :») — لا يمكن التحقّق آلياً. رُفض التنفيذ.');
+  expected = {};
+  for (const k of Object.keys(EXPECTED)) {
+    if (hdr[k] === undefined) die(`ترويسة الملف تخلو من «${k}» — رُفض التنفيذ بدل تحقّق ناقص.`);
+    expected[k] = hdr[k];
+  }
+  if (hdr.counter === undefined) die('ترويسة الملف تخلو من «عدّاد البطاقات» — رُفض التنفيذ.');
+  extra = { cards: expected.applicants, counter: hdr.counter, disabled_triggers: 0 };
+  /* printed/spent ليست في الترويسة (تُحسب من الأعلام) — تُعرض ولا تُحاكم */
+  informational = ['printed', 'spent'];
+  say(`النسخة     : بصمة غير معروفة — تُعامل كنسخة أحدث (--allow-new)`);
+  say(`الأعداد    : من ترويسة الملف · عدّاد البطاقات ${hdr.counter}`);
+}
 
 /* ── ٢) الترقيع ─────────────────────────────────────────────────────────── */
 let sql = text;
 if (doPatch) {
-  const res = patchTriggerBlocks(text);
+  const res = patchTriggerBlocks(text, undefined, { allowNone: known ? false : true });
   sql = res.text;
+  if (res.clean) say('ترقيع      : لا حاجة — الملف لا يحوي «TRIGGER ALL» (مولّد مُصلَح بعد 2026-11-20)');
   for (const r of res.replaced) say(`ترقيع      : كتلة «${r.kind}» عند السطر ${r.line} → نسخة تسمّي كل مشغّل (بلا TRIGGER ALL)`);
   say(`ترقيع      : عدد العبارات بعد الترقيع ${res.statements} (بلا تغيير)`);
 } else {
@@ -244,18 +282,23 @@ say('');
 say('══════ التحقّق بعد التنفيذ ══════');
 let fail = 0;
 const rows = [];
-for (const [k, want] of Object.entries({ ...EXPECTED, ...EXPECTED_EXTRA })) {
+for (const [k, want] of Object.entries({ ...expected, ...extra })) {
   const have = Number(got[k]);
   const ok = have === want;
   if (!ok) fail++;
   rows.push(`${ok ? '✔' : '✖'} ${k.padEnd(22)} المتوقع ${String(want).padStart(6)}   الفعلي ${String(have).padStart(6)}`);
+}
+for (const k of informational || []) {
+  rows.push(`ℹ ${k.padEnd(22)} (معلوماتي — غير مذكور في الترويسة) ${got[k]}`);
 }
 rows.push(`ℹ auth_linked            (معلوماتي) ${got.auth_linked} — الروابط تُنشأ بعد إنشاء حسابات Auth`);
 rows.forEach(say);
 writeFileSync(logPath, `# HRC restore\n# file=${file}\n# sha256=${sha}\n# dsn=${mask(dsn)}\n# driver=${driver}\n\n${execOutput}\n${logLines.join('\n')}\n`);
 say('');
 if (fail === 0) {
-  say('✅ PASS — كل الأعداد مطابقة لنسخة 2026-11-19. لا تشغّل الموقع قبل ربط الحسابات ورفع الصور.');
+  say(known
+    ? '✅ PASS — كل الأعداد مطابقة لنسخة 2026-11-19. لا تشغّل الموقع قبل ربط الحسابات ورفع الصور.'
+    : '✅ PASS — كل الأعداد مطابقة لترويسة الملف. لا تشغّل الموقع قبل ربط الحسابات ورفع الصور.');
   say(`السجل: ${logPath}`);
 } else {
   say(`❌ FAIL — ${fail} قيمة مخالفة. لا تبدأ العمل على هذه القاعدة. السجل: ${logPath}`);
