@@ -119,7 +119,9 @@ if (!process.argv.includes('--no-zip')) {
   console.log('• [5/5] الضغط…');
   const zip = join(OUT, 'rescue-kit.zip');
   try { rmSync(zip); } catch {}
-  sh('zip', ['-qr', zip, 'rescue', '-x', 'rescue/CHECKSUMS.sha256', 'rescue/rescue-kit.zip'], { cwd: ROOT });
+  /* CHECKSUMS.sha256 يُضمَّن في الضغط كي يتحقّق منه من يستلم الحزمة (sha256sum -c).
+     استثناؤه سابقاً كان يجعل التحقّق مستحيلاً بعد فكّ الضغط — عطب حقيقي. */
+  sh('zip', ['-qr', zip, 'rescue', '-x', 'rescue/rescue-kit.zip'], { cwd: ROOT });
   console.log('✓ rescue/rescue-kit.zip');
 } else {
   console.log('✓ rescue/ (بلا ضغط)');

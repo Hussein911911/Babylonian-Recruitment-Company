@@ -37,9 +37,21 @@ import { headerCounts } from './dump-header.mjs';
 
 const FORBIDDEN_REF = 'vqsvztudvfukyuerzcgx';   // مشروع الإنتاج — محظور نهائياً
 
+/* النسخ المتحقَّق منها. كل نسخة معها أعدادها المقروءة من ترويسة الملف
+   وقت التحقّق — فلا تُقارن نسخة أحدث بأرقام نسخة أقدم (خطأ يبدو كفشل). */
 const KNOWN = {
   'a1cce0475ae8158cacb523e738cd1bbe34def36dd77787a2fee25763f84ec8ba':
     { bytes: 3858946, statements: 400, label: 'HRC-FULL-2026-11-19' },
+  /* أُضيف 2026-11-21 بعد تحقّق كامل: 404 مقطعاً (403 عبارة) · 3,864,629 بايت · بناه المولّد المُصلَح */
+  'd47c50857bc1806793670b68d25ec8017a1a4a8158076827c5b9a4ada893aed8': {
+    bytes: 3864629, statements: 403, label: 'HRC-FULL-2026-11-21',
+    counts: {
+      staff: 3, applicants: 726, jobs: 22, job_attempts: 1537, issued_serials: 770,
+      card_number_registry: 176, audit_log: 3814, settings: 5,
+      recovery_chances: 1537, recovery_prints: 726, office_receipts: 0,
+    },
+    extra: { printed: 422, spent: 46, counter: 176, cards: 726, disabled_triggers: 0 },
+  },
 };
 
 const EXPECTED = {
@@ -104,6 +116,11 @@ let informational = null;
 
 if (known) {
   say(`النسخة     : ${known.label} — مطابقة للبصمة المعروفة ✔`);
+  /* الأعداد المثبّتة مع البصمة تتقدّم على أرقام النسخة القديمة */
+  if (known.counts) {
+    expected = { ...known.counts };
+    extra = { ...(known.extra || EXPECTED_EXTRA) };
+  }
 } else {
   const hdr = headerCounts(text);
   if (!allowNew) {
@@ -131,7 +148,9 @@ if (known) {
 /* ── ٢) الترقيع ─────────────────────────────────────────────────────────── */
 let sql = text;
 if (doPatch) {
-  const res = patchTriggerBlocks(text, undefined, { allowNone: known ? false : true });
+  /* allowNone دائماً: «صفر كتل» تعني ملفاً نظيفاً من المولّد المُصلَح، لا خطأ.
+     النقص الجزئي (كتلة واحدة من اثنتين) يبقى خطأً ويوقف التنفيذ. */
+  const res = patchTriggerBlocks(text, undefined, { allowNone: true });
   sql = res.text;
   if (res.clean) say('ترقيع      : لا حاجة — الملف لا يحوي «TRIGGER ALL» (مولّد مُصلَح بعد 2026-11-20)');
   for (const r of res.replaced) say(`ترقيع      : كتلة «${r.kind}» عند السطر ${r.line} → نسخة تسمّي كل مشغّل (بلا TRIGGER ALL)`);
@@ -297,7 +316,7 @@ writeFileSync(logPath, `# HRC restore\n# file=${file}\n# sha256=${sha}\n# dsn=${
 say('');
 if (fail === 0) {
   say(known
-    ? '✅ PASS — كل الأعداد مطابقة لنسخة 2026-11-19. لا تشغّل الموقع قبل ربط الحسابات ورفع الصور.'
+    ? `✅ PASS — كل الأعداد مطابقة لنسخة ${known.label}. لا تشغّل الموقع قبل ربط الحسابات ورفع الصور.`
     : '✅ PASS — كل الأعداد مطابقة لترويسة الملف. لا تشغّل الموقع قبل ربط الحسابات ورفع الصور.');
   say(`السجل: ${logPath}`);
 } else {

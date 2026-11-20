@@ -10,7 +10,7 @@
 
 | داخل الحزمة | خارجها (يجب أن تحفظه بنفسك) |
 |---|---|
-| `database/HRC-FULL-*.sql` — الهيكل + كل البيانات | 🔑 **قيمة `brc_secret`** — مفتاح بصمة البطاقات |
+| `database/HRC-FULL-*.sql` — الهيكل + كل البيانات (نسخة 2026-11-21، بصمتها مثبّتة في الأداة) | 🔑 **قيمة `brc_secret`** — مفتاح بصمة البطاقات |
 | `database/schema.sql` + `schema-live-inventory.json` | 👤 **كلمات مرور الحسابات الثلاثة** (لا تُصدَّر أبداً) |
 | `database/03-…sql` · `04-…sql` — كتلتا المشغّلات + مفتاح البصمة | 🖼️ **ملفات الصور** — تُرفع من `storage/job-images/jobs/` |
 | `config/recreate-cron.sql` · `storage-restore.sql` · `auth-settings.md` | 📌 نسخة من هذه الحزمة في مكانين مختلفين على الأقل |
@@ -42,11 +42,13 @@ sha256sum -c CHECKSUMS.sha256        # يجب أن تكون كلها OK
 
 ### الخطوة ٢ — استرجاع البيانات (الخطوة الحاسمة)
 ```bash
-node recovery-tools/restore-full-file.mjs database/HRC-FULL-2026-11-19.sql \
+node recovery-tools/restore-full-file.mjs database/HRC-FULL-*.sql \
   --dsn "postgresql://postgres.<REF>:<PASSWORD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres" \
   --yes
 ```
-- الملف القديم (قبل 2026-11-20) يُرقَّع تلقائياً؛ ملف نُزّل بعد الإصلاح أضف له `--allow-new`.
+- نسخة 2026-11-21 بصمتها معروفة للأداة: تُنفَّذ بلا أي علم إضافي.
+- أي ملف أحدث منها: أضف `--allow-new` (تُقرأ الأعداد من ترويسته).
+- أي ملف نُزّل قبل 2026-11-20: يُرقَّع تلقائياً بلا تدخّل.
 - لا تلصق الملف في محرّر SQL: يقصّ عند ~٢٠٠٠ سطر ويقول Success وهو ناقص.
 - النهاية المطلوبة: `✅ PASS` مع أعداد مطابقة. بلا PASS لا تكمل.
 
