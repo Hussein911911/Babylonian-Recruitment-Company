@@ -45,12 +45,23 @@ const head = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: ROOT, 
 sh('git', ['archive', '--format=zip', `-o`, join(OUT, 'source-code.zip'), 'HEAD']);
 
 console.log('• [2/5] نسخ الأدوات وقاعدة البيانات…');
-for (const f of ['recovery-server.mjs', 'recovery-app.html', 'recovery-core.mjs', 'sql-split-core.mjs', 'build-full-dump.mjs']) {
+/* أدوات الاسترجاع الحديثة — بدونها لا تعرف الحزمة إلا مسار recovery-app القديم */
+for (const f of ['recovery-server.mjs', 'recovery-app.html', 'recovery-core.mjs', 'sql-split-core.mjs',
+  'build-full-dump.mjs', 'restore-full-file.mjs', 'patch-restore-triggers.mjs', 'dump-header.mjs']) {
   copyFileSync(join(ROOT, 'tools', f), join(OUT, 'recovery-tools', f));
 }
+/* كتل الإصلاح: patch-restore-triggers.mjs يقرأها من ../docs/sql-parts/fixes/ نسبةً إلى
+   ملف الأداة، والأداة في rescue/recovery-tools/ ⇒ المسار هو rescue/docs/… */
+mkdirSync(join(OUT, 'docs', 'sql-parts', 'fixes'), { recursive: true });
+for (const f of ['03-restore-trigger-blocks.sql', '04-brc-secret-fallback.sql']) {
+  copyFileSync(join(ROOT, 'docs', 'sql-parts', 'fixes', f), join(OUT, 'docs', 'sql-parts', 'fixes', f));
+}
 cpSync(join(ROOT, 'tools', 'recovery'), join(OUT, 'recovery-tools', 'recovery'), { recursive: true });
+/* الكتلتان أيضاً في database/ ليجدهما من يقرأ الحزمة بلا أدوات */
 for (const [from, to] of [
   ['docs/schema.sql', 'database/schema.sql'],
+  ['docs/sql-parts/fixes/03-restore-trigger-blocks.sql', 'database/03-restore-trigger-blocks.sql'],
+  ['docs/sql-parts/fixes/04-brc-secret-fallback.sql', 'database/04-brc-secret-fallback.sql'],
   ['docs/schema-live-inventory.json', 'database/schema-live-inventory.json'],
   ['docs/RECOVERY-ONE-CLICK.md', 'database/RECOVERY-ONE-CLICK.md'],
   ['docs/sql-parts/fixes/02-restore-gap.sql', 'database/02-restore-gap.sql']
@@ -60,7 +71,7 @@ for (const f of ['recreate-cron.sql', 'storage-restore.sql', 'auth-settings.md',
   if (existsSync(src)) copyFileSync(src, join(OUT, 'config', f));
 }
 /* المستندات التعريفية — مصدرها docs/rescue/ وليس الحزمة نفسها */
-for (const f of ['RESTORE-GUIDE-AR.md', 'INVENTORY.json.md', 'MISSING-ITEMS.md', 'TEST-RESULTS.md', 'HANDOFF-AR.md']) {
+for (const f of ['STANDBY-AR.md', 'RESTORE-GUIDE-AR.md', 'INVENTORY.json.md', 'MISSING-ITEMS.md', 'TEST-RESULTS.md', 'HANDOFF-AR.md']) {
   const src = join(ROOT, 'docs', 'rescue', f);
   if (existsSync(src)) copyFileSync(src, join(OUT, f));
 }
