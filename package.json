@@ -109,7 +109,10 @@
     "build:full": "node tools/build-full-dump.mjs",
     "recovery:serve": "node tools/recovery-server.mjs",
     "test:recovery-restore": "node tests/recovery-restore.mjs",
-    "rescue:build": "node tools/build-rescue-kit.mjs"
+    "rescue:build": "node tools/build-rescue-kit.mjs",
+    "restore:file": "node tools/restore-full-file.mjs",
+    "restore:patch": "node tools/patch-restore-triggers.mjs",
+    "test:patch-restore": "node tests/patch-restore-triggers.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",
