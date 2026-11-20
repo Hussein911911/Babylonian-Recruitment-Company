@@ -303,9 +303,14 @@
                `applicants`، و`employer_job_credentials` قبل `jobs` — فتفشل
                الفواصل الأجنبية.
          `session_replication_role = replica` تحلّها لكنها تحتاج superuser
-         وغير مضمونة على Supabase. البديل المضمون: تعطيل صريح لكل مشغّلات
-         `brc` — ALL لا USER، لأن USER يُبقي مشغّلات فحص الفواصل الأجنبية
-         فعّالة فتظل المشكلة (٢) قائمة.
+         وغير مضمونة على Supabase. البديل المضمون: تعطيل صريح لكل مشغّل
+         في `brc`، **بالاسم** — لا `… TRIGGER ALL` ولا USER:
+           • `ALL` يمسّ مشغّلات القيود الداخلية ⇒ يحتاج superuser، ودور
+             `postgres` في مشاريع Supabase الحديثة **ليس** superuser. كانت
+             كتلة التعطيل تُهمَل بصمت (ملفوفة بـ`EXCEPTION … NULL`)، ثم
+             تُجهض كتلة الإعادة معاملة البيانات كلها بـ42501 — وهو سبب
+             فشل الملف المُنزَّل من صفحة النسخ الاحتياطي عند العبارة 397.
+           • USER يُبقي مشغّلات فحص الفواصل الأجنبية فعّالة فتظل المشكلة (٢).
          التفريغ ديناميكي من الكتالوج: كتابة أسماء جداول صريحة كانت تُفشل
          الملف كله على أي مخطط ناقص بـ `relation … does not exist`.
          `staff` مستثناة بقصد: تفريغها يحذف حساب المدير فيفقد الدخول.
@@ -318,9 +323,11 @@
       '  END LOOP;\n' +
       'END $$;\n\n' +
       'DO $$ DECLARE t record; BEGIN\n' +
-      "  FOR t IN SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n" +
+      "  FOR t IN SELECT c.relname AS tbl, g.tgname AS trg\n" +
+      "             FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n" +
+      "             JOIN pg_trigger g ON g.tgrelid = c.oid AND NOT g.tgisinternal\n" +
       "            WHERE n.nspname = 'brc' AND c.relkind = 'r' LOOP\n" +
-      "    EXECUTE format('ALTER TABLE brc.%I DISABLE TRIGGER ALL', t.relname);\n" +
+      "    EXECUTE format('ALTER TABLE brc.%I DISABLE TRIGGER %I', t.tbl, t.trg);\n" +
       '  END LOOP;\n' +
       'EXCEPTION WHEN insufficient_privilege OR others THEN NULL; END $$;\n\n';
 
@@ -421,9 +428,11 @@
        فإما تُكتب البيانات وتُعاد المشغّلات معاً، أو لا شيء. */
     var reenable = '\n-- إعادة تفعيل المشغّلات التي أُوقفت أثناء التحميل\n' +
       'DO $$ DECLARE t record; BEGIN\n' +
-      "  FOR t IN SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n" +
-      "            WHERE n.nspname = 'brc' AND c.relkind = 'r' LOOP\n" +
-      "    EXECUTE format('ALTER TABLE brc.%I ENABLE TRIGGER ALL', t.relname);\n" +
+      "  FOR t IN SELECT c.relname AS tbl, g.tgname AS trg\n" +
+      "             FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace\n" +
+      "             JOIN pg_trigger g ON g.tgrelid = c.oid AND NOT g.tgisinternal\n" +
+      "            WHERE n.nspname = 'brc' AND c.relkind = 'r' AND g.tgenabled <> 'O' LOOP\n" +
+      "    EXECUTE format('ALTER TABLE brc.%I ENABLE TRIGGER %I', t.tbl, t.trg);\n" +
       '  END LOOP;\n' +
       'END $$;\n\n';
 

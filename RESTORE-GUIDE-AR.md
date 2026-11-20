@@ -49,7 +49,8 @@ node tools/restore-full-file.mjs "C:\path\to\HRC-FULL-2026-11-19.sql" `
 ### البديل: psql (الأدق، عبارة عبارة)
 
 ```bash
-# ترقيع أولاً (إلزامي على مشاريع Supabase الحديثة)
+# ترقيع أولاً — لازم لملف نُزِّل قبل 2026-11-20 (يحمل TRIGGER ALL)
+# المولّد في الموقع أُصلح اليوم، فأي تنزيل جديد لا يحتاج هذا الترقيع.
 node tools/patch-restore-triggers.mjs HRC-FULL-2026-11-19.sql HRC-FULL-2026-11-19-patched.sql
 
 # ثم التنفيذ (‏psql يسأل كلمة المرور بنفسه إن لم تضعها في الـDSN)
