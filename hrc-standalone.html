@@ -19371,7 +19371,27 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       return { text: 'سكيما brc غير مُعرَّضة للمشروع', hint: 'Settings → API → Exposed schemas: أضف brc' };
     }
     if (code === '42501' || /permission denied/i.test(msg)) {
-      return { text: 'لا صلاحية كافية (RLS/منح مفقود)', hint: 'راجع سياسات ومنح §8 و§9 في docs/schema.sql' };
+      /* ⚠️ عطل حقيقي أُصلح 2026-11-17. الرسالة القديمة «راجع سياسات ومنح
+         §8 و§9» كانت **مضلّلة**: المالك راجعها ولم يجد شيئاً، لأن السبب
+         لم يكن سياسة ولا منحاً على الجدول — بل منحاً على **التسلسل**.
+
+         `permission denied for sequence X` خطأ مختلف تماماً عن
+         `permission denied for table X`، وإصلاحه سطر واحد مختلف. ولكل
+         تسلسل اسمه في الرسالة، فنسحبه ونذكر الحلّ الدقيق بدل التوجيه
+         العام. هذا الفرق بين «راجع ٣١٥٤ سطراً» و«نفّذ هذا السطر». */
+      var seq = (/sequence\s+([a-z0-9_.]+)/i.exec(msg) || [])[1];
+      if (seq) {
+        var bare = seq.replace(/^brc\./, '');
+        return {
+          text: 'منح التسلسل مفقود: ' + bare,
+          hint: 'نفّذ في SQL Editor: grant usage, select, update on sequence brc.' + bare +
+                ' to authenticated;'
+        };
+      }
+      return {
+        text: 'لا صلاحية كافية (RLS/منح مفقود)',
+        hint: 'إن كانت الرسالة تذكر sequence فمنح التسلسل ناقص — راجع منح التسلسلات في docs/schema.sql §9'
+      };
     }
 
     if (code === '42703' || /column .* does not exist/i.test(msg)) {
@@ -19672,6 +19692,22 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
            التالية — انظر advanceSnapshot في cloud-sync.js. */
         cloud.lastError = cloud.lastError || ('تعذّر دفع ' + res.failed + ' عملية — ستُعاد تلقائياً');
         console.warn('[HRC/sync] ' + cloud.lastError + ': ' + (res.pending || []).join(', '));
+      } else if (res && !res.error) {
+        /* ⚠️ عطل حقيقي أُصلح 2026-11-17 (بلاغ المالك: «هاي تروح من أسوي
+           رفرش للموقع»).
+
+           السبب: `lastError` كان يُمسح في **بداية** pushCloud فقط. فإذا
+           نجح الدفع لاحقاً بلا رجوع إلى pushCloud (أو جاء `skipped` من
+           مسار آخر)، بقي الخطأ القديم معلّقاً في الذاكرة. والواجهة تقرأ
+           `cloudStatus().lastError` فتعرض رسالة «تعذّر إكمال المزامنة»
+           على حالة سليمة تماماً.
+
+           وهذا أخطر من خطأ حقيقي: خطأ كاذب يُفقد الثقة في الأداة، ويجعل
+           المدير يظنّ نسخته غير آمنة وهو آمن. فالقاعدة: **النجاح يمحو
+           الخطأ**، لا يبقى أثر لخطأ انتهى. */
+        cloud.lastError = null;
+        cloud.error = null;
+        cloud.detail = '';
       }
       if (cloud.needsReload) { cloud.needsReload = false; return reloadFromCloud(); }
       return res;
@@ -20125,19 +20161,29 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         return r.data;
       });
     }
-    /* ⚠️ الترتيب مقصود: v3 أولاً (٣)، ثم v2 (٢)، ثم v1 (١).
+    /* ⚠️ الترتيب مقصود: v4 (٤) ثم v3 (٣) ثم v2 (٢) ثم v1 (١).
        ⚠️ عطل أُصلح 2026-11-15: كان يطلب v2 مباشرة. وv2 لا تصدّر
        recovery_chances ولا recovery_prints ولا card_issue_requests ولا
        office_receipts — بينما assets/js/restore-sql.js يتوقّعها جميعاً في
        الملف. فالنتيجة أن النسخة الصحيحة تُبنى بـ'[]' للفرص: 46 فرصة
-       مستهلكة على 30 بطاقة ترجع متاحة بعد الاسترجاع. v3 يُضيفها فوق v2. */
-    return call('recovery_export_v3', 3).then(function (d) {
+       مستهلكة على 30 بطاقة ترجع متاحة بعد الاسترجاع. v3 يُضيفها فوق v2.
+       ⚠️ و2026-11-18: v3 بدورها تعدّ card_number_registry في `counts` ولا
+       تصدّر صفوفه — فيرى المدير الرقم 175 ويظنّ السجل وصل. v4 يُضيف
+       الصفوف و`card_number_floor` فوق v3.
+       السقوط إلى نسخة أقدم يبقى بقصد: مشروع لم يُهاجَر بعد يجب أن يستطيع
+       تنزيل شيء بدل لا شيء. لكن الحمولة الناقصة لم تعد تُبنى بصمت —
+       assets/js/restore-sql.js يشتقّ أرضية العدّاد من السجل أو من
+       issued_serials، ويرفع تحذيراً في الملف نفسه. */
+    return call('recovery_export_v4', 4).then(function (d) {
       if (d) return d;
-      return call('recovery_export_v2', 2).then(function (d2) {
-        if (d2) return d2;
-        return call('recovery_export_full', 1).then(function (legacy) {
-          if (legacy) return legacy;
-          throw new Error('لم يُعد الخادم نسخة صالحة — تأكد أن الهجرات مطبّقة على القاعدة');
+      return call('recovery_export_v3', 3).then(function (d3) {
+        if (d3) return d3;
+        return call('recovery_export_v2', 2).then(function (d2) {
+          if (d2) return d2;
+          return call('recovery_export_full', 1).then(function (legacy) {
+            if (legacy) return legacy;
+            throw new Error('لم يُعد الخادم نسخة صالحة — تأكد أن الهجرات مطبّقة على القاعدة');
+          });
         });
       });
     });

@@ -321,6 +321,29 @@ insert into brc.settings (key, value) values
       'disclaimer',  'ملاحظات مهمة: خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية. الشركة غير مسؤولة قانونياً وعشائياً عن الشخص المرسل وصاحب العمل.'))
 on conflict (key) do nothing;
 
+-- 2.7 أسرار التشغيل (2026-11-20)
+--     ---------------------------------------------------------------------
+--     لماذا جدول وليس إعداد قاعدة فقط؟ لأن `app.brc_secret` إعداد مخصّص
+--     (custom GUC)، وضبطه بـ`ALTER DATABASE … SET` يحتاج **superuser**.
+--     ودور `postgres` في مشاريع Supabase الحديثة **ليس superuser** — أثبتنا
+--     ذلك تنفيذاً: `ERROR 42501: permission denied to set parameter`.
+--     النتيجة كانت أن `verify_token` تبقى معطّلة (‏22023) على أي مشروع جديد
+--     لا يملك خيار Custom Postgres Config.
+--
+--     الحل: مصدر ثانٍ داخل القاعدة نفسها، محميٌّ تماماً:
+--       • RLS مفعّلة وبلا أي سياسة ⇒ لا قراءة لأي دور عميل
+--       • REVOKE صريح من public/anon/authenticated/service_role
+--       • القراءة تحدث **داخل** `verify_token` وهي SECURITY DEFINER (بصلاحية المالك)
+--     ولا يوجد هنا أي سرّ مكتوب: الصف يُدخل يدوياً مرة واحدة بعد النشر.
+--     ترتيب الأولوية في الدالة: إعداد القاعدة أولاً، ثم هذا الجدول.
+create table if not exists brc.app_secrets (
+  name       text primary key,
+  value      text not null,
+  updated_at timestamptz not null default now()
+);
+alter table brc.app_secrets enable row level security;
+revoke all on brc.app_secrets from public, anon, authenticated, service_role;
+
 -- ===========================================================================
 --  3) توليد الأكواد التسلسلية
 -- ===========================================================================
@@ -358,11 +381,21 @@ create or replace function brc.verify_token(p_serial text) returns text
 language plpgsql stable
 set search_path = brc, public, extensions
 as $$
-declare v_secret text := nullif(current_setting('app.brc_secret', true), '');
+declare v_secret text;
 begin
-  -- إن لم يُضبط المفتاح نتوقف بخطأ واضح بدل استخدام سرّ مكشوف في المستودع
+  -- المصدر ١: إعداد القاعدة app.brc_secret (الطريقة الأصلية).
+  -- يحتاج superuser لضبطه، وليس متاحاً على كل مشاريع Supabase.
+  v_secret := nullif(current_setting('app.brc_secret', true), '');
+
+  -- المصدر ٢ (2026-11-20): جدول brc.app_secrets — يُستخدم حين لا يتوفّر الإعداد،
+  -- أو حين لا يملك دور النشر صلاحية ضبطه. نفس البصمة، بلا تغيير في السلوك.
   if v_secret is null or length(v_secret) < 16 then
-    raise exception 'app.brc_secret غير مضبوط أو أقصر من 16 حرفاً — راجع تعليمات ضبط المفتاح أعلى الدالة في docs/schema.sql'
+    select s.value into v_secret from brc.app_secrets s where s.name = 'brc_secret';
+  end if;
+
+  -- إن لم يُضبط المفتاح بأي مصدر نتوقف بخطأ واضح بدل استخدام سرّ مكشوف في المستودع
+  if v_secret is null or length(v_secret) < 16 then
+    raise exception 'مفتاح البصمة غير مضبوط أو أقصر من 16 حرفاً — اضبط app.brc_secret أو أدخل صفاً في brc.app_secrets باسم brc_secret (تعليمات أعلى الدالة في docs/schema.sql)'
       using errcode = '22023';
   end if;
   return encode(hmac(p_serial, v_secret, 'sha256'), 'hex');

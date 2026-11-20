@@ -90,14 +90,21 @@ try {
      على Supabase. البديل المضمون هو تعطيل صريح لكل مشغّلات brc ثم إعادتها.
      الفحص الآن يطلب الطرفين معاً: تعطيلاً **وإعادة تفعيل**، لأن التعطيل
      وحده يترك قاعدة الإنتاج بلا تدقيق وبلا إصدار أرقام بطاقات. */
-  check('فيه تعطيل صريح للمشغّلات', /ALTER TABLE brc\.%I DISABLE TRIGGER ALL/.test(txt),
+  check('فيه تعطيل صريح للمشغّلات (باسم كل مشغّل)', /ALTER TABLE brc\.%I DISABLE TRIGGER %I/.test(txt),
     'غائب — المشغّلات ستُنشئ صفوفاً تتعارض مع صفوفنا');
-  check('تعطيلها ALL لا USER', !/DISABLE TRIGGER USER/.test(txt),
+  /* 2026-11-20: `… TRIGGER ALL` يتطلب superuser، ودور postgres في مشاريع
+     Supabase الحديثة ليس superuser — فكان التعطيل يُهمَل والإعادة تُجهض
+     البيانات. الممنوع الآن هو ALL نفسها، لا USER. */
+  /* نفحص الكود لا التعليقات: التعليقات تشرح العطب القديم وتسمّيه. */
+  const codeOnly = txt.replace(/^\s*--[^\n]*$/gm, '');
+  check('لا يستعمل TRIGGER ALL في الكود (ALL يتطلب superuser)', !/TRIGGER\s+ALL/i.test(codeOnly),
+    'ALL يتطلب superuser فيفشل الاسترجاع على Supabase');
+  check('تعطيلها بالمشغّل لا USER الجماعي', !/DISABLE TRIGGER USER/.test(txt),
     'USER يُبقي فحص الفواصل الأجنبية فعّالاً فيفشل التحميل');
   /* الإعادة يجب أن تكون قبل COMMIT: بعدها تصبح معاملة ثانية، ولو رجع
      الملف لبقي الإنتاج بمشغّلات معطّلة. */
-  const iDis = txt.indexOf('DISABLE TRIGGER ALL');
-  const iEn = txt.indexOf('ENABLE TRIGGER ALL');
+  const iDis = txt.indexOf('DISABLE TRIGGER %I');
+  const iEn = txt.indexOf('ENABLE TRIGGER %I');
   const iCom = txt.search(/^COMMIT;$/m);
   check('تُعاد المشغّلات قبل COMMIT',
     iDis > 0 && iEn > iDis && iCom > iEn,
