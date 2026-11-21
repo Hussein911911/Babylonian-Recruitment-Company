@@ -1,112 +1,129 @@
-# نسخة الطوارئ — استعادة المنظومة على مشروع جديد (بلا هذا المستودع)
+# نسخة الطوارئ — استعادة المنظومة كاملة على مشروع جديد ومستودع جديد
 
-> الغرض: لو توقّف المشروع الحالي لأي سبب، تُعيد المنظومة كاملة على مشروع
-> Supabase جديد ومستودع جديد من هذه الحزمة وحدها — بلا إنترنت إلا للتنزيل والنشر.
-> كل خطوة هنا مُختبرة فعلياً على قاعدة PostgreSQL حقيقية، وما لم يُختبر مذكور.
-
----
-
-## ١) ماذا في الحزمة — وماذا **ليس** فيها
-
-| داخل الحزمة | خارجها (يجب أن تحفظه بنفسك) |
-|---|---|
-| `database/HRC-FULL-*.sql` — الهيكل + كل البيانات (نسخة 2026-11-21، بصمتها مثبّتة في الأداة) | 🔑 **قيمة `brc_secret`** — مفتاح بصمة البطاقات |
-| `database/schema.sql` + `schema-live-inventory.json` | 👤 **كلمات مرور الحسابات الثلاثة** (لا تُصدَّر أبداً) |
-| `database/03-…sql` · `04-…sql` — كتلتا المشغّلات + مفتاح البصمة | 🖼️ **ملفات الصور** — تُرفع من `storage/job-images/jobs/` |
-| `config/recreate-cron.sql` · `storage-restore.sql` · `auth-settings.md` | 📌 نسخة من هذه الحزمة في مكانين مختلفين على الأقل |
-| `recovery-tools/` — منفّذ الملف الكامل + الترقيب + قارئ الترويسة | |
-| `source-code.zip` — الكود كاملاً عند commit البناء | |
-| `site-ready-to-deploy/` — الموقع مبنيّاً (يشير إلى المشروع **القديم**) | |
-| `CHECKSUMS.sha256` — بصمة كل ملف | |
-
-⚠️ **الحزمة تحتوي بيانات شخصية** (أسماء وهواتف أصحاب البطاقات). لا ترفعها إلى
-Git ولا إلى قرص مشترك. احفظها مشفّرة أو على وسيط خاص.
-
-⚠️ ملف الـSQL **لا يحمل** الصور ولا الحسابات ولا المفتاح — هذه الثلاثة هي
-أكثر ما يُنسى، وبفقدانها يفشل «كل شي شغال» يوم الحاجة.
+> الغرض: لو توقّف المشروع الحالي لأي سبب، تُعيد المنظومة على مشروع Supabase
+> جديد ومستودع جديد من هذه الحزمة وحدها.
+> كل خطوة مُختبرة فعلياً على PostgreSQL حقيقي بدور غير superuser، وما لم يُختبر مذكور صراحةً.
 
 ---
 
-## ٢) يوم الحاجة — بالترتيب
+## ١) كيف تُبنى الحزمة
 
-### الخطوة ٠ — تحقّق من سلامة الحزمة أولاً
 ```bash
-unzip rescue-kit.zip && cd rescue
-sha256sum -c CHECKSUMS.sha256        # يجب أن تكون كلها OK
+# ١. ضع ملف البيانات المنزَّل من صفحة النسخ الاحتياطي في جذر المستودع:
+#    HRC-FULL-<التاريخ>.sql
+# ٢. الصور (إن أردتها): storage/job-images/jobs/*.jpg  — تنزّلها من لوحة Supabase
+# ٣. كلمة المرور: ضعها في ملف نصّي (لا تكتبها في سطر الأوامر)
+printf '%s\n' 'عبارة مرور طويلة تختارها' > pw.txt
+
+npm ci
+node tools/build-rescue-kit.mjs --password-file pw.txt --secret-file brc_secret.txt
 ```
 
-### الخطوة ١ — مشروع Supabase جديد
-- أنشئ المشروع، واحفظ كلمة مرور قاعدة البيانات في مدير كلمات المرور.
-- **غير مجاني:** مشروع مجاني خامل يُوقَف بعد ~٩٠ يوماً — النسخة الاحتياطية
-  الحقيقية هي هذه الحزمة، لا المشروع الفارغ.
+النتيجة: `rescue/rescue-kit.hrcbak` — ملف واحد مشفّر (scrypt + AES‑256‑GCM).
+لا تُبقي نسخة غير مشفّرة بجانبه؛ السكربت يحذفها بنفسه.
 
-### الخطوة ٢ — استرجاع البيانات (الخطوة الحاسمة)
+**بصمة الحزمة** تُطبع في النهاية، وتُكتب أيضاً بـ`sha256sum rescue/rescue-kit.hrcbak`.
+احفظ البصمة **خارج** الحزمة (مدير كلمات المرور أو ورقة في الخزنة). بصمة داخل
+الملف لا تحمي الملف من التعديل — التي خارجها هي التي تُثبت.
+
+## ٢) كيف تُفحص قبل الاعتماد عليها
+
+```bash
+node tools/verify-rescue-kit.mjs rescue/rescue-kit.hrcbak --password-file pw.txt
+# ومع قاعدة اختبار جاهزة:
+node tools/verify-rescue-kit.mjs rescue/rescue-kit.hrcbak --password-file pw.txt \
+  --dsn "postgresql://hrc_owner:…@127.0.0.1:5432/hrc_test"
+```
+
+يفعل: يفكّ التشفير → يفكّ الضغط → يتحقّق من **كل** بصمة في `CHECKSUMS.sha256` →
+يطابق `manifest.json` وبصمة ملف البيانات → (اختيارياً) يستعيد ويطلب `PASS`.
+أي اختلاف = `❌ FAIL` ورمز خروج غير صفري.
+
+## ٣) ماذا في الحزمة — وماذا **ليس** فيها
+
+| داخل الحزمة | خارجها (احفظه بنفسك) |
+|---|---|
+| `database/HRC-FULL-*.sql` — الهيكل + كل البيانات | 👤 **كلمات مرور الحسابات** — لا تُصدَّر أبداً |
+| `database/schema.sql` + الجرد + كتلتا الإصلاح 03/04 | ✉️ **البُرد الإلكترونية** — ليست في القاعدة أصلاً (لا عمود email في `brc.staff`) |
+| `recovery-tools/` — منفّذ الملف + الترقيب + فكّ الحزمة + الفحص | 🔑 كلمة مرور الحزمة (إن نسيتها لا فكّ) |
+| `source-code.zip` + `site-ready-to-deploy/` | 📌 بصمة الحزمة نفسها |
+| `config/accounts.json` — المستخدمون والأدوار | |
+| `config/project-settings.json` — ما يُضبط في لوحة المشروع | |
+| `config/brc_secret.enc` — مفتاح البصمة **مشفّراً** | |
+| `config/recreate-cron.sql` · `storage-restore.sql` | |
+| `storage/job-images/jobs/*` — الصور (إن زوّدتها) | |
+| `manifest.json` + `CHECKSUMS.sha256` | |
+
+⚠️ الحزمة تحتوي بيانات شخصية (٧٢٦ متقدماً). لذلك تُشفَّر افتراضياً، ولا تدخل Git
+(`*.hrcbak` و`*.enc` في `.gitignore`).
+
+## ٤) يوم الحاجة — سبع خطوات
+
+### ٠ — فكّ الحزمة
+```bash
+node tools/open-backup.mjs rescue-kit.hrcbak --password-file pw.txt
+unzip rescue-kit.zip && cd rescue
+sha256sum -c CHECKSUMS.sha256          # كلها OK وإلا توقّف
+```
+
+### ١ — مشروع Supabase جديد
+أنشئ المشروع، واحفظ كلمة مرور القاعدة في مدير كلمات المرور.
+(مشروع مجاني خامل يُوقَف بعد ~٩٠ يوماً — النسخة الحقيقية هي هذه الحزمة.)
+
+### ٢ — استرجاع البيانات
 ```bash
 node recovery-tools/restore-full-file.mjs database/HRC-FULL-*.sql \
   --dsn "postgresql://postgres.<REF>:<PASSWORD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres" \
   --yes
 ```
-- نسخة 2026-11-21 بصمتها معروفة للأداة: تُنفَّذ بلا أي علم إضافي.
-- أي ملف أحدث منها: أضف `--allow-new` (تُقرأ الأعداد من ترويسته).
-- أي ملف نُزّل قبل 2026-11-20: يُرقَّع تلقائياً بلا تدخّل.
-- لا تلصق الملف في محرّر SQL: يقصّ عند ~٢٠٠٠ سطر ويقول Success وهو ناقص.
-- النهاية المطلوبة: `✅ PASS` مع أعداد مطابقة. بلا PASS لا تكمل.
+- ملف نُزّل قبل 2026‑11‑20 يُرقَّع تلقائياً؛ ملف أحدث من المثبّت يُنفَّذ بـ`--allow-new`.
+- لا تلصقه في محرّر SQL (يقصّ عند ~٢٠٠٠ سطر ويقول Success).
+- لا تكمل بلا `✅ PASS`.
 
-### الخطوة ٣ — مفتاح البصمة (سطر واحد)
+### ٣ — مفتاح البصمة
+فكّ `config/brc_secret.enc` بالأداة نفسها، ثم:
 ```sql
-insert into brc.app_secrets (name, value)
-values ('brc_secret', '<القيمة من مدير كلمات المرور>')
+insert into brc.app_secrets (name, value) values ('brc_secret', '<القيمة>')
 on conflict (name) do update set value = excluded.value, updated_at = now();
-
-select length(brc.verify_token('HRC-BC-000120'));   -- يجب 64
+select length(brc.verify_token('HRC-BC-000120'));   -- 64
 ```
 
-### الخطوة ٤ — إعدادات المشروع (لوحة Supabase)
-1. `Project Settings → API → Exposed schemas`: أضف **`brc`**.
-2. `Authentication → URL Configuration`: `site_url` = رابط الموقع الجديد،
-   وأضف الرابط إلى `uri_allow_list`.
-3. نفّذ `config/recreate-cron.sql` (الإفراج التلقائي + النسخ الأسبوعي).
+### ٤ — إعدادات المشروع
+من `config/project-settings.json`: أضف `brc` إلى Exposed schemas · `site_url` و`uri_allow_list` ·
+ونفّذ `config/recreate-cron.sql`.
 
-### الخطوة ٥ — الصور
-```sql
--- في محرّر SQL: config/storage-restore.sql  (يعيد الوعاء وسياساته)
-```
-ثم ارفع ملفات `storage/job-images/jobs/*` إلى bucket **`job-images`**.
-
-### الخطوة ٦ — الحسابات الثلاثة
-أنشئها في `Authentication → Users` (كلمات مرور جديدة، لا القديمة)، ثم:
+### ٥ — الحسابات
+من `config/accounts.json`: أنشئ المستخدمين ببُردهم، أعد تعيين كلمات المرور، ثم:
 ```sql
 update brc.staff s set auth_id = u.id
-from auth.users u where u.email = '<بريد الموظف>' and s.username = '<اسم المستخدم>';
+from auth.users u where u.email = '<بريد>' and s.username = '<مستخدم>';
+select count(*) from brc.staff where auth_id is not null;   -- 3
 ```
-تحقّق: `select count(*) from brc.staff where auth_id is not null;` → 3
 
-### الخطوة ٧ — الموقع على مستودع جديد
+### ٦ — الصور
+```sql
+-- config/storage-restore.sql يعيد الوعاء وسياساته
+```
+ثم ارفع `storage/job-images/jobs/*` إلى bucket `job-images`.
+
+### ٧ — الموقع
 ```bash
 unzip source-code.zip -d site && cd site
-npm ci
-node tools/supabase-repoint.mjs <REF-الجديد> <PUBLISHABLE-KEY>
+npm ci && node tools/supabase-repoint.mjs <REF-الجديد> <PUBLISHABLE-KEY>
 npm run dist
 ```
-- أنشئ مستودعاً جديداً وارفع إليه هذا المجلد، ثم مشروع Cloudflare Pages جديد
-  مربوطاً به (لا تغيّر الدومين القديم قبل أن يعمل الجديد).
-- `site-ready-to-deploy/` صالح للنشر الفوري **فقط** على المشروع القديم، لأن
-  عنوانه ومفتاحه مدموجان فيه.
+ارفع إلى مستودع GitHub جديد، واربطه بمشروع Cloudflare Pages جديد.
+`site-ready-to-deploy/` صالح فقط للمشروع القديم (عنوانه ومفتاحه مدموجان فيه).
 
----
-
-## ٣) تحقّق نهائي — «كل شي شغال» يعني هذه
-- `select count(*) from brc.applicants;` = العدد المكتوب في ترويسة الملف.
+## ٥) تحقّق نهائي — «كل شي شغال» يعني هذه
+- `select count(*) from brc.applicants;` = العدد في ترويسة الملف.
 - `select count(*) from brc.staff where auth_id is not null;` = 3.
-- دخول كل حساب يعمل، والدور صحيح.
-- صفحة التحقّق تقرأ بطاقة قديمة (QR) بلا خطأ — وهذا يثبت أن `brc_secret` صحيح.
-- صورة وظيفة واحدة على الأقل تظهر من `job-images`.
-- الإفراج التلقائي يعمل: `select * from cron.job;` → أربع مهام نشطة.
+- الدخول بكل حساب يعمل والدور صحيح.
+- بطاقة قديمة تُقرأ بالباركود بلا خطأ (يثبت صحة `brc_secret`).
+- صورة وظيفة تظهر من `job-images`.
+- `select * from cron.job;` أربع مهام نشطة.
 
----
-
-## ٤) ما لم يُختبر هنا
-- استعادة على مشروع Supabase **حقيقي** عبر الشبكة — كل الاختبار تم على
-  PostgreSQL محلي (16.2) بدور غير superuser، والهدف إصداره 17.11.
-- رفع الصور فعلياً إلى bucket (لا يوجد مشروع حقيقي في بيئة الاختبار).
-- Cloudflare Pages والنشر والدومين.
+## ٦) ما لم يُختبر
+- استعادة على مشروع Supabase حقيقي عبر الشبكة (كل الاختبار محلي 16.2، والهدف 17.6.1).
+- رفع الصور فعلياً إلى bucket.
+- Cloudflare Pages والدومين.

@@ -15,6 +15,39 @@
   var $ = function (id) { return document.getElementById(id); };
   var state = { envelope: null, payload: null, fileName: '' };
 
+  /* ═══ بصمة الملف (SHA-256) — تُحسب بعد البناء ═══════════════════════════
+     لماذا؟ الملف الذي يُحفظ سنة على USB لا طريقة لإثبات أنه نفس الملف إلا
+     ببصمة محفوظة **خارجه**. البصمة داخل الملف نفسه لا تحمي من تعديل الملف.
+     ملاحظة: `crypto.subtle` غير متاح في `file://` عند بعض المتصفحات، فنقول
+     ذلك صراحةً بدل عرض بصمة كاذبة. */
+  var lastFull = null;   /* { sql, counts } — آخر ملف كامل بُني في هذه الجلسة */
+
+  function sha256Hex(text) {
+    if (!window.crypto || !window.crypto.subtle || !window.TextEncoder) return Promise.resolve(null);
+    return window.crypto.subtle.digest('SHA-256', new window.TextEncoder().encode(text))
+      .then(function (d) {
+        return Array.prototype.map.call(new Uint8Array(d), function (b) {
+          return b.toString(16).padStart(2, '0');
+        }).join('');
+      })
+      .catch(function () { return null; });
+  }
+
+  function showFingerprint(sql, counts) {
+    var box = $('rp-sha-box'), out = $('rp-sha');
+    if (!box || !out) return;
+    box.hidden = false;
+    out.textContent = '… جارٍ الحساب';
+    sha256Hex(sql).then(function (hex) {
+      if (!hex) {
+        out.textContent = 'غير متاح في هذا المتصفح (افتح الصفحة عبر http وليس file://)';
+        return;
+      }
+      lastFull = { sql: sql, counts: counts, sha: hex };
+      out.textContent = hex;
+    });
+  }
+
   function setStatus(el, text, kind) {
     if (!el) return;
     el.textContent = text || '';
@@ -488,6 +521,7 @@
     }
     window.HRCRestoreView.download('HRC-FULL-' + window.HRCRestoreView.stamp() + '.sql',
       sql, 'application/sql;charset=utf-8');
+    showFingerprint(sql, sum.counts);
     setStatus(unlockStatus,
       'نُزّل الملف الكامل: ' + sum.counts.applicants + ' بطاقة · ' +
       sum.counts.jobs + ' وظيفة · ' + sum.counts.job_attempts + ' محاولة · ' +
@@ -498,6 +532,40 @@
   if (allCsvBtn) allCsvBtn.addEventListener('click', function () {
     if (!state.payload || !window.HRCRestoreView) return;
     window.HRCRestoreView.exportAll();
+  });
+
+  /* ═══ زرّا البصمة: نسخ + مانيفست ═══════════════════════════════════════ */
+  var copyBtn = $('rp-sha-copy');
+  if (copyBtn) copyBtn.addEventListener('click', function () {
+    var out = $('rp-sha');
+    var text = out ? out.textContent : '';
+    if (!text || text.indexOf('…') === 0 || text.indexOf('غير متاح') === 0) {
+      setStatus(unlockStatus, 'لا بصمة بعد — أنشئ الملف الكامل أولاً', 'error');
+      return;
+    }
+    var done = function () { setStatus(unlockStatus, 'نُسخت البصمة — احفظها خارج الحزمة', 'ok'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () { done(); });
+    } else {
+      var r = document.createRange(); r.selectNodeContents(out);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      setStatus(unlockStatus, 'حُدِّدت البصمة — انسخها يدوياً (Ctrl+C)', 'ok');
+    }
+  });
+
+  var mfBtn = $('rp-manifest');
+  if (mfBtn) mfBtn.addEventListener('click', function () {
+    if (!lastFull) { setStatus(unlockStatus, 'أنشئ الملف الكامل أولاً', 'error'); return; }
+    var c = lastFull.counts || {};
+    var mf = {
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      dump: { name: 'HRC-FULL-' + window.HRCRestoreView.stamp() + '.sql', sha256: lastFull.sha, counts: c },
+      note: 'manifest صغير يُحفظ مع ملف البيانات. لا يحتوي أي سر ولا أي بيانات شخصية.',
+    };
+    window.HRCRestoreView.download('HRC-MANIFEST-' + window.HRCRestoreView.stamp() + '.json',
+      JSON.stringify(mf, null, 2), 'application/json;charset=utf-8');
+    setStatus(unlockStatus, 'نُزّل manifest.json — احفظه مع ملف CSV/البيانات', 'ok');
   });
 
   $('rp-lock').addEventListener('click', function () {

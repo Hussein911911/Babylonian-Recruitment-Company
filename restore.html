@@ -129,10 +129,33 @@
         أعطه للأداة (أو ارفعه في محادثة الذكاء الاصطناعي) وهي تنفّذه كاملاً.
         في آخر الملف جدول أعداد — قارنه بأعدادك، فإن اختلف رقم فلم يُنفَّذ كاملاً.
       </p>
+      <!-- بصمة الملف: تُحسب بعد البناء ليتحقّق المالك لاحقاً أن الحزمة التي
+           بيده هي نفسها. تُحفظ **خارج** الحزمة — بصمة داخل الملف لا تحمي
+           الملف من التعديل، وإنما تحمي من لا يملك البصمة من انتحال نسخة. -->
+      <div class="rp-sha" id="rp-sha-box" hidden
+           style="flex-basis:100%;margin-top:10px;padding:10px 12px;border:1px solid rgba(212,175,55,.35);border-radius:10px">
+        <div style="font-size:12px;line-height:1.9;color:#5a6b80;margin-bottom:6px">
+          بصمة الملف (SHA-256) — انسخها واحفظها <b>خارج</b> الحزمة (مدير كلمات المرور).
+          بها تُثبت لاحقاً أن الملف لم يُعدَّل.
+        </div>
+        <code id="rp-sha" style="display:block;direction:ltr;text-align:left;font-size:11px;word-break:break-all;color:#0f2a44;background:#f4f6f9;padding:6px 8px;border-radius:6px"></code>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button type="button" class="rp-btn rp-btn-sm" id="rp-sha-copy">نسخ البصمة</button>
+          <button type="button" class="rp-btn rp-btn-sm" id="rp-manifest">تنزيل manifest.json</button>
+        </div>
+      </div>
     </div>
     <div class="rp-embed" id="rp-embed-box">
       <button type="button" class="rp-btn rp-btn-sm" id="rp-embed-images">ضمّن الصور في الملف</button>
       <span class="rp-embed-status" id="rp-embed-status"></span>
+      <!-- توضيح مقصود: زر «ضمّن الصور» يخصّ النسخة المشفّرة (JSON) وحدها.
+           كان النص يوحي بأن الصور تدخل ملف SQL — وهي لا تدخله أبداً، لأن SQL
+           ينقل صفوفاً لا ملفات. من يضمّن ثم ينزّل SQL يظن الصور معه وهي ليست. -->
+      <p class="rp-note" style="flex-basis:100%;margin:6px 0 0;font-size:12px;line-height:1.9;color:#5a6b80">
+        الصور تُضمَّن في <b>النسخة المشفّرة (JSON)</b>. أما «الملف الواحد الكامل (SQL)»
+        فلا يحمل ملفات — SQL ينقل صفوفاً لا صوراً. للحزمة الكاملة: نزّل النسخة المشفّرة
+        مع ملف SQL، أو استخدم حزمة الطوارئ من المستودع.
+      </p>
     </div>
   </section>
 
