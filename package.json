@@ -113,7 +113,10 @@
     "restore:file": "node tools/restore-full-file.mjs",
     "restore:patch": "node tools/patch-restore-triggers.mjs",
     "test:patch-restore": "node tests/patch-restore-triggers.mjs",
-    "test:secret": "node tests/brc-secret-fallback.mjs"
+    "test:secret": "node tests/brc-secret-fallback.mjs",
+    "rescue:verify": "node tools/verify-rescue-kit.mjs",
+    "rescue:open": "node tools/open-backup.mjs",
+    "test:rescue": "node tests/rescue-kit.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",
