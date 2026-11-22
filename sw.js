@@ -47,7 +47,7 @@ const IMAGE_CACHE = 'hrc-public-job-images-v1';
 const IMAGE_META = 'hrc-public-job-image-meta-v1';
 const IMAGE_LIMIT = 64;
 const IMAGE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
-const PUBLIC_STORAGE_ORIGIN = 'https://vqsvztudvfukyuerzcgx.supabase.co';
+const PUBLIC_STORAGE_ORIGIN = 'https://kdtatwuycidndsulbnqc.supabase.co';
 const urlsToCache = [
   '/',
   '/index.html',
