@@ -18,10 +18,10 @@
 
   root.HRCSupabaseConfig = {
     /* مشروع منصة مكسب للتوظيف — منطقة فرانكفورت */
-    url: 'https://kdtatwuycidndsulbnqc.supabase.co',
+    url: 'https://vqsvztudvfukyuerzcgx.supabase.co',
 
     /* المفتاح العام (Publishable) — آمن للعرض في المتصفح */
-    publishableKey: 'sb_publishable_-3ISdBJhjVX-DA9lXX7IUg_GaQNp8QK',
+    publishableKey: 'sb_publishable_T4tcGsQpLKJz7GoTnn8uKQ_ORLYKDCC',
 
     /* كل كائنات المشروع تعيش في سكيما brc منفصلة عن public */
     schema: 'brc',
