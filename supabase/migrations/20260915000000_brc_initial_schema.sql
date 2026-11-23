@@ -1730,8 +1730,14 @@ create policy applicants_admin_insert on brc.applicants for insert with check (b
 drop policy if exists applicants_staff_update on brc.applicants;
 create policy applicants_staff_update on brc.applicants for update using (brc.is_staff());
 
+/* ⚠️ 2026-11-20 — الإنتاج يمنح الحذف للموظف والمدير (سياسة
+   applicants_staff_delete)، وهذا ملف سياسات موحّد صادر عن تدقيق 2026-11-11
+   («٨ سياسات من ٨ على is_staff()»)، لكن المخطط بقي على مدير فقط. الترحيل الذي
+   نفّذ التغيير (staff_full_operations) غير موجود في supabase/migrations، فكان
+   التغيير يضيع عند أي إعادة بناء. أُعيد الآن ليطابق الإنتاج حرفاً بحرف. */
 drop policy if exists applicants_admin_delete on brc.applicants;
-create policy applicants_admin_delete on brc.applicants for delete using (brc.is_admin());
+drop policy if exists applicants_staff_delete on brc.applicants;
+create policy applicants_staff_delete on brc.applicants for delete using (brc.is_staff());
 
 -- 8.4 المحاولات
 drop policy if exists attempts_staff_read on brc.job_attempts;
@@ -1903,12 +1909,26 @@ grant execute on function brc.apply_with_card(text, text, jsonb) to anon, authen
 --    طلباً إلكترونياً ولا يتحقق من بطاقات غيره. لذلك:
 --      • تُمنح للزائر دوال «بطاقتي» الثلاث فقط: lookup_card (بيانات مقنّنة بلا
 --        رموز) وuse_chance وverify_card_code (تتطلبان رمز الفرصة السري).
---      • لا تُمنح brc.verify_form للزائر (anon): التحقق الداخلي يتم بجلسة موظف
---        مصادَق عليها (authenticated) من صفحة verify.html — محجوبة عن الزائر.
---      • لا تُمنح brc.request_form للزائر: مسار الطلب الإلكتروني أُلغي نهائياً.
+--      • verify_form و request_form: **تُمنحان لـ anon** — انظر التصحيح
+--        المؤرّخ 2026-11-20 في قسم المنح أدناه. هذا التعليق كان يخالف الإنتاج
+--        والكود معاً (cloud.js ينادي الدالتين بلا جلسة).
 -- ⚠️ ولا تُمنح brc.public_verification أصلاً: تلك الواجهة تكشف serial + full_name
 --    + status لكل البطاقات بلا تحقق من البصمة، فيسحب أي حامل لـ anon key أسماء
 --    كل الباحثين بنداء واحد.
+/* ⚠️ 2026-11-20 — تصحيح انحراف حقيقي بين المخطط والإنتاج:
+   المخطط كان ينزع verify_form وrequest_form من anon ويعلّق «الزائر لا يتحقق
+   ولا يقدّم»، لكن **الإنتاج يمنحهما لـ anon فعلاً**، والكود يناديهما بلا جلسة:
+     • assets/js/cloud.js:651  → request_form (نموذج طلب الزائر)
+     • assets/js/cloud.js:680  → verify_form (التحقق بالباركود)
+     • supabase-check.html     → يفحص request_form كمسار زائر
+   فكانت أي قاعدة مُعادة البناء تُعطّل التحقق العام والطلب الإلكتروني بصمت.
+   المعالجة: مواءمة المخطط مع الإنتاج (لا العكس) — الدالتان مقنّعتان
+   (verify_form تُقنّع الاسم والهاتف) وتتحققان من المدخلات داخلياً. */
+revoke execute on function brc.verify_form(text, text) from public;
+revoke execute on function brc.request_form(text, text, text, date, text, text, text) from public;
+grant execute on function brc.verify_form(text, text) to anon, authenticated;
+grant execute on function brc.request_form(text, text, text, date, text, text, text) to anon, authenticated;
+
 grant select on brc.public_jobs to anon, authenticated;
 grant execute on function brc.verify_form(text, text) to authenticated, service_role;
 grant execute on function brc.request_form(text, text, text, date, text, text, text) to authenticated, service_role;

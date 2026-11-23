@@ -70,7 +70,16 @@ const ANON_ALLOWED = new Set([
   'lookup_card(p_serial text, p_code text)',
   'self_service_card(p_serial text, p_code text)',
   'use_chance(p_serial text, p_code text, p_job_code text)',
-  'verify_card_code(p_serial text, p_code text)'
+  'verify_card_code(p_serial text, p_code text)',
+  /* ⚠️ 2026-11-20 — أُضيفتا بعد تدقيق قاعدة الإنتاج: الإنتاج يمنحهما لـ anon
+     فعلاً، والواجهة تناديهما بلا جلسة:
+       • request_form   → assets/js/cloud.js:651 (نموذج طلب الزائر)
+       • verify_form    → assets/js/cloud.js:680 + verify.js:61 (تحقق بالباركود)
+     وكانتا في القائمة السوداء ضمناً لأن المخطط كان ينزعهما — فكان الفحص يمرّ
+     على مخطط لا يطابق الإنتاج، وهو أسوأ من فحص غائب. الدالتان مقنّعتان
+     (verify_form تُقنّع الاسم/الهاتف) وتتحققان من المدخلات. */
+  'request_form(p_full_name text, p_phone text, p_address text, p_dob date, p_gender text, p_notes text, p_requested_code text)',
+  'verify_form(p_serial text, p_token text)'
 ]);
 
 /* دوال لا يجوز أن يصلها أي شريك عميل — لا زائر ولا موظف عبر RPC.
