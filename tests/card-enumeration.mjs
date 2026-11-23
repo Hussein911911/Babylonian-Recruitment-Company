@@ -185,6 +185,26 @@ if (ready) {
   check('بيانات صاحب العمل معروضة', !!(det.d?.attempt?.employerName || det.d?.attempt?.employerPhone),
     JSON.stringify(det.d?.attempt || {}).slice(0, 120));
 
+  /* ⚠️ إصلاح 2026-11-20 — ثغرة تعداد في تفاصيل التقديم.
+     كانت الدالة تُرجع الاسم والهاتف والعنوان وتاريخ الميلاد لأي بارزكود،
+     للزائر، بلا حارس ولا حدّ — والباركود المطبوع HRC-BC-NNNNNN ستّ خانات
+     فقط (مليون احتمال)، أي جمع بيانات الباحثين بمسح آلي. */
+  const detDef = await db.query(`select pg_get_functiondef(p.oid) src
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname='brc' and p.proname='customer_application_details'`);
+  check('تفاصيل التقديم تنادي حارس التعداد قبل قراءة أي بيانات شخصية',
+    /card_lookup_guard/.test(detDef.rows[0]?.src || ''), (detDef.rows[0]?.src || '').slice(0, 80));
+
+  let detPass = 0, detBlocked = 0;
+  for (let i = 1; i <= 20; i++) {
+    const r = await asAnon(`select brc.customer_application_details($1::text, $2::int) d`, ['HRC-BC-900001', 1]);
+    if (r.d?.ok === true) detPass++; else detBlocked++;
+  }
+  check('حدّ البطاقة يحمي تفاصيل التقديم (15 عرضاً/ساعة كحدّ أقصى)', detPass + 1 <= 15,
+    detPass + 1 + ' عرضاً مرّ (مع الأول)');
+  check('التعداد الآلي على تفاصيل التقديم يتوقّف برسالة عربية',
+    detBlocked > 0, detBlocked + ' طلب محجوب من 20');
+
   /* ═══ 4) البطاقة الفارغة ══════════════════════════════════════════════ */
   step(4, 'البطاقة الفارغة — تُعرض لكن بلا بيانات (لا يوجد ما يُسرَّب)');
 
