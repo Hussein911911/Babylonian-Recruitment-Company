@@ -1686,7 +1686,7 @@
       b.addEventListener('click', function () {
         var app = Store.getApplicant(b.getAttribute('data-app-print'));
         V.print(app);
-        UI.toast('ok', 'طباعة البطاقة', app.serial + ' — بطاقة 59.4×94.6مم مع الباركود.');
+        UI.toast('ok', 'طباعة البطاقة', app.serial + ' — بطاقة 70.2×111.8مم مع الباركود.');
       });
     });
     tbody.querySelectorAll('[data-app-verify]').forEach(function (b) {
@@ -1944,7 +1944,7 @@
       title: 'بطاقة التوظيف — الفرص', subtitle: app.fullName + ' — ' + app.serial, wide: true, body: body,
       footer:
         '<button class="btn btn-gold" id="m-print-form">' + UI.ic('print') + ' طباعة استمارة التوظيف A4</button>' +
-        '<button class="btn btn-lapis" id="m-print">' + UI.ic('card') + ' طباعة البطاقة (59.4×94.6مم)</button>' +
+        '<button class="btn btn-lapis" id="m-print">' + UI.ic('card') + ' طباعة البطاقة (70.2×111.8مم)</button>' +
         '<button class="btn btn-outline" id="m-verify">' + UI.ic('qr') + ' صفحة التحقق</button>' +
         '<button class="btn btn-outline" data-close>إغلاق</button>',
       onMount: function (box, close) {
@@ -2832,7 +2832,7 @@
         '<input type="text" id="c-notes" placeholder="مثال: بطاقة تعويض للسيد أحمد — مكتب الحلة"></div>' +
       '</form>' +
       '<div class="panel mt-2" style="background:#fdf9ee;border-color:var(--line)"><div class="panel-body" style="padding:12px 15px">' +
-        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرص حسب الإعدادات، وتُطبع بوجهيها بمقاس 59.4×94.6مم — ' +
+        '<p class="mb-0 small">' + UI.ic('shield') + ' تُسجَّل البطاقة <b>فارغة</b> (بلا اسم وبلا هاتف) بفرص حسب الإعدادات، وتُطبع بوجهيها بمقاس 70.2×111.8مم — ' +
         'وصلاحية 30 يوماً تبدأ عند أول تقديم ناجح على وظيفة. الكود المسجَّل لا يعود أبداً ولو حُذفت بطاقته.</p></div></div>';
 
     UI.modal({
@@ -2893,7 +2893,7 @@
       subtitle: 'بطاقة فارغة واحدة بالمخزون — بفرص حسب الإعدادات',
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
           '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت البطاقة بالمخزون وجاهزة للبيع والتعبئة. ' +
-          'اطبعها الآن على <b>ورق مقوى 300–350غم</b> بخيار «الحجم الفعلي» — صفحتان (وجه أمامي وخلفي) بمقاس 59.4×94.6مم، وتُغلَّف حرارياً بمكتب الاستنساخ.</p></div></div>' +
+          'اطبعها الآن على <b>ورق مقوى 300–350غم</b> بخيار «الحجم الفعلي» — صفحتان (وجه أمامي وخلفي) بمقاس 70.2×111.8مم، وتُغلَّف حرارياً بمكتب الاستنساخ.</p></div></div>' +
         '<div style="text-align:center"><span class="chip chip-code mono" dir="ltr" style="font-size:15px">' + UI.esc(card.serial) + '</span></div>',
       footer: '<button class="btn btn-outline" data-close>لاحقاً</button>' +
         '<button class="btn btn-gold" id="c-print">' + UI.ic('print') + ' طباعة البطاقة</button>',
@@ -2986,7 +2986,7 @@
       subtitle: 'أكواد عشوائية فريدة — تُطبع الآن على A4 وتوزَّع على نقاط البيع',
       wide: true,
       body: '<div class="panel mb-2" style="background:#eef7f2;border-color:#bfe0d0"><div class="panel-body" style="padding:12px 15px">' +
-          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>4 بطاقات بكل صفحة</b> بمقاس 59.4×94.6مم، ' +
+          '<p class="mb-0 small">' + UI.ic('check') + ' سُجّلت الدفعة بالمخزون. اطبعها على <b>ورق A4</b> — <b>4 بطاقات بكل صفحة</b> بمقاس 70.2×111.8مم، ' +
           'موسّطة في وسط الورقة وبينها <b>20مم مساحة قطع</b> (10مم حول كل بطاقة) فالقصّ لا يمسّ التصميم. ' +
           'والباقي على الصفحات التالية. للطباعة على الوجهين اختر «قلب على الحافة الطويلة» وخيار «الحجم الفعلي» (100%)، ثم قصّ البطاقات وغلّفها حرارياً بمكتب الاستنساخ.</p></div></div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px;direction:ltr;justify-content:flex-end">' + chips + '</div>',

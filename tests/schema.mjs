@@ -216,10 +216,20 @@ const anonTargets = anonGrants.join(' ');
 check('brc.public_verification ليست ممنوحة لدور anon (منع تسريب أسماء الباحثين)',
   !/public_verification/i.test(anonTargets), anonTargets.slice(0, 160));
 check('الزائر يستطيع قراءة brc.public_jobs فقط', /public_jobs/i.test(anonTargets));
-/* سياسة الشركة: الزائر يتصفّح الوظائف فقط — لا يقدّم استمارة ولا يتحقق من أي واحدة.
-   الفحص هنا يقرأ سطور GRANT (لا REVOKE) فلا يُخدع بإبطال لاحق. */
-check('الزائر لا يستطيع نداء brc.verify_form (التحقق للموظفين والإدارة)', !/verify_form/i.test(anonTargets), anonTargets.slice(0, 160));
-check('الزائر لا يستطيع نداء brc.request_form (لا تقديم استمارة من الموقع)', !/request_form/i.test(anonTargets), anonTargets.slice(0, 160));
+/* ⚠️ 2026-11-20 — كان الفحصان هنا يطلبان **نزع** verify_form وrequest_form من
+   anon بحجة «الزائر لا يتحقق ولا يقدّم». تدقيق 2026-11-20 على قاعدة الإنتاج
+   أثبت العكس: الإنتاج يمنحهما لـ anon، والكود يناديهما بلا جلسة
+   (cloud.js:651 request_form · cloud.js:680 verify_form · supabase-check.html)،
+   فكانت كل قاعدة تُبنى من المخطط تُعطّل التحقق العام والطلب الإلكتروني بصمت.
+   صار الفحص يثبّت الواقع الآمن: المنح موجود، والدالة مقنّعة، ومُبطلة عن PUBLIC. */
+check('الزائر يستطيع نداء brc.verify_form (التحقق العام بالباركود — مقنّع)',
+  /grant\s+execute\s+on\s+function\s+brc\.verify_form\(text,\s*text\)\s+to[^;]*\banon/i.test(stripped(RAW)));
+check('brc.verify_form مقنّعة (لا تكشف الاسم/الهاتف للزائر)',
+  /masked/i.test(stripped(RAW).slice(stripped(RAW).indexOf('create or replace function brc.verify_form'), stripped(RAW).indexOf('create or replace function brc.verify_form') + 4000)));
+check('brc.verify_form مُبطلة عن PUBLIC قبل منحها',
+  /revoke\s+execute\s+on\s+function\s+brc\.verify_form\(text,\s*text\)\s+from\s+public/i.test(stripped(RAW)));
+check('الزائر يستطيع نداء brc.request_form (طلب الزائر من الموقع)',
+  /grant\s+execute\s+on\s+function\s+brc\.request_form\([^)]*\)\s+to[^;]*\banon/i.test(stripped(RAW)));
 /* التفعيل المباشر ليس واجهة عامة؛ التقديم الذاتي يستخدم الدالة كمساعد داخلي. */
 check('الزائر لا يستطيع نداء brc.activate_card مباشرة', !/activate_card/i.test(anonTargets) && /revoke all on function brc\.activate_card\(text,\s*jsonb\) from public,\s*anon,\s*authenticated/i.test(stripped(RAW)));
 check('الزائر لا يستطيع تجاوز OTP عبر employer_view القديم', !/employer_view/i.test(anonTargets));

@@ -320,7 +320,7 @@
           '<p class="mb-0 small">' + UI.ic('shield') + ' <b>ملاحظة قانونية:</b> ' + UI.esc(root.HRCVoucher.DISCLAIMER) + '</p>' +
         '</div></div>' +
         '<div class="flex flex-wrap mt-3">' +
-          (isRequest ? '' : '<button class="btn btn-lapis" id="verify-print">' + UI.ic('print') + ' طباعة البطاقة (59.4×94.6مم)</button>') +
+          (isRequest ? '' : '<button class="btn btn-lapis" id="verify-print">' + UI.ic('print') + ' طباعة البطاقة (70.2×111.8مم)</button>') +
           '<button class="btn btn-outline" id="verify-copy">' + UI.ic('share') + ' نسخ رابط التحقق</button>' +
         '</div>' +
       '</div>';
