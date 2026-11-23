@@ -53,8 +53,21 @@ ok(/is-first-paint \.job-card:nth-child\(n\+7\)/.test(shell),
 ok(/jobsFirstPaintDone/.test(js), 'public.js يحفظ «تم أول رسم» في حالة');
 ok(/classList\.add\('is-first-paint'\)/.test(js) && /classList\.remove\('is-first-paint'\)/.test(js),
   'الفئة تُضاف ثم تُزال فلا تتكرر الحركة عند التحديث');
-ok(/if \(!jobsFirstPaintDone && shown\.length\)/.test(js),
-  'الإضافة مشروطة بأول رسم وبوجود بطاقات');
+ok(/if \(shown\.length && \(!jobsFirstPaintDone \|\| filterChanged\)\)/.test(js),
+  'الإضافة مشروطة بوجود بطاقات + أول رسم أو تغيير فلتر');
+
+/* ── ٣ب) لغة الحركة الموحّدة ─────────────────────────────────────────────── */
+ok(/--flow-ease:cubic-bezier\(\.22,1,\.36,1\)/.test(style), 'منحنى موحّد في مُتغيّر واحد');
+ok(/--m-fast:\.18s;--m-base:\.32s;--m-slow:\.52s/.test(style), 'مُدد الحركة الثلاث معرَّفة');
+ok(/prefers-reduced-motion: no-preference[\s\S]{0,900}animation:pageIn \.26s var\(--flow-ease\) backwards/.test(shell),
+  'انتقال تبويبات التطبيق بتلاشٍ خفيف (backwards)');
+ok(/\.btn:active,\.bk-cta:active,\.bk-footbtn:active,\.tabbar \[data-page-tab\]:active\{transform:scale\(\.97\)/.test(shell),
+  'ضغطة الزر تصغير ٣٪');
+ok(/\.app-card \.job-image:not\(\.has-img\) img\{transform:scale\(1\.02\)\}/.test(shell),
+  'صورة الوظيفة تكبر ثم تستقر (بلا تغيير شفافية)');
+ok(/\.app-card:hover\{transform:translateY\(-2px\)/.test(shell), 'رفع خفيف للبطاقة على المؤشّر');
+ok(/filterChanged/.test(js) && /!jobsFirstPaintDone \|\| filterChanged/.test(js),
+  'تتالٍ عند تغيير الفلتر فقط، لا عند تحديث البيانات');
 
 /* ── ٤) احترام تقليل الحركة ─────────────────────────────────────────────── */
 ok(/prefers-reduced-motion:\s*reduce\s*\)\s*\{[\s\S]{0,220}animation:\s*none !important/.test(style),

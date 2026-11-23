@@ -2602,7 +2602,7 @@ table.data tbody tr:hover { background: #fff; }
 
 /* Shared screen-only horizontal layout and motion. */
 @media screen{.contact-inline>*{max-width:100%}
-:root{--flow-ease:cubic-bezier(.22,1,.36,1)}
+:root{--flow-ease:cubic-bezier(.22,1,.36,1);--m-fast:.18s;--m-base:.32s;--m-slow:.52s}
 .btn{white-space:normal;text-wrap:pretty;line-height:1.65}
 .btn > svg,.badge > svg,.panel-head h3 > svg,.hc-item > svg,.feature-list li > svg,.job-meta .mi > svg{flex-shrink:0}
 .chip-code,.job-code,.hc-phones a,.footer-phones a{white-space:nowrap;word-break:normal;overflow-wrap:normal}
@@ -3544,6 +3544,23 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 .jobs-grid.is-first-paint .job-card:nth-child(5){animation-delay:160ms}
 .jobs-grid.is-first-paint .job-card:nth-child(6){animation-delay:200ms}
 .jobs-grid.is-first-paint .job-card:nth-child(n+7){animation-delay:240ms}
+
+/* 2026-11-20 — لغة حركة موحّدة: تنقّل التبويبات (pageIn, backwards)، ضغطة الزر
+   scale(.97)، صورة الوظيفة scale(1.02)→1 بلا تغيير شفافية، رفع البطاقة على المؤشّر. */
+@media (prefers-reduced-motion: no-preference){
+  body.app-focus[data-app-page="jobs"] [data-page="jobs"],
+  body.app-focus[data-app-page="favorites"] [data-page="favorites"],
+  body.app-focus[data-app-page="card"] [data-page="card"],
+  body.app-focus[data-app-page="contact"] [data-page="contact"]{animation:pageIn .26s var(--flow-ease) backwards}
+  .btn:active,.bk-cta:active,.bk-footbtn:active,.tabbar [data-page-tab]:active{transform:scale(.97);transition-duration:var(--m-fast)}
+  .app-card .job-image:not(.has-img) img{transform:scale(1.02)}
+  .app-card .job-image img{transition:transform var(--m-slow) var(--flow-ease)}
+}
+@keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+  .app-card{transition:transform var(--m-base) var(--flow-ease),border-color var(--m-base) var(--flow-ease),box-shadow var(--m-base) var(--flow-ease)}
+  .app-card:hover{transform:translateY(-2px);border-color:#c9d3e4;box-shadow:0 6px 16px rgba(6,13,31,.10)}
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .jobs-more-btn:not(.is-expanded) .jobs-more-ic { animation: jobsMorePulse 2.8s ease-in-out infinite; }
@@ -23898,7 +23915,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     /* بصمة الفلاتر: تغيّرها يعيد القائمة إلى الطيّ، وتحديث البيانات وحده
        (Realtime/صيانة) يُبقي حالة «عرض المزيد» كما اختارها الزائر. */
     var key = currentJobsFilterKey();
-    if (key !== jobsFilterKey) { jobsExpanded = false; jobsFilterKey = key; }
+    var filterChanged = key !== jobsFilterKey;
+    if (filterChanged) { jobsExpanded = false; jobsFilterKey = key; }
 
     var jobs = Store.listJobs(filters);
     if (filters.category && filters.category !== 'all') {
@@ -23934,7 +23952,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         ? Math.min((index - JOBS_PAGE_SIZE) * 45, 360) : null;
       return cardHtml(job, favorites, index + 1, delay);
     }).join('');
-    if (!jobsFirstPaintDone && shown.length) {
+    if (shown.length && (!jobsFirstPaintDone || filterChanged)) {
       jobsFirstPaintDone = true;
       host.classList.add('is-first-paint');
       window.setTimeout(function () { host.classList.remove('is-first-paint'); }, 1500);

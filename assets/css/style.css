@@ -2577,7 +2577,7 @@ table.data tbody tr:hover { background: #fff; }
 
 /* Shared screen-only horizontal layout and motion. */
 @media screen{.contact-inline>*{max-width:100%}
-:root{--flow-ease:cubic-bezier(.22,1,.36,1)}
+:root{--flow-ease:cubic-bezier(.22,1,.36,1);--m-fast:.18s;--m-base:.32s;--m-slow:.52s}
 .btn{white-space:normal;text-wrap:pretty;line-height:1.65}
 .btn > svg,.badge > svg,.panel-head h3 > svg,.hc-item > svg,.feature-list li > svg,.job-meta .mi > svg{flex-shrink:0}
 .chip-code,.job-code,.hc-phones a,.footer-phones a{white-space:nowrap;word-break:normal;overflow-wrap:normal}
