@@ -1705,15 +1705,27 @@ create policy jobs_staff_write on brc.jobs for insert with check (brc.is_staff()
 drop policy if exists jobs_staff_update on brc.jobs;
 create policy jobs_staff_update on brc.jobs for update using (brc.is_staff());
 
+/* ⚠️ 2026-11-20 — قرار المالك (2026-11-11) كان نافذاً في الإنتاج عبر الترحيل
+   `supabase/migrations/20261111120000_jobs_staff_delete.sql` وحده، ولم يُدمج
+   في هذا الملف. فكل قاعدة تُبنى من هنا (ومنها حزمة الاسترجاع) كانت ترجع إلى
+   «المدير فقط» بينما الواجهة تسمح للموظف → الموظف يرى «تم الحذف» ولا يُحذف
+   شيء. الفحص `tests/jobs-delete-policy.mjs` يكشف هذا الانحراف. */
 drop policy if exists jobs_admin_delete on brc.jobs;
-create policy jobs_admin_delete on brc.jobs for delete using (brc.is_admin());
+drop policy if exists jobs_staff_delete on brc.jobs;
+create policy jobs_staff_delete on brc.jobs for delete using (brc.is_staff());
 
 -- 8.3 الاستمارات: الموظف يدير كل الاستمارات، والمدير يحذف
 drop policy if exists applicants_staff_read on brc.applicants;
 create policy applicants_staff_read on brc.applicants for select using (brc.is_staff());
 
+/* ⚠️ 2026-11-20 — إصدار البطاقات للمدير حصراً (قرار المالك 2026-11-11).
+   كان هنا `applicants_staff_insert using brc.is_staff()` أي أن أي موظف يستطيع
+   إدراج بطاقة فارغة مباشرة عبر PostgREST. التشديد كان في الترحيل
+   `20261111235000_cards_insert_admin_only.sql` وحده، فكان يضيع عند إعادة البناء.
+   ما يبقى للموظف: القراءة والتعديل والحذف. وطلب الزائر يمرّ عبر request_form. */
 drop policy if exists applicants_staff_insert on brc.applicants;
-create policy applicants_staff_insert on brc.applicants for insert with check (brc.is_staff());
+drop policy if exists applicants_admin_insert on brc.applicants;
+create policy applicants_admin_insert on brc.applicants for insert with check (brc.is_admin());
 
 drop policy if exists applicants_staff_update on brc.applicants;
 create policy applicants_staff_update on brc.applicants for update using (brc.is_staff());
@@ -1758,6 +1770,42 @@ create policy settings_read on brc.settings for select using (brc.is_staff());
 
 drop policy if exists settings_admin_write on brc.settings;
 create policy settings_admin_write on brc.settings for all using (brc.is_admin()) with check (brc.is_admin());
+
+/* ── 8.7 صور الوظائف (Storage) ──────────────────────────────────────────────
+   ⚠️ 2026-11-20: هذه السياسات كانت تعيش في الترحيل
+   `20261112080000_relocate_job_images.sql` وحده، فلا تُنشأ على أي قاعدة تُبنى
+   من هذا الملف. الأثر العملي: الموظف في القاعدة المسترجعة يستطيع قراءة الصور
+   لكن **لا يستطيع رفع صورة وظيفة** (رفض صامت من Storage)، والمدير لا يستطيع
+   حذفها. الكتلة محروسة بـ to_regclass كي تعمل على PostgreSQL عادي (اختبارات)
+   وعلى Supabase حيث يوجد مخطط storage — بلا أي خطأ. */
+do $$
+begin
+  if to_regclass('storage.objects') is null then
+    raise notice 'تخطّي سياسات storage.objects — لا يوجد مخطط storage على هذه القاعدة';
+    return;
+  end if;
+
+  /* قراءة عامة: صور الوظائف تُعرض للزوار على الموقع العام */
+  execute 'drop policy if exists job_images_public_read on storage.objects';
+  execute $p$create policy job_images_public_read on storage.objects
+    for select to anon, authenticated using (bucket_id = 'job-images')$p$;
+
+  /* رفع وتعديل: الموظف والمدير فقط */
+  execute 'drop policy if exists job_images_staff_write on storage.objects';
+  execute $p$create policy job_images_staff_write on storage.objects
+    for insert to authenticated with check (bucket_id = 'job-images' and brc.is_staff())$p$;
+
+  execute 'drop policy if exists job_images_staff_update on storage.objects';
+  execute $p$create policy job_images_staff_update on storage.objects
+    for update to authenticated
+    using (bucket_id = 'job-images' and brc.is_staff())
+    with check (bucket_id = 'job-images' and brc.is_staff())$p$;
+
+  /* حذف: المدير فقط */
+  execute 'drop policy if exists job_images_admin_delete on storage.objects';
+  execute $p$create policy job_images_admin_delete on storage.objects
+    for delete to authenticated using (bucket_id = 'job-images' and brc.is_admin())$p$;
+end $$;
 
 -- ===========================================================================
 --  9) الصلاحيات (Grants)
@@ -1876,7 +1924,8 @@ grant select on brc.audit_log, brc.settings, brc.staff, brc.v_financials_by_staf
 --     حذف وظيفة/استمارة) — وكلها تبقى مقيّدة بالسياسات أعلاه:
 --       • settings:     التعديل للمدير فقط (settings_admin_write)
 --       • audit_log:    الإضافة باسم صاحب الجلسة أو 'system' (audit_insert)
---       • delete jobs/applicants: للمدير فقط (jobs_admin_delete …)
+--       • delete jobs: للموظف والمدير (jobs_staff_delete) · delete applicants: للمدير فقط
+--       • insert applicants: للمدير فقط (applicants_admin_insert — إصدار البطاقات)
 grant insert on brc.audit_log to authenticated;
 -- ⚠️ عطل حقيقي أُصلح 2026-11-17 (بلاغ المالك: «قبل لا أنسخ أي نسخة يكلّي
 --    لا صلاحية كافية (RLS/منح مفقود) … وهاي تروح من أسوي رفرش»).

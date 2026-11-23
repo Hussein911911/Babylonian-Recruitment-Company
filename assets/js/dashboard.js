@@ -162,7 +162,26 @@
      ⚠️ ليس المسار المفضّل: المفتاح سرّي، وحفظه في المتصفح يعني أن كل جهاز يعمل
      عليه المدير يحتاجه. المسار المفضّل هو الدالة السحابية hrc-staff-admin التي
      تحتفظ بالمفتاح في خوادم Supabase وحدها. */
-  function serviceKey() { try { return localStorage.getItem('hrc-service-key') || ''; } catch (e) { return ''; } }
+  /* ⚠️ 2026-11-20 — صلاحية محدودة للمفتاح المحفوظ:
+     كان يُحفظ نصاً بلا نهاية، فمفتاح service_role (يتجاوز كل سياسات RLS) يبقى
+     في متصفح الجهاز أبد الدهر — حتى لو نُسي الجهاز أو بيع أو سُرِق. صار يُحفظ
+     كـ{k, exp} وينتهي بعد 12 ساعة، فيُطلب إدخاله من جديد. المقروء نصاً (مفتاح
+     قديم محفوظ بهذه الصيغة) يبقى مقبولاً للتوافق، ويُزال عند انتهائه. */
+  var SERVICE_KEY_TTL = 12 * 60 * 60 * 1000;
+  function serviceKey() {
+    try {
+      var raw = localStorage.getItem('hrc-service-key') || '';
+      if (!raw) return '';
+      if (raw.charAt(0) !== '{') return raw;            /* توافق: مفتاح قديم كنص */
+      var o = JSON.parse(raw);
+      if (!o || !o.k) { localStorage.removeItem('hrc-service-key'); return ''; }
+      if (o.exp && Date.now() > Number(o.exp)) { localStorage.removeItem('hrc-service-key'); return ''; }
+      return String(o.k);
+    } catch (e) { return ''; }
+  }
+  function saveServiceKey(k) {
+    try { localStorage.setItem('hrc-service-key', JSON.stringify({ k: String(k), exp: Date.now() + SERVICE_KEY_TTL })); } catch (e) {}
+  }
 
   /* ---------------------------------------------------------------------------
    *  كتابة إدارة الحسابات — بأولوية الأمان:
@@ -252,6 +271,7 @@
       '<div id="svc-msg" class="hidden" style="border-radius:10px;padding:10px 14px;font-size:.84rem"></div>' +
       '<div style="background:#fdf1d8;border:1px solid #f0d9a3;border-radius:10px;padding:10px 14px;font-size:.82rem;color:#8a5c05">' +
         '<b>⚠️ تنبيه:</b> هالمفتاح حساس — لا تشاركه مع أحد. يُحفظ في متصفحك فقط (localStorage) ولا يُرسل لأي جهة.' +
+        '<br><b>ينتهي تلقائياً بعد ١٢ ساعة</b> فيُطلب إدخاله من جديد — والمفضّل ألّا تستخدمه أصلاً: انشر الدالة <span class="mono" dir="ltr">hrc-staff-admin</span> لتُنشئ الحسابات بلا أي مفتاح.' +
       '</div>' +
       '<p style="margin:0;font-size:.82rem;color:var(--muted)">تلاقيه في: Supabase Dashboard → ⚙️ Settings → API Keys → service_role (secret)</p>' +
     '</div>';
@@ -274,7 +294,7 @@
     }
 
     function save(key, warn) {
-      try { localStorage.setItem('hrc-service-key', key); } catch (e) {}
+      saveServiceKey(key);
       UI.toast(warn ? 'warn' : 'ok', warn ? 'حُفظ رغم تعذّر الفحص' : 'تم الحفظ',
         warn ? 'أُنشئ موظف تجريبي للتأكد — وإن فشل فالفحص سيقول السبب.' : 'الآن لما تنشئ موظف جديد يُسجّل في قاعدة الشركة تلقائياً');
       m.close();

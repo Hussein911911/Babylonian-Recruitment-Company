@@ -73,6 +73,14 @@ await db.exec(`
   grant execute on function brc.is_staff() to anon, authenticated;
   grant execute on function brc.is_admin() to anon, authenticated;
 
+  /* ⚠️ 2026-11-20 — كان هذا السطر ناقصاً فصار الاختبار يفشل بلا سبب حقيقي:
+     في PostgreSQL لا يكفي وجود سياسة DELETE؛ الصف يجب أن يكون **مرئياً**
+     للسياسة المختارة (SELECT) وإلا لا يجد الـDELETE ما يحذفه فيؤثر صفر صفوف.
+     الجدول الحقيقي brc.jobs فيه jobs_staff_all for select using (brc.is_staff())
+     (docs/schema.sql §8.2)، فهنا يجب أن يكون موجوداً أيضاً وإلا قِسنا جدولاً
+     لا وجود له في الإنتاج. */
+  create policy jobs_staff_all on brc.jobs for select using (brc.is_staff());
+
   alter table brc.jobs enable row level security;
   alter table brc.jobs force row level security;
 
