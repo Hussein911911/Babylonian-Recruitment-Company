@@ -618,15 +618,7 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
   will-change: auto;
 }
 
-@keyframes mkRiseIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion: no-preference){
-  .hero-app .app-hero > *{animation:mkRiseIn .62s cubic-bezier(.22,1,.36,1) backwards}
-  .hero-app .app-hero > :nth-child(1){animation-delay:.05s}
-  .hero-app .app-hero > :nth-child(2){animation-delay:.13s}
-  .hero-app .app-hero > :nth-child(3){animation-delay:.21s}
-  .hero-app .app-hero > :nth-child(4){animation-delay:.29s}
-  .hero-app + .app-search-wrap .app-search{animation:mkRiseIn .58s cubic-bezier(.22,1,.36,1) backwards;animation-delay:.34s}
-}
+
 .step:hover, .service:hover {
   border-color: rgba(255, 208, 96, .75);
   box-shadow:
@@ -3056,6 +3048,39 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
   .quick-search .qs-scan, .quick-search .qs-submit { flex: 1 1 90px; }
   .site-footer .foot-main { row-gap: 28px; }
 }
+
+/* 2026-11-20 — حركة الموقع العام: تبويبات، ضغط، صورة، رفع البطاقة. */
+/* 2026-11-20 — دخول أول شاشة: زوم إن/أوت + يمين/يسار بتتابع، backwards. */
+@keyframes mkRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes mkZoomIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@keyframes mkZoomOut{from{opacity:0;transform:scale(1.07)}to{opacity:1;transform:none}}
+@keyframes mkFromRight{from{opacity:0;transform:translateX(32px)}to{opacity:1;transform:none}}
+@keyframes mkFromLeft{from{opacity:0;transform:translateX(-32px)}to{opacity:1;transform:none}}
+@media screen and (prefers-reduced-motion: no-preference){
+  .hero-app .app-hero > *{animation:mkRise .62s var(--flow-ease) backwards}
+  .hero-app .app-hero > :nth-child(1){animation:mkZoomIn .66s var(--flow-ease) .05s backwards}
+  .hero-app .app-hero > :nth-child(2){animation:mkFromRight .68s var(--flow-ease) .14s backwards}
+  .hero-app .app-hero > :nth-child(3){animation:mkFromLeft .66s var(--flow-ease) .24s backwards}
+  .hero-app .app-hero > :nth-child(4){animation:mkZoomOut .66s var(--flow-ease) .34s backwards}
+  .hero-app + .app-search-wrap .app-search{animation:mkZoomIn .6s var(--flow-ease) .44s backwards}
+}
+@media screen and (prefers-reduced-motion: no-preference) {
+  .btn:active, .bk-cta:active, .bk-footbtn:active, .tabbar [data-page-tab]:active { transform: scale(.97); transition-duration: var(--m-fast); }
+  .app-card .job-image:not(.has-img) img { transform: scale(1.02); }
+  .app-card .job-image img { transition: transform var(--m-slow) var(--flow-ease); }
+}
+@media screen and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .app-card { transition: transform var(--m-base) var(--flow-ease), border-color var(--m-base) var(--flow-ease), box-shadow var(--m-base) var(--flow-ease); }
+  .app-card:hover { transform: translateY(-2px); border-color: #c9d3e4; box-shadow: 0 6px 16px rgba(6,13,31,.10); }
+}
+/* تبويبات التطبيق: backwards فلا يبقى transform (يكسر position:fixed داخلها). */
+@keyframes pageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media screen and (prefers-reduced-motion: no-preference) {
+  body.app-focus[data-app-page="jobs"] [data-page="jobs"],
+  body.app-focus[data-app-page="favorites"] [data-page="favorites"],
+  body.app-focus[data-app-page="card"] [data-page="card"],
+  body.app-focus[data-app-page="contact"] [data-page="contact"] { animation: pageIn .26s var(--flow-ease) backwards; }
+}
 @media screen and (prefers-reduced-motion: no-preference) {
   .service, .contact-card, .step {
     transition: border-color .24s ease, box-shadow .24s ease, transform .28s var(--flow-ease);
@@ -3545,22 +3570,7 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 .jobs-grid.is-first-paint .job-card:nth-child(6){animation-delay:200ms}
 .jobs-grid.is-first-paint .job-card:nth-child(n+7){animation-delay:240ms}
 
-/* 2026-11-20 — لغة حركة موحّدة: تنقّل التبويبات (pageIn, backwards)، ضغطة الزر
-   scale(.97)، صورة الوظيفة scale(1.02)→1 بلا تغيير شفافية، رفع البطاقة على المؤشّر. */
-@media (prefers-reduced-motion: no-preference){
-  body.app-focus[data-app-page="jobs"] [data-page="jobs"],
-  body.app-focus[data-app-page="favorites"] [data-page="favorites"],
-  body.app-focus[data-app-page="card"] [data-page="card"],
-  body.app-focus[data-app-page="contact"] [data-page="contact"]{animation:pageIn .26s var(--flow-ease) backwards}
-  .btn:active,.bk-cta:active,.bk-footbtn:active,.tabbar [data-page-tab]:active{transform:scale(.97);transition-duration:var(--m-fast)}
-  .app-card .job-image:not(.has-img) img{transform:scale(1.02)}
-  .app-card .job-image img{transition:transform var(--m-slow) var(--flow-ease)}
-}
-@keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
-  .app-card{transition:transform var(--m-base) var(--flow-ease),border-color var(--m-base) var(--flow-ease),box-shadow var(--m-base) var(--flow-ease)}
-  .app-card:hover{transform:translateY(-2px);border-color:#c9d3e4;box-shadow:0 6px 16px rgba(6,13,31,.10)}
-}
+
 
 @media (prefers-reduced-motion: no-preference) {
   .jobs-more-btn:not(.is-expanded) .jobs-more-ic { animation: jobsMorePulse 2.8s ease-in-out infinite; }

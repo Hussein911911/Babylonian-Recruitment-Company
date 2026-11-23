@@ -16,6 +16,7 @@ const style = read('assets/css/style.css');
 const shell = read('assets/css/app-shell.css');
 const js = read('assets/js/public.js');
 const html = read('index.html');
+const polish = read('assets/css/public-polish.css');
 
 let n = 0;
 const ok = (cond, msg) => { assert.ok(cond, msg); n++; };
@@ -28,20 +29,29 @@ ok(/\.reveal\.is-visible\s*\{[^}]*opacity:\s*1[^}]*transform:\s*none/s.test(styl
 ok(/\.reveal\s*\{[^}]*cubic-bezier\(\.22,\s*1,\s*\.36,\s*1\)/s.test(style),
   'منحنى الحركة الاحترافي cubic-bezier(.22,1,.36,1)');
 
-/* ── ٢) حركة دخول الواجهة الرئيسية ──────────────────────────────────────── */
-ok(/@keyframes\s+mkRiseIn/.test(style), 'وجود keyframes mkRiseIn');
-for (const i of [1, 2, 3, 4]) {
-  ok(new RegExp(`\\.hero-app \\.app-hero > :nth-child\\(${i}\\)\\s*\\{\\s*animation-delay`).test(style),
-    `تتابع عنصر الواجهة رقم ${i}`);
+/* ── ٢) حركة دخول الواجهة الرئيسية (متنوّعة: زوم/يمين/يسار/زوم أوت) ─────── */
+/* ⚠️ هذه الكتلة في public-polish.css (الصفحات العامة فقط) لا في style.css،
+   لأن style.css يُحمَّل في لوحة الموظفين أيضاً فلا داعي لتحميل حركات الواجهة. */
+for (const [name, desc] of [
+  ['mkZoomIn', 'زوم إن (scale .94 → 1)'],
+  ['mkZoomOut', 'زوم أوت (scale 1.07 → 1)'],
+  ['mkFromRight', 'دخول من اليمين (translateX 32px → 0)'],
+  ['mkFromLeft', 'دخول من اليسار (translateX -32px → 0)'],
+]) {
+  ok(new RegExp(`@keyframes ${name}\\{from\\{opacity:0;transform:`).test(polish), `وجود keyframes ${name} — ${desc}`);
 }
-ok(/prefers-reduced-motion:\s*no-preference[\s\S]{0,900}\.hero-app \.app-hero > \*/.test(style),
-  'الحركة داخل بوابة prefers-reduced-motion: no-preference');
-const heroBlock = style.slice(style.indexOf('@keyframes mkRiseIn'), style.indexOf('@keyframes mkRiseIn') + 1800);
+const heroBlock = polish.slice(polish.indexOf('@keyframes mkRise{'), polish.indexOf('@keyframes mkRise{') + 1500);
 ok(!/infinite/.test(heroBlock), 'لا حركة لانهائية في دخول الواجهة');
-ok(/animation:\s*mkRiseIn[^;]*backwards/.test(heroBlock),
-  'fill-mode=backwards حتى لا تبقى قيمة transform بعد الانتهاء');
-ok(/\.hero-app \+ \.app-search-wrap \.app-search\s*\{[^}]*mkRiseIn[^}]*animation-delay/s.test(style),
-  'شريط البحث يكمل التتابع بعد الواجهة');
+ok((heroBlock.match(/backwards/g) || []).length >= 6, 'كل حركات الدخول بـ backwards (لا transform عالقاً)');
+/* لكل عنصر من الأربعة حركة مختلفة — هذا معنى «منسّق ومتنوّع» */
+for (const [i, name] of [[1, 'mkZoomIn'], [2, 'mkFromRight'], [3, 'mkFromLeft'], [4, 'mkZoomOut']]) {
+  ok(new RegExp(`\\.hero-app \\.app-hero > :nth-child\\(${i}\\)\\{animation:${name}`).test(polish),
+    `العنصر ${i} يتحرّك بـ ${name} (لا تكرار للحركة نفسها)`);
+}
+ok(/\.hero-app \+ \.app-search-wrap \.app-search\{animation:mkZoomIn/.test(polish),
+  'شريط البحث يكمل بـ زوم إن بعد الواجهة');
+ok(/prefers-reduced-motion: no-preference[\s\S]{0,700}\.hero-app \.app-hero > \*/.test(polish),
+  'كل الحركات داخل بوابة prefers-reduced-motion: no-preference');
 
 /* ── ٣) تتالي بطاقات الوظائف في أول رسم ─────────────────────────────────── */
 ok(/\.jobs-grid\.is-first-paint \.job-card\s*\{[^}]*animation:\s*jobsCardIn/s.test(shell),
@@ -59,13 +69,13 @@ ok(/if \(shown\.length && \(!jobsFirstPaintDone \|\| filterChanged\)\)/.test(js)
 /* ── ٣ب) لغة الحركة الموحّدة ─────────────────────────────────────────────── */
 ok(/--flow-ease:cubic-bezier\(\.22,1,\.36,1\)/.test(style), 'منحنى موحّد في مُتغيّر واحد');
 ok(/--m-fast:\.18s;--m-base:\.32s;--m-slow:\.52s/.test(style), 'مُدد الحركة الثلاث معرَّفة');
-ok(/prefers-reduced-motion: no-preference[\s\S]{0,900}animation:pageIn \.26s var\(--flow-ease\) backwards/.test(shell),
+ok(/animation: pageIn \.26s var\(--flow-ease\) backwards/.test(polish),
   'انتقال تبويبات التطبيق بتلاشٍ خفيف (backwards)');
-ok(/\.btn:active,\.bk-cta:active,\.bk-footbtn:active,\.tabbar \[data-page-tab\]:active\{transform:scale\(\.97\)/.test(shell),
+ok(/\.btn:active, \.bk-cta:active, \.bk-footbtn:active, \.tabbar \[data-page-tab\]:active \{ transform: scale\(\.97\)/.test(polish),
   'ضغطة الزر تصغير ٣٪');
-ok(/\.app-card \.job-image:not\(\.has-img\) img\{transform:scale\(1\.02\)\}/.test(shell),
+ok(/\.app-card \.job-image:not\(\.has-img\) img \{ transform: scale\(1\.02\); \}/.test(polish),
   'صورة الوظيفة تكبر ثم تستقر (بلا تغيير شفافية)');
-ok(/\.app-card:hover\{transform:translateY\(-2px\)/.test(shell), 'رفع خفيف للبطاقة على المؤشّر');
+ok(/\.app-card:hover \{ transform: translateY\(-2px\)/.test(polish), 'رفع خفيف للبطاقة على المؤشّر');
 ok(/filterChanged/.test(js) && /!jobsFirstPaintDone \|\| filterChanged/.test(js),
   'تتالٍ عند تغيير الفلتر فقط، لا عند تحديث البيانات');
 
