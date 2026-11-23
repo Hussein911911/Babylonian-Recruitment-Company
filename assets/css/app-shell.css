@@ -453,6 +453,15 @@
   to   { opacity: 1; transform: none; }
 }
 
+.jobs-grid.is-first-paint .job-card{animation:jobsCardIn .46s cubic-bezier(.22,.8,.24,1) backwards}
+.jobs-grid.is-first-paint .job-card:nth-child(1){animation-delay:0ms}
+.jobs-grid.is-first-paint .job-card:nth-child(2){animation-delay:40ms}
+.jobs-grid.is-first-paint .job-card:nth-child(3){animation-delay:80ms}
+.jobs-grid.is-first-paint .job-card:nth-child(4){animation-delay:120ms}
+.jobs-grid.is-first-paint .job-card:nth-child(5){animation-delay:160ms}
+.jobs-grid.is-first-paint .job-card:nth-child(6){animation-delay:200ms}
+.jobs-grid.is-first-paint .job-card:nth-child(n+7){animation-delay:240ms}
+
 @media (prefers-reduced-motion: no-preference) {
   .jobs-more-btn:not(.is-expanded) .jobs-more-ic { animation: jobsMorePulse 2.8s ease-in-out infinite; }
   @keyframes jobsMorePulse {
@@ -465,7 +474,7 @@
 }
 /* تقليل الحركة: لا لمعان، لا نبض، لا تتابع، ولا انتقالات — الحالة تُقرأ من النص */
 @media (prefers-reduced-motion: reduce) {
-  .jobs-more-wrap.is-in, .job-card.is-revealed,
+  .jobs-more-wrap.is-in, .job-card.is-revealed, .jobs-grid.is-first-paint .job-card,
   .jobs-more-btn:not(.is-expanded) .jobs-more-ic { animation: none !important; }
   .jobs-more-meter-fill, .jobs-more-btn, .jobs-more-ic, .jobs-more-ic .ic,
   .jobs-more-btn::after { transition: none !important; }

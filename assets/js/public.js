@@ -29,6 +29,7 @@
   /* يُفعَّل لضغطة «عرض المزيد» وحدها كي تظهر البطاقات الجديدة بتتابع بصري،
      ولا يُفعَّل عند تحديث البيانات أو تغيير الفلاتر فلا تتكرّر الحركة بلا سبب. */
   var revealNewCards = false;
+  var jobsFirstPaintDone = false;
 
   /* مفضلة الزائر: تُحفظ على جهازه وحده (لا تُرسل للشركة ولا تُسجَّل بسجل) */
   var FAV_KEY = 'hrc_fav_jobs_v1';
@@ -1064,6 +1065,11 @@
         ? Math.min((index - JOBS_PAGE_SIZE) * 45, 360) : null;
       return cardHtml(job, favorites, index + 1, delay);
     }).join('');
+    if (!jobsFirstPaintDone && shown.length) {
+      jobsFirstPaintDone = true;
+      host.classList.add('is-first-paint');
+      window.setTimeout(function () { host.classList.remove('is-first-paint'); }, 1500);
+    }
     renderJobsMore(total, shown.length);
     renderActiveChips();
   }
