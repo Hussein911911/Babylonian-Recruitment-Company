@@ -2222,7 +2222,8 @@
           '<button class="btn btn-lapis btn-sm" data-hold-manage="' + UI.esc(h.job.code) + '" data-hold-serial="'+UI.esc(h.serial||'')+'" data-attempt-no="'+(h.attempt?h.attempt.no:0)+'">إدارة الحجز</button>' +
           '<button class="btn btn-outline btn-sm" data-hold-app="' + UI.esc(h.serial || '') + '">البطاقة</button>' +
         '</div></div>';
-    }).join('') : (criticalHtml ? '' : '<div class="table-empty">' + UI.ic('check') + '<div class="mt-2">لا حجوزات ولا حالات حرجة — كل الوظائف متاحة.</div></div>'));
+    }).join('') : ((hiringHtml || criticalHtml) ? '' : '<div class="table-empty">' + UI.ic('check') +
+      '<div class="mt-2">لا حجوزات معلّقة — كل القرارات مسجّلة، والقائمة نظيفة.</div></div>'));
 
     host.querySelectorAll('[data-hold-manage]').forEach(function (b) {
       b.addEventListener('click', function () { openHoldsModal(b.getAttribute('data-hold-manage'),b.dataset.holdSerial,Number(b.dataset.attemptNo)); });
@@ -2231,29 +2232,9 @@
       b.addEventListener('click', function () { if (b.getAttribute('data-hold-app')) attemptsModal(b.getAttribute('data-hold-app')); });
     });
 
-    // منتهية المهلة
-    var expired = [];
-    Store.db().attempts.forEach(function (t) {
-      if (t.slotStatus === 'expired') expired.push(t);
-    });
-    document.getElementById('expired-table-body').innerHTML = expired.length ? expired.map(function (t) {
-      var app = Store.getApplicant(t.serial);
-      return '<tr>' +
-        '<td class="mono">' + UI.esc(t.serial) + '</td>' +
-        '<td>' + UI.esc(app ? app.fullName : '—') + '</td>' +
-        '<td>#' + t.no + '</td>' +
-        '<td class="mono">' + UI.esc(t.jobCode || '—') + '</td>' +
-        '<td class="tiny" dir="ltr">' + Store.fmtDateTime(t.closedAt) + '</td>' +
-        '<td class="tiny muted">' + UI.esc(t.note || '') + '</td>' +
-        '<td><button class="btn btn-gold btn-sm" data-reassign="' + UI.esc(t.serial) + '|' + t.no + '">ترشيح بديل</button></td></tr>';
-    }).join('') : '<tr><td colspan="7" class="table-empty">لا فرص بحالة حرجة</td></tr>';
-
-    document.querySelectorAll('[data-reassign]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var parts = b.getAttribute('data-reassign').split('|');
-        jobPickerModal(parts[0], Number(parts[1]));
-      });
-    });
+    /* قرار المالك 2026-11-23: الحجز المحسوم يُزال من متابعة الحجوزات تماماً —
+       لا صفّ ولا أثر (مثل الإشعار: يُنفَّذ فيختفي). الحجوزات المعروضة هنا هي
+       المعلّقة فقط؛ فرص الاستبدال تُدار من نافذة البطاقة نفسها. */
   }
 
   /* ======================= سجل التدقيق =======================
