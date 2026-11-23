@@ -133,10 +133,10 @@ if (ready) {
     JSON.stringify(svc.d?.card?.profile || {}).slice(0, 120));
 
   /* ═══ 2) التعداد — الهجوم الحقيقي ═════════════════════════════════════ */
-  step(2, 'تعداد 40 بطاقة متتالية — يُحجب قبل استنفادها');
+  step(2, 'تعداد بطاقات متتالية — يُحجب قبل استنفادها');
 
   /* الأرقام العشوائية 100000–999999 في الإنتاج (لا متسلسلة)، فالتعداد يحتاج
-     ~777 ألف محاولة. الميزانية تخنقه عند 40 بطاقة مختلفة لكل مصدر/ساعة.
+     ~777 ألف محاولة. الميزانية تخنقه عند 20 بطاقة مختلفة لكل مصدر/ساعة.
      نحاكي 60 محاولة ونثبت أنه يتوقف قبل إتمامها. */
   let blocked = 0, firstBlockAt = 0;
   for (let i = 1; i <= 60; i++) {
@@ -144,8 +144,8 @@ if (ready) {
       ['HRC-BC-8' + String(10000 + i), 'attacker-fingerprint-2'])).rows[0].d;
     if (g?.ok === false) { blocked++; if (!firstBlockAt) firstBlockAt = i; }
   }
-  check('التعداد يتوقف: يُحجب بعد 40 بطاقة من مصدر واحد', blocked === 20, blocked + ' محجوبة من 60');
-  check('الحجب يبدأ عند البطاقة 41 لا قبلها', firstBlockAt === 41, 'أول حجب عند ' + firstBlockAt);
+  check('التعداد يتوقف: يُحجب بعد 20 بطاقة من مصدر واحد', blocked === 40, blocked + ' محجوبة من 60');
+  check('الحجب يبدأ عند البطاقة 21 لا قبلها', firstBlockAt === 21, 'أول حجب عند ' + firstBlockAt);
 
   /* ⚠️ في Supabase يصل المصدر من ترويسات الطلب (brc.card_request_source).
      PGlite لا يوفّر تلك الترويسات، فنختبر الحارس بمصدر صريح كما يفعل الغلاف. */
@@ -155,8 +155,8 @@ if (ready) {
       ['HRC-BC-9' + String(10000 + i), 'attacker-fingerprint'])).rows[0].d;
     if (g?.ok === false) srcBlocked++;
   }
-  check('حدّ المصدر يوقف التعداد: 50 عرضاً من مصدر واحد → يُحجب بعد 40',
-    srcBlocked === 10, srcBlocked + ' محجوبة من 50 (المتوقع 10)');
+  check('حدّ المصدر يوقف التعداد: 50 عرضاً من مصدر واحد → يُحجب بعد 20',
+    srcBlocked === 30, srcBlocked + ' محجوبة من 50 (المتوقع 30)');
 
   const guardState = await db.query(`select count(*)::int n from brc.card_lookup_budget`);
   check('الميزانية تُسجَّل بالبصمة لا بـ IP خام', guardState.rows[0].n > 0);
