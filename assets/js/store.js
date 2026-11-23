@@ -1313,6 +1313,8 @@
     if(['succeeded','rejected'].indexOf(outcome)<0)return {ok:false,error:'قرار غير صالح'};
     var slot = getAttempts(serial).filter(function (t) { return t.no === Number(no); })[0];
     if (!slot) return { ok: false, error: 'الفرصة غير موجودة' };
+    /* نقرة مزدوجة على الجوال: النتيجة المطلوبة مسجّلة سلفاً ⇒ نجاح لا رسالة خطأ. */
+    if (slot.slotStatus === outcome) return { ok: true, already: true, attempt: slot };
     if(['reserved','critical','hiring'].indexOf(slot.slotStatus)<0)return {ok:false,error:'انحسمت هذه الفرصة أو تغيرت؛ حدّث التفاصيل'};
     var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
     slot.slotStatus = outcome;
@@ -1342,6 +1344,9 @@
     if (!isStaffSession()) return { ok: false, error: 'يتطلب حساب موظف' };
     var slot = getAttempts(serial).filter(function (t) { return t.no === Number(no); })[0];
     if (!slot) return { ok: false, error: 'الفرصة غير موجودة' };
+    var job0 = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
+    /* نقرة مزدوجة: الفرصة مستهلكة سلفاً ⇒ نجاح لا خطأ (نُعيد حساب حالة الوظيفة). */
+    if (slot.slotStatus === 'expired') { refreshVacancies(job0); return { ok: true, already: true, attempt: slot, job: job0 }; }
     if(['reserved','critical','hiring'].indexOf(slot.slotStatus)<0)return {ok:false,error:'انحسمت هذه الفرصة أو تغيرت؛ حدّث التفاصيل'};
     var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
     slot.slotStatus = 'expired';
@@ -2300,18 +2305,8 @@
         cloud.lastError = cloud.lastError || ('تعذّر دفع ' + res.failed + ' عملية — ستُعاد تلقائياً');
         console.warn('[HRC/sync] ' + cloud.lastError + ': ' + (res.pending || []).join(', '));
       } else if (res && !res.error) {
-        /* ⚠️ عطل حقيقي أُصلح 2026-11-17 (بلاغ المالك: «هاي تروح من أسوي
-           رفرش للموقع»).
-
-           السبب: `lastError` كان يُمسح في **بداية** pushCloud فقط. فإذا
-           نجح الدفع لاحقاً بلا رجوع إلى pushCloud (أو جاء `skipped` من
-           مسار آخر)، بقي الخطأ القديم معلّقاً في الذاكرة. والواجهة تقرأ
-           `cloudStatus().lastError` فتعرض رسالة «تعذّر إكمال المزامنة»
-           على حالة سليمة تماماً.
-
-           وهذا أخطر من خطأ حقيقي: خطأ كاذب يُفقد الثقة في الأداة، ويجعل
-           المدير يظنّ نسخته غير آمنة وهو آمن. فالقاعدة: **النجاح يمحو
-           الخطأ**، لا يبقى أثر لخطأ انتهى. */
+        /* النجاح يمحو الخطأ (2026-11-17): إبقاء lastError بعد نجاح الدفع كان
+           يُظهر «تعذّر إكمال المزامنة» على حالة سليمة — خطأ كاذب يُفقد الثقة. */
         cloud.lastError = null;
         cloud.error = null;
         cloud.detail = '';

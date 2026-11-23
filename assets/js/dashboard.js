@@ -253,14 +253,8 @@
       + 'لتعمل إدارة الحسابات من أي متصفح بلا أي مفتاح، أو أضف مفتاح الخدمة من «ربط السحابة».';
   }
 
-  /* ---------------------------------------------------------------------------
-   *  نافذة مفتاح الخدمة — بفحص قبل الحفظ
-   *  ---------------------------------------------------------------------------
-   *  كان المفتاح يُحفظ كما هو ثم يُكتشف خطؤه عند أول إنشاء موظف برسالة غامضة.
-   *  الآن يُفحص فوراً بقراءة سطر واحد من brc.staff، ويُقال للمدير بالعربي:
-   *  مفتاح مرفوض / سكيما غير مكشوفة / لا اتصال — مع خيار الحفظ رغم الفشل
-   *  (لمن يعرف أن السبب مؤقّت)، فالمفتاح قراره لا قرار الشاشة.
-   * ------------------------------------------------------------------------ */
+  /* نافذة مفتاح الخدمة: يُفحص فوراً بقراءة سطر من brc.staff ويُقال للمدير
+   بالعربي (مفتاح مرفوض / سكيما غير مكشوفة …) بدل خطأ غامض عند أول إنشاء موظف. */
   function cloudKeyModal() {
     var current = serviceKey();
     var body = '<div style="display:grid;gap:14px">' +
@@ -1984,7 +1978,8 @@
             }).then(function (ok) {
               if (!ok) return;
               var res = Store.releaseHold(serial, no);
-              if (res.ok) { UI.toast('warn', 'تم الإرجاع', 'أُعيدت الوظيفة ' + (res.job ? res.job.code : '') + ' إلى المتاح — والفرصة مستهلكة.'); close(); }
+              if (!res || !res.ok) { decisionRefused(box, res, 'إرجاع الوظيفة'); return; }
+              UI.toast('warn', 'تم الإرجاع', 'أُعيدت الوظيفة ' + (res.job ? res.job.code : '') + ' إلى المتاح — والفرصة مستهلكة.'); close();
             });
           });
         });
@@ -2043,6 +2038,21 @@
       }).join('') + '</tbody></table></div></div>';
   }
 
+  /* قرار لم يُنفَّذ لا يمرّ صامتاً: سبب ظاهر داخل النافذة + تنبيه + تحديث الشاشة
+     (بلاغ المالك 2026-11-23: «أدوس إرجاع/توظيف ولا يتغيّر لون الحجز ولا يظهر سبب»). */
+  function decisionRefused(box, res, label) {
+    var msg = (res && res.error) || 'تعذّر تنفيذ العملية — حدّث الصفحة وأعد المحاولة';
+    var body = box && box.querySelector('.modal-body');
+    if (body && !body.querySelector('.decision-error')) {
+      body.insertAdjacentHTML('afterbegin', '<div class="decision-error" style="margin-bottom:10px;padding:10px 12px;' +
+        'border:1px solid #f0c3c1;background:#fdf5f4;color:#a5342f;font-weight:800;border-radius:10px">' +
+        UI.esc(msg) + '</div>');
+    }
+    UI.toast('err', 'لم يُنفَّذ: ' + label, msg);
+    renderCurrent();
+    return msg;
+  }
+
   /* تثبيت نتيجة المقابلة — presetNote: ملاحظة جاهزة (مثل تثبيت طلب صاحب العمل) */
   function outcomeModal(serial, no, outcome, closeParent, presetNote) {
     var win = outcome === 'succeeded';
@@ -2065,7 +2075,7 @@
         box.querySelector('#o-save').addEventListener('click', function () {
           var note = box.querySelector('#o-note').value.trim();
           var res = Store.setOutcome(serial, no, outcome, note);
-          if (!res.ok) { UI.toast('err', 'تعذّر التنفيذ', res.error); return; }
+          if (!res.ok) { decisionRefused(box, res, win ? 'تثبيت التوظيف' : 'تسجيل الرفض'); return; }
           close();
           if (closeParent) closeParent();
           if (win) UI.toast('ok', 'تم تثبيت التوظيف', 'الوظيفة ' + (res.job ? res.job.code : '') + ' — تم ملء الشاغر ' + Number(slot.vacancyNo||1) + '؛ بقية الشواغر حسب حالتها.');
@@ -2080,9 +2090,9 @@
      نظام البطاقة: بعد انتهاء مهلة 24 ساعة تدخل الوظيفة «حرجة» وتُحسم من هنا */
   function openHoldsModal(jobCode, chosenSerial, chosenNo) {
     var job = Store.getJob(jobCode);
-    if(!job)return;
+    if(!job){ UI.toast('info','تحدثت الحالة','الوظيفة '+jobCode+' لم تعد موجودة — حُدّثت الشاشة.'); renderCurrent(); return; }
     var pending=Store.db().attempts.filter(function(t){return t.jobId===job.id&&['reserved','critical','hiring'].indexOf(t.slotStatus)>=0;});
-    if(!pending.length)return;
+    if(!pending.length){ UI.toast('info','تحدثت الحالة','لا حجز معلّق على '+jobCode+' — حُدّثت الشاشة.'); renderCurrent(); return; }
     if(Number(job.vacancies||1)>1&&!chosenSerial){
       UI.modal({title:'شواغر الوظيفة '+job.code,body:pending.map(function(t){return '<div class="data-item"><b>الشاغر '+Number(t.vacancyNo||1)+'</b> · '+UI.esc(t.serial)+' · '+UI.slotBadge(t.slotStatus)+'<button class="btn btn-outline btn-sm" data-vacancy-card="'+UI.esc(t.serial)+'" data-vacancy-attempt="'+t.no+'">عرض القرار</button></div>';}).join(''),footer:'<button class="btn btn-outline" data-close>إغلاق</button>',onMount:function(box,close){box.querySelectorAll('[data-vacancy-card]').forEach(function(b){b.onclick=function(){close();openHoldsModal(jobCode,b.dataset.vacancyCard,Number(b.dataset.vacancyAttempt));};});}});return;
     }
@@ -2144,11 +2154,10 @@
             hiring ? 'إلغاء توظيف صاحب العمل بقرار الشركة — أُعيدت الوظيفة متاحة والفرصة مستهلكة'
                    : empReject ? 'قرار الشركة بعد رفض صاحب العمل: إرجاع الوظيفة متاحة — والفرصة مستهلكة'
                    : critical ? 'إرجاع بعد حالة حرجة — قرار الموظف' : 'إرجاع يدوي من لوحة المتابعة');
-          if (res.ok) {
-            UI.toast(hiring ? 'warn' : 'warn', hiring ? 'أُلغي التوظيف' : 'تم الإرجاع',
-              'أُعيدت الوظيفة ' + job.code + ' إلى المتاح — والفرصة مستهلكة.');
-            close();
-          }
+          if (!res || !res.ok) { close(); decisionRefused(null, res, hiring ? 'إلغاء التوظيف' : 'إرجاع الوظيفة'); return; }
+          UI.toast('warn', hiring ? 'أُلغي التوظيف' : 'تم الإرجاع',
+            'أُعيدت الوظيفة ' + job.code + ' إلى المتاح — والفرصة مستهلكة.');
+          close();
         });
         if(box.querySelector('#h-del'))box.querySelector('#h-del').addEventListener('click', function () {
           UI.confirm({
@@ -2156,7 +2165,7 @@
             message: 'ستُحذف الوظيفة ' + job.code + ' نهائياً، وتُغلق فرصة البطاقة ' + serial + ' كمستهلكة — لا تعود الفرصة (قرار معتمد).'
           }).then(function (yes) {
             if (!yes) return;
-            Store.deleteJob(job.code);
+            if (!Store.deleteJob(job.code)) { decisionRefused(null, { error: 'تعذّر الحذف — تحقّق من صلاحيتك أو حدّث الصفحة' }, 'حذف الوظيفة'); return; }
             UI.toast('warn', 'حُذفت الوظيفة', job.code + ' — أُغلقت فرصة البطاقة ' + serial + '.');
             close();
           });
@@ -2272,15 +2281,8 @@
     'restore': 'استرجاع', 'backup': 'نسخ احتياطي', 'export': 'تصدير',
     'print': 'طباعة', 'view': 'عرض', 'read': 'عرض'
   };
-  /* ── تعريب نصوص السجل (2026-11-07 بطلب المالك) ─────────────────────────────
-     مشغّل التدقيق في القاعدة (brc.trg_audit) يكتب حقولاً مختلطة:
-       action  = «تعديل/إضافة/حذف» + اسم الجدول   ← «تعديل applicants»
-       details = «تغيير في »        + اسم الجدول   ← «تغيير في applicants»
-     كما أن بعض سجلات المتجر المحلي تحمل تفاصيل JSON بحقول إنكليزية
-     (تعديل مستخدم / تعديل وظيفة). القيم الخام تبقى في القاعدة والتصدير كما هي
-     لأنها دليل تدقيق، ونُعرّبها هنا عند العرض فقط: جدول السجل، قوائم الفلاتر،
-     و«آخر العمليات». الأكواد المطبوعة (HRC-1042، الرقم التسلسلي، عنوان الشبكة)
-     معرّفات لا كلمات فتبقى كما هي وباتجاه ltr. */
+  /* تعريب نصوص السجل عند العرض فقط (2026-11-07): القيم الخام تبقى في القاعدة
+     لأنها دليل تدقيق. الأكواد المطبوعة (HRC-1042، التسلسلي، IP) معرّفات لا تُترجم. */
   var AUDIT_WORD = {
     applicant: 'بطاقة', applicants: 'بطاقة', card: 'بطاقة', cards: 'بطاقة',
     job: 'وظيفة', jobs: 'وظيفة', vacancy: 'وظيفة', vacancies: 'وظيفة',
