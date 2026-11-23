@@ -205,6 +205,30 @@ step(5, 'حذف مرفوض — لا ندّعي نجاحاً');
   check('الوظيفة ما زالت موجودة', !!t.Store.getJob(t.job.code));
 }
 
+/* ========================================================================= */
+step(6, 'قرار «إرجاع» — الحجز يُزال من متابعة الحجوزات تماماً (طلب المالك)');
+{
+  const t = await open();
+  t.click(t.host().querySelector('[data-hold-manage]'));
+  await t.wait(160);
+  t.click(t.doc.getElementById('h-release'));
+  await t.wait(260);
+  const att = t.Store.getAttempts(t.app.serial)[0];
+  check('القرار مسجّل في المخزن (expired)', att.slotStatus === 'expired', att.slotStatus);
+  check('الوظيفة عادت «متاحة»', t.Store.getJob(t.job.code).status === 'available', t.Store.getJob(t.job.code).status);
+  check('الصف اختفى من قائمة الحجوزات', !t.host().textContent.includes(t.job.code),
+    t.host().textContent.replace(/\s+/g, ' ').slice(0, 80));
+  check('لا جدول بقايا للحجوزات المحسومة', !t.doc.getElementById('expired-table-body'));
+  check('لا زر «ترشيح بديل» متبقٍّ على الشاشة', !t.doc.querySelector('[data-reassign]'));
+  check('نص الفراغ يوضّح أن القائمة نظيفة', /لا حجوزات معلّقة/.test(t.host().textContent),
+    t.host().textContent.replace(/\s+/g, ' ').slice(0, 80));
+  check('العدّاد صفر', /^0\b/.test(t.doc.getElementById('holds-count-label').textContent.trim()),
+    t.doc.getElementById('holds-count-label').textContent);
+  check('الفرصة الثانية للبطاقة باقية (لا خسارة حق)', t.Store.attemptsLeft(t.app.serial) === 1,
+    String(t.Store.attemptsLeft(t.app.serial)));
+  check('لا أخطاء JavaScript', t.errors.length === 0, t.errors.slice(0, 2).join(' | '));
+}
+
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail ? '❌ ' : '✅ ') + pass + ' ناجح | ' + (fail ? '❌ ' : '') + fail + ' فاشل');
 console.log('═'.repeat(74) + '\n');

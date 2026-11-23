@@ -5618,16 +5618,6 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
         <p class="jobs-scroll-hint workspace-scroll-hint">اسحب أفقياً لعرض تفاصيل الحجوزات والأزرار كاملة.</p>
         <div class="panel-body" id="holds-list" tabindex="0" role="region" aria-label="الحجوزات — مرّر أفقياً لعرض التفاصيل"></div>
       </div>
-      <div class="panel">
-        <div class="panel-head"><h3><svg class="ic"><use href="#i-alert" xlink:href="#i-alert"/></svg> حالات حرجة بانتظار قرار (توظيف / إرجاع / حذف)</h3></div>
-        <p class="jobs-scroll-hint workspace-scroll-hint">اسحب الجدول أفقياً لعرض جميع البيانات والإجراءات.</p>
-        <div class="table-wrap" style="border:none;box-shadow:none">
-          <div class="table-scroll" tabindex="0" role="region" aria-label="جدول البيانات — تمرير أفقي عند الحاجة"><table class="data" style="min-width:700px">
-            <thead><tr><th>البطاقة</th><th>الباحث</th><th>الفرصة</th><th>كود الوظيفة</th><th>انتهت في</th><th>ملاحظة</th><th>إجراء</th></tr></thead>
-            <tbody id="expired-table-body"></tbody>
-          </table></div>
-        </div>
-      </div>
     </section>
 
     <!-- ================= سجل التدقيق ================= -->
@@ -18765,6 +18755,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if(['succeeded','rejected'].indexOf(outcome)<0)return {ok:false,error:'قرار غير صالح'};
     var slot = getAttempts(serial).filter(function (t) { return t.no === Number(no); })[0];
     if (!slot) return { ok: false, error: 'الفرصة غير موجودة' };
+    /* نقرة مزدوجة على الجوال: النتيجة المطلوبة مسجّلة سلفاً ⇒ نجاح لا رسالة خطأ. */
+    if (slot.slotStatus === outcome) return { ok: true, already: true, attempt: slot };
     if(['reserved','critical','hiring'].indexOf(slot.slotStatus)<0)return {ok:false,error:'انحسمت هذه الفرصة أو تغيرت؛ حدّث التفاصيل'};
     var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
     slot.slotStatus = outcome;
@@ -18794,6 +18786,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     if (!isStaffSession()) return { ok: false, error: 'يتطلب حساب موظف' };
     var slot = getAttempts(serial).filter(function (t) { return t.no === Number(no); })[0];
     if (!slot) return { ok: false, error: 'الفرصة غير موجودة' };
+    var job0 = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
+    /* نقرة مزدوجة: الفرصة مستهلكة سلفاً ⇒ نجاح لا خطأ (نُعيد حساب حالة الوظيفة). */
+    if (slot.slotStatus === 'expired') { refreshVacancies(job0); return { ok: true, already: true, attempt: slot, job: job0 }; }
     if(['reserved','critical','hiring'].indexOf(slot.slotStatus)<0)return {ok:false,error:'انحسمت هذه الفرصة أو تغيرت؛ حدّث التفاصيل'};
     var job = slot.jobId ? db.jobs.filter(function (j) { return j.id === slot.jobId; })[0] : null;
     slot.slotStatus = 'expired';
@@ -19752,18 +19747,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         cloud.lastError = cloud.lastError || ('تعذّر دفع ' + res.failed + ' عملية — ستُعاد تلقائياً');
         console.warn('[HRC/sync] ' + cloud.lastError + ': ' + (res.pending || []).join(', '));
       } else if (res && !res.error) {
-        /* ⚠️ عطل حقيقي أُصلح 2026-11-17 (بلاغ المالك: «هاي تروح من أسوي
-           رفرش للموقع»).
-
-           السبب: `lastError` كان يُمسح في **بداية** pushCloud فقط. فإذا
-           نجح الدفع لاحقاً بلا رجوع إلى pushCloud (أو جاء `skipped` من
-           مسار آخر)، بقي الخطأ القديم معلّقاً في الذاكرة. والواجهة تقرأ
-           `cloudStatus().lastError` فتعرض رسالة «تعذّر إكمال المزامنة»
-           على حالة سليمة تماماً.
-
-           وهذا أخطر من خطأ حقيقي: خطأ كاذب يُفقد الثقة في الأداة، ويجعل
-           المدير يظنّ نسخته غير آمنة وهو آمن. فالقاعدة: **النجاح يمحو
-           الخطأ**، لا يبقى أثر لخطأ انتهى. */
+        /* النجاح يمحو الخطأ (2026-11-17): إبقاء lastError بعد نجاح الدفع كان
+           يُظهر «تعذّر إكمال المزامنة» على حالة سليمة — خطأ كاذب يُفقد الثقة. */
         cloud.lastError = null;
         cloud.error = null;
         cloud.detail = '';
@@ -24787,14 +24772,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       + 'لتعمل إدارة الحسابات من أي متصفح بلا أي مفتاح، أو أضف مفتاح الخدمة من «ربط السحابة».';
   }
 
-  /* ---------------------------------------------------------------------------
-   *  نافذة مفتاح الخدمة — بفحص قبل الحفظ
-   *  ---------------------------------------------------------------------------
-   *  كان المفتاح يُحفظ كما هو ثم يُكتشف خطؤه عند أول إنشاء موظف برسالة غامضة.
-   *  الآن يُفحص فوراً بقراءة سطر واحد من brc.staff، ويُقال للمدير بالعربي:
-   *  مفتاح مرفوض / سكيما غير مكشوفة / لا اتصال — مع خيار الحفظ رغم الفشل
-   *  (لمن يعرف أن السبب مؤقّت)، فالمفتاح قراره لا قرار الشاشة.
-   * ------------------------------------------------------------------------ */
+  /* نافذة مفتاح الخدمة: يُفحص فوراً بقراءة سطر من brc.staff ويُقال للمدير
+   بالعربي (مفتاح مرفوض / سكيما غير مكشوفة …) بدل خطأ غامض عند أول إنشاء موظف. */
   function cloudKeyModal() {
     var current = serviceKey();
     var body = '<div style="display:grid;gap:14px">' +
@@ -26518,7 +26497,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
             }).then(function (ok) {
               if (!ok) return;
               var res = Store.releaseHold(serial, no);
-              if (res.ok) { UI.toast('warn', 'تم الإرجاع', 'أُعيدت الوظيفة ' + (res.job ? res.job.code : '') + ' إلى المتاح — والفرصة مستهلكة.'); close(); }
+              if (!res || !res.ok) { decisionRefused(box, res, 'إرجاع الوظيفة'); return; }
+              UI.toast('warn', 'تم الإرجاع', 'أُعيدت الوظيفة ' + (res.job ? res.job.code : '') + ' إلى المتاح — والفرصة مستهلكة.'); close();
             });
           });
         });
@@ -26577,6 +26557,21 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       }).join('') + '</tbody></table></div></div>';
   }
 
+  /* قرار لم يُنفَّذ لا يمرّ صامتاً: سبب ظاهر داخل النافذة + تنبيه + تحديث الشاشة
+     (بلاغ المالك 2026-11-23: «أدوس إرجاع/توظيف ولا يتغيّر لون الحجز ولا يظهر سبب»). */
+  function decisionRefused(box, res, label) {
+    var msg = (res && res.error) || 'تعذّر تنفيذ العملية — حدّث الصفحة وأعد المحاولة';
+    var body = box && box.querySelector('.modal-body');
+    if (body && !body.querySelector('.decision-error')) {
+      body.insertAdjacentHTML('afterbegin', '<div class="decision-error" style="margin-bottom:10px;padding:10px 12px;' +
+        'border:1px solid #f0c3c1;background:#fdf5f4;color:#a5342f;font-weight:800;border-radius:10px">' +
+        UI.esc(msg) + '</div>');
+    }
+    UI.toast('err', 'لم يُنفَّذ: ' + label, msg);
+    renderCurrent();
+    return msg;
+  }
+
   /* تثبيت نتيجة المقابلة — presetNote: ملاحظة جاهزة (مثل تثبيت طلب صاحب العمل) */
   function outcomeModal(serial, no, outcome, closeParent, presetNote) {
     var win = outcome === 'succeeded';
@@ -26599,7 +26594,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         box.querySelector('#o-save').addEventListener('click', function () {
           var note = box.querySelector('#o-note').value.trim();
           var res = Store.setOutcome(serial, no, outcome, note);
-          if (!res.ok) { UI.toast('err', 'تعذّر التنفيذ', res.error); return; }
+          if (!res.ok) { decisionRefused(box, res, win ? 'تثبيت التوظيف' : 'تسجيل الرفض'); return; }
           close();
           if (closeParent) closeParent();
           if (win) UI.toast('ok', 'تم تثبيت التوظيف', 'الوظيفة ' + (res.job ? res.job.code : '') + ' — تم ملء الشاغر ' + Number(slot.vacancyNo||1) + '؛ بقية الشواغر حسب حالتها.');
@@ -26614,9 +26609,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
      نظام البطاقة: بعد انتهاء مهلة 24 ساعة تدخل الوظيفة «حرجة» وتُحسم من هنا */
   function openHoldsModal(jobCode, chosenSerial, chosenNo) {
     var job = Store.getJob(jobCode);
-    if(!job)return;
+    if(!job){ UI.toast('info','تحدثت الحالة','الوظيفة '+jobCode+' لم تعد موجودة — حُدّثت الشاشة.'); renderCurrent(); return; }
     var pending=Store.db().attempts.filter(function(t){return t.jobId===job.id&&['reserved','critical','hiring'].indexOf(t.slotStatus)>=0;});
-    if(!pending.length)return;
+    if(!pending.length){ UI.toast('info','تحدثت الحالة','لا حجز معلّق على '+jobCode+' — حُدّثت الشاشة.'); renderCurrent(); return; }
     if(Number(job.vacancies||1)>1&&!chosenSerial){
       UI.modal({title:'شواغر الوظيفة '+job.code,body:pending.map(function(t){return '<div class="data-item"><b>الشاغر '+Number(t.vacancyNo||1)+'</b> · '+UI.esc(t.serial)+' · '+UI.slotBadge(t.slotStatus)+'<button class="btn btn-outline btn-sm" data-vacancy-card="'+UI.esc(t.serial)+'" data-vacancy-attempt="'+t.no+'">عرض القرار</button></div>';}).join(''),footer:'<button class="btn btn-outline" data-close>إغلاق</button>',onMount:function(box,close){box.querySelectorAll('[data-vacancy-card]').forEach(function(b){b.onclick=function(){close();openHoldsModal(jobCode,b.dataset.vacancyCard,Number(b.dataset.vacancyAttempt));};});}});return;
     }
@@ -26678,11 +26673,10 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
             hiring ? 'إلغاء توظيف صاحب العمل بقرار الشركة — أُعيدت الوظيفة متاحة والفرصة مستهلكة'
                    : empReject ? 'قرار الشركة بعد رفض صاحب العمل: إرجاع الوظيفة متاحة — والفرصة مستهلكة'
                    : critical ? 'إرجاع بعد حالة حرجة — قرار الموظف' : 'إرجاع يدوي من لوحة المتابعة');
-          if (res.ok) {
-            UI.toast(hiring ? 'warn' : 'warn', hiring ? 'أُلغي التوظيف' : 'تم الإرجاع',
-              'أُعيدت الوظيفة ' + job.code + ' إلى المتاح — والفرصة مستهلكة.');
-            close();
-          }
+          if (!res || !res.ok) { close(); decisionRefused(null, res, hiring ? 'إلغاء التوظيف' : 'إرجاع الوظيفة'); return; }
+          UI.toast('warn', hiring ? 'أُلغي التوظيف' : 'تم الإرجاع',
+            'أُعيدت الوظيفة ' + job.code + ' إلى المتاح — والفرصة مستهلكة.');
+          close();
         });
         if(box.querySelector('#h-del'))box.querySelector('#h-del').addEventListener('click', function () {
           UI.confirm({
@@ -26690,7 +26684,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
             message: 'ستُحذف الوظيفة ' + job.code + ' نهائياً، وتُغلق فرصة البطاقة ' + serial + ' كمستهلكة — لا تعود الفرصة (قرار معتمد).'
           }).then(function (yes) {
             if (!yes) return;
-            Store.deleteJob(job.code);
+            if (!Store.deleteJob(job.code)) { decisionRefused(null, { error: 'تعذّر الحذف — تحقّق من صلاحيتك أو حدّث الصفحة' }, 'حذف الوظيفة'); return; }
             UI.toast('warn', 'حُذفت الوظيفة', job.code + ' — أُغلقت فرصة البطاقة ' + serial + '.');
             close();
           });
@@ -26747,7 +26741,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           '<button class="btn btn-lapis btn-sm" data-hold-manage="' + UI.esc(h.job.code) + '" data-hold-serial="'+UI.esc(h.serial||'')+'" data-attempt-no="'+(h.attempt?h.attempt.no:0)+'">إدارة الحجز</button>' +
           '<button class="btn btn-outline btn-sm" data-hold-app="' + UI.esc(h.serial || '') + '">البطاقة</button>' +
         '</div></div>';
-    }).join('') : (criticalHtml ? '' : '<div class="table-empty">' + UI.ic('check') + '<div class="mt-2">لا حجوزات ولا حالات حرجة — كل الوظائف متاحة.</div></div>'));
+    }).join('') : ((hiringHtml || criticalHtml) ? '' : '<div class="table-empty">' + UI.ic('check') +
+      '<div class="mt-2">لا حجوزات معلّقة — كل القرارات مسجّلة، والقائمة نظيفة.</div></div>'));
 
     host.querySelectorAll('[data-hold-manage]').forEach(function (b) {
       b.addEventListener('click', function () { openHoldsModal(b.getAttribute('data-hold-manage'),b.dataset.holdSerial,Number(b.dataset.attemptNo)); });
@@ -26756,29 +26751,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
       b.addEventListener('click', function () { if (b.getAttribute('data-hold-app')) attemptsModal(b.getAttribute('data-hold-app')); });
     });
 
-    // منتهية المهلة
-    var expired = [];
-    Store.db().attempts.forEach(function (t) {
-      if (t.slotStatus === 'expired') expired.push(t);
-    });
-    document.getElementById('expired-table-body').innerHTML = expired.length ? expired.map(function (t) {
-      var app = Store.getApplicant(t.serial);
-      return '<tr>' +
-        '<td class="mono">' + UI.esc(t.serial) + '</td>' +
-        '<td>' + UI.esc(app ? app.fullName : '—') + '</td>' +
-        '<td>#' + t.no + '</td>' +
-        '<td class="mono">' + UI.esc(t.jobCode || '—') + '</td>' +
-        '<td class="tiny" dir="ltr">' + Store.fmtDateTime(t.closedAt) + '</td>' +
-        '<td class="tiny muted">' + UI.esc(t.note || '') + '</td>' +
-        '<td><button class="btn btn-gold btn-sm" data-reassign="' + UI.esc(t.serial) + '|' + t.no + '">ترشيح بديل</button></td></tr>';
-    }).join('') : '<tr><td colspan="7" class="table-empty">لا فرص بحالة حرجة</td></tr>';
-
-    document.querySelectorAll('[data-reassign]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var parts = b.getAttribute('data-reassign').split('|');
-        jobPickerModal(parts[0], Number(parts[1]));
-      });
-    });
+    /* قرار المالك 2026-11-23: الحجز المحسوم يُزال من متابعة الحجوزات تماماً —
+       لا صفّ ولا أثر (مثل الإشعار: يُنفَّذ فيختفي). الحجوزات المعروضة هنا هي
+       المعلّقة فقط؛ فرص الاستبدال تُدار من نافذة البطاقة نفسها. */
   }
 
   /* ======================= سجل التدقيق =======================
@@ -26806,15 +26781,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     'restore': 'استرجاع', 'backup': 'نسخ احتياطي', 'export': 'تصدير',
     'print': 'طباعة', 'view': 'عرض', 'read': 'عرض'
   };
-  /* ── تعريب نصوص السجل (2026-11-07 بطلب المالك) ─────────────────────────────
-     مشغّل التدقيق في القاعدة (brc.trg_audit) يكتب حقولاً مختلطة:
-       action  = «تعديل/إضافة/حذف» + اسم الجدول   ← «تعديل applicants»
-       details = «تغيير في »        + اسم الجدول   ← «تغيير في applicants»
-     كما أن بعض سجلات المتجر المحلي تحمل تفاصيل JSON بحقول إنكليزية
-     (تعديل مستخدم / تعديل وظيفة). القيم الخام تبقى في القاعدة والتصدير كما هي
-     لأنها دليل تدقيق، ونُعرّبها هنا عند العرض فقط: جدول السجل، قوائم الفلاتر،
-     و«آخر العمليات». الأكواد المطبوعة (HRC-1042، الرقم التسلسلي، عنوان الشبكة)
-     معرّفات لا كلمات فتبقى كما هي وباتجاه ltr. */
+  /* تعريب نصوص السجل عند العرض فقط (2026-11-07): القيم الخام تبقى في القاعدة
+     لأنها دليل تدقيق. الأكواد المطبوعة (HRC-1042، التسلسلي، IP) معرّفات لا تُترجم. */
   var AUDIT_WORD = {
     applicant: 'بطاقة', applicants: 'بطاقة', card: 'بطاقة', cards: 'بطاقة',
     job: 'وظيفة', jobs: 'وظيفة', vacancy: 'وظيفة', vacancies: 'وظيفة',
