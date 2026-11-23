@@ -593,15 +593,7 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
   will-change: auto;
 }
 
-@keyframes mkRiseIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion: no-preference){
-  .hero-app .app-hero > *{animation:mkRiseIn .62s cubic-bezier(.22,1,.36,1) backwards}
-  .hero-app .app-hero > :nth-child(1){animation-delay:.05s}
-  .hero-app .app-hero > :nth-child(2){animation-delay:.13s}
-  .hero-app .app-hero > :nth-child(3){animation-delay:.21s}
-  .hero-app .app-hero > :nth-child(4){animation-delay:.29s}
-  .hero-app + .app-search-wrap .app-search{animation:mkRiseIn .58s cubic-bezier(.22,1,.36,1) backwards;animation-delay:.34s}
-}
+
 .step:hover, .service:hover {
   border-color: rgba(255, 208, 96, .75);
   box-shadow:

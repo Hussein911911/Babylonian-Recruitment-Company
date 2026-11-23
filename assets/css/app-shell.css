@@ -462,22 +462,7 @@
 .jobs-grid.is-first-paint .job-card:nth-child(6){animation-delay:200ms}
 .jobs-grid.is-first-paint .job-card:nth-child(n+7){animation-delay:240ms}
 
-/* 2026-11-20 — لغة حركة موحّدة: تنقّل التبويبات (pageIn, backwards)، ضغطة الزر
-   scale(.97)، صورة الوظيفة scale(1.02)→1 بلا تغيير شفافية، رفع البطاقة على المؤشّر. */
-@media (prefers-reduced-motion: no-preference){
-  body.app-focus[data-app-page="jobs"] [data-page="jobs"],
-  body.app-focus[data-app-page="favorites"] [data-page="favorites"],
-  body.app-focus[data-app-page="card"] [data-page="card"],
-  body.app-focus[data-app-page="contact"] [data-page="contact"]{animation:pageIn .26s var(--flow-ease) backwards}
-  .btn:active,.bk-cta:active,.bk-footbtn:active,.tabbar [data-page-tab]:active{transform:scale(.97);transition-duration:var(--m-fast)}
-  .app-card .job-image:not(.has-img) img{transform:scale(1.02)}
-  .app-card .job-image img{transition:transform var(--m-slow) var(--flow-ease)}
-}
-@keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
-  .app-card{transition:transform var(--m-base) var(--flow-ease),border-color var(--m-base) var(--flow-ease),box-shadow var(--m-base) var(--flow-ease)}
-  .app-card:hover{transform:translateY(-2px);border-color:#c9d3e4;box-shadow:0 6px 16px rgba(6,13,31,.10)}
-}
+
 
 @media (prefers-reduced-motion: no-preference) {
   .jobs-more-btn:not(.is-expanded) .jobs-more-ic { animation: jobsMorePulse 2.8s ease-in-out infinite; }
