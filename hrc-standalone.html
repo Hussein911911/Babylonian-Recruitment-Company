@@ -2742,22 +2742,6 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 }
 .modal-booking .modal-head .icon-btn:hover { background: rgba(255, 255, 255, .14); color: #fff; }
 
-/* 2026-11-20 — توسيط نص الرأس توسيطاً حقيقياً (طلب الإدارة).
-   المشكلة: النص كان محاذى لبداية السطر (اليمين) وزر الإغلاق على اليسار، فبدا
-   الرأس مائلاً، وكلمة «التقديم» في آخر سطر الشرح كانت تلتصق بالحافة اليمنى،
-   والمسافة يسار النص أكبر من مسافتها يمينه.
-   الحل: الزر يخرج من مسار التخطيط (absolute) فلا يأكل من عرض النص، فيأخذ النص
-   كامل عرض النافذة ويتوسّط بالنسبة للنافذة نفسها لا لما تبقّى بعد الزر.
-   الحشو الداخلي متساوٍ من الجانبين (42px) فلا يزحزح المركز ولو بمقدار بكسل،
-   ويمنع النص من المرور تحت الزر. text-wrap:balance يوازن السطرين.
-   النطاق محصور بـ .modal-booking فلا يمسّ نوافذ الموظفين (.workspace-modal). */
-.modal-booking .modal-head { position: relative; justify-content: center; }
-.modal-booking .modal-head > div { flex: 1 1 auto; min-width: 0; text-align: center; }
-.modal-booking .modal-head h3 { text-align: center; padding-inline: 42px; text-wrap: balance; }
-.modal-booking .modal-head .tiny { text-align: center; padding-inline: 42px; text-wrap: balance; }
-.modal-booking .modal-head .icon-btn {
-  position: absolute; inset-block-start: 16px; inset-inline-end: 20px;
-}
 .modal-booking .modal-body { background: #fff; padding: 18px 20px 16px; }
 
 .bk-sheet { display: grid; gap: 14px; animation: bkEnter .26s cubic-bezier(.22, 1, .36, 1) both; }
@@ -2855,6 +2839,15 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 
 .bk-cam {
   position: relative; overflow: hidden; border-radius: 16px;
+  /* 2026-11-20 — توسيط لوحة الكاميرا (طلب الإدارة): عرضها يُحسب من النسبة
+     (aspect-ratio + max-height) فتطلع أضيق من عمود المحتوى، وكانت الشبكة
+     تضعها على الحافة اليمنى: فراغ ١٢٤px يسار مقابل ١٦px يمين. justify-self
+     يوسّطها فيبقى الفراغ متساوياً على الجانبين، بلا تغيير في مقاسها ولا في
+     نسبة أبعادها (تبقى ٤:٣ على الجوال و١٦:١٠ على الشاشة الكبيرة). */
+  justify-self: center;
+  /* العرض محسوب من نفس النسبة التي كانت تنتجها max-height، فلا يتغيّر مقاس
+     اللوحة ولا نسبة أبعادها — يتغيّر موضعها فقط: من الحافة إلى المنتصف. */
+  width: min(100%, calc(232px * 16 / 10));
   aspect-ratio: 16 / 10; max-height: 232px; display: grid; place-items: center;
   background:
     radial-gradient(120% 140% at 50% 0%, rgba(63, 193, 196, .12), transparent 62%),
@@ -2987,7 +2980,10 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
   .bk-card { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 9px; }
   .bk-card-qr { width: 38px; height: 38px; }
   .bk-card-tags { flex-direction: row; }
-  .bk-cam { aspect-ratio: 4 / 3; max-height: 208px; border-radius: 14px; }
+  .bk-cam {
+    aspect-ratio: 4 / 3; max-height: 208px; border-radius: 14px;
+    width: min(100%, calc(208px * 4 / 3));   /* مُوسَّطة بنفس مقاسها */
+  }
   .bk-cam-overlay { padding: 16px 16px; }
   .bk-cam-ic { width: 42px; height: 42px; border-radius: 13px; }
   .bk-cam-sub { font-size: .76rem; }
