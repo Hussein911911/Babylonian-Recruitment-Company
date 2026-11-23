@@ -135,13 +135,14 @@ const block = [
   '#     onclick في أي صفحة يغيّر بصمته ⇒ إن لم تُعِد التوليد، يُرفض السكربت',
   '#     في المتصفح ويتعطّل الزر. لذلك: npm run csp  ثم  npm run test:csp',
   '#',
-  '#  ⚠️ HSTS يُنشر بـ max-age قصير أولاً (٦٠ ثانية): لو ضُبط نطاق بلا شهادة',
-  '#     صالحة بقيمة سنة، يُقفل الموقع على كل من زاره لمدة سنة كاملة ولا',
-  '#     مهلة تراجع. بعد التأكد من أن HTTPS يعمل على كل النطاقات، ارفعها',
-  '#     إلى 31536000 (سنة) ثم أضف includeSubDomains.',
+  '#  ⚠️ HSTS: كان max-age=60 (دقيقة واحدة) — لا تحمي شيئاً تقريباً. صار 86400',
+  '#     (يوم واحد، 2026-11-20) وهو **سقف المرحلة الأولى** الذي يفرضه',
+  '#     tests/csp.mjs بوعي: أثناء تعليق دومين بلا شهادة صالحة تُقفل سنة كاملة',
+  '#     بلا مهلة تراجع. الخطوة التالية بعد تثبيت النطاق وشهادته:',
+  '#         31536000 (سنة) ثم includeSubDomains — وعدّل السقف في الاختبار معها.',
   '#',
   '/*',
-  '  Strict-Transport-Security: max-age=60',
+  '  Strict-Transport-Security: max-age=86400',
   '  Content-Security-Policy: ' + CSP,
   '  X-Frame-Options: DENY',
   '  Cross-Origin-Opener-Policy: same-origin',
@@ -176,5 +177,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   writeFileSync(headersPath, next);
   console.log('✓ وُلِّدت CSP: ' + allBlocks.size + ' بصمة كتلة + ' + allHandlers.size + ' بصمة معالج');
   for (const [p, v] of perPage) if (v.blocks || v.handlers) console.log('    ' + p.padEnd(24) + v.blocks + ' كتلة · ' + v.handlers + ' معالج');
-  console.log('  HSTS: max-age=60 (ابدأ قصيراً — انظر التعليق في _headers)');
+  console.log('  HSTS: max-age=86400 (يوم — سقف المرحلة الأولى)');
 }

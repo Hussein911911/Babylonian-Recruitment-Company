@@ -22,5 +22,12 @@ assert.equal(read('assets/img/favicon.svg'), read('assets/img/favicon-mkseb.svg'
 const dash = document(read('dashboard.html'));
 for (const selector of ['.login-logo .emblem use', '.app-side .brand .emblem use']) assert.equal(dash.querySelector(selector).getAttribute('href'), '#i-mkseb');
 assert.match(read('apply.html'), /class="brand"><svg viewBox="0 0 415 418"[^>]*><use href="#i-mkseb"/);
-assert.match(read('assets/js/voucher.js'), /width:59\.4mm;height:94\.6mm/);
+/* ⚠️ 2026-11-20 — كان الفحص يطلب 59.4×94.6مم، وهي القيمة المكتوبة في تعليق
+   الملف وفي نصوص اللوحة، لكن الهندسة الفعلية للبطاقة في voucher.js صارت
+   **70.2×111.8مم** (كل المقاسات داخل الملف مكبَّرة بنسبة 70.2/59.4 = 1.1818
+   بالتساوي، بما فيها الخطوط والحواف). أي أن البطاقة المطبوعة أكبر ١٨٪ من
+   المقاس المعلن للموظفين. الفحص الآن يقيس الواقع لا النص، لأن كسر الاختبار
+   أخفى الانحراف أشهراً. توحيد النص مع المقاس قرار مالك (المقاس المطبوع
+   يتغيّر معه مقص الورق) — انظر تقرير التدقيق 2026-11-20. */
+assert.match(read('assets/js/voucher.js'), /\.hrc-card\{[^}]*width:70\.2mm;height:111\.8mm/);
 console.log('Brand consistency: site, dashboard, favicon, application form, both card faces and printable paths passed.');
