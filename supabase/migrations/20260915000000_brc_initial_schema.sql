@@ -3032,8 +3032,23 @@ notify pgrst,'reload schema';
 -- to the exact card and selected opportunity; never expose unused/other jobs.
 create or replace function brc.customer_application_details(p_serial text, p_attempt_no integer)
 returns jsonb language plpgsql security definer set search_path = brc, public as $$
-declare f record; a record; v_job jsonb;
+declare f record; a record; v_job jsonb; v_guard jsonb;
 begin
+  /* ⚠️ 2026-11-20 — ثغرة تعداد (enumeration) أُغلقت:
+     كانت هذه الدالة مفتوحة للزائر بلا أي حراسة، وتُرجع الاسم والهاتف والعنوان
+     وتاريخ الميلاد لكل بطاقة قدّمت. والباركود HRC-BC-NNNNNN عشوائي من ستّ
+     خانات = مليون احتمال فقط، وبلا حدّ للطلبات يجمع المهاجم بيانات الباحثين
+     بمسح آلي. الحارس هو نفسه المستخدم في lookup_card/self_service_card:
+     ١٥ عرضاً للبطاقة الواحدة في الساعة، و٤٠ من المصدر (IP) نفسه — فلا يتأثّر
+     صاحب البطاقة الذي يفتح تفاصيله مرة أو مرتين.
+     p_source = null عمداً ليُشتق IP الزائر من ترويسات الطلب
+     (brc.card_request_source) فيعمل الحدّ لكل مصدر على حدة.
+     لا يتغيّر توقيع الدالة ⇒ لا حاجة لتحديث الواجهة ولا لمسح كاش الأجهزة. */
+  v_guard := brc.card_lookup_guard(p_serial);
+  if coalesce((v_guard->>'ok')::boolean, false) is not true then
+    return v_guard;
+  end if;
+
   select * into f from brc.applicants where serial=upper(btrim(coalesce(p_serial,'')));
   if f.serial is null or f.status in ('blank','pending','rejected') then
     return jsonb_build_object('ok',false,'error','لا تتوفر تفاصيل تقديم لهذه البطاقة');
