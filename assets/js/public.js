@@ -1029,7 +1029,8 @@
     /* بصمة الفلاتر: تغيّرها يعيد القائمة إلى الطيّ، وتحديث البيانات وحده
        (Realtime/صيانة) يُبقي حالة «عرض المزيد» كما اختارها الزائر. */
     var key = currentJobsFilterKey();
-    if (key !== jobsFilterKey) { jobsExpanded = false; jobsFilterKey = key; }
+    var filterChanged = key !== jobsFilterKey;
+    if (filterChanged) { jobsExpanded = false; jobsFilterKey = key; }
 
     var jobs = Store.listJobs(filters);
     if (filters.category && filters.category !== 'all') {
@@ -1065,7 +1066,7 @@
         ? Math.min((index - JOBS_PAGE_SIZE) * 45, 360) : null;
       return cardHtml(job, favorites, index + 1, delay);
     }).join('');
-    if (!jobsFirstPaintDone && shown.length) {
+    if (shown.length && (!jobsFirstPaintDone || filterChanged)) {
       jobsFirstPaintDone = true;
       host.classList.add('is-first-paint');
       window.setTimeout(function () { host.classList.remove('is-first-paint'); }, 1500);
