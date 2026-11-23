@@ -608,14 +608,24 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
    لا نغيّر الشكل النهائي: الحالة المنتهية هي نفسها تماماً. */
 .reveal {
   opacity: .6; transform: translateY(12px);
-  transition: opacity .38s cubic-bezier(.22, .61, .36, 1),
-              transform .38s cubic-bezier(.22, .61, .36, 1);
+  transition: opacity .52s cubic-bezier(.22, 1, .36, 1),
+              transform .52s cubic-bezier(.22, 1, .36, 1);
   will-change: opacity, transform;
 }
 .reveal.is-visible {
   opacity: 1; transform: none;
   /* بعد الانتهاء لا نُبقي طبقة GPU — توفير ذاكرة على الأجهزة الضعيفة */
   will-change: auto;
+}
+
+@keyframes mkRiseIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: no-preference){
+  .hero-app .app-hero > *{animation:mkRiseIn .62s cubic-bezier(.22,1,.36,1) backwards}
+  .hero-app .app-hero > :nth-child(1){animation-delay:.05s}
+  .hero-app .app-hero > :nth-child(2){animation-delay:.13s}
+  .hero-app .app-hero > :nth-child(3){animation-delay:.21s}
+  .hero-app .app-hero > :nth-child(4){animation-delay:.29s}
+  .hero-app + .app-search-wrap .app-search{animation:mkRiseIn .58s cubic-bezier(.22,1,.36,1) backwards;animation-delay:.34s}
 }
 .step:hover, .service:hover {
   border-color: rgba(255, 208, 96, .75);
@@ -2487,7 +2497,7 @@ table.data tbody tr:hover { background: #fff; }
   .reveal {
     opacity: .6;
     transform: translateY(12px);
-    transition: opacity .38s cubic-bezier(.22,.61,.36,1), transform .38s cubic-bezier(.22,.61,.36,1);
+    transition: opacity .52s cubic-bezier(.22,1,.36,1), transform .52s cubic-bezier(.22,1,.36,1);
   }
   .reveal.is-visible { opacity: 1; transform: none; }
 }
@@ -3526,6 +3536,15 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
   to   { opacity: 1; transform: none; }
 }
 
+.jobs-grid.is-first-paint .job-card{animation:jobsCardIn .46s cubic-bezier(.22,.8,.24,1) backwards}
+.jobs-grid.is-first-paint .job-card:nth-child(1){animation-delay:0ms}
+.jobs-grid.is-first-paint .job-card:nth-child(2){animation-delay:40ms}
+.jobs-grid.is-first-paint .job-card:nth-child(3){animation-delay:80ms}
+.jobs-grid.is-first-paint .job-card:nth-child(4){animation-delay:120ms}
+.jobs-grid.is-first-paint .job-card:nth-child(5){animation-delay:160ms}
+.jobs-grid.is-first-paint .job-card:nth-child(6){animation-delay:200ms}
+.jobs-grid.is-first-paint .job-card:nth-child(n+7){animation-delay:240ms}
+
 @media (prefers-reduced-motion: no-preference) {
   .jobs-more-btn:not(.is-expanded) .jobs-more-ic { animation: jobsMorePulse 2.8s ease-in-out infinite; }
   @keyframes jobsMorePulse {
@@ -3538,7 +3557,7 @@ table.data.audit-table .table-empty { padding: 26px; text-align: center; }
 }
 /* تقليل الحركة: لا لمعان، لا نبض، لا تتابع، ولا انتقالات — الحالة تُقرأ من النص */
 @media (prefers-reduced-motion: reduce) {
-  .jobs-more-wrap.is-in, .job-card.is-revealed,
+  .jobs-more-wrap.is-in, .job-card.is-revealed, .jobs-grid.is-first-paint .job-card,
   .jobs-more-btn:not(.is-expanded) .jobs-more-ic { animation: none !important; }
   .jobs-more-meter-fill, .jobs-more-btn, .jobs-more-ic, .jobs-more-ic .ic,
   .jobs-more-btn::after { transition: none !important; }
@@ -4837,7 +4856,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
 <!-- ============================== لوحة الوظائف ============================== -->
 <section class="section app-section" id="jobs" data-page="jobs" style="padding-top:22px">
   <div class="container">
-    <div class="jobs-head">
+    <div class="jobs-head reveal">
       <h2><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg> أحدث الوظائف</h2>
       <button type="button" class="jobs-all" id="jobs-show-all" aria-controls="jobs-grid">عرض الكل <svg class="ic"><use href="#i-arrow-right" xlink:href="#i-arrow-right"/></svg></button>
     </div>
@@ -4909,7 +4928,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
 <!-- ============================== المفضلة ============================== -->
 <section class="section app-section app-only" id="favorites" data-page="favorites" style="padding-top:6px">
   <div class="container">
-    <div class="jobs-head">
+    <div class="jobs-head reveal">
       <h2><svg class="ic"><use href="#i-heart" xlink:href="#i-heart"/></svg> المفضلة</h2>
       <button type="button" class="jobs-all fav-clear" id="fav-clear" hidden>مسح الكل</button>
     </div>
@@ -5079,12 +5098,12 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
         <h2>قدّم ببطاقة التوظيف — والتحقق خاص بموظفينا</h2>
         <p class="muted">تُشترى البطاقة كاشاً من نقاط البيع المعتمدة. تابعها بباركودها واطبع استمارتك عند التقديم.</p>
         <div class="grid grid-2" style="gap:12px">
-          <div class="contact-card" style="text-align:right">
+          <div class="contact-card reveal" style="text-align:right">
             <div class="ic"><svg class="ic"><use href="#i-calendar" xlink:href="#i-calendar"/></svg></div>
             <h3>بطاقة التوظيف</h3>
             <p>افتح <b>«بطاقتي»</b> بالباركود لمتابعة فرصك والتقديم وإعادة طباعة <b>استمارة التوظيف A4</b>.</p>
           </div>
-          <div class="contact-card" style="text-align:right">
+          <div class="contact-card reveal" data-d="90" style="text-align:right">
             <div class="ic"><svg class="ic"><use href="#i-shield" xlink:href="#i-shield"/></svg></div>
             <h3>متابعة التقديم</h3>
             <p>تابع حالة فرصك وتواصل مع الشركة للاستفسار عن طلبك ونتيجة المقابلة.</p>
@@ -5122,23 +5141,23 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
 <!-- ============================== التواصل ============================== -->
 <section class="section" id="contact" data-page="contact">
   <div class="container">
-    <div class="section-head">
+    <div class="section-head reveal">
       <span class="eyebrow">تواصل معنا</span>
       <h2>نحن هنا لأجلك</h2>
       <p>للاستفسار وطلب الكوادر، تواصل معنا.</p>
     </div>
     <div class="contact-grid">
-      <div class="contact-card">
+      <div class="contact-card reveal">
         <div class="ic"><svg class="ic"><use href="#i-whatsapp" xlink:href="#i-whatsapp"/></svg></div>
         <h3>أرقام الواتساب</h3>
         <p class="contact-inline"><a href="https://wa.me/9647763999907" target="_blank" rel="noopener" dir="ltr" class="mono">07763999907</a><a href="https://wa.me/9647863999907" target="_blank" rel="noopener" dir="ltr" class="mono">07863999907</a></p>
       </div>
-      <div class="contact-card">
+      <div class="contact-card reveal" data-d="90">
         <div class="ic"><svg class="ic"><use href="#i-briefcase" xlink:href="#i-briefcase"/></svg></div>
         <h3>العنوان</h3>
         <p>لا تحُدّنا جغرافيا.. متواجدون حيثما وُجدت الفرصة وطموح السعي.</p>
       </div>
-      <div class="contact-card">
+      <div class="contact-card reveal" data-d="180">
         <div class="ic"><svg class="ic"><use href="#i-clock" xlink:href="#i-clock"/></svg></div>
         <h3>أوقات العمل</h3>
         <p>يومياً من 8:00 صباحاً حتى 10:00 مساءً</p>
@@ -22879,6 +22898,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   /* يُفعَّل لضغطة «عرض المزيد» وحدها كي تظهر البطاقات الجديدة بتتابع بصري،
      ولا يُفعَّل عند تحديث البيانات أو تغيير الفلاتر فلا تتكرّر الحركة بلا سبب. */
   var revealNewCards = false;
+  var jobsFirstPaintDone = false;
 
   /* مفضلة الزائر: تُحفظ على جهازه وحده (لا تُرسل للشركة ولا تُسجَّل بسجل) */
   var FAV_KEY = 'hrc_fav_jobs_v1';
@@ -23914,6 +23934,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         ? Math.min((index - JOBS_PAGE_SIZE) * 45, 360) : null;
       return cardHtml(job, favorites, index + 1, delay);
     }).join('');
+    if (!jobsFirstPaintDone && shown.length) {
+      jobsFirstPaintDone = true;
+      host.classList.add('is-first-paint');
+      window.setTimeout(function () { host.classList.remove('is-first-paint'); }, 1500);
+    }
     renderJobsMore(total, shown.length);
     renderActiveChips();
   }
