@@ -312,11 +312,8 @@
   }
 
   /* ──────────────────────────────────────────────────────────────────────
-   *  منصّة المسح: كاميرا حيّة داخل الشاشة
-   *  كان هنا مربّع كيو آر «توضيحي» مع عدسة متحركة — لكنه كان يوهم الزبون بأن
-   *  عليه مسح الشاشة نفسها، ولا يفتح الكاميرا إلا بزر منفصل في نافذة أخرى.
-   *  الآن: إطار كاميرا حقيقي في مكانه، يُشغَّل بزر واحد، ويقرأ الباركود مباشرة
-   *  ويحوّله إلى شاشة التقديم — بلا نوافذ متداخلة.
+   *  منصّة المسح: كاميرا حيّة داخل الشاشة بزر واحد (بدل مربّع «توضيحي» كان
+   *  يوهم الزبون بمسح الشاشة، ويفتح الكاميرا في نافذة منفصلة).
    * ────────────────────────────────────────────────────────────────────── */
   function scannerHtml() {
     return '<div class="bk-scanner">' +
@@ -387,6 +384,11 @@
           '<button type="button" class="btn btn-gold bk-cta" id="bk-apply">' + UI.ic('arrow-right') + ' متابعة التقديم</button>' +
         '</section>' +
 
+        /* سطر قانوني واحد: أي مسار في النافذة (مسح/يدوي/نقطة بيع) له وثيقة منشورة */
+        '<p class="tiny muted" style="text-align:center;margin:10px 0 12px;line-height:1.9">' +
+          'باستخدامك النموذج أنت توافق على ' +
+          '<a href="privacy.html" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">سياسة الخصوصية</a> و' +
+          '<a href="terms.html" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">شروط الاستخدام</a>.</p>' +
         '<div class="bk-entry-foot">' +
           '<button type="button" class="bk-footbtn" id="bk-lookup">' +
             '<span class="bk-footbtn-ic">' + UI.ic('search') + '</span>' +

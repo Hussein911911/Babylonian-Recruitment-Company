@@ -84,6 +84,10 @@ try{
   w.G.pickJob('J-7');w.G.go(7);await tick(450);
   check('review retains original owner and allows only job editing',$('review-content').textContent.includes(owner.fullName)&&!w.document.querySelector('#review-content [onclick="G.editStep(1)"]')&&!!w.document.querySelector('#review-content [onclick="G.editStep(6)"]'));
   check('rescan review labels the actual second opportunity', $('review-content').textContent.includes('الفرصة ٢')&&$('review-content').textContent.includes('وظائف الفرص المتبقية'));
+  /* الموافقة على الخصوصية والشروط صارت شرط إرسال (2026-11-24) */
+  w.G.finish();await tick(30);
+  check('consent gate blocks submit before the checkbox is ticked',!$('pg-result').classList.contains('active')&&/يجب الموافقة/.test(($('rv-err')||{}).textContent||''));
+  $('consent-privacy').checked=true;
   $('f-name').value=attacker.fullName;w.G.finish();
   for(let i=0;i<100&&!$('pg-result').classList.contains('active');i++)await tick(20);
   check('second application completes with original identity', $('pg-result').classList.contains('active')&&$('result-content').textContent.includes(owner.fullName)&&!$('result-content').textContent.includes(attacker.fullName));

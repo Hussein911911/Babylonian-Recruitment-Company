@@ -732,6 +732,9 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
   border-top: 1px solid rgba(255, 255, 255, .09); padding: 16px 0; display: flex; justify-content: space-between;
   align-items: center; gap: 12px; flex-wrap: wrap; font-size: .82rem; color: #93a1bf;
 }
+.site-footer .foot-legal{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}
+.site-footer .foot-legal a{color:#c8d3e8;text-decoration:none;font-weight:700}
+.site-footer .foot-legal a:hover{color:var(--gold-2);text-decoration:underline}
 .footer-phones { display: grid; gap: 8px; }
 .footer-phones a { display: inline-flex; align-items: center; gap: 8px; color: var(--gold-2); font-weight: 700; }
 .footer-phones svg { width: 17px; height: 17px; }

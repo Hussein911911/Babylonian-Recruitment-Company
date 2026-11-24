@@ -654,6 +654,19 @@ check('المراجعة تعرض الاسم بعد التعديل',
  *  11) الإتمام — نداء القاعدة بالبيانات الصحيحة
  * =========================================================================== */
 step(9, 'الإتمام: نداء apply_with_card لكل وظيفة ثم استمارتان بالباركود');
+/* الموافقة على الخصوصية والشروط صارت شرط إرسال (2026-11-24): نتحقق أن البوابة
+   تمنع الكتابة فعلاً، ثم نعلّم الخانة كما يفعل الزبون. */
+check('خانة الموافقة على الخصوصية والشروط موجودة', !!$('consent-privacy') && !!$('consent-row'));
+click($('btn-finish'));
+await tick(60);
+check('بلا موافقة: لا يُرسل أي طلب إلى القاعدة',
+  calls.filter((c) => c.name === 'apply_with_card').length === 0,
+  String(calls.filter((c) => c.name === 'apply_with_card').length));
+check('بلا موافقة: رسالة عربية تشرح السبب',
+  ($('rv-err').textContent || '').includes('يجب الموافقة على سياسة الخصوصية'),
+  ($('rv-err').textContent || '').slice(0, 60));
+$('consent-privacy').checked = true;
+$('consent-privacy').dispatchEvent({ type: 'change', target: $('consent-privacy') });
 click($('btn-finish'));
 await tick(60);
 const applyCalls = calls.filter((c) => c.name === 'apply_with_card');

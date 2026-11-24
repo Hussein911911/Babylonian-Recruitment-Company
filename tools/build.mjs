@@ -64,6 +64,8 @@ const partials = {
   public: read('src/partials/public.html'),
   verify: read('src/partials/verify.html'),
   notfound: read('src/partials/notfound.html'),
+  privacy: read('src/partials/privacy.html'),
+  terms: read('src/partials/terms.html'),
   dashboard: read('src/partials/dashboard.html')
 };
 const CSS = read('assets/css/style.css');
@@ -225,9 +227,25 @@ writeFileSync(P('verify.html'), buildPage({
     desc: 'الرابط المطلوب غير موجود على موقع منصة مكسب للتوظيف — تصفّح الوظائف المتاحة أو تواصل معنا مباشرة.',
     body: partials.notfound, scripts: ['config', 'ui', 'nav']
   }).replace(/(src|href)="assets\//g, '$1="/assets/')
-    .replace(/(src|href)="index\.html/g, '$1="/index.html');
+    .replace(/(src|href)="index\.html/g, '$1="/index.html')
+    /* الصفحتان القانونيتان تُخدَمان على مسار تعسّفي (‎/a/b/typo) فلا بد من جذرهما */
+    .replace(/(src|href)="(privacy|terms)\.html/g, '$1="/$2.html');
   writeFileSync(P('404.html'), nf);
 }
+
+/* الصفحتان القانونيتان: تُبنيان من الأجزاء كي تحمل رأس الموقع وتذييله نفسهما،
+   وتُخدَم من مسارها النظيف تلقائياً (/privacy و /terms) عبر تطبيع Cloudflare Pages —
+   فلا قاعدة في _redirects (القاعدة هنا تصنع حلقة، انظر تعليق الملف). */
+writeFileSync(P('privacy.html'), buildPage({
+  title: 'سياسة الخصوصية | منصة مكسب للتوظيف',
+  desc: 'سياسة الخصوصية في منصة مكسب للتوظيف: ما نجمعه من بيانات، ولماذا، ومن يطّلع عليه، ومدة الاحتفاظ، وحقوقك في الوصول والتصحيح والحذف.',
+  body: partials.privacy, scripts: ['config', 'ui', 'nav']
+}));
+writeFileSync(P('terms.html'), buildPage({
+  title: 'شروط الاستخدام | منصة مكسب للتوظيف',
+  desc: 'شروط استخدام بطاقة التوظيف وموقع منصة مكسب للتوظيف: الفرص والصلاحية والحجز المؤقت، والتزامات الباحث وصاحب العمل، والاستخدام المحرَّم.',
+  body: partials.terms, scripts: ['config', 'ui', 'nav']
+}));
 
 writeFileSync(P('dashboard.html'), buildPage({
   title: 'المنظومة الداخلية | منصة مكسب للتوظيف',
@@ -253,6 +271,9 @@ function buildStandalone() {
 
   // 2) إعادة كتابة الروابط + دمج صور <img>
   const rewriteLinks = (html) => html
+    /* الصفحتان القانونيتان ليستا داخل الملف المستقل — يُشار إلى النسخة المنشورة */
+    .replace(/href="privacy\.html"/g, 'href="https://hrc-babil.com/privacy" target="_blank" rel="noopener"')
+    .replace(/href="terms\.html"/g, 'href="https://hrc-babil.com/terms" target="_blank" rel="noopener"')
     .replace(/href="index\.html#([^"]+)"/g, 'href="#$1"')
     .replace(/href="index\.html"/g, 'href="#home"')
     .replace(/href="verify\.html"/g, 'href="#!verify"')

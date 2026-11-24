@@ -757,6 +757,9 @@ textarea { min-height: 90px; resize: vertical; line-height: 1.7; }
   border-top: 1px solid rgba(255, 255, 255, .09); padding: 16px 0; display: flex; justify-content: space-between;
   align-items: center; gap: 12px; flex-wrap: wrap; font-size: .82rem; color: #93a1bf;
 }
+.site-footer .foot-legal{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}
+.site-footer .foot-legal a{color:#c8d3e8;text-decoration:none;font-weight:700}
+.site-footer .foot-legal a:hover{color:var(--gold-2);text-decoration:underline}
 .footer-phones { display: grid; gap: 8px; }
 .footer-phones a { display: inline-flex; align-items: center; gap: 8px; color: var(--gold-2); font-weight: 700; }
 .footer-phones svg { width: 17px; height: 17px; }
@@ -5920,6 +5923,7 @@ body.app-focus .section:first-of-type { padding-top: 18px; }
 
     <div class="foot-bottom">
       <span>© <span id="year">2026</span> منصة مكسب للتوظيف — جميع الحقوق محفوظة.</span>
+      <span class="foot-legal"><a href="https://hrc-babil.com/privacy" target="_blank" rel="noopener">سياسة الخصوصية</a> · <a href="https://hrc-babil.com/terms" target="_blank" rel="noopener">شروط الاستخدام</a></span>
     </div>
   </div>
 </footer>
@@ -21890,11 +21894,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   }
 
   /* ──────────────────────────────────────────────────────────────────────
-   *  منصّة المسح: كاميرا حيّة داخل الشاشة
-   *  كان هنا مربّع كيو آر «توضيحي» مع عدسة متحركة — لكنه كان يوهم الزبون بأن
-   *  عليه مسح الشاشة نفسها، ولا يفتح الكاميرا إلا بزر منفصل في نافذة أخرى.
-   *  الآن: إطار كاميرا حقيقي في مكانه، يُشغَّل بزر واحد، ويقرأ الباركود مباشرة
-   *  ويحوّله إلى شاشة التقديم — بلا نوافذ متداخلة.
+   *  منصّة المسح: كاميرا حيّة داخل الشاشة بزر واحد (بدل مربّع «توضيحي» كان
+   *  يوهم الزبون بمسح الشاشة، ويفتح الكاميرا في نافذة منفصلة).
    * ────────────────────────────────────────────────────────────────────── */
   function scannerHtml() {
     return '<div class="bk-scanner">' +
@@ -21965,6 +21966,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
           '<button type="button" class="btn btn-gold bk-cta" id="bk-apply">' + UI.ic('arrow-right') + ' متابعة التقديم</button>' +
         '</section>' +
 
+        /* سطر قانوني واحد: أي مسار في النافذة (مسح/يدوي/نقطة بيع) له وثيقة منشورة */
+        '<p class="tiny muted" style="text-align:center;margin:10px 0 12px;line-height:1.9">' +
+          'باستخدامك النموذج أنت توافق على ' +
+          '<a href="https://hrc-babil.com/privacy" target="_blank" rel="noopener" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">سياسة الخصوصية</a> و' +
+          '<a href="https://hrc-babil.com/terms" target="_blank" rel="noopener" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">شروط الاستخدام</a>.</p>' +
         '<div class="bk-entry-foot">' +
           '<button type="button" class="bk-footbtn" id="bk-lookup">' +
             '<span class="bk-footbtn-ic">' + UI.ic('search') + '</span>' +
@@ -22925,16 +22931,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
     return a.indexOf(code) >= 0;
   }
 
-  /* -------------- وضع القاعدة العامة (Supabase مفعّل) --------------
-   * لماذا هذا التمييز؟ مع enabled=true يجب ألا يرى الزائر **أي** بيانات من
-   * المتصفح (CFG.seed أو كاش localStorage): الوظائف المعروضة مرجعها قاعدة
-   * الشركة وحدها. فقبل وصول رد القاعدة نعرض هيكل تحميل (skeleton)، وبعده
-   * إمّا الوظائف المعلنة، أو «لا توجد وظائف معروضة حالياً» إن كانت القاعدة
-   * فارغة، أو «تعذّر الاتصال بقاعدة الشركة» إن فشل الاتصال — ولا نسقط إلى
-   * البيانات التجريبية أبداً. أما إن كان المتصفح لا يستطيع الاتصال أصلاً
-   * (بلا fetch — نسخة قديمة جداً أو ملف مستقل بلا إنترنت) فالوضع محلي
-   * ويعمل كما هو.
-   * ⚠️ الموظف المسجَّل على نفس الصفحة يرى بياناته الكاملة (state=on, staff). */
+  /* وضع القاعدة العامة: مع enabled=true لا يُعرض للزائر أي بيانات متصفح
+   (seed أو كاش) — قبل رد القاعدة skeleton، وبعده وظائف أو رسالة، ولا سقوط
+   للبيانات التجريبية. بلا fetch (ملف مستقل بلا إنترنت) يبقى الوضع محلياً. */
   var cloudMode = false;      // السحابة مفعّلة وقابلة للإقلاع في هذا المتصفح
   var cloudSettled = false;   // وصل رد القاعدة (نجاح أو فشل) — قبله لا تُعرض بيانات متصفح
 
