@@ -153,6 +153,20 @@ step(6, 'سجل الاحتفاظ: وعد واحد لا وعدان');
   check('README يحيل للصفحة المنشورة', /privacy\.html/.test(read('README.md')));
 }
 
+/* ------------------------------------------------------------------------- */
+step(7, 'لا ادّعاء ترخيص/إجازة بلا رقم موثّق (قرار المالك 2026-11-24)');
+{
+  const CLAIM = /إجازة عمل|مرخّص|مرخصة|وزارة العمل والشؤون الاجتماعية/;
+  for (const page of ['index.html', 'verify.html', '404.html', 'dashboard.html', PRIVACY, TERMS, 'apply.html', 'hrc-standalone.html', 'hrc-light.html']) {
+    check(page + ': بلا ادّعاء ترخيص أو إجازة', !CLAIM.test(read(page)),
+      (read(page).match(CLAIM) || [''])[0]);
+  }
+  check('config: مفتاح الإجازة فارغ (لا ادّعاء غير موثّق)', /license: ''/.test(read('assets/js/config.js')));
+  check('الوثيقة تسجّل قرار الإزالة', /أُزيل \*\*كل\*\* ادّعاء ترخيص|إزالة ادّعاء/.test(read(DOC)));
+  check('«إجازة سوق» في متطلبات الوظائف باقية (ليست ادّعاء ترخيص)',
+    /إجازة سوق/.test(read('hrc-standalone.html')));
+}
+
 console.log('\n' + '═'.repeat(74));
 console.log('  النتيجة: ' + (fail ? '❌ ' : '✅ ') + pass + ' ناجح | ' + (fail ? '❌ ' : '') + fail + ' فاشل');
 console.log('═'.repeat(74) + '\n');
