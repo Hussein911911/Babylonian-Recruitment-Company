@@ -1,13 +1,89 @@
 -- ═══════════════════════════════════════════════════════════════════════
---  schema — الجزء 02 من 05
---  يفعّل: الدوال · العروض · إدخال بيانات
---  أسطر: 650 · حجم: 37 ك.ب
+--  schema — الجزء 02 من 06
+--  يفعّل: الدوال · العروض · المهام المجدولة · إدخال بيانات · كتل تنفيذية (DO)
+--  أسطر: 665 · حجم: 38 ك.ب
 --  ---------------------------------------------------------------------
 --  ⚠ لا تلصق هذا الجزء قبل تنفيذ الجزء 01 بنجاح.
 --  بعد «Success» انتقل إلى الجزء 03.
 -- ═══════════════════════════════════════════════════════════════════════
 
 
+
+-- ===========================================================================
+--  5) الحالة الحرجة بعد 24 ساعة + انتهاء صلاحية البطاقات (30 يوماً)
+--     تُنفَّذ دورياً عبر pg_cron (كل دقيقة) أو عبر Edge Function.
+--     نظام البطاقات (2026-09-30): لا إفراج تلقائي — الوظيفة التي تنتهي مهلة
+--     حجزها دون قرار تبقى مقفلة وتنتقل مع فرصة الزبون إلى حالة «حرجة»
+--     بانتظار قرار الموظف: تم التوظيف / إرجاعها متوفرة / حذفها.
+-- ===========================================================================
+create or replace function brc.run_auto_release() returns table (released_job text, expired_form text)
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare r record;
+begin
+  -- (أ) حجوزات انتهت مهلتها دون قرار ← حالة «حرجة» (لا إفراج تلقائي)
+  for r in
+    select j.id, j.code, j.reserved_by, a.attempt_no
+      from brc.jobs j
+      left join brc.job_attempts a
+             on a.job_id = j.id and a.slot_status = 'reserved'
+     where j.status = 'reserved'
+       and j.hold_expires_at is not null
+       and j.hold_expires_at < now()
+     for update of j
+  loop
+    update brc.jobs
+       set critical = true, hold_expires_at = null, updated_at = now()
+     where id = r.id;
+
+    update brc.job_attempts
+       set slot_status = 'critical',
+           hold_expires_at = null,
+           outcome_note = 'انتهت مهلة 24 ساعة دون قرار — بانتظار قرار الشركة (توظيف / إرجاع / حذف)'
+     where job_id = r.id and slot_status = 'reserved';
+
+    insert into brc.audit_log (username, role, action, entity, entity_id, details)
+    values ('system', 'system', 'حالة حرجة (انتهاء 24 ساعة)', 'job', r.code,
+            'انتهت المهلة دون قرار — الوظيفة مقفلة بانتظار قرار الموظف، والفرصة #' || coalesce(r.attempt_no::text, '—') ||
+            ' للبطاقة ' || coalesce(r.reserved_by, '—') || ' في حالة حرجة');
+
+    released_job := r.code; expired_form := r.reserved_by;
+    return next;
+  end loop;
+
+  -- (ب) استمارات انتهت صلاحيتها (30 يوماً)
+  for r in
+    select serial from brc.applicants
+     where status = 'active' and now() > expiry_date
+     for update
+  loop
+    update brc.applicants set status = 'expired', updated_at = now() where serial = r.serial;
+
+    insert into brc.audit_log (username, role, action, entity, entity_id, details)
+    values ('system', 'system', 'انتهاء بطاقة', 'applicant', r.serial, 'انتهت صلاحية البطاقة (30 يوماً)');
+
+    released_job := null; expired_form := r.serial;
+    return next;
+  end loop;
+
+  -- (ج) بطاقات استُهلكت فرصها (لا فرصة فارغة ولا فرصة قيد اللعب — hiring ضمنها)
+  update brc.applicants f
+     set status = 'exhausted', updated_at = now()
+   where f.status = 'active'
+     and not exists (select 1 from brc.job_attempts a where a.serial = f.serial and a.slot_status = 'empty')
+     and not exists (select 1 from brc.job_attempts a where a.serial = f.serial
+                       and a.slot_status in ('reserved', 'critical', 'hiring'));
+
+  return;
+end $$;
+
+-- جدولة التنفيذ كل دقيقة (Supabase: pg_cron)
+do $$ begin
+  perform cron.schedule('brc-auto-release', '* * * * *', $cron$ select * from brc.run_auto_release(); $cron$);
+exception when others then
+  raise notice 'pg_cron غير متاح — يمكن جدولة brc.run_auto_release() عبر Edge Function/Scheduler: %', sqlerrm;
+end $$;
 
 -- ===========================================================================
 --  6) الواجهات العامة (Views)
@@ -597,64 +673,3 @@ end $$;
 
 revoke all on function brc.ensure_card_attempts(text) from public;
 grant execute on function brc.ensure_card_attempts(text) to authenticated, service_role;
-
-create or replace function brc.self_service_card(p_serial text, p_code text)
-returns jsonb
-language plpgsql security definer
-set search_path = brc, public
-as $$
-declare
-  f record;
-  v_ok boolean;
-  v_stored text;
-  v_code text;
-begin
-  select * into f
-    from brc.applicants
-   where serial = upper(btrim(coalesce(p_serial, '')));
-  if f.serial is null then
-    return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود');
-  end if;
-  /* ترميم خانات الفرص الناقصة قبل القراءة (إصلاح 2026-10-06) — بطاقة جديدة
-     فقدت خاناتها بمزامنة ناقصة تُرمَّم هنا فوراً بدل «انتهت فرصك». */
-  perform brc.ensure_card_attempts(f.serial);
-
-  if f.status = 'pending' then
-    return jsonb_build_object('ok', false, 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
-  end if;
-
-  /* 2026-11-13: حيث يوجد card_print_code لا يُكشف الاسم/الهاتف/العنوان/الميلاد
-     بلا الرمز. البطاقات بلا رمز مطبوع (كل بطاقات اليوم) تبقى كما هي تماماً. */
-  v_stored := upper(btrim(coalesce(to_jsonb(f)->>'card_print_code', '')));
-  v_code   := upper(btrim(coalesce(p_code, '')));
-  if v_stored = '' then
-    v_ok := true;
-  else
-    v_ok := (v_stored = v_code)
-         or (replace(replace(v_stored, 'O', '0'), 'I', '1')
-             = replace(replace(v_code, 'O', '0'), 'I', '1'));
-  end if;
-
-  return jsonb_build_object(
-    'ok', true,
-    'card', jsonb_build_object(
-      'serial', f.serial,
-      'status', f.status::text,
-      'chancesLeft', (select count(*) from brc.job_attempts a where a.serial=f.serial and a.slot_status='empty'),
-      'requiresCode', (v_stored <> ''),
-      'verified', v_ok,
-      'profileLocked', (f.status <> 'blank') or (not v_ok),
-      'profile', case when not v_ok then '{}'::jsonb
-        when f.status = 'blank' then coalesce(f.self_application_data, '{}'::jsonb)
-        else coalesce(f.self_application_data, '{}'::jsonb) || jsonb_build_object(
-          'fullName', f.full_name, 'phone', f.phone, 'address', f.address,
-          'dob', f.dob, 'gender', f.gender) end,
-      'chances', (select coalesce(jsonb_agg(jsonb_build_object(
-          'no', a.attempt_no, 'slotStatus', a.slot_status::text,
-          'jobCode', a.job_code, 'jobTitle', j.title
-        ) order by a.attempt_no), '[]'::jsonb)
-        from brc.job_attempts a left join brc.jobs j on j.id=a.job_id
-        where a.serial=f.serial)
-    )
-  );
-end $$;

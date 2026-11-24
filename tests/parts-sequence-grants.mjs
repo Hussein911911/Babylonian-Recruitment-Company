@@ -1,5 +1,5 @@
 /* ═══ هل تعمل **أجزاء اللصق** فعلاً؟ ═══════════════════════════════════════
-   المالك لا يُنفّذ docs/schema.sql، بل يلصق ٥ أجزاء واحداً بعد الآخر في
+   المالك لا يُنفّذ docs/schema.sql، بل يلصق أجزاء `docs/sql-parts/schema` بالترتيب في
    محرّر Supabase. فإن لم يحمل الجزءُ المنحَ، بقي العطل رغم إصلاحنا للمصدر.
 
    هذا الفحص يُطبّق الأجزاء الخمسة بالترتيب — كما يفعل المالك حرفياً — ثم
@@ -33,7 +33,9 @@ await db.exec(`
 
 const files = readdirSync('docs/sql-parts/schema').filter(f => /^schema-part-\d+\.sql$/.test(f)).sort();
 console.log('\n═══ لصق الأجزاء بالترتيب (كما يفعل المالك) ═══');
-check('وُجدت ٥ أجزاء', files.length === 5, files.length + ' جزءاً');
+check('الأجزاء موجودة ومرقّمة بلا فجوات', files.length >= 3 &&
+  files.every((f, i) => f === `schema-part-${String(i + 1).padStart(2, '0')}.sql`),
+  files.length + ' جزءاً');
 
 for (const f of files) {
   const sql = readFileSync('docs/sql-parts/schema/' + f, 'utf8')

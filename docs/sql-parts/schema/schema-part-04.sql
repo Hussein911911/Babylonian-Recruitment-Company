@@ -1,13 +1,106 @@
 -- ═══════════════════════════════════════════════════════════════════════
---  schema — الجزء 04 من 05
+--  schema — الجزء 04 من 06
 --  يفعّل: الجداول · الفهارس · الدوال · المشغّلات · المهام المجدولة · إدخال بيانات · كتل تنفيذية (DO)
---  أسطر: 676 · حجم: 48 ك.ب
+--  أسطر: 672 · حجم: 47 ك.ب
 --  ---------------------------------------------------------------------
 --  ⚠ لا تلصق هذا الجزء قبل تنفيذ الجزء 03 بنجاح.
 --  بعد «Success» انتقل إلى الجزء 05.
 -- ═══════════════════════════════════════════════════════════════════════
 
 
+
+-- ===========================================================================
+--  10) سجل التغيير اللحظي (Realtime)
+-- ===========================================================================
+do $$ begin
+  alter publication supabase_realtime add table brc.jobs;
+  alter publication supabase_realtime add table brc.job_attempts;
+  alter publication supabase_realtime add table brc.audit_log;
+exception when others then
+  raise notice 'Realtime غير متاح في هذه البيئة: %', sqlerrm;
+end $$;
+
+-- ===========================================================================
+--  11) أمثلة استخدام سريعة
+-- ===========================================================================
+-- إضافة وظيفة (يُولَّد الكود تلقائياً BRC-####)
+-- insert into brc.jobs (title, region, salary_min, salary_max, shift,
+--                       employer_name, employer_phone, employer_address)
+-- values ('عامل مخزن', 'الحلة', 600000, 750000, 'صباحي',
+--         'مخازن الفرات للتبريد', '07701234567', 'الحلة - المنطقة الصناعية');
+--
+-- إصدار استمارة (يُولَّد الرقم HRC-NO-000121 وتُنشأ 5 محاولات)
+-- insert into brc.applicants (full_name, phone, address, dob)
+-- values ('حسين كاظم عبد الله', '07704445566', 'الحلة - شارع 40', '1997-11-30');
+--
+-- ترشيح وظيفة لمحاولة (يحجز الوظيفة 24 ساعة تلقائياً)
+-- select brc.select_attempt('HRC-NO-000121', 'HRC-1042');
+--
+-- تثبيت نتيجة المقابلة
+-- select brc.set_outcome('HRC-NO-000121', 1, 'rejected', 'عدم توفر سكن قريب');
+--
+-- التحقق عبر الكيو آر كود
+-- select brc.verify_form('HRC-NO-000120', left(brc.verify_token('HRC-NO-000120'), 8));
+--
+-- تشغيل الإفراج التلقائي يدوياً (يعمل تلقائياً كل دقيقة عبر pg_cron)
+-- select * from brc.run_auto_release();
+
+-- Employer WhatsApp OTP gateway (2026-10-17).
+-- OTP and employer sessions are service-only. Never expose these tables/RPCs to the browser.
+create table if not exists brc.employer_otp (
+ id uuid primary key, attempt_id uuid not null references brc.job_attempts(id) on delete cascade,
+ phone text not null, ip_hash text not null, code_hash text not null,
+ created_at timestamptz not null default now(), expires_at timestamptz not null default now()+interval '5 minutes',
+ delivered boolean not null default false, failures int not null default 0,
+ used boolean not null default false, session_hash text, session_expires_at timestamptz
+);
+alter table brc.employer_otp enable row level security;
+revoke all on brc.employer_otp from public,anon,authenticated;
+create index if not exists employer_otp_phone_time on brc.employer_otp(phone,created_at);
+create index if not exists employer_otp_ip_time on brc.employer_otp(ip_hash,created_at);
+create unique index if not exists employer_otp_session on brc.employer_otp(session_hash) where session_hash is not null;
+
+-- 2026-10-25: حُذفت دوال بوابة الواتساب (employer_otp_issue/delivery/verify/action)
+-- ومعها employer_view/employer_decide — لا واجهة تنادي عليها بعد حذف مسار صاحب
+-- العمل. الجداول تبقى فارغة لأن دوال الاسترجاع التشغيلي تلتقط لقطاتها.
+-- 2026-10-25: حُذفت دوال صاحب العمل نهائياً (employer_view · employer_decide ·
+-- employer_decide_original) ودوال employer_otp_%، فلا شيء تسحبه هذه الحلقة.
+-- تُبقى شبكة أمان لأي قاعدة قديمة ما زالت تحمل نسخة مشغولة بالرمز:
+do $$ declare r record; begin
+ for r in select p.oid::regprocedure as signature from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+ where n.nspname='brc' and (p.proname like 'employer\_pin%' or p.proname like 'employer\_otp\_%' or p.proname = 'staff_save_job_pin') loop
+ execute format('drop function if exists %s',r.signature);
+ end loop;
+end $$;
+
+notify pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 2026-10-25 — حُذف رمز صاحب العمل (employer PIN) نهائياً
+-- ---------------------------------------------------------------------------
+--  بعد حذف بوابة صاحب العمل من الموقع لم يبقَ مستخدم للرمز: لا واجهة ولا دالة
+--  تنادي عليه. حُذفت staff_save_job_pin · employer_pin_login · employer_pin_action
+--  وعمود jobs.employer_pin_set. وأُبقيت **جداول الاعتماد القديمة مفرغة** لأن دوال
+--  الاسترجاع التشغيلي تلتقط لقطاتها؛ لا تُستخدم لأي رمز بعد اليوم.
+create table if not exists brc.employer_job_credentials (
+ job_id uuid primary key references brc.jobs(id) on delete cascade,
+ pin_hash text not null, failures integer not null default 0,
+ window_start timestamptz not null default now(), changed_at timestamptz not null default now()
+);
+create table if not exists brc.employer_login_budget (
+ id boolean primary key default true check(id), window_start timestamptz not null default now(), requests integer not null default 0
+);
+alter table brc.employer_job_credentials enable row level security;
+alter table brc.employer_login_budget enable row level security;
+revoke all on brc.employer_job_credentials,brc.employer_login_budget from public,anon,authenticated;
+
+-- Office queue: authenticated replay, no browser access to the receipt ledger.
+create table if not exists brc.office_receipts (
+ operation_id uuid primary key, actor uuid not null, request_hash text not null,
+ result jsonb not null, created_at timestamptz not null default now()
+);
+alter table brc.office_receipts enable row level security;
+revoke all on brc.office_receipts from public,anon,authenticated;
 create or replace function brc.office_submit(p_id uuid,p_kind text,p_data jsonb,p_expected jsonb)
 returns jsonb language plpgsql security definer set search_path=brc,public as $$
 declare actor uuid:=auth.uid(); signature text; receipt record; j record; f record; slot record; result jsonb;
@@ -587,100 +680,3 @@ end $$;
 create or replace function brc.recovery_schedule_set(p_days int[], p_time text)
 returns jsonb language sql security definer set search_path = brc, public, pg_temp
 as $$ select brc.recovery_schedule_set('days', null, p_days, p_time) $$;
-
-create or replace function brc.recovery_run_scheduled()
-returns uuid language plpgsql security definer set search_path=brc,public as $$
-declare p jsonb; k text; result uuid;
-begin
-  /* بوابة الاستحقاق — للنمط «كل N يوم» فقط. غيره يرجع true دائماً.
-     بدونها يعمل cron يومياً ويأخذ نسخة كل يوم مهما اختار المدير. */
-  if not brc.recovery_due_now() then return null; end if;
-  perform set_config('lock_timeout','8s',true);
-  perform pg_advisory_xact_lock(8310192026);
-  lock table brc.applicants,brc.jobs,brc.job_attempts,brc.settings,brc.employer_job_credentials in share mode;
-  p := brc.recovery_capture();
-  select secret into strict k from brc.recovery_control where singleton;
-  insert into brc.recovery_copies(name,actor,safety,counts,schema_hash,data_hash,ciphertext)
-  values ('نسخة مجدولة — ' || to_char(clock_timestamp() at time zone 'Asia/Baghdad','YYYY-MM-DD HH24:MI'),
-          null,false,brc.recovery_counts(p),p->>'schema',
-          encode(extensions.digest(p::text,'sha256'),'hex'),
-          extensions.pgp_sym_encrypt(p::text,k,'cipher-algo=aes256,compress-algo=1'))
-  returning id into result;
-  if brc.recovery_read(result) is distinct from p then
-    raise exception 'فشل التحقق من النسخة المجدولة';
-  end if;
-  /* 2026-11-14: آخر N نسخة (افتراضياً ٣) بدل حذف كل ما قبلها.
-     كان: حذف كل النسخ عدا الجديدة ⇒ نسخة واحدة فقط في القاعدة. */
-  /* نسجّل وقت آخر نسخة مجدولة — تعتمد عليه recovery_due_now للنمط «كل N يوم».
-     لا نقرأه من جدول النسخ لأن نسخة أمان يدوية قد تُربك الحساب. */
-  insert into brc.settings(key, value, updated_at)
-  values ('recovery_last_scheduled_at', to_jsonb(now()), now())
-  on conflict (key) do update set value = excluded.value, updated_at = now();
-  perform brc.recovery_prune();
-  delete from brc.recovery_tickets where copy_id not in (select id from brc.recovery_copies);
-  return result;
-end $$;
-
-revoke all on function brc.recovery_cron_expr(int[],text) from public,anon,authenticated;
-revoke all on function brc.recovery_cron_expr(text,int,int[],text) from public,anon,authenticated;
-revoke all on function brc.recovery_due_now() from public,anon,authenticated,service_role;
-revoke all on function brc.recovery_schedule_get() from public,anon,authenticated,service_role;
-revoke all on function brc.recovery_schedule_set(int[],text) from public,anon,authenticated,service_role;
-revoke all on function brc.recovery_schedule_set(text,int,int[],text) from public,anon,authenticated,service_role;
-revoke all on function brc.recovery_run_scheduled() from public,anon,authenticated,service_role;
-grant execute on function brc.recovery_schedule_get() to authenticated;
-grant execute on function brc.recovery_schedule_set(text,int,int[],text) to authenticated;
-grant execute on function brc.recovery_schedule_set(int[],text) to authenticated;
-
--- نسخة أمان فورية عند تغيّر شكل المخطط (شبكة أمان: لا تُنشئ نسخة إن وُجدت صالحة)
-create or replace function brc.recovery_ensure_fresh() returns uuid
-language plpgsql security definer set search_path=brc,public as $$
-declare last_name text; result uuid;
-begin
-  if exists (select 1 from brc.recovery_copies where schema_hash = brc.recovery_schema_hash()) then
-    return null;
-  end if;
-  last_name := 'نسخة تلقائية — تغيّر شكل قاعدة البيانات ' ||
-    to_char(clock_timestamp() at time zone 'Asia/Baghdad', 'YYYY-MM-DD HH24:MI');
-  result := brc.recovery_save(last_name, false);
-  insert into brc.audit_log(username, role, action, entity, entity_id, details)
-  values ('system', 'system', 'نسخة أمان تلقائية', 'recovery', result::text,
-          'شكل قاعدة البيانات تغيّر (هجرة أعمدة) ولم تبقَ نسخة صالحة — أُنشئت نسخة جديدة تلقائياً.');
-  return result;
-end $$;
-revoke all on function brc.recovery_ensure_fresh() from public,anon,authenticated;
-
--- الجدولة الافتراضية: الجمعة 23:00 بغداد — قابلة للتغيير من لوحة المدير
-do $$ begin
-  insert into brc.settings(key,value,updated_at)
-  values ('recovery_schedule', jsonb_build_object('days',to_jsonb(array[5]),'time','23:00','enabled',true,
-          'timezone','Asia/Baghdad','cron','0 20 * * 5','updatedAt',now()), now())
-  on conflict (key) do nothing;
-exception when others then null; end $$;
-do $$ begin
-  if coalesce((select (value->>'enabled')::boolean from brc.settings where key='recovery_schedule'), true) then
-    perform cron.schedule('recovery-auto-backup',
-      coalesce((select value->>'cron' from brc.settings where key='recovery_schedule'),'0 20 * * 5'),
-      'select brc.recovery_run_scheduled();');
-  end if;
-exception when others then
-  raise notice 'pg_cron غير متاح — جدولة النسخ تُضبط لاحقاً: %', sqlerrm;
-end $$;
-do $$ begin
-  perform cron.schedule('recovery-ensure-fresh', '10 1 * * *', 'select brc.recovery_ensure_fresh();');
-exception when others then null; end $$;
-
-notify pgrst,'reload schema';
-
--- 2026-10-20: independent numbered vacancies, current-case notification support.
--- Independent numbered vacancies within ONE job advertisement. Not card chances.
--- Preflight is intentionally fail-closed; never discard an existing placement.
-do $$begin if not exists(select 1 from information_schema.columns where table_schema='brc' and table_name='jobs' and column_name='manual_closed') then alter table brc.jobs add column manual_closed boolean not null default false;update brc.jobs set manual_closed=true where status='closed';end if;end $$;
-alter table brc.jobs add column if not exists filled_vacancy_numbers integer[] not null default '{}';
-alter table brc.job_attempts add column if not exists vacancy_no integer check(vacancy_no>0);
-do $$begin
- if exists(select 1 from brc.job_attempts a join brc.jobs j on j.id=a.job_id where a.slot_status in('reserved','critical','hiring','succeeded') group by j.id,j.vacancies having count(*)>j.vacancies) then raise exception 'Existing placements exceed vacancy capacity; review before migration';end if;
-end $$;
-with ranked as(select id,row_number() over(partition by job_id order by selected_at nulls last,id)::int n from brc.job_attempts where job_id is not null and slot_status in('reserved','critical','hiring','succeeded'))
-update brc.job_attempts a set vacancy_no=r.n from ranked r where a.id=r.id and a.vacancy_no is null;
-create unique index if not exists job_vacancy_occupied on brc.job_attempts(job_id,vacancy_no) where slot_status in('reserved','critical','hiring','succeeded');
