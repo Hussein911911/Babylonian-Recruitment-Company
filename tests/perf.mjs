@@ -366,7 +366,8 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
     check('dashboard.html: بلا manifest (لوحة داخلية)', !/rel="manifest"/.test(rf('dashboard.html', 'utf8')));
 
     check('robots.txt: يحجب اللوحة', /Disallow: \/dashboard/.test(rf('robots.txt', 'utf8')));
-    check('robots.txt: يشير للـsitemap', /Sitemap: https:\/\/hrc-babil\.com/.test(rf('robots.txt', 'utf8')));
+    check('robots.txt: يشير للـsitemap على النطاق الرسمي',
+    /Sitemap: https:\/\/babylonian-recruitment-company\.pages\.dev\/sitemap\.xml/.test(rf('robots.txt', 'utf8')));
     /* ٦ روابط: أربع صفحات عامة + الصفحتان القانونيتان (2026-11-24) */
     check('sitemap.xml: ٦ روابط', (rf('sitemap.xml', 'utf8').match(/<url>/g) || []).length === 6);
   }

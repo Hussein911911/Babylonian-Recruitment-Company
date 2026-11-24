@@ -23,4 +23,4 @@ Disallow: /tests/
 Disallow: /tools/
 Disallow: /docs/
 
-Sitemap: https://hrc-babil.com/sitemap.xml
+Sitemap: https://babylonian-recruitment-company.pages.dev/sitemap.xml
