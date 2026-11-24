@@ -118,7 +118,7 @@ try {
   assert.equal(await page.locator('#jobs-list.has-focus').count(),1);
   await page.evaluate(()=>G.renderReview());
   const review=await page.locator('#review-content').innerText();assert.match(review,new RegExp('الفرص المتاحة للتعيين: '+String(total).replace(/[0-9]/g,d=>'٠١٢٣٤٥٦٧٨٩'[d])));
-  await page.evaluate(()=>G.finish());await page.waitForFunction(n=>document.querySelectorAll('#result-content .form-sheet').length===n,total);
+  await page.evaluate(()=>{document.getElementById('consent-privacy').checked=true;G.finish();});await page.waitForFunction(n=>document.querySelectorAll('#result-content .form-sheet').length===n,total);
   assert.equal(used,total,'each selected job is submitted once');
   const sheets=page.locator('#result-content .form-sheet');
   for(let i=0;i<total;i++){const text=await sheets.nth(i).innerText();assert.ok(text.includes('JOB-'+(i+1)));assert.doesNotMatch(text,/توقيع الزبون|توقيع نقطة البيع|ختم الشركة|خدمات الشركة تنحصر/);}

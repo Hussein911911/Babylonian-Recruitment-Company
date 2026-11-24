@@ -3639,6 +3639,16 @@ body{
     #pg-review .review-go::before{animation:none!important;display:none!important}
   }
 }
+/* ── موافقة قانونية قبل الإتمام (2026-11-24): شرط إرسال لا زينة ──
+   لا يقبل النظام إرسال الطلب قبل تعليم الخانة؛ ووقت تسجيل الطلب = وقت الموافقة. */
+.consent-line{display:flex;gap:10px;align-items:flex-start;text-align:start;background:rgba(200,162,74,.08);
+  border:1px solid rgba(200,162,74,.35);border-radius:14px;padding:12px 14px;margin:16px 0 8px;
+  font-size:.9rem;line-height:1.95;cursor:pointer;transition:border-color .2s,background .2s}
+.consent-line input{width:20px;height:20px;margin:3px 0 0;flex:0 0 auto;accent-color:#c8a24a}
+.consent-line a{color:#e8d089;text-decoration:underline;font-weight:700}
+.consent-line.is-missing{border-color:#e06a63;background:rgba(224,106,99,.13)}
+.consent-note{font-size:.78rem;color:#9fb0c9;margin:0 0 10px;line-height:1.8}
+
 /* ── 7) مكمّلات: زر الإتمام ذهبي (يلغي الأخضر القديم) + رأس الوظيفة في المراجعة ── */
 @media screen{
   #btn-finish{
@@ -5314,6 +5324,11 @@ body.chosen-modal-open .app{
     <!-- ═══ 8 — مراجعة الطلب قبل الإتمام ═══ -->
     <div class="page" id="pg-review">
       <div id="review-content"></div>
+      <label class="consent-line" id="consent-row" for="consent-privacy">
+        <input type="checkbox" id="consent-privacy">
+        <span>أقرّ بأنني قرأت <a href="privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a> و<a href="terms.html" target="_blank" rel="noopener">شروط الاستخدام</a> وأوافق عليهما، وأن بياناتي المدخلة صحيحة. <b>لا يُرسل الطلب قبل هذه الموافقة.</b></span>
+      </label>
+      <p class="consent-note" id="consent-note">بياناتك تُستخدم للتقديم على الوظائف المختارة فقط — التفاصيل في سياسة الخصوصية.</p>
       <div class="btn-row review-bar">
         <button class="btn btn-outline btn-sm review-back" onclick="G.go(-1)">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
@@ -5336,7 +5351,7 @@ body.chosen-modal-open .app{
     </div>
 
   </div><!-- /pages-wrap -->
-  <div class="footer">منصة مكسب للتوظيف — بابل، العراق</div>
+  <div class="footer">منصة مكسب للتوظيف — بابل، العراق · <a href="privacy.html" target="_blank" rel="noopener" style="color:inherit">سياسة الخصوصية</a> · <a href="terms.html" target="_blank" rel="noopener" style="color:inherit">شروط الاستخدام</a></div>
 </div>
 
 <!-- ═══ SVG ═══ -->
@@ -6878,6 +6893,15 @@ var G={
     if(chancesLeft<=0){G.rvError('انتهت فرص هذه البطاقة — لا يمكن إرسال طلب جديد. راجع المكتب لتجديدها.');return;}
     if(!cardData){G.rvError('البيانات لم تُحمّل بعد — انتظر ثوانٍ ثم أعد المحاولة.');return;}
     if(!pickedJobs.length){G.go(6);return;}
+    /* الموافقة على الخصوصية والشروط: بوابة إلزامية قبل أي كتابة في القاعدة */
+    var consentBox=$('consent-privacy');
+    if(consentBox&&!consentBox.checked){
+      var consentRow=$('consent-row');
+      if(consentRow){consentRow.classList.add('is-missing');if(consentRow.scrollIntoView)consentRow.scrollIntoView({behavior:'smooth',block:'center'});}
+      G.rvError('قبل الإتمام: يجب الموافقة على سياسة الخصوصية وشروط الاستخدام.');
+      if(navigator.vibrate)try{navigator.vibrate([12,60,12]);}catch(e){}
+      return;
+    }
     if(!ensureClient()){G.rvError('لا يوجد اتصال بالخادم — تحقق من الإنترنت.');return;}
 
     /* إعادة التحقق من كل الخطوات: الزبون قد يكون رجع وعدّل شيئاً */
@@ -7492,6 +7516,12 @@ function startApp(){
       var errMap={'f-prov':'err-addr','f-qada':'err-addr','f-nah':'err-addr','f-day':'err-dob','f-mon':'err-dob','f-yr':'err-dob'};
       var eid=errMap[id];if(eid)$(eid).innerHTML='';
     });
+  });
+  /* الموافقة: يختفي التنبيه الأحمر فور تعليم الخانة */
+  var consentChk=$('consent-privacy');
+  if(consentChk)consentChk.addEventListener('change',function(){
+    var row=$('consent-row');if(row&&consentChk.checked)row.classList.remove('is-missing');
+    var err=$('rv-err');if(err&&consentChk.checked)err.innerHTML='';
   });
   /* محافظة ← قضاء ← ناحية: كل اختيار يعيد بناء ما بعده */
   var provSel=$('f-prov');

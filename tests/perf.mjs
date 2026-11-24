@@ -367,7 +367,8 @@ step(4, 'العميل المصغّر يعمل فعلاً — خادم PostgREST 
 
     check('robots.txt: يحجب اللوحة', /Disallow: \/dashboard/.test(rf('robots.txt', 'utf8')));
     check('robots.txt: يشير للـsitemap', /Sitemap: https:\/\/hrc-babil\.com/.test(rf('robots.txt', 'utf8')));
-    check('sitemap.xml: ٤ روابط', (rf('sitemap.xml', 'utf8').match(/<url>/g) || []).length === 4);
+    /* ٦ روابط: أربع صفحات عامة + الصفحتان القانونيتان (2026-11-24) */
+    check('sitemap.xml: ٦ روابط', (rf('sitemap.xml', 'utf8').match(/<url>/g) || []).length === 6);
   }
 
   api.close();
