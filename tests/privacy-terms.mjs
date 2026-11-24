@@ -113,8 +113,11 @@ step(4, 'الروابط إليهما في كل صفحة عامة');
   check('نافذة الحجز العامة: سطر موافقة بالوثيقتين', /privacy\.html[\s\S]{0,220}terms\.html/.test(bk) && /باستخدامك النموذج/.test(bk));
   check('404: روابط الصفحتين مطلقة (تُخدَم على مسار تعسّفي)', /404\.html/ && /\/privacy\.html/.test(read('404.html')) && /\/terms\.html/.test(read('404.html')));
   const sm = read('sitemap.xml');
-  check('sitemap: /privacy', /hrc-babil\.com\/privacy</.test(sm));
-  check('sitemap: /terms', /hrc-babil\.com\/terms</.test(sm));
+  check('sitemap: /privacy', /<loc>[^<]*\/privacy<\/loc>/.test(sm));
+  check('sitemap: /terms', /<loc>[^<]*\/terms<\/loc>/.test(sm));
+  check('sitemap: نطاق واحد لكل الروابط',
+    new Set([...sm.matchAll(/<loc>https:\/\/([^/]+)\//g)].map(m => m[1])).size === 1,
+    [...sm.matchAll(/<loc>https:\/\/([^/]+)\//g)].map(m => m[1]).join(','));
   check('_redirects: بلا قاعدة لـ privacy/terms (تطبيع Pages يخدمها)',
     !/^\/(privacy|terms)/m.test(read('_redirects')));
 }
@@ -171,6 +174,21 @@ step(7, 'لا ادّعاء ترخيص/إجازة بلا رقم موثّق (قر�
     ...readdirSync('supabase/migrations').filter(f => f.endsWith('.sql')).map(f => 'supabase/migrations/' + f).filter(f => /2026091500/.test(f))];
   for (const f of sqlFiles) check(f + ': بلا ادّعاء إجازة/ترخيص', !CLAIM.test(read(f)),
     (read(f).match(CLAIM) || [''])[0]);
+}
+
+/* ------------------------------------------------------------------------- */
+step(8, 'نظافة التسليم: نطاق واحد وبلا بريد إلكتروني منشور');
+{
+  const DOMAIN = 'babylonian-recruitment-company.pages.dev';
+  check('robots: خريطة الموقع على النطاق الرسمي', read('robots.txt').includes(DOMAIN + '/sitemap.xml'));
+  check('_headers: CORS على النطاق الرسمي', read('_headers').includes('Access-Control-Allow-Origin: https://' + DOMAIN));
+  check('_headers: بلا أصل وهمي', !/hrc\.example/.test(read('_headers')));
+  const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}/;
+  for (const page of ['index.html', 'apply.html', 'verify.html', 'dashboard.html', PRIVACY, TERMS, '404.html', 'hrc-standalone.html', 'hrc-light.html']) {
+    check(page + ': بلا بريد إلكتروني منشور', !EMAIL.test(read(page)), (read(page).match(EMAIL) || [''])[0]);
+  }
+  check('config: لا مفتاح بريد', !/\bemail\s*:/.test(read('assets/js/config.js')));
+  check('config: رقم التحقق على نطاق النشر', /verifyBase:\s*'https:\/\/babylonian-recruitment-company\.pages\.dev\/verify'/.test(read('assets/js/config.js')));
 }
 
 console.log('\n' + '═'.repeat(74));
