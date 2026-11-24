@@ -13,7 +13,7 @@
  *
  *  التشغيل:  node tests/privacy-terms.mjs
  * =========================================================================== */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -165,6 +165,12 @@ step(7, 'لا ادّعاء ترخيص/إجازة بلا رقم موثّق (قر�
   check('الوثيقة تسجّل قرار الإزالة', /أُزيل \*\*كل\*\* ادّعاء ترخيص|إزالة ادّعاء/.test(read(DOC)));
   check('«إجازة سوق» في متطلبات الوظائف باقية (ليست ادّعاء ترخيص)',
     /إجازة سوق/.test(read('hrc-standalone.html')));
+  /* المصادر أيضاً: المخطط وبذور الإعدادات وأجزاء اللصق — لا ادّعاء حتى عند الاسترجاع. */
+  const sqlFiles = ['docs/schema.sql', 'restore.html',
+    ...readdirSync('docs/sql-parts/schema').filter(f => f.endsWith('.sql')).map(f => 'docs/sql-parts/schema/' + f),
+    ...readdirSync('supabase/migrations').filter(f => f.endsWith('.sql')).map(f => 'supabase/migrations/' + f).filter(f => /2026091500/.test(f))];
+  for (const f of sqlFiles) check(f + ': بلا ادّعاء إجازة/ترخيص', !CLAIM.test(read(f)),
+    (read(f).match(CLAIM) || [''])[0]);
 }
 
 console.log('\n' + '═'.repeat(74));

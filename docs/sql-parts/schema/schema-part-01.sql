@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════
---  schema — الجزء 01 من 05
---  يفعّل: إنشاء السكيما · الإضافات · الأنواع · الجداول · الفهارس · الدوال · المشغّلات · المهام المجدولة · إدخال بيانات · كتل تنفيذية (DO)
---  أسطر: 671 · حجم: 36 ك.ب
+--  schema — الجزء 01 من 06
+--  يفعّل: إنشاء السكيما · الإضافات · الأنواع · الجداول · الفهارس · الدوال · المشغّلات · إدخال بيانات · كتل تنفيذية (DO)
+--  أسطر: 628 · حجم: 34 ك.ب
 --  ---------------------------------------------------------------------
 --  ابدأ من هنا. هذا أول جزء.
 --  بعد «Success» انتقل إلى الجزء 02.
@@ -324,11 +324,34 @@ insert into brc.settings (key, value) values
       'email',       'contact@hrc-babil.com',
       'hours',       'السبت – الخميس: 9:00 صباحاً – 5:00 مساءً',
       'holiday',     'الجمعة: عطلة رسمية',
-      'license',     'إجازة عمل رسمية / وزارة العمل والشؤون الاجتماعية',
+      'license',     '',   -- فارغ بقرار المالك (2026-11-24): لا ادّعاء ترخيص بلا رقم موثّق
       'branch',      'بابل – الحلة',
       'verify_base', 'https://hrc-babil.com/verify',
       'disclaimer',  'ملاحظات مهمة: خدمات الشركة تنحصر في توفير الأيادي العاملة من الناحية الفنية والتخصصية فقط وليس الأمنية. الشركة غير مسؤولة قانونياً وعشائياً عن الشخص المرسل وصاحب العمل.'))
 on conflict (key) do nothing;
+
+-- 2.7 أسرار التشغيل (2026-11-20)
+--     ---------------------------------------------------------------------
+--     لماذا جدول وليس إعداد قاعدة فقط؟ لأن `app.brc_secret` إعداد مخصّص
+--     (custom GUC)، وضبطه بـ`ALTER DATABASE … SET` يحتاج **superuser**.
+--     ودور `postgres` في مشاريع Supabase الحديثة **ليس superuser** — أثبتنا
+--     ذلك تنفيذاً: `ERROR 42501: permission denied to set parameter`.
+--     النتيجة كانت أن `verify_token` تبقى معطّلة (‏22023) على أي مشروع جديد
+--     لا يملك خيار Custom Postgres Config.
+--
+--     الحل: مصدر ثانٍ داخل القاعدة نفسها، محميٌّ تماماً:
+--       • RLS مفعّلة وبلا أي سياسة ⇒ لا قراءة لأي دور عميل
+--       • REVOKE صريح من public/anon/authenticated/service_role
+--       • القراءة تحدث **داخل** `verify_token` وهي SECURITY DEFINER (بصلاحية المالك)
+--     ولا يوجد هنا أي سرّ مكتوب: الصف يُدخل يدوياً مرة واحدة بعد النشر.
+--     ترتيب الأولوية في الدالة: إعداد القاعدة أولاً، ثم هذا الجدول.
+create table if not exists brc.app_secrets (
+  name       text primary key,
+  value      text not null,
+  updated_at timestamptz not null default now()
+);
+alter table brc.app_secrets enable row level security;
+revoke all on brc.app_secrets from public, anon, authenticated, service_role;
 
 -- ===========================================================================
 --  3) توليد الأكواد التسلسلية
@@ -367,11 +390,21 @@ create or replace function brc.verify_token(p_serial text) returns text
 language plpgsql stable
 set search_path = brc, public, extensions
 as $$
-declare v_secret text := nullif(current_setting('app.brc_secret', true), '');
+declare v_secret text;
 begin
-  -- إن لم يُضبط المفتاح نتوقف بخطأ واضح بدل استخدام سرّ مكشوف في المستودع
+  -- المصدر ١: إعداد القاعدة app.brc_secret (الطريقة الأصلية).
+  -- يحتاج superuser لضبطه، وليس متاحاً على كل مشاريع Supabase.
+  v_secret := nullif(current_setting('app.brc_secret', true), '');
+
+  -- المصدر ٢ (2026-11-20): جدول brc.app_secrets — يُستخدم حين لا يتوفّر الإعداد،
+  -- أو حين لا يملك دور النشر صلاحية ضبطه. نفس البصمة، بلا تغيير في السلوك.
   if v_secret is null or length(v_secret) < 16 then
-    raise exception 'app.brc_secret غير مضبوط أو أقصر من 16 حرفاً — راجع تعليمات ضبط المفتاح أعلى الدالة في docs/schema.sql'
+    select s.value into v_secret from brc.app_secrets s where s.name = 'brc_secret';
+  end if;
+
+  -- إن لم يُضبط المفتاح بأي مصدر نتوقف بخطأ واضح بدل استخدام سرّ مكشوف في المستودع
+  if v_secret is null or length(v_secret) < 16 then
+    raise exception 'مفتاح البصمة غير مضبوط أو أقصر من 16 حرفاً — اضبط app.brc_secret أو أدخل صفاً في brc.app_secrets باسم brc_secret (تعليمات أعلى الدالة في docs/schema.sql)'
       using errcode = '22023';
   end if;
   return encode(hmac(p_serial, v_secret, 'sha256'), 'hex');
@@ -603,79 +636,3 @@ create trigger trg_audit_applicants after insert or update or delete on brc.appl
 drop trigger if exists trg_audit_attempts on brc.job_attempts;
 create trigger trg_audit_attempts after insert or update or delete on brc.job_attempts
   for each row execute function brc.trg_audit();
-
--- ===========================================================================
---  5) الحالة الحرجة بعد 24 ساعة + انتهاء صلاحية البطاقات (30 يوماً)
---     تُنفَّذ دورياً عبر pg_cron (كل دقيقة) أو عبر Edge Function.
---     نظام البطاقات (2026-09-30): لا إفراج تلقائي — الوظيفة التي تنتهي مهلة
---     حجزها دون قرار تبقى مقفلة وتنتقل مع فرصة الزبون إلى حالة «حرجة»
---     بانتظار قرار الموظف: تم التوظيف / إرجاعها متوفرة / حذفها.
--- ===========================================================================
-create or replace function brc.run_auto_release() returns table (released_job text, expired_form text)
-language plpgsql security definer
-set search_path = brc, public
-as $$
-declare r record;
-begin
-  -- (أ) حجوزات انتهت مهلتها دون قرار ← حالة «حرجة» (لا إفراج تلقائي)
-  for r in
-    select j.id, j.code, j.reserved_by, a.attempt_no
-      from brc.jobs j
-      left join brc.job_attempts a
-             on a.job_id = j.id and a.slot_status = 'reserved'
-     where j.status = 'reserved'
-       and j.hold_expires_at is not null
-       and j.hold_expires_at < now()
-     for update of j
-  loop
-    update brc.jobs
-       set critical = true, hold_expires_at = null, updated_at = now()
-     where id = r.id;
-
-    update brc.job_attempts
-       set slot_status = 'critical',
-           hold_expires_at = null,
-           outcome_note = 'انتهت مهلة 24 ساعة دون قرار — بانتظار قرار الشركة (توظيف / إرجاع / حذف)'
-     where job_id = r.id and slot_status = 'reserved';
-
-    insert into brc.audit_log (username, role, action, entity, entity_id, details)
-    values ('system', 'system', 'حالة حرجة (انتهاء 24 ساعة)', 'job', r.code,
-            'انتهت المهلة دون قرار — الوظيفة مقفلة بانتظار قرار الموظف، والفرصة #' || coalesce(r.attempt_no::text, '—') ||
-            ' للبطاقة ' || coalesce(r.reserved_by, '—') || ' في حالة حرجة');
-
-    released_job := r.code; expired_form := r.reserved_by;
-    return next;
-  end loop;
-
-  -- (ب) استمارات انتهت صلاحيتها (30 يوماً)
-  for r in
-    select serial from brc.applicants
-     where status = 'active' and now() > expiry_date
-     for update
-  loop
-    update brc.applicants set status = 'expired', updated_at = now() where serial = r.serial;
-
-    insert into brc.audit_log (username, role, action, entity, entity_id, details)
-    values ('system', 'system', 'انتهاء بطاقة', 'applicant', r.serial, 'انتهت صلاحية البطاقة (30 يوماً)');
-
-    released_job := null; expired_form := r.serial;
-    return next;
-  end loop;
-
-  -- (ج) بطاقات استُهلكت فرصها (لا فرصة فارغة ولا فرصة قيد اللعب — hiring ضمنها)
-  update brc.applicants f
-     set status = 'exhausted', updated_at = now()
-   where f.status = 'active'
-     and not exists (select 1 from brc.job_attempts a where a.serial = f.serial and a.slot_status = 'empty')
-     and not exists (select 1 from brc.job_attempts a where a.serial = f.serial
-                       and a.slot_status in ('reserved', 'critical', 'hiring'));
-
-  return;
-end $$;
-
--- جدولة التنفيذ كل دقيقة (Supabase: pg_cron)
-do $$ begin
-  perform cron.schedule('brc-auto-release', '* * * * *', $cron$ select * from brc.run_auto_release(); $cron$);
-exception when others then
-  raise notice 'pg_cron غير متاح — يمكن جدولة brc.run_auto_release() عبر Edge Function/Scheduler: %', sqlerrm;
-end $$;

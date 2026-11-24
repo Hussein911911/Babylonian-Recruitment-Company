@@ -1,13 +1,74 @@
 -- ═══════════════════════════════════════════════════════════════════════
---  schema — الجزء 03 من 05
---  يفعّل: الجداول · الفهارس · الدوال · سياسات RLS · إدخال بيانات · كتل تنفيذية (DO)
---  أسطر: 639 · حجم: 36 ك.ب
+--  schema — الجزء 03 من 06
+--  يفعّل: الدوال · سياسات RLS · إدخال بيانات · كتل تنفيذية (DO)
+--  أسطر: 676 · حجم: 38 ك.ب
 --  ---------------------------------------------------------------------
 --  ⚠ لا تلصق هذا الجزء قبل تنفيذ الجزء 02 بنجاح.
 --  بعد «Success» انتقل إلى الجزء 04.
 -- ═══════════════════════════════════════════════════════════════════════
 
 
+
+create or replace function brc.self_service_card(p_serial text, p_code text)
+returns jsonb
+language plpgsql security definer
+set search_path = brc, public
+as $$
+declare
+  f record;
+  v_ok boolean;
+  v_stored text;
+  v_code text;
+begin
+  select * into f
+    from brc.applicants
+   where serial = upper(btrim(coalesce(p_serial, '')));
+  if f.serial is null then
+    return jsonb_build_object('ok', false, 'error', 'لا توجد بطاقة بهذا الباركود');
+  end if;
+  /* ترميم خانات الفرص الناقصة قبل القراءة (إصلاح 2026-10-06) — بطاقة جديدة
+     فقدت خاناتها بمزامنة ناقصة تُرمَّم هنا فوراً بدل «انتهت فرصك». */
+  perform brc.ensure_card_attempts(f.serial);
+
+  if f.status = 'pending' then
+    return jsonb_build_object('ok', false, 'error', 'هذه البطاقة قيد المراجعة لدى الشركة');
+  end if;
+
+  /* 2026-11-13: حيث يوجد card_print_code لا يُكشف الاسم/الهاتف/العنوان/الميلاد
+     بلا الرمز. البطاقات بلا رمز مطبوع (كل بطاقات اليوم) تبقى كما هي تماماً. */
+  v_stored := upper(btrim(coalesce(to_jsonb(f)->>'card_print_code', '')));
+  v_code   := upper(btrim(coalesce(p_code, '')));
+  if v_stored = '' then
+    v_ok := true;
+  else
+    v_ok := (v_stored = v_code)
+         or (replace(replace(v_stored, 'O', '0'), 'I', '1')
+             = replace(replace(v_code, 'O', '0'), 'I', '1'));
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'card', jsonb_build_object(
+      'serial', f.serial,
+      'status', f.status::text,
+      'chancesLeft', (select count(*) from brc.job_attempts a where a.serial=f.serial and a.slot_status='empty'),
+      'requiresCode', (v_stored <> ''),
+      'verified', v_ok,
+      'profileLocked', (f.status <> 'blank') or (not v_ok),
+      'profile', case when not v_ok then '{}'::jsonb
+        when f.status = 'blank' then coalesce(f.self_application_data, '{}'::jsonb)
+        else coalesce(f.self_application_data, '{}'::jsonb) || jsonb_build_object(
+          'fullName', f.full_name, 'phone', f.phone, 'address', f.address,
+          'dob', f.dob, 'gender', f.gender) end,
+      'chances', (select coalesce(jsonb_agg(jsonb_build_object(
+          'no', a.attempt_no, 'slotStatus', a.slot_status::text,
+          'jobCode', a.job_code, 'jobTitle', j.title
+        ) order by a.attempt_no), '[]'::jsonb)
+        from brc.job_attempts a left join brc.jobs j on j.id=a.job_id
+        where a.serial=f.serial)
+    )
+  );
+end $$;
 
 create or replace function brc.apply_with_card(
   p_serial text,
@@ -355,21 +416,39 @@ create policy jobs_staff_write on brc.jobs for insert with check (brc.is_staff()
 drop policy if exists jobs_staff_update on brc.jobs;
 create policy jobs_staff_update on brc.jobs for update using (brc.is_staff());
 
+/* ⚠️ 2026-11-20 — قرار المالك (2026-11-11) كان نافذاً في الإنتاج عبر الترحيل
+   `supabase/migrations/20261111120000_jobs_staff_delete.sql` وحده، ولم يُدمج
+   في هذا الملف. فكل قاعدة تُبنى من هنا (ومنها حزمة الاسترجاع) كانت ترجع إلى
+   «المدير فقط» بينما الواجهة تسمح للموظف → الموظف يرى «تم الحذف» ولا يُحذف
+   شيء. الفحص `tests/jobs-delete-policy.mjs` يكشف هذا الانحراف. */
 drop policy if exists jobs_admin_delete on brc.jobs;
-create policy jobs_admin_delete on brc.jobs for delete using (brc.is_admin());
+drop policy if exists jobs_staff_delete on brc.jobs;
+create policy jobs_staff_delete on brc.jobs for delete using (brc.is_staff());
 
 -- 8.3 الاستمارات: الموظف يدير كل الاستمارات، والمدير يحذف
 drop policy if exists applicants_staff_read on brc.applicants;
 create policy applicants_staff_read on brc.applicants for select using (brc.is_staff());
 
+/* ⚠️ 2026-11-20 — إصدار البطاقات للمدير حصراً (قرار المالك 2026-11-11).
+   كان هنا `applicants_staff_insert using brc.is_staff()` أي أن أي موظف يستطيع
+   إدراج بطاقة فارغة مباشرة عبر PostgREST. التشديد كان في الترحيل
+   `20261111235000_cards_insert_admin_only.sql` وحده، فكان يضيع عند إعادة البناء.
+   ما يبقى للموظف: القراءة والتعديل والحذف. وطلب الزائر يمرّ عبر request_form. */
 drop policy if exists applicants_staff_insert on brc.applicants;
-create policy applicants_staff_insert on brc.applicants for insert with check (brc.is_staff());
+drop policy if exists applicants_admin_insert on brc.applicants;
+create policy applicants_admin_insert on brc.applicants for insert with check (brc.is_admin());
 
 drop policy if exists applicants_staff_update on brc.applicants;
 create policy applicants_staff_update on brc.applicants for update using (brc.is_staff());
 
+/* ⚠️ 2026-11-20 — الإنتاج يمنح الحذف للموظف والمدير (سياسة
+   applicants_staff_delete)، وهذا ملف سياسات موحّد صادر عن تدقيق 2026-11-11
+   («٨ سياسات من ٨ على is_staff()»)، لكن المخطط بقي على مدير فقط. الترحيل الذي
+   نفّذ التغيير (staff_full_operations) غير موجود في supabase/migrations، فكان
+   التغيير يضيع عند أي إعادة بناء. أُعيد الآن ليطابق الإنتاج حرفاً بحرف. */
 drop policy if exists applicants_admin_delete on brc.applicants;
-create policy applicants_admin_delete on brc.applicants for delete using (brc.is_admin());
+drop policy if exists applicants_staff_delete on brc.applicants;
+create policy applicants_staff_delete on brc.applicants for delete using (brc.is_staff());
 
 -- 8.4 المحاولات
 drop policy if exists attempts_staff_read on brc.job_attempts;
@@ -408,6 +487,42 @@ create policy settings_read on brc.settings for select using (brc.is_staff());
 
 drop policy if exists settings_admin_write on brc.settings;
 create policy settings_admin_write on brc.settings for all using (brc.is_admin()) with check (brc.is_admin());
+
+/* ── 8.7 صور الوظائف (Storage) ──────────────────────────────────────────────
+   ⚠️ 2026-11-20: هذه السياسات كانت تعيش في الترحيل
+   `20261112080000_relocate_job_images.sql` وحده، فلا تُنشأ على أي قاعدة تُبنى
+   من هذا الملف. الأثر العملي: الموظف في القاعدة المسترجعة يستطيع قراءة الصور
+   لكن **لا يستطيع رفع صورة وظيفة** (رفض صامت من Storage)، والمدير لا يستطيع
+   حذفها. الكتلة محروسة بـ to_regclass كي تعمل على PostgreSQL عادي (اختبارات)
+   وعلى Supabase حيث يوجد مخطط storage — بلا أي خطأ. */
+do $$
+begin
+  if to_regclass('storage.objects') is null then
+    raise notice 'تخطّي سياسات storage.objects — لا يوجد مخطط storage على هذه القاعدة';
+    return;
+  end if;
+
+  /* قراءة عامة: صور الوظائف تُعرض للزوار على الموقع العام */
+  execute 'drop policy if exists job_images_public_read on storage.objects';
+  execute $p$create policy job_images_public_read on storage.objects
+    for select to anon, authenticated using (bucket_id = 'job-images')$p$;
+
+  /* رفع وتعديل: الموظف والمدير فقط */
+  execute 'drop policy if exists job_images_staff_write on storage.objects';
+  execute $p$create policy job_images_staff_write on storage.objects
+    for insert to authenticated with check (bucket_id = 'job-images' and brc.is_staff())$p$;
+
+  execute 'drop policy if exists job_images_staff_update on storage.objects';
+  execute $p$create policy job_images_staff_update on storage.objects
+    for update to authenticated
+    using (bucket_id = 'job-images' and brc.is_staff())
+    with check (bucket_id = 'job-images' and brc.is_staff())$p$;
+
+  /* حذف: المدير فقط */
+  execute 'drop policy if exists job_images_admin_delete on storage.objects';
+  execute $p$create policy job_images_admin_delete on storage.objects
+    for delete to authenticated using (bucket_id = 'job-images' and brc.is_admin())$p$;
+end $$;
 
 -- ===========================================================================
 --  9) الصلاحيات (Grants)
@@ -504,12 +619,26 @@ grant execute on function brc.apply_with_card(text, text, jsonb) to anon, authen
 --    طلباً إلكترونياً ولا يتحقق من بطاقات غيره. لذلك:
 --      • تُمنح للزائر دوال «بطاقتي» الثلاث فقط: lookup_card (بيانات مقنّنة بلا
 --        رموز) وuse_chance وverify_card_code (تتطلبان رمز الفرصة السري).
---      • لا تُمنح brc.verify_form للزائر (anon): التحقق الداخلي يتم بجلسة موظف
---        مصادَق عليها (authenticated) من صفحة verify.html — محجوبة عن الزائر.
---      • لا تُمنح brc.request_form للزائر: مسار الطلب الإلكتروني أُلغي نهائياً.
+--      • verify_form و request_form: **تُمنحان لـ anon** — انظر التصحيح
+--        المؤرّخ 2026-11-20 في قسم المنح أدناه. هذا التعليق كان يخالف الإنتاج
+--        والكود معاً (cloud.js ينادي الدالتين بلا جلسة).
 -- ⚠️ ولا تُمنح brc.public_verification أصلاً: تلك الواجهة تكشف serial + full_name
 --    + status لكل البطاقات بلا تحقق من البصمة، فيسحب أي حامل لـ anon key أسماء
 --    كل الباحثين بنداء واحد.
+/* ⚠️ 2026-11-20 — تصحيح انحراف حقيقي بين المخطط والإنتاج:
+   المخطط كان ينزع verify_form وrequest_form من anon ويعلّق «الزائر لا يتحقق
+   ولا يقدّم»، لكن **الإنتاج يمنحهما لـ anon فعلاً**، والكود يناديهما بلا جلسة:
+     • assets/js/cloud.js:651  → request_form (نموذج طلب الزائر)
+     • assets/js/cloud.js:680  → verify_form (التحقق بالباركود)
+     • supabase-check.html     → يفحص request_form كمسار زائر
+   فكانت أي قاعدة مُعادة البناء تُعطّل التحقق العام والطلب الإلكتروني بصمت.
+   المعالجة: مواءمة المخطط مع الإنتاج (لا العكس) — الدالتان مقنّعتان
+   (verify_form تُقنّع الاسم والهاتف) وتتحققان من المدخلات داخلياً. */
+revoke execute on function brc.verify_form(text, text) from public;
+revoke execute on function brc.request_form(text, text, text, date, text, text, text) from public;
+grant execute on function brc.verify_form(text, text) to anon, authenticated;
+grant execute on function brc.request_form(text, text, text, date, text, text, text) to anon, authenticated;
+
 grant select on brc.public_jobs to anon, authenticated;
 grant execute on function brc.verify_form(text, text) to authenticated, service_role;
 grant execute on function brc.request_form(text, text, text, date, text, text, text) to authenticated, service_role;
@@ -525,7 +654,8 @@ grant select on brc.audit_log, brc.settings, brc.staff, brc.v_financials_by_staf
 --     حذف وظيفة/استمارة) — وكلها تبقى مقيّدة بالسياسات أعلاه:
 --       • settings:     التعديل للمدير فقط (settings_admin_write)
 --       • audit_log:    الإضافة باسم صاحب الجلسة أو 'system' (audit_insert)
---       • delete jobs/applicants: للمدير فقط (jobs_admin_delete …)
+--       • delete jobs: للموظف والمدير (jobs_staff_delete) · delete applicants: للمدير فقط
+--       • insert applicants: للمدير فقط (applicants_admin_insert — إصدار البطاقات)
 grant insert on brc.audit_log to authenticated;
 -- ⚠️ عطل حقيقي أُصلح 2026-11-17 (بلاغ المالك: «قبل لا أنسخ أي نسخة يكلّي
 --    لا صلاحية كافية (RLS/منح مفقود) … وهاي تروح من أسوي رفرش»).
@@ -554,96 +684,3 @@ grant execute on function brc.run_auto_release() to authenticated, service_role;
 
 -- منع الوصول المباشر للجداول الحساسة من الزائر
 revoke all on brc.jobs, brc.applicants, brc.job_attempts, brc.audit_log, brc.staff, brc.settings from anon;
-
--- ===========================================================================
---  10) سجل التغيير اللحظي (Realtime)
--- ===========================================================================
-do $$ begin
-  alter publication supabase_realtime add table brc.jobs;
-  alter publication supabase_realtime add table brc.job_attempts;
-  alter publication supabase_realtime add table brc.audit_log;
-exception when others then
-  raise notice 'Realtime غير متاح في هذه البيئة: %', sqlerrm;
-end $$;
-
--- ===========================================================================
---  11) أمثلة استخدام سريعة
--- ===========================================================================
--- إضافة وظيفة (يُولَّد الكود تلقائياً BRC-####)
--- insert into brc.jobs (title, region, salary_min, salary_max, shift,
---                       employer_name, employer_phone, employer_address)
--- values ('عامل مخزن', 'الحلة', 600000, 750000, 'صباحي',
---         'مخازن الفرات للتبريد', '07701234567', 'الحلة - المنطقة الصناعية');
---
--- إصدار استمارة (يُولَّد الرقم HRC-NO-000121 وتُنشأ 5 محاولات)
--- insert into brc.applicants (full_name, phone, address, dob)
--- values ('حسين كاظم عبد الله', '07704445566', 'الحلة - شارع 40', '1997-11-30');
---
--- ترشيح وظيفة لمحاولة (يحجز الوظيفة 24 ساعة تلقائياً)
--- select brc.select_attempt('HRC-NO-000121', 'HRC-1042');
---
--- تثبيت نتيجة المقابلة
--- select brc.set_outcome('HRC-NO-000121', 1, 'rejected', 'عدم توفر سكن قريب');
---
--- التحقق عبر الكيو آر كود
--- select brc.verify_form('HRC-NO-000120', left(brc.verify_token('HRC-NO-000120'), 8));
---
--- تشغيل الإفراج التلقائي يدوياً (يعمل تلقائياً كل دقيقة عبر pg_cron)
--- select * from brc.run_auto_release();
-
--- Employer WhatsApp OTP gateway (2026-10-17).
--- OTP and employer sessions are service-only. Never expose these tables/RPCs to the browser.
-create table if not exists brc.employer_otp (
- id uuid primary key, attempt_id uuid not null references brc.job_attempts(id) on delete cascade,
- phone text not null, ip_hash text not null, code_hash text not null,
- created_at timestamptz not null default now(), expires_at timestamptz not null default now()+interval '5 minutes',
- delivered boolean not null default false, failures int not null default 0,
- used boolean not null default false, session_hash text, session_expires_at timestamptz
-);
-alter table brc.employer_otp enable row level security;
-revoke all on brc.employer_otp from public,anon,authenticated;
-create index if not exists employer_otp_phone_time on brc.employer_otp(phone,created_at);
-create index if not exists employer_otp_ip_time on brc.employer_otp(ip_hash,created_at);
-create unique index if not exists employer_otp_session on brc.employer_otp(session_hash) where session_hash is not null;
-
--- 2026-10-25: حُذفت دوال بوابة الواتساب (employer_otp_issue/delivery/verify/action)
--- ومعها employer_view/employer_decide — لا واجهة تنادي عليها بعد حذف مسار صاحب
--- العمل. الجداول تبقى فارغة لأن دوال الاسترجاع التشغيلي تلتقط لقطاتها.
--- 2026-10-25: حُذفت دوال صاحب العمل نهائياً (employer_view · employer_decide ·
--- employer_decide_original) ودوال employer_otp_%، فلا شيء تسحبه هذه الحلقة.
--- تُبقى شبكة أمان لأي قاعدة قديمة ما زالت تحمل نسخة مشغولة بالرمز:
-do $$ declare r record; begin
- for r in select p.oid::regprocedure as signature from pg_proc p join pg_namespace n on n.oid=p.pronamespace
- where n.nspname='brc' and (p.proname like 'employer\_pin%' or p.proname like 'employer\_otp\_%' or p.proname = 'staff_save_job_pin') loop
- execute format('drop function if exists %s',r.signature);
- end loop;
-end $$;
-
-notify pgrst, 'reload schema';
-
--- ═══════════════════════════════════════════════════════════════════════════
--- 2026-10-25 — حُذف رمز صاحب العمل (employer PIN) نهائياً
--- ---------------------------------------------------------------------------
---  بعد حذف بوابة صاحب العمل من الموقع لم يبقَ مستخدم للرمز: لا واجهة ولا دالة
---  تنادي عليه. حُذفت staff_save_job_pin · employer_pin_login · employer_pin_action
---  وعمود jobs.employer_pin_set. وأُبقيت **جداول الاعتماد القديمة مفرغة** لأن دوال
---  الاسترجاع التشغيلي تلتقط لقطاتها؛ لا تُستخدم لأي رمز بعد اليوم.
-create table if not exists brc.employer_job_credentials (
- job_id uuid primary key references brc.jobs(id) on delete cascade,
- pin_hash text not null, failures integer not null default 0,
- window_start timestamptz not null default now(), changed_at timestamptz not null default now()
-);
-create table if not exists brc.employer_login_budget (
- id boolean primary key default true check(id), window_start timestamptz not null default now(), requests integer not null default 0
-);
-alter table brc.employer_job_credentials enable row level security;
-alter table brc.employer_login_budget enable row level security;
-revoke all on brc.employer_job_credentials,brc.employer_login_budget from public,anon,authenticated;
-
--- Office queue: authenticated replay, no browser access to the receipt ledger.
-create table if not exists brc.office_receipts (
- operation_id uuid primary key, actor uuid not null, request_hash text not null,
- result jsonb not null, created_at timestamptz not null default now()
-);
-alter table brc.office_receipts enable row level security;
-revoke all on brc.office_receipts from public,anon,authenticated;
