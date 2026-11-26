@@ -13,12 +13,12 @@ try {
  for(const path of ['', 'index.html']) {
   const ctx=await browser.newContext({viewport:{width:375,height:812},serviceWorkers:'block'}),page=await ctx.newPage();
   let releaseJS,releaseImage;const jsGate=new Promise(r=>releaseJS=r), imageGate=new Promise(r=>releaseImage=r);
-  await page.route('**/*',async r=>{const url=r.request().url();if(!url.startsWith(base))return r.abort();if(url.includes('/assets/js/public.js'))await jsGate;if(url.includes('/assets/img/hero-skyline.webp'))await imageGate;return r.continue().catch(()=>{});});
+  await page.route('**/*',async r=>{const url=r.request().url();if(!url.startsWith(base))return r.abort();if(url.includes('/assets/js/public.js'))await jsGate;if(url.includes('/assets/img/hero-aurora.webp'))await imageGate;return r.continue().catch(()=>{});});
   const navigation=page.goto(base+path,{waitUntil:'domcontentloaded'});
   await page.locator('.hero').waitFor({state:'visible'});
   assert.equal(await page.locator('#card').isVisible(),false,'card must not flash before JS runs');
   assert.equal(await page.locator('#page-bar').isVisible(),false);
-  assert.equal(await page.locator('link[rel=preload][as=image][fetchpriority=high]').getAttribute('href'),'assets/img/hero-skyline.webp');
+  assert.equal(await page.locator('link[rel=preload][as=image][fetchpriority=high]').getAttribute('href'),'assets/img/hero-aurora.webp');
   assert.ok(await page.locator('.hero h1').isVisible(),'home content visible even if image and JS are slow');
   releaseImage();releaseJS();await navigation;
   await page.locator('[data-page-tab=card]').click();

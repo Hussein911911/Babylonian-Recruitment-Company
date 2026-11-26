@@ -150,7 +150,7 @@ check('أيقونة/شعار الشركة موجود داخل الرموز (Spri
 check('صورة المدينة في الواجهة وصورتا التوظيف والمتابعة في الأقسام', () => {
   const bg = site.window.getComputedStyle(site.doc.querySelector('.hero.hero-app .hero-bg')).backgroundImage || '';
   const imgs = Array.from(site.doc.querySelectorAll('.lion-frame img')).map(img => img.getAttribute('src'));
-  return (/hero-skyline\.webp/.test(bg) && imgs.includes('assets/img/recruitment-team.webp') && imgs.includes('assets/img/recruitment-digital.webp') && imgs.every(p => existsSync(join(ROOT,p)))) || 'صور التوظيف أو الخلفية غير متوفرة';
+  return (/hero-aurora\.webp/.test(bg) && imgs.includes('assets/img/recruitment-team.webp') && imgs.includes('assets/img/recruitment-digital.webp') && imgs.every(p => existsSync(join(ROOT,p)))) || 'صور التوظيف أو الخلفية غير متوفرة';
 });
 check('رسالة التواصل تعرض النص المحدّث مع أزرار البطاقة وواتساب', () => {
   const section = site.doc.querySelector('#contact');

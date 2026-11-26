@@ -49,7 +49,7 @@
 
 | الملف | الاستخدام | الحجم |
 |---|---|---|
-| `assets/img/hero-skyline.webp` | خلفية الواجهة — بغداد على دجلة عند الغروب | 70KB |
+| `assets/img/hero-aurora.webp` / `hero-aurora-m.webp` | خلفية الواجهة — شعاع ذهبي مجرّد على لازوردي (2026-11-25، نسختان: سطح مكتب/جوال) | 70KB / 24KB |
 | `assets/img/card-banner.webp` | بانر بطاقة التوظيف | 37KB |
 | `assets/img/jobs/job-truck.webp` | سائق/نقل | 38KB |
 | `assets/img/jobs/job-cashier.webp` | كاشير/مبيعات | 50KB |

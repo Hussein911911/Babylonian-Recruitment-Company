@@ -193,7 +193,7 @@ ${extra}</head>
 /* ---------------- الصفحات المنفصلة ---------------- */
 function buildPage({ title, desc, body, scripts, publicStyle = false, staffStyle = false, cardStyle = false, pwa = true }) {
   return docHead({ title, desc, css: 'assets/css/style.css', pwa: pwa,
-    extra: (publicStyle ? '<link rel="preload" href="assets/img/hero-skyline.webp" as="image" fetchpriority="high">\n' : '') +
+    extra: (publicStyle ? '<link rel="preload" href="assets/img/hero-aurora.webp" as="image" fetchpriority="high">\n' : '') +
       (cardStyle ? `<link rel="stylesheet" href="${verQ('assets/css/card-entry.css')}">` : '') +
       (publicStyle ? `<link rel="stylesheet" href="${verQ('assets/css/public-polish.css')}"><link rel="stylesheet" href="${verQ('assets/css/app-shell.css')}">` : '') +
       (staffStyle ? `<link rel="stylesheet" href="${verQ('assets/css/notifications.css')}"><link rel="stylesheet" href="${verQ('assets/css/image-editor.css')}"><link rel="stylesheet" href="${verQ('assets/css/backup.css')}"><link rel="stylesheet" href="${verQ('assets/css/workspace-layout.css')}">` : '') }) +

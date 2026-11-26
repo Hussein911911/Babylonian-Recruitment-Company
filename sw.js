@@ -1,4 +1,4 @@
-// Service Worker للعمل أوفلاين — hrc-cache-v186
+// Service Worker للعمل أوفلاين — hrc-cache-v187
 // ---------------------------------------------------------------------------
 // سياسة التخزين منذ v4:
 //   • HTML و JS  → network-first: الشبكة أولاً (الزائر يرى آخر نسخة)، والكاش
@@ -41,7 +41,7 @@
    إن كان مطابقاً. إبقاء الرقم ثابتاً يُبقي الزوار القدامى على نسخة قديمة
    من index.html مهما أعدت النشر (ظهر فعلاً: زر دخول محذوف بقي على حاسبة
    زارت الموقع قبل الحذف، بينما اختفى على هاتف لم يزره من قبل). */
-const CACHE_NAME = 'hrc-cache-v186';
+const CACHE_NAME = 'hrc-cache-v187';
 // Only public job illustrations / public Supabase Storage objects; never API or private images.
 const IMAGE_CACHE = 'hrc-public-job-images-v1';
 const IMAGE_META = 'hrc-public-job-image-meta-v1';
@@ -77,7 +77,8 @@ const urlsToCache = [
      تظهر الصفحة بلا تنسيق إن فُتحت أول مرة بلا إنترنت. */
   '/assets/css/card-entry.css',
   '/assets/css/app-shell.css',
-  '/assets/img/hero-skyline.webp',
+  '/assets/img/hero-aurora.webp',
+  '/assets/img/hero-aurora-m.webp',
   /* 2026-10-27: صورة واجهة شاشة الترحيب «منصة مكسب» (محلية، تُخزَّن مسبقاً) */
   '/assets/img/mkseb-hero.webp',
   '/assets/img/mkseb-hero-m.webp',
