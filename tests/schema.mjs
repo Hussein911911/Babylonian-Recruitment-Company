@@ -705,7 +705,7 @@ step(19, 'الواجهة العامة — ترتيب تطبيق بهوية ال�
     /var\(--gold\)/.test(app) && /var\(--lapis-2\)/.test(app) && /--gold:/.test(vars));
 
   /* الصور: محلية + بصيغة webp + بلا نص عربي داخل الصورة */
-  const imgs = ['hero-skyline', 'jobs/job-truck', 'jobs/job-cashier', 'jobs/job-chef',
+  const imgs = ['hero-aurora', 'jobs/job-truck', 'jobs/job-cashier', 'jobs/job-chef',
     'jobs/job-electrician', 'jobs/job-engineer', 'jobs/job-nurse', 'jobs/job-sales', 'jobs/job-warehouse'];
   const missing = imgs.filter((n) => !existsSync(join(ROOT, 'assets', 'img', n + '.webp')));
   check('كل صور الهوية الجديدة موجودة محلياً بصيغة webp', missing.length === 0, missing.join(', '));
