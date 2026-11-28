@@ -168,28 +168,32 @@
     <div class="panel" style="margin-top:14px" id="p8">
       <div class="panel-head"><h3>٨ — مدة الاحتفاظ والحذف</h3></div>
       <div class="panel-body" style="line-height:2">
-        <div class="table-wrap" style="border:none;box-shadow:none">
-          <table class="data" style="min-width:460px">
-            <thead><tr><th>البيانات</th><th>المدة</th></tr></thead>
-            <tbody>
-              <tr>
-                <td>بيانات البطاقة والتقديم</td>
-                <td><b>١٢ شهراً</b> من انتهاء صلاحية البطاقة (٣٠ يوماً)، ثم حذف أو إخفاء هوية</td>
-              </tr>
-              <tr>
-                <td>سجل التدقيق (المستخدم، العملية، الوقت، IP)</td>
-                <td><b>٢٤ شهراً</b></td>
-              </tr>
-              <tr>
-                <td>النسخ الاحتياطية للنظام</td>
-                <td>دوران تلقائي بسقف <b>٣٠ نسخة</b>، بلا نسخة أبدية</td>
-              </tr>
-              <tr>
-                <td>بيانات محاسبية أو قانونية</td>
-                <td>المدة التي يفرضها القانون</td>
-              </tr>
-            </tbody>
-          </table>
+        <style>
+          /* جدول الاحتفاظ: بطاقات مرنة بلا قصّ نص على الهاتف */
+          .pxy-rt{display:grid;gap:10px;margin:2px 0 0}
+          .pxy-rt-row{border:1px solid var(--line-soft,#e3e8f1);border-radius:12px;background:#fff;padding:11px 14px;min-width:0}
+          .pxy-rt-k{display:block;font-weight:700;color:#0b1a3a;font-size:.86rem;margin-bottom:3px}
+          .pxy-rt-v{display:block;color:#1b2438;font-size:.86rem;line-height:1.95;overflow-wrap:anywhere}
+          @media (min-width:600px){.pxy-rt{grid-template-columns:1fr 1fr}}
+          @media print{.pxy-rt{grid-template-columns:1fr 1fr;gap:6px}.pxy-rt-row{border-color:#d8dee9;padding:8px 10px;break-inside:avoid}}
+        </style>
+        <div class="pxy-rt">
+          <div class="pxy-rt-row">
+            <span class="pxy-rt-k">بيانات البطاقة والتقديم</span>
+            <span class="pxy-rt-v"><b>١٢ شهراً</b> من انتهاء صلاحية البطاقة (٣٠ يوماً)، ثم حذف أو إخفاء هوية</span>
+          </div>
+          <div class="pxy-rt-row">
+            <span class="pxy-rt-k">سجل التدقيق (المستخدم، العملية، الوقت، IP)</span>
+            <span class="pxy-rt-v"><b>٢٤ شهراً</b></span>
+          </div>
+          <div class="pxy-rt-row">
+            <span class="pxy-rt-k">النسخ الاحتياطية للنظام</span>
+            <span class="pxy-rt-v">دوران تلقائي بسقف <b>٣٠ نسخة</b>، بلا نسخة أبدية</span>
+          </div>
+          <div class="pxy-rt-row">
+            <span class="pxy-rt-k">بيانات محاسبية أو قانونية</span>
+            <span class="pxy-rt-v">المدة التي يفرضها القانون</span>
+          </div>
         </div>
         <p class="mt-2 mb-0">
           وإذا طلبت الحذف قبل انقضاء المدة، يُنفَّذ خلال <b>ثلاثين (٣٠) يوماً</b> من التحقق من هويتك
